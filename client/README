@@ -1,0 +1,5 @@
+Java Client Source Code 
+
+The source code can be imported into your IDE and/or built using Maven.
+
+  mvn install
