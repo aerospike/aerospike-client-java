@@ -20,7 +20,7 @@ import java.util.HashMap;
 import com.aerospike.client.AerospikeException;
 
 public final class Buffer {
-	
+
 	public static Object bytesToParticle(int type, byte[] buf, int offset, int len) 
 		throws AerospikeException {
 		
@@ -172,10 +172,36 @@ public final class Buffer {
 
     public static String utf8ToString(byte[] buf, int offset, int length) 
     	throws AerospikeException.Serialize {
-    	// The performance gain from using a thread local StringBuilder is not significant
-    	// here (~5% for small strings), so just allocate every time.
-    	StringBuilder sb = new StringBuilder(length);
-    	return utf8ToString(buf, offset, length, sb);
+    	// A Thread local implementation does not help here, so  
+    	// allocate character buffer each time.  
+		char[] charBuffer = new char[length];
+    	int charCount = 0;
+        int limit = offset + length;
+    	int origoffset = offset;
+
+        while (offset < limit ) {
+            if ((buf[offset] & 0x80) == 0) { // 1 byte
+                char c = (char) buf[offset];
+                charBuffer[charCount++] = c; 
+                offset++;
+            }
+            else if ((buf[offset] & 0xE0) == 0xC0) { // 2 bytes
+                char c =  (char) (((buf[offset] & 0x1f) << 6) | (buf[offset+1] & 0x3f));
+                charBuffer[charCount++] = c;
+                offset += 2;
+            }
+		    else {
+		    	// Encountered an UTF encoding which uses more than 2 bytes. 
+		    	// Use a native function to do the conversion.
+		    	try {
+		    		return new String(buf, origoffset, length, "UTF8");
+		    	}
+		    	catch (UnsupportedEncodingException uee) {
+            		throw new AerospikeException.Serialize(uee);		    		
+		    	}
+		    }
+        }
+        return new String(charBuffer, 0, charCount);
     }
 
     public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) 
@@ -228,6 +254,15 @@ public final class Buffer {
     	return val;
     }
     
+    public static String bytesToHexString(byte[] buf) {
+		StringBuilder sb = new StringBuilder(buf.length * 2);
+		
+		for (int i = 0; i < buf.length; i++) {
+    		sb.append(String.format("%02x", buf[i]));
+		}
+		return sb.toString();
+    }
+
     public static Object bytesToObject(byte[] buf, int offset, int length)
 		throws AerospikeException.Serialize {		
 		try {

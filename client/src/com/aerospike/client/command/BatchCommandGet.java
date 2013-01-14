@@ -17,6 +17,7 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -26,12 +27,14 @@ import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends BatchCommand {
 	private final HashSet<String> binNames;
-	private final List<Record> records;
+	private final Record[] records;
+	private final int readAttr;
 
-	public BatchCommandGet(Node node, HashSet<String> binNames, List<Record> records) {
-		super(node);
+	public BatchCommandGet(Node node, HashMap<Key,Integer> keyMap, HashSet<String> binNames, Record[] records, int readAttr) {
+		super(node, keyMap);
 		this.binNames = binNames;
 		this.records = records;
+		this.readAttr = readAttr;
 	}
 
 	public void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException {
@@ -50,16 +53,7 @@ public final class BatchCommandGet extends BatchCommand {
 		
 		begin();
 
-		int operationCount = 0;
-		byte readAttr = INFO1_READ;
-		
-		if (binNames != null) {
-			operationCount = binNames.size();
-		}
-		else {
-			readAttr |= INFO1_GET_ALL;								
-		}
-
+		int operationCount = (binNames == null)? 0 : binNames.size();
 		writeHeader(readAttr, operationCount);		
 		writeField(batchNamespace.namespace, BatchCommand.FIELD_TYPE_NAMESPACE);
 		writeFieldHeader(byteSize, BatchCommand.FIELD_TYPE_DIGEST_RIPE_ARRAY);
@@ -106,18 +100,18 @@ public final class BatchCommandGet extends BatchCommand {
 			int expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
 			int opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
 			Key key = parseKey();
-			Record record;
-
-			if (resultCode == 0) {					
-				record = parseRecord(key, opCount, generation, expiration);
+			Integer index = keyMap.get(key);
+			
+			if (index != null) {				
+				if (resultCode == 0) {				
+					records[index] = parseRecord(opCount, generation, expiration);
+				}
 			}
 			else {
-				record = new Record(key, null, null, generation, expiration);
+				if (Log.debugEnabled()) {
+					Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+				}
 			}
-			
-			synchronized (records) {
-				records.add(record);
-			}				
 		}
 		return true;
 	}
@@ -127,7 +121,6 @@ public final class BatchCommandGet extends BatchCommand {
 	 * Returns the number of bytes that were parsed from the given buffer.
 	 */
 	protected Record parseRecord(
-		Key key,
 		int opCount, 
 		int generation,
 		int expiration
@@ -191,6 +184,6 @@ public final class BatchCommandGet extends BatchCommand {
 	        	;
 	        }
 	    }
-	    return new Record(key, bins, duplicates, generation, expiration);	    
+	    return new Record(bins, duplicates, generation, expiration);	    
 	}
 }

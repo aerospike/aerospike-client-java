@@ -10,7 +10,6 @@
 package net.citrusleaf;
 
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -22,7 +21,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.KeyStatus;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Operation;
@@ -427,7 +425,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public ClResultCode set(Object key, Object value) {
 		try {
-			super.write(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.put(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -453,7 +451,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode set(Object key, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.put(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -483,7 +481,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			String binName, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, set, key), new Bin(binName, value));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, set, key), new Bin(binName, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -510,7 +508,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode set(String namespace, String set, Object key,
 			Collection<ClBin> bins, ClOptions opts, ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, set, key), getBins(bins));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, set, key), getBins(bins));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -537,7 +535,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode set(String namespace, String set, Object key,
 			Map<String, Object> bins, ClOptions opts, ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, set, key), getBins(bins));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, set, key), getBins(bins));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -575,7 +573,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			String binName, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, digest), new Bin(binName, value));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, digest), new Bin(binName, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -606,7 +604,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode setDigest(String namespace, byte[] digest, ClBin bin,
 			ClOptions opts, ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, digest), new Bin(bin.name, bin.value));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, digest), new Bin(bin.name, bin.value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -637,7 +635,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode setDigest(String namespace, byte[] digest,
 			Collection<ClBin> bins, ClOptions opts, ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, digest), getBins(bins));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, digest), getBins(bins));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -668,7 +666,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode setDigest(String namespace, byte[] digest,
 			Map<String, Object> bins, ClOptions opts, ClWriteOptions wOpts) {
 		try {
-			super.write(getWritePolicy(opts, wOpts), new Key(namespace, digest), getBins(bins));
+			super.put(getWritePolicy(opts, wOpts), new Key(namespace, digest), getBins(bins));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -1152,7 +1150,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		for (ClBin bin : bins) {
 			operations[count++] = Operation.add(bin.name, bin.value);
 		}
-		operations[count] = Operation.read();
+		operations[count] = Operation.get();
 
 		try {
 			Record record = super.operate(getWritePolicy(opts, wOpts), new Key(namespace, set, key), operations);
@@ -1189,7 +1187,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		for (Entry<String,Object> entry : bins.entrySet()) {
 			operations[count++] = Operation.add(entry.getKey(), entry.getValue());
 		}
-		operations[count] = Operation.read();
+		operations[count] = Operation.get();
 
 		try {
 			Record record = super.operate(getWritePolicy(opts, wOpts), new Key(namespace, set, key), operations);
@@ -1431,7 +1429,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public Object get(Object key) {
 		try {
-			Record record = super.read(defaultPolicy, new Key(mDefaultNamespace, "", key), "");
+			Record record = super.get(defaultPolicy, new Key(mDefaultNamespace, "", key), "");
 			ClResult r = getResult(record);
 			// Single-bin result is in results Map, also put it in result Object:
 			return r.results != null ? r.results.get("") : null;
@@ -1456,7 +1454,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult get(String namespace, String set, Object key,
 			String binName, ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, set, key), binName);
+			Record record = super.get(getPolicy(opts), new Key(namespace, set, key), binName);
 			ClResult r = getResult(record);
 			// Result for one bin is in results Map, also put it in result Object:
 			if (r.results != null) {
@@ -1483,7 +1481,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult get(String namespace, String set, Object key,
 			String[] binNames, ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, set, key), binNames);
+			Record record = super.get(getPolicy(opts), new Key(namespace, set, key), binNames);
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1505,7 +1503,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult get(String namespace, String set, Object key,
 			Collection<String> binNames, ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, set, key), getBinNames(binNames));
+			Record record = super.get(getPolicy(opts), new Key(namespace, set, key), getBinNames(binNames));
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1526,7 +1524,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult getAll(String namespace, String set, Object key,
 			ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, set, key));
+			Record record = super.get(getPolicy(opts), new Key(namespace, set, key));
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1559,7 +1557,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		int count = 0;
 		
 		for (String binName : binNames) {
-			operations[count++] = Operation.read(binName);
+			operations[count++] = Operation.get(binName);
 		}
 		operations[count] = Operation.touch();
 
@@ -1592,8 +1590,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			Collection<Object> keys, String binName, ClOptions opts) {
 		try {
 			Key[] keyArray = getKeys(namespace, set, keys);
-			List<Record> records = super.read(getPolicy(opts), keyArray, binName);
-			return getRecordResults(keyArray, records);
+			Record[] records = super.get(getPolicy(opts), keyArray, binName);
+			return getRecordResults(records);
 		}
 		catch (AerospikeException ae) {
 			return getResults(ae, keys.size());
@@ -1620,8 +1618,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			ClOptions opts) {
 		try {
 			Key[] keyArray = getKeys(namespace, set, keys);
-			List<Record> records = super.read(getPolicy(opts), keyArray, getBinNames(binNames));
-			return getRecordResults(keyArray, records);
+			Record[] records = super.get(getPolicy(opts), keyArray, getBinNames(binNames));
+			return getRecordResults(records);
 		}
 		catch (AerospikeException ae) {
 			return getResults(ae, keys.size());
@@ -1646,8 +1644,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			Collection<Object> keys, ClOptions opts) {
 		try {
 			Key[] keyArray = getKeys(namespace, set, keys);
-			List<Record> records = super.read(getPolicy(opts), keyArray);
-			return getRecordResults(keyArray, records);
+			Record[] records = super.get(getPolicy(opts), keyArray);
+			return getRecordResults(records);
 		}
 		catch (AerospikeException ae) {
 			return getResults(ae, keys.size());
@@ -1677,7 +1675,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult getDigest(String namespace, byte[] digest, String binName,
 			ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, digest), binName);
+			Record record = super.get(getPolicy(opts), new Key(namespace, digest), binName);
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1703,7 +1701,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult getDigest(String namespace, byte[] digest,
 			Collection<String> binNames, ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, digest), getBinNames(binNames));
+			Record record = super.get(getPolicy(opts), new Key(namespace, digest), getBinNames(binNames));
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1728,7 +1726,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult getAllDigest(String namespace, byte[] digest,
 			ClOptions opts) {
 		try {
-			Record record = super.read(getPolicy(opts), new Key(namespace, digest));
+			Record record = super.get(getPolicy(opts), new Key(namespace, digest));
 			return getResult(record);
 		}
 		catch (AerospikeException ae) {
@@ -1796,8 +1794,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			Collection<Object> keys, ClOptions opts) {
 		try {
 			Key[] keyArray = getKeys(namespace, set, keys);
-			List<KeyStatus> keyList = super.exists(getPolicy(opts), keyArray);
-			return getKeyResults(keyArray, keyList);
+			boolean[] existsArray = super.exists(getPolicy(opts), keyArray);
+			return getKeyResults(existsArray);
 		}
 		catch (AerospikeException ae) {
 			return getResults(ae, keys.size());
@@ -2072,11 +2070,11 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		int count = 0;
 		
 		for (ClBin bin : writeBins) {
-			operations[count++] = Operation.write(bin.name, bin.value);
+			operations[count++] = Operation.put(bin.name, bin.value);
 		}
 
 		for (String binName : readBinNames) {
-			operations[count++] = Operation.read(binName);
+			operations[count++] = Operation.get(binName);
 		}
 		
 		try {
@@ -2691,40 +2689,21 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		return binArray;
 	}
 	
-	private static ClResult[] getRecordResults(Key[] keys, List<Record> records) {
-		// Old API returns data in key positional order, but the new API does 
-		// not return data in positional order for performance.  Must convert
-		// records to positional results when using old API.
-		ClResult[] results = new ClResult[keys.length];
+	private static ClResult[] getRecordResults(Record[] records) {
+		ClResult[] results = new ClResult[records.length];
 		
-		for (Record record : records) {
-			byte[] digest = record.key.digest;
-			
-			for (int i = 0; i < keys.length; i++) {
-				if (Arrays.equals(keys[i].digest, digest)) {
-					results[i] = getResult(record);
-					break;
-				}
-			}			
+		for (int i = 0; i < records.length; i++) {
+			results[i] = getResult(records[i]);
 		}
 		return results;
 	}
 	
-	private static ClResult[] getKeyResults(Key[] keys, List<KeyStatus> keyStatusList) {
-		// Old API returns data in key positional order, but the new API does 
-		// not return data in positional order for performance.  Must convert
-		// records to positional results when using old API.
-		ClResult[] results = new ClResult[keys.length];
+	private static ClResult[] getKeyResults(boolean[] existsArray) {
+		ClResult[] results = new ClResult[existsArray.length];
 		
-		for (KeyStatus ks : keyStatusList) {
-			byte[] digest = ks.key.digest;
-			
-			for (int i = 0; i < keys.length; i++) {
-				if (Arrays.equals(keys[i].digest, digest)) {
-					results[i] = new ClResult(ClResultCode.OK);
-					break;
-				}
-			}			
+		for (int i = 0; i < existsArray.length; i++) {
+			ClResultCode rc = (existsArray[i])? ClResultCode.OK : ClResultCode.KEY_NOT_FOUND_ERROR;
+			results[i] = new ClResult(rc);
 		}
 		return results;
 	}

@@ -10,6 +10,7 @@
 package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -22,7 +23,7 @@ import com.aerospike.client.util.Util;
 
 public final class Cluster implements Runnable {
 	// Initial host nodes specified by user.
-	private final ArrayList<Host> seeds;
+	private volatile Host[] seeds;
 	
 	// All aliases for all nodes in cluster.
 	private final HashSet<Host> aliases;
@@ -36,10 +37,6 @@ public final class Cluster implements Runnable {
 	// Hints for best node for a partition
 	private final ConcurrentHashMap<Partition,Node> partitionWriteMap;
 	
-	// Tend thread variables.
-	private Thread tendThread;
-	private volatile boolean tendValid;
-	
 	// Random node index.
 	private int nodeIndex;
 	
@@ -49,23 +46,53 @@ public final class Cluster implements Runnable {
 	// Initial connection timeout.
 	private final int connectionTimeout;
 
-	public Cluster(ClientPolicy policy, Host host) throws AerospikeException {
-		// Verify host node exists and responds to info requests.
-		new NodeValidator(host, policy.timeout);
+	// Tend thread variables.
+	private final Thread tendThread;
+	private volatile boolean tendValid;
+	
+	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
+		this.seeds = hosts;
+		connectionLimit = policy.maxThreads + 1;
+		connectionTimeout = policy.timeout;		
 		
-		seeds = new ArrayList<Host>();
-		seeds.add(host);
-
 		aliases = new HashSet<Host>();
 		nodeNames = new HashSet<String>();
 		nodes = new Node[0];
-		connectionLimit = policy.maxThreads + 1;
-		connectionTimeout = policy.timeout;
 		
 		// Preallocate 2 namespaces each with default number of partitions.
 		partitionWriteMap = new ConcurrentHashMap<Partition,Node>(Node.PARTITIONS * 2); 
+
+        waitTillStabilized();
+        
+		if (! isConnected() && policy.failIfNotConnected) {
+			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
+		}
+
+		// Run cluster tend thread.
+        tendValid = true;
+        tendThread = new Thread(this);
+        tendThread.setName("tend");
+        tendThread.setDaemon(true);
+        tendThread.start();
+	}
+	
+	public void addSeeds(Host[] hosts) {
+		// Use copy on write semantics.
+		Host[] seedArray = new Host[seeds.length + hosts.length];
+		int count = 0;
 		
-        waitTillStabilized(policy.timeout);
+		// Add existing seeds.
+		for (Host seed : seeds) {
+			seedArray[count++] = seed;
+		}
+		
+		// Add new seeds
+		for (Host host : hosts) {
+			seedArray[count++] = host;
+		}
+		
+		// Replace nodes with copy.
+		seeds = seedArray;
 	}
 	
     /**
@@ -77,8 +104,8 @@ public final class Cluster implements Runnable {
      * control as well.  Do not return an error since future 
      * database requests may still succeed.
      */
-    private void waitTillStabilized(int timeoutMillis) {
-		long limit = System.currentTimeMillis() + timeoutMillis;
+    private void waitTillStabilized() {
+		long limit = System.currentTimeMillis() + connectionTimeout;
 		int count = -1;
 		
 		do {
@@ -93,34 +120,7 @@ public final class Cluster implements Runnable {
 			count = nodes.length;
 		} while (System.currentTimeMillis() < limit);
     }
-    
-	public void activate(Host[] hosts) {
-		// Add all hosts to cluster as potential seeds in case of complete network failure.
-		Node[] nodeArray = nodes;
-		HashSet<Host> hostSet = new HashSet<Host>(nodeArray.length + hosts.length);			
-		
-		for (Node node : nodeArray) {
-			hostSet.add(node.getHost());
-		}
-
-		for (Host host : hosts) {
-			hostSet.add(host);
-		}
-		seeds.clear();
-		
-		for (Host host : hostSet) {
-			// Log.debug("Add seed " + host);
-			seeds.add(host);
-		}
-	
-        // Run cluster tend thread.
-        tendValid = true;
-        tendThread = new Thread(this);
-        tendThread.setName("tend");
-        tendThread.setDaemon(true);
-        tendThread.start();
-	}
-	
+    	
 	public void run() {
 		while (tendValid) {			
 			// Tend cluster.
@@ -190,9 +190,12 @@ public final class Cluster implements Runnable {
 	}
 
 	private void seedNode() {
-		for (Host host : seeds) {
+		// Must copy array reference for copy on write semantics to work.
+		Host[] seedArray = seeds;
+		
+		for (Host seed : seedArray) {
 			try {
-				Node node = new Node(this, host, connectionLimit, connectionTimeout);
+				Node node = new Node(this, seed, connectionLimit, connectionTimeout);
 				addNodeNameAndAliases(node);
 				
 				ArrayList<Node> list = new ArrayList<Node>(1);

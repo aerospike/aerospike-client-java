@@ -1,0 +1,6 @@
+# Java Examples Command Line Script.
+#
+# Build with maven before running this script.
+# mvn package 
+#
+java -cp target/aerospike-examples-*-jar-with-dependencies.jar com.aerospike.examples.Main $* 

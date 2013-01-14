@@ -29,21 +29,21 @@ public final class Operation {
 	/**
 	 * Create read bin database operation.
 	 */
-	public static Operation read(String binName) {
+	public static Operation get(String binName) {
 		return new Operation(READ, binName);
 	}
 
 	/**
 	 * Create read all record bins database operation.
 	 */
-	public static Operation read() {
+	public static Operation get() {
 		return new Operation(READ);
 	}
 
 	/**
 	 * Create read record header database operation.
 	 */
-	public static Operation readHeader() {
+	public static Operation getHeader() {
 		// Overload bin value to indicator only record header should be read.
 		return new Operation(READ, null, 1);
 	}
@@ -51,8 +51,15 @@ public final class Operation {
 	/**
 	 * Create set database operation.
 	 */
-	public static Operation write(String binName, Object binValue) {
+	public static Operation put(String binName, Object binValue) {
 		return new Operation(WRITE, binName, binValue);
+	}
+
+	/**
+	 * Create set database operation.
+	 */
+	public static Operation put(Bin bin) {
+		return new Operation(WRITE, bin.name, bin.value);
 	}
 
 	/**
@@ -63,6 +70,13 @@ public final class Operation {
 	}
 
 	/**
+	 * Create string append database operation.
+	 */
+	public static Operation append(Bin bin) {
+		return new Operation(APPEND, bin.name, bin.value);
+	}
+
+	/**
 	 * Create string prepend database operation.
 	 */
 	public static Operation prepend(String binName, Object binValue) {
@@ -70,12 +84,26 @@ public final class Operation {
 	}
 	
 	/**
+	 * Create string prepend database operation.
+	 */
+	public static Operation prepend(Bin bin) {
+		return new Operation(PREPEND, bin.name, bin.value);
+	}
+
+	/**
 	 * Create integer add database operation.
 	 */
 	public static Operation add(String binName, Object binValue) {
 		return new Operation(ADD, binName, binValue);
 	}
 	
+	/**
+	 * Create integer add database operation.
+	 */
+	public static Operation add(Bin bin) {
+		return new Operation(ADD, bin.name, bin.value);
+	}
+
 	/**
 	 * Create touch database operation.
 	 */

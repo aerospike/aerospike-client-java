@@ -10,12 +10,12 @@
 package com.aerospike.client.command;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.KeyStatus;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -24,15 +24,72 @@ import com.aerospike.client.policy.Policy;
 
 public final class BatchExecutor extends Thread {
 	
+	private final Policy policy;
+	private final BatchNode batchNode;
+	private final HashSet<String> binNames;
+	private final HashMap<Key,Integer> keyMap;
+	private final Record[] records;
+	private final boolean[] existsArray;
+	private final int readAttr;
+	private Exception exception;
+
+	public BatchExecutor(
+		Policy policy,
+		BatchNode batchNode,
+		HashMap<Key,Integer> keyMap,
+		HashSet<String> binNames,
+		Record[] records,
+		boolean[] existsArray,
+		int readAttr
+	) {
+		this.policy = policy;
+		this.batchNode = batchNode;
+		this.keyMap = keyMap;
+		this.binNames = binNames;
+		this.records = records;
+		this.existsArray = existsArray;
+		this.readAttr = readAttr;
+	}
+	
+	public void run() {
+		try {
+			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+				BatchCommand command;
+				
+				if (records != null) {
+					command = new BatchCommandGet(batchNode.node, keyMap, binNames, records, readAttr);
+				}
+				else {
+					command = new BatchCommandExists(batchNode.node, keyMap, existsArray);
+				}
+				command.executeBatch(policy, batchNamespace);
+			}
+		}
+		catch (Exception e) {
+			exception = e;
+		}
+	}
+	
+	public Exception getException() {
+		return exception;
+	}
+
 	public static void executeBatch
 	(
 		Cluster cluster,
 		Policy policy, 
-		Key[] keys, 
-		List<KeyStatus> keyStatusList, 
-		List<Record> records, 
-		HashSet<String> binNames
+		Key[] keys,
+		boolean[] existsArray, 
+		Record[] records, 
+		HashSet<String> binNames,
+		int readAttr
 	) throws AerospikeException {
+		
+		HashMap<Key,Integer> keyMap = new HashMap<Key,Integer>(keys.length);
+		
+		for (int i = 0; i < keys.length; i++) {
+			keyMap.put(keys[i], i);
+		}
 		
 		int nodeCount = cluster.getNodes().length;
 		int keysPerNode = keys.length / nodeCount + 10;
@@ -60,7 +117,7 @@ public final class BatchExecutor extends Thread {
 		ArrayList<BatchExecutor> threads = new ArrayList<BatchExecutor>(batchNodes.size());
 
 		for (BatchNode batchNode : batchNodes) {
-			BatchExecutor thread = new BatchExecutor(policy, batchNode, keyStatusList, records, binNames);
+			BatchExecutor thread = new BatchExecutor(policy, batchNode, keyMap, binNames, records, existsArray, readAttr);
 			threads.add(thread);
 			thread.start();
 		}
@@ -142,49 +199,5 @@ public final class BatchExecutor extends Thread {
 			keys = new ArrayList<Key>(capacity);
 			keys.add(key);
 		}
-	}
-	
-	private final Policy policy;
-	private final BatchNode batchNode;
-	private final List<KeyStatus> keyStatusList;
-	private final List<Record> records;
-	private final HashSet<String> binNames;
-	private Exception exception;
-
-	public BatchExecutor(
-		Policy policy,
-		BatchNode batchNode,
-		List<KeyStatus> keyStatusList,
-		List<Record> records,
-		HashSet<String> binNames
-	) {
-		this.policy = policy;
-		this.batchNode = batchNode;
-		this.keyStatusList = keyStatusList;
-		this.binNames = binNames;
-		this.records = records;
-	}
-	
-	public void run() {
-		try {
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				BatchCommand command;
-				
-				if (records != null) {
-					command = new BatchCommandGet(batchNode.node, binNames, records);
-				}
-				else {
-					command = new BatchCommandExists(batchNode.node, keyStatusList);
-				}
-				command.executeBatch(policy, batchNamespace);
-			}
-		}
-		catch (Exception e) {
-			exception = e;
-		}
-	}
-	
-	public Exception getException() {
-		return exception;
-	}
+	}	
 }

@@ -37,4 +37,9 @@ public final class ClientPolicy {
 	 * connection pools.
 	 */
 	public int maxThreads = 300;
+	
+	/**
+	 * Throw exception if host connection fails during addHost().
+	 */
+	public boolean failIfNotConnected;
 }

@@ -212,7 +212,7 @@ public final class SingleCommand extends Command {
 		}*/
 				
 		// Read remaining message bytes.
-        if (receiveSize != 0) {
+        if (receiveSize > 0) {
         	resizeReceiveBuffer(receiveSize);
     		readFully(is, receiveBuffer, receiveSize);
         }
@@ -227,7 +227,7 @@ public final class SingleCommand extends Command {
                       
             if (opCount == 0) {
             	// Bin data was not returned.
-            	record = new Record(key, null, null, generation, expiration);
+            	record = new Record(null, null, generation, expiration);
             	return;
             }
             record = parseRecord(opCount, fieldCount, generation, expiration);            
@@ -314,7 +314,7 @@ public final class SingleCommand extends Command {
 	        	;
 	        }
 	    }
-	    return new Record(key, bins, duplicates, generation, expiration);
+	    return new Record(bins, duplicates, generation, expiration);
 	}
 
 	public Record getRecord() {

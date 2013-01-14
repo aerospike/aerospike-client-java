@@ -9,22 +9,23 @@
  */
 package com.aerospike.client.command;
 
+import java.util.HashMap;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.KeyStatus;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor.BatchNamespace;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandExists extends BatchCommand {
-	private final List<KeyStatus> keyStatusList;
+	private final boolean[] existsArray;
 
-	public BatchCommandExists(Node node, List<KeyStatus> keyStatusList) {
-		super(node);
-		this.keyStatusList = keyStatusList;
+	public BatchCommandExists(Node node, HashMap<Key,Integer> keyMap, boolean[] existsArray) {
+		super(node, keyMap);
+		this.existsArray = existsArray;
 	}
 	
 	public void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException {
@@ -79,10 +80,15 @@ public final class BatchCommandExists extends BatchCommand {
 			}
 						
 			Key key = parseKey();
-			KeyStatus keyStatus = new KeyStatus(key, resultCode == 0);
+			Integer index = keyMap.get(key);
 			
-			synchronized (keyStatusList) {
-				keyStatusList.add(keyStatus);
+			if (index != null) {
+				existsArray[index] = resultCode == 0;
+			}
+			else {
+				if (Log.debugEnabled()) {
+					Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+				}
 			}
 		}
 		return true;

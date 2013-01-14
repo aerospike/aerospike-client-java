@@ -101,9 +101,7 @@ public final class ScanCommand extends Command {
 			
 			// Read remaining message bytes.
 	        if (receiveSize > 0) {
-	            if (receiveSize > receiveBuffer.length) {
-	            	receiveBuffer = new byte[receiveSize];
-	            }
+	        	resizeReceiveBuffer(receiveSize);
 	    		readFully(is, receiveBuffer, receiveSize);
 		    	status = parseScanResults(receiveSize);
 			}

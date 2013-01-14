@@ -11,6 +11,7 @@ package com.aerospike.client.command;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -20,10 +21,12 @@ import com.aerospike.client.policy.Policy;
 
 public abstract class BatchCommand extends Command {
 	private final Node node;
+	protected final HashMap<Key,Integer> keyMap;
 	protected int receiveOffset;
 
-	public BatchCommand(Node node) {
+	public BatchCommand(Node node, HashMap<Key,Integer> keyMap) {
 		this.node = node;
+		this.keyMap = keyMap;
 	}
 
 	protected final Node getNode() { 
@@ -88,7 +91,7 @@ public abstract class BatchCommand extends Command {
 		}
 		return new Key(ns, digest);
 	}
-
+	
 	protected abstract void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException;
 	protected abstract boolean parseBatchResults(int buflen) throws AerospikeException;
 }

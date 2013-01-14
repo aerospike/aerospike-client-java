@@ -10,9 +10,9 @@
 package com.aerospike.client;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -37,6 +37,9 @@ import com.aerospike.client.sql.Statement;
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
  * database cluster and perform database operations.
  * <p>
+ * This client is thread-safe. One client instance should be used per cluster.
+ * Multiple threads should share this cluster instance.
+ * <p>
  * Your application uses this class API to perform database operations such as
  * writing and reading records, and selecting sets of records. Write operations
  * include specialized functionality such as append/prepend and arithmetic
@@ -48,12 +51,6 @@ import com.aerospike.client.sql.Statement;
  */
 public class AerospikeClient {
 	//-------------------------------------------------------
-	// Static variables.
-	//-------------------------------------------------------
-
-	private static final ConcurrentHashMap<Host,Cluster> ClusterMap = new ConcurrentHashMap<Host,Cluster>();
-
-	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
 	
@@ -64,15 +61,16 @@ public class AerospikeClient {
 	//-------------------------------------------------------
 
 	/**
-	 * Initialize Aerospike client and add a server database host to the client's cluster map.
+	 * Initialize Aerospike client.
 	 * If the host connection succeeds, the client will:
 	 * <p>
-	 * - Create a cluster map <br>
 	 * - Add host to the cluster map <br>
 	 * - Request host's list of other nodes in cluster <br>
 	 * - Add these nodes to cluster map <br>
 	 * <p>
-	 * If this constructor succeeds, the client is ready to process database requests.
+	 * If the connection succeeds, the client is ready to process database requests.
+	 * If the connection fails, the cluster will remain in a disconnected state
+	 * until the server is activated.
 	 * 
 	 * @param hostname				host name
 	 * @param port					host port
@@ -83,16 +81,18 @@ public class AerospikeClient {
 	}
 
 	/**
-	 * Initialize Aerospike client and add a server database host to the client's cluster map.
+	 * Initialize Aerospike client.
 	 * The client policy is used to set defaults and size internal data structures.
 	 * If the host connection succeeds, the client will:
 	 * <p>
-	 * - Create a cluster map <br>
 	 * - Add host to the cluster map <br>
 	 * - Request host's list of other nodes in cluster <br>
 	 * - Add these nodes to cluster map <br>
 	 * <p>
-	 * If this constructor succeeds, the client is ready to process database requests.
+	 * If the connection succeeds, the client is ready to process database requests.
+	 * If the connection fails and the policy's failOnInvalidHosts is true, a connection 
+	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+	 * until the server is activated.
 	 * 
 	 * @param policy				client configuration parameters
 	 * @param hostname				host name
@@ -108,71 +108,27 @@ public class AerospikeClient {
 	 * The client policy is used to set defaults and size internal data structures.
 	 * For the first host connection that succeeds, the client will:
 	 * <p>
-	 * - Create a cluster map <br>
 	 * - Add host to the cluster map <br>
 	 * - Request host's list of other nodes in cluster <br>
 	 * - Add these nodes to cluster map <br>
 	 * <p>
 	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts 
-	 * are added as potential seeds in case of a complete network failure.
-	 * If this constructor succeeds, the client is ready to process database requests.
+	 * are added as future seeds in case of a complete network failure.
+	 * <p>
+	 * If one connection succeeds, the client is ready to process database requests.
+	 * If all connections fail and the policy's failIfNotConnected is true, a connection 
+	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
+	 * until the server is activated.
 	 * 
 	 * @param policy				client configuration parameters
-	 * @param hosts					list of potential hosts to seed the cluster
+	 * @param hosts					array of potential hosts to seed the cluster
 	 * @throws AerospikeException	if all host connections fail
 	 */
 	public AerospikeClient(ClientPolicy policy, Host... hosts) throws AerospikeException {
-		addHosts(policy, hosts);
-	}
-
-	private void addHosts(ClientPolicy policy, Host... hosts) throws AerospikeException {
-		AerospikeException exception = null;
-		Cluster cl = null;
+		cluster = new Cluster(policy, hosts);
 		
-		// Find a host that can seed the cluster. 
-		for (Host host : hosts) {
-			try {
-				// Lookup host in global cluster map. 
-				cl = ClusterMap.get(host);
-				
-				// Check if cluster needs to be created.
-				if (cl == null) {
-					// Create new cluster.
-					cl = new Cluster(policy, host);
-					
-					// Add cluster to global map, if some other thread hasn't already created it.
-					Cluster prevCluster = ClusterMap.putIfAbsent(host, cl);
-
-					// Check to see if another thread created cluster first.
-					if (prevCluster != null) {
-						// Don't use the one we allocated, use the one already in the map.
-						cl.close();
-						cl = prevCluster;
-					}
-					else {
-						// The host has successfully seeded a new cluster. Activate it.
-						cl.activate(hosts);
-					}
-				}
-				// A cluster was found or created.
-				break;
-			}
-			catch (AerospikeException ae) {
-				exception = ae;
-			}
-		}
-		
-		if (cl != null) {
-			cluster = cl;
-		}
-		else {
-			// None of the hosts worked.
-			if (exception != null) {
-				throw exception;
-			}
-			else {
-				throw new AerospikeException.Connection("Failed to connect to any of the hosts.");
-			}
+		if (policy.failIfNotConnected && ! cluster.isConnected()) {
+			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
 		}
 	}
 
@@ -181,18 +137,24 @@ public class AerospikeClient {
 	//-------------------------------------------------------
 
 	/**
-	 * Compatibility layer constructor.  Do not use directly.
+	 * Compatibility layer constructor.  Do not use.
 	 */
-	public AerospikeClient() {
+	protected AerospikeClient() {
 	}
 	
 	/**
-	 * Compatibility layer host initialization. Do not use directly.
+	 * Compatibility layer host initialization. Do not use.
 	 */
-	public final void addServer(String hostname, int port) throws AerospikeException {
-		addHosts(new ClientPolicy(), new Host(hostname, port));
+	protected final void addServer(String hostname, int port) throws AerospikeException {
+		Host[] hosts = new Host[] {new Host(hostname, port)};
+		
+		// If cluster has already been initialized, add hosts to existing cluster.
+		if (cluster != null) {
+			cluster.addSeeds(hosts);
+			return;
+		}	
+		cluster = new Cluster(new ClientPolicy(), hosts);
 	}
-	
 
 	//-------------------------------------------------------
 	// Cluster Connection Management
@@ -241,10 +203,10 @@ public class AerospikeClient {
 	 * 
 	 * @param policy				write configuration parameters
 	 * @param key					unique record identifier
-	 * @param bins					list of bin name/value pairs
+	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if write fails
 	 */
-	public final void write(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
 		 SingleCommand command = new SingleCommand(cluster, key);
 		 command.write(policy, Operation.WRITE, bins);
 	}
@@ -261,7 +223,7 @@ public class AerospikeClient {
 	 * 
 	 * @param policy				write configuration parameters
 	 * @param key					unique record identifier
-	 * @param bins					list of bin name/value pairs
+	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if append fails
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
@@ -277,7 +239,7 @@ public class AerospikeClient {
 	 * 
 	 * @param policy				write configuration parameters
 	 * @param key					unique record identifier
-	 * @param bins					list of bin name/value pairs
+	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if prepend fails
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
@@ -297,7 +259,7 @@ public class AerospikeClient {
 	 * 
 	 * @param policy				write configuration parameters
 	 * @param key					unique record identifier
-	 * @param bins					list of bin name/value pairs
+	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if add fails
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
@@ -376,19 +338,18 @@ public class AerospikeClient {
 	
 	/**
 	 * Check if multiple record keys exist in one batch call.
-	 * The keys are included in the returned list.
-	 * The returned list's positional ordering will not match the original key list ordering.
+	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts.
 	 *  
 	 * @param policy				generic configuration parameters
-	 * @param keys					list of unique record identifiers
-	 * @return						list key/existence status pairs
+	 * @param keys					array of unique record identifiers
+	 * @return						array key/existence status pairs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final List<KeyStatus> exists(Policy policy, Key... keys) throws AerospikeException {
-		List<KeyStatus> keyStatusList = new ArrayList<KeyStatus>(keys.length);
-		BatchExecutor.executeBatch(cluster, policy, keys, keyStatusList, null, null);
-		return keyStatusList;		
+	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
+		boolean[] existsArray = new boolean[keys.length];
+		BatchExecutor.executeBatch(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		return existsArray;
 	}
 
 	//-------------------------------------------------------
@@ -404,7 +365,7 @@ public class AerospikeClient {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record read(Policy policy, Key key) throws AerospikeException {
+	public final Record get(Policy policy, Key key) throws AerospikeException {
 		SingleCommand command = new SingleCommand(cluster, key);
 		command.setRead(Command.INFO1_READ | Command.INFO1_GET_ALL);
 		command.begin();
@@ -424,7 +385,7 @@ public class AerospikeClient {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record read(Policy policy, Key key, String... binNames) throws AerospikeException {	
+	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
 		SingleCommand command = new SingleCommand(cluster, key);
 		command.setRead(Command.INFO1_READ);
 		
@@ -451,7 +412,7 @@ public class AerospikeClient {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record readHeader(Policy policy, Key key) throws AerospikeException {
+	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
 		SingleCommand command = new SingleCommand(cluster, key);
 		command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		command.begin();
@@ -467,35 +428,36 @@ public class AerospikeClient {
 
 	/**
 	 * Read multiple records for specified keys in one batch call.
-	 * The returned list's positional ordering will not match the original key list ordering.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
 	 * @param policy				generic configuration parameters
-	 * @param keys					list of unique record identifiers
-	 * @return						list of records
+	 * @param keys					array of unique record identifiers
+	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final List<Record> read(Policy policy, Key... keys) throws AerospikeException {
-		List<Record> records = new ArrayList<Record>(keys.length);
-		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null);
+	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
+		Record[] records = new Record[keys.length];
+		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
 	}
 	
 	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
-	 * The returned list's positional ordering will not match the original key list ordering.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
 	 * @param policy				generic configuration parameters
-	 * @param keys					list of unique record identifiers
-	 * @param binNames				list of bins to retrieve
-	 * @return						list of records
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final List<Record> read(Policy policy, Key[] keys, String... binNames) 
+	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
 		throws AerospikeException {
-		
-		List<Record> records = new ArrayList<Record>(keys.length);
+		Record[] records = new Record[keys.length];
 		
 		// Create lookup table for bin name filtering.
 		HashSet<String> names = new HashSet<String>(binNames.length);
@@ -503,7 +465,24 @@ public class AerospikeClient {
 		for (String binName : binNames) {
 			names.add(binName);
 		}
-		BatchExecutor.executeBatch(cluster, policy, keys, null, records, names);
+		BatchExecutor.executeBatch(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+		return records;
+	}
+	
+	/**
+	 * Read multiple record header data for specified keys in one batch call.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param policy				generic configuration parameters
+	 * @param keys					array of unique record identifiers
+	 * @return						array of records
+	 * @throws AerospikeException	if read fails
+	 */
+	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
+		Record[] records = new Record[keys.length];
+		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
 	}
 	

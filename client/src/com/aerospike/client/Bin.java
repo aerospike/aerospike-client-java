@@ -16,12 +16,12 @@ public final class Bin {
 	/**
 	 * Bin name. Current limit is 14 characters.
 	 */
-	public final String name;
+	public String name;
 
 	/**
 	 * Bin value.
 	 */
-	public final Object value;
+	public Object value;
 
 	/**
 	 * Constructor, specifying bin name and value.

@@ -9,6 +9,8 @@
  */
 package com.aerospike.client;
 
+import java.util.Arrays;
+
 import gnu.crypto.hash.RipeMD160;
 
 import com.aerospike.client.command.Buffer;
@@ -38,6 +40,12 @@ public final class Key {
 	public final byte[] digest;
 	
 	/**
+	 * Original user key. This key is immediately converted to a hash digest.
+	 * This key is not used or returned by the server.
+	 */
+	public final Object userKey;
+	
+	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
@@ -50,6 +58,7 @@ public final class Key {
 	public Key(String namespace, String setName, Object key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
+		this.userKey = key;
 		digest = computeDigest(setName, key);
 	}
 	
@@ -64,6 +73,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.digest = digest;
+		this.userKey = null;
 	}
 	
 	/**
@@ -74,8 +84,32 @@ public final class Key {
 	 */
 	public Key(String namespace, byte[] digest) {
 		this.namespace = namespace; 
-		this.setName = null;
 		this.digest = digest;
+		this.setName = null;
+		this.userKey = null;
+	}
+
+	/**
+	 * Hash lookup uses namespace and digest.
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = prime + Arrays.hashCode(digest);
+		return prime * result + namespace.hashCode();
+	}
+
+	/**
+	 * Equality uses namespace and digest.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		Key other = (Key) obj;
+		
+		if (! Arrays.equals(digest, other.digest))
+			return false;
+		
+		return namespace.equals(other.namespace);
 	}
 
 	/**

@@ -17,11 +17,6 @@ import java.util.Map;
  */
 public final class Record {
 	/**
-	 * Unique identifier associated with record.
-	 */
-	public final Key key;
-	
-	/**
 	 * Map of requested name/value bins.
 	 */
 	public final Map<String,Object> bins;
@@ -48,14 +43,12 @@ public final class Record {
 	 * Initialize record.
 	 */
 	public Record(
-		Key key,
-		Map<String,Object> values,
+		Map<String,Object> bins,
 		List<Map<String,Object>> duplicates,
 		int generation,
 		int expiration
 	) {
-		this.key = key;
-		this.bins = values;
+		this.bins = bins;
 		this.duplicates = duplicates;
 		this.generation = generation;
 		this.expiration = expiration;
@@ -64,7 +57,7 @@ public final class Record {
 	/**
 	 * Get bin value given bin name.
 	 */
-	public Object getValue(String name) {		
-		return bins.get(name);
-	}	
+	public Object getValue(String name) {
+		return (bins == null)? null : bins.get(name);
+	}
 }
