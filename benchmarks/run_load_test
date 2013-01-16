@@ -1,0 +1,6 @@
+# Java Load Test Script.
+#
+# Build with maven before running this script.
+# mvn package
+
+java -cp target/aerospike-benchmarks-*-jar-with-dependencies.jar com.aerospike.benchmarks.Main $*

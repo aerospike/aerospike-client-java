@@ -18,7 +18,7 @@ import java.net.Socket;
 import java.util.HashMap;
 
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
+import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Access Citrusleaf's monitoring protocol - the "Info" protocol.
@@ -56,7 +56,8 @@ public final class Info {
 	 * @throws AerospikeException.Serialize if UTF8 encoding fails
 	 */
 	public Info(String request) throws AerospikeException.Serialize {
-		buffer = Command.SendBufferThreadLocal.get();
+		//buffer = new byte[256];
+		buffer = ThreadLocalData.getSendBuffer();
 		
 		int len = Buffer.stringToUtf8(request, buffer, 8);
 		long sizeField = (len) | (2L << 56) | (1L << 48);
@@ -279,10 +280,9 @@ public final class Info {
 		length = (int)(size & 0xFFFFFFFFFFFFL);
 
 		if (length > buffer.length) {
-			buffer = new byte[length];
-			Command.SendBufferThreadLocal.set(buffer);
+			buffer = ThreadLocalData.resizeSendBuffer(length);
 		}
-		readFully(in, buffer, length);		
+		readFully(in, buffer, length);
 	}
 
 	/**

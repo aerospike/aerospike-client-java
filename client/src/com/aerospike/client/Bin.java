@@ -43,4 +43,10 @@ public final class Bin {
 		this.name = null;
 		this.value = value;
 	}
+	
+	/**
+	 * Construct empty bin.
+	 */
+	public Bin() {
+	}
 }

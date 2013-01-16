@@ -52,10 +52,11 @@ public final class Node {
 	
 	public void refresh(List<Host> friends) throws IOException, AerospikeException {
 		Connection conn = getConnection(2000);
+		// Connection conn = new Connection(address, 2000);
 		
 		try {
 			Socket socket = conn.getSocket();
-			HashMap<String,String> infoMap = requestInfo(socket);			
+			HashMap<String,String> infoMap = requestInfo(socket);
 			verifyNodeName(infoMap);			
 			restoreHealth();
 			addFriends(infoMap, friends);
@@ -63,6 +64,7 @@ public final class Node {
 		}
 		finally {
 			putConnection(conn);
+			// conn.close();
 		}
 	}
 	
@@ -158,6 +160,7 @@ public final class Node {
 			}
 			conn.close();
 		}
+		
 		return new Connection(address, timeoutMillis);		
 	}
 	

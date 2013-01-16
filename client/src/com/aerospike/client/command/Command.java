@@ -21,6 +21,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RetryPolicy;
+import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public abstract class Command {
@@ -67,25 +68,15 @@ public abstract class Command {
 	private static final int RETRY_COUNT = 3;
 	private static final int MAX_ITERATIONS = 10;
 
-	public static final ThreadLocal<byte[]> SendBufferThreadLocal = new ThreadLocal<byte[]>() {
-		@Override protected byte[] initialValue() {
-			return new byte[2048];
-		}
-	};
-	
-	private static final ThreadLocal<byte[]> ReceiveBufferThreadLocal = new ThreadLocal<byte[]>() {
-		@Override protected byte[] initialValue() {
-			return new byte[2048];
-		}
-	};
-
 	protected byte[] sendBuffer;
 	protected byte[] receiveBuffer;
 	protected int sendOffset;
 
 	public Command() {
-		this.sendBuffer = SendBufferThreadLocal.get();
-		this.receiveBuffer = ReceiveBufferThreadLocal.get();
+		this.sendBuffer = ThreadLocalData.getSendBuffer();
+		this.receiveBuffer = ThreadLocalData.getReceiveBuffer();
+		//this.sendBuffer = new byte[1024];
+		//this.receiveBuffer = new byte[1024];
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	
@@ -104,15 +95,13 @@ public abstract class Command {
 	
 	public final void begin() {
 		if (sendOffset > sendBuffer.length) {
-			sendBuffer = new byte[sendOffset];
-			SendBufferThreadLocal.set(sendBuffer);
+			sendBuffer = ThreadLocalData.resizeSendBuffer(sendOffset);
 		}
 	}
 		
 	public final void resizeReceiveBuffer(int size) {
 		if (size > receiveBuffer.length) {
-			receiveBuffer = new byte[size];
-			ReceiveBufferThreadLocal.set(receiveBuffer);
+			receiveBuffer = ThreadLocalData.resizeReceiveBuffer(size);
 		}
 	}
 

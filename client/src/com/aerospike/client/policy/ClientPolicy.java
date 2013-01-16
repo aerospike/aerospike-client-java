@@ -30,7 +30,7 @@ public final class ClientPolicy {
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.
 	 */
-	public int timeout = 500;
+	public int timeout = 1000;
 
 	/**
 	 * Estimate of threads concurrently using the client instance.  This field is used to size

@@ -3,11 +3,11 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
-  <artifactId>aerospike-examples</artifactId>
+  <artifactId>aerospike-benchmarks</artifactId>
   <version>2.1.0</version>
   <packaging>jar</packaging>
 
-  <name>aerospike-examples</name>
+  <name>aerospike-benchmarks</name>
 
   <dependencies>
     <dependency>
@@ -23,6 +23,14 @@
       <version>1.2</version>
     </dependency>
   </dependencies>
+
+  <repositories>
+    <repository>
+      <id>Open NMS</id>
+      <name>Open NMS repository</name>
+      <url>http://repo.opennms.org/maven2/</url>
+    </repository>
+  </repositories>
 
   <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
@@ -45,16 +53,16 @@
         <executions>
           <execution>
             <id>make-my-jar-with-dependencies</id>
-              <phase>package</phase>
-              <goals>
-                <goal>single</goal>
-              </goals>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
     </plugins>
   </build>
-
+    
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>

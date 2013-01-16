@@ -10,7 +10,6 @@
 package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -63,10 +62,6 @@ public final class Cluster implements Runnable {
 		partitionWriteMap = new ConcurrentHashMap<Partition,Node>(Node.PARTITIONS * 2); 
 
         waitTillStabilized();
-        
-		if (! isConnected() && policy.failIfNotConnected) {
-			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
-		}
 
 		// Run cluster tend thread.
         tendValid = true;
@@ -168,8 +163,8 @@ public final class Cluster implements Runnable {
 				node.refresh(friendList);
 			}
 			catch (Exception e) {
-				if (Log.warnEnabled()) {
-					Log.warn("Node " + node.getName() + " refresh failed: " + e.getMessage());
+				if (Log.debugEnabled()) {
+					Log.debug("Node " + node.getName() + " refresh failed: " + e.getMessage());
 				}
 			}
 		}
@@ -340,7 +335,7 @@ public final class Cluster implements Runnable {
 	
 	public boolean isConnected() {
 		// Must copy array reference for copy on write semantics to work.
-		Node[] nodeArray = nodes;		
+		Node[] nodeArray = nodes;
 		return nodeArray.length > 0 && tendValid;
 	}
 	

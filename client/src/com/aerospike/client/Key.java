@@ -9,13 +9,13 @@
  */
 package com.aerospike.client;
 
-import java.util.Arrays;
-
 import gnu.crypto.hash.RipeMD160;
 
+import java.util.Arrays;
+
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.command.Value;
+import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Unique record identifier. Records can be identified using a specified namespace,
@@ -124,7 +124,8 @@ public final class Key {
 	public static byte[] computeDigest(String setName, Object key) throws AerospikeException {
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
-		byte[] buffer = Command.SendBufferThreadLocal.get();
+		byte[] buffer = ThreadLocalData.getSendBuffer();
+		//byte[] buffer = new byte[256];
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
 		Value value = Value.getValue(key);

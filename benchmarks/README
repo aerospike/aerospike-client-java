@@ -1,0 +1,91 @@
+Java Load Test Source Code
+
+This directory contains the files necessary to build the Java load test client. 
+This client is used to insert data and generate load. 
+The source code can be imported into your IDE and/or built using Maven.
+
+  mvn package
+
+Usage:
+./run_load_test [<options>]
+
+options:
+
+-h <host>
+    Set the Aerospike host node.
+
+-p <port>
+    Set the port on which to connect to Aerospike.
+
+-n <namespace>
+    Set the Aerospike namespace to use.
+
+-k <keys>
+    Set the number of keys the test client is dealing with. If using an "insert"
+    workload (detailed below), the test client will write this number of keys, 
+    starting from value = start_value. Otherwise, the test client will read and
+    update randomly across the values between start_value and
+    start_value + num_keys.
+     
+-b <bins>
+    Set the number of Aerospike bins. Each bin will contain an object defined
+    with -o. The default is single bin (-b 1).
+     
+-l <length>
+    Set the length of the string to use as a key.
+ 
+-o I | S <size> | B <size>
+    Set the type of object(s) to use in Aerospike transactions. Type can be "I"
+    for integer, "S" for string, or "B" for Java blob. If type is "I" (integer), 
+    do not set a size (integers are always 8 bytes). If object_type is "S" 
+    (string), this value represents the length of the string.
+
+-s <number>
+    Set the starting value of the working set of keys. If using an "insert" 
+    workload, the start_value indicates the first value to write. Otherwise, the
+    start_value indicates the smallest value in the working set of keys.
+    
+-w I | RU,<percent>[,<percent2>][,<percent3>] | RMU <percent> | RMI <percent> | RMD <percent>
+    Set the desired workload. 
+    -w I sets a linear "insert" workload. 
+    
+    -w RU,80 sets a random read-update workload with 80% reads and 20% writes. 
+ 
+    -w RU,80,60,40 sets a random multi-bin read-update workload with 80% reads. 
+       60% will read a single bin.
+       40% will read all bins. 
+    
+    -w RMU 30 sets a random read-modify-update workload with 30% reads. 
+    
+    -w RMI 20 sets a random read-modify-increment workload with 20% reads.
+    
+    -w RMD 70 sets a read-modify-decrement workload workload with 70% reads.
+    
+-z <threads>
+    Set the number of threads the client will use to generate load. 
+    It is not recommended to use a value greater than 100.
+    
+-g <transactions per second> 
+    Set a target throughput for the client. The client should not exceed this 
+    average throughput, though it will try to catch-up if it falls behind.
+    
+-T <milliseconds> 
+    Set the transaction timeout in milliseconds.
+
+
+Some sample arguments are:
+
+# Connect to localhost:3000 using test namespace.
+# Read 10% and write 90% of the time using 20 concurrent threads.
+# Use 100000000 30 character string keys (starting at "1") and 50 character string values.
+./run_load_test -h 127.0.0.1 -p 3000 -n test -k 100000000 -l 30 -s 1 -o S:50 -w RU,10 -z 20
+
+# Connect to localhost:3000 using test namespace.
+# Read 80% and write 20% of the time using 8 concurrent threads.
+# Use 10000000 10 character string keys and 1400 character string values using a single bin.
+# Timeout after 50ms for reads and writes.
+# Restrict transactions/second to 2500.
+./run_load_test -h 127.0.0.1 -p 3000 -n test -k 10000000 -l 10 -b 1 -o S:1400 -w RU,80 -g 2500 -T 50 -z 8
+
+
+Aerospike was previously known as Citrusleaf Inc.
