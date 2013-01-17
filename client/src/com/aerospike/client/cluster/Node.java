@@ -11,7 +11,6 @@ package com.aerospike.client.cluster;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -55,12 +54,11 @@ public final class Node {
 		// Connection conn = new Connection(address, 2000);
 		
 		try {
-			Socket socket = conn.getSocket();
-			HashMap<String,String> infoMap = requestInfo(socket);
+			HashMap<String,String> infoMap = requestInfo(conn);
 			verifyNodeName(infoMap);			
 			restoreHealth();
 			addFriends(infoMap, friends);
-			updatePartitions(socket, infoMap);
+			updatePartitions(conn, infoMap);
 		}
 		finally {
 			putConnection(conn);
@@ -68,10 +66,10 @@ public final class Node {
 		}
 	}
 	
-	private HashMap<String,String> requestInfo(Socket socket) throws AerospikeException, IOException {		
+	private HashMap<String,String> requestInfo(Connection conn) throws AerospikeException, IOException {		
 		try {
-			socket.setSoTimeout(2000);
-			return Info.request(socket, "node", "partition-generation", "services");
+			conn.setTimeout(2000);
+			return Info.request(conn, "node", "partition-generation", "services");
 		}
 		catch (IOException e) {
 			decreaseHealth(50);
@@ -128,7 +126,7 @@ public final class Node {
 		return false;
 	}
 
-	private void updatePartitions(Socket socket, HashMap<String,String> infoMap) 
+	private void updatePartitions(Connection conn, HashMap<String,String> infoMap) 
 		throws AerospikeException, IOException {	
 		String genString = infoMap.get("partition-generation");
 				
@@ -139,7 +137,7 @@ public final class Node {
 		int generation = Integer.parseInt(genString);
 		
 		if (partitionGeneration != generation) {
-			PartitionTokenizer tokens = new PartitionTokenizer(socket, "replicas-write");
+			PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
 			Partition partition;
 			
 			while ((partition = tokens.getNext()) != null) {

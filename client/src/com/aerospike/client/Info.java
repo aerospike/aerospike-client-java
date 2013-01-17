@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.util.HashMap;
 
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.ThreadLocalData;
 
@@ -122,21 +122,13 @@ public final class Info {
 	 */
 	public static String request(InetSocketAddress socketAddress, String name) 
 		throws AerospikeException {	
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+		
 		try {
-			Socket socket = new Socket();
-			socket.setTcpNoDelay(true);
-			socket.setSoTimeout(DEFAULT_TIMEOUT);
-			socket.connect(socketAddress, DEFAULT_TIMEOUT);
-			
-			try {
-				return request(socket, name);
-			}
-			finally {
-				socket.close();
-			}
+			return request(conn, name);
 		}
-		catch (IOException ioe) {
-			throw new AerospikeException(ioe);
+		finally {
+			conn.close();
 		}
 	}
 
@@ -149,22 +141,14 @@ public final class Info {
 	 */
 	public static HashMap<String,String> request(InetSocketAddress socketAddress, String... names) 
 		throws AerospikeException {
-		try {		
-			Socket socket = new Socket();
-			socket.setTcpNoDelay(true);
-			socket.setSoTimeout(DEFAULT_TIMEOUT);
-			socket.connect(socketAddress, DEFAULT_TIMEOUT);
-			
-			try {
-				return request(socket, names);
-			}
-			finally {
-				socket.close();
-			}		
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+		
+		try {
+			return request(conn, names);
 		}
-		catch (IOException ioe) {
-			throw new AerospikeException(ioe);
-		}
+		finally {
+			conn.close();
+		}		
 	}
 
 	/**
@@ -175,22 +159,14 @@ public final class Info {
 	 */
 	public static HashMap<String,String> request(InetSocketAddress socketAddress) 
 		throws AerospikeException {
-		try {		
-			Socket socket = new Socket();
-			socket.setTcpNoDelay(true);
-			socket.setSoTimeout(DEFAULT_TIMEOUT);
-			socket.connect(socketAddress, DEFAULT_TIMEOUT);
-			
-			try {
-				return request(socket);
-			}
-			finally {
-				socket.close();
-			}		
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+
+		try {
+			return request(conn);
 		}
-		catch (IOException ioe) {
-			throw new AerospikeException(ioe);
-		}
+		finally {
+			conn.close();
+		}		
 	}
 
 	//-------------------------------------------------------
@@ -204,11 +180,11 @@ public final class Info {
 	 * @param name					name of value to retrieve
 	 * @return						info value
 	 */
-	public static String request(Socket socket, String name) 
+	public static String request(Connection conn, String name) 
 		throws AerospikeException {		
 		try {		
 			Info info = new Info(name + '\n');
-			info.requestInfo(socket);
+			info.requestInfo(conn);
 			return info.parseSingleResponse(name);
 		}
 		catch (IOException ioe) {
@@ -223,7 +199,7 @@ public final class Info {
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(Socket socket, String... names) 
+	public static HashMap<String,String> request(Connection conn, String... names) 
 		throws AerospikeException {		
 		try {		
 			StringBuilder sb = new StringBuilder(names.length * 20);
@@ -234,7 +210,7 @@ public final class Info {
 			}
 	
 			Info info = new Info(sb.toString());
-			info.requestInfo(socket);
+			info.requestInfo(conn);
 			return info.parseMultiResponse();
 		}
 		catch (IOException ioe) {
@@ -248,11 +224,11 @@ public final class Info {
 	 * @param socket				socket connection to server node
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(Socket socket) 
+	public static HashMap<String,String> request(Connection conn) 
 		throws AerospikeException {		
 		try {
 			Info info = new Info(null);
-			info.requestInfo(socket);
+			info.requestInfo(conn);
 			return info.parseMultiResponse();
 		}
 		catch (IOException ioe) {
@@ -267,13 +243,13 @@ public final class Info {
 	 * @param socket		socket connection to server node
 	 * @throws IOException	if socket send or receive fails
 	 */
-	public void requestInfo(Socket socket) throws IOException {
+	public void requestInfo(Connection conn) throws IOException {
 		// Write.
-		OutputStream out = socket.getOutputStream();
+		OutputStream out = conn.getOutputStream();
 		out.write(buffer, 0, length);
 
 		// Read - reuse input buffer.
-		InputStream in = socket.getInputStream();
+		InputStream in = conn.getInputStream();
 		readFully(in, buffer, 8);
 		
 		long size = Buffer.bytesToLong(buffer, 0);

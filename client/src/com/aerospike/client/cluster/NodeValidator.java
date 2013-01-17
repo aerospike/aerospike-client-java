@@ -11,7 +11,6 @@ package com.aerospike.client.cluster;
 
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
@@ -51,23 +50,20 @@ public final class NodeValidator {
 	private void setAddress(int timeoutMillis) throws Exception {
 		for (Host alias : aliases) {
 			try {
-				InetSocketAddress socketAddress = new InetSocketAddress(alias.name, alias.port);
-				Socket socket = new Socket();
-				socket.setTcpNoDelay(true);
-				socket.setSoTimeout(timeoutMillis);
-				socket.connect(socketAddress, timeoutMillis);
+				InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
+				Connection conn = new Connection(address, timeoutMillis);
 				
 				try {			
-					String nodeName = Info.request(socket, "node");
+					String nodeName = Info.request(conn, "node");
 					
 					if (nodeName != null) {
 						this.name = nodeName;
-						this.address = socketAddress;
+						this.address = address;
 						return;
 					}
 				}
 				finally {
-					socket.close();
+					conn.close();
 				}
 			}
 			catch (Exception e) {

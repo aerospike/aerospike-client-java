@@ -13,7 +13,6 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.Socket;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
@@ -190,18 +189,16 @@ public abstract class Command {
 				node = getNode();
 				Connection conn = node.getConnection(remainingMillis);
 				
-				try {
-					Socket socket = conn.getSocket();
-					
+				try {					
 					// Reset timeout in send buffer (destined for server) and socket.
 					Buffer.intToBytes(remainingMillis, sendBuffer, MSG_TIMEOUT_OFFSET);
-					socket.setSoTimeout(remainingMillis);
+					conn.setTimeout(remainingMillis);
 					
 					// Send command.
-					send(socket);
+					send(conn);
 					
 					// Parse results.
-					parseResult(socket.getInputStream());
+					parseResult(conn.getInputStream());
 					
 					// Reflect healthy status.
 					conn.updateLastUsed();
@@ -266,8 +263,8 @@ public abstract class Command {
 		throw new AerospikeException.Timeout();
 	}
 	
-	private final void send(Socket socket) throws IOException {
-		final OutputStream os = socket.getOutputStream();
+	private final void send(Connection conn) throws IOException {
+		final OutputStream os = conn.getOutputStream();
 		
 		// Never write more than 8 KB at a time.  Apparently, the jni socket write does an extra 
 		// malloc and free if buffer size > 8 KB.
