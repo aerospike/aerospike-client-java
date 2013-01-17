@@ -1,0 +1,28 @@
+# Build Java projects with Maven.
+# Maven and Java must be installed prior to running this script.
+
+# Add jars to maven repository. This only needs to be done once.
+for i in client examples
+do
+  cd $i/depends
+  ./maven_add
+  cd ../..
+done
+
+# Clean java projects.
+for i in client examples benchmarks servlets
+do
+  cd $i
+  mvn clean
+  cd ..
+done
+
+# Build java projects.
+cd client
+mvn install
+
+for i in examples benchmarks servlets
+do
+  cd ../$i
+  mvn package
+done

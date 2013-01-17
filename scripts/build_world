@@ -1,0 +1,32 @@
+#!/bin/bash
+# This script builds, packages and releases the client distribution.
+# Only the build master should be using this script.
+ 
+if [ $# -lt 1 ]
+then
+  echo "Usage: $0 <client branch>"
+  exit 1
+fi
+
+branch=$1
+server=buildclient
+
+cd `dirname $0`
+source run_command
+
+echo Build $server
+tag=`isTag $branch`
+
+if $tag
+then
+  cmd="ssh citrusleaf@$server cd client-java; git fetch --tags; git checkout $branch; git describe"
+else
+  cmd="ssh citrusleaf@$server cd client-java; git checkout $branch; git pull; git describe"
+fi
+
+runCommand $cmd
+runCommand ssh citrusleaf@$server client-java/scripts/build_all $*
+
+# List Packages.  Assume /mnt/release mount point.
+rev=`getRevision`
+ls -RC1 /mnt/release/client/$rev

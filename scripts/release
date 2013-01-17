@@ -1,0 +1,12 @@
+#!/bin/bash
+# Release client package to shared directory.
+
+cd `dirname $0`
+source run_command
+
+rev=`getRevision`
+trgdir=/mnt/release/client/$rev
+
+runCommand mkdir -p $trgdir
+runCommand cp ../package/aerospike-client*$rev*.tgz $trgdir
+exit 0

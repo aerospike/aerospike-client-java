@@ -1,0 +1,9 @@
+#!/bin/bash
+# Build and package the current client branch.
+
+cd `dirname $0`
+source run_command
+
+runCommand ./build
+runCommand ./package
+exit 0

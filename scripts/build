@@ -1,0 +1,10 @@
+#!/bin/bash
+# Build the current client branch.
+
+cd `dirname $0`
+source run_command
+
+cd ..
+runCommand make clean
+runCommand make
+exit 0

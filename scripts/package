@@ -1,0 +1,8 @@
+#!/bin/bash
+# Package the current client branch.
+
+cd `dirname $0`
+source run_command
+
+cd ..
+runCommand make package
