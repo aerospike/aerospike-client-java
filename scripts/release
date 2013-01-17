@@ -4,9 +4,9 @@
 cd `dirname $0`
 source run_command
 
-rev=`getRevision`
-trgdir=/mnt/release/client/$rev
+version=`./version`
+trgdir=/mnt/release/client/$version
 
 runCommand mkdir -p $trgdir
-runCommand cp ../package/aerospike-client*$rev*.tgz $trgdir
+runCommand cp ../package/aerospike-client*$version*.tgz $trgdir
 exit 0

@@ -6,7 +6,7 @@ cd `dirname $0`
 source run_command
 cd $origin
 
-rev=`getRevision`
+version=`./version`
 
 awk 'BEGIN{OFS=""}
 {
@@ -19,7 +19,7 @@ awk 'BEGIN{OFS=""}
         idx = index($0,"<version>"); 
         if (idx > 0) 
         {
-            print substr($0, 0, idx+8),"'$rev'</version>";
+            print substr($0, 0, idx+8),"'$version'</version>";
             found = 0
         } 
         else

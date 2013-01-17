@@ -1,7 +1,7 @@
 # Package Java Client
 
 SHELL=bash
-REV=$(shell git describe)
+REV=$(shell scripts/version)
 NAME=aerospike-client-java-$(REV)
 TMP_DIR=/tmp/$(NAME)
 

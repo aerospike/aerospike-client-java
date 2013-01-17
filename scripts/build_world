@@ -28,5 +28,5 @@ runCommand $cmd
 runCommand ssh citrusleaf@$server client-java/scripts/build_all $*
 
 # List Packages.  Assume /mnt/release mount point.
-rev=`getRevision`
-ls -RC1 /mnt/release/client/$rev
+version=`./version`
+ls -RC1 /mnt/release/client/$version
