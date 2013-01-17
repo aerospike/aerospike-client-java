@@ -19,15 +19,15 @@ public enum RecordExistsAction {
 	UPDATE,
 
 	/**
-	 * Update record if expected generation is equal to server generation. Otherwise, fail. 
+	 * Update/delete record if expected generation is equal to server generation. Otherwise, fail. 
 	 */
-	UPDATE_GEN_EQUAL,
+	EXPECT_GEN_EQUAL,
 
 	/**
-	 * Update record if expected generation greater than the server generation. Otherwise, fail.
+	 * Update/delete record if expected generation greater than the server generation. Otherwise, fail.
 	 * This is useful for restore after backup. 
 	 */
-	UPDATE_GEN_GT,
+	EXPECT_GEN_GT,
 
 	/**
 	 * Fail if record exists. 

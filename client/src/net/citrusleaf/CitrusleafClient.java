@@ -2621,11 +2621,11 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			}
 			else if (wOpts.mUseGeneration) {
 				policy.generation = wOpts.mGeneration;
-				policy.recordExistsAction = RecordExistsAction.UPDATE_GEN_EQUAL;
+				policy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 			}
 			else if (wOpts.mUseGenerationGt) {
 				policy.generation = wOpts.mGeneration;
-				policy.recordExistsAction = RecordExistsAction.UPDATE_GEN_GT;				
+				policy.recordExistsAction = RecordExistsAction.EXPECT_GEN_GT;				
 			}
 			else if (wOpts.mUseGenerationDup) {
 				policy.generation = wOpts.mGeneration;

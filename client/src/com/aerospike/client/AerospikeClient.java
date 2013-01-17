@@ -275,16 +275,16 @@ public class AerospikeClient {
 	 * Delete record for specified key.
 	 * The policy specifies the transaction timeout.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				delete configuration parameters
 	 * @param key					unique record identifier
 	 * @return						whether record existed on server before deletion 
 	 * @throws AerospikeException	if delete fails
 	 */
-	public final boolean delete(Policy policy, Key key) throws AerospikeException {
+	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
 		SingleCommand command = new SingleCommand(cluster, key);
 		command.setWrite(Command.INFO2_WRITE | Command.INFO2_DELETE);
 		command.begin();
-		command.writeHeader(0);
+		command.writeHeader(policy, 0);
 		command.writeKey();
 		command.execute(policy);
 		return command.getResultCode() == ResultCode.OK;

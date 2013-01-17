@@ -19,7 +19,7 @@ public class Serialize extends Example {
 		Key key = new Key(params.namespace, params.set, "serializetestserializetestserializetest");
 
 		// Delete record if it already exists.
-		client.delete(params.policy, key);
+		client.delete(params.writePolicy, key);
 
 		console.info("Initialize array");
 

@@ -20,7 +20,7 @@ public class Prepend extends Example {
 		Bin bin = new Bin(params.getBinName("prependbin"), "World");
 
 		// Delete record if it already exists.
-		client.delete(params.policy, key);
+		client.delete(params.writePolicy, key);
 
 		console.info("Initial prepend will create record.  Initial value is " + bin.value + '.');
 		client.prepend(params.writePolicy, key, bin);

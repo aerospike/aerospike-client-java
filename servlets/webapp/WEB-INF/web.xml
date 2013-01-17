@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://java.sun.com/xml/ns/javaee"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xsi:schemaLocation="http://java.sun.com/xml/ns/javaee
+		  http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+           version="2.5">
+
+    <servlet>
+        <description>Basic Servlet for accessing Aerospike database</description>
+        <display-name>Aerospike Servlet</display-name>
+        <servlet-name>AerospikeServlet</servlet-name>
+        <servlet-class>com.aerospike.servlets.AerospikeServlet</servlet-class>
+        <init-param>
+            <description>List of node addresses</description>
+            <param-name>clusterAddr</param-name>
+            <param-value>127.0.0.1</param-value>
+        </init-param>
+        <init-param>
+            <description>Port for transactions (usually 3000)</description>
+            <param-name>clusterPort</param-name>
+            <param-value>3000</param-value>
+        </init-param>
+        <load-on-startup>0</load-on-startup>
+    </servlet>
+    
+    <servlet-mapping>
+        <servlet-name>jsp</servlet-name>
+        <url-pattern>/errors.jsp</url-pattern>
+    </servlet-mapping>
+    <servlet-mapping>
+        <servlet-name>AerospikeServlet</servlet-name>
+        <url-pattern>/client/*</url-pattern>
+    </servlet-mapping>
+
+    <error-page>
+       <error-code>400</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+    <error-page>
+       <error-code>404</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+    <error-page>
+       <error-code>409</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+    <error-page>
+       <error-code>408</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+    <error-page>
+       <error-code>503</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+    <error-page>
+       <error-code>500</error-code>
+       <location>/errors.jsp</location>
+    </error-page>
+</web-app>

@@ -62,7 +62,7 @@ public class RWTask implements Runnable {
 		
 		writePolicyGeneration = new WritePolicy();
 		writePolicyGeneration.timeout = timeout;
-		writePolicyGeneration.recordExistsAction = RecordExistsAction.UPDATE_GEN_EQUAL;
+		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;
 		
 		policy = new Policy();

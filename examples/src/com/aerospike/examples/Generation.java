@@ -24,7 +24,7 @@ public class Generation extends Example {
 		Bin bin = new Bin(params.getBinName("genbin"), "genvalue1");
 
 		// Delete record if it already exists.
-		client.delete(params.policy, key);
+		client.delete(params.writePolicy, key);
 
 		// Set some values for the same record.
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s",
@@ -65,7 +65,7 @@ public class Generation extends Example {
 			key.namespace, key.setName, key.userKey, bin.name, bin.value, record.generation);
 
 		WritePolicy writePolicy = new WritePolicy();
-		writePolicy.recordExistsAction = RecordExistsAction.UPDATE_GEN_EQUAL;
+		writePolicy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 		writePolicy.generation = record.generation;
 		client.put(writePolicy, key, bin);
 

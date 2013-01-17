@@ -105,4 +105,69 @@ public final class ResultCode {
 	 * Too many concurrent operations on the same record.
 	 */
 	public static final int KEY_BUSY = 14;
+	
+	
+	/**
+	 * Return result code as a string.
+	 */
+	public static String getResultString(int resultCode) {
+		switch (resultCode) {
+		case INVALID_NODE_ERROR:
+			return "Invalid node";
+
+		case PARSE_ERROR:
+			return "Parse error";
+
+		case SERIALIZE_ERROR:
+			return "Serialize error";
+
+		case OK:
+			return "ok";
+			
+		case SERVER_ERROR:		
+			return "Server error";
+			
+		case KEY_NOT_FOUND_ERROR:		
+			return "Key not found";
+		
+		case GENERATION_ERROR:
+			return "Generation error";
+			
+		case PARAMETER_ERROR:
+			return "Parameter error";
+		
+		case KEY_EXISTS_ERROR:
+			return "Key already exists";
+		
+		case BIN_EXISTS_ERROR:
+			return "Bin already exists";
+		
+		case CLUSTER_KEY_MISMATCH:
+			return "Cluster key mismatch";
+		
+		case SERVER_MEM_ERROR:
+			return "Server memory error";
+		
+		case TIMEOUT:
+			return "Timeout";
+		
+		case NO_XDS:
+			return "XDS not available";
+		
+		case SERVER_NOT_AVAILABLE:
+			return "Server not available";
+		
+		case BIN_TYPE_ERROR:
+			return "Bin type error";
+		
+		case RECORD_TOO_BIG:
+			return "Record too big";
+		
+		case KEY_BUSY:
+			return "Hot key";
+			
+		default:
+			return Integer.toString(resultCode);
+		}
+	}
 }

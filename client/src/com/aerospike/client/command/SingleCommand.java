@@ -98,11 +98,11 @@ public final class SingleCommand extends Command {
     		switch (policy.recordExistsAction) {
     		case UPDATE:
     			break;
-    		case UPDATE_GEN_EQUAL:
+    		case EXPECT_GEN_EQUAL:
         		generation = policy.generation;    			
         		writeAttr |= INFO2_GENERATION;
     			break;
-    		case UPDATE_GEN_GT:
+    		case EXPECT_GEN_GT:
         		generation = policy.generation;    			
         		writeAttr |= INFO2_GENERATION_GT;
     			break;

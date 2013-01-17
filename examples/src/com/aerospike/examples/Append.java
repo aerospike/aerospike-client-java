@@ -20,7 +20,7 @@ public class Append extends Example {
 		Bin bin = new Bin(params.getBinName("appendbin"), "Hello");
 
 		// Delete record if it already exists.
-		client.delete(params.policy, key);
+		client.delete(params.writePolicy, key);
 
 		console.info("Initial append will create record.  Initial value is " + bin.value + '.');
 		client.append(params.writePolicy, key, bin);

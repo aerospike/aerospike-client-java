@@ -40,6 +40,40 @@ public class AerospikeException extends Exception {
 		super(e);
 	}
 	
+	@Override
+	public String getMessage() {
+		StringBuilder sb = new StringBuilder();
+		String message = super.getMessage();
+		
+		if (resultCode != 0) {
+			sb.append("Error Code ");
+			sb.append(resultCode);
+			sb.append(": ");
+
+			if (message != null) {
+				sb.append(message);
+			}
+			else {
+				sb.append(ResultCode.getResultString(resultCode));
+			}
+		}
+		else {
+			if (message != null) {
+				sb.append(message);
+			}
+			else {
+				sb.append(this.getClass().getName());
+			}
+		}
+		
+		Throwable t = super.getCause();
+		if (t != null) {
+			sb.append(" Caused by: ");
+			sb.append(t.getMessage());
+		}
+		return sb.toString();
+	}
+	
 	/**
 	 * Get integer result code.
 	 */

@@ -1,0 +1,236 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Aerospike Servlet Demonstration</title>
+</head>
+<body>
+<div id="body" style="width:800px; margin-left:25px; margin-right:25px">
+<h2> Aerospike HTTP Servlet Example </h2>
+<p>This is an example web page that uses AJAX to get and set keys in the Aerospike 
+database. It communicates with the sample Aerospike tomcat servlet, which is assumed to be
+installed at http://localhost:8080/aerospike/client. The servlet provides a simple REST interface to the 
+database.
+</p>
+<p>
+The REST interface identifies keys by the namespace/set/keyname triple, so the URL 
+http://localhost:8080/aerospike/client/test/myset/mykey refers to the key 'mykey' in the set
+'myset' in the 'test' namespace. A GET operation on this URL will return all the bins in the
+key as well as the current generation of the key. A POST operation on this key will set the value
+of the key, and requires one or more 'value' parameters. If the namespace is set up to be
+multi-bin, the user should use the 'bin' parameter to specify the bin name. So, for instance,
+a POST the URL above with the data 'bin=mybin&value=value1&bin=mybin2&value=value2' will set
+the value of 'mybin' to 'value1' and the value of 'mybin2' to 'value2'
+</p>
+<div>
+<form id="parameterForm" method="POST">
+<h3>Parameters</h3>
+<table>
+<tr><td>Database Host &nbsp;&nbsp;</td><td><input type="textField" name="host" value="127.0.0.1"/></td></tr>
+<tr><td>Database Port &nbsp;&nbsp;</td><td><input type="textField" name="port" value="3000"/></td><tr>
+<tr><td>Namespace &nbsp;&nbsp;</td><td><input type="textField" name="namespace" value="test"/></td></tr>
+<tr><td>Set &nbsp;&nbsp;</td><td><input type="textField" name="set"/></td><tr>
+<tr><td>Key &nbsp;&nbsp;</td><td> <input type="textField" name="key"/></td><tr>
+<tr><td>Bins (comma delimited list) &nbsp;&nbsp;</td><td> <input type="textField" name="bins"/></td><tr>
+<tr><td>Values (comma delimited list) &nbsp;&nbsp;</td><td> <input type="textField" name="values"/></td><tr>
+<tr><td>Generation (for CAS operations) &nbsp;&nbsp;</td><td> <input type="textField" name="generation"/></td><tr>
+<tr><td>Expiration &nbsp;&nbsp;</td><td> <input type="textField" name="expiration"/></td><tr>
+<table>
+Modification Type: &nbsp;&nbsp;
+Std <input type="radio" name="options" value="std" checked="true"/>
+&nbsp;&nbsp;ArithmeticAdd<input type="radio" name="options" value="add"/>
+&nbsp;&nbsp;Append<input type="radio" name="options" value="append"/>
+&nbsp;&nbsp;Prepend<input type="radio" name="options" value="prepend"/>
+<br><br> <input type="button" value="Get Key" onclick="doDatabaseCall(false)"/>&nbsp;&nbsp;
+<input type="button" value="Set Key" onclick="doDatabaseCall(true)"/><br><br>
+</form>
+
+<div id="serverDiv" style="margin-left:50px; width:500px; height:100px; visibility:hidden; display:none">
+<form id="changeServer">
+Couldn't reach the servlet at <span id="servername"></span>.<br> Do we have the right URL? Please 
+change it if necessary. <br>
+Server name: &nbsp; <input type="textField" name="servername"/>
+Port: &nbsp; <input type="textField" name="port"/><br>
+Servlet path: &nbsp; <input type="textField" name="servletPath"/> <br><br>
+<input type="button" value="Change servlet URL" onclick="setServletPath()"/>
+<input type="button" value="Cancel" onclick="resetServletPath()"/>
+</span>
+</form>
+<br><br>
+</div>
+Result:
+<div id="result"></div>
+</div>
+
+</body>
+<script type="text/javascript">
+
+var hostnport = location.host;
+var servletName = "aerospike/client";
+
+function setServletPath()
+{
+	var serverForm = document.getElementById("changeServer");
+	var host = serverForm.servername.value;
+	var port = serverForm.port.value;
+	if (!(/\S/.test(host))) {
+		alert("Servername must be filled in");
+		return;
+	}
+	var portNum = Number(port);
+	if (isNaN(portNum)) {
+		alert("Port must be numeric");
+		return;
+	}
+	
+	hostnport = host + ":" + port;
+	servletName = serverForm.servletPath.value;
+	var inlineServletName = document.getElementById("servername");
+	inlineServletName.innerHTML = "http://" + hostnport + "/" + servletName;
+	
+	var servletDiv = document.getElementById("serverDiv");
+	servletDiv.style.visibility = "hidden";
+	servletDiv.style.display = "none";
+}
+
+function resetServletPath()
+{
+	var serverForm = document.getElementById("changeServer");
+	var hostArray = hostnport.split(':');
+	serverForm.servername.value = hostArray[0];
+	serverForm.port.value = hostArray[1];
+	serverForm.servletPath.value = servletName;
+	
+	var inlineServletName = document.getElementById("servername");
+	inlineServletName.innerHTML = "http://" + hostnport + "/" + servletName;
+}
+
+function getCoreParams()
+{
+	var retObj = new Object();
+	var paramForm  = document.getElementById("parameterForm");
+	retObj["namespace"]  = paramForm.elements["namespace"].value;
+	retObj["set"]        = paramForm.elements["set"].value;
+	retObj["key"]        = paramForm.elements["key"].value;
+  
+	if ( !(/\S/.test(retObj["namespace"])) || !(/\S/.test(retObj["set"])) || !(/\S/.test(retObj["key"]))) {
+  		alert("namespace, set, key, and value must all be filled in!");
+  		return null;
+	} 
+	return retObj;
+}
+
+function doDatabaseCall(isSet)
+{
+    var xhr; 
+    try {  xhr = new ActiveXObject('Msxml2.XMLHTTP');  }
+    catch (e) 
+    {
+        try {   xhr = new ActiveXObject('Microsoft.XMLHTTP');  }
+        catch (e2) 
+        {
+          try {  xhr = new XMLHttpRequest();  }
+          catch (e3) {  xhr = false;  }
+        }
+     }
+  
+    xhr.onreadystatechange  = function()
+    { 
+         if (xhr.readyState  == 4)
+         {
+         	if (xhr.status  == 200) {
+            	document.getElementById("result").innerHTML=" OK "  + xhr.responseText; 
+            	if (/\S/.test(xhr.responseText)) {
+					var jsonObj;
+                	jsonObj = eval('(' + xhr.responseText + ')');
+             	}
+            } else if(xhr.status == 0) {
+             	var dialogDiv = document.getElementById("serverDiv");
+             	dialogDiv.style.visibility = "visible";
+             	dialogDiv.style.display = "block";
+             	// make div visible
+            } else {
+                document.getElementById("result").innerHTML="Error code: " + xhr.status + "\n" + "Content: " + xhr.responseText;
+            }
+		}
+    };
+
+	var coreParams = getCoreParams();
+	if (coreParams == null) 
+  		return;
+
+	var paramForm  = document.getElementById("parameterForm");
+	var hostStr     = paramForm.elements["host"].value;
+	var portStr     = paramForm.elements["port"].value;
+	var binStr     = paramForm.elements["bins"].value;
+	var valueStr   = paramForm.elements["values"].value;
+	var generation = paramForm.elements["generation"].value;
+	var expiration = paramForm.elements["expiration"].value;
+	var setOption  = paramForm.elements["options"];
+	var binArray   = binStr   != null ? binStr.split(',')   : null;
+	var valueArray = valueStr != null ? valueStr.split(',') : null;
+  
+	if (isSet) {
+		if (valueStr == null) {
+    		alert("You must give a value!");
+    		return;
+  		}
+  
+    	if (binArray==null || valueArray.length != binArray.length) {
+			alert("You must have the same number of bins and values!");
+			return;
+		}
+	}
+  
+	var params = "host=" + hostStr + "&port=" + portStr + "&";
+  
+	if (isSet) {
+		for (var i=0; i<valueArray.length; i++) {
+			params += "value=" + valueArray[i] + "&";
+		}
+
+		if (/\S/.test(generation)) {
+			params += "generation=" + generation + "&";
+		}
+    
+		for (var i=0; i<setOption.length; i++) {
+			if (setOption[i].checked) {
+				if (setOption[i].value != "std") {
+					params += "op=" + setOption[i].value + "&";
+				}
+				break;
+			}
+		}
+	}
+  
+	if (binArray != null) {
+		for (var i=0; i<binArray.length; i++) {
+			if (binArray[i] != null && (/\S/.test(binArray[i]))) {
+				params += "bin=" + binArray[i] + "&";
+			}
+		}
+	}
+  
+	if (/\S/.test(expiration)) {
+		params += "expiration=" + expiration;
+	}
+  
+	var url = "http://" + hostnport + "/" + servletName + "/" + coreParams.namespace + "/" + coreParams.set + "/" + coreParams.key;
+	if (!isSet) {
+		url += "?" + params;
+		xhr.open("GET", url, true); 
+		xhr.setRequestHeader("Content-type", "text/plain");
+		xhr.send();
+	} else { 
+		xhr.open("POST", url, true); 
+		xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+		xhr.setRequestHeader("Content-length", params.length);
+		xhr.setRequestHeader("Connection", "close");
+		xhr.send(params);
+	} 
+}
+
+resetServletPath();
+	
+</script>
+</html>

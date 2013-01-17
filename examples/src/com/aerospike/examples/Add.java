@@ -21,7 +21,7 @@ public class Add extends Example {
 		Bin bin = new Bin(params.getBinName("addbin"), 10);
 
 		// Delete record if it already exists.
-		client.delete(params.policy, key);
+		client.delete(params.writePolicy, key);
 
 		// Perform some adds and check results.
 		console.info("Initial add will create record.  Initial value is " + bin.value + '.');
