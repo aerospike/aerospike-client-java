@@ -122,6 +122,10 @@ public final class Key {
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public static byte[] computeDigest(String setName, Object key) throws AerospikeException {
+		if (key == null) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key: null");
+		}
+		
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
 		byte[] buffer = ThreadLocalData.getSendBuffer();
