@@ -1,0 +1,2 @@
+#!/bin/bash
+mvn install:install-file -Dfile=commons-cli-1.2.jar -DgroupId=commons-cli -DartifactId=commons-cli -Dversion=1.2 -Dpackaging=jar
