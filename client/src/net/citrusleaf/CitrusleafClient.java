@@ -2659,7 +2659,10 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		return keyArray;		
 	}	
 	
-	private static Bin[] getBins(Collection<ClBin> bins) {
+	private static Bin[] getBins(Collection<ClBin> bins) throws AerospikeException {
+		if (bins == null) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Null bins");
+		}
 		Bin[] binArray = new Bin[bins.size()];
 		int count = 0;
 		
@@ -2669,7 +2672,10 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		return binArray;
 	}
 
-	private static Bin[] getBins(Map<String, Object> bins) {
+	private static Bin[] getBins(Map<String, Object> bins) throws AerospikeException {
+		if (bins == null) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Null bins");
+		}
 		Bin[] binArray = new Bin[bins.size()];
 		int count = 0;
 		
@@ -2679,7 +2685,10 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		return binArray;
 	}
 
-	private static String[] getBinNames(Collection<String> binNames) {
+	private static String[] getBinNames(Collection<String> binNames) throws AerospikeException {
+		if (binNames == null) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Null bin names");
+		}
 		String[] binArray = new String[binNames.size()];
 		int count = 0;
 		

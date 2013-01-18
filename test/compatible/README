@@ -1,0 +1,5 @@
+Compatibility Layer Testing:
+
+Ensure server configuration has:
+ * Namespace test
+ * Single-bin is false
