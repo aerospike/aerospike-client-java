@@ -113,7 +113,7 @@ public final class Key {
 	}
 
 	/**
-	 * Generate unique server hash value from set name and key type and user defined key.  
+	 * Generate unique server hash value from set name, key type and user defined key.  
 	 * The hash function is RIPEMD-160 (a 160 bit hash).
 	 * 
 	 * @param setName				optional set name, enter null when set does not exist

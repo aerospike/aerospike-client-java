@@ -4,9 +4,8 @@ fn=$1
 origin=`pwd`
 cd `dirname $0`
 source run_command
-cd $origin
-
 version=`./version`
+cd $origin
 
 awk 'BEGIN{OFS=""}
 {
