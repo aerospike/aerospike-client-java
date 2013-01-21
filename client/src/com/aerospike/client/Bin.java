@@ -35,12 +35,12 @@ public final class Bin {
 	}
 	
 	/**
-	 * Constructor for single bin servers, specifying bin value.
+	 * Constructor for single bin servers, specifying bin value only.
 	 * 
 	 * @param value		bin value
 	 */
 	public Bin(Object value) {
-		this.name = null;
+		this.name = "";
 		this.value = value;
 	}
 	

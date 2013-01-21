@@ -1454,11 +1454,12 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResult get(String namespace, String set, Object key,
 			String binName, ClOptions opts) {
 		try {
-			Record record = super.get(getPolicy(opts), new Key(namespace, set, key), binName);
+			String name = (binName == null)? "" : binName;
+			Record record = super.get(getPolicy(opts), new Key(namespace, set, key), name);
 			ClResult r = getResult(record);
 			// Result for one bin is in results Map, also put it in result Object:
 			if (r.results != null) {
-				r.result = r.results.get(binName);
+				r.result = r.results.get(name);
 			}
 			return r;
 		}

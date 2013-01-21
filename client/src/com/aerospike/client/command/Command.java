@@ -74,8 +74,6 @@ public abstract class Command {
 	public Command() {
 		this.sendBuffer = ThreadLocalData.getSendBuffer();
 		this.receiveBuffer = ThreadLocalData.getReceiveBuffer();
-		//this.sendBuffer = new byte[1024];
-		//this.receiveBuffer = new byte[1024];
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	

@@ -19,7 +19,7 @@ public class DeleteBin extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		if (params.singleBin) {
-			console.info("Delete bin is not application to single bin servers.");			
+			console.info("Delete bin is not applicable to single bin servers.");			
 			return;
 		}
 			

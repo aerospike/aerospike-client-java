@@ -29,4 +29,4 @@ runCommand ssh citrusleaf@$server client-java/scripts/build_all $*
 
 # List Packages.  Assume /mnt/release mount point.
 version=`./version`
-ls -RC1 /mnt/release/client/$version
+ls -RC1 /mnt/release/client/java/*$version*

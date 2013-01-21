@@ -2066,9 +2066,9 @@ public class Main {
 		HashMap <String, Object> hashObjects = null;
 
 		rc = cc.set(ns, set, key, nullBin, myVal, null, null);
-		if (rc != ClResultCode.PARAMETER_ERROR) {
+		if (rc != ClResultCode.OK) {
 			System.out.println("Set with Null Bin. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		rc = cc.set(ns, set, key, arrayBins, null, null);
@@ -2091,18 +2091,18 @@ public class Main {
         arrayBins.add(bin);
 
         rc = cc.set(ns, set, key, arrayBins, null, null);
-		if (rc != ClResultCode.PARAMETER_ERROR) {
+		if (rc != ClResultCode.OK) {
 			System.out.println("Set with Null value in ArrayList. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		hashObjects = new HashMap<String, Object>();
 		hashObjects.put(nullBin,myVal);
 
 		rc = cc.set(ns, set, key, hashObjects, null, null);
-		if (rc != ClResultCode.PARAMETER_ERROR) {
+		if (rc != ClResultCode.OK) {
 			System.out.println("Set with Null bin name in HashMap. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		rc = cc.set(ns, set, key, emptyBin, myVal, null, null);
@@ -2124,9 +2124,9 @@ public class Main {
 		}
 
 		result = cc.get(ns, set, key, nullBin, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
-			System.out.println(" Get with Null String. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
+		if (result.resultCode != ClResultCode.OK) {
+			System.out.println(" Get with Null Bin Name. Result Code - "+ClResult.resultCodeToString(result.resultCode));
+			return false;
 		}
 
 		result = cc.get(ns, set, key, arrayString, null);
@@ -2139,29 +2139,11 @@ public class Main {
 		arrayString.add(nullBin);
 
 		result = cc.get(ns, set, key, arrayString, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
+		if (result.resultCode != ClResultCode.OK) {
 			System.out.println(" Get with Null value in Arraylist. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
+			return false;
 		}
 		
-		result = cc.get(ns, set, key, arrayString, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
-			System.out.println("Get with Null ArrayList. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
-		}
-
-		result = cc.get(ns, set, key, arrayString, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
-			System.out.println(" Get with Null value in arraylist. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
-		}
-
-		result = cc.get(ns, set, key, nullBin, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
-			System.out.println("Get with Null String. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
-		}
-
 		rc = cc.delete(ns, set, key, null, null);
 		if (rc != ClResultCode.OK) {
 			System.out.println("delete: should be OK "+rc);
@@ -2193,14 +2175,14 @@ public class Main {
 
 		arrayBins.remove(0);
 		bin = new ClBin();
-                bin.name = myBin;
-                bin.value = myVal;
-                arrayBins.add(bin);
+        bin.name = myBin;
+        bin.value = myVal;
+        arrayBins.add(bin);
 
 		bin = new ClBin();
-                bin.name = emptyBin;
-                bin.value = emptyVal;
-                arrayBins.add(bin);
+        bin.name = emptyBin;
+        bin.value = emptyVal;
+        arrayBins.add(bin);
 	
 		bin = new ClBin();
 		bin.name = emptyBin;
@@ -2208,36 +2190,36 @@ public class Main {
 		arrayBins.add(bin);
 
 		rc = cc.set(ns, set, key, arrayBins, null, null);
-		if (rc != ClResultCode.PARAMETER_ERROR) {
+		if (rc != ClResultCode.OK) {
 			System.out.println("Set with Null value in ArrayList. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		arrayBins.remove(2);
 		rc = cc.set(ns, set, key, arrayBins, null, null);
 		if (rc != ClResultCode.OK) {
 			System.out.println("Set with Null value in ArrayList. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		result = cc.get(ns, set, key, arrayString, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
+		if (result.resultCode != ClResultCode.OK) {
 			System.out.println("Get with Null value in arraylist. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
+			return false;
 		}
 		
 		arrayString.add(myBin);
 		arrayString.add(emptyBin);
 		result = cc.get(ns, set, key, arrayString, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
+		if (result.resultCode != ClResultCode.OK) {
 			System.out.println("Get with Null value in arraylist. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
+			return false;
 		}
 
 		result = cc.get(ns, set, key, nullBin, null);
-		if (result.resultCode != ClResultCode.PARAMETER_ERROR) {
+		if (result.resultCode != ClResultCode.OK) {
 			System.out.println("Get with Null Bin. Result Code - "+ClResult.resultCodeToString(result.resultCode));
-			//return false;
+			return false;
 		}
 
 		arrayString.remove(0);
@@ -2287,9 +2269,9 @@ public class Main {
 		hashObjects.put(myBin,nullVal);
 
 		rc = cc.set(ns, set, key, hashObjects, null, null);
-		if (rc != ClResultCode.PARAMETER_ERROR) {
+		if (rc != ClResultCode.OK) {
 			System.out.println(" Set with Null value in HashMap. Result Code - "+ClResult.resultCodeToString(rc));
-			//return false;
+			return false;
 		}
 
 		hashObjects.remove(myBin);
@@ -2407,13 +2389,19 @@ public class Main {
 			System.out.println(" Cluster "+params.host+":"+params.port+" could not be contacted");
 			return;
 		}
-		
-		try {
-			//Sleep so that the partition hashmap is created by the client
-			Thread.sleep(3000);
+			
+		if (nullBinTest(params) == true) {
+			System.out.println(" null bin tests succeeded");
+		} else {
+			System.out.println(" null bin tests failed");
+			return;
 		}
-		catch (Exception e) {
-			System.out.println(" Exception raised when sleeping "+e);
+	
+		if (nonExistBinTest(params) == true ) {
+			System.out.println(" nonExist bin test succeeded");
+		} else {
+			System.out.println(" nonExist bin test failed");
+			return;
 		}
 
 		if (setAndExpireTest(params )) {
@@ -2590,23 +2578,6 @@ public class Main {
 			System.out.println(" digest tests succeeded");
 		} else {
 			System.out.println(" digest tests failed");
-			return;
-		}
-
-		System.out.println(" Starting null bin tests.");
-		System.out.println("Some \"Unexpected null argument\" messages will be printed. This is expected");
-	
-		if (nullBinTest(params) == true) {
-			System.out.println(" null bin tests succeeded");
-		} else {
-			System.out.println(" null bin tests failed");
-			return;
-		}
-	
-		if (nonExistBinTest(params) == true ) {
-			System.out.println(" nonExist bin test succeeded");
-		} else {
-			System.out.println(" nonExist bin test failed");
 			return;
 		}
 	}

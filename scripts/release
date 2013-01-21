@@ -5,7 +5,7 @@ cd `dirname $0`
 source run_command
 
 version=`./version`
-trgdir=/mnt/release/client/$version
+trgdir=/mnt/release/client/java
 
 runCommand mkdir -p $trgdir
 runCommand cp ../package/aerospike-client*$version*.tgz $trgdir
