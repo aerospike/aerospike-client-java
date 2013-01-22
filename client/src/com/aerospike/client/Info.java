@@ -176,7 +176,7 @@ public final class Info {
 	/**
 	 * Get one info value by name from the specified database server node.
 	 * 
-	 * @param socket				socket connection to server node
+	 * @param conn					socket connection to server node
 	 * @param name					name of value to retrieve
 	 * @return						info value
 	 */
@@ -195,7 +195,7 @@ public final class Info {
 	/**
 	 * Get many info values by name from the specified database server node.
 	 * 
-	 * @param socket				socket connection to server node
+	 * @param conn					socket connection to server node
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
@@ -221,7 +221,7 @@ public final class Info {
 	/**
 	 * Get all the default info from the specified database server node.
 	 * 
-	 * @param socket				socket connection to server node
+	 * @param conn					socket connection to server node
 	 * @return						info name/value pairs
 	 */
 	public static HashMap<String,String> request(Connection conn) 
@@ -240,7 +240,7 @@ public final class Info {
 	 * Issue request and set results buffer. This method is used internally.
 	 * The static request methods should be used instead.
 	 * 
-	 * @param socket		socket connection to server node
+	 * @param conn			socket connection to server node
 	 * @throws IOException	if socket send or receive fails
 	 */
 	public void requestInfo(Connection conn) throws IOException {

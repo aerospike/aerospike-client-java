@@ -1,0 +1,5 @@
+#!/bin/sh
+
+cd `dirname $0`
+
+find ../client/doc -type f -name "*.html" -exec ./remove_timestamp {} \;
