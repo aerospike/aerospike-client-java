@@ -296,6 +296,9 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 * 							logs to <code>System.err</code>
 	 */
 	public static void setLogging(ClLogLevel level, LogCallback logCb) {
+		gLogLevel = level;
+		gLogCallback = logCb;
+		
 		Log.Level ll;
 		
 		switch (level) {
@@ -315,11 +318,14 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			break;
 		}
 		Log.setLevel(ll);
-		gLogCallback = logCb;
 	}
 
 	private static final ClLogLevel[] ClLogLevelLookup = ClLogLevel.values();
 
+	/**
+	 * Implementation of com.aerospike.client.Log.Callback
+	 */
+	@Override
 	public void log(Level level, String message) {
 		ClLogLevel cll = ClLogLevelLookup[level.ordinal()];		
 		ClLog(cll, message);
@@ -2557,10 +2563,12 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	// Logging Helpers
 	//-------------------------------------------------------
 
-	private static void ClLogInit() {
+	private void ClLogInit() {
 		if (gSdf == null) {
 			gSdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 		}
+		Log.setLevel(Log.Level.INFO);
+		Log.setCallback(this);
 	}
 
 	public static void ClLog(ClLogLevel logLevel, String msg) {
