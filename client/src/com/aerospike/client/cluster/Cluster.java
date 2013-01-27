@@ -57,7 +57,21 @@ public final class Cluster implements Runnable {
 		// Preallocate 2 namespaces each with default number of partitions.
 		partitionWriteMap = new ConcurrentHashMap<Partition,Node>(Node.PARTITIONS * 2); 
 
+		// Tend cluster until all nodes identified.
         waitTillStabilized();
+        
+        // Add other nodes as seeds, if they don't already exist.
+        ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length + 1);
+        for (Node node : nodes) {
+        	Host host = node.getHost();
+        	if (! findSeed(host)) {
+        		seedsToAdd.add(host);
+        	}
+        }
+        
+        if (seedsToAdd.size() > 0) {
+        	addSeeds(seedsToAdd.toArray(new Host[seedsToAdd.size()]));
+        }
 
 		// Run cluster tend thread.
         tendValid = true;
@@ -79,11 +93,23 @@ public final class Cluster implements Runnable {
 		
 		// Add new seeds
 		for (Host host : hosts) {
+			if (Log.debugEnabled()) {
+				Log.debug("Add seed " + host);
+			}
 			seedArray[count++] = host;
 		}
 		
 		// Replace nodes with copy.
 		seeds = seedArray;
+	}
+
+	private boolean findSeed(Host search) {
+		for (Host seed : seeds) {
+			if (seed.equals(search)) {
+				return true;
+			}
+		}
+		return false;
 	}
 	
     /**
