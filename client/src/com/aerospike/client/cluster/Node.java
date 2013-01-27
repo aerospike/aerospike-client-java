@@ -27,7 +27,7 @@ public final class Node {
 	private final Cluster cluster;
 	private final String name;
 	private final Host host;
-	private final List<Host> aliases;
+	private final Host[] aliases;
 	private final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
 	private final AtomicInteger health;
@@ -36,12 +36,15 @@ public final class Node {
 
 	public Node(Cluster cluster, Host host, int connectionLimit, int timeoutMillis) throws AerospikeException {
 		this.cluster = cluster;
-		this.host = host;
 
 		NodeValidator nv = new NodeValidator(host, timeoutMillis);
 		name = nv.name;
 		aliases = nv.aliases;
 		address = nv.address;
+		
+		// Assign host to first IP alias because the server identifies nodes 
+		// by IP address (not hostname). 
+		this.host = aliases[0];
 		
 		connectionQueue = new ArrayBlockingQueue<Connection>(connectionLimit);
 		health = new AtomicInteger(FULL_HEALTH);
@@ -49,31 +52,21 @@ public final class Node {
 		active = true;
 	}
 	
-	public void refresh(List<Host> friends) throws IOException, AerospikeException {
-		Connection conn = getConnection(2000);
-		// Connection conn = new Connection(address, 2000);
+	public void refresh(List<Host> friends) throws Exception {
+		Connection conn = getConnection(1000);
 		
 		try {
-			HashMap<String,String> infoMap = requestInfo(conn);
+			HashMap<String,String> infoMap = Info.request(conn, "node", "partition-generation", "services");
 			verifyNodeName(infoMap);			
 			restoreHealth();
 			addFriends(infoMap, friends);
 			updatePartitions(conn, infoMap);
-		}
-		finally {
 			putConnection(conn);
-			// conn.close();
 		}
-	}
-	
-	private HashMap<String,String> requestInfo(Connection conn) throws AerospikeException, IOException {		
-		try {
-			conn.setTimeout(2000);
-			return Info.request(conn, "node", "partition-generation", "services");
-		}
-		catch (IOException e) {
+		catch (Exception e) {
+			conn.close();
 			decreaseHealth(50);
-			throw e;				
+			throw e;
 		}
 	}
 	
@@ -84,7 +77,7 @@ public final class Node {
 		String infoName = infoMap.get("node");
 		
 		if (infoName == null || infoName.length() == 0) {
-			decreaseHealth(50);
+			decreaseHealth(60);
 			throw new AerospikeException.Parse("Node name is empty");
 		}
 
@@ -148,17 +141,23 @@ public final class Node {
 	}
 	
 	public Connection getConnection(int timeoutMillis) throws AerospikeException {
-		if (! active)
-			throw new AerospikeException.InvalidNode();
-			
-		Connection conn;		
+		Connection conn;
+		
 		while ((conn = connectionQueue.poll()) != null) {		
 			if (conn.isValid()) {
-				return conn;
+				try {
+					conn.setTimeout(timeoutMillis);
+					return conn;
+				}
+				catch (Exception e) {
+					// Set timeout failed. Something is probably wrong with timeout
+					// value itself, so don't empty queue retrying.  Just get out.
+					conn.close();
+					throw new AerospikeException.Connection(e);
+				}
 			}
 			conn.close();
-		}
-		
+		}	
 		return new Connection(address, timeoutMillis);		
 	}
 	
@@ -192,7 +191,7 @@ public final class Node {
 		return name;
 	}
 
-	public List<Host> getAliases() {
+	public Host[] getAliases() {
 		return aliases;
 	}
 
@@ -203,7 +202,7 @@ public final class Node {
 	
 	@Override
 	public String toString() {
-		return name;
+		return name + ' ' + host;
 	}
 
 	@Override

@@ -89,7 +89,7 @@ public final class PartitionTokenizer {
 		return null;
 	}
 	
-	private String getTruncatedResponse() throws AerospikeException {
+	private String getTruncatedResponse() {
 		int max = (length > 200) ? 200 : length;
 		return Buffer.utf8ToString(buffer, 0, max);		
 	}

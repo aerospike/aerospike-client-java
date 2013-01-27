@@ -136,8 +136,7 @@ public final class Buffer {
      * This is, rather amazingly, 8x faster than the to-string method.
 	 * Returns the number of bytes this translated into.
      */
-    public static int stringToUtf8(String s, byte[] buf, int offset)
-    	throws AerospikeException.Serialize {
+    public static int stringToUtf8(String s, byte[] buf, int offset) {
         if (s == null) {
         	return 0;
         }
@@ -163,15 +162,14 @@ public final class Buffer {
 					return value.length;
             	}
             	catch (UnsupportedEncodingException uee) {
-            		throw new AerospikeException.Serialize(uee);
+            		throw new RuntimeException("UTF8 encoding is not supported.");
             	}
             }
         }
         return offset - startOffset;
     }
 
-    public static String utf8ToString(byte[] buf, int offset, int length) 
-    	throws AerospikeException.Serialize {
+    public static String utf8ToString(byte[] buf, int offset, int length) {
     	// A Thread local implementation does not help here, so  
     	// allocate character buffer each time.  
 		char[] charBuffer = new char[length];
@@ -197,15 +195,14 @@ public final class Buffer {
 		    		return new String(buf, origoffset, length, "UTF8");
 		    	}
 		    	catch (UnsupportedEncodingException uee) {
-            		throw new AerospikeException.Serialize(uee);		    		
+            		throw new RuntimeException("UTF8 decoding is not supported.");
 		    	}
 		    }
         }
         return new String(charBuffer, 0, charCount);
     }
 
-    public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) 
-    	throws AerospikeException.Serialize {
+    public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) {
     	// This method is designed to accommodate multiple string conversions on the same
     	// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
     	// created on the stack and passed in each method invocation.
@@ -231,7 +228,7 @@ public final class Buffer {
 		    		return new String(buf, origoffset, length, "UTF8");
 		    	}
 		    	catch (UnsupportedEncodingException uee) {
-            		throw new AerospikeException.Serialize(uee);		    		
+            		throw new RuntimeException("UTF8 decoding is not supported.");
 		    	}
 		    }
         }

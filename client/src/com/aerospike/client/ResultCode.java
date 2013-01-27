@@ -167,7 +167,7 @@ public final class ResultCode {
 			return "Hot key";
 			
 		default:
-			return Integer.toString(resultCode);
+			return "";
 		}
 	}
 }

@@ -12,42 +12,40 @@ package com.aerospike.client.cluster;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
+import com.aerospike.client.Log;
+import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
 	String name;
-	List<Host> aliases;
+	Host[] aliases;
 	InetSocketAddress address;
 
 	public NodeValidator(Host host, int timeoutMillis) throws AerospikeException {
-		try {
-			setAliases(host);
-			setAddress(timeoutMillis);
-		}
-		catch (Exception e) {
-			throw new AerospikeException.Connection("Failed to add " + host + " to cluster: " + e.getMessage());
-		}
+		setAliases(host);
+		setAddress(timeoutMillis);
 	}
 	
-	private void setAliases(Host host) throws UnknownHostException {
-		aliases = new ArrayList<Host>();
-		aliases.add(host);
-		
-		InetAddress[] addresses = InetAddress.getAllByName(host.name);
-		
-		for (InetAddress address : addresses) {
-			if (! address.getHostAddress().equals(host.name)) {
-				aliases.add(new Host(address.getHostAddress(), host.port));
+	private void setAliases(Host host) throws AerospikeException {	
+		try {
+			InetAddress[] addresses = InetAddress.getAllByName(host.name);
+			int count = 0;
+			aliases = new Host[addresses.length];
+			
+			for (InetAddress address : addresses) {
+				aliases[count++] = new Host(address.getHostAddress(), host.port);
 			}
+		}
+		catch (UnknownHostException uhe) {
+			throw new AerospikeException.Connection("Invalid host: " + host);
 		}
 	}
 
-	private void setAddress(int timeoutMillis) throws Exception {
+	private void setAddress(int timeoutMillis) throws AerospikeException {
 		for (Host alias : aliases) {
 			try {
 				InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
@@ -68,8 +66,11 @@ public final class NodeValidator {
 			}
 			catch (Exception e) {
 				// Try next address.
+				if (Log.debugEnabled()) {
+					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
+				}
 			}	
-		}
-		throw new Exception();
+		}		
+		throw new AerospikeException.Connection("Failed to connect to host aliases: " + Arrays.toString(aliases));
 	}
 }

@@ -88,7 +88,7 @@ public abstract class Value {
 		}
 
 		@Override
-		public int write(byte[] buffer, int offset) throws AerospikeException {
+		public int write(byte[] buffer, int offset) {
 			return Buffer.stringToUtf8(value, buffer, offset);
 		}
 		

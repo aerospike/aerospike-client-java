@@ -55,10 +55,8 @@ public final class Info {
 	 * @param request						named values to retrieve
 	 * @throws AerospikeException.Serialize if UTF8 encoding fails
 	 */
-	public Info(String request) throws AerospikeException.Serialize {
-		//buffer = new byte[256];
-		buffer = ThreadLocalData.getSendBuffer();
-		
+	public Info(String request) {
+		buffer = ThreadLocalData.getSendBuffer();		
 		int len = Buffer.stringToUtf8(request, buffer, 8);
 		long sizeField = (len) | (2L << 56) | (1L << 48);
 		Buffer.longToBytes(sizeField, buffer, 0);		

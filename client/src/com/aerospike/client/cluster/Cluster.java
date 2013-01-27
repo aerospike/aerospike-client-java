@@ -27,9 +27,6 @@ public final class Cluster implements Runnable {
 	// All aliases for all nodes in cluster.
 	private final HashSet<Host> aliases;
 
-	// All node names in cluster.
-	private final HashSet<String> nodeNames;
-
 	// Active nodes in cluster.
 	private volatile Node[] nodes;	
 
@@ -55,7 +52,6 @@ public final class Cluster implements Runnable {
 		connectionTimeout = policy.timeout;		
 		
 		aliases = new HashSet<Host>();
-		nodeNames = new HashSet<String>();
 		nodes = new Node[0];
 		
 		// Preallocate 2 namespaces each with default number of partitions.
@@ -124,7 +120,7 @@ public final class Cluster implements Runnable {
 			}
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
-					Log.warn("Cluster tend failed: " + e.getMessage());
+					Log.warn("Cluster tend failed: " + Util.getErrorMessage(e));
 				}
 			}
 			// Sleep for 2 seconds.
@@ -160,11 +156,13 @@ public final class Cluster implements Runnable {
 
 		for (Node node : nodes) {
 			try {
-				node.refresh(friendList);
+				if (node.isActive()) {
+					node.refresh(friendList);
+				}
 			}
 			catch (Exception e) {
 				if (Log.debugEnabled()) {
-					Log.debug("Node " + node.getName() + " refresh failed: " + e.getMessage());
+					Log.debug("Node " + node + " refresh failed: " + Util.getErrorMessage(e));
 				}
 			}
 		}
@@ -191,7 +189,7 @@ public final class Cluster implements Runnable {
 		for (Host seed : seedArray) {
 			try {
 				Node node = new Node(this, seed, connectionLimit, connectionTimeout);
-				addNodeNameAndAliases(node);
+				addAliases(node);
 				
 				ArrayList<Node> list = new ArrayList<Node>(1);
 				list.add(node);
@@ -200,6 +198,9 @@ public final class Cluster implements Runnable {
 			}
 			catch (Exception e) {
 				// Try next host
+				if (Log.debugEnabled()) {
+					Log.debug("Seed " + seed + " failed: " + Util.getErrorMessage(e));
+				}
 			}
 		}
 	}
@@ -210,17 +211,13 @@ public final class Cluster implements Runnable {
 		
 		for (Host host : hosts) {
 			try {
-				Node node = new Node(this, host, connectionLimit, connectionTimeout);
-				
-				if (! nodeNames.contains(node.getName())) {
-					addNodeNameAndAliases(node);
-					
-					list.add(node);					
-				}
+				Node node = new Node(this, host, connectionLimit, connectionTimeout);				
+				addAliases(node);			
+				list.add(node);
 			}
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
-					Log.warn("Host " + host + " add failed: " + e.getMessage());
+					Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 				}
 			}
 		}
@@ -230,17 +227,10 @@ public final class Cluster implements Runnable {
 		}
 	}
 	
-	private void addNodeNameAndAliases(Node node) {
-		// Log.debug("Add node " + node);
-
-		// Add node's name to global name set.
-		// Names are only used in tend thread, so synchronization is not necessary.
-		nodeNames.add(node.getName());
-		
+	private void addAliases(Node node) {		
 		// Add node's aliases to global alias set.
 		// Aliases are only used in tend thread, so synchronization is not necessary.
 		for (Host alias : node.getAliases()) {
-			// Log.debug("Add alias " + alias);
 			aliases.add(alias);
 		}
 	}
@@ -259,7 +249,10 @@ public final class Cluster implements Runnable {
 		}
 		
 		// Add new Nodes
-		for (Node node : nodesToAdd) {
+		for (Node node : nodesToAdd) {			
+			if (Log.debugEnabled()) {
+				Log.debug("Add node " + node);
+			}
 			nodeArray[count++] = node;
 		}
 		
@@ -273,11 +266,7 @@ public final class Cluster implements Runnable {
 		// in an exception and a different node will be tried.
 		
 		// Cleanup node resources.
-		for (Node node : nodesToRemove) {
-			// Remove node name from cluster set. 
-			// Log.debug("Remove node " + node);
-			nodeNames.remove(node.getName());
-			
+		for (Node node : nodesToRemove) {			
 			// Remove node's aliases from cluster alias set.
 			// Aliases are only used in tend thread, so synchronization is not necessary.
 			for (Host alias : node.getAliases()) {
@@ -304,7 +293,12 @@ public final class Cluster implements Runnable {
 		
 		// Add nodes that are not in remove list.
 		for (Node node : nodes) {
-			if (! findNode(node, nodesToRemove)) {
+			if (findNode(node, nodesToRemove)) {				
+				if (Log.debugEnabled()) {
+					Log.debug("Remove node " + node);
+				}
+			}
+			else {
 				nodeArray[count++] = node;				
 			}
 		}
@@ -342,24 +336,31 @@ public final class Cluster implements Runnable {
 	public Node getNode(Partition partition) throws AerospikeException.InvalidNode {
 		Node node = partitionWriteMap.get(partition);
 		
-		if (node == null) {
+		if (node == null || ! node.isActive()) {
 			node = getRandomNode();
 		}
 		return node;
 	}
 
-	private synchronized Node getRandomNode() throws AerospikeException.InvalidNode {
-		// Must synchronize with other non-tending threads, so nodeIndex is consistent.
-		// Must also copy array reference for copy on write semantics to work.
+	private Node getRandomNode() throws AerospikeException.InvalidNode {
+		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
-
-		if (nodeIndex >= nodeArray.length) {
-			if (nodeArray.length == 0) {
-				throw new AerospikeException.InvalidNode();
+		int index;
+		
+		for (int i = 0; i < nodeArray.length; i++) {			
+			// Must synchronize with other non-tending threads, so nodeIndex is consistent.
+			synchronized (this) {
+				index = (nodeIndex >= nodeArray.length)? 0 : nodeIndex; 
+				nodeIndex++;
 			}
-			nodeIndex = 0;
+			
+			Node node = nodeArray[index];
+			
+			if (node.isActive()) {
+				return node;
+			}
 		}
-		return nodeArray[nodeIndex++];
+		throw new AerospikeException.InvalidNode();		
 	}
 
 	public Node[] getNodes() {
@@ -372,8 +373,6 @@ public final class Cluster implements Runnable {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		
-		// Do not use nodeNames hashset because that is only modified by tend thread.
-		// This method is called from other threads.
 		for (Node node : nodeArray) {
 			if (node.getName().equals(nodeName)) {
 				return node;

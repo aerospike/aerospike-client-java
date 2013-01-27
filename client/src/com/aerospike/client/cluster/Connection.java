@@ -18,6 +18,7 @@ import java.net.SocketException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
+import com.aerospike.client.util.Util;
 
 /**
  * Socket connection wrapper.
@@ -88,7 +89,7 @@ public final class Connection {
 		}
 		catch (Exception e) {
 			if (Log.debugEnabled()) {
-				Log.debug("Error closing socket: " + e.getMessage());
+				Log.debug("Error closing socket: " + Util.getErrorMessage(e));
 			}
 		}
 	}

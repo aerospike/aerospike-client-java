@@ -12,6 +12,8 @@ package com.aerospike.client.util;
 import com.aerospike.client.Log;
 
 public final class ThreadLocalData {
+	private static final int MAX_BUFFER_SIZE = 1000000;  // ~1 MB
+	
 	private static final ThreadLocal<byte[]> SendBufferThreadLocal = new ThreadLocal<byte[]>() {
 		@Override protected byte[] initialValue() {
 			return new byte[2048];
@@ -29,6 +31,10 @@ public final class ThreadLocalData {
 	}
 	
 	public static byte[] resizeSendBuffer(int size) {
+		if (size > MAX_BUFFER_SIZE) {
+			throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid send buffer size: " + size);
+		}
+		
 		if (Log.debugEnabled()) {
 			Log.debug("Thread " + Thread.currentThread().getId() + " resize send buffer to " + size);
 		}
@@ -41,6 +47,10 @@ public final class ThreadLocalData {
 	}
 	
 	public static byte[] resizeReceiveBuffer(int size) {
+		if (size > MAX_BUFFER_SIZE) {
+			throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid receive buffer size: " + size);
+		}
+		
 		if (Log.debugEnabled()) {
 			Log.debug("Thread " + Thread.currentThread().getId() + " resize receive buffer to " + size);
 		}

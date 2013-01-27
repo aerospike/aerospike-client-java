@@ -64,13 +64,7 @@ public class AerospikeException extends Exception {
 			else {
 				sb.append(this.getClass().getName());
 			}
-		}
-		
-		Throwable t = super.getCause();
-		if (t != null) {
-			sb.append(" Caused by: ");
-			sb.append(t.getMessage());
-		}
+		}		
 		return sb.toString();
 	}
 	

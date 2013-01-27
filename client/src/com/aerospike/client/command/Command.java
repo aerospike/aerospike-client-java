@@ -115,7 +115,7 @@ public abstract class Command {
         sendOffset += nameLength + valueLength;
 	}
 		
-	public final void writeOperation(String name, int operation) throws AerospikeException {
+	public final void writeOperation(String name, int operation) {
         int nameLength = Buffer.stringToUtf8(name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
          
         Buffer.intToBytes(nameLength + 4, sendBuffer, sendOffset);
@@ -138,7 +138,7 @@ public abstract class Command {
         sendBuffer[sendOffset++] = 0;
 	}
 
-	public final void writeField(String str, int type) throws AerospikeException {
+	public final void writeField(String str, int type) {
 		int len = Buffer.stringToUtf8(str, sendBuffer, sendOffset + FIELD_HEADER_SIZE);
 		writeFieldHeader(len, type);
 		sendOffset += len;
@@ -187,10 +187,9 @@ public abstract class Command {
 				node = getNode();
 				Connection conn = node.getConnection(remainingMillis);
 				
-				try {					
+				try {
 					// Reset timeout in send buffer (destined for server) and socket.
 					Buffer.intToBytes(remainingMillis, sendBuffer, MSG_TIMEOUT_OFFSET);
-					conn.setTimeout(remainingMillis);
 					
 					// Send command.
 					send(conn);
@@ -209,9 +208,8 @@ public abstract class Command {
 					return;
 				}
 				catch (AerospikeException ae) {
-					// Assume client generated exceptions have been parsed properly.
-					// Put connection back in pool and exit method.
-					node.putConnection(conn);
+					// Close socket to flush out possible garbage.  Do not put back in pool.
+					conn.close();
 					throw ae;
 				}
 				catch (RuntimeException re) {
@@ -236,10 +234,12 @@ public abstract class Command {
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Decrease health and retry.
-				if (node != null) {
-					node.decreaseHealth(60);
+				node.decreaseHealth(60);
+				
+				if (Log.debugEnabled()) {
+					Log.debug("Execute Node " + node + ": " + Util.getErrorMessage(ce));
 				}
-				failedConns++;
+				failedConns++;	
 			}
 
 			// Check for client timeout.
@@ -255,7 +255,7 @@ public abstract class Command {
 		}
 		
 		if (Log.debugEnabled()) {
-			Log.debug("client timeout: timeout=" + timeoutMillis + " iterations=" + i + 
+			Log.debug("Client timeout: timeout=" + timeoutMillis + " iterations=" + i + 
 				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
 		}
 		throw new AerospikeException.Timeout();
