@@ -110,7 +110,7 @@ public class BatchGet {
 			runTests(params);
 			
 		} catch (Exception ex) {
-			System.out.println("Error: " + ex.toString());
+			System.out.println(ex.toString());
 			return;
 		}
 	}

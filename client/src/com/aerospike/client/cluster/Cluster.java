@@ -34,7 +34,7 @@ public final class Cluster implements Runnable {
 	private final ConcurrentHashMap<Partition,Node> partitionWriteMap;
 	
 	// Random node index.
-	private int nodeIndex;
+	private volatile int nodeIndex;
 	
 	// Size of node's connection pool.
 	private final int connectionLimit;
@@ -59,6 +59,12 @@ public final class Cluster implements Runnable {
 
 		// Tend cluster until all nodes identified.
         waitTillStabilized();
+        
+        if (Log.debugEnabled()) {
+        	for (Host host : seeds) {
+				Log.debug("Add seed " + host);
+        	}
+        }
         
         // Add other nodes as seeds, if they don't already exist.
         ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length + 1);
@@ -372,17 +378,23 @@ public final class Cluster implements Runnable {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		int index;
-		
+				
 		for (int i = 0; i < nodeArray.length; i++) {			
 			// Must synchronize with other non-tending threads, so nodeIndex is consistent.
 			synchronized (this) {
-				index = (nodeIndex >= nodeArray.length)? 0 : nodeIndex; 
+				if (nodeIndex >= nodeArray.length) {
+					nodeIndex = 0;
+				}
+				index = nodeIndex; 
 				nodeIndex++;
 			}
 			
 			Node node = nodeArray[index];
 			
 			if (node.isActive()) {
+				//if (Log.debugEnabled()) {
+				//	Log.debug("Node " + node + " is active. index=" + index);
+				//}
 				return node;
 			}
 		}

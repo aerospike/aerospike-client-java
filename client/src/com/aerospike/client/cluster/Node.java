@@ -77,7 +77,7 @@ public final class Node {
 		String infoName = infoMap.get("node");
 		
 		if (infoName == null || infoName.length() == 0) {
-			decreaseHealth(60);
+			decreaseHealth(80);
 			throw new AerospikeException.Parse("Node name is empty");
 		}
 
@@ -174,6 +174,9 @@ public final class Node {
 	}
 
 	public void decreaseHealth(int value) {
+		//if (Log.debugEnabled()) {
+		//	Log.debug("Node " + this + " decrease health " + value);
+		//}
 		if (health.addAndGet(-value) <= 0) {
 			active = false;
 		}

@@ -2,6 +2,8 @@ package com.aerospike.benchmarks;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -17,6 +19,8 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 
 public class Main implements Log.Callback {
+	
+	private static SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 	protected static int timepad = 15;
 
@@ -423,6 +427,8 @@ public class Main implements Log.Callback {
 	
 	@Override
 	public void log(Level level, String message) {
-		System.out.println(level.toString() + ": " + message);		
+		String date = SimpleDateFormat.format(new Date());
+		System.out.println(date.toString() + ' ' + level.toString() + 
+			" Thread " + Thread.currentThread().getId() + ' ' + message);		
 	}
 }

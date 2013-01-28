@@ -184,7 +184,7 @@ public class RWTask implements Runnable {
 				}
 			}
 			catch (AerospikeException ae) {
-				System.out.println("Error " + ae.getResultCode() + ": " + ae.getMessage());
+				System.out.println(ae.getMessage());
 			}			
 			this.counters.sbwcounter.getAndIncrement();
 		} else {
@@ -204,7 +204,7 @@ public class RWTask implements Runnable {
 				}
 			}
 			catch (AerospikeException ae) {
-				System.out.println("Error " + ae.getResultCode() + ": " + ae.getMessage());
+				System.out.println(ae.getMessage());
 			}			
 		}
 		// what is main.timepad?
@@ -238,7 +238,7 @@ public class RWTask implements Runnable {
 			}
 		}
 		catch (AerospikeException ae) {
-			System.out.println("Error " + ae.getResultCode() + ": " + ae.getMessage());
+			System.out.println(ae.getMessage());
 		}
 
 		int timeElapsed = this.timeElapsed.get();

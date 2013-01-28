@@ -9,8 +9,11 @@
  */
 package com.aerospike.client.util;
 
+import java.io.EOFException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.net.SocketException;
+import java.net.SocketTimeoutException;
 
 import com.aerospike.client.AerospikeException;
 
@@ -24,10 +27,16 @@ public final class Util {
 	}
 	
 	public static String getErrorMessage(Exception e) {
-		if (e instanceof AerospikeException) {
-			// Aerospike error messages don't need additional stacktrace.
+		// Connection error messages don't need a stacktrace.
+		if (e instanceof SocketException || e instanceof AerospikeException.Connection || 
+			e.getCause() instanceof SocketTimeoutException) {			
 			return e.getMessage();
 		}
+		
+		if (e instanceof EOFException) {
+			return EOFException.class.getName();
+		}
+		
 		// Unexpected exceptions need a stacktrace.
 		StringWriter sw = new StringWriter(1000);
 		PrintWriter pw = new PrintWriter(sw);

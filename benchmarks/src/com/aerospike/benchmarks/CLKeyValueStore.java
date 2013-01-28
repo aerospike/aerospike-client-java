@@ -41,7 +41,7 @@ public class CLKeyValueStore {
 				return endTime - startTime;
 			}
 			catch (AerospikeException.Timeout aet) {
-				System.out.println("Timeout: " + aet.getMessage());
+				// System.out.println(aet.getMessage());
 			}
 			
 			try {
@@ -62,7 +62,7 @@ public class CLKeyValueStore {
 				return endTime - startTime;
 			}
 			catch (AerospikeException.Timeout aet) {
-				System.out.println("Timeout: " + aet.getMessage());
+				// System.out.println(aet.getMessage());
 			}
 			catch (AerospikeException ae) {
 				if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
@@ -99,7 +99,7 @@ public class CLKeyValueStore {
 			}
 		}
 		catch (AerospikeException ae) {
-			System.out.println("Error " + ae.getResultCode() + ": " + ae.getMessage());
+			System.out.println(ae.getMessage());
 		}
 
 		long endTime = System.nanoTime();
@@ -119,7 +119,7 @@ public class CLKeyValueStore {
 			}
 		}
 		catch (AerospikeException ae) {
-			System.out.println("Error " + ae.getResultCode() + ": " + ae.getMessage());
+			System.out.println(ae.getMessage());
 		}
 
 		long endTime = System.nanoTime();

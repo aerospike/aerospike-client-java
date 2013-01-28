@@ -223,6 +223,9 @@ public abstract class Command {
 					// Close socket to flush out possible garbage.  Do not put back in pool.
 					conn.close();
 					
+					if (Log.debugEnabled()) {
+						Log.debug("Node " + node + ": " + Util.getErrorMessage(ioe));
+					}
 					// IO error means connection to server node is unhealthy.
 					// Reflect this status.
 					node.decreaseHealth(60);
@@ -237,7 +240,7 @@ public abstract class Command {
 				node.decreaseHealth(60);
 				
 				if (Log.debugEnabled()) {
-					Log.debug("Execute Node " + node + ": " + Util.getErrorMessage(ce));
+					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));
 				}
 				failedConns++;	
 			}
