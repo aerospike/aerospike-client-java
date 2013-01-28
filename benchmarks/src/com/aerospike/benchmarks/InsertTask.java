@@ -4,6 +4,7 @@ import java.util.Random;
 
 import com.aerospike.client.Bin;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 
 public class InsertTask implements Runnable {
 
@@ -40,7 +41,14 @@ public class InsertTask implements Runnable {
 			while (i < this.nKeys) {
 				key	 = Utils.genKey(this.startKey+i, this.keySize);
 				bins = Utils.genBins(r, this.nBins, this.spec, 0);
-				this.kvs.SetValue(policy, key, bins);
+				
+				try {
+					this.kvs.SetValue(policy, key, bins);
+				}
+				catch (Exception e) {
+					System.out.println(e.getMessage());
+					Util.sleep(10);
+				}
 				i = this.counters.wcounter.getAndIncrement();
 			}
 		}

@@ -7,13 +7,11 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public class CLKeyValueStore {
-	private static final int MAX_RECURSION_DEPTH = 10;
 	
 	AerospikeClient client = null;
 	String namespace = null;
@@ -33,50 +31,16 @@ public class CLKeyValueStore {
 	
 	public long SetValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
 		long startTime = System.nanoTime();
-		
-		for (int i = 0; i < MAX_RECURSION_DEPTH; i++) {
-			try {
-				client.put(policy, new Key(this.namespace, this.set, key), bins);
-				long endTime = System.nanoTime();
-				return endTime - startTime;
-			}
-			catch (AerospikeException.Timeout aet) {
-				// System.out.println(aet.getMessage());
-			}
-			
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-		}
-		throw new AerospikeException.Timeout();
+		client.put(policy, new Key(this.namespace, this.set, key), bins);
+		long endTime = System.nanoTime();
+		return endTime - startTime;		
 	}
 
 	public long IncrementValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
 		long startTime = System.nanoTime();
-		
-		for (int i = 0; i < MAX_RECURSION_DEPTH; i++) {
-			try {
-				client.add(policy, new Key(this.namespace, this.set, key), bins);
-				long endTime = System.nanoTime();
-				return endTime - startTime;
-			}
-			catch (AerospikeException.Timeout aet) {
-				// System.out.println(aet.getMessage());
-			}
-			catch (AerospikeException ae) {
-				if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-					this.counters.generationErrCnt.incrementAndGet();					
-				}
-				throw ae;
-			}
-			
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-			}
-		}
-		throw new AerospikeException.Timeout();
+		client.add(policy, new Key(this.namespace, this.set, key), bins);
+		long endTime = System.nanoTime();
+		return endTime - startTime;
 	}
 	
 	public ResponseObj GetValue(Policy policy, String key) {
@@ -98,8 +62,8 @@ public class CLKeyValueStore {
 				responseObj.generation = record.generation;
 			}
 		}
-		catch (AerospikeException ae) {
-			System.out.println(ae.getMessage());
+		catch (Exception e) {
+			System.out.println(e.getMessage());
 		}
 
 		long endTime = System.nanoTime();
@@ -118,8 +82,8 @@ public class CLKeyValueStore {
 				responseObj.generation = record.generation;
 			}
 		}
-		catch (AerospikeException ae) {
-			System.out.println(ae.getMessage());
+		catch (Exception e) {
+			System.out.println(e.getMessage());
 		}
 
 		long endTime = System.nanoTime();

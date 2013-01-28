@@ -7,9 +7,11 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 
 //
 // Always generates random reads
@@ -183,8 +185,9 @@ public class RWTask implements Runnable {
 					}
 				}
 			}
-			catch (AerospikeException ae) {
-				System.out.println(ae.getMessage());
+			catch (Exception e) {
+				System.out.println(e.getMessage());
+				Util.sleep(10);
 			}			
 			this.counters.sbwcounter.getAndIncrement();
 		} else {
@@ -238,7 +241,15 @@ public class RWTask implements Runnable {
 			}
 		}
 		catch (AerospikeException ae) {
+			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
+				this.counters.generationErrCnt.incrementAndGet();					
+			}
 			System.out.println(ae.getMessage());
+			Util.sleep(10);
+		}
+		catch (Exception e) {		
+			System.out.println(e.getMessage());
+			Util.sleep(10);
 		}
 
 		int timeElapsed = this.timeElapsed.get();

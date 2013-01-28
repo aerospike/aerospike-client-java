@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
+import com.aerospike.client.Log;
 
 public final class Node {	
 	public static final int PARTITIONS = 4096;
@@ -130,6 +131,9 @@ public final class Node {
 		int generation = Integer.parseInt(genString);
 		
 		if (partitionGeneration != generation) {
+			if (Log.debugEnabled()) {
+				Log.debug("Request replicas from " + this);
+			}
 			PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
 			Partition partition;
 			
