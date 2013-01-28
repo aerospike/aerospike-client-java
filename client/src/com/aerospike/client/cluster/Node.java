@@ -132,7 +132,7 @@ public final class Node {
 		
 		if (partitionGeneration != generation) {
 			if (Log.debugEnabled()) {
-				Log.debug("Request replicas from " + this);
+				Log.debug("Node " + this + " partition generation " + generation + " changed.");
 			}
 			PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
 			Partition partition;
