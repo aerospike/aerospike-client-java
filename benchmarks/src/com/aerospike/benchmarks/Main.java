@@ -22,8 +22,6 @@ public class Main implements Log.Callback {
 	
 	private static SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
-	protected static int timepad = 15;
-
 	private String[] readSettings(String throughput_file) throws IOException {
 		Scanner scanner = new Scanner(new FileInputStream(throughput_file), "UTF-8");
 		String[] settings = scanner.nextLine().split(",");
@@ -43,15 +41,16 @@ public class Main implements Log.Callback {
 		}
 		
 		int counterold = 0;
-		int counterget = 0;
 
-		while (this.counters.wcounter.get() < (this.nKeys + this.nTasks)) {
-			counterget = this.counters.wcounter.get();
-			System.out.println(" Wrote "+counterget+" elements (" + (counterget-counterold-this.nTasks) + " tps, "+ this.counters.failcnt.get() + " fails)");
+		while (this.counters.write.count.get() < this.nKeys) {
+			int counterget = this.counters.write.count.get();
+			int tps = counterget - counterold;
+			System.out.println(" Wrote " + counterget + " elements " + tps + " tps "+ this.counters.write.fail.get() + " fails)");
 			counterold = counterget;
 			Thread.sleep(1000);
 		}
-		System.out.println("Wrote "+(this.counters.wcounter.get()-this.nTasks)+" elements, complete ("+ this.counters.failcnt.get()+" fails)");
+
+		System.out.println("Wrote " + this.counters.write.count.get() + " elements " + this.counters.write.fail.get() + " fails)");
 		es.shutdownNow();
 	}
 
@@ -71,7 +70,7 @@ public class Main implements Log.Callback {
 			if (this.validate) {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
-				rt = new RWTask(this.kvs, tkeys,	 tstart,		  this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTask(this.kvs, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			} else {
 				rt = new RWTask(this.kvs, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
@@ -89,24 +88,24 @@ public class Main implements Log.Callback {
 		}
 
 		// Set start time 
-		this.counters.start_time = System.nanoTime();
-
-		int numReadsPrev = 0;
-		int numWritesPrev = 0;
+		this.counters.start_time = System.currentTimeMillis();
 
 		// Wait for completion
 		for (; this.runTime == 0 || this.counters.timeElapsed.get() < this.runTime; this.counters.timeElapsed.incrementAndGet()) {
 
-			long sltime = System.nanoTime();
-			int	 numReads		 = this.counters.rcounter.get();
-			int	 numWrites		 = this.counters.wcounter.get();
-			int	 sbrcounterget	 = this.counters.sbrcounter.get();
-			int	 sbwcounterget	 = this.counters.sbwcounter.get();
-
-
-			System.out.println(client+": Time = " + this.counters.timeElapsed.get() + "s, "+(numReads+numWrites)+" elements (" + (numReads+numWrites-(numReadsPrev+numWritesPrev)) 
-					+ " tps, "+counters.failcnt.get()+" fails, "+counters.valueMismatchCnt.get()+" mismatches, "
-					+ "r = "+sbrcounterget+", w = "+sbwcounterget+") ");
+			long time = System.currentTimeMillis();
+			
+			int	numWrites = this.counters.write.count.getAndSet(0);
+			int failWrites = this.counters.write.fail.getAndSet(0);
+			
+			int	numReads = this.counters.read.count.getAndSet(0);
+			int failReads = this.counters.read.fail.getAndSet(0);
+			
+			String date = SimpleDateFormat.format(new Date(time));
+			System.out.println(date.toString() + " write(tps=" + numWrites + " fail=" + failWrites + ")" +
+				" read(tps=" + numReads + " fail=" + failReads + ")" +
+				" total(tps=" + (numWrites + numReads) + " fail=" + (failWrites + failReads) + ")"
+				);
 
 			if (throughput_file.length() > 0) {
 				// set target throughput and read/update percentage based on throughput_file
@@ -118,31 +117,11 @@ public class Main implements Log.Callback {
 					System.out.println("can't read throughput file!");
 				}
 			}
-
-			if (this.runTime == 0) {
-				// reset counter every second  /// XXX and how does this reset the counters every second?
-				this.counters.tcounter.set(0);
-				this.counters.rcounter.set(0);
-				this.counters.rtdsum.set(0);
-				this.counters.wcounter.set(0);
-				this.counters.wtdsum.set(0);
-				this.counters.sbrcounter.set(0);
-				this.counters.sbwcounter.set(0);
-				//counters.valueMismatchCnt.set(0);
-				//counters.generationErrCnt.set(0);
-				numReadsPrev       = 0;
-				numWritesPrev      = 0;
-				counters.start_time = System.nanoTime();
-			} else {
-				numReadsPrev  = numReads;
-				numWritesPrev = numWrites;
-			}
 			
-			Thread.sleep(1000-(System.nanoTime()-sltime)/1000000);
+			Thread.sleep(1000);
 		}
 	}
 
-	private String          client = "localhost";
 	private String[]        hosts;
 	private int             port = 3000;
 	private String          namespace = "";

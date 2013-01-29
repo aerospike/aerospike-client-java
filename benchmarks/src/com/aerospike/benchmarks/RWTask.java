@@ -8,7 +8,6 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
@@ -20,7 +19,6 @@ import com.aerospike.client.util.Util;
 public class RWTask implements Runnable {
 
 	Random rgen;
-	String database;
 	int nKeys;
 	int startKey;
 	int keySize;
@@ -36,9 +34,8 @@ public class RWTask implements Runnable {
 	CounterStore counters;
 	AtomicInteger timeElapsed;
 	CLKeyValueStore kvs;
-	WritePolicy writePolicy;
+	WritePolicy policy;
 	WritePolicy writePolicyGeneration;
-	Policy policy;
 	boolean debug = false;
 
 	public RWTask(CLKeyValueStore kvs, int nKeys, int startKey, int keySize, DBObjectSpec[] objects, int nBins, String cycleType, int timeout, AtomicIntegerArray settingsArr, /*int client_num, String clientdir,*/ boolean validate, int runTime, CounterStore counters, boolean debug) {
@@ -57,18 +54,15 @@ public class RWTask implements Runnable {
 		this.debug       = debug;
 
 		this.timeElapsed = counters.timeElapsed;
-		this.rgen = new Random(System.nanoTime());
+		this.rgen = new Random(System.currentTimeMillis());
 		
-		writePolicy = new WritePolicy();
-		writePolicy.timeout = timeout;
+		policy = new WritePolicy();
+		policy.timeout = timeout;
 		
 		writePolicyGeneration = new WritePolicy();
 		writePolicyGeneration.timeout = timeout;
 		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
-		writePolicyGeneration.generation = 0;
-		
-		policy = new Policy();
-		policy.timeout = timeout;
+		writePolicyGeneration.generation = 0;		
 	}
 	
 	/**
@@ -106,7 +100,7 @@ public class RWTask implements Runnable {
 
 		if (!multiBin) {
 			// read one bin, maybe validate
-			int bin = 0; // XXX must deal with lien below!
+			int bin = 0;
 			responseObj = kvs.GetSingleBin(policy, key, Integer.toString(bin));
 			if(this.validate) {
 				try {
@@ -122,16 +116,15 @@ public class RWTask implements Runnable {
 					} else {
 						newVal = null;
 					}
-					if (newVal == null || !newVal.equals(expectedVal)) {  // XXX this equality test is not likely to do what we want... XXX
+					if (newVal == null || !newVal.equals(expectedVal)) {
 						this.counters.valueMismatchCnt.incrementAndGet();
-						Utils.writeMismatchedKVP(0, "", /*client_num, clientdir,*/ key, expectedVal, newVal);  // XXX handle this
+						Utils.writeMismatchedKVP(0, "", key, expectedVal, newVal);
 						System.out.println("MISMATCH | original value = "  + expectedVal+", new value = "+newVal);
 					} 
 				} catch (Exception e) {
 					System.out.println("couldn't cast stored value to Object array");
 				}
 			}
-			counters.sbrcounter.getAndIncrement();
 		} else {
 			// read all bins, maybe validate
 			responseObj = kvs.GetValue(policy, key);
@@ -141,16 +134,10 @@ public class RWTask implements Runnable {
 				String newValStr      = Arrays.toString((Object[]) responseObj.value);
 				if(responseObj.value == null || !expectedValStr.equals(newValStr)) {
 					this.counters.valueMismatchCnt.incrementAndGet();
-					Utils.writeMismatchedKVP(0, "", /*client_num, clientdir,*/ key, expectedValStr, newValStr);
+					Utils.writeMismatchedKVP(0, "", key, expectedValStr, newValStr);
 					System.out.println("MISMATCH | original Val = "+expectedValStr+", new value = "+newValStr);
 				} 
 			}
-		}
-
-		int teget = this.timeElapsed.get();
-		if (this.runTime == 0 || (teget >= Math.min(this.runTime/4, Main.timepad) && teget < Math.max(this.runTime*3/4, this.runTime-Main.timepad))) { // XXX what in hell is this? Only do stats for part of the run time?
-			this.counters.rcounter.getAndIncrement();
-			this.counters.rtdsum.getAndAdd(responseObj.td);
 		}
 	}
 	
@@ -168,14 +155,12 @@ public class RWTask implements Runnable {
 			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, 0);
 		}
 		
-		long duration = 0;
-
 		if (!multiBin) {
 			// write one bin
 			int bin = 0 ;
 						
 			try {
-				duration = kvs.SetValue(writePolicy, key, bins);
+				kvs.SetValue(policy, key, bins);
 				
 				if (this.validate) {
 					if (this.validationValues[keyIdx] != null) {
@@ -184,16 +169,17 @@ public class RWTask implements Runnable {
 						this.validationValues[keyIdx] = valarr;
 					}
 				}
+				counters.write.count.getAndIncrement();
 			}
 			catch (Exception e) {
+				counters.write.fail.getAndIncrement();
 				System.out.println(e.getMessage());
 				Util.sleep(10);
 			}			
-			this.counters.sbwcounter.getAndIncrement();
 		} else {
 			// write all bins
 			try {
-				duration = kvs.SetValue(writePolicy, key, bins);
+				kvs.SetValue(policy, key, bins);
 				
 				if (this.validate) {
 					Object[] valarr = new Object[bins.length];
@@ -205,16 +191,13 @@ public class RWTask implements Runnable {
 					this.validationValues[keyIdx] = valarr;
 					this.validationGenerations[keyIdx] += 1;
 				}
+				counters.write.count.getAndIncrement();
 			}
-			catch (AerospikeException ae) {
-				System.out.println(ae.getMessage());
+			catch (Exception e) {
+				counters.write.fail.getAndIncrement();
+				System.out.println(e.getMessage());
+				Util.sleep(10);
 			}			
-		}
-		// what is main.timepad?
-		int timeElapsed = this.timeElapsed.get();
-		if (this.runTime == 0 || (timeElapsed >= Math.min(this.runTime/4, Main.timepad) && timeElapsed < Math.max(this.runTime*3/4, this.runTime-Main.timepad))) {
-			this.counters.wcounter.getAndIncrement();
-			this.counters.wtdsum.getAndAdd(duration);
 		}
 	}
 	
@@ -228,10 +211,9 @@ public class RWTask implements Runnable {
 		
 		// set up bin for increment
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
-		long duration = 0;
 		
 		try {
-			duration = kvs.IncrementValue(writePolicyGeneration, key, bins);
+			kvs.IncrementValue(writePolicyGeneration, key, bins);
 			
 			if (this.validate) {
 				Object[] valarr = new Object[this.nBins];
@@ -239,8 +221,10 @@ public class RWTask implements Runnable {
 				this.validationValues[keyIdx] = valarr;
 				this.validationGenerations[keyIdx] += 1;
 			}
+			counters.write.count.getAndIncrement();
 		}
 		catch (AerospikeException ae) {
+			counters.write.fail.getAndIncrement();
 			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
 				this.counters.generationErrCnt.incrementAndGet();					
 			}
@@ -248,14 +232,9 @@ public class RWTask implements Runnable {
 			Util.sleep(10);
 		}
 		catch (Exception e) {		
+			counters.write.fail.getAndIncrement();
 			System.out.println(e.getMessage());
 			Util.sleep(10);
-		}
-
-		int timeElapsed = this.timeElapsed.get();
-		if (this.runTime == 0 || (timeElapsed >= Math.min(this.runTime/4, Main.timepad) && timeElapsed < Math.max(this.runTime*3/4, this.runTime-Main.timepad))) {
-			this.counters.wcounter.getAndIncrement();
-			this.counters.wtdsum.getAndAdd(duration);
 		}
 	}
 	
@@ -270,12 +249,12 @@ public class RWTask implements Runnable {
 
 		// set up parameters...
 		int throughputget         = settingsArr.get(0);
-		double readPct            = settingsArr.get(1) / 100.0;	 // XXX oh, this is intuitive...
+		double readPct            = settingsArr.get(1) / 100.0;
 		double singleBinReadPct   = settingsArr.get(2) / 100.0;
 		double singleBinUpdatePct = settingsArr.get(3) / 100.0;
 
 		// Now run...
-		while (runTime == 0 || this.timeElapsed.get() < runTime) {	// XXX is this time elapsed thing really what I want to do?
+		while (runTime == 0 || this.timeElapsed.get() < runTime) {
 					
 			// Get random key
 			int curKeyIdx = rgen.nextInt(this.nKeys);
@@ -291,9 +270,9 @@ public class RWTask implements Runnable {
 			boolean isMultiBin = false;
 			randnum = rgen.nextDouble();
 			if (isWrite && (randnum < singleBinUpdatePct)) {
-				isMultiBin = true; // XXX is this the right logic?
+				isMultiBin = true;
 			} else if (randnum < singleBinReadPct) {
-				isMultiBin = true; // XXX is this the right logic?
+				isMultiBin = true;
 			}		
 
 			// now do the work
@@ -329,9 +308,9 @@ public class RWTask implements Runnable {
 			long getCounter = counters.tcounter.incrementAndGet();
 			if (throughputget != 0) {
 				long sleepfor = 0;
-				long t = System.nanoTime();
-				if (t-this.counters.start_time < getCounter*1000000000/throughputget) {
-					sleepfor = (getCounter*1000000000/throughputget - (t-counters.start_time))/1000000;
+				long t = System.currentTimeMillis();
+				if ((t - this.counters.start_time) < (getCounter * 1000 / throughputget)) {
+					sleepfor = (getCounter*1000/throughputget - (t-counters.start_time));
 				} 
 				
 				try {
@@ -341,5 +320,4 @@ public class RWTask implements Runnable {
 			}
 		}
 	}
-
 }

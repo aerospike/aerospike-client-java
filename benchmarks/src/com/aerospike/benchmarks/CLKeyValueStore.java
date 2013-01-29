@@ -29,23 +29,16 @@ public class CLKeyValueStore {
 		client = new AerospikeClient(policy, hostname, port);		
 	}
 	
-	public long SetValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
-		long startTime = System.nanoTime();
+	public void SetValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
 		client.put(policy, new Key(this.namespace, this.set, key), bins);
-		long endTime = System.nanoTime();
-		return endTime - startTime;		
 	}
 
-	public long IncrementValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
-		long startTime = System.nanoTime();
+	public void IncrementValue(WritePolicy policy, String key, Bin[] bins) throws AerospikeException {
 		client.add(policy, new Key(this.namespace, this.set, key), bins);
-		long endTime = System.nanoTime();
-		return endTime - startTime;
 	}
 	
 	public ResponseObj GetValue(Policy policy, String key) {
 		ResponseObj responseObj = new ResponseObj();
-		long startTime = System.nanoTime();
 		
 		try {
 			Record record = client.get(policy, new Key(this.namespace, this.set, key));
@@ -61,19 +54,17 @@ public class CLKeyValueStore {
 				responseObj.value = objarr;
 				responseObj.generation = record.generation;
 			}
+			counters.read.count.getAndIncrement();
 		}
 		catch (Exception e) {
+			counters.read.fail.getAndIncrement();
 			System.out.println(e.getMessage());
 		}
-
-		long endTime = System.nanoTime();
-		responseObj.td = endTime-startTime;
 		return responseObj;
 	}
 
 	public ResponseObj GetSingleBin(Policy policy, String key, String bin) {
 		ResponseObj responseObj = new ResponseObj();
-		long startTime = System.nanoTime();
 		
 		try {
 			Record record = client.get(policy, new Key(this.namespace, this.set, key), bin);
@@ -81,13 +72,12 @@ public class CLKeyValueStore {
 				responseObj.value = record.bins.values().toArray();
 				responseObj.generation = record.generation;
 			}
+			counters.read.count.getAndIncrement();
 		}
 		catch (Exception e) {
+			counters.read.fail.getAndIncrement();
 			System.out.println(e.getMessage());
 		}
-
-		long endTime = System.nanoTime();
-		responseObj.td = endTime-startTime;
 		return responseObj;
 	}
 }

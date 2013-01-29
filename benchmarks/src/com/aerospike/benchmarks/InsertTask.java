@@ -6,7 +6,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 
-public class InsertTask implements Runnable {
+public final class InsertTask implements Runnable {
 
 	int startKey;
 	int nKeys;
@@ -36,7 +36,7 @@ public class InsertTask implements Runnable {
 			String key;
 			Bin[] bins;			
 			Random r = new Random();
-			int i = this.counters.wcounter.getAndIncrement();
+			int i = this.counters.write.count.get();
 
 			while (i < this.nKeys) {
 				key	 = Utils.genKey(this.startKey+i, this.keySize);
@@ -44,16 +44,17 @@ public class InsertTask implements Runnable {
 				
 				try {
 					this.kvs.SetValue(policy, key, bins);
+					i = this.counters.write.count.getAndIncrement();
 				}
 				catch (Exception e) {
+					this.counters.write.fail.getAndIncrement();
 					System.out.println(e.getMessage());
 					Util.sleep(10);
 				}
-				i = this.counters.wcounter.getAndIncrement();
 			}
 		}
 		catch (Exception ex) {
-			System.out.println("Insert error: " + ex.getMessage());
+			System.out.println("Insert task error: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
