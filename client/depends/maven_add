@@ -1,3 +1,1 @@
-#!/bin/bash
 mvn install:install-file -Dfile=gnu-crypto.jar -DgroupId=org.gnu -DartifactId=gnu-crypto -Dversion=2.0.1 -Dpackaging=jar
-mvn install:install-file -Dfile=bcprov-jdk16-145.jar -DgroupId=bouncycastle -DartifactId=bcprov-jdk16 -Dversion=1.45 -Dpackaging=jar
