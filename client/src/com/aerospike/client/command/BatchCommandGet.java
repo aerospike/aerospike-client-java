@@ -9,6 +9,7 @@
  */
 package com.aerospike.client.command;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -76,12 +77,13 @@ public final class BatchCommandGet extends BatchCommand {
 	 * Parse all results in the batch.  Add records to shared list.
 	 * If the record was not found, the bins will be null.
 	 */
-	protected boolean parseBatchResults(int receiveSize) throws AerospikeException {
+	protected boolean parseBatchResults(int receiveSize) throws AerospikeException, IOException {
 		//Parse each message response and add it to the result array
 		receiveOffset = 0;
 		
 		while (receiveOffset < receiveSize) {
-			int resultCode = receiveBuffer[receiveOffset + 5];
+    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
+			int resultCode = receiveBuffer[5];
 
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.
@@ -89,21 +91,21 @@ public final class BatchCommandGet extends BatchCommand {
 				throw new AerospikeException(resultCode);								
 			}
 			
-			byte info3 = receiveBuffer[receiveOffset + 3];
+			byte info3 = receiveBuffer[3];
 
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & INFO3_LAST) == INFO3_LAST) {
 				return false;
 			}
 			
-			int generation = Buffer.bytesToInt(receiveBuffer, receiveOffset + 6);
-			int expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
-			int opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
+			int generation = Buffer.bytesToInt(receiveBuffer, 6);
+			int expiration = Buffer.bytesToInt(receiveBuffer, 10);
+			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			Key key = parseKey();
 			Integer index = keyMap.get(key);
 			
 			if (index != null) {				
-				if (resultCode == 0) {				
+				if (resultCode == 0) {
 					records[index] = parseRecord(opCount, generation, expiration);
 				}
 			}
@@ -120,26 +122,25 @@ public final class BatchCommandGet extends BatchCommand {
 	 * Parses the given byte buffer and populate the result object.
 	 * Returns the number of bytes that were parsed from the given buffer.
 	 */
-	protected Record parseRecord(
-		int opCount, 
-		int generation,
-		int expiration
-	) throws AerospikeException {
+	protected Record parseRecord(int opCount, int generation, int expiration) 
+		throws AerospikeException, IOException {
 		
 		Map<String,Object> bins = null;
 		ArrayList<Map<String, Object>> duplicates = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			byte particleType = receiveBuffer[receiveOffset+5];
-			byte version = receiveBuffer[receiveOffset+6];
-			byte nameSize = receiveBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
-			receiveOffset += 4 + 4 + nameSize;
+    		readBytes(8);	
+			int opSize = Buffer.bytesToInt(receiveBuffer, 0);
+			byte particleType = receiveBuffer[5];
+			byte version = receiveBuffer[6];
+			byte nameSize = receiveBuffer[7];
+			
+			readBytes(nameSize);
+			String name = Buffer.utf8ToString(receiveBuffer, 0, nameSize);
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
-	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
-			receiveOffset += particleBytesSize;
+			readBytes(particleBytesSize);
+	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, 0, particleBytesSize);
 	
 			// Currently, the batch command returns all the bins even if a subset of
 			// the bins are requested. We have to filter it on the client side.

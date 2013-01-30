@@ -9,6 +9,7 @@
  */
 package com.aerospike.client.command;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -53,12 +54,13 @@ public final class BatchCommandExists extends BatchCommand {
 	 * Parse all results in the batch.  Add records to shared list.
 	 * If the record was not found, the bins will be null.
 	 */
-	protected boolean parseBatchResults(int receiveSize) throws AerospikeException {
+	protected boolean parseBatchResults(int receiveSize) throws AerospikeException, IOException {
 		//Parse each message response and add it to the result array
 		receiveOffset = 0;
 		
 		while (receiveOffset < receiveSize) {
-			int resultCode = receiveBuffer[receiveOffset + 5];
+    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
+			int resultCode = receiveBuffer[5];
 
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.
@@ -66,14 +68,14 @@ public final class BatchCommandExists extends BatchCommand {
 				throw new AerospikeException(resultCode);								
 			}
 
-			byte info3 = receiveBuffer[receiveOffset + 3];
+			byte info3 = receiveBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & INFO3_LAST) == INFO3_LAST) {
 				return false;
 			}
 			
-			int opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
+			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");

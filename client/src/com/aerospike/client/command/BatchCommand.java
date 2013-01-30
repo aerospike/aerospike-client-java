@@ -9,6 +9,8 @@
  */
 package com.aerospike.client.command;
 
+import java.io.BufferedInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import com.aerospike.client.policy.Policy;
 public abstract class BatchCommand extends Command {
 	private final Node node;
 	protected final HashMap<Key,Integer> keyMap;
+	private BufferedInputStream bis;
 	protected int receiveOffset;
 
 	public BatchCommand(Node node, HashMap<Key,Integer> keyMap) {
@@ -47,19 +50,20 @@ public abstract class BatchCommand extends Command {
 	}
 
 	protected final void parseResult(InputStream is) throws AerospikeException, IOException {
+		// Read socket into receive buffer one record at a time.  Do not read entire receive size
+		// because the thread local receive buffer would be too big.
+		bis = new BufferedInputStream(is);
 		boolean status = true;
 		
 		while (status) {
 			// Read header.
-			readFully(is, receiveBuffer, 8);
+    		readBytes(8);
 	
 			long size = Buffer.bytesToLong(receiveBuffer, 0);
 			int receiveSize = ((int) (size & 0xFFFFFFFFFFFFL));
 			
 			// Read remaining message bytes.
 	        if (receiveSize > 0) {
-	        	resizeReceiveBuffer(receiveSize);
-	    		readFully(is, receiveBuffer, receiveSize);
 		    	status = parseBatchResults(receiveSize);
 			}
 	        else {
@@ -68,30 +72,40 @@ public abstract class BatchCommand extends Command {
 		}
 	}
 	
-	protected final Key parseKey() {
-		int fieldCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 18);
-		receiveOffset += MSG_REMAINING_HEADER_SIZE;
+	protected final Key parseKey() throws IOException {
+		int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
 
 		byte[] digest = null;
 		String ns = null;
 
 		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			int fieldtype = receiveBuffer[receiveOffset + 4]; 
+    		readBytes(4);	
+			int fieldlen = Buffer.bytesToInt(receiveBuffer, 0);
+    		readBytes(fieldlen);
+			int fieldtype = receiveBuffer[0]; 
+			int size = fieldlen - 1;
 			
 			if (fieldtype == FIELD_TYPE_DIGEST_RIPE) {
-				digest = new byte[DIGEST_SIZE];
-				System.arraycopy(receiveBuffer, receiveOffset + 5, digest, 0, DIGEST_SIZE);
+				digest = new byte[size];
+				System.arraycopy(receiveBuffer, 1, digest, 0, size);
 			}
 			else if (fieldtype == FIELD_TYPE_NAMESPACE) {
 				//Remember, one byte is used for type out of field
-				ns = new String(receiveBuffer, receiveOffset + 5, fieldlen - 1);
+				ns = new String(receiveBuffer, 1, size);
 			}				
-			receiveOffset += 4 + fieldlen;
 		}
 		return new Key(ns, digest);
 	}
 	
+	protected void readBytes(int size) throws IOException {
+		resizeReceiveBuffer(size);
+
+		if (bis.read(receiveBuffer, 0, size) != size)
+			throw new EOFException();
+		
+		receiveOffset += size;
+	}
+
 	protected abstract void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException;
-	protected abstract boolean parseBatchResults(int buflen) throws AerospikeException;
+	protected abstract boolean parseBatchResults(int buflen) throws AerospikeException, IOException;
 }

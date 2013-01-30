@@ -9,6 +9,8 @@
  */
 package com.aerospike.client.command;
 
+import java.io.BufferedInputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
@@ -23,6 +25,8 @@ import com.aerospike.client.policy.ScanPolicy;
 public final class ScanCommand extends Command {
 	private final Node node;
 	private final ScanCallback callback;
+	private BufferedInputStream bis;
+	private int receiveOffset;
 
 	public ScanCommand(Node node, ScanCallback callback) {
 		this.node = node;
@@ -90,19 +94,20 @@ public final class ScanCommand extends Command {
 	}
 
 	protected final void parseResult(InputStream is) throws AerospikeException, IOException {	
+		// Read socket into receive buffer one record at a time.  Do not read entire receive size
+		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
+		// further database commands which contend with the receive buffer.
+		bis = new BufferedInputStream(is);
 		boolean status = true;
 		
-		while (status) {
+    	while (status) {
 			// Read header.
-			readFully(is, receiveBuffer, 8);
-	
+    		readBytes(8);
+
 			long size = Buffer.bytesToLong(receiveBuffer, 0);
 			int receiveSize = ((int) (size & 0xFFFFFFFFFFFFL));
 			
-			// Read remaining message bytes.
 	        if (receiveSize > 0) {
-	        	resizeReceiveBuffer(receiveSize);
-	    		readFully(is, receiveBuffer, receiveSize);
 		    	status = parseScanResults(receiveSize);
 			}
 	        else {
@@ -111,11 +116,14 @@ public final class ScanCommand extends Command {
 		}
 	}
 	
-	private boolean parseScanResults(int receiveSize) throws AerospikeException {
-		int receiveOffset = 0;
+	private boolean parseScanResults(int receiveSize) 
+		throws AerospikeException, IOException {
+		// Read/parse remaining message bytes one record at a time.
+		receiveOffset = 0;
 		
 		while (receiveOffset < receiveSize) {
-			int resultCode = receiveBuffer[receiveOffset + 5];
+    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
+			int resultCode = receiveBuffer[5];
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
@@ -124,54 +132,56 @@ public final class ScanCommand extends Command {
 				throw new AerospikeException(resultCode);
 			}
 
-			byte info3 = receiveBuffer[receiveOffset + 3];
+			byte info3 = receiveBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & INFO3_LAST) == INFO3_LAST) {
 				return false;
 			}
 			
-			int generation = Buffer.bytesToInt(receiveBuffer, receiveOffset + 6);
-			int expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
-			int fieldCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 18);
-			int opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
+			int generation = Buffer.bytesToInt(receiveBuffer, 6);
+			int expiration = Buffer.bytesToInt(receiveBuffer, 10);
+			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
+			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			
-			receiveOffset += MSG_REMAINING_HEADER_SIZE;
-
 			byte[] digest = null;
 			String namespace = null;
 			String setName = null;
 
 			for (int i = 0; i < fieldCount; i++) {
-				int fieldlen = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-				int fieldtype = receiveBuffer[receiveOffset + 4]; 
+	    		readBytes(4);	
+				int fieldlen = Buffer.bytesToInt(receiveBuffer, 0);
+	    		readBytes(fieldlen);
+				int fieldtype = receiveBuffer[0];
+				int size = fieldlen - 1;
 				
 				if (fieldtype == FIELD_TYPE_DIGEST_RIPE) {
-					digest = new byte[DIGEST_SIZE];
-					System.arraycopy(receiveBuffer, receiveOffset + 5, digest, 0, DIGEST_SIZE);
+					digest = new byte[size];
+					System.arraycopy(receiveBuffer, 1, digest, 0, size);
 				}
 				else if (fieldtype == FIELD_TYPE_NAMESPACE) {
-					namespace = new String(receiveBuffer, receiveOffset + 5, fieldlen - 1);
+					namespace = new String(receiveBuffer, 1, size);
 				}				
 				else if (fieldtype == FIELD_TYPE_TABLE) {
-					setName = new String(receiveBuffer, receiveOffset + 5, fieldlen - 1);
+					setName = new String(receiveBuffer, 1, size);
 				}				
-				receiveOffset += 4 + fieldlen;
 			}
 
 			// Parse bins.
 			Map<String,Object> bins = null;
 			
 			for (int i = 0 ; i < opCount; i++) {
-				int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-				byte particleType = receiveBuffer[receiveOffset+5];
-				byte nameSize = receiveBuffer[receiveOffset+7];
-				String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
-				receiveOffset += 4 + 4 + nameSize;
+	    		readBytes(8);	
+				int opSize = Buffer.bytesToInt(receiveBuffer, 0);
+				byte particleType = receiveBuffer[5];
+				byte nameSize = receiveBuffer[7];
+	    		
+				readBytes(nameSize);
+				String name = Buffer.utf8ToString(receiveBuffer, 0, nameSize);
 		
 				int particleBytesSize = (int) (opSize - (4 + nameSize));
-		        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
-				receiveOffset += particleBytesSize;
+				readBytes(particleBytesSize);
+		        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, 0, particleBytesSize);
 						
 				if (bins == null) {
 					bins = new HashMap<String,Object>();
@@ -183,5 +193,14 @@ public final class ScanCommand extends Command {
 			callback.scanCallback(namespace, setName, digest, bins, generation, expiration);
 		}
 		return true;
-	}	
+	}
+
+	private void readBytes(int size) throws IOException {
+		resizeReceiveBuffer(size);
+
+		if (bis.read(receiveBuffer, 0, size) != size)
+			throw new EOFException();
+		
+		receiveOffset += size;
+	}
 }
