@@ -99,7 +99,7 @@ java.lang.Object
 <DT><B>All Implemented Interfaces:</B> <DD>java.io.Serializable</DD>
 </DL>
 <DL>
-<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../com/aerospike/client/AerospikeException.Connection.html" title="class in com.aerospike.client">AerospikeException.Connection</A>, <A HREF="../../../com/aerospike/client/AerospikeException.InvalidNode.html" title="class in com.aerospike.client">AerospikeException.InvalidNode</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Parse.html" title="class in com.aerospike.client">AerospikeException.Parse</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client">AerospikeException.Serialize</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Timeout.html" title="class in com.aerospike.client">AerospikeException.Timeout</A></DD>
+<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../com/aerospike/client/AerospikeException.Connection.html" title="class in com.aerospike.client">AerospikeException.Connection</A>, <A HREF="../../../com/aerospike/client/AerospikeException.InvalidNode.html" title="class in com.aerospike.client">AerospikeException.InvalidNode</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Parse.html" title="class in com.aerospike.client">AerospikeException.Parse</A>, <A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client">AerospikeException.ScanTerminated</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client">AerospikeException.Serialize</A>, <A HREF="../../../com/aerospike/client/AerospikeException.Timeout.html" title="class in com.aerospike.client">AerospikeException.Timeout</A></DD>
 </DL>
 <HR>
 <DL>
@@ -151,6 +151,14 @@ Aerospike exceptions that can be thrown from the client.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;class</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client">AerospikeException.ScanTerminated</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Exception thrown when chosen node is not active.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;class</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client">AerospikeException.Serialize</A></B></CODE>
 
 <BR>
@@ -173,6 +181,12 @@ Aerospike exceptions that can be thrown from the client.
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
 <B>Constructor Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.html#AerospikeException()">AerospikeException</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.html#AerospikeException(java.lang.Exception)">AerospikeException</A></B>(java.lang.Exception&nbsp;e)</CODE>
@@ -302,6 +316,14 @@ public <B>AerospikeException</B>(java.lang.String&nbsp;message)</PRE>
 AerospikeException</H3>
 <PRE>
 public <B>AerospikeException</B>(java.lang.Exception&nbsp;e)</PRE>
+<DL>
+</DL>
+<HR>
+
+<A NAME="AerospikeException()"><!-- --></A><H3>
+AerospikeException</H3>
+<PRE>
+public <B>AerospikeException</B>()</PRE>
 <DL>
 </DL>
 

@@ -96,6 +96,9 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html"
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Scan the database nodes in parallel, using specified namespace and set
  filters, and default options, returning a single result code.
+<DT><A HREF="../com/aerospike/client/ResultCode.html#SCAN_TERMINATED"><B>SCAN_TERMINATED</B></A> - 
+Static variable in class com.aerospike.client.<A HREF="../com/aerospike/client/ResultCode.html" title="class in com.aerospike.client">ResultCode</A>
+<DD>Scan was terminated by user.
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#scanAll(com.aerospike.client.policy.ScanPolicy, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)"><B>scanAll(ScanPolicy, String, String, ScanCallback)</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Read all records in specified namespace and set.
@@ -111,8 +114,8 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html"
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Scan the database nodes in parallel, using specified namespace and set
  filters, retrieving records or digests only, as specified.
-<DT><A HREF="../com/aerospike/client/ScanCallback.html" title="interface in com.aerospike.client"><B>ScanCallback</B></A> - Interface in <A HREF="../com/aerospike/client/package-summary.html">com.aerospike.client</A><DD>An object implementing this interface is passed in <code>scan()</code>
- calls, so the caller can be notified with scan results.<DT><A HREF="../com/aerospike/client/ScanCallback.html#scanCallback(java.lang.String, java.lang.String, byte[], java.util.Map, int, int)"><B>scanCallback(String, String, byte[], Map&lt;String, Object&gt;, int, int)</B></A> - 
+<DT><A HREF="../com/aerospike/client/ScanCallback.html" title="interface in com.aerospike.client"><B>ScanCallback</B></A> - Interface in <A HREF="../com/aerospike/client/package-summary.html">com.aerospike.client</A><DD>An object implementing this interface is passed in <code>scan()</code> calls, so the caller can
+ be notified with scan results.<DT><A HREF="../com/aerospike/client/ScanCallback.html#scanCallback(com.aerospike.client.Key, com.aerospike.client.Record)"><B>scanCallback(Key, Record)</B></A> - 
 Method in interface com.aerospike.client.<A HREF="../com/aerospike/client/ScanCallback.html" title="interface in com.aerospike.client">ScanCallback</A>
 <DD>This method will be called for each record returned from a scan.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ScanCallback.html#scanCallback(java.lang.String, java.lang.String, byte[], java.util.Map, int, int, java.lang.Object)"><B>scanCallback(String, String, byte[], Map&lt;String, Object&gt;, int, int, Object)</B></A> - 

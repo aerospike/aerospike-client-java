@@ -9,23 +9,10 @@
  */
 package com.aerospike.client.policy;
 
-import java.util.concurrent.ExecutorService;
-
-import com.aerospike.client.sql.Statement;
-
 /**
  * Container object for client policy attributes.
  */
 public final class ClientPolicy {
-	/**
-	 * Executer thread service. The service is used to manage asynchronous tasks returned by
-	 * {@link com.aerospike.client.AerospikeClient#queryTask(QueryPolicy, Statement, com.aerospike.client.sql.QueryTask.Callback) queryTask()}
-	 * and 
-	 * {@link com.aerospike.client.AerospikeClient#executeTask(WritePolicy, Statement, com.aerospike.client.sql.ExecuteTask.Callback) executeTask()}
-	 * methods.
-	 */
-	public ExecutorService executerService;
-	
 	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.

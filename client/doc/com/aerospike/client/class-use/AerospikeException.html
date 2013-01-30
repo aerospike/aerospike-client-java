@@ -135,6 +135,14 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;class</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client">AerospikeException.ScanTerminated</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Exception thrown when chosen node is not active.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;class</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client">AerospikeException.Serialize</A></B></CODE>
 
 <BR>
@@ -193,25 +201,6 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete record for specified key.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-        com.aerospike.client.sql.Statement&nbsp;statement)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.ExecuteTask</CODE></FONT></TD>
-<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#executeTask(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.ExecuteTask.Callback)">executeTask</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-            com.aerospike.client.sql.Statement&nbsp;statement,
-            com.aerospike.client.sql.ExecuteTask.Callback&nbsp;callback)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -319,25 +308,6 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.ResultSet</CODE></FONT></TD>
-<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement)">query</A></B>(<A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-      com.aerospike.client.sql.Statement&nbsp;statement)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.QueryTask</CODE></FONT></TD>
-<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#queryTask(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.QueryTask.Callback)">queryTask</A></B>(<A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-          com.aerospike.client.sql.Statement&nbsp;statement,
-          com.aerospike.client.sql.QueryTask.Callback&nbsp;callback)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;java.util.HashMap&lt;java.lang.String,java.lang.String&gt;</CODE></FONT></TD>
 <TD><CODE><B>Info.</B><B><A HREF="../../../../com/aerospike/client/Info.html#request(com.aerospike.client.cluster.Connection)">request</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
 
@@ -429,6 +399,15 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read all records in specified namespace and set.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>ScanCallback.</B><B><A HREF="../../../../com/aerospike/client/ScanCallback.html#scanCallback(com.aerospike.client.Key, com.aerospike.client.Record)">scanCallback</A></B>(<A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+             <A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A>&nbsp;record)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This method will be called for each record returned from a scan.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">

@@ -95,8 +95,8 @@ Interface ScanCallback</H2>
 </PRE>
 
 <P>
-An object implementing this interface is passed in <code>scan()</code>
- calls, so the caller can be notified with scan results.
+An object implementing this interface is passed in <code>scan()</code> calls, so the caller can
+ be notified with scan results.
 <P>
 
 <P>
@@ -115,12 +115,8 @@ An object implementing this interface is passed in <code>scan()</code>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/ScanCallback.html#scanCallback(java.lang.String, java.lang.String, byte[], java.util.Map, int, int)">scanCallback</A></B>(java.lang.String&nbsp;namespace,
-             java.lang.String&nbsp;set,
-             byte[]&nbsp;digest,
-             java.util.Map&lt;java.lang.String,java.lang.Object&gt;&nbsp;bins,
-             int&nbsp;generation,
-             int&nbsp;expirationDate)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ScanCallback.html#scanCallback(com.aerospike.client.Key, com.aerospike.client.Record)">scanCallback</A></B>(<A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+             <A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A>&nbsp;record)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;This method will be called for each record returned from a scan.</TD>
@@ -139,21 +135,23 @@ An object implementing this interface is passed in <code>scan()</code>
 </TR>
 </TABLE>
 
-<A NAME="scanCallback(java.lang.String, java.lang.String, byte[], java.util.Map, int, int)"><!-- --></A><H3>
+<A NAME="scanCallback(com.aerospike.client.Key, com.aerospike.client.Record)"><!-- --></A><H3>
 scanCallback</H3>
 <PRE>
-void <B>scanCallback</B>(java.lang.String&nbsp;namespace,
-                  java.lang.String&nbsp;set,
-                  byte[]&nbsp;digest,
-                  java.util.Map&lt;java.lang.String,java.lang.Object&gt;&nbsp;bins,
-                  int&nbsp;generation,
-                  int&nbsp;expirationDate)</PRE>
+void <B>scanCallback</B>(<A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+                  <A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A>&nbsp;record)
+                  throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
-<DD>This method will be called for each record returned from a scan.
+<DD>This method will be called for each record returned from a scan. The user may throw a 
+ <A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client"><CODE>AerospikeException.ScanTerminated</CODE></A> 
+ exception if the scan should be aborted.  If any exception is thrown, parallel scan threads
+ to other nodes will also be terminated and the exception will be propagated back through the
+ initiating scan call.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>set</CODE> - set name<DD><CODE>digest</CODE> - unique ID generated from key and set name<DD><CODE>bins</CODE> - bin name/value pairs as <code>Map</code><DD><CODE>generation</CODE> - how many times the record has been modified<DD><CODE>expirationDate</CODE> - date this record will expire, in seconds
-                                                        from Jan 01 2010 00:00:00 GMT</DL>
+<DT><B>Parameters:</B><DD><CODE>key</CODE> - unique record identifier<DD><CODE>record</CODE> - container for bins and record meta-data
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if error occurs or scan should be terminated.</DL>
 </DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->

@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>
-AerospikeException.Parse
+AerospikeException.ScanTerminated
 </TITLE>
 
 
@@ -13,7 +13,7 @@ AerospikeException.Parse
 function windowTitle()
 {
     if (location.href.indexOf('is-external=true') == -1) {
-        parent.document.title="AerospikeException.Parse";
+        parent.document.title="AerospikeException.ScanTerminated";
     }
 }
 </SCRIPT>
@@ -38,7 +38,7 @@ function windowTitle()
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/AerospikeException.Parse.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/AerospikeException.ScanTerminated.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -53,11 +53,11 @@ function windowTitle()
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.InvalidNode.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.Parse.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../index.html?com/aerospike/client/AerospikeException.Parse.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="AerospikeException.Parse.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../index.html?com/aerospike/client/AerospikeException.ScanTerminated.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="AerospikeException.ScanTerminated.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {
@@ -88,13 +88,13 @@ DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&n
 <FONT SIZE="-1">
 com.aerospike.client</FONT>
 <BR>
-Class AerospikeException.Parse</H2>
+Class AerospikeException.ScanTerminated</H2>
 <PRE>
 java.lang.Object
   <IMG SRC="../../../resources/inherit.gif" ALT="extended by ">java.lang.Throwable
       <IMG SRC="../../../resources/inherit.gif" ALT="extended by ">java.lang.Exception
           <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">com.aerospike.client.AerospikeException</A>
-              <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.AerospikeException.Parse</B>
+              <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.AerospikeException.ScanTerminated</B>
 </PRE>
 <DL>
 <DT><B>All Implemented Interfaces:</B> <DD>java.io.Serializable</DD>
@@ -104,16 +104,16 @@ java.lang.Object
 </DL>
 <HR>
 <DL>
-<DT><PRE>public static final class <B>AerospikeException.Parse</B><DT>extends <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></DL>
+<DT><PRE>public static final class <B>AerospikeException.ScanTerminated</B><DT>extends <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></DL>
 </PRE>
 
 <P>
-Exception thrown when client can't parse data returned from server.
+Exception thrown when chosen node is not active.
 <P>
 
 <P>
 <DL>
-<DT><B>See Also:</B><DD><A HREF="../../../serialized-form.html#com.aerospike.client.AerospikeException.Parse">Serialized Form</A></DL>
+<DT><B>See Also:</B><DD><A HREF="../../../serialized-form.html#com.aerospike.client.AerospikeException.ScanTerminated">Serialized Form</A></DL>
 <HR>
 
 <P>
@@ -146,7 +146,13 @@ Exception thrown when client can't parse data returned from server.
 <B>Constructor Summary</B></FONT></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.Parse.html#AerospikeException.Parse(java.lang.String)">AerospikeException.Parse</A></B>(java.lang.String&nbsp;message)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html#AerospikeException.ScanTerminated()">AerospikeException.ScanTerminated</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html#AerospikeException.ScanTerminated(java.lang.Exception)">AerospikeException.ScanTerminated</A></B>(java.lang.Exception&nbsp;e)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
@@ -202,10 +208,18 @@ Exception thrown when client can't parse data returned from server.
 </TR>
 </TABLE>
 
-<A NAME="AerospikeException.Parse(java.lang.String)"><!-- --></A><H3>
-AerospikeException.Parse</H3>
+<A NAME="AerospikeException.ScanTerminated()"><!-- --></A><H3>
+AerospikeException.ScanTerminated</H3>
 <PRE>
-public <B>AerospikeException.Parse</B>(java.lang.String&nbsp;message)</PRE>
+public <B>AerospikeException.ScanTerminated</B>()</PRE>
+<DL>
+</DL>
+<HR>
+
+<A NAME="AerospikeException.ScanTerminated(java.lang.Exception)"><!-- --></A><H3>
+AerospikeException.ScanTerminated</H3>
+<PRE>
+public <B>AerospikeException.ScanTerminated</B>(java.lang.Exception&nbsp;e)</PRE>
 <DL>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->
@@ -224,7 +238,7 @@ public <B>AerospikeException.Parse</B>(java.lang.String&nbsp;message)</PRE>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/AerospikeException.Parse.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/AerospikeException.ScanTerminated.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -239,11 +253,11 @@ public <B>AerospikeException.Parse</B>(java.lang.String&nbsp;message)</PRE>
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.InvalidNode.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.ScanTerminated.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.Parse.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;<A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../index.html?com/aerospike/client/AerospikeException.Parse.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="AerospikeException.Parse.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../index.html?com/aerospike/client/AerospikeException.ScanTerminated.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="AerospikeException.ScanTerminated.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {

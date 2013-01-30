@@ -202,25 +202,6 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement)">execute</A></B>(<A HREF="../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-        com.aerospike.client.sql.Statement&nbsp;statement)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.ExecuteTask</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#executeTask(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.ExecuteTask.Callback)">executeTask</A></B>(<A HREF="../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-            com.aerospike.client.sql.Statement&nbsp;statement,
-            com.aerospike.client.sql.ExecuteTask.Callback&nbsp;callback)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;boolean</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#exists(com.aerospike.client.policy.Policy, com.aerospike.client.Key)">exists</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
        <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
@@ -338,25 +319,6 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Write record bin(s).</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.ResultSet</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement)">query</A></B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-      com.aerospike.client.sql.Statement&nbsp;statement)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;com.aerospike.client.sql.QueryTask</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#queryTask(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.QueryTask.Callback)">queryTask</A></B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-          com.aerospike.client.sql.Statement&nbsp;statement,
-          com.aerospike.client.sql.QueryTask.Callback&nbsp;callback)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -893,68 +855,6 @@ public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/
 <DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters<DD><CODE>nodeName</CODE> - server node name;<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if scan fails</DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement)"><!-- --></A><H3>
-query</H3>
-<PRE>
-public final com.aerospike.client.sql.ResultSet <B>query</B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-                                                      com.aerospike.client.sql.Statement&nbsp;statement)
-                                               throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
-<DL>
-<DD><DL>
-
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="queryTask(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.QueryTask.Callback)"><!-- --></A><H3>
-queryTask</H3>
-<PRE>
-public final com.aerospike.client.sql.QueryTask <B>queryTask</B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
-                                                          com.aerospike.client.sql.Statement&nbsp;statement,
-                                                          com.aerospike.client.sql.QueryTask.Callback&nbsp;callback)
-                                                   throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
-<DL>
-<DD><DL>
-
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="execute(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement)"><!-- --></A><H3>
-execute</H3>
-<PRE>
-public final void <B>execute</B>(<A HREF="../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-                          com.aerospike.client.sql.Statement&nbsp;statement)
-                   throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
-<DL>
-<DD><DL>
-
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="executeTask(com.aerospike.client.policy.WritePolicy, com.aerospike.client.sql.Statement, com.aerospike.client.sql.ExecuteTask.Callback)"><!-- --></A><H3>
-executeTask</H3>
-<PRE>
-public final com.aerospike.client.sql.ExecuteTask <B>executeTask</B>(<A HREF="../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
-                                                              com.aerospike.client.sql.Statement&nbsp;statement,
-                                                              com.aerospike.client.sql.ExecuteTask.Callback&nbsp;callback)
-                                                       throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
-<DL>
-<DD><DL>
-
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
 </DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->
