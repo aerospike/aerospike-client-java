@@ -23,6 +23,7 @@ import com.aerospike.client.policy.ScanPolicy;
 
 public final class ScanCommand extends MultiCommand {
 	private final ScanCallback callback;
+	private volatile boolean valid;
 
 	public ScanCommand(Node node, ScanCallback callback) {
 		super(node);
@@ -30,6 +31,8 @@ public final class ScanCommand extends MultiCommand {
 	}
 
 	public void scan(ScanPolicy policy, String namespace, String setName) throws AerospikeException {
+		valid = true;
+		
 		int fieldCount = 0;
 		
 		if (namespace != null) {
@@ -126,10 +129,18 @@ public final class ScanCommand extends MultiCommand {
 				}
 				bins.put(name, value);
 		    }
-											
+			
+			if (! valid) {
+				throw new AerospikeException.ScanTerminated();
+			}
+			
 			// Call the callback function.
 			callback.scanCallback(key, new Record(bins, null, generation, expiration));
 		}
 		return true;
+	}
+	
+	public void stop() {
+		valid = false;
 	}
 }

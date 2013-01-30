@@ -19,19 +19,14 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.ScanCommand;
-import com.aerospike.client.command.ScanThread;
+import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.SingleCommand;
 import com.aerospike.client.command.Value;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.RetryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.sql.ExecuteTask;
-import com.aerospike.client.sql.QueryTask;
-import com.aerospike.client.sql.ResultSet;
-import com.aerospike.client.sql.Statement;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -582,36 +577,8 @@ public class AerospikeClient {
 		Node[] nodes = cluster.getNodes();
 
 		if (policy.concurrentNodes) {
-			ScanThread[] threads = new ScanThread[nodes.length];
-			int count = 0;
-			
-			for (Node node : nodes) {
-				ScanThread thread = new ScanThread(policy, node, namespace, setName, callback);
-				threads[count++] = thread;
-				thread.start();
-			}
-
-			for (Thread thread : threads) {
-				try {
-					thread.join();
-				}
-				catch (Exception e) {
-				}
-			}
-
-			// Throw an exception if an error occurred.
-			for (ScanThread thread : threads) {
-				Exception e = thread.getException();
-				
-				if (e != null) {
-					if (e instanceof AerospikeException) {
-						throw (AerospikeException)e;					
-					}
-					else {
-						throw new AerospikeException(e);
-					}
-				}
-			}
+			ScanExecutor executor = new ScanExecutor(policy, namespace, setName, callback);
+			executor.scanParallel(nodes);
 		}
 		else {
 			for (Node node : nodes) {
@@ -666,32 +633,5 @@ public class AerospikeClient {
 		
 		ScanCommand command = new ScanCommand(node, callback);
 		command.scan(policy, namespace, setName);
-	}
-	
-	//-------------------------------------------------------
-	// SQL Operations : Not implemented yet.
-	//-------------------------------------------------------
-
-	// Synchronous query
-	public final ResultSet query(QueryPolicy policy, Statement statement) 
-		throws AerospikeException {
-		return null;
-	}
-
-	// Asynchronous query
-	public final QueryTask queryTask(QueryPolicy policy, Statement statement, QueryTask.Callback callback) 
-		throws AerospikeException {
-		return null;
-	}
-
-	// Synchronous update
-	public final void execute(WritePolicy policy, Statement statement) 
-		throws AerospikeException {
-	}
-		
-	// Asynchronous update
-	public final ExecuteTask executeTask(WritePolicy policy, Statement statement, ExecuteTask.Callback callback) 
-		throws AerospikeException {
-		return null;
 	}
 }

@@ -14,6 +14,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Scan was terminated by user.
+	 */
+	public static final int SCAN_TERMINATED = -4;
+	
+	/**
 	 * Chosen node is not currently active.
 	 */
 	public static final int INVALID_NODE_ERROR = -3;

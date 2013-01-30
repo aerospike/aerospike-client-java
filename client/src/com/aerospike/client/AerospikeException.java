@@ -40,6 +40,9 @@ public class AerospikeException extends Exception {
 		super(e);
 	}
 	
+	public AerospikeException() {
+	}
+
 	@Override
 	public String getMessage() {
 		StringBuilder sb = new StringBuilder();
@@ -131,6 +134,21 @@ public class AerospikeException extends Exception {
 
 		public InvalidNode() {
 			super(ResultCode.INVALID_NODE_ERROR);
+		}
+	}
+
+	/**
+	 * Exception thrown when chosen node is not active.
+	 */
+	public static final class ScanTerminated extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public ScanTerminated() {
+			super(ResultCode.SCAN_TERMINATED);
+		}
+		
+		public ScanTerminated(Exception e) {
+			super(ResultCode.SCAN_TERMINATED, e);
 		}
 	}
 }
