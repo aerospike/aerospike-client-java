@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.policy.Priority;
 import com.aerospike.client.policy.RetryPolicy;
@@ -60,22 +62,15 @@ public class ScanSeries extends Example implements ScanCallback {
 	}
 
 	@Override
-	public void scanCallback(
-		String namespace, 
-		String set, 
-		byte[] digest,
-		Map<String, Object> bins,
-		int generation,
-		int expirationDate
-	) {
-		Metrics metrics = setMap.get(set);
+	public void scanCallback(Key key, Record record) {
+		Metrics metrics = setMap.get(key.setName);
 		
 		if (metrics == null) {
 			metrics = new Metrics();
 		}
 		metrics.count++;
 		metrics.total++;
-		setMap.put(set, metrics);
+		setMap.put(key.setName, metrics);
 		
 		/*
 		System.out.print(namespace + ',' + set + ',' + Buffer.bytesToHexString(digest));

@@ -9,34 +9,26 @@
  */
 package com.aerospike.client.command;
 
-import java.io.BufferedInputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.ScanPolicy;
 
-public final class ScanCommand extends Command {
-	private final Node node;
+public final class ScanCommand extends MultiCommand {
 	private final ScanCallback callback;
-	private BufferedInputStream bis;
-	private int receiveOffset;
 
 	public ScanCommand(Node node, ScanCallback callback) {
-		this.node = node;
+		super(node);
 		this.callback = callback;
 	}
 
-	protected final Node getNode() { 
-		return node;
-	}
-	
 	public void scan(ScanPolicy policy, String namespace, String setName) throws AerospikeException {
 		int fieldCount = 0;
 		
@@ -61,18 +53,8 @@ public final class ScanCommand extends Command {
 			readAttr |= Command.INFO1_NOBINDATA;
 		}
 		
-		// Write header data except total size which must be written last. 
-		sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-		sendBuffer[9] = (byte)readAttr;
-		
-		for (int i = 10; i < 26; i++) {
-			sendBuffer[i] = 0;
-		}
-		Buffer.shortToBytes(fieldCount, sendBuffer, 26);
-		sendBuffer[28] = 0;
-		sendBuffer[29] = 0;		
-		sendOffset = MSG_TOTAL_HEADER_SIZE;
-		
+		writeHeader(readAttr, fieldCount, 0);
+				
 		if (namespace != null) {
 			writeField(namespace, FIELD_TYPE_NAMESPACE);
 		}
@@ -93,30 +75,7 @@ public final class ScanCommand extends Command {
 		execute(policy);
 	}
 
-	protected final void parseResult(InputStream is) throws AerospikeException, IOException {	
-		// Read socket into receive buffer one record at a time.  Do not read entire receive size
-		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
-		// further database commands which contend with the receive buffer.
-		bis = new BufferedInputStream(is);
-		boolean status = true;
-		
-    	while (status) {
-			// Read header.
-    		readBytes(8);
-
-			long size = Buffer.bytesToLong(receiveBuffer, 0);
-			int receiveSize = ((int) (size & 0xFFFFFFFFFFFFL));
-			
-	        if (receiveSize > 0) {
-		    	status = parseScanResults(receiveSize);
-			}
-	        else {
-	        	status = false;
-	        }
-		}
-	}
-	
-	private boolean parseScanResults(int receiveSize) 
+	protected boolean parseRecordResults(int receiveSize) 
 		throws AerospikeException, IOException {
 		// Read/parse remaining message bytes one record at a time.
 		receiveOffset = 0;
@@ -144,28 +103,7 @@ public final class ScanCommand extends Command {
 			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
 			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			
-			byte[] digest = null;
-			String namespace = null;
-			String setName = null;
-
-			for (int i = 0; i < fieldCount; i++) {
-	    		readBytes(4);	
-				int fieldlen = Buffer.bytesToInt(receiveBuffer, 0);
-	    		readBytes(fieldlen);
-				int fieldtype = receiveBuffer[0];
-				int size = fieldlen - 1;
-				
-				if (fieldtype == FIELD_TYPE_DIGEST_RIPE) {
-					digest = new byte[size];
-					System.arraycopy(receiveBuffer, 1, digest, 0, size);
-				}
-				else if (fieldtype == FIELD_TYPE_NAMESPACE) {
-					namespace = new String(receiveBuffer, 1, size);
-				}				
-				else if (fieldtype == FIELD_TYPE_TABLE) {
-					setName = new String(receiveBuffer, 1, size);
-				}				
-			}
+			Key key = parseKey(fieldCount);
 
 			// Parse bins.
 			Map<String,Object> bins = null;
@@ -188,19 +126,10 @@ public final class ScanCommand extends Command {
 				}
 				bins.put(name, value);
 		    }
-								
+											
 			// Call the callback function.
-			callback.scanCallback(namespace, setName, digest, bins, generation, expiration);
+			callback.scanCallback(key, new Record(bins, null, generation, expiration));
 		}
 		return true;
-	}
-
-	private void readBytes(int size) throws IOException {
-		resizeReceiveBuffer(size);
-
-		if (bis.read(receiveBuffer, 0, size) != size)
-			throw new EOFException();
-		
-		receiveOffset += size;
 	}
 }

@@ -21,26 +21,28 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor.BatchNamespace;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchCommandExists extends BatchCommand {
+public final class BatchCommandExists extends MultiCommand {
+	private final HashMap<Key,Integer> keyMap;
 	private final boolean[] existsArray;
 
 	public BatchCommandExists(Node node, HashMap<Key,Integer> keyMap, boolean[] existsArray) {
-		super(node, keyMap);
+		super(node);
+		this.keyMap = keyMap;
 		this.existsArray = existsArray;
 	}
 	
 	public void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException {
 		// Estimate buffer size
 		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * BatchCommand.DIGEST_SIZE;
+		int byteSize = keys.size() * Command.DIGEST_SIZE;
 
 		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 				
 		begin();		
-		writeHeader(INFO1_READ | INFO1_NOBINDATA, 0);		
-		writeField(batchNamespace.namespace, BatchCommand.FIELD_TYPE_NAMESPACE);
-		writeFieldHeader(byteSize, BatchCommand.FIELD_TYPE_DIGEST_RIPE_ARRAY);
+		writeHeader(INFO1_READ | INFO1_NOBINDATA, 2, 0);		
+		writeField(batchNamespace.namespace, Command.FIELD_TYPE_NAMESPACE);
+		writeFieldHeader(byteSize, Command.FIELD_TYPE_DIGEST_RIPE_ARRAY);
 	
 		for (Key key : keys) {
 			byte[] digest = key.digest;
@@ -54,7 +56,7 @@ public final class BatchCommandExists extends BatchCommand {
 	 * Parse all results in the batch.  Add records to shared list.
 	 * If the record was not found, the bins will be null.
 	 */
-	protected boolean parseBatchResults(int receiveSize) throws AerospikeException, IOException {
+	protected boolean parseRecordResults(int receiveSize) throws AerospikeException, IOException {
 		//Parse each message response and add it to the result array
 		receiveOffset = 0;
 		
@@ -75,13 +77,14 @@ public final class BatchCommandExists extends BatchCommand {
 				return false;
 			}
 			
+			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
 			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 						
-			Key key = parseKey();
+			Key key = parseKey(fieldCount);
 			Integer index = keyMap.get(key);
 			
 			if (index != null) {

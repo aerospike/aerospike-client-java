@@ -9,7 +9,8 @@
  */
 package net.citrusleaf;
 
-import java.util.Map;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 
 /**
  * Legacy compatibility Layer. This class should only be used for legacy code.
@@ -26,8 +27,7 @@ public final class ScanForwarder implements com.aerospike.client.ScanCallback  {
 	}
 	
 	@Override
-	public void scanCallback(String namespace, String set, byte[] digest,
-			Map<String, Object> bins, int generation, int expirationDate) {
-		callback.scanCallback(namespace, set, digest, bins, generation, expirationDate, userData);
-	}
+	public void scanCallback(Key key, Record record) {
+		callback.scanCallback(key.namespace, key.setName, key.digest, record.bins, record.generation, record.expiration, userData);
+	}	
 }

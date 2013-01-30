@@ -1,8 +1,8 @@
 package com.aerospike.examples;
 
-import java.util.Map;
-
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.policy.ScanPolicy;
 
@@ -34,18 +34,11 @@ public class ScanParallel extends Example implements ScanCallback {
 	}
 
 	@Override
-	public void scanCallback(
-		String namespace, 
-		String set, 
-		byte[] digest,
-		Map<String, Object> bins,
-		int generation,
-		int expirationDate
-	) {
+	public void scanCallback(Key key, Record record) {
 		recordCount++;
 
 		if ((recordCount % 10000) == 0) {
 			console.info("Records " + recordCount);
 		}
-	}		
+	}
 }
