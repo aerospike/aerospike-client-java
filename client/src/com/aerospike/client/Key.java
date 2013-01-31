@@ -63,16 +63,16 @@ public final class Key {
 	}
 	
 	/**
-	 * Initialize key from namespace, optional set name and digest.
+	 * Initialize key from namespace, digest and optional set name.
 	 * 
 	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
 	 * @param digest				unique server hash value
+	 * @param setName				optional set name, enter null when set does not exist
 	 */
-	public Key(String namespace, String setName, byte[] digest) {
+	public Key(String namespace, byte[] digest, String setName) {
 		this.namespace = namespace; 
-		this.setName = setName;
 		this.digest = digest;
+		this.setName = setName;
 		this.userKey = null;
 	}
 	

@@ -90,7 +90,7 @@ public abstract class MultiCommand extends Command {
 				setName = new String(receiveBuffer, 1, size);
 			}				
 		}
-		return new Key(namespace, setName, digest);		
+		return new Key(namespace, digest, setName);		
 	}
 
 	protected void readBytes(int length) throws IOException {
