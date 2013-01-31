@@ -111,6 +111,7 @@ public class BatchExists {
 			
 		} catch (Exception ex) {
 			System.out.println(ex.toString());
+			ex.printStackTrace();
 		}	
 	}
 	
