@@ -167,12 +167,12 @@ Unique record identifier. Records can be identified using a specified namespace,
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace and digest.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, byte[])">Key</A></B>(java.lang.String&nbsp;namespace,
-    java.lang.String&nbsp;setName,
-    byte[]&nbsp;digest)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, byte[], java.lang.String)">Key</A></B>(java.lang.String&nbsp;namespace,
+    byte[]&nbsp;digest,
+    java.lang.String&nbsp;setName)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and digest.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, digest and optional set name.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, java.lang.Object)">Key</A></B>(java.lang.String&nbsp;namespace,
@@ -317,17 +317,17 @@ public <B>Key</B>(java.lang.String&nbsp;namespace,
 </DL>
 <HR>
 
-<A NAME="Key(java.lang.String, java.lang.String, byte[])"><!-- --></A><H3>
+<A NAME="Key(java.lang.String, byte[], java.lang.String)"><!-- --></A><H3>
 Key</H3>
 <PRE>
 public <B>Key</B>(java.lang.String&nbsp;namespace,
-           java.lang.String&nbsp;setName,
-           byte[]&nbsp;digest)</PRE>
+           byte[]&nbsp;digest,
+           java.lang.String&nbsp;setName)</PRE>
 <DL>
-<DD>Initialize key from namespace, optional set name and digest.
+<DD>Initialize key from namespace, digest and optional set name.
 <P>
 <DL>
-<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>digest</CODE> - unique server hash value</DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>digest</CODE> - unique server hash value<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist</DL>
 </DL>
 <HR>
 
