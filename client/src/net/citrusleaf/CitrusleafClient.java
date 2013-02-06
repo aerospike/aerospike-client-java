@@ -2598,7 +2598,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		
 		if (opts != null) {
 			policy.timeout = opts.mTimeout;
-			policy.retryPolicy = com.aerospike.client.policy.RetryPolicy.RETRY;
+			policy.maxRetries = 1;
 		}
 		
 		if (scanOpts != null) {
@@ -2613,15 +2613,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	
 	private static WritePolicy getWritePolicy(ClOptions opts, ClWriteOptions wOpts) {
 		WritePolicy policy = new WritePolicy();
-		
-		if (opts != null) {
-			policy.timeout = opts.mTimeout;
-			policy.retryPolicy = (opts.mRetryPolicy == RetryPolicy.ONE_SHOT) ? 
-				com.aerospike.client.policy.RetryPolicy.ONCE : com.aerospike.client.policy.RetryPolicy.RETRY;
-		}
-		else {
-			policy.timeout = DEFAULT_TIMEOUT;
-		}
+	
+		setPolicy(opts, policy);
 		
 		if (wOpts != null) {
 			policy.expiration = wOpts.expiration;			
@@ -2647,16 +2640,30 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	
 	private static Policy getPolicy(ClOptions opts) {
 		Policy policy = new Policy();
-		
+		setPolicy(opts, policy);
+		return policy;
+	}
+
+	private static void setPolicy(ClOptions opts, Policy policy) {		
 		if (opts != null) {
 			policy.timeout = opts.mTimeout;
-			policy.retryPolicy = (opts.mRetryPolicy == RetryPolicy.ONE_SHOT) ? 
-				com.aerospike.client.policy.RetryPolicy.ONCE : com.aerospike.client.policy.RetryPolicy.RETRY;
+			
+			if (opts.mRetryPolicy == RetryPolicy.ONE_SHOT) {
+				policy.maxRetries = 1;			
+			}
+			else {
+				policy.sleepBetweenRetries = policy.timeout / policy.maxRetries;
+				
+				if (policy.sleepBetweenRetries > 2000) {
+					policy.sleepBetweenRetries = 2000;
+				}
+			}
 		}
 		else {
 			policy.timeout = DEFAULT_TIMEOUT;
+			policy.maxRetries = 3;			
+			policy.sleepBetweenRetries = policy.timeout / policy.maxRetries;
 		}
-		return policy;
 	}
 
 	private static Key[] getKeys(String namespace, String set, Collection<Object> keys) throws AerospikeException {

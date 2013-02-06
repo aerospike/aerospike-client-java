@@ -9,7 +9,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.policy.Priority;
-import com.aerospike.client.policy.RetryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 
 public class ScanSeries extends Example implements ScanCallback {
@@ -30,7 +29,7 @@ public class ScanSeries extends Example implements ScanCallback {
 		// Use low scan priority.  This will take more time, but it will reduce
 		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
-		policy.retryPolicy = RetryPolicy.ONCE;
+		policy.maxRetries = 1;
 		policy.priority = Priority.LOW;
 		
 		List<String> nodeList = client.getNodeNames();

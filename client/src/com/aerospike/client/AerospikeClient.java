@@ -23,7 +23,6 @@ import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.SingleCommand;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.RetryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.MsgPack;
@@ -569,7 +568,7 @@ public class AerospikeClient {
 		}
 		
 		// Retry policy must be one-shot for scans.
-		policy.retryPolicy = RetryPolicy.ONCE;
+		policy.maxRetries = 1;
 		
 		Node[] nodes = cluster.getNodes();
 
@@ -601,6 +600,13 @@ public class AerospikeClient {
 	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback) 
 		throws AerospikeException {
 		
+		if (policy == null) {
+			policy = new ScanPolicy();
+		}
+		
+		// Retry policy must be one-shot for scans.
+		policy.maxRetries = 1;
+
 		Node node = cluster.getNode(nodeName);
 		scanNode(policy, node, namespace, setName, callback);
 	}
@@ -620,14 +626,7 @@ public class AerospikeClient {
 	 */
 	private final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback) 
 		throws AerospikeException {
-		
-		if (policy == null) {
-			policy = new ScanPolicy();
-		}
-		
-		// Retry policy must be one-shot for scans.
-		policy.retryPolicy = RetryPolicy.ONCE;
-		
+
 		ScanCommand command = new ScanCommand(node, callback);
 		command.scan(policy, namespace, setName);
 	}

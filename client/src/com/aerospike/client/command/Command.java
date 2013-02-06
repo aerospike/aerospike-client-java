@@ -21,7 +21,6 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.RetryPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -68,9 +67,6 @@ public abstract class Command {
 	public static final int OPERATION_HEADER_SIZE = 8;
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
-
-	private static final int RETRY_COUNT = 3;
-	private static final int MAX_ITERATIONS = 10;
 
 	protected byte[] sendBuffer;
 	protected byte[] receiveBuffer;
@@ -184,27 +180,18 @@ public abstract class Command {
 		long size = (sendOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(size, sendBuffer, 0);
 
-		// Initialize timeout monitoring.
-		int maxIterations;
-		int timeoutMillis;
-		
-		if (policy != null) {			
-			maxIterations = (policy.retryPolicy == RetryPolicy.RETRY)? MAX_ITERATIONS : 1;
-			timeoutMillis = policy.timeout;
+		if (policy == null) {
+			policy = new Policy();
 		}
-		else {
-			maxIterations = MAX_ITERATIONS;
-			timeoutMillis = 0;			
-		}
-		int remainingMillis = timeoutMillis;
-        long sleepMillis = (timeoutMillis > RETRY_COUNT) ? timeoutMillis / RETRY_COUNT : 1;
-		long limit = System.currentTimeMillis() + timeoutMillis;
+		        
+		int remainingMillis = policy.timeout;
+		long limit = System.currentTimeMillis() + remainingMillis;
         int failedNodes = 0;
         int failedConns = 0;
         int i;
 
         // Execute command until successful, timed out or maximum retries have been reached.
-		for (i = 0; i < maxIterations; i++) {
+		for (i = 0; i < policy.maxRetries; i++) {
 			Node node = null;
 			try {		
 				node = getNode();
@@ -269,7 +256,7 @@ public abstract class Command {
 			}
 
 			// Check for client timeout.
-			if (timeoutMillis > 0) {
+			if (policy.timeout > 0) {
 				remainingMillis = (int)(limit - System.currentTimeMillis());
 
 				if (remainingMillis <= 0) {
@@ -277,11 +264,11 @@ public abstract class Command {
 				}
 			}
 			// Sleep before trying again.
-			Util.sleep(sleepMillis);
+			Util.sleep(policy.sleepBetweenRetries);
 		}
 		
 		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + timeoutMillis + " iterations=" + i + 
+			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + 
 				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
 		}
 		throw new AerospikeException.Timeout();
