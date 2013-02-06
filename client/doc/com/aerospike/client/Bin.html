@@ -74,9 +74,9 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#methods_inherited_from_class_java.lang.Object">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;METHOD</FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_top"></A>
@@ -124,7 +124,7 @@ Column name/value pair.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#value">value</A></B></CODE>
 
 <BR>
@@ -141,20 +141,43 @@ Column name/value pair.
 <B>Constructor Summary</B></FONT></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin()">Bin</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, byte[])">Bin</A></B>(java.lang.String&nbsp;name,
+    byte[]&nbsp;value)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Construct empty bin.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and byte array value.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.Object)">Bin</A></B>(java.lang.Object&nbsp;value)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, int)">Bin</A></B>(java.lang.String&nbsp;name,
+    int&nbsp;value)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor for single bin servers, specifying bin value only.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and integer value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, long)">Bin</A></B>(java.lang.String&nbsp;name,
+    long&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and long value.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, java.lang.Object)">Bin</A></B>(java.lang.String&nbsp;name,
     java.lang.Object&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and object value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, java.lang.String)">Bin</A></B>(java.lang.String&nbsp;name,
+    java.lang.String&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and string value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#Bin(java.lang.String, com.aerospike.client.Value)">Bin</A></B>(java.lang.String&nbsp;name,
+    <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Constructor, specifying bin name and value.</TD>
@@ -168,6 +191,41 @@ Column name/value pair.
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
 <B>Method Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#asBlob(java.lang.String, java.lang.Object)">asBlob</A></B>(java.lang.String&nbsp;name,
+       java.lang.Object&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create bin with a blob value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#asList(java.lang.String, java.util.List)">asList</A></B>(java.lang.String&nbsp;name,
+       java.util.List&lt;?&gt;&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create bin with a list value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#asMap(java.lang.String, java.util.Map)">asMap</A></B>(java.lang.String&nbsp;name,
+      java.util.Map&lt;?,?&gt;&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create bin with a map value.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Bin.html#asNull(java.lang.String)">asNull</A></B>(java.lang.String&nbsp;name)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create bin with a null value.</TD>
 </TR>
 </TABLE>
 &nbsp;<A NAME="methods_inherited_from_class_java.lang.Object"><!-- --></A>
@@ -195,7 +253,7 @@ Column name/value pair.
 <A NAME="name"><!-- --></A><H3>
 name</H3>
 <PRE>
-public java.lang.String <B>name</B></PRE>
+public final java.lang.String <B>name</B></PRE>
 <DL>
 <DD>Bin name. Current limit is 14 characters.
 <P>
@@ -207,7 +265,7 @@ public java.lang.String <B>name</B></PRE>
 <A NAME="value"><!-- --></A><H3>
 value</H3>
 <PRE>
-public java.lang.Object <B>value</B></PRE>
+public final <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A> <B>value</B></PRE>
 <DL>
 <DD>Bin value.
 <P>
@@ -225,38 +283,163 @@ public java.lang.Object <B>value</B></PRE>
 </TR>
 </TABLE>
 
-<A NAME="Bin(java.lang.String, java.lang.Object)"><!-- --></A><H3>
+<A NAME="Bin(java.lang.String, java.lang.String)"><!-- --></A><H3>
 Bin</H3>
 <PRE>
 public <B>Bin</B>(java.lang.String&nbsp;name,
-           java.lang.Object&nbsp;value)</PRE>
+           java.lang.String&nbsp;value)</PRE>
 <DL>
-<DD>Constructor, specifying bin name and value.
+<DD>Constructor, specifying bin name and string value.
+ For servers configured as "single-bin", enter a null or empty name.
 <P>
 <DL>
 <DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
 </DL>
 <HR>
 
-<A NAME="Bin(java.lang.Object)"><!-- --></A><H3>
+<A NAME="Bin(java.lang.String, byte[])"><!-- --></A><H3>
 Bin</H3>
 <PRE>
-public <B>Bin</B>(java.lang.Object&nbsp;value)</PRE>
+public <B>Bin</B>(java.lang.String&nbsp;name,
+           byte[]&nbsp;value)</PRE>
 <DL>
-<DD>Constructor for single bin servers, specifying bin value only.
+<DD>Constructor, specifying bin name and byte array value.
+ For servers configured as "single-bin", enter a null or empty name.
 <P>
 <DL>
-<DT><B>Parameters:</B><DD><CODE>value</CODE> - bin value</DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
 </DL>
 <HR>
 
-<A NAME="Bin()"><!-- --></A><H3>
+<A NAME="Bin(java.lang.String, int)"><!-- --></A><H3>
 Bin</H3>
 <PRE>
-public <B>Bin</B>()</PRE>
+public <B>Bin</B>(java.lang.String&nbsp;name,
+           int&nbsp;value)</PRE>
 <DL>
-<DD>Construct empty bin.
+<DD>Constructor, specifying bin name and integer value.
+ For servers configured as "single-bin", enter a null or empty name.
 <P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DL>
+<HR>
+
+<A NAME="Bin(java.lang.String, long)"><!-- --></A><H3>
+Bin</H3>
+<PRE>
+public <B>Bin</B>(java.lang.String&nbsp;name,
+           long&nbsp;value)</PRE>
+<DL>
+<DD>Constructor, specifying bin name and long value.
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DL>
+<HR>
+
+<A NAME="Bin(java.lang.String, com.aerospike.client.Value)"><!-- --></A><H3>
+Bin</H3>
+<PRE>
+public <B>Bin</B>(java.lang.String&nbsp;name,
+           <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</PRE>
+<DL>
+<DD>Constructor, specifying bin name and value.
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DL>
+<HR>
+
+<A NAME="Bin(java.lang.String, java.lang.Object)"><!-- --></A><H3>
+Bin</H3>
+<PRE>
+public <B>Bin</B>(java.lang.String&nbsp;name,
+           java.lang.Object&nbsp;value)</PRE>
+<DL>
+<DD>Constructor, specifying bin name and object value.
+ This is the slowest of the Bin constructors because the type
+ must be determined using multiple "instanceof" checks.
+ <p>
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DL>
+
+<!-- ============ METHOD DETAIL ========== -->
+
+<A NAME="method_detail"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="1"><FONT SIZE="+2">
+<B>Method Detail</B></FONT></TH>
+</TR>
+</TABLE>
+
+<A NAME="asList(java.lang.String, java.util.List)"><!-- --></A><H3>
+asList</H3>
+<PRE>
+public static <A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A> <B>asList</B>(java.lang.String&nbsp;name,
+                         java.util.List&lt;?&gt;&nbsp;value)</PRE>
+<DL>
+<DD>Create bin with a list value.  The list value will be serialized as a 3.0 server list type.
+ Supported by 3.0 servers only.
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="asMap(java.lang.String, java.util.Map)"><!-- --></A><H3>
+asMap</H3>
+<PRE>
+public static <A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A> <B>asMap</B>(java.lang.String&nbsp;name,
+                        java.util.Map&lt;?,?&gt;&nbsp;value)</PRE>
+<DL>
+<DD>Create bin with a map value.  The map value will be serialized as a 3.0 server map type.
+ Supported by 3.0 servers only.
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="asBlob(java.lang.String, java.lang.Object)"><!-- --></A><H3>
+asBlob</H3>
+<PRE>
+public static <A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A> <B>asBlob</B>(java.lang.String&nbsp;name,
+                         java.lang.Object&nbsp;value)</PRE>
+<DL>
+<DD>Create bin with a blob value.  The value will be java serialized.
+ This method is faster than the bin Object constructor because the blob is converted 
+ directly instead of using multiple "instanceof" type checks with a blob default.
+ <p>
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters<DD><CODE>value</CODE> - bin value</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="asNull(java.lang.String)"><!-- --></A><H3>
+asNull</H3>
+<PRE>
+public static <A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A> <B>asNull</B>(java.lang.String&nbsp;name)</PRE>
+<DL>
+<DD>Create bin with a null value. This is useful for bin deletions within a record.
+ For servers configured as "single-bin", enter a null or empty name.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name, current limit is 14 characters</DL>
+</DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->
 <HR>
@@ -310,9 +493,9 @@ public <B>Bin</B>()</PRE>
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#methods_inherited_from_class_java.lang.Object">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;METHOD</FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_bottom"></A>

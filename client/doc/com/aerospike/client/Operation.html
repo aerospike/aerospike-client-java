@@ -54,7 +54,7 @@ function windowTitle()
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Log.Level.html" title="enum in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Operation.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Operation.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -74,7 +74,7 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;<A HREF="#nested_class_summary">NESTED</A>&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
 DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
@@ -106,29 +106,30 @@ Database operation definition.  The class is used in client's operate() method.
 <HR>
 
 <P>
-<!-- =========== FIELD SUMMARY =========== -->
+<!-- ======== NESTED CLASS SUMMARY ======== -->
+
+<A NAME="nested_class_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Nested Class Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;class</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+</TABLE>
+&nbsp;<!-- =========== FIELD SUMMARY =========== -->
 
 <A NAME="field_summary"><!-- --></A>
 <TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
 <B>Field Summary</B></FONT></TH>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#ADD">ADD</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#APPEND">APPEND</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -140,7 +141,7 @@ Database operation definition.  The class is used in client's operate() method.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#binValue">binValue</A></B></CODE>
 
 <BR>
@@ -148,43 +149,11 @@ Database operation definition.  The class is used in client's operate() method.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#PREPEND">PREPEND</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#READ">READ</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#TOUCH">TOUCH</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;int</CODE></FONT></TD>
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#type">type</A></B></CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Type of operation.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#WRITE">WRITE</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 </TABLE>
 &nbsp;
@@ -207,25 +176,7 @@ Database operation definition.  The class is used in client's operate() method.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#add(java.lang.String, java.lang.Object)">add</A></B>(java.lang.String&nbsp;binName,
-    java.lang.Object&nbsp;binValue)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create integer add database operation.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#append(com.aerospike.client.Bin)">append</A></B>(<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A>&nbsp;bin)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create string append database operation.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#append(java.lang.String, java.lang.Object)">append</A></B>(java.lang.String&nbsp;binName,
-       java.lang.Object&nbsp;binValue)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create string append database operation.</TD>
@@ -265,25 +216,7 @@ Database operation definition.  The class is used in client's operate() method.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#prepend(java.lang.String, java.lang.Object)">prepend</A></B>(java.lang.String&nbsp;binName,
-        java.lang.Object&nbsp;binValue)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create string prepend database operation.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#put(com.aerospike.client.Bin)">put</A></B>(<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A>&nbsp;bin)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create set database operation.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.html#put(java.lang.String, java.lang.Object)">put</A></B>(java.lang.String&nbsp;binName,
-    java.lang.Object&nbsp;binValue)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create set database operation.</TD>
@@ -319,70 +252,10 @@ Database operation definition.  The class is used in client's operate() method.
 </TR>
 </TABLE>
 
-<A NAME="READ"><!-- --></A><H3>
-READ</H3>
-<PRE>
-public static final int <B>READ</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.READ">Constant Field Values</A></DL>
-</DL>
-<HR>
-
-<A NAME="WRITE"><!-- --></A><H3>
-WRITE</H3>
-<PRE>
-public static final int <B>WRITE</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.WRITE">Constant Field Values</A></DL>
-</DL>
-<HR>
-
-<A NAME="ADD"><!-- --></A><H3>
-ADD</H3>
-<PRE>
-public static final int <B>ADD</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.ADD">Constant Field Values</A></DL>
-</DL>
-<HR>
-
-<A NAME="APPEND"><!-- --></A><H3>
-APPEND</H3>
-<PRE>
-public static final int <B>APPEND</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.APPEND">Constant Field Values</A></DL>
-</DL>
-<HR>
-
-<A NAME="PREPEND"><!-- --></A><H3>
-PREPEND</H3>
-<PRE>
-public static final int <B>PREPEND</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.PREPEND">Constant Field Values</A></DL>
-</DL>
-<HR>
-
-<A NAME="TOUCH"><!-- --></A><H3>
-TOUCH</H3>
-<PRE>
-public static final int <B>TOUCH</B></PRE>
-<DL>
-<DL>
-<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.Operation.TOUCH">Constant Field Values</A></DL>
-</DL>
-<HR>
-
 <A NAME="type"><!-- --></A><H3>
 type</H3>
 <PRE>
-public final int <B>type</B></PRE>
+public final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>type</B></PRE>
 <DL>
 <DD>Type of operation.
 <P>
@@ -406,7 +279,7 @@ public final java.lang.String <B>binName</B></PRE>
 <A NAME="binValue"><!-- --></A><H3>
 binValue</H3>
 <PRE>
-public final java.lang.Object <B>binValue</B></PRE>
+public final <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A> <B>binValue</B></PRE>
 <DL>
 <DD>Optional bin value used in operation.
 <P>
@@ -463,40 +336,12 @@ public static <A HREF="../../../com/aerospike/client/Operation.html" title="clas
 </DL>
 <HR>
 
-<A NAME="put(java.lang.String, java.lang.Object)"><!-- --></A><H3>
-put</H3>
-<PRE>
-public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>put</B>(java.lang.String&nbsp;binName,
-                            java.lang.Object&nbsp;binValue)</PRE>
-<DL>
-<DD>Create set database operation.
-<P>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
-
 <A NAME="put(com.aerospike.client.Bin)"><!-- --></A><H3>
 put</H3>
 <PRE>
 public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>put</B>(<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A>&nbsp;bin)</PRE>
 <DL>
 <DD>Create set database operation.
-<P>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="append(java.lang.String, java.lang.Object)"><!-- --></A><H3>
-append</H3>
-<PRE>
-public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>append</B>(java.lang.String&nbsp;binName,
-                               java.lang.Object&nbsp;binValue)</PRE>
-<DL>
-<DD>Create string append database operation.
 <P>
 <DD><DL>
 </DL>
@@ -517,40 +362,12 @@ public static <A HREF="../../../com/aerospike/client/Operation.html" title="clas
 </DL>
 <HR>
 
-<A NAME="prepend(java.lang.String, java.lang.Object)"><!-- --></A><H3>
-prepend</H3>
-<PRE>
-public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>prepend</B>(java.lang.String&nbsp;binName,
-                                java.lang.Object&nbsp;binValue)</PRE>
-<DL>
-<DD>Create string prepend database operation.
-<P>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
-
 <A NAME="prepend(com.aerospike.client.Bin)"><!-- --></A><H3>
 prepend</H3>
 <PRE>
 public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>prepend</B>(<A HREF="../../../com/aerospike/client/Bin.html" title="class in com.aerospike.client">Bin</A>&nbsp;bin)</PRE>
 <DL>
 <DD>Create string prepend database operation.
-<P>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="add(java.lang.String, java.lang.Object)"><!-- --></A><H3>
-add</H3>
-<PRE>
-public static <A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A> <B>add</B>(java.lang.String&nbsp;binName,
-                            java.lang.Object&nbsp;binValue)</PRE>
-<DL>
-<DD>Create integer add database operation.
 <P>
 <DD><DL>
 </DL>
@@ -614,7 +431,7 @@ public static <A HREF="../../../com/aerospike/client/Operation.html" title="clas
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Log.Level.html" title="enum in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Operation.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Operation.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -634,7 +451,7 @@ public static <A HREF="../../../com/aerospike/client/Operation.html" title="clas
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;<A HREF="#nested_class_summary">NESTED</A>&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
 DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>

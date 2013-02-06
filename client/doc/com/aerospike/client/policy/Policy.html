@@ -120,19 +120,28 @@ Container object for transaction policy attributes used in all database
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/Policy.html#maxRetries">maxRetries</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum number of retries before aborting the current transaction.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;<A HREF="../../../../com/aerospike/client/policy/Priority.html" title="enum in com.aerospike.client.policy">Priority</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/Policy.html#priority">priority</A></B></CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Priority of request relative to other requests.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Priority of request relative to other transactions.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/policy/RetryPolicy.html" title="enum in com.aerospike.client.policy">RetryPolicy</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/Policy.html#retryPolicy">retryPolicy</A></B></CODE>
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/Policy.html#sleepBetweenRetries">sleepBetweenRetries</A></B></CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Action taken when a transaction fails.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Milliseconds to sleep between retries if a transaction fails and the 
+ timeout was not exceeded.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -191,24 +200,13 @@ Container object for transaction policy attributes used in all database
 </TR>
 </TABLE>
 
-<A NAME="retryPolicy"><!-- --></A><H3>
-retryPolicy</H3>
-<PRE>
-public <A HREF="../../../../com/aerospike/client/policy/RetryPolicy.html" title="enum in com.aerospike.client.policy">RetryPolicy</A> <B>retryPolicy</B></PRE>
-<DL>
-<DD>Action taken when a transaction fails.
-<P>
-<DL>
-</DL>
-</DL>
-<HR>
-
 <A NAME="priority"><!-- --></A><H3>
 priority</H3>
 <PRE>
 public <A HREF="../../../../com/aerospike/client/policy/Priority.html" title="enum in com.aerospike.client.policy">Priority</A> <B>priority</B></PRE>
 <DL>
-<DD>Priority of request relative to other requests.
+<DD>Priority of request relative to other transactions.
+ Currently, only used for scans.
 <P>
 <DL>
 </DL>
@@ -220,7 +218,38 @@ timeout</H3>
 <PRE>
 public int <B>timeout</B></PRE>
 <DL>
-<DD>Transaction timeout in milliseconds.  Default to no timeout (0).
+<DD>Transaction timeout in milliseconds.
+ This timeout is used to set the socket timeout and is also sent to the 
+ server along with the transaction in the wire protocol.
+ Default to no timeout (0).
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="maxRetries"><!-- --></A><H3>
+maxRetries</H3>
+<PRE>
+public int <B>maxRetries</B></PRE>
+<DL>
+<DD>Maximum number of retries before aborting the current transaction.
+ A retry is attempted when there is a network error other than timeout.  
+ If maxRetries is exceeded, the abort will occur even if the timeout 
+ has not yet been exceeded.
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="sleepBetweenRetries"><!-- --></A><H3>
+sleepBetweenRetries</H3>
+<PRE>
+public int <B>sleepBetweenRetries</B></PRE>
+<DL>
+<DD>Milliseconds to sleep between retries if a transaction fails and the 
+ timeout was not exceeded.
 <P>
 <DL>
 </DL>

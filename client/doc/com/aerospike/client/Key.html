@@ -175,9 +175,49 @@ Unique record identifier. Records can be identified using a specified namespace,
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, digest and optional set name.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, byte[])">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    byte[]&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, int)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    int&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, long)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    long&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, java.lang.Object)">Key</A></B>(java.lang.String&nbsp;namespace,
     java.lang.String&nbsp;setName,
     java.lang.Object&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, java.lang.String)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    java.lang.String&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, com.aerospike.client.Value)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
@@ -195,8 +235,8 @@ Unique record identifier. Records can be identified using a specified namespace,
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;byte[]</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#computeDigest(java.lang.String, java.lang.Object)">computeDigest</A></B>(java.lang.String&nbsp;setName,
-              java.lang.Object&nbsp;key)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Key.html#computeDigest(java.lang.String, com.aerospike.client.Value)">computeDigest</A></B>(java.lang.String&nbsp;setName,
+              <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Generate unique server hash value from set name, key type and user defined key.</TD>
@@ -298,6 +338,101 @@ public final java.lang.Object <B>userKey</B></PRE>
 </TR>
 </TABLE>
 
+<A NAME="Key(java.lang.String, java.lang.String, java.lang.String)"><!-- --></A><H3>
+Key</H3>
+<PRE>
+public <B>Key</B>(java.lang.String&nbsp;namespace,
+           java.lang.String&nbsp;setName,
+           java.lang.String&nbsp;key)
+    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Initialize key from namespace, optional set name and user key.
+ The set name and user defined key are converted to a digest before sending to the server.
+ The server handles record identifiers by digest only.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if digest computation fails</DL>
+</DL>
+<HR>
+
+<A NAME="Key(java.lang.String, java.lang.String, byte[])"><!-- --></A><H3>
+Key</H3>
+<PRE>
+public <B>Key</B>(java.lang.String&nbsp;namespace,
+           java.lang.String&nbsp;setName,
+           byte[]&nbsp;key)
+    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Initialize key from namespace, optional set name and user key.
+ The set name and user defined key are converted to a digest before sending to the server.
+ The server handles record identifiers by digest only.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if digest computation fails</DL>
+</DL>
+<HR>
+
+<A NAME="Key(java.lang.String, java.lang.String, int)"><!-- --></A><H3>
+Key</H3>
+<PRE>
+public <B>Key</B>(java.lang.String&nbsp;namespace,
+           java.lang.String&nbsp;setName,
+           int&nbsp;key)
+    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Initialize key from namespace, optional set name and user key.
+ The set name and user defined key are converted to a digest before sending to the server.
+ The server handles record identifiers by digest only.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if digest computation fails</DL>
+</DL>
+<HR>
+
+<A NAME="Key(java.lang.String, java.lang.String, long)"><!-- --></A><H3>
+Key</H3>
+<PRE>
+public <B>Key</B>(java.lang.String&nbsp;namespace,
+           java.lang.String&nbsp;setName,
+           long&nbsp;key)
+    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Initialize key from namespace, optional set name and user key.
+ The set name and user defined key are converted to a digest before sending to the server.
+ The server handles record identifiers by digest only.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if digest computation fails</DL>
+</DL>
+<HR>
+
+<A NAME="Key(java.lang.String, java.lang.String, com.aerospike.client.Value)"><!-- --></A><H3>
+Key</H3>
+<PRE>
+public <B>Key</B>(java.lang.String&nbsp;namespace,
+           java.lang.String&nbsp;setName,
+           <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)
+    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Initialize key from namespace, optional set name and user key.
+ The set name and user defined key are converted to a digest before sending to the server.
+ The server handles record identifiers by digest only.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if digest computation fails</DL>
+</DL>
+<HR>
+
 <A NAME="Key(java.lang.String, java.lang.String, java.lang.Object)"><!-- --></A><H3>
 Key</H3>
 <PRE>
@@ -309,6 +444,9 @@ public <B>Key</B>(java.lang.String&nbsp;namespace,
 <DD>Initialize key from namespace, optional set name and user key.
  The set name and user defined key are converted to a digest before sending to the server.
  The server handles record identifiers by digest only.
+ 
+ This is the slowest of the Key constructors because the type
+ must be determined using multiple "instanceof" checks.
 <P>
 <DL>
 <DT><B>Parameters:</B><DD><CODE>namespace</CODE> - namespace<DD><CODE>setName</CODE> - optional set name, enter null when set does not exist<DD><CODE>key</CODE> - user defined unique identifier within set.
@@ -385,11 +523,11 @@ public boolean <B>equals</B>(java.lang.Object&nbsp;obj)</PRE>
 </DL>
 <HR>
 
-<A NAME="computeDigest(java.lang.String, java.lang.Object)"><!-- --></A><H3>
+<A NAME="computeDigest(java.lang.String, com.aerospike.client.Value)"><!-- --></A><H3>
 computeDigest</H3>
 <PRE>
 public static byte[] <B>computeDigest</B>(java.lang.String&nbsp;setName,
-                                   java.lang.Object&nbsp;key)
+                                   <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)
                             throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
 <DD>Generate unique server hash value from set name, key type and user defined key.  

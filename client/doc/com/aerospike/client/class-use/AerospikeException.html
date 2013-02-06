@@ -187,8 +187,8 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;byte[]</CODE></FONT></TD>
-<TD><CODE><B>Key.</B><B><A HREF="../../../../com/aerospike/client/Key.html#computeDigest(java.lang.String, java.lang.Object)">computeDigest</A></B>(java.lang.String&nbsp;setName,
-              java.lang.Object&nbsp;key)</CODE>
+<TD><CODE><B>Key.</B><B><A HREF="../../../../com/aerospike/client/Key.html#computeDigest(java.lang.String, com.aerospike.client.Value)">computeDigest</A></B>(java.lang.String&nbsp;setName,
+              <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Generate unique server hash value from set name, key type and user defined key.</TD>
@@ -201,6 +201,42 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete record for specified key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>abstract &nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>Value.</B><B><A HREF="../../../../com/aerospike/client/Value.html#estimateSize()">estimateSize</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Calculate number of bytes necessary to serialize the value in the wire protocol.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>Value.ListValue.</B><B><A HREF="../../../../com/aerospike/client/Value.ListValue.html#estimateSize()">estimateSize</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>Value.MapValue.</B><B><A HREF="../../../../com/aerospike/client/Value.MapValue.html#estimateSize()">estimateSize</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, java.lang.Object...)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+        <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+        java.lang.String&nbsp;fileName,
+        java.lang.String&nbsp;functionName,
+        java.lang.Object...&nbsp;args)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute user defined function on server and return results.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -430,6 +466,15 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create record if it does not already exist.</TD>
 </TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>abstract &nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>Value.</B><B><A HREF="../../../../com/aerospike/client/Value.html#write(byte[], int)">write</A></B>(byte[]&nbsp;buffer,
+      int&nbsp;offset)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Serialize the value in the wire protocol.</TD>
+</TR>
 </TABLE>
 &nbsp;
 <P>
@@ -461,9 +506,49 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize Aerospike client.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, byte[])">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    byte[]&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, int)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    int&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, long)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    long&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, java.lang.Object)">Key</A></B>(java.lang.String&nbsp;namespace,
     java.lang.String&nbsp;setName,
     java.lang.Object&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, java.lang.String)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    java.lang.String&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, com.aerospike.client.Value)">Key</A></B>(java.lang.String&nbsp;namespace,
+    java.lang.String&nbsp;setName,
+    <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize key from namespace, optional set name and user key.</TD>

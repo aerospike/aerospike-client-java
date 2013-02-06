@@ -54,7 +54,7 @@ function windowTitle()
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Policy.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Operation.Type.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Operation.Type.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -74,9 +74,9 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#enum_constant_summary">ENUM CONSTANTS</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#enum_constant_summary">ENUM CONSTANTS</A>&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;<A HREF="#enum_constant_detail">ENUM CONSTANTS</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#enum_constant_detail">ENUM CONSTANTS</A>&nbsp;|&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_top"></A>
@@ -130,25 +130,48 @@ java.lang.Object
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#GET">GET</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#PREPEND">PREPEND</A></B></CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#SET">SET</A></B></CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#READ">READ</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#READ_HEADER">READ_HEADER</A></B></CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#TOUCH">TOUCH</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#WRITE">WRITE</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+</TABLE>
+&nbsp;<!-- =========== FIELD SUMMARY =========== -->
+
+<A NAME="field_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Field Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Operation.Type.html#protocolType">protocolType</A></B></CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
@@ -212,20 +235,40 @@ the order they are declared.</TD>
 </TR>
 </TABLE>
 
-<A NAME="GET"><!-- --></A><H3>
-GET</H3>
+<A NAME="READ"><!-- --></A><H3>
+READ</H3>
 <PRE>
-public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>GET</B></PRE>
+public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>READ</B></PRE>
 <DL>
 <DL>
 </DL>
 </DL>
 <HR>
 
-<A NAME="SET"><!-- --></A><H3>
-SET</H3>
+<A NAME="READ_HEADER"><!-- --></A><H3>
+READ_HEADER</H3>
 <PRE>
-public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>SET</B></PRE>
+public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>READ_HEADER</B></PRE>
+<DL>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="WRITE"><!-- --></A><H3>
+WRITE</H3>
+<PRE>
+public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>WRITE</B></PRE>
+<DL>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="ADD"><!-- --></A><H3>
+ADD</H3>
+<PRE>
+public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>ADD</B></PRE>
 <DL>
 <DL>
 </DL>
@@ -252,20 +295,29 @@ public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" 
 </DL>
 <HR>
 
-<A NAME="ADD"><!-- --></A><H3>
-ADD</H3>
-<PRE>
-public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>ADD</B></PRE>
-<DL>
-<DL>
-</DL>
-</DL>
-<HR>
-
 <A NAME="TOUCH"><!-- --></A><H3>
 TOUCH</H3>
 <PRE>
 public static final <A HREF="../../../com/aerospike/client/Operation.Type.html" title="enum in com.aerospike.client">Operation.Type</A> <B>TOUCH</B></PRE>
+<DL>
+<DL>
+</DL>
+</DL>
+
+<!-- ============ FIELD DETAIL =========== -->
+
+<A NAME="field_detail"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="1"><FONT SIZE="+2">
+<B>Field Detail</B></FONT></TH>
+</TR>
+</TABLE>
+
+<A NAME="protocolType"><!-- --></A><H3>
+protocolType</H3>
+<PRE>
+public final int <B>protocolType</B></PRE>
 <DL>
 <DL>
 </DL>
@@ -353,7 +405,7 @@ with the specified name
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Operation.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Policy.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Record.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Operation.Type.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Operation.Type.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -373,9 +425,9 @@ with the specified name
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#enum_constant_summary">ENUM CONSTANTS</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#enum_constant_summary">ENUM CONSTANTS</A>&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;<A HREF="#enum_constant_detail">ENUM CONSTANTS</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#enum_constant_detail">ENUM CONSTANTS</A>&nbsp;|&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_bottom"></A>

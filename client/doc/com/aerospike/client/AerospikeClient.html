@@ -202,6 +202,18 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, java.lang.Object...)">execute</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+        <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+        java.lang.String&nbsp;fileName,
+        java.lang.String&nbsp;functionName,
+        java.lang.Object...&nbsp;args)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute user defined function on server and return results.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;boolean</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#exists(com.aerospike.client.policy.Policy, com.aerospike.client.Key)">exists</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
        <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
@@ -855,6 +867,29 @@ public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/
 <DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters<DD><CODE>nodeName</CODE> - server node name;<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if scan fails</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, java.lang.Object...)"><!-- --></A><H3>
+execute</H3>
+<PRE>
+public final java.lang.Object <B>execute</B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+                                      <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+                                      java.lang.String&nbsp;fileName,
+                                      java.lang.String&nbsp;functionName,
+                                      java.lang.Object...&nbsp;args)
+                               throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Execute user defined function on server and return results.
+ The function operates on a single record.
+ This method is only supported by Aerospike 3.0 servers.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>fileName</CODE> - server file where user defined function resides<DD><CODE>functionName</CODE> - user defined function<DD><CODE>args</CODE> - arguments passed in to user defined function
+<DT><B>Returns:</B><DD>return value of user defined function
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if transaction fails</DL>
 </DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->
