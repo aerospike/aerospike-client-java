@@ -12,7 +12,7 @@ package com.aerospike.client.util;
 import com.aerospike.client.Log;
 
 public final class ThreadLocalData {
-	private static final int MAX_BUFFER_SIZE = 1000000;  // ~1 MB
+	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // ~1 MB
 	
 	private static final ThreadLocal<byte[]> SendBufferThreadLocal = new ThreadLocal<byte[]>() {
 		@Override protected byte[] initialValue() {

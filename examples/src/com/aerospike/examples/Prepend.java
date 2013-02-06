@@ -17,15 +17,16 @@ public class Prepend extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "prependkey");
-		Bin bin = new Bin(params.getBinName("prependbin"), "World");
+		String binName = params.getBinName("prependbin");
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
 
+		Bin bin = new Bin(binName, "World");
 		console.info("Initial prepend will create record.  Initial value is " + bin.value + '.');
 		client.prepend(params.writePolicy, key, bin);
 
-		bin.value = "Hello ";
+		bin = new Bin(binName, "Hello ");
 		console.info("Prepend \"" + bin.value + "\" to existing record.");
 		client.prepend(params.writePolicy, key, bin);
 

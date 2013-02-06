@@ -25,12 +25,14 @@ public class DeleteBin extends Example {
 			
 		console.info("Write multi-bin record.");
 		Key key = new Key(params.namespace, params.set, "delbinkey");
-		Bin bin1 = new Bin(params.getBinName("bin1"), "value1");
-		Bin bin2 = new Bin(params.getBinName("bin2"), "value2");
+		String binName1 = params.getBinName("bin1");
+		String binName2 = params.getBinName("bin2");		
+		Bin bin1 = new Bin(binName1, "value1");
+		Bin bin2 = new Bin(binName2, "value2");
 		client.put(params.writePolicy, key, bin1, bin2);
 	
 		console.info("Delete one bin in the record.");
-		bin1.value = null; // Set bin value to null to drop bin.
+		bin1 = Bin.asNull(binName1); // Set bin value to null to drop bin.
 		client.put(params.writePolicy, key, bin1);
 
 		console.info("Read record.");		

@@ -21,12 +21,12 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.SingleCommand;
-import com.aerospike.client.command.Value;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RetryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.MsgPack;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -203,7 +203,7 @@ public class AerospikeClient {
 	 */
 	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
 		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.WRITE, bins);
+		 command.write(policy, Operation.Type.WRITE, bins);
 	}
 
 	//-------------------------------------------------------
@@ -223,7 +223,7 @@ public class AerospikeClient {
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
 		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.APPEND, bins);
+		 command.write(policy, Operation.Type.APPEND, bins);
 	}
 	
 	/**
@@ -239,7 +239,7 @@ public class AerospikeClient {
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
 		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.PREPEND, bins);
+		 command.write(policy, Operation.Type.PREPEND, bins);
 	}
 	
 	//-------------------------------------------------------
@@ -259,7 +259,7 @@ public class AerospikeClient {
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
 		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.ADD, bins);
+		 command.write(policy, Operation.Type.ADD, bins);
 	}
 	
 	//-------------------------------------------------------
@@ -304,7 +304,7 @@ public class AerospikeClient {
 		command.begin();
 		command.writeHeader(policy, 1);
 		command.writeKey();
-		command.writeOperation(Operation.TOUCH);
+		command.writeOperation(Operation.Type.TOUCH);
 		command.execute(policy);
 	}
 
@@ -392,7 +392,7 @@ public class AerospikeClient {
 		command.writeKey();
 		
 		for (String binName : binNames) {
-			command.writeOperation(binName, Operation.READ);
+			command.writeOperation(binName, Operation.Type.READ);
 		}
 		command.execute(policy);
 		return command.getRecord();
@@ -500,31 +500,29 @@ public class AerospikeClient {
 		throws AerospikeException {
 		
 		SingleCommand command = new SingleCommand(cluster, key);
-		Value[] values = new Value[operations.length];
 		int readAttr = 0;
 		int writeAttr = 0;
 					
-		for (int i = 0; i < operations.length; i++) {
-			Operation operation = operations[i];
-			
-			if (operation.type == Operation.READ) {
+		for (Operation operation : operations) {
+			switch (operation.type) {
+			case READ:
 				readAttr |= Command.INFO1_READ;
 				
-				// Overloaded bin value means read record header only (no bins). 
-				if (operation.binValue != null) {
-					readAttr |= Command.INFO1_NOBINDATA;
-				}
 				// Read all bins if no bin is specified.
-				else if (operation.binName == null) {
+				if (operation.binName == null) {
 					readAttr |= Command.INFO1_GET_ALL;
 				}
-			}
-			else {
+				break;
+				
+			case READ_HEADER:
+				readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				break;
+				
+			default:
 				writeAttr = Command.INFO2_WRITE;
+				break;				
 			}
-			Value value = Value.getValue(operation.binValue);
-			command.estimateOperationSize(operation.binName, value);
-			values[i] = value;
+			command.estimateOperationSize(operation);
 		}
 		command.setRead(readAttr);
 		command.setWrite(writeAttr);
@@ -537,10 +535,9 @@ public class AerospikeClient {
 			command.writeHeader(operations.length);			
 		}
 		command.writeKey();
-						
-		for (int i = 0; i < operations.length; i++) {
-			Operation operation = operations[i];
-			command.writeOperation(operation.binName, values[i], operation.type);
+					
+		for (Operation operation : operations) {
+			command.writeOperation(operation);
 		}
 		command.execute(policy);
 		return command.getRecord();
@@ -614,7 +611,7 @@ public class AerospikeClient {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				scan configuration parameters
 	 * @param node					server node
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -634,4 +631,58 @@ public class AerospikeClient {
 		ScanCommand command = new ScanCommand(node, callback);
 		command.scan(policy, namespace, setName);
 	}
+
+	//-------------------------------------------------------
+	// User defined functions (Supported by 3.0 servers only)
+	//-------------------------------------------------------
+	
+	/**
+	 * Execute user defined function on server and return results.
+	 * The function operates on a single record.
+	 * This method is only supported by Aerospike 3.0 servers.
+	 * 
+	 * @param policy				generic configuration parameters
+	 * @param key					unique record identifier
+	 * @param fileName				server file where user defined function resides
+	 * @param functionName			user defined function
+	 * @param args					arguments passed in to user defined function
+	 * @return						return value of user defined function
+	 * @throws AerospikeException	if transaction fails
+	 */
+	public final Object execute(Policy policy, Key key, String fileName, String functionName, Object... args) 
+		throws AerospikeException {
+		SingleCommand command = new SingleCommand(cluster, key);
+		command.setWrite(Command.INFO2_WRITE);
+		
+		byte[] argBytes = MsgPack.packArray(args);
+		command.estimateUdfSize(fileName, functionName, argBytes);
+		
+		command.begin();
+		command.writeHeader(0);
+		command.writeKey();
+		command.writeField(fileName, Command.FIELD_TYPE_UDF_FILENAME);
+		command.writeField(functionName, Command.FIELD_TYPE_UDF_FUNCTION);
+		command.writeField(argBytes, Command.FIELD_TYPE_UDF_ARGLIST);
+		command.execute(policy);
+		
+		Record record = command.getRecord();
+		
+		if (record == null) {
+			return null;
+		}
+		
+		Object obj = record.getValue("SUCCESS");
+		
+		if (obj != null) {
+			return obj;
+		}
+		
+		obj = record.getValue("FAILURE");
+		
+		if (obj != null) {
+			throw new AerospikeException(obj.toString());
+		}
+		throw new AerospikeException("Invalid UDF return value");
+	}	
 }
+

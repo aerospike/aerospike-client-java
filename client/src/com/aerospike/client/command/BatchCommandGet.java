@@ -74,7 +74,7 @@ public final class BatchCommandGet extends MultiCommand {
 		
 		if (binNames != null) {
 			for (String binName : binNames) {
-				writeOperation(binName, Operation.READ);
+				writeOperation(binName, Operation.Type.READ);
 			}
 		}	
 		execute(policy);

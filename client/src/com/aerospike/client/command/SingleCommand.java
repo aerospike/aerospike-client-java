@@ -18,6 +18,7 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
@@ -65,22 +66,28 @@ public final class SingleCommand extends Command {
 		fieldCount++;
 	}
 
-	public void write(WritePolicy policy, int operation, Bin[] bins) throws AerospikeException {
-		Value[] values = new Value[bins.length];
-				
-		for (int i = 0; i < bins.length; i++) {
-			Bin bin = bins[i];
-			Value value = Value.getValue(bin.value);			
-			estimateOperationSize(bin.name, value);
-			values[i] = value;
+	public void estimateUdfSize(String fileName, String functionName, byte[] bytes) {
+		sendOffset += Buffer.estimateSizeUtf8(fileName) + FIELD_HEADER_SIZE;
+		fieldCount++;
+		
+		sendOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
+		fieldCount++;
+		
+		sendOffset += bytes.length;
+		fieldCount++;
+	}
+
+	public void write(WritePolicy policy, Operation.Type operation, Bin[] bins) throws AerospikeException {				
+		for (Bin bin : bins) {
+			estimateOperationSize(bin);
 		}
 		writeAttr = Command.INFO2_WRITE;
 		begin();
 		writeHeader(policy, bins.length);
 		writeKey();
 				
-        for (int i = 0; i < bins.length; i++) {
-			writeOperation(bins[i].name, values[i], operation);
+		for (Bin bin : bins) {
+			writeOperation(bin, operation);
 		}
 		execute(policy);
 	}
@@ -217,7 +224,7 @@ public final class SingleCommand extends Command {
     		readFully(is, receiveBuffer, receiveSize);
         }
         
-        if (readAttr != 0) {
+        if (readAttr != 0 || opCount > 0) {
             if (resultCode != 0) {       	
             	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
             		return;

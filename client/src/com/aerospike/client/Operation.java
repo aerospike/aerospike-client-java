@@ -12,109 +12,83 @@ package com.aerospike.client;
 /**
  * Database operation definition.  The class is used in client's operate() method. 
  */
-public final class Operation {
-	// Operations commented out are not supported by this client.
-	public static final int READ = 1;
-	public static final int WRITE = 2;
-	//public static final int WRITE_UNIQUE = 3;
-	//public static final int WRITE_NOW = 4;
-	public static final int ADD = 5;
-	//public static final int APPEND_SEGMENT = 6;
-	//public static final int APPEND_SEGMENT_EXT = 7;
-	//public static final int APPEND_SEGMENT_QUERY = 8;
-	public static final int APPEND = 9;
-	public static final int PREPEND = 10;
-	public static final int TOUCH = 11;
-
+public final class Operation {	
 	/**
 	 * Create read bin database operation.
 	 */
 	public static Operation get(String binName) {
-		return new Operation(READ, binName);
+		return new Operation(Type.READ, binName);
 	}
 
 	/**
 	 * Create read all record bins database operation.
 	 */
 	public static Operation get() {
-		return new Operation(READ);
+		return new Operation(Type.READ);
 	}
 
 	/**
 	 * Create read record header database operation.
 	 */
 	public static Operation getHeader() {
-		// Overload bin value to indicator only record header should be read.
-		return new Operation(READ, null, 1);
-	}
-
-	/**
-	 * Create set database operation.
-	 */
-	public static Operation put(String binName, Object binValue) {
-		return new Operation(WRITE, binName, binValue);
+		return new Operation(Type.READ_HEADER);
 	}
 
 	/**
 	 * Create set database operation.
 	 */
 	public static Operation put(Bin bin) {
-		return new Operation(WRITE, bin.name, bin.value);
-	}
-
-	/**
-	 * Create string append database operation.
-	 */
-	public static Operation append(String binName, Object binValue) {
-		return new Operation(APPEND, binName, binValue);
+		return new Operation(Type.WRITE, bin);
 	}
 
 	/**
 	 * Create string append database operation.
 	 */
 	public static Operation append(Bin bin) {
-		return new Operation(APPEND, bin.name, bin.value);
-	}
-
-	/**
-	 * Create string prepend database operation.
-	 */
-	public static Operation prepend(String binName, Object binValue) {
-		return new Operation(PREPEND, binName, binValue);
+		return new Operation(Type.APPEND, bin);
 	}
 	
 	/**
 	 * Create string prepend database operation.
 	 */
 	public static Operation prepend(Bin bin) {
-		return new Operation(PREPEND, bin.name, bin.value);
-	}
-
-	/**
-	 * Create integer add database operation.
-	 */
-	public static Operation add(String binName, Object binValue) {
-		return new Operation(ADD, binName, binValue);
+		return new Operation(Type.PREPEND, bin);
 	}
 	
 	/**
 	 * Create integer add database operation.
 	 */
 	public static Operation add(Bin bin) {
-		return new Operation(ADD, bin.name, bin.value);
+		return new Operation(Type.ADD, bin);
 	}
 
 	/**
 	 * Create touch database operation.
 	 */
 	public static Operation touch() {
-		return new Operation(TOUCH);
+		return new Operation(Type.TOUCH);
+	}
+
+	public static enum Type {	
+		READ(1),
+		READ_HEADER(1),
+		WRITE(2),
+		ADD(5),
+		APPEND(9),
+		PREPEND(10),
+		TOUCH(11);
+		
+		public final int protocolType;
+		
+		private Type(int protocolType) {
+			this.protocolType = protocolType;
+		}
 	}
 
 	/**
 	 * Type of operation.
 	 */
-	public final int type;
+	public final Type type;
 	
 	/**
 	 * Optional bin name used in operation.
@@ -124,23 +98,23 @@ public final class Operation {
 	/**
 	 * Optional bin value used in operation.
 	 */
-	public final Object binValue;
-	 
-	private Operation(int type, String binName, Object binValue) {
+	public final Value binValue;
+		 
+	private Operation(Type type, Bin bin) {
 		this.type = type;
-		this.binName = binName;
-		this.binValue = binValue;
+		this.binName = bin.name;
+		this.binValue = bin.value;
 	}
 	
-	private Operation(int type, String binName) {
+	private Operation(Type type, String binName) {
 		this.type = type;
 		this.binName = binName;
-		this.binValue = null;
+		this.binValue = Value.getAsNull();
 	}
 	
-	private Operation(int type) {
+	private Operation(Type type) {
 		this.type = type;
 		this.binName = null;
-		this.binValue = null;
+		this.binValue = Value.getAsNull();
 	}
 }

@@ -11,20 +11,23 @@ package com.aerospike.client.command;
 
 public final class ParticleType {
 	// Server particle types. Unsupported types are commented out.
-	protected static final int NULL = 0;
-	protected static final int INTEGER = 1;
-	//protected static final int BIGNUM = 2;
-	protected static final int STRING = 3;
-	protected static final int BLOB = 4;
-	//protected static final int TIMESTAMP = 5;
-	//protected static final int DIGEST = 6;
-	protected static final int JBLOB = 7;
-	//protected static final int CSHARP_BLOB = 8;
-	//protected static final int PYTHON_BLOB = 9;
-	//protected static final int RUBY_BLOB = 10;
-	//protected static final int PHP_BLOB = 11;
-	//protected static final int ERLANG_BLOB = 12;
-	//protected static final int SEGMENT_POINTER = 13;
-	protected static final int LIST = 14;
-	protected static final int DICT = 15;
+	public static final int NULL = 0;
+	public static final int INTEGER = 1;
+	//public static final int BIGNUM = 2;
+	public static final int STRING = 3;
+	public static final int BLOB = 4;
+	//public static final int TIMESTAMP = 5;
+	//public static final int DIGEST = 6;
+	public static final int JBLOB = 7;
+	//public static final int CSHARP_BLOB = 8;
+	//public static final int PYTHON_BLOB = 9;
+	//public static final int RUBY_BLOB = 10;
+	//public static final int PHP_BLOB = 11;
+	//public static final int ERLANG_BLOB = 12;
+	//public static final int SEGMENT_POINTER = 13;
+	
+	// TODO Support RTA and 3.0 together.
+	//public static final int LUA_BLOB = 14;
+	public static final int MAP = 15;
+	public static final int LIST = 16;
 }

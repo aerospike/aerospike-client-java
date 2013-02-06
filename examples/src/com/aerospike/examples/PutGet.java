@@ -55,7 +55,7 @@ public class PutGet extends Example {
 	 */
 	private void runSingleBinTest(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "putgetkey");
-		Bin bin = new Bin("value");
+		Bin bin = new Bin("", "value");
 
 		console.info("Single Bin Put: namespace=%s set=%s key=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin.value);
@@ -76,7 +76,7 @@ public class PutGet extends Example {
 	
 	private void validateBin(Key key, Bin bin, Record record) {
 		Object received = record.getValue(bin.name);
-		String expected = (String)bin.value;
+		String expected = bin.value.toString();
 		
 		if (received != null && received.equals(expected)) {
 			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s", 

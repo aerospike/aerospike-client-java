@@ -18,16 +18,17 @@ public class Add extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "addkey");
-		Bin bin = new Bin(params.getBinName("addbin"), 10);
+		String binName = params.getBinName("addbin");
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
 
 		// Perform some adds and check results.
+		Bin bin = new Bin(binName, 10);
 		console.info("Initial add will create record.  Initial value is " + bin.value + '.');
 		client.add(params.writePolicy, key, bin);
 
-		bin.value = 5;
+		bin = new Bin(binName, 5);
 		console.info("Add " + bin.value + " to existing record.");
 		client.add(params.writePolicy, key, bin);
 
@@ -53,7 +54,7 @@ public class Add extends Example {
 		}
 
 		// Demonstrate add and get combined.
-		bin.value = 30;
+		bin = new Bin(binName, 30);
 		console.info("Add " + bin.value + " to existing record.");		
 		record = client.operate(params.writePolicy, key, Operation.add(bin), Operation.get(bin.name));
 

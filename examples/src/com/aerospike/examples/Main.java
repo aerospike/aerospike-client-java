@@ -50,7 +50,8 @@ public class Main extends JPanel {
 		"Touch",
 		"DeleteBin",
 		"ScanParallel",
-		"ScanSeries"
+		"ScanSeries",
+		"UserDefinedFunction"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 
@@ -67,7 +68,7 @@ public class Main extends JPanel {
 			options.addOption("p", "port", true, "Server port (default: 3000)");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name (default: emptystring)");
-			options.addOption("g", "gui", false, "invoke GUI to selectively run tests");
+			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests");
 			options.addOption("u", "usage", false, "Print usage.");
 
 			CommandLineParser clp = new GnuParser();
@@ -122,14 +123,14 @@ public class Main extends JPanel {
 		String set = cl.getOptionValue("s", "demoset");
 
 		Parameters params = new Parameters(host, port, namespace, set);
-		params.setIsSingleBin();
+		params.setServerSpecific();
 		return params;
 	}
 	
 	/**
 	 * Connect and run one or more client examples.
 	 */
-	private static void processExamples(Console console, Parameters params, String[] examples, boolean invoke_gui) throws Exception {
+	private static void processExamples(Console console, Parameters params, String[] examples, boolean invokeGui) throws Exception {
 		AerospikeClient client = new AerospikeClient(params.host, params.port);
 
 		try {
@@ -141,7 +142,7 @@ public class Main extends JPanel {
 				}
 			}
 
-			if (invoke_gui) {
+			if (invokeGui) {
 				GuiDisplay.startGui(examples, client, params, console);
 			}
 			else {

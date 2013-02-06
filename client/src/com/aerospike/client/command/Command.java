@@ -15,7 +15,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Log;
+import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
@@ -53,7 +55,10 @@ public abstract class Command {
 	public static final int FIELD_TYPE_DIGEST_RIPE_ARRAY = 6;	
 	//public final static int FIELD_TYPE_TRID = 7;	// user supplied transaction id, which is simply passed back
 	public final static int FIELD_TYPE_SCAN_OPTIONS = 8;
-	
+	public final static int FIELD_TYPE_UDF_FILENAME = 30;
+	public final static int FIELD_TYPE_UDF_FUNCTION = 31;
+	public final static int FIELD_TYPE_UDF_ARGLIST = 32;
+		
 	public final static int DIGEST_SIZE = 20;
 	
 	public static final int MSG_TIMEOUT_OFFSET = 22;
@@ -77,9 +82,14 @@ public abstract class Command {
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	
-	public final void estimateOperationSize(String binName, Value value) {
-		sendOffset += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
-		sendOffset += value.estimateSize();
+	public final void estimateOperationSize(Bin bin) throws AerospikeException {
+		sendOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
+		sendOffset += bin.value.estimateSize();
+	}
+
+	public final void estimateOperationSize(Operation operation) throws AerospikeException {
+		sendOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
+		sendOffset += operation.binValue.estimateSize();
 	}
 
 	public final void estimateOperationSize(String binName) {
@@ -102,37 +112,50 @@ public abstract class Command {
 		}
 	}
 
-	public final void writeOperation(String name, Value value, int operation) throws AerospikeException {
-        int nameLength = Buffer.stringToUtf8(name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
-        int valueLength = value.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+	public final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
+        int nameLength = Buffer.stringToUtf8(bin.name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
+        int valueLength = bin.value.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
          
         Buffer.intToBytes(nameLength + valueLength + 4, sendBuffer, sendOffset);
 		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation;
-        sendBuffer[sendOffset++] = (byte) value.getType();
+        sendBuffer[sendOffset++] = (byte) operation.protocolType;
+        sendBuffer[sendOffset++] = (byte) bin.value.getType();
         sendBuffer[sendOffset++] = (byte) 0;
         sendBuffer[sendOffset++] = (byte) nameLength;
         sendOffset += nameLength + valueLength;
 	}
 		
-	public final void writeOperation(String name, int operation) {
+	public final void writeOperation(Operation operation) throws AerospikeException {
+        int nameLength = Buffer.stringToUtf8(operation.binName, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
+        int valueLength = operation.binValue.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+         
+        Buffer.intToBytes(nameLength + valueLength + 4, sendBuffer, sendOffset);
+		sendOffset += 4;
+        sendBuffer[sendOffset++] = (byte) operation.type.protocolType;
+        sendBuffer[sendOffset++] = (byte) operation.binValue.getType();
+        sendBuffer[sendOffset++] = (byte) 0;
+        sendBuffer[sendOffset++] = (byte) nameLength;
+        sendOffset += nameLength + valueLength;
+	}
+
+	public final void writeOperation(String name, Operation.Type operation) {
         int nameLength = Buffer.stringToUtf8(name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
          
         Buffer.intToBytes(nameLength + 4, sendBuffer, sendOffset);
 		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation;
+        sendBuffer[sendOffset++] = (byte) operation.protocolType;
         sendBuffer[sendOffset++] = (byte) 0;
         sendBuffer[sendOffset++] = (byte) 0;
         sendBuffer[sendOffset++] = (byte) nameLength;
         sendOffset += nameLength;
 	}
 
-	public final void writeOperation(int operation) {
+	public final void writeOperation(Operation.Type operation) {
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = (byte) operation;
+        sendBuffer[sendOffset++] = (byte) operation.protocolType;
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;

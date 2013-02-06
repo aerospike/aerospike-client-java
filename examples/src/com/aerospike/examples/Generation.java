@@ -21,18 +21,19 @@ public class Generation extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "genkey");
-		Bin bin = new Bin(params.getBinName("genbin"), "genvalue1");
+		String binName = params.getBinName("genbin");
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
 
 		// Set some values for the same record.
+		Bin bin = new Bin(binName, "genvalue1");
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value);
 		
 		client.put(params.writePolicy, key, bin);
 
-		bin.value = "genvalue2";
+		bin = new Bin(binName, "genvalue2");
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value);
 
@@ -48,7 +49,7 @@ public class Generation extends Example {
 		}
 
 		Object received = record.getValue(bin.name);
-		String expected = (String)bin.value;
+		String expected = bin.value.toString();
 		
 		if (received.equals(expected)) {
 			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s generation=%d", 
@@ -60,7 +61,7 @@ public class Generation extends Example {
 		}
 
 		// Set record and fail if it's not the expected generation.
-		bin.value = "genvalue3";
+		bin = new Bin(binName, "genvalue3");
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s expected generation=%d",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value, record.generation);
 
@@ -70,7 +71,7 @@ public class Generation extends Example {
 		client.put(writePolicy, key, bin);
 
 		// Set record with invalid generation and check results .
-		bin.value = "genvalue4";
+		bin = new Bin(binName, "genvalue4");
 		writePolicy.generation = 9999;
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s expected generation=%d",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value, writePolicy.generation);

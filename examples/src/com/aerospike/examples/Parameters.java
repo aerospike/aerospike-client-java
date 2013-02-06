@@ -1,7 +1,8 @@
 package com.aerospike.examples;
 
-import net.citrusleaf.CitrusleafInfo;
+import java.util.Map;
 
+import com.aerospike.client.Info;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -16,8 +17,8 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	boolean singleBin;
+	boolean isVersion3;
 	
-
 	protected Parameters(String host, int port, String namespace, String set) {
 		this.host = host;
 		this.port = port;
@@ -28,14 +29,22 @@ public class Parameters {
 	}
 	
 	/**
-	 * Some database calls need to know whether the server is configured as
-	 * multi-bin or single-bin.
+	 * Some database calls need to know how the server is configured.
 	 */
-	protected void setIsSingleBin() throws Exception {
-		String filter = "namespace/" + namespace;
-		String tokens = CitrusleafInfo.get(host, port, filter);
+	protected void setServerSpecific() throws Exception {
+		String versionFilter = "version";
+		String namespaceFilter = "namespace/" + namespace;
+		Map<String,String> tokens = Info.request(host, port, versionFilter, namespaceFilter);
 
-		if (tokens == null) {
+		String version = tokens.get(versionFilter);
+		
+		if (version != null && ! version.equals("Aerospike 2.0")) {
+			isVersion3 = true;
+		}
+		
+		String namespaceTokens = tokens.get(namespaceFilter);
+		
+		if (namespaceTokens == null) {
 			throw new Exception(String.format(
 				"Failed to get namespace info: host=%s port=%d namespace=%s",
 				host, port, namespace));
@@ -43,7 +52,7 @@ public class Parameters {
 
 		String name = "single-bin";
 		String search = name + '=';
-		int begin = tokens.indexOf(search);
+		int begin = namespaceTokens.indexOf(search);
 
 		if (begin < 0) {
 			throw new Exception(String.format(
@@ -52,13 +61,13 @@ public class Parameters {
 		}
 
 		begin += search.length();
-		int end = tokens.indexOf(';', begin);
+		int end = namespaceTokens.indexOf(';', begin);
 
 		if (end < 0) {
-			end = tokens.length();
+			end = namespaceTokens.length();
 		}
 
-		String value = tokens.substring(begin, end);
+		String value = namespaceTokens.substring(begin, end);
 		singleBin = Boolean.parseBoolean(value);
 	}
 

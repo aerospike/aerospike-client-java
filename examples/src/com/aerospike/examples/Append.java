@@ -17,15 +17,16 @@ public class Append extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "appendkey");
-		Bin bin = new Bin(params.getBinName("appendbin"), "Hello");
+		String binName = params.getBinName("appendbin");
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
 
+		Bin bin = new Bin(binName, "Hello");
 		console.info("Initial append will create record.  Initial value is " + bin.value + '.');
 		client.append(params.writePolicy, key, bin);
 
-		bin.value = " World";
+		bin = new Bin(binName, " World");
 		console.info("Append \"" + bin.value + "\" to existing record.");
 		client.append(params.writePolicy, key, bin);
 

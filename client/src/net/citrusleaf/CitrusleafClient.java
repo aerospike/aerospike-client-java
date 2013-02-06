@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
+import com.aerospike.client.Value;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -407,7 +408,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public static byte[] computeDigest(String set, Object key) {
 		try {
-			return Key.computeDigest(set, key);
+			return Key.computeDigest(set, Value.get(key));
 		}
 		catch (AerospikeException ae) {
 			return null;
@@ -431,7 +432,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public ClResultCode set(Object key, Object value) {
 		try {
-			super.put(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.put(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -457,7 +458,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode set(Object key, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.put(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.put(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -702,7 +703,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public ClResultCode append(Object key, Object value) {
 		try {
-			super.append(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.append(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -733,7 +734,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode append(Object key, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.append(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.append(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -855,7 +856,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public ClResultCode prepend(Object key, Object value) {
 		try {
-			super.prepend(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.prepend(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -886,7 +887,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode prepend(Object key, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.prepend(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.prepend(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -1008,7 +1009,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	 */
 	public ClResultCode add(Object key, Object value) {
 		try {
-			super.add(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.add(defaultWritePolicy, new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -1035,7 +1036,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 	public ClResultCode add(Object key, Object value, ClOptions opts,
 			ClWriteOptions wOpts) {
 		try {
-			super.add(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(value));
+			super.add(getWritePolicy(opts, wOpts), new Key(mDefaultNamespace, "", key), new Bin(null, value));
 			return ClResultCode.OK;
 		}
 		catch (AerospikeException ae) {
@@ -1154,7 +1155,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		int count = 0;
 		
 		for (ClBin bin : bins) {
-			operations[count++] = Operation.add(bin.name, bin.value);
+			operations[count++] = Operation.add(new Bin(bin.name, bin.value));
 		}
 		operations[count] = Operation.get();
 
@@ -1191,7 +1192,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		int count = 0;
 		
 		for (Entry<String,Object> entry : bins.entrySet()) {
-			operations[count++] = Operation.add(entry.getKey(), entry.getValue());
+			operations[count++] = Operation.add(new Bin(entry.getKey(), entry.getValue()));
 		}
 		operations[count] = Operation.get();
 
@@ -2077,7 +2078,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		int count = 0;
 		
 		for (ClBin bin : writeBins) {
-			operations[count++] = Operation.put(bin.name, bin.value);
+			operations[count++] = Operation.put(new Bin(bin.name, bin.value));
 		}
 
 		for (String binName : readBinNames) {

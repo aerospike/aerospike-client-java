@@ -14,7 +14,7 @@ import gnu.crypto.hash.RipeMD160;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Value;
+import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
@@ -55,11 +55,99 @@ public final class Key {
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
-	public Key(String namespace, String setName, Object key) throws AerospikeException {
+	public Key(String namespace, String setName, String key) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		this.userKey = key;
+		digest = computeDigest(setName, new Value.StringValue(key));
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, byte[] key) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		this.userKey = key;
+		digest = computeDigest(setName, new Value.BytesValue(key));
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, int key) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		this.userKey = key;
+		digest = computeDigest(setName, new Value.LongValue(key));
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, long key) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		this.userKey = key;
+		digest = computeDigest(setName, new Value.LongValue(key));
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, Value key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = key;
 		digest = computeDigest(setName, key);
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * 
+	 * This is the slowest of the Key constructors because the type
+	 * must be determined using multiple "instanceof" checks.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, Object key) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		this.userKey = key;
+		digest = computeDigest(setName, Value.get(key));
 	}
 	
 	/**
@@ -121,21 +209,20 @@ public final class Key {
 	 * @return						unique server hash value
 	 * @throws AerospikeException	if digest computation fails
 	 */
-	public static byte[] computeDigest(String setName, Object key) throws AerospikeException {
-		if (key == null) {
+	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
+		int keyType = key.getType();
+		
+		if (keyType == ParticleType.NULL) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key: null");
 		}
 		
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
 		byte[] buffer = ThreadLocalData.getSendBuffer();
-		//byte[] buffer = new byte[256];
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
-		Value value = Value.getValue(key);
-		buffer[setLength] = (byte)value.getType();
-		
-		int keyLength = value.write(buffer, setLength + 1);
+		buffer[setLength] = (byte)keyType;		
+		int keyLength = key.write(buffer, setLength + 1);
 
 		// Run additional 16% faster using direct class versus 
 		// HashFactory.getInstance("RIPEMD-160").

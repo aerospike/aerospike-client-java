@@ -13,15 +13,14 @@ import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.util.MsgPack;
 
 public final class Buffer {
 
-	public static Object bytesToParticle(int type, byte[] buf, int offset, int len) 
+	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
 		
 		switch (type) {
@@ -38,16 +37,17 @@ public final class Buffer {
 			return Buffer.bytesToObject(buf, offset, len);
 			
 		case ParticleType.LIST:
-			return parseList(buf, offset, len);
+			return MsgPack.parseList(buf, offset, len);
 
-		case ParticleType.DICT:
-			return parseMap(buf, offset, len);
+		case ParticleType.MAP:
+			return MsgPack.parseMap(buf, offset, len);
 		
 		default:
 			return null;
 		}
 	}
-
+	
+	/*
 	private static Object parseList(byte[] buf, int offset, int len) throws AerospikeException {
 		int limit = offset + len;
 		int itemCount = Buffer.bytesToInt(buf, offset);
@@ -97,7 +97,8 @@ public final class Buffer {
 		}
 		return map;
 	}
-
+	*/
+	
 	/**
 	 * Estimate size of Utf8 encoded bytes without performing the actual encoding. 
 	 */

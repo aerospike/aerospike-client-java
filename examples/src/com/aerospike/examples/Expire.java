@@ -41,7 +41,7 @@ public class Expire extends Example {
 		}
 
 		Object received = record.getValue(bin.name);
-		String expected = (String)bin.value;
+		String expected = bin.value.toString();
 		
 		if (received.equals(expected)) {
 			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s", 
