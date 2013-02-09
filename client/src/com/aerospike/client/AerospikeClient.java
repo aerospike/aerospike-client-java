@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -666,17 +667,24 @@ public class AerospikeClient {
 		
 		Record record = command.getRecord();
 		
-		if (record == null) {
+		if (record == null || record.bins == null) {
 			return null;
 		}
 		
-		Object obj = record.getValue("SUCCESS");
+		Map<String,Object> map = record.bins;
+
+		Object obj = map.get("SUCCESS");
 		
 		if (obj != null) {
 			return obj;
 		}
 		
-		obj = record.getValue("FAILURE");
+		// User defined functions don't have to return a value.
+		if (map.containsKey("SUCCESS")) {
+			return null;
+		}
+		
+		obj = map.get("FAILURE");
 		
 		if (obj != null) {
 			throw new AerospikeException(obj.toString());
@@ -684,4 +692,3 @@ public class AerospikeClient {
 		throw new AerospikeException("Invalid UDF return value");
 	}	
 }
-

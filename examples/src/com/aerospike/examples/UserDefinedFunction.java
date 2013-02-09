@@ -6,6 +6,7 @@ import java.util.HashMap;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 
 public class UserDefinedFunction extends Example {
 
@@ -18,8 +19,8 @@ public class UserDefinedFunction extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.isVersion3) {
-			console.info("User defined functions are only supported by Aerospike 3.0 servers.");
+		if (! params.hasUdf) {
+			console.info("User defined functions are not supported by the connected Aerospike server.");
 			return;
 		}
 		example1(client, params);
@@ -68,7 +69,7 @@ public class UserDefinedFunction extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("udfcomplexbin"), list);
+		Bin bin = new Bin(params.getBinName("udfcomplexbin"), Value.getAsList(list));
 
 		client.put(params.writePolicy, key, bin);
 		

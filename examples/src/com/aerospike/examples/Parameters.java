@@ -17,7 +17,7 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	boolean singleBin;
-	boolean isVersion3;
+	boolean hasUdf;
 	
 	protected Parameters(String host, int port, String namespace, String set) {
 		this.host = host;
@@ -32,14 +32,22 @@ public class Parameters {
 	 * Some database calls need to know how the server is configured.
 	 */
 	protected void setServerSpecific() throws Exception {
-		String versionFilter = "version";
+		String featuresFilter = "features";
 		String namespaceFilter = "namespace/" + namespace;
-		Map<String,String> tokens = Info.request(host, port, versionFilter, namespaceFilter);
+		Map<String,String> tokens = Info.request(host, port, featuresFilter, namespaceFilter);
 
-		String version = tokens.get(versionFilter);
+		String features = tokens.get(featuresFilter);
+		hasUdf = false;
 		
-		if (version != null && ! version.equals("Aerospike 2.0")) {
-			isVersion3 = true;
+		if (features != null) {
+			String[] list = features.split(";");
+			
+			for (String s : list) {
+				if (s.equals("udf")) {
+					hasUdf = true;
+					break;
+				}
+			}
 		}
 		
 		String namespaceTokens = tokens.get(namespaceFilter);
