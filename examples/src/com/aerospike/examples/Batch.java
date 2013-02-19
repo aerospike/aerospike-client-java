@@ -94,8 +94,15 @@ public class Batch extends Example {
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
 			Record record = records[i];
-            console.info("Record: ns=%s set=%s key=%s, bin=%s value=%s",
-            	key.namespace, key.setName, key.userKey, binName, record.getValue(binName));                        	
+			Level level = Level.ERROR;
+			Object value = null;
+			
+			if (record != null) {
+				level = Level.INFO;
+				value = record.getValue(binName);
+			}
+	        console.write(level, "Record: ns=%s set=%s key=%s, bin=%s value=%s",
+	            key.namespace, key.setName, key.userKey, binName, value);
         }
 		
 		if (records.length != size) {
