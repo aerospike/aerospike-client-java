@@ -6,7 +6,9 @@ import java.util.HashMap;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Language;
 import com.aerospike.client.Value;
+import com.aerospike.client.policy.Policy;
 
 public class UserDefinedFunction extends Example {
 
@@ -23,11 +25,19 @@ public class UserDefinedFunction extends Example {
 			console.info("User defined functions are not supported by the connected Aerospike server.");
 			return;
 		}
+		register(client);
 		example1(client, params);
 		example2(client, params);
 	}
 	
-	public void example1(AerospikeClient client, Parameters params) throws Exception {	
+	private void register(AerospikeClient client) throws Exception {
+		Policy policy = new Policy();
+		policy.timeout = 5000; // Registration takes longer than a normal request.
+		client.register(policy, "udf/records.lua", "records.lua", Language.LUA);
+	}
+	
+
+	private void example1(AerospikeClient client, Parameters params) throws Exception {	
 		Key key = new Key(params.namespace, params.set, "udfkey");
 		Bin bin = new Bin(params.getBinName("udfbin"), "string value");
 		
@@ -48,7 +58,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 	
-	public void example2(AerospikeClient client, Parameters params) throws Exception {	
+	private void example2(AerospikeClient client, Parameters params) throws Exception {	
 		Key key = new Key(params.namespace, params.set, "udfcomplexkey");
 		
 		// Delete record if it already exists.

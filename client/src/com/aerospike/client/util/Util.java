@@ -9,7 +9,11 @@
  */
 package com.aerospike.client.util;
 
+import gnu.crypto.util.Base64;
+
 import java.io.EOFException;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.SocketException;
@@ -42,5 +46,30 @@ public final class Util {
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);
 		return sw.toString();
+	}
+
+	public static String readFileEncodeBase64(String path) throws AerospikeException {
+		try {
+			File file = new File(path);
+			byte[] bytes = new byte[(int)file.length()];
+			FileInputStream in = new FileInputStream(file);
+			
+			try {
+				int pos = 0;
+				int len = 0;
+				
+				while (pos < bytes.length) {
+					len = in.read(bytes, pos, bytes.length - pos);
+					pos += len;
+				}
+			}
+			finally {
+				in.close();
+			}
+			return Base64.encode(bytes, 0, bytes.length, false);
+		}
+		catch (Exception e) {
+			throw new AerospikeException("Failed to read " + path, e);
+		}
 	}
 }

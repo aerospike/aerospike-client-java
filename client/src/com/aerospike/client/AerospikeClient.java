@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
+import com.aerospike.client.Info.NameValueParser;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
@@ -27,6 +28,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.Util;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -637,6 +639,51 @@ public class AerospikeClient {
 	//-------------------------------------------------------
 	
 	/**
+	 * Register package containing user defined functions with server.
+	 * This method is only supported by Aerospike 3.0 servers.
+	 * 
+	 * @param policy				generic configuration parameters
+	 * @param clientPath			path of client file containing user defined functions
+	 * @param serverPath			path to store user defined functions on the server
+	 * @param language				language of user defined functions
+	 * @throws AerospikeException	if register fails
+	 */
+	public final void register(Policy policy, String clientPath, String serverPath, Language language) 
+		throws AerospikeException {
+		
+		String content = Util.readFileEncodeBase64(clientPath);
+		
+		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
+		sb.append("udf-put:filename=");
+		sb.append(serverPath);
+		sb.append(";content=");
+		sb.append(content);
+		sb.append(";content-len=");
+		sb.append(content.length());
+		sb.append(";udf-type=");
+		sb.append(language.id);
+		sb.append(";");
+		
+		// Send registration command to all nodes.
+		String command = sb.toString();		
+		Node[] nodes = cluster.getNodes();
+		int timeout = (policy == null)? 0 : policy.timeout;
+		
+		for (Node node : nodes) {
+			Info info = new Info(node.getConnection(timeout), command);
+			NameValueParser parser = info.getNameValueParser();
+			
+			while (parser.next()) {
+				String name = parser.getName();
+
+				if (name.equals("error")) {
+					throw new AerospikeException(serverPath + " registration failed: " +  parser.getValue());
+				}
+			}
+		}
+	}
+	
+	/**
 	 * Execute user defined function on server and return results.
 	 * The function operates on a single record.
 	 * This method is only supported by Aerospike 3.0 servers.
@@ -690,5 +737,5 @@ public class AerospikeClient {
 			throw new AerospikeException(obj.toString());
 		}
 		throw new AerospikeException("Invalid UDF return value");
-	}	
+	}
 }

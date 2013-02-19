@@ -9,8 +9,6 @@
  */
 package com.aerospike.client.cluster;
 
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.command.Buffer;
@@ -26,12 +24,11 @@ public final class PartitionTokenizer {
 	private int length;
 	private int offset;
 	
-	public PartitionTokenizer(Connection conn, String name) throws AerospikeException, IOException {
+	public PartitionTokenizer(Connection conn, String name) throws AerospikeException {
 		// Use low-level info methods and parse byte array directly for maximum performance.
 		// Send format:    replicas-write\n
 		// Receive format: replicas-write\t<ns1>:<partition id1>;<ns2>:<partition id2>...\n
-		Info info = new Info(name + '\n');
-		info.requestInfo(conn);
+		Info info = new Info(conn, name);
 		this.length = info.getLength();		
 
 		if (length == 0) {

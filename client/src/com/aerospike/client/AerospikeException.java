@@ -32,6 +32,10 @@ public class AerospikeException extends Exception {
 		this.resultCode = resultCode;
 	}
 	
+	public AerospikeException(String message, Exception e) {
+		super(message, e);
+	}
+
 	public AerospikeException(String message) {
 		super(message);
 	}
