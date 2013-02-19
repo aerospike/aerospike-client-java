@@ -3,6 +3,7 @@ package com.aerospike.examples;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
 
 public class Batch extends Example {

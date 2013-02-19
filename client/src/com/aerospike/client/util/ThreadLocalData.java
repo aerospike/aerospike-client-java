@@ -12,7 +12,8 @@ package com.aerospike.client.util;
 import com.aerospike.client.Log;
 
 public final class ThreadLocalData {
-	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // ~1 MB
+	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
+	private static final int THREAD_LOCAL_CUTOFF = 1024 * 128;  // 128 KB
 	
 	private static final ThreadLocal<byte[]> SendBufferThreadLocal = new ThreadLocal<byte[]>() {
 		@Override protected byte[] initialValue() {
@@ -31,10 +32,18 @@ public final class ThreadLocalData {
 	}
 	
 	public static byte[] resizeSendBuffer(int size) {
-		if (size > MAX_BUFFER_SIZE) {
-			throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid send buffer size: " + size);
+		// Do not store extremely large buffers in thread local storage.
+		if (size > THREAD_LOCAL_CUTOFF) {
+			if (size > MAX_BUFFER_SIZE) {
+				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid send buffer size: " + size);
+			}
+			
+			if (Log.debugEnabled()) {
+				Log.debug("Thread " + Thread.currentThread().getId() + " allocate send buffer on heap " + size);
+			}
+			return new byte[size];		
 		}
-		
+
 		if (Log.debugEnabled()) {
 			Log.debug("Thread " + Thread.currentThread().getId() + " resize send buffer to " + size);
 		}
@@ -47,10 +56,18 @@ public final class ThreadLocalData {
 	}
 	
 	public static byte[] resizeReceiveBuffer(int size) {
-		if (size > MAX_BUFFER_SIZE) {
-			throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid receive buffer size: " + size);
+		// Do not store extremely large buffers in thread local storage.
+		if (size > THREAD_LOCAL_CUTOFF) {
+			if (size > MAX_BUFFER_SIZE) {
+				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid receive buffer size: " + size);
+			}
+			
+			if (Log.debugEnabled()) {
+				Log.debug("Thread " + Thread.currentThread().getId() + " allocate receive buffer on heap " + size);
+			}
+			return new byte[size];		
 		}
-		
+
 		if (Log.debugEnabled()) {
 			Log.debug("Thread " + Thread.currentThread().getId() + " resize receive buffer to " + size);
 		}
