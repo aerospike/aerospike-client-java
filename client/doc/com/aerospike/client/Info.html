@@ -54,7 +54,7 @@ function windowTitle()
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Host.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Info.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Info.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -74,7 +74,7 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;<A HREF="#nested_class_summary">NESTED</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
 DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
@@ -111,7 +111,24 @@ Access Citrusleaf's monitoring protocol - the "Info" protocol.
 <HR>
 
 <P>
+<!-- ======== NESTED CLASS SUMMARY ======== -->
 
+<A NAME="nested_class_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Nested Class Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;class</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client">Info.NameValueParser</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parser for responses in name/value pair format:</TD>
+</TR>
+</TABLE>
+&nbsp;
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
 
 <A NAME="constructor_summary"><!-- --></A>
@@ -121,10 +138,24 @@ Access Citrusleaf's monitoring protocol - the "Info" protocol.
 <B>Constructor Summary</B></FONT></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#Info(java.lang.String)">Info</A></B>(java.lang.String&nbsp;request)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize info request buffer.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send default empty command to server and store results.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection, java.lang.String...)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+     java.lang.String...&nbsp;commands)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send multiple commands to server and store results.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection, java.lang.String)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+     java.lang.String&nbsp;command)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send single command to server and store results.</TD>
 </TR>
 </TABLE>
 &nbsp;
@@ -151,6 +182,14 @@ Access Citrusleaf's monitoring protocol - the "Info" protocol.
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get response length.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client">Info.NameValueParser</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#getNameValueParser()">getNameValueParser</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Parse response in name/value pair format:</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -235,14 +274,6 @@ Access Citrusleaf's monitoring protocol - the "Info" protocol.
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get one info value by name from the specified database server node, using
  host name and port.</TD>
 </TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Info.html#requestInfo(com.aerospike.client.cluster.Connection)">requestInfo</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Issue request and set results buffer.</TD>
-</TR>
 </TABLE>
 &nbsp;<A NAME="methods_inherited_from_class_java.lang.Object"><!-- --></A>
 <TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
@@ -266,20 +297,56 @@ Access Citrusleaf's monitoring protocol - the "Info" protocol.
 </TR>
 </TABLE>
 
-<A NAME="Info(java.lang.String)"><!-- --></A><H3>
+<A NAME="Info(com.aerospike.client.cluster.Connection, java.lang.String)"><!-- --></A><H3>
 Info</H3>
 <PRE>
-public <B>Info</B>(java.lang.String&nbsp;request)</PRE>
+public <B>Info</B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+            java.lang.String&nbsp;command)
+     throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
-<DD>Initialize info request buffer. This constructor is used internally.
+<DD>Send single command to server and store results.
+ This constructor is used internally.
  The static request methods should be used instead.
- 
- The request format is: <name1>\n<name2>\n...
 <P>
 <DL>
-<DT><B>Parameters:</B><DD><CODE>request</CODE> - named values to retrieve
+<DT><B>Parameters:</B><DD><CODE>conn</CODE> - connection to server node<DD><CODE>command</CODE> - command sent to server
 <DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.Serialize.html" title="class in com.aerospike.client">AerospikeException.Serialize</A></CODE> - if UTF8 encoding fails</DL>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
+</DL>
+<HR>
+
+<A NAME="Info(com.aerospike.client.cluster.Connection, java.lang.String...)"><!-- --></A><H3>
+Info</H3>
+<PRE>
+public <B>Info</B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+            java.lang.String...&nbsp;commands)
+     throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Send multiple commands to server and store results. 
+ This constructor is used internally.
+ The static request methods should be used instead.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>conn</CODE> - connection to server node<DD><CODE>commands</CODE> - commands sent to server
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
+</DL>
+<HR>
+
+<A NAME="Info(com.aerospike.client.cluster.Connection)"><!-- --></A><H3>
+Info</H3>
+<PRE>
+public <B>Info</B>(com.aerospike.client.cluster.Connection&nbsp;conn)
+     throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Send default empty command to server and store results. 
+ This constructor is used internally.
+ The static request methods should be used instead.
+<P>
+<DL>
+<DT><B>Parameters:</B><DD><CODE>conn</CODE> - connection to server node
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
 </DL>
 
 <!-- ============ METHOD DETAIL ========== -->
@@ -291,6 +358,22 @@ public <B>Info</B>(java.lang.String&nbsp;request)</PRE>
 <B>Method Detail</B></FONT></TH>
 </TR>
 </TABLE>
+
+<A NAME="getNameValueParser()"><!-- --></A><H3>
+getNameValueParser</H3>
+<PRE>
+public <A HREF="../../../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client">Info.NameValueParser</A> <B>getNameValueParser</B>()</PRE>
+<DL>
+<DD>Parse response in name/value pair format:
+ <p>
+ <command>\t<name1>=<value1>;<name2>=<value2>;...\n
+<P>
+<DD><DL>
+
+<DT><B>Returns:</B><DD>parser for name/value pairs</DL>
+</DD>
+</DL>
+<HR>
 
 <A NAME="request(java.lang.String, int, java.lang.String)"><!-- --></A><H3>
 request</H3>
@@ -456,23 +539,6 @@ public static java.util.HashMap&lt;java.lang.String,java.lang.String&gt; <B>requ
 </DL>
 <HR>
 
-<A NAME="requestInfo(com.aerospike.client.cluster.Connection)"><!-- --></A><H3>
-requestInfo</H3>
-<PRE>
-public void <B>requestInfo</B>(com.aerospike.client.cluster.Connection&nbsp;conn)
-                 throws java.io.IOException</PRE>
-<DL>
-<DD>Issue request and set results buffer. This method is used internally.
- The static request methods should be used instead.
-<P>
-<DD><DL>
-<DT><B>Parameters:</B><DD><CODE>conn</CODE> - socket connection to server node
-<DT><B>Throws:</B>
-<DD><CODE>java.io.IOException</CODE> - if socket send or receive fails</DL>
-</DD>
-</DL>
-<HR>
-
 <A NAME="getBuffer()"><!-- --></A><H3>
 getBuffer</H3>
 <PRE>
@@ -529,7 +595,7 @@ public int <B>getLength</B>()</PRE>
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
 &nbsp;<A HREF="../../../com/aerospike/client/Host.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../index.html?com/aerospike/client/Info.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Info.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -549,7 +615,7 @@ public int <B>getLength</B>()</PRE>
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;<A HREF="#nested_class_summary">NESTED</A>&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
 DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>

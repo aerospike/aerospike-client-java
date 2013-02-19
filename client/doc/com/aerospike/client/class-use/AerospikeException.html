@@ -344,6 +344,17 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#register(com.aerospike.client.policy.Policy, java.lang.String, java.lang.String, com.aerospike.client.Language)">register</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+         java.lang.String&nbsp;clientPath,
+         java.lang.String&nbsp;serverPath,
+         <A HREF="../../../../com/aerospike/client/Language.html" title="enum in com.aerospike.client">Language</A>&nbsp;language)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Register package containing user defined functions with server.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;java.util.HashMap&lt;java.lang.String,java.lang.String&gt;</CODE></FONT></TD>
 <TD><CODE><B>Info.</B><B><A HREF="../../../../com/aerospike/client/Info.html#request(com.aerospike.client.cluster.Connection)">request</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
 
@@ -504,6 +515,26 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize Aerospike client.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send default empty command to server and store results.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection, java.lang.String...)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+     java.lang.String...&nbsp;commands)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send multiple commands to server and store results.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/Info.html#Info(com.aerospike.client.cluster.Connection, java.lang.String)">Info</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn,
+     java.lang.String&nbsp;command)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Send single command to server and store results.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/Key.html#Key(java.lang.String, java.lang.String, byte[])">Key</A></B>(java.lang.String&nbsp;namespace,
