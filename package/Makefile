@@ -16,7 +16,7 @@ default:
 	mkdir -p $(TMP_DIR)/servlets
 	cp package/{README,build_all} $(TMP_DIR)
 	cp -r client/{README,depends,doc,src} $(TMP_DIR)/client
-	cp -r examples/{README,depends,run_examples,run_examples_swing,src} $(TMP_DIR)/examples
+	cp -r examples/{README,depends,run_examples,run_examples_swing,src,udf} $(TMP_DIR)/examples
 	cp -r benchmarks/{README,run_load_test,src} $(TMP_DIR)/benchmarks
 	cp -r servlets/{README,src,webapp} $(TMP_DIR)/servlets
 	scripts/package_pom client/pom.xml > $(TMP_DIR)/client/pom.xml

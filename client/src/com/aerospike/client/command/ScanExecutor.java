@@ -92,9 +92,11 @@ public final class ScanExecutor {
 			}
 		}
 		
-	    public void stopThread()
-	    {
-	    	command.stop();
-	    }		
+		public void stopThread()
+		{
+			if (command != null) {
+				command.stop();
+			}
+		}		
 	}
 }
