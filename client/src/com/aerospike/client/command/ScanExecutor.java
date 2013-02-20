@@ -28,7 +28,7 @@ public final class ScanExecutor {
 		int count = 0;
 		
 		for (Node node : nodes) {
-			ScanThread thread = new ScanThread(this, node);
+			ScanThread thread = new ScanThread(node);
 			threads[count++] = thread;
 			thread.start();
 		}
@@ -52,7 +52,7 @@ public final class ScanExecutor {
 		}		
 	}
 
-    private void interrupt(Exception cause)
+    private void stopThreads(Exception cause)
     {
     	synchronized (this) {
     	   	if (exception != null) {
@@ -63,7 +63,7 @@ public final class ScanExecutor {
     	
 		for (ScanThread thread : threads) {
 			try {
-				thread.close();
+				thread.stopThread();
 				thread.interrupt();
 			}
 			catch (Exception e) {
@@ -71,26 +71,28 @@ public final class ScanExecutor {
 		}
     }
 
-    private static final class ScanThread extends Thread {
-		private final ScanExecutor parent;
-		private final ScanCommand command;
+    private final class ScanThread extends Thread {
+		private final Node node;
+		private ScanCommand command;
 
-		public ScanThread(ScanExecutor parent, Node node) {
-			this.parent = parent;
-			this.command = new ScanCommand(node, parent.callback);
+		public ScanThread(Node node) {
+			this.node = node;
 		}
 		
 		public void run() {
 			try {
-				command.scan(parent.policy, parent.namespace, parent.setName);
+				// Must create command here (and not in constructor), because 
+				// thread local data must be initialized in the new running thread!
+				command = new ScanCommand(node, callback);
+				command.scan(policy, namespace, setName);
 			}
 			catch (Exception e) {
 				// Terminate other scan threads.
-				parent.interrupt(e);
+				stopThreads(e);
 			}
 		}
 		
-	    public void close()
+	    public void stopThread()
 	    {
 	    	command.stop();
 	    }		
