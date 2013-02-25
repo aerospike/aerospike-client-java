@@ -22,6 +22,7 @@ public class PutGet extends Example {
 		else {
 			runMultiBinTest(client, params);
 		}
+		runGetHeaderTest(client, params);
 	}
 	
 	/**
@@ -85,5 +86,26 @@ public class PutGet extends Example {
 		else {
 			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);
 		}
+	}
+	
+	/**
+	 * Read record header data.
+	 */
+	private void runGetHeaderTest(AerospikeClient client, Parameters params) throws Exception {
+		Key key = new Key(params.namespace, params.set, "putgetkey");
+
+		console.info("Get record header: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
+		Record record = client.getHeader(params.policy, key);
+
+		if (record == null) {
+			throw new Exception(String.format(
+				"Failed to get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey));
+		}
+		
+		if (record.expiration == 0) {
+			throw new Exception(String.format(
+				"Invalid record header: generation=%d expiration=%d", record.generation, record.expiration));
+		}
+		console.info("Received: generation=%d expiration=%d", record.generation, record.expiration);
 	}
 }

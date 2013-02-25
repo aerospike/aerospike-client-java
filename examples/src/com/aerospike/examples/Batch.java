@@ -25,6 +25,7 @@ public class Batch extends Example {
 		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		batchExists(client, params, keyPrefix, size);
 		batchReads(client, params, keyPrefix, binName, size);
+		batchReadHeaders(client, params, keyPrefix, size);
 	}
 
 	/**
@@ -104,6 +105,44 @@ public class Batch extends Example {
 			}
 	        console.write(level, "Record: ns=%s set=%s key=%s, bin=%s value=%s",
 	            key.namespace, key.setName, key.userKey, binName, value);
+        }
+		
+		if (records.length != size) {
+        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
+		}
+    }
+	
+	/**
+	 * Read record header data in one batch.
+	 */
+	private void batchReadHeaders (
+		AerospikeClient client, 
+		Parameters params,
+		String keyPrefix,
+		int size
+	) throws Exception {
+		// Batch gets into one call.
+		Key[] keys = new Key[size];
+		for (int i = 0; i < size; i++) {
+			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
+		}
+
+		Record[] records = client.getHeader(params.policy, keys);
+
+		for (int i = 0; i < records.length; i++) {
+			Key key = keys[i];
+			Record record = records[i];
+			Level level = Level.ERROR;
+			int generation = 0;
+			int expiration = 0;
+			
+			if (record != null && record.expiration > 0) {
+				level = Level.INFO;
+				generation = record.generation;
+				expiration = record.expiration;
+			}
+	        console.write(level, "Record: ns=%s set=%s key=%s, generation=%d expiration=%d",
+	            key.namespace, key.setName, key.userKey, generation, expiration);
         }
 		
 		if (records.length != size) {

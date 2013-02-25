@@ -411,10 +411,16 @@ public class AerospikeClient {
 	 */
 	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
 		SingleCommand command = new SingleCommand(cluster, key);
-		command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
+		// The workaround is to request a non-existent bin.
+		// TODO: Fix this on server.
+		//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		command.setRead(Command.INFO1_READ);
+		command.estimateOperationSize((String)null);
 		command.begin();
 		command.writeHeader(0);
 		command.writeKey();
+		command.writeOperation((String)null, Operation.Type.READ);
 		command.execute(policy);
 		return command.getRecord();
 	}
@@ -504,6 +510,7 @@ public class AerospikeClient {
 		SingleCommand command = new SingleCommand(cluster, key);
 		int readAttr = 0;
 		int writeAttr = 0;
+		boolean readHeader = false;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
@@ -517,7 +524,12 @@ public class AerospikeClient {
 				break;
 				
 			case READ_HEADER:
-				readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
+				// The workaround is to request a non-existent bin.
+				// TODO: Fix this on server.
+				//readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				readAttr |= Command.INFO1_READ;
+				readHeader = true;
 				break;
 				
 			default:
@@ -540,6 +552,10 @@ public class AerospikeClient {
 					
 		for (Operation operation : operations) {
 			command.writeOperation(operation);
+		}
+		
+		if (readHeader) {
+			command.writeOperation((String)null, Operation.Type.READ);
 		}
 		command.execute(policy);
 		return command.getRecord();

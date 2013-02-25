@@ -28,7 +28,7 @@ public class Touch extends Example {
 		
 		console.info("Touch same record with 5 second expiration.");
 		writePolicy.expiration = 5;
-		Record record = client.operate(writePolicy, key, Operation.get(bin.name), Operation.touch());
+		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
 
 		if (record == null) {
 			throw new Exception(String.format(
@@ -36,6 +36,12 @@ public class Touch extends Example {
 				key.namespace, key.setName, key.userKey, bin.name, null));
 		}
 
+		if (record.expiration == 0) {
+			throw new Exception(String.format(
+				"Failed to get record expiration: namespace=%s set=%s key=%s", 
+				key.namespace, key.setName, key.userKey));
+		}
+		
 		console.info("Sleep 3 seconds.");
 		Thread.sleep(3000);
 
