@@ -2598,7 +2598,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		
 		if (opts != null) {
 			policy.timeout = opts.mTimeout;
-			policy.maxRetries = 1;
+			policy.maxRetries = 0;
 		}
 		
 		if (scanOpts != null) {
@@ -2649,10 +2649,10 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 			policy.timeout = opts.mTimeout;
 			
 			if (opts.mRetryPolicy == RetryPolicy.ONE_SHOT) {
-				policy.maxRetries = 1;			
+				policy.maxRetries = 0;			
 			}
 			else {
-				policy.sleepBetweenRetries = policy.timeout / policy.maxRetries;
+				policy.sleepBetweenRetries = policy.timeout / (policy.maxRetries + 1);
 				
 				if (policy.sleepBetweenRetries > 2000) {
 					policy.sleepBetweenRetries = 2000;
@@ -2661,8 +2661,8 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		}
 		else {
 			policy.timeout = DEFAULT_TIMEOUT;
-			policy.maxRetries = 3;			
-			policy.sleepBetweenRetries = policy.timeout / policy.maxRetries;
+			policy.maxRetries = 2;			
+			policy.sleepBetweenRetries = policy.timeout / (policy.maxRetries + 1);
 		}
 	}
 

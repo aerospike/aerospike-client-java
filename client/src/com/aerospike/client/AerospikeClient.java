@@ -587,7 +587,7 @@ public class AerospikeClient {
 		}
 		
 		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 1;
+		policy.maxRetries = 0;
 		
 		Node[] nodes = cluster.getNodes();
 
@@ -624,7 +624,7 @@ public class AerospikeClient {
 		}
 		
 		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 1;
+		policy.maxRetries = 0;
 
 		Node node = cluster.getNode(nodeName);
 		scanNode(policy, node, namespace, setName, callback);
