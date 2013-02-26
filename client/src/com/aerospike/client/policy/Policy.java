@@ -34,7 +34,7 @@ public class Policy {
 	 * If maxRetries is exceeded, the abort will occur even if the timeout 
 	 * has not yet been exceeded.
 	 */
-	public int maxRetries = 3;
+	public int maxRetries = 2;
 
 	/**
 	 * Milliseconds to sleep between retries if a transaction fails and the 

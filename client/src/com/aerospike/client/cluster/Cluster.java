@@ -369,8 +369,18 @@ public final class Cluster implements Runnable {
 		Node node = partitionWriteMap.get(partition);
 		
 		if (node == null || ! node.isActive()) {
+			if (Log.debugEnabled()) {
+				Log.debug("Choose random node " + node + " for " + partition);
+			}
 			node = getRandomNode();
 		}
+		/*
+		else {
+			if (Log.debugEnabled()) {
+				Log.debug("Map node " + node + " for " + partition);
+			}
+		}
+		*/
 		return node;
 	}
 

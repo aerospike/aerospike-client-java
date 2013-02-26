@@ -184,14 +184,15 @@ public abstract class Command {
 			policy = new Policy();
 		}
 		        
+		int maxIterations = policy.maxRetries + 1;
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
         int failedNodes = 0;
         int failedConns = 0;
         int i;
 
-        // Execute command until successful, timed out or maximum retries have been reached.
-		for (i = 0; i < policy.maxRetries; i++) {
+        // Execute command until successful, timed out or maximum iterations have been reached.
+		for (i = 0; i < maxIterations; i++) {
 			Node node = null;
 			try {		
 				node = getNode();
