@@ -180,7 +180,7 @@ public final class Cluster implements Runnable {
 
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
-			seedNode();
+			seedNodes();
 		}
 
 		// Refresh all known nodes.
@@ -214,19 +214,34 @@ public final class Cluster implements Runnable {
 		partitionWriteMap.put(key, node);
 	}
 
-	private void seedNode() {
+	private void seedNodes() {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		
+		// Add all nodes at once to avoid copying entire array multiple times.
+		ArrayList<Node> list = new ArrayList<Node>();
+
 		for (Host seed : seedArray) {
 			try {
-				Node node = new Node(this, seed, connectionLimit, connectionTimeout);
-				addAliases(node);
+				NodeValidator seedNodeValidator = new NodeValidator(seed, connectionTimeout);
 				
-				ArrayList<Node> list = new ArrayList<Node>(1);
-				list.add(node);
-				addNodesCopy(list);
-				return;
+				// Seed host may have multiple aliases in the case of round-robin dns configurations.
+				for (Host alias : seedNodeValidator.aliases) {
+					NodeValidator nv;
+					
+					if (alias.equals(seed)) {
+						nv = seedNodeValidator;
+					}
+					else {
+						nv = new NodeValidator(alias, connectionTimeout);
+					}
+										
+					if (! findNodeName(list, nv.name)) {
+						Node node = new Node(this, nv, connectionLimit);
+						addAliases(node);
+						list.add(node);
+					}
+				}
 			}
 			catch (Exception e) {
 				// Try next host
@@ -235,15 +250,29 @@ public final class Cluster implements Runnable {
 				}
 			}
 		}
+
+		if (list.size() > 0) {
+			addNodesCopy(list);
+		}
 	}
 	
+	private static boolean findNodeName(ArrayList<Node> list, String name) {
+		for (Node node : list) {
+			if (node.getName().equals(name)) {
+				return true;
+			}
+		}
+		return false;
+	}
+		
 	private void addNodes(List<Host> hosts) {
 		// Add all nodes at once to avoid copying entire array multiple times.
 		ArrayList<Node> list = new ArrayList<Node>(hosts.size());
 		
 		for (Host host : hosts) {
 			try {
-				Node node = new Node(this, host, connectionLimit, connectionTimeout);				
+				NodeValidator nv = new NodeValidator(host, connectionTimeout);
+				Node node = new Node(this, nv, connectionLimit);				
 				addAliases(node);			
 				list.add(node);
 			}

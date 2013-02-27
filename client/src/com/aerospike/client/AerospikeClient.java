@@ -117,11 +117,14 @@ public class AerospikeClient {
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
 	 * 
-	 * @param policy				client configuration parameters
+	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hosts					array of potential hosts to seed the cluster
 	 * @throws AerospikeException	if all host connections fail
 	 */
 	public AerospikeClient(ClientPolicy policy, Host... hosts) throws AerospikeException {
+		if (policy == null) {
+			policy = new ClientPolicy();
+		}
 		cluster = new Cluster(policy, hosts);
 		
 		if (policy.failIfNotConnected && ! cluster.isConnected()) {

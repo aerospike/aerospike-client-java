@@ -35,13 +35,11 @@ public final class Node {
 	private int partitionGeneration;
 	private volatile boolean active;
 
-	public Node(Cluster cluster, Host host, int connectionLimit, int timeoutMillis) throws AerospikeException {
+	public Node(Cluster cluster, NodeValidator nv, int connectionLimit) {
 		this.cluster = cluster;
-
-		NodeValidator nv = new NodeValidator(host, timeoutMillis);
-		name = nv.name;
-		aliases = nv.aliases;
-		address = nv.address;
+		this.name = nv.name;
+		this.aliases = nv.aliases;
+		this.address = nv.address;
 		
 		// Assign host to first IP alias because the server identifies nodes 
 		// by IP address (not hostname). 
