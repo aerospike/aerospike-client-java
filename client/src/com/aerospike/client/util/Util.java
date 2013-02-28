@@ -32,12 +32,13 @@ public final class Util {
 	
 	public static String getErrorMessage(Exception e) {
 		// Connection error messages don't need a stacktrace.
+		Throwable cause = e.getCause();
 		if (e instanceof SocketException || e instanceof AerospikeException.Connection || 
-			e.getCause() instanceof SocketTimeoutException) {			
+			cause instanceof SocketTimeoutException) {			
 			return e.getMessage();
 		}
 		
-		if (e instanceof EOFException) {
+		if (e instanceof EOFException || cause instanceof EOFException) {
 			return EOFException.class.getName();
 		}
 		
