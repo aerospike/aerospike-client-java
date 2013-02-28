@@ -13,11 +13,11 @@ There are two scripts to run example code:
 Usage:
 ./run_examples [<options>] all|(<example1> <example2> ...)
 options:
--g,--gui              invoke GUI to selectively run tests
+-g,--gui              Invoke GUI to selectively run tests
 -h,--host <arg>       Server hostname (default: localhost)
 -n,--namespace <arg>  Namespace (default: test)
 -p,--port <arg>       Server port (default: 3000)
--s,--set <arg>        Set name (default: emptystring)
+-s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
 -u,--usage            Print usage.
 
 examples:
@@ -26,7 +26,7 @@ PutGet
 Add
 Append
 Prepend
-BatchGet
+Batch
 Generation
 Serialize
 Expire
@@ -34,6 +34,7 @@ Touch
 DeleteBin
 ScanParallel
 ScanSeries
+UserDefinedFunction
 
 All examples will be run if 'all' is specified as an example.
 

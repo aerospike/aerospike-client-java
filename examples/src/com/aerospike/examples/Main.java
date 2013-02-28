@@ -67,7 +67,7 @@ public class Main extends JPanel {
 			options.addOption("h", "host", true, "Server hostname (default: localhost)");
 			options.addOption("p", "port", true, "Server port (default: 3000)");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
-			options.addOption("s", "set", true, "Set name (default: emptystring)");
+			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -122,6 +122,9 @@ public class Main extends JPanel {
 		String namespace = cl.getOptionValue("n","test");
 		String set = cl.getOptionValue("s", "demoset");
 
+		if (set.equals("empty")) {
+			set = "";
+		}
 		Parameters params = new Parameters(host, port, namespace, set);
 		params.setServerSpecific();
 		return params;
