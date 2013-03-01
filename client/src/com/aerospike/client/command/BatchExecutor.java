@@ -27,7 +27,7 @@ public final class BatchExecutor extends Thread {
 	private final Policy policy;
 	private final BatchNode batchNode;
 	private final HashSet<String> binNames;
-	private final HashMap<Key,Integer> keyMap;
+	private final HashMap<Key,BatchItem> keyMap;
 	private final Record[] records;
 	private final boolean[] existsArray;
 	private final int readAttr;
@@ -36,7 +36,7 @@ public final class BatchExecutor extends Thread {
 	public BatchExecutor(
 		Policy policy,
 		BatchNode batchNode,
-		HashMap<Key,Integer> keyMap,
+		HashMap<Key,BatchItem> keyMap,
 		HashSet<String> binNames,
 		Record[] records,
 		boolean[] existsArray,
@@ -85,10 +85,19 @@ public final class BatchExecutor extends Thread {
 		int readAttr
 	) throws AerospikeException {
 		
-		HashMap<Key,Integer> keyMap = new HashMap<Key,Integer>(keys.length);
+		HashMap<Key,BatchItem> keyMap = new HashMap<Key,BatchItem>(keys.length);
 		
 		for (int i = 0; i < keys.length; i++) {
-			keyMap.put(keys[i], i);
+			Key key = keys[i];
+			BatchItem item = keyMap.get(key);
+			
+			if (item == null) {
+				item = new BatchItem(i);
+				keyMap.put(key, item);
+			}
+			else {
+				item.addDuplicate(i);
+			}
 		}
 		
 		int nodeCount = cluster.getNodes().length;

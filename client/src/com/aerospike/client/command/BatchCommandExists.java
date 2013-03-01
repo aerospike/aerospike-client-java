@@ -22,10 +22,10 @@ import com.aerospike.client.command.BatchExecutor.BatchNamespace;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandExists extends MultiCommand {
-	private final HashMap<Key,Integer> keyMap;
+	private final HashMap<Key,BatchItem> keyMap;
 	private final boolean[] existsArray;
 
-	public BatchCommandExists(Node node, HashMap<Key,Integer> keyMap, boolean[] existsArray) {
+	public BatchCommandExists(Node node, HashMap<Key,BatchItem> keyMap, boolean[] existsArray) {
 		super(node);
 		this.keyMap = keyMap;
 		this.existsArray = existsArray;
@@ -86,9 +86,10 @@ public final class BatchCommandExists extends MultiCommand {
 			}
 						
 			Key key = parseKey(fieldCount);
-			Integer index = keyMap.get(key);
+			BatchItem item = keyMap.get(key);
 			
-			if (index != null) {
+			if (item != null) {
+				int index = item.getIndex();
 				existsArray[index] = resultCode == 0;
 			}
 			else {

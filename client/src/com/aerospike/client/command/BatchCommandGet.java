@@ -27,12 +27,12 @@ import com.aerospike.client.command.BatchExecutor.BatchNamespace;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends MultiCommand {
-	private final HashMap<Key,Integer> keyMap;
+	private final HashMap<Key,BatchItem> keyMap;
 	private final HashSet<String> binNames;
 	private final Record[] records;
 	private final int readAttr;
 
-	public BatchCommandGet(Node node, HashMap<Key,Integer> keyMap, HashSet<String> binNames, Record[] records, int readAttr) {
+	public BatchCommandGet(Node node, HashMap<Key,BatchItem> keyMap, HashSet<String> binNames, Record[] records, int readAttr) {
 		super(node);
 		this.keyMap = keyMap;
 		this.binNames = binNames;
@@ -105,10 +105,11 @@ public final class BatchCommandGet extends MultiCommand {
 			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
 			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
 			Key key = parseKey(fieldCount);
-			Integer index = keyMap.get(key);
+			BatchItem item = keyMap.get(key);
 			
-			if (index != null) {				
+			if (item != null) {				
 				if (resultCode == 0) {
+					int index = item.getIndex();
 					records[index] = parseRecord(opCount, generation, expiration);
 				}
 			}
