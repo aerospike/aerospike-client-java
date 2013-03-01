@@ -20,13 +20,18 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.command.FieldType;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.SingleCommand;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.QueryExecutor;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.MsgPack;
 import com.aerospike.client.util.Util;
 
@@ -726,9 +731,9 @@ public class AerospikeClient {
 		command.begin();
 		command.writeHeader(0);
 		command.writeKey();
-		command.writeField(fileName, Command.FIELD_TYPE_UDF_FILENAME);
-		command.writeField(functionName, Command.FIELD_TYPE_UDF_FUNCTION);
-		command.writeField(argBytes, Command.FIELD_TYPE_UDF_ARGLIST);
+		command.writeField(fileName, FieldType.UDF_FILENAME);
+		command.writeField(functionName, FieldType.UDF_FUNCTION);
+		command.writeField(argBytes, FieldType.UDF_ARGLIST);
 		command.execute(policy);
 		
 		Record record = command.getRecord();
@@ -756,5 +761,30 @@ public class AerospikeClient {
 			throw new AerospikeException(obj.toString());
 		}
 		throw new AerospikeException("Invalid UDF return value");
+	}
+	
+	//-------------------------------------------------------
+	// Query functions (Supported by 3.0 servers only)
+	//-------------------------------------------------------
+
+	/**
+	 * Execute query and return results.
+	 * 
+	 * @param policy				generic configuration parameters
+	 * @param statement				database query command
+	 * @return						collection of query results
+	 * @throws AerospikeException	if query fails
+	 */
+	public final RecordSet query(QueryPolicy policy, Statement statement) 
+		throws AerospikeException {
+		
+		if (policy == null) {
+			policy = new QueryPolicy();
+		}
+		
+		// Retry policy must be one-shot for queries.
+		policy.maxRetries = 1;
+		
+		return new QueryExecutor(policy, statement, cluster.getNodes());
 	}
 }

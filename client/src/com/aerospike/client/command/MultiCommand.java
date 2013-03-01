@@ -19,18 +19,28 @@ import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Node;
 
 public abstract class MultiCommand extends Command {
+	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
+	
 	private BufferedInputStream bis;
 	protected final Node node;
 	protected int receiveOffset;
 	
 	protected MultiCommand(Node node) {
 		this.node = node;
+		this.sendBuffer = null;
+		this.receiveBuffer = null;
 	}
 	
 	protected final Node getNode() { 
 		return node;
 	}
 	
+	public final void begin() {
+		// Batch, Scan, and Query use buffers allocated on the heap (not thread local).
+		sendBuffer = new byte[sendOffset];
+		receiveBuffer = new byte[2048];
+	}
+
 	protected final void writeHeader(int readAttr, int fieldCount, int operationCount) throws AerospikeException {		
 		// Write all header data except total size which must be written last. 
 		sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
@@ -79,22 +89,29 @@ public abstract class MultiCommand extends Command {
 			int fieldtype = receiveBuffer[0];
 			int size = fieldlen - 1;
 			
-			if (fieldtype == FIELD_TYPE_DIGEST_RIPE) {
+			if (fieldtype == FieldType.DIGEST_RIPE) {
 				digest = new byte[size];
 				System.arraycopy(receiveBuffer, 1, digest, 0, size);
 			}
-			else if (fieldtype == FIELD_TYPE_NAMESPACE) {
+			else if (fieldtype == FieldType.NAMESPACE) {
 				namespace = new String(receiveBuffer, 1, size);
 			}				
-			else if (fieldtype == FIELD_TYPE_TABLE) {
+			else if (fieldtype == FieldType.TABLE) {
 				setName = new String(receiveBuffer, 1, size);
 			}				
 		}
 		return new Key(namespace, digest, setName);		
 	}
 
-	protected void readBytes(int length) throws IOException {
-		resizeReceiveBuffer(length);
+	protected final void readBytes(int length) throws IOException {
+		if (length > receiveBuffer.length) {
+			// Corrupted data streams can result in a huge length.
+			// Do a sanity check here.
+			if (length > MAX_BUFFER_SIZE) {
+				throw new IllegalArgumentException("Invalid readBytes length: " + length);
+			}
+			receiveBuffer = new byte[length];
+		}
 		
 		int pos = 0;
 		

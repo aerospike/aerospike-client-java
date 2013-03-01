@@ -39,16 +39,11 @@ public final class BatchCommandExists extends MultiCommand {
 		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 				
-		if (sendOffset > sendBuffer.length) {
-			// Do not resize thread local buffer because the batch size may be huge and 
-			// we don't want unusually large buffers hanging around on the thread.
-			// Use heap buffer instead.
-			sendBuffer = new byte[sendOffset];
-		}
+		begin();
 
 		writeHeader(INFO1_READ | INFO1_NOBINDATA, 2, 0);		
-		writeField(batchNamespace.namespace, Command.FIELD_TYPE_NAMESPACE);
-		writeFieldHeader(byteSize, Command.FIELD_TYPE_DIGEST_RIPE_ARRAY);
+		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
 		for (Key key : keys) {
 			byte[] digest = key.digest;

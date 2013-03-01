@@ -59,14 +59,14 @@ public final class ScanCommand extends MultiCommand {
 		writeHeader(readAttr, fieldCount, 0);
 				
 		if (namespace != null) {
-			writeField(namespace, FIELD_TYPE_NAMESPACE);
+			writeField(namespace, FieldType.NAMESPACE);
 		}
 		
 		if (setName != null) {
-			writeField(setName, FIELD_TYPE_TABLE);
+			writeField(setName, FieldType.TABLE);
 		}
 	
-		writeFieldHeader(2, FIELD_TYPE_SCAN_OPTIONS);
+		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
 		byte priority = (byte)policy.priority.ordinal();
 		priority <<= 4;
 		

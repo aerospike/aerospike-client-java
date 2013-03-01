@@ -142,7 +142,7 @@ public class AerospikeException extends Exception {
 	}
 
 	/**
-	 * Exception thrown when chosen node is not active.
+	 * Exception thrown when scan was terminated prematurely.
 	 */
 	public static final class ScanTerminated extends AerospikeException {
 		private static final long serialVersionUID = 1L;
@@ -153,6 +153,21 @@ public class AerospikeException extends Exception {
 		
 		public ScanTerminated(Exception e) {
 			super(ResultCode.SCAN_TERMINATED, e);
+		}
+	}
+	
+	/**
+	 * Exception thrown when query was terminated prematurely.
+	 */
+	public static final class QueryTerminated extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public QueryTerminated() {
+			super(ResultCode.QUERY_TERMINATED);
+		}
+		
+		public QueryTerminated(Exception e) {
+			super(ResultCode.QUERY_TERMINATED, e);
 		}
 	}
 }

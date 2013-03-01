@@ -14,6 +14,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Query was terminated by user.
+	 */
+	public static final int QUERY_TERMINATED = -5;
+
+	/**
 	 * Scan was terminated by user.
 	 */
 	public static final int SCAN_TERMINATED = -4;

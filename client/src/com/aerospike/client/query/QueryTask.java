@@ -7,7 +7,7 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
-package com.aerospike.client.sql;
+package com.aerospike.client.query;
 
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -24,7 +24,7 @@ public class QueryTask extends FutureTask<Void> {
 	 * Asynchronous return status callback definition. 
 	 */
 	public interface Callback {
-		public void queryNext(QueryTask task, ResultSet rs);
+		public void queryNext(QueryTask task, RecordSet rs);
 		public void queryComplete(QueryTask task);
 	}
 	

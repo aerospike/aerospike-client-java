@@ -54,17 +54,12 @@ public final class BatchCommandGet extends MultiCommand {
 			}			
 		}
 		
-		if (sendOffset > sendBuffer.length) {
-			// Do not resize thread local buffer because the batch size may be huge and 
-			// we don't want unusually large buffers hanging around on the thread.
-			// Use heap buffer instead.
-			sendBuffer = new byte[sendOffset];
-		}
+		begin();
 
 		int operationCount = (binNames == null)? 0 : binNames.size();
 		writeHeader(readAttr, 2, operationCount);		
-		writeField(batchNamespace.namespace, Command.FIELD_TYPE_NAMESPACE);
-		writeFieldHeader(byteSize, Command.FIELD_TYPE_DIGEST_RIPE_ARRAY);
+		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
 		for (Key key : keys) {
 			byte[] digest = key.digest;

@@ -25,6 +25,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.ThreadLocalData;
 
 public final class SingleCommand extends Command {
 	private final Cluster cluster;
@@ -40,6 +41,8 @@ public final class SingleCommand extends Command {
 		this.cluster = cluster;
 		this.key = key;
 		this.partition = new Partition(key);
+		this.sendBuffer = ThreadLocalData.getSendBuffer();
+		this.receiveBuffer = ThreadLocalData.getReceiveBuffer();
 		estimateKeySize();
 	}
 	
@@ -90,6 +93,18 @@ public final class SingleCommand extends Command {
 			writeOperation(bin, operation);
 		}
 		execute(policy);
+	}
+
+	public void begin() {
+		if (sendOffset > sendBuffer.length) {
+			sendBuffer = ThreadLocalData.resizeSendBuffer(sendOffset);
+		}
+	}
+		
+	public void resizeReceiveBuffer(int size) {
+		if (size > receiveBuffer.length) {
+			receiveBuffer = ThreadLocalData.resizeReceiveBuffer(size);
+		}
 	}
 
 	/**
@@ -164,14 +179,14 @@ public final class SingleCommand extends Command {
 	public void writeKey() throws AerospikeException {
 		// Write key into buffer.
 		if (key.namespace != null) {
-			writeField(key.namespace, FIELD_TYPE_NAMESPACE);
+			writeField(key.namespace, FieldType.NAMESPACE);
 		}
 		
 		if (key.setName != null) {
-			writeField(key.setName, FIELD_TYPE_TABLE);
+			writeField(key.setName, FieldType.TABLE);
 		}
 	
-		writeField(key.digest, FIELD_TYPE_DIGEST_RIPE);
+		writeField(key.digest, FieldType.DIGEST_RIPE);
 	}
 	
 	protected Node getNode() throws AerospikeException.InvalidNode { 

@@ -21,7 +21,6 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public abstract class Command {
@@ -44,20 +43,7 @@ public abstract class Command {
 	public static final int INFO3_LAST				= (1 << 0); // this is the last of a multi-part message
 	//public static final int  INFO3_TRACE			= (1 << 1); // apply server trace logging for this transaction
 	//public static final int  INFO3_TOMBSTONE		= (1 << 2); // if set on response, a version was a delete tombstone	
-	
-	public static final int FIELD_TYPE_NAMESPACE = 0;
-	public static final int FIELD_TYPE_TABLE = 1;
-	public static final int FIELD_TYPE_KEY = 2;
-	//private static final int FIELD_TYPE_BIN = 3;
-	public static final int FIELD_TYPE_DIGEST_RIPE = 4;
-	//public final static int FIELD_TYPE_GU_TID = 5;
-	public static final int FIELD_TYPE_DIGEST_RIPE_ARRAY = 6;	
-	//public final static int FIELD_TYPE_TRID = 7;	// user supplied transaction id, which is simply passed back
-	public final static int FIELD_TYPE_SCAN_OPTIONS = 8;
-	public final static int FIELD_TYPE_UDF_FILENAME = 30;
-	public final static int FIELD_TYPE_UDF_FUNCTION = 31;
-	public final static int FIELD_TYPE_UDF_ARGLIST = 32;
-		
+			
 	public final static int DIGEST_SIZE = 20;
 	
 	public static final int MSG_TIMEOUT_OFFSET = 22;
@@ -73,8 +59,6 @@ public abstract class Command {
 	protected int sendOffset;
 
 	public Command() {
-		this.sendBuffer = ThreadLocalData.getSendBuffer();
-		this.receiveBuffer = ThreadLocalData.getReceiveBuffer();
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	
@@ -96,18 +80,6 @@ public abstract class Command {
 		sendOffset += OPERATION_HEADER_SIZE;
 	}
 	
-	public final void begin() {
-		if (sendOffset > sendBuffer.length) {
-			sendBuffer = ThreadLocalData.resizeSendBuffer(sendOffset);
-		}
-	}
-		
-	public final void resizeReceiveBuffer(int size) {
-		if (size > receiveBuffer.length) {
-			receiveBuffer = ThreadLocalData.resizeReceiveBuffer(size);
-		}
-	}
-
 	public final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
         int nameLength = Buffer.stringToUtf8(bin.name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
         int valueLength = bin.value.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);

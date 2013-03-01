@@ -7,7 +7,7 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
-package com.aerospike.client.sql;
+package com.aerospike.client.query;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
