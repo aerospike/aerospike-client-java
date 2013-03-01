@@ -783,7 +783,7 @@ public class AerospikeClient {
 		}
 		
 		// Retry policy must be one-shot for queries.
-		policy.maxRetries = 1;
+		policy.maxRetries = 0;
 		
 		return new QueryExecutor(policy, statement, cluster.getNodes());
 	}

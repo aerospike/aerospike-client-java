@@ -460,5 +460,13 @@ public final class Cluster implements Runnable {
 
 	public void close() {
 		tendValid = false;
+		tendThread.interrupt();
+		
+		// Must copy array reference for copy on write semantics to work.
+		Node[] nodeArray = nodes;
+		
+		for (Node node : nodeArray) {
+			node.close();
+		}
 	}
 }
