@@ -96,7 +96,7 @@ public class AerospikeClient {
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
 	 * 
-	 * @param policy				client configuration parameters
+	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @throws AerospikeException	if host connection fails
@@ -106,9 +106,9 @@ public class AerospikeClient {
 	}
 
 	/**
-	 * Initialize Aerospike client and find a suitable host to seed the cluster map.
+	 * Initialize Aerospike client with suitable hosts to seed the cluster map.
 	 * The client policy is used to set defaults and size internal data structures.
-	 * For the first host connection that succeeds, the client will:
+	 * For each host connection that succeeds, the client will:
 	 * <p>
 	 * - Add host to the cluster map <br>
 	 * - Request host's list of other nodes in cluster <br>
@@ -215,7 +215,7 @@ public class AerospikeClient {
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if write fails
@@ -235,7 +235,7 @@ public class AerospikeClient {
 	 * handled when the record already exists.
 	 * This call only works for string values. 
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if append fails
@@ -251,7 +251,7 @@ public class AerospikeClient {
 	 * handled when the record already exists.
 	 * This call works only for string values. 
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if prepend fails
@@ -271,7 +271,7 @@ public class AerospikeClient {
 	 * handled when the record already exists.
 	 * This call only works for integer values. 
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if add fails
@@ -289,7 +289,7 @@ public class AerospikeClient {
 	 * Delete record for specified key.
 	 * The policy specifies the transaction timeout.
 	 * 
-	 * @param policy				delete configuration parameters
+	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record existed on server before deletion 
 	 * @throws AerospikeException	if delete fails
@@ -312,7 +312,7 @@ public class AerospikeClient {
 	 * Create record if it does not already exist.  If the record exists, the record's 
 	 * time to expiration will be reset to the policy's expiration. 
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if touch fails
 	 */
@@ -335,7 +335,7 @@ public class AerospikeClient {
 	 * Determine if a record key exists.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						whether record exists or not 
 	 * @throws AerospikeException	if command fails
@@ -355,7 +355,7 @@ public class AerospikeClient {
 	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts.
 	 *  
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array key/existence status pairs
 	 * @throws AerospikeException	if command fails
@@ -374,7 +374,7 @@ public class AerospikeClient {
 	 * Read entire record for specified key.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
@@ -393,7 +393,7 @@ public class AerospikeClient {
 	 * Read record header and bins for specified key.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binNames				bins to retrieve
 	 * @return						if found, return record instance.  If not found, return null.
@@ -421,7 +421,7 @@ public class AerospikeClient {
 	 * Read record generation and expiration only for specified key.  Bins are not read.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
@@ -452,7 +452,7 @@ public class AerospikeClient {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
@@ -469,7 +469,7 @@ public class AerospikeClient {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @return						array of records
@@ -495,7 +495,7 @@ public class AerospikeClient {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
@@ -515,9 +515,9 @@ public class AerospikeClient {
 	 * An example would be to add an integer value to an existing record and then
 	 * read the result, all in one database call.
 	 * 
-	 * @param policy				write configuration parameters
+	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
-	 * @param operations			list of database operations
+	 * @param operations			database operations to perform
 	 * @return						record if there is a read in the operations list
 	 * @throws AerospikeException	if command fails
 	 */
@@ -590,7 +590,7 @@ public class AerospikeClient {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 * 
-	 * @param policy				scan configuration parameters
+	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
@@ -626,7 +626,7 @@ public class AerospikeClient {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 * 
-	 * @param policy				scan configuration parameters
+	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param nodeName				server node name;
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -653,7 +653,7 @@ public class AerospikeClient {
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
 	 * 
-	 * @param policy				scan configuration parameters
+	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param node					server node
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -675,7 +675,7 @@ public class AerospikeClient {
 	 * Register package containing user defined functions with server.
 	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param clientPath			path of client file containing user defined functions
 	 * @param serverPath			path to store user defined functions on the server
 	 * @param language				language of user defined functions
@@ -721,7 +721,7 @@ public class AerospikeClient {
 	 * The function operates on a single record.
 	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param fileName				server file where user defined function resides
 	 * @param functionName			user defined function
@@ -779,7 +779,7 @@ public class AerospikeClient {
 	/**
 	 * Execute query and return results.
 	 * 
-	 * @param policy				generic configuration parameters
+	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @return						collection of query results
 	 * @throws AerospikeException	if query fails
