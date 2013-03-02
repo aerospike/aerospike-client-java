@@ -183,9 +183,18 @@ public class AerospikeClient {
 	}
 
 	/**
-	 * Return a list of server nodes in the cluster.
+	 * Return array of active server nodes in the cluster.
 	 * 
-	 * @return	list of node names
+	 * @return	array of active nodes
+	 */
+	public final Node[] getNodes() {
+		return cluster.getNodes();
+	}
+
+	/**
+	 * Return list of server node names in the cluster.
+	 * 
+	 * @return	list of active node names
 	 */
 	public final List<String> getNodeNames() {
 		Node[] nodes = cluster.getNodes();		

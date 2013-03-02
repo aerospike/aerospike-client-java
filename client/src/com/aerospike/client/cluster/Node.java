@@ -21,7 +21,13 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 
-public final class Node {	
+/**
+ * Server node representation.  This class manages server node connections and health status.
+ */
+public final class Node {
+	/**
+	 * Number of partitions for each namespace.
+	 */
 	public static final int PARTITIONS = 4096;
 	private static final int FULL_HEALTH = 300;
 
@@ -35,6 +41,13 @@ public final class Node {
 	private int partitionGeneration;
 	private volatile boolean active;
 
+	/**
+	 * Initialize server node with connection parameters.
+	 * 
+	 * @param cluster			collection of active server nodes 
+	 * @param nv				connection parameters
+	 * @param connectionLimit	max socket connections to store in pool
+	 */
 	public Node(Cluster cluster, NodeValidator nv, int connectionLimit) {
 		this.cluster = cluster;
 		this.name = nv.name;
@@ -51,6 +64,12 @@ public final class Node {
 		active = true;
 	}
 	
+	/**
+	 * Request current status from server node.
+	 *  
+	 * @param friends		other nodes in the cluster, populated by this method
+	 * @throws Exception	if status request fails
+	 */
 	public void refresh(List<Host> friends) throws Exception {
 		Connection conn = getConnection(1000);
 		
@@ -142,6 +161,13 @@ public final class Node {
 		}
 	}
 	
+	/**
+	 * Get a socket connection from connection pool to the server node.
+	 * 
+	 * @param timeoutMillis			connection timeout value in milliseconds if a new connection is created	
+	 * @return						socket connection
+	 * @throws AerospikeException	if a connection could not be provided 
+	 */
 	public Connection getConnection(int timeoutMillis) throws AerospikeException {
 		Connection conn;
 		
@@ -163,18 +189,31 @@ public final class Node {
 		return new Connection(address, timeoutMillis);		
 	}
 	
+	/**
+	 * Put connection back into connection pool.
+	 * 
+	 * @param conn					socket connection
+	 */
 	public void putConnection(Connection conn) {
 		if (! active || ! connectionQueue.offer(conn)) {
 			conn.close();
 		}
 	}
 
+	/**
+	 * Set node status as healthy after successful database operation.
+	 */
 	public void restoreHealth() {
 		// There can be cases where health is full, but active is false.
 		// Once a node has been marked inactive, it stays inactive.
 		health.set(FULL_HEALTH);
 	}
 
+	/**
+	 * Decrease server health status after a connection failure.
+	 * 
+	 * @param value					health points
+	 */
 	public void decreaseHealth(int value) {
 		//if (Log.debugEnabled()) {
 		//	Log.debug("Node " + this + " decrease health " + value);
@@ -184,22 +223,37 @@ public final class Node {
 		}
 	}
 
+	/**
+	 * Return server node IP address and port.
+	 */
 	public Host getHost() {
 		return host;
 	}
 	
+	/**
+	 * Return whether node is currently active.
+	 */
 	public boolean isActive() {
 		return active;
 	}
 
+	/**
+	 * Return server node name.
+	 */
 	public String getName() {
 		return name;
 	}
 
+	/**
+	 * Return server node IP address aliases.
+	 */
 	public Host[] getAliases() {
 		return aliases;
 	}
 
+	/**
+	 * Close all server node socket connections.
+	 */
 	public void close() {
 		active = false;
 		closeConnections();
