@@ -94,9 +94,6 @@ java.lang.Object
   <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">com.aerospike.client.policy.Policy</A>
       <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.policy.QueryPolicy</B>
 </PRE>
-<DL>
-<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy">ScanPolicy</A></DD>
-</DL>
 <HR>
 <DL>
 <DT><PRE>public class <B>QueryPolicy</B><DT>extends <A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A></DL>
@@ -120,27 +117,19 @@ Container object for policy attributes used in query operations.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;boolean</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#concurrentNodes">concurrentNodes</A></B></CODE>
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#maxConcurrentNodes">maxConcurrentNodes</A></B></CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Issue scan requests in parallel or serially.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;boolean</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#failOnClusterChange">failOnClusterChange</A></B></CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Terminate scan if cluster in fluctuating state.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum number of concurrent requests to server nodes at any point in time.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#threadsPerNode">threadsPerNode</A></B></CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#recordQueueSize">recordQueueSize</A></B></CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of threads per node scan.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of records to place in queue before blocking.</TD>
 </TR>
 </TABLE>
 &nbsp;<A NAME="fields_inherited_from_class_com.aerospike.client.policy.Policy"><!-- --></A>
@@ -200,36 +189,31 @@ Container object for policy attributes used in query operations.
 </TR>
 </TABLE>
 
-<A NAME="threadsPerNode"><!-- --></A><H3>
-threadsPerNode</H3>
+<A NAME="maxConcurrentNodes"><!-- --></A><H3>
+maxConcurrentNodes</H3>
 <PRE>
-public int <B>threadsPerNode</B></PRE>
+public int <B>maxConcurrentNodes</B></PRE>
 <DL>
-<DD>Number of threads per node scan.
+<DD>Maximum number of concurrent requests to server nodes at any point in time.
+ If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries 
+ will be made to 8 nodes in parallel.  When a query completes, a new query will 
+ be issued until all 16 nodes have been queried.
+ Default (0) is to issue requests to all server nodes in parallel.
 <P>
 <DL>
 </DL>
 </DL>
 <HR>
 
-<A NAME="concurrentNodes"><!-- --></A><H3>
-concurrentNodes</H3>
+<A NAME="recordQueueSize"><!-- --></A><H3>
+recordQueueSize</H3>
 <PRE>
-public boolean <B>concurrentNodes</B></PRE>
+public int <B>recordQueueSize</B></PRE>
 <DL>
-<DD>Issue scan requests in parallel or serially.
-<P>
-<DL>
-</DL>
-</DL>
-<HR>
-
-<A NAME="failOnClusterChange"><!-- --></A><H3>
-failOnClusterChange</H3>
-<PRE>
-public boolean <B>failOnClusterChange</B></PRE>
-<DL>
-<DD>Terminate scan if cluster in fluctuating state.
+<DD>Number of records to place in queue before blocking.
+ Records received from multiple server nodes will be placed in a queue.
+ A separate thread consumes these records in parallel.
+ If the queue is full, the producer threads will block until records are consumed.
 <P>
 <DL>
 </DL>

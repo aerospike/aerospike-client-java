@@ -1,3 +1,5 @@
 com.aerospike.client
+com.aerospike.client.cluster
 com.aerospike.client.policy
+com.aerospike.client.query
 net.citrusleaf

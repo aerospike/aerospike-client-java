@@ -160,6 +160,9 @@ Static method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafInfo.
 <DT><A HREF="../net/citrusleaf/CitrusleafInfo.html#get(java.net.InetSocketAddress, java.lang.String[])"><B>get(InetSocketAddress, String[])</B></A> - 
 Static method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafInfo.html" title="class in net.citrusleaf">CitrusleafInfo</A>
 <DD>Get many info values by name from the specified database server node.
+<DT><A HREF="../com/aerospike/client/cluster/Node.html#getAliases()"><B>getAliases()</B></A> - 
+Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>
+<DD>Return server node IP address aliases.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.html#getAll(java.lang.String, java.lang.String, java.lang.Object, net.citrusleaf.CitrusleafClient.ClOptions)"><B>getAll(String, String, Object, CitrusleafClient.ClOptions)</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Get all bin name/value pairs for specified key.
@@ -181,6 +184,9 @@ Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Val
 <DT><A HREF="../com/aerospike/client/Info.html#getBuffer()"><B>getBuffer()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>
 <DD>Get response buffer.
+<DT><A HREF="../com/aerospike/client/cluster/Node.html#getConnection(int)"><B>getConnection(int)</B></A> - 
+Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>
+<DD>Get a socket connection from connection pool to the server node.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.html#getDigest(java.lang.String, byte[], java.lang.String, net.citrusleaf.CitrusleafClient.ClOptions)"><B>getDigest(String, byte[], String, CitrusleafClient.ClOptions)</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Get bin value for specified key digest and bin name.
@@ -196,12 +202,21 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeC
 <DT><A HREF="../com/aerospike/client/Operation.html#getHeader()"><B>getHeader()</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A>
 <DD>Create read record header database operation.
+<DT><A HREF="../com/aerospike/client/cluster/Node.html#getHost()"><B>getHost()</B></A> - 
+Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>
+<DD>Return server node IP address and port.
+<DT><A HREF="../com/aerospike/client/query/RecordSet.html#getKey()"><B>getKey()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query">RecordSet</A>
+<DD>Get record's unique identifier.
 <DT><A HREF="../com/aerospike/client/Info.html#getLength()"><B>getLength()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>
 <DD>Get response length.
 <DT><A HREF="../com/aerospike/client/AerospikeException.html#getMessage()"><B>getMessage()</B></A> - 
 Method in exception com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A>
 <DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/cluster/Node.html#getName()"><B>getName()</B></A> - 
+Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>
+<DD>Return server node name.
 <DT><A HREF="../com/aerospike/client/Info.NameValueParser.html#getName()"><B>getName()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.NameValueParser.html" title="class in com.aerospike.client">Info.NameValueParser</A>
 <DD>Get name.
@@ -213,7 +228,10 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html"
 <DD>Return a list of server nodes in the cluster.
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#getNodeNames()"><B>getNodeNames()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
-<DD>Return a list of server nodes in the cluster.
+<DD>Return list of active server node names in the cluster.
+<DT><A HREF="../com/aerospike/client/AerospikeClient.html#getNodes()"><B>getNodes()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
+<DD>Return array of active server nodes in the cluster.
 <DT><A HREF="../com/aerospike/client/Value.BlobValue.html#getObject()"><B>getObject()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.BlobValue.html" title="class in com.aerospike.client">Value.BlobValue</A>
 <DD>&nbsp;
@@ -244,6 +262,9 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.Stri
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html#getPriority()"><B>getPriority()</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html" title="class in net.citrusleaf">CitrusleafClient.ClScanningOptions</A>
 <DD>Get server scan priority setting.
+<DT><A HREF="../com/aerospike/client/query/RecordSet.html#getRecord()"><B>getRecord()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query">RecordSet</A>
+<DD>Get record's header and bin data.
 <DT><A HREF="../com/aerospike/client/AerospikeException.html#getResultCode()"><B>getResultCode()</B></A> - 
 Method in exception com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A>
 <DD>Get integer result code.

@@ -192,7 +192,7 @@ public class AerospikeClient {
 	}
 
 	/**
-	 * Return list of server node names in the cluster.
+	 * Return list of active server node names in the cluster.
 	 * 
 	 * @return	list of active node names
 	 */

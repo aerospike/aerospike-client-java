@@ -136,7 +136,7 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
                 <A HREF="../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>...&nbsp;hosts)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize Aerospike client and find a suitable host to seed the cluster map.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize Aerospike client with suitable hosts to seed the cluster map.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#AerospikeClient(com.aerospike.client.policy.ClientPolicy, java.lang.String, int)">AerospikeClient</A></B>(<A HREF="../../../com/aerospike/client/policy/ClientPolicy.html" title="class in com.aerospike.client.policy">ClientPolicy</A>&nbsp;policy,
@@ -292,7 +292,15 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#getNodeNames()">getNodeNames</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return a list of server nodes in the cluster.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return list of active server node names in the cluster.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>[]</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#getNodes()">getNodes</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return array of active server nodes in the cluster.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -331,6 +339,15 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Write record bin(s).</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query">RecordSet</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement)">query</A></B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+      <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return results.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -445,7 +462,7 @@ public <B>AerospikeClient</B>(<A HREF="../../../com/aerospike/client/policy/Clie
  until the server is activated.
 <P>
 <DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - client configuration parameters<DD><CODE>hostname</CODE> - host name<DD><CODE>port</CODE> - host port
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - client configuration parameters, pass in null for defaults<DD><CODE>hostname</CODE> - host name<DD><CODE>port</CODE> - host port
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if host connection fails</DL>
 </DL>
@@ -458,9 +475,9 @@ public <B>AerospikeClient</B>(<A HREF="../../../com/aerospike/client/policy/Clie
                        <A HREF="../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>...&nbsp;hosts)
                 throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
-<DD>Initialize Aerospike client and find a suitable host to seed the cluster map.
+<DD>Initialize Aerospike client with suitable hosts to seed the cluster map.
  The client policy is used to set defaults and size internal data structures.
- For the first host connection that succeeds, the client will:
+ For each host connection that succeeds, the client will:
  <p>
  - Add host to the cluster map <br>
  - Request host's list of other nodes in cluster <br>
@@ -475,7 +492,7 @@ public <B>AerospikeClient</B>(<A HREF="../../../com/aerospike/client/policy/Clie
  until the server is activated.
 <P>
 <DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - client configuration parameters<DD><CODE>hosts</CODE> - array of potential hosts to seed the cluster
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - client configuration parameters, pass in null for defaults<DD><CODE>hosts</CODE> - array of potential hosts to seed the cluster
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if all host connections fail</DL>
 </DL>
@@ -518,16 +535,30 @@ public final boolean <B>isConnected</B>()</PRE>
 </DL>
 <HR>
 
+<A NAME="getNodes()"><!-- --></A><H3>
+getNodes</H3>
+<PRE>
+public final <A HREF="../../../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>[] <B>getNodes</B>()</PRE>
+<DL>
+<DD>Return array of active server nodes in the cluster.
+<P>
+<DD><DL>
+
+<DT><B>Returns:</B><DD>array of active nodes</DL>
+</DD>
+</DL>
+<HR>
+
 <A NAME="getNodeNames()"><!-- --></A><H3>
 getNodeNames</H3>
 <PRE>
 public final java.util.List&lt;java.lang.String&gt; <B>getNodeNames</B>()</PRE>
 <DL>
-<DD>Return a list of server nodes in the cluster.
+<DD>Return list of active server node names in the cluster.
 <P>
 <DD><DL>
 
-<DT><B>Returns:</B><DD>list of node names</DL>
+<DT><B>Returns:</B><DD>list of active node names</DL>
 </DD>
 </DL>
 <HR>
@@ -545,7 +576,7 @@ public final void <B>put</B>(<A HREF="../../../com/aerospike/client/policy/Write
  handled when the record already exists.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if write fails</DL>
 </DD>
@@ -566,7 +597,7 @@ public final void <B>append</B>(<A HREF="../../../com/aerospike/client/policy/Wr
  This call only works for string values.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if append fails</DL>
 </DD>
@@ -587,7 +618,7 @@ public final void <B>prepend</B>(<A HREF="../../../com/aerospike/client/policy/W
  This call works only for string values.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if prepend fails</DL>
 </DD>
@@ -608,7 +639,7 @@ public final void <B>add</B>(<A HREF="../../../com/aerospike/client/policy/Write
  This call only works for integer values.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>bins</CODE> - array of bin name/value pairs
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if add fails</DL>
 </DD>
@@ -626,7 +657,7 @@ public final boolean <B>delete</B>(<A HREF="../../../com/aerospike/client/policy
  The policy specifies the transaction timeout.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - delete configuration parameters<DD><CODE>key</CODE> - unique record identifier
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - delete configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier
 <DT><B>Returns:</B><DD>whether record existed on server before deletion
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if delete fails</DL>
@@ -645,7 +676,7 @@ public final void <B>touch</B>(<A HREF="../../../com/aerospike/client/policy/Wri
  time to expiration will be reset to the policy's expiration.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if touch fails</DL>
 </DD>
@@ -663,7 +694,7 @@ public final boolean <B>exists</B>(<A HREF="../../../com/aerospike/client/policy
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier
 <DT><B>Returns:</B><DD>whether record exists or not
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if command fails</DL>
@@ -683,7 +714,7 @@ public final boolean[] <B>exists</B>(<A HREF="../../../com/aerospike/client/poli
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>keys</CODE> - array of unique record identifiers
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>keys</CODE> - array of unique record identifiers
 <DT><B>Returns:</B><DD>array key/existence status pairs
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if command fails</DL>
@@ -702,7 +733,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier
 <DT><B>Returns:</B><DD>if found, return record instance.  If not found, return null.
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -722,7 +753,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>binNames</CODE> - bins to retrieve
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>binNames</CODE> - bins to retrieve
 <DT><B>Returns:</B><DD>if found, return record instance.  If not found, return null.
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -741,7 +772,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier
 <DT><B>Returns:</B><DD>if found, return record instance.  If not found, return null.
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -762,7 +793,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>keys</CODE> - array of unique record identifiers
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>keys</CODE> - array of unique record identifiers
 <DT><B>Returns:</B><DD>array of records
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -784,7 +815,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>keys</CODE> - array of unique record identifiers<DD><CODE>binNames</CODE> - array of bins to retrieve
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>keys</CODE> - array of unique record identifiers<DD><CODE>binNames</CODE> - array of bins to retrieve
 <DT><B>Returns:</B><DD>array of records
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -805,7 +836,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  The policy can be used to specify timeouts.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>keys</CODE> - array of unique record identifiers
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>keys</CODE> - array of unique record identifiers
 <DT><B>Returns:</B><DD>array of records
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if read fails</DL>
@@ -826,7 +857,7 @@ public final <A HREF="../../../com/aerospike/client/Record.html" title="class in
  read the result, all in one database call.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>operations</CODE> - list of database operations
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - write configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>operations</CODE> - database operations to perform
 <DT><B>Returns:</B><DD>record if there is a read in the operations list
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if command fails</DL>
@@ -851,7 +882,7 @@ public final void <B>scanAll</B>(<A HREF="../../../com/aerospike/client/policy/S
  within the scope of this call.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters, pass in null for defaults<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if scan fails</DL>
 </DD>
@@ -875,7 +906,7 @@ public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/
  within the scope of this call.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters<DD><CODE>nodeName</CODE> - server node name;<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters, pass in null for defaults<DD><CODE>nodeName</CODE> - server node name;<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if scan fails</DL>
 </DD>
@@ -895,7 +926,7 @@ public final void <B>register</B>(<A HREF="../../../com/aerospike/client/policy/
  This method is only supported by Aerospike 3.0 servers.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>clientPath</CODE> - path of client file containing user defined functions<DD><CODE>serverPath</CODE> - path to store user defined functions on the server<DD><CODE>language</CODE> - language of user defined functions
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>clientPath</CODE> - path of client file containing user defined functions<DD><CODE>serverPath</CODE> - path to store user defined functions on the server<DD><CODE>language</CODE> - language of user defined functions
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if register fails</DL>
 </DD>
@@ -917,10 +948,28 @@ public final java.lang.Object <B>execute</B>(<A HREF="../../../com/aerospike/cli
  This method is only supported by Aerospike 3.0 servers.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters<DD><CODE>key</CODE> - unique record identifier<DD><CODE>fileName</CODE> - server file where user defined function resides<DD><CODE>functionName</CODE> - user defined function<DD><CODE>args</CODE> - arguments passed in to user defined function
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>fileName</CODE> - server file where user defined function resides<DD><CODE>functionName</CODE> - user defined function<DD><CODE>args</CODE> - arguments passed in to user defined function
 <DT><B>Returns:</B><DD>return value of user defined function
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if transaction fails</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="query(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement)"><!-- --></A><H3>
+query</H3>
+<PRE>
+public final <A HREF="../../../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query">RecordSet</A> <B>query</B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+                             <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)
+                      throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Execute query and return results.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>statement</CODE> - database query command
+<DT><B>Returns:</B><DD>collection of query results
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if query fails</DL>
 </DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->

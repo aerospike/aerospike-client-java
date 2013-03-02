@@ -53,8 +53,8 @@ function windowTitle()
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/cluster/NamespacePartition.html" title="class in com.aerospike.client.cluster"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../../com/aerospike/client/cluster/NodeValidator.html" title="class in com.aerospike.client.cluster"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;PREV CLASS&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../../index.html?com/aerospike/client/cluster/Node.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Node.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -74,9 +74,9 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_top"></A>
@@ -99,10 +99,31 @@ java.lang.Object
 </PRE>
 
 <P>
+Server node representation.  This class manages server node connections and health status.
+<P>
+
+<P>
 <HR>
 
 <P>
+<!-- =========== FIELD SUMMARY =========== -->
 
+<A NAME="field_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Field Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#PARTITIONS">PARTITIONS</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of partitions for each namespace.</TD>
+</TR>
+</TABLE>
+&nbsp;
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
 
 <A NAME="constructor_summary"><!-- --></A>
@@ -112,12 +133,12 @@ java.lang.Object
 <B>Constructor Summary</B></FONT></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#Node(com.aerospike.client.cluster.Cluster, com.aerospike.client.cluster.Host, int)">Node</A></B>(<A HREF="../../../../com/aerospike/client/cluster/Cluster.html" title="class in com.aerospike.client.cluster">Cluster</A>&nbsp;cluster,
-     <A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&nbsp;host,
-     int&nbsp;timeoutMillis)</CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#Node(com.aerospike.client.cluster.Cluster, com.aerospike.client.cluster.NodeValidator, int)">Node</A></B>(com.aerospike.client.cluster.Cluster&nbsp;cluster,
+     com.aerospike.client.cluster.NodeValidator&nbsp;nv,
+     int&nbsp;connectionLimit)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize server node with connection parameters.</TD>
 </TR>
 </TABLE>
 &nbsp;
@@ -135,7 +156,7 @@ java.lang.Object
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#close()">close</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Close all server node socket connections.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -143,7 +164,7 @@ java.lang.Object
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#decreaseHealth(int)">decreaseHealth</A></B>(int&nbsp;value)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Decrease server health status after a connection failure.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -155,11 +176,27 @@ java.lang.Object
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;java.util.List&lt;<A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&gt;</CODE></FONT></TD>
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>[]</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#getAliases()">getAliases</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return server node IP address aliases.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;com.aerospike.client.cluster.Connection</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#getConnection(int)">getConnection</A></B>(int&nbsp;timeoutMillis)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get a socket connection from connection pool to the server node.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#getHost()">getHost</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return server node IP address and port.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -167,7 +204,7 @@ java.lang.Object
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#getName()">getName</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return server node name.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -180,31 +217,39 @@ java.lang.Object
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;boolean</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#isSick()">isSick</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#isActive()">isActive</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return whether node is currently active.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#putConnection(com.aerospike.client.cluster.Connection)">putConnection</A></B>(<A HREF="../../../../com/aerospike/client/cluster/Connection.html" title="class in com.aerospike.client.cluster">Connection</A>&nbsp;conn)</CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#putConnection(com.aerospike.client.cluster.Connection)">putConnection</A></B>(com.aerospike.client.cluster.Connection&nbsp;conn)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Put connection back into connection pool.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#refresh(java.util.List)">refresh</A></B>(java.util.List&lt;<A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&gt;&nbsp;friends)</CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#refresh(java.util.List)">refresh</A></B>(java.util.List&lt;<A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>&gt;&nbsp;friends)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Request current status from server node.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#restoreHealth()">restoreHealth</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set node status as healthy after successful database operation.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.lang.String</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/cluster/Node.html#toString()">toString</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
@@ -216,11 +261,32 @@ java.lang.Object
 <TH ALIGN="left"><B>Methods inherited from class java.lang.Object</B></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE>getClass, notify, notifyAll, toString, wait, wait, wait</CODE></TD>
+<TD><CODE>getClass, notify, notifyAll, wait, wait, wait</CODE></TD>
 </TR>
 </TABLE>
 &nbsp;
 <P>
+
+<!-- ============ FIELD DETAIL =========== -->
+
+<A NAME="field_detail"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="1"><FONT SIZE="+2">
+<B>Field Detail</B></FONT></TH>
+</TR>
+</TABLE>
+
+<A NAME="PARTITIONS"><!-- --></A><H3>
+PARTITIONS</H3>
+<PRE>
+public static final int <B>PARTITIONS</B></PRE>
+<DL>
+<DD>Number of partitions for each namespace.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../../constant-values.html#com.aerospike.client.cluster.Node.PARTITIONS">Constant Field Values</A></DL>
+</DL>
 
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
 
@@ -232,18 +298,17 @@ java.lang.Object
 </TR>
 </TABLE>
 
-<A NAME="Node(com.aerospike.client.cluster.Cluster, com.aerospike.client.cluster.Host, int)"><!-- --></A><H3>
+<A NAME="Node(com.aerospike.client.cluster.Cluster, com.aerospike.client.cluster.NodeValidator, int)"><!-- --></A><H3>
 Node</H3>
 <PRE>
-public <B>Node</B>(<A HREF="../../../../com/aerospike/client/cluster/Cluster.html" title="class in com.aerospike.client.cluster">Cluster</A>&nbsp;cluster,
-            <A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&nbsp;host,
-            int&nbsp;timeoutMillis)
-     throws <A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+public <B>Node</B>(com.aerospike.client.cluster.Cluster&nbsp;cluster,
+            com.aerospike.client.cluster.NodeValidator&nbsp;nv,
+            int&nbsp;connectionLimit)</PRE>
 <DL>
+<DD>Initialize server node with connection parameters.
+<P>
 <DL>
-
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
+<DT><B>Parameters:</B><DD><CODE>cluster</CODE> - collection of active server nodes<DD><CODE>nv</CODE> - connection parameters<DD><CODE>connectionLimit</CODE> - max socket connections to store in pool</DL>
 </DL>
 
 <!-- ============ METHOD DETAIL ========== -->
@@ -259,15 +324,32 @@ public <B>Node</B>(<A HREF="../../../../com/aerospike/client/cluster/Cluster.htm
 <A NAME="refresh(java.util.List)"><!-- --></A><H3>
 refresh</H3>
 <PRE>
-public void <B>refresh</B>(java.util.List&lt;<A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&gt;&nbsp;friends)
-             throws java.io.IOException,
-                    <A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+public void <B>refresh</B>(java.util.List&lt;<A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>&gt;&nbsp;friends)
+             throws java.lang.Exception</PRE>
 <DL>
+<DD>Request current status from server node.
+<P>
 <DD><DL>
-
+<DT><B>Parameters:</B><DD><CODE>friends</CODE> - other nodes in the cluster, populated by this method
 <DT><B>Throws:</B>
-<DD><CODE>java.io.IOException</CODE>
-<DD><CODE><A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
+<DD><CODE>java.lang.Exception</CODE> - if status request fails</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getConnection(int)"><!-- --></A><H3>
+getConnection</H3>
+<PRE>
+public com.aerospike.client.cluster.Connection <B>getConnection</B>(int&nbsp;timeoutMillis)
+                                                      throws <A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Get a socket connection from connection pool to the server node.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>timeoutMillis</CODE> - connection timeout value in milliseconds if a new connection is created
+<DT><B>Returns:</B><DD>socket connection
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if a connection could not be provided</DL>
 </DD>
 </DL>
 <HR>
@@ -275,10 +357,12 @@ public void <B>refresh</B>(java.util.List&lt;<A HREF="../../../../com/aerospike/
 <A NAME="putConnection(com.aerospike.client.cluster.Connection)"><!-- --></A><H3>
 putConnection</H3>
 <PRE>
-public void <B>putConnection</B>(<A HREF="../../../../com/aerospike/client/cluster/Connection.html" title="class in com.aerospike.client.cluster">Connection</A>&nbsp;conn)</PRE>
+public void <B>putConnection</B>(com.aerospike.client.cluster.Connection&nbsp;conn)</PRE>
 <DL>
+<DD>Put connection back into connection pool.
+<P>
 <DD><DL>
-</DL>
+<DT><B>Parameters:</B><DD><CODE>conn</CODE> - socket connection</DL>
 </DD>
 </DL>
 <HR>
@@ -288,6 +372,8 @@ restoreHealth</H3>
 <PRE>
 public void <B>restoreHealth</B>()</PRE>
 <DL>
+<DD>Set node status as healthy after successful database operation.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -299,17 +385,34 @@ decreaseHealth</H3>
 <PRE>
 public void <B>decreaseHealth</B>(int&nbsp;value)</PRE>
 <DL>
+<DD>Decrease server health status after a connection failure.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>value</CODE> - health points</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getHost()"><!-- --></A><H3>
+getHost</H3>
+<PRE>
+public <A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A> <B>getHost</B>()</PRE>
+<DL>
+<DD>Return server node IP address and port.
+<P>
 <DD><DL>
 </DL>
 </DD>
 </DL>
 <HR>
 
-<A NAME="isSick()"><!-- --></A><H3>
-isSick</H3>
+<A NAME="isActive()"><!-- --></A><H3>
+isActive</H3>
 <PRE>
-public boolean <B>isSick</B>()</PRE>
+public boolean <B>isActive</B>()</PRE>
 <DL>
+<DD>Return whether node is currently active.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -321,6 +424,8 @@ getName</H3>
 <PRE>
 public java.lang.String <B>getName</B>()</PRE>
 <DL>
+<DD>Return server node name.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -330,8 +435,10 @@ public java.lang.String <B>getName</B>()</PRE>
 <A NAME="getAliases()"><!-- --></A><H3>
 getAliases</H3>
 <PRE>
-public java.util.List&lt;<A HREF="../../../../com/aerospike/client/cluster/Host.html" title="class in com.aerospike.client.cluster">Host</A>&gt; <B>getAliases</B>()</PRE>
+public <A HREF="../../../../com/aerospike/client/Host.html" title="class in com.aerospike.client">Host</A>[] <B>getAliases</B>()</PRE>
 <DL>
+<DD>Return server node IP address aliases.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -343,6 +450,22 @@ close</H3>
 <PRE>
 public void <B>close</B>()</PRE>
 <DL>
+<DD>Close all server node socket connections.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="toString()"><!-- --></A><H3>
+toString</H3>
+<PRE>
+public java.lang.String <B>toString</B>()</PRE>
+<DL>
+<DD><DL>
+<DT><B>Overrides:</B><DD><CODE>toString</CODE> in class <CODE>java.lang.Object</CODE></DL>
+</DD>
 <DD><DL>
 </DL>
 </DD>
@@ -406,8 +529,8 @@ public boolean <B>equals</B>(java.lang.Object&nbsp;obj)</PRE>
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/cluster/NamespacePartition.html" title="class in com.aerospike.client.cluster"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../../com/aerospike/client/cluster/NodeValidator.html" title="class in com.aerospike.client.cluster"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;PREV CLASS&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../../index.html?com/aerospike/client/cluster/Node.html" target="_top"><B>FRAMES</B></A>  &nbsp;
 &nbsp;<A HREF="Node.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
@@ -427,9 +550,9 @@ public boolean <B>equals</B>(java.lang.Object&nbsp;obj)</PRE>
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_bottom"></A>

@@ -92,12 +92,11 @@ Class ScanPolicy</H2>
 <PRE>
 java.lang.Object
   <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">com.aerospike.client.policy.Policy</A>
-      <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">com.aerospike.client.policy.QueryPolicy</A>
-          <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.policy.ScanPolicy</B>
+      <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.policy.ScanPolicy</B>
 </PRE>
 <HR>
 <DL>
-<DT><PRE>public final class <B>ScanPolicy</B><DT>extends <A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A></DL>
+<DT><PRE>public final class <B>ScanPolicy</B><DT>extends <A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A></DL>
 </PRE>
 
 <P>
@@ -119,6 +118,22 @@ Container object for optional parameters used in scan operations.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;boolean</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ScanPolicy.html#concurrentNodes">concurrentNodes</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Issue scan requests in parallel or serially.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;boolean</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ScanPolicy.html#failOnClusterChange">failOnClusterChange</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Terminate scan if cluster in fluctuating state.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;boolean</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ScanPolicy.html#includeBinData">includeBinData</A></B></CODE>
 
 <BR>
@@ -132,14 +147,13 @@ Container object for optional parameters used in scan operations.
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Fraction of data to scan - not yet supported.</TD>
 </TR>
-</TABLE>
-&nbsp;<A NAME="fields_inherited_from_class_com.aerospike.client.policy.QueryPolicy"><!-- --></A>
-<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
-<TR BGCOLOR="#EEEEFF" CLASS="TableSubHeadingColor">
-<TH ALIGN="left"><B>Fields inherited from class com.aerospike.client.policy.<A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A></B></TH>
-</TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#concurrentNodes">concurrentNodes</A>, <A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#failOnClusterChange">failOnClusterChange</A>, <A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html#threadsPerNode">threadsPerNode</A></CODE></TD>
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ScanPolicy.html#threadsPerNode">threadsPerNode</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Number of threads per node scan.</TD>
 </TR>
 </TABLE>
 &nbsp;<A NAME="fields_inherited_from_class_com.aerospike.client.policy.Policy"><!-- --></A>
@@ -199,6 +213,18 @@ Container object for optional parameters used in scan operations.
 </TR>
 </TABLE>
 
+<A NAME="threadsPerNode"><!-- --></A><H3>
+threadsPerNode</H3>
+<PRE>
+public int <B>threadsPerNode</B></PRE>
+<DL>
+<DD>Number of threads per node scan.
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
 <A NAME="scanPercent"><!-- --></A><H3>
 scanPercent</H3>
 <PRE>
@@ -211,12 +237,36 @@ public int <B>scanPercent</B></PRE>
 </DL>
 <HR>
 
+<A NAME="concurrentNodes"><!-- --></A><H3>
+concurrentNodes</H3>
+<PRE>
+public boolean <B>concurrentNodes</B></PRE>
+<DL>
+<DD>Issue scan requests in parallel or serially.
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
 <A NAME="includeBinData"><!-- --></A><H3>
 includeBinData</H3>
 <PRE>
 public boolean <B>includeBinData</B></PRE>
 <DL>
 <DD>Indicates if bin data is retrieved. If false, only record digests are retrieved.
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="failOnClusterChange"><!-- --></A><H3>
+failOnClusterChange</H3>
+<PRE>
+public boolean <B>failOnClusterChange</B></PRE>
+<DL>
+<DD>Terminate scan if cluster in fluctuating state.
 <P>
 <DL>
 </DL>
