@@ -9,10 +9,32 @@
  */
 package com.aerospike.client.query;
 
+/**
+ * Query filter operators.
+ */
 public enum Operator {
+	/**
+	 * Equals (=)
+	 */
 	EQUALS,
+	
+	/**
+	 * Less than (<)
+	 */
 	LT,
+	
+	/**
+	 * Less than or equal (<=)
+	 */
 	LTE,
+	
+	/**
+	 * Greater than (>)
+	 */
 	GT,
+	
+	/**
+	 * Greater than or equal (>=)
+	 */
 	GTE;
 }

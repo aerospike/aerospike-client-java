@@ -14,7 +14,7 @@ package com.aerospike.client;
  */
 public final class Host {
 	/**
-	 * Host name of database server.
+	 * Host name or IP address of database server.
 	 */
 	public final String name;
 	
