@@ -66,6 +66,7 @@ public final class Key {
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -83,6 +84,7 @@ public final class Key {
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -100,6 +102,7 @@ public final class Key {
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -117,6 +120,7 @@ public final class Key {
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -134,6 +138,7 @@ public final class Key {
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
 	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
 	 * 
 	 * This is the slowest of the Key constructors because the type
 	 * must be determined using multiple "instanceof" checks.
