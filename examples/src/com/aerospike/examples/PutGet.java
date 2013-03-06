@@ -102,7 +102,8 @@ public class PutGet extends Example {
 				"Failed to get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey));
 		}
 		
-		if (record.expiration == 0) {
+		// Generation should be greater than zero.  Make sure it's populated.
+		if (record.generation == 0) {
 			throw new Exception(String.format(
 				"Invalid record header: generation=%d expiration=%d", record.generation, record.expiration));
 		}

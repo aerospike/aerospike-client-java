@@ -171,6 +171,8 @@ public final class Key {
 	
 	/**
 	 * Initialize key from namespace and digest.
+	 * This constructor exists for the legacy CitrusleafClient compatibility layer only.
+	 * Do not use.
 	 * 
 	 * @param namespace				namespace
 	 * @param digest				unique server hash value

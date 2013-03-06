@@ -56,6 +56,7 @@ public final class Record {
 	
 	/**
 	 * Get bin value given bin name.
+	 * Enter empty string ("") for servers configured as single-bin.
 	 */
 	public Object getValue(String name) {
 		return (bins == null)? null : bins.get(name);
