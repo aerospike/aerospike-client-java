@@ -42,6 +42,7 @@ import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 
 public class GuiDisplay extends JPanel {
 
@@ -66,8 +67,8 @@ public class GuiDisplay extends JPanel {
 	private static final String RUNTEST_LBL = "Run";
 	private static final String EXIT_LBL = "Quit";
 
-	private GuiDisplay(String[] initExampleChoices, AerospikeClient client, Parameters params, Console console) {
-		this.client = client;
+	private GuiDisplay(String[] initExampleChoices, Parameters params, Console console) throws AerospikeException {
+		this.client = new AerospikeClient(params.host, params.port);
 		this.params = params;
 		this.console = console;
 
@@ -253,7 +254,7 @@ public class GuiDisplay extends JPanel {
 	/**
 	 * Present a GUI with check boxes
 	 */
-	public static void startGui(String[] examples, AerospikeClient client, Parameters params, Console console) {
+	public static void startGui(String[] examples, Parameters params, Console console) throws AerospikeException {
 		JDesktopPane desk;
 
 		frame =  new JFrame("Citrusleaf JAVA client examples");
@@ -277,7 +278,7 @@ public class GuiDisplay extends JPanel {
 		userselect_frame = new JInternalFrame("Select examples", false, false, false, false);
 		userselect_frame.setBounds(0, 0, 200, 400);
 		userselect_frame.setVisible(true);
-		userselect_frame.setContentPane(new GuiDisplay(examples, client, params, console));
+		userselect_frame.setContentPane(new GuiDisplay(examples, params, console));
 		userselect_frame.pack();
 
 		desk.add(userselect_frame);

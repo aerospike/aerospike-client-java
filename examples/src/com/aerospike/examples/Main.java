@@ -33,6 +33,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Log;
+import com.aerospike.client.Log.Level;
 
 public class Main extends JPanel {
 
@@ -68,7 +70,8 @@ public class Main extends JPanel {
 			options.addOption("p", "port", true, "Server port (default: 3000)");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
-			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests");
+			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
+			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
 			CommandLineParser clp = new GnuParser();
@@ -85,7 +88,25 @@ public class Main extends JPanel {
 				logUsage(console, options);
 				return;			
 			}
-			processExamples(console, params, exampleNames, cl.hasOption("g"));
+			
+			// Check for all.
+			for (String exampleName : exampleNames) {
+				if (exampleName.equalsIgnoreCase("all")) {
+					exampleNames = ExampleNames;
+					break;
+				}
+			}
+			
+			if (cl.hasOption("d")) {				
+				Log.setLevel(Level.DEBUG);
+			}
+
+			if (cl.hasOption("g")) {
+				GuiDisplay.startGui(exampleNames, params, console);
+			}
+			else {
+				runExamplesCommandLine(console, params, exampleNames);				
+			}
 		}
 		catch (Exception ex) {
 			console.error(ex.getMessage());
@@ -133,25 +154,12 @@ public class Main extends JPanel {
 	/**
 	 * Connect and run one or more client examples.
 	 */
-	private static void processExamples(Console console, Parameters params, String[] examples, boolean invokeGui) throws Exception {
+	private static void runExamplesCommandLine(Console console, Parameters params, String[] examples) throws Exception {
 		AerospikeClient client = new AerospikeClient(params.host, params.port);
 
 		try {
-			// Check for all.
 			for (String exampleName : examples) {
-				if (exampleName.equalsIgnoreCase("all")) {
-					examples = ExampleNames;
-					break;
-				}
-			}
-
-			if (invokeGui) {
-				GuiDisplay.startGui(examples, client, params, console);
-			}
-			else {
-				for (String exampleName : examples) {
-					runExample(exampleName, client, params, console);
-				}
+				runExample(exampleName, client, params, console);
 			}
 		}
 		finally {
