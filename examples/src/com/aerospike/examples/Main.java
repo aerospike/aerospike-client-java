@@ -53,7 +53,8 @@ public class Main extends JPanel {
 		"DeleteBin",
 		"ScanParallel",
 		"ScanSeries",
-		"UserDefinedFunction"
+		"UserDefinedFunction",
+		"Query"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 

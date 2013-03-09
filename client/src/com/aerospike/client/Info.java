@@ -17,7 +17,9 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
@@ -124,6 +126,34 @@ public final class Info {
 		return new NameValueParser();
 	}
 
+	//-------------------------------------------------------
+	// Multiple node requests
+	//-------------------------------------------------------
+	
+	/**
+	 * Send info command to specified nodes and check for errors.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param nodes					array of server nodes
+	 * @param command				info command
+	 */
+	public static void sendCommandToNodes(Policy policy, Node[] nodes, String command) throws AerospikeException {
+		int timeout = (policy == null)? 0 : policy.timeout;
+		
+		for (Node node : nodes) {
+			Info info = new Info(node.getConnection(timeout), command);
+			NameValueParser parser = info.getNameValueParser();
+			
+			while (parser.next()) {
+				String name = parser.getName();
+	
+				if (name.equals("error")) {
+					throw new AerospikeException(parser.getValue());
+				}
+			}
+		}
+	}
+	
 	//-------------------------------------------------------
 	// Get Info via Host Name and Port
 	//-------------------------------------------------------

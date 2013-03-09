@@ -34,7 +34,7 @@ public final class QueryExecutor extends RecordSet {
 			threads[i] = new QueryThread(command);
 		}
 		
-		// Initialize maxium number of nodes to query in parallel.
+		// Initialize maximum number of nodes to query in parallel.
 		nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
 		
 		// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.

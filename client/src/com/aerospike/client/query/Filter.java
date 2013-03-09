@@ -23,7 +23,7 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter create(String name, Operator operator, Value value) {
-		return new Filter(name, operator, value, null, Value.getAsNull());
+		return new Filter(name, operator, value, operator, value);
 	}
 	
 	/**

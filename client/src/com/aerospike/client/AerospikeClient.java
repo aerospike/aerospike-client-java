@@ -29,6 +29,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.QueryExecutor;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
@@ -697,22 +698,14 @@ public class AerospikeClient {
 		sb.append(language.id);
 		sb.append(";");
 		
-		// Send registration command to all nodes.
-		String command = sb.toString();		
+		// Send command to all nodes.
 		Node[] nodes = cluster.getNodes();
-		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		for (Node node : nodes) {
-			Info info = new Info(node.getConnection(timeout), command);
-			NameValueParser parser = info.getNameValueParser();
-			
-			while (parser.next()) {
-				String name = parser.getName();
-
-				if (name.equals("error")) {
-					throw new AerospikeException(serverPath + " registration failed: " +  parser.getValue());
-				}
-			}
+		try {
+			Info.sendCommandToNodes(policy, nodes, sb.toString());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException(serverPath + " registration failed: " + ae.getMessage());
 		}
 	}
 	
@@ -795,5 +788,93 @@ public class AerospikeClient {
 		policy.maxRetries = 0;
 		
 		return new QueryExecutor(policy, statement, cluster.getNodes());
+	}
+	
+	/**
+	 * Create secondary index.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				type of secondary index
+	 * @throws AerospikeException	if index create fails
+	 */
+	public final void createIndex(
+		Policy policy, 
+		String namespace, 
+		String setName, 
+		String indexName, 
+		String binName,
+		IndexType indexType
+	) throws AerospikeException {
+						
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("sindex-create:ns=");
+		sb.append(namespace);
+		
+		if (setName != null && setName.length() > 0) {
+			sb.append(";set=");
+			sb.append(setName);
+		}
+		
+		sb.append(";indexname=");
+		sb.append(indexName);
+		sb.append(";numbins=1");
+		sb.append(";indexdata=");
+		sb.append(binName);
+		sb.append(",");
+		sb.append(indexType);
+		sb.append(";priority=normal");
+		
+		// Send command to all nodes.
+		Node[] nodes = cluster.getNodes();
+		
+		try {
+			Info.sendCommandToNodes(policy, nodes, sb.toString());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Create index failed: " + ae.getMessage());
+		}
+	}
+
+	/**
+	 * Delete secondary index.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index create fails
+	 */
+	public final void dropIndex(
+		Policy policy, 
+		String namespace, 
+		String setName, 
+		String indexName
+	) throws AerospikeException {
+						
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("sindex-delete:ns=");
+		sb.append(namespace);
+		
+		if (setName != null && setName.length() > 0) {
+			sb.append(";set=");
+			sb.append(setName);
+		}
+		
+		sb.append(";indexname=");
+		sb.append(indexName);
+		
+		// Send command to all nodes.
+		Node[] nodes = cluster.getNodes();
+		
+		try {
+			Info.sendCommandToNodes(policy, nodes, sb.toString());
+		}
+		catch (AerospikeException ae) {
+			throw new AerospikeException("Drop index failed: " + ae.getMessage());
+		}
 	}
 }

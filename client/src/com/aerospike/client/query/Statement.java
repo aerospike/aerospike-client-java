@@ -14,8 +14,8 @@ package com.aerospike.client.query;
  */
 public class Statement {	
 	String namespace;
-	String indexName;
 	String setName;
+	String indexName;
 	String[] binNames;
 	Filter[] filters;
 	Order[] orders;
@@ -31,6 +31,10 @@ public class Statement {
 	
 	public void setSetName(String setName) {
 		this.setName = setName;
+	}
+
+	public void setIndexName(String indexName) {
+		this.indexName = indexName;
 	}
 
 	public void setBinNames(String... binNames) {

@@ -17,7 +17,7 @@ public class UserDefinedFunction extends Example {
 	}
 
 	/**
-	 * Write complex object using serializer.
+	 * Register user defined function and call it.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {

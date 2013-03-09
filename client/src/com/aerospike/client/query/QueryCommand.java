@@ -56,6 +56,7 @@ public final class QueryCommand extends MultiCommand {
 		
 		if (statement.filters != null) {
 			sendOffset += FIELD_HEADER_SIZE + 1;  // header + num filters
+			filterSize++;
 			
 			for (Filter filter : statement.filters) {
 				filterSize += filter.estimateSize();
@@ -66,6 +67,7 @@ public final class QueryCommand extends MultiCommand {
 		
 		if (statement.binNames != null) {
 			sendOffset += FIELD_HEADER_SIZE + 1;  // header + num bin names
+			binNameSize++;
 			
 			for (String binName : statement.binNames) {
 				binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
@@ -132,7 +134,7 @@ public final class QueryCommand extends MultiCommand {
 		while (receiveOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
 			int resultCode = receiveBuffer[5];
-
+			
 			if (resultCode != 0) {
 				throw new AerospikeException(resultCode);
 			}
