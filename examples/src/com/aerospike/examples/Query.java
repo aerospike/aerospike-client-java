@@ -87,8 +87,8 @@ public class Query extends Example {
 		
 		Value filter = Value.get(valuePrefix + 3);
 		
-		console.info("Query for: ns=%s set=%s bin=%s filter=%s",
-			params.namespace, params.set, binName, filter);			
+		console.info("Query for: ns=%s set=%s index=%s bin=%s filter=%s",
+			params.namespace, params.set, indexName, binName, filter);			
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
