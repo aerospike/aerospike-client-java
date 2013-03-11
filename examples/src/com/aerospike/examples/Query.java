@@ -38,6 +38,7 @@ public class Query extends Example {
 		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		createIndex(client, params, indexName, binName);
 		runQuery(client, params, indexName, binName, valuePrefix);
+		dropIndex(client, params, indexName);
 	}
 	
 	private void writeRecords(
@@ -119,5 +120,16 @@ public class Query extends Example {
 		finally {
 			rs.close();
 		}
-	}	
+	}
+	
+	private void dropIndex(
+		AerospikeClient client,
+		Parameters params,
+		String indexName
+	) throws Exception {
+		console.info("Drop index: ns=%s set=%s index=%s",
+			params.namespace, params.set, indexName);			
+		
+		client.dropIndex(null, params.namespace, params.set, indexName);		
+	}
 }

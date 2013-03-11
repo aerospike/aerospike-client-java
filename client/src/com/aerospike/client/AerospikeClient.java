@@ -699,13 +699,21 @@ public class AerospikeClient {
 		sb.append(";");
 		
 		// Send command to all nodes.
-		Node[] nodes = cluster.getNodes();
+		String command = sb.toString();
+		Node[] nodes = cluster.getNodes();		
+		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		try {
-			Info.sendCommandToNodes(policy, nodes, sb.toString());
-		}
-		catch (AerospikeException ae) {
-			throw new AerospikeException(serverPath + " registration failed: " + ae.getMessage());
+		for (Node node : nodes) {
+			Info info = new Info(node.getConnection(timeout), command);
+			NameValueParser parser = info.getNameValueParser();
+			
+			while (parser.next()) {
+				String name = parser.getName();
+	
+				if (name.equals("error")) {
+					throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
+				}
+			}
 		}
 	}
 	
@@ -829,13 +837,18 @@ public class AerospikeClient {
 		sb.append(";priority=normal");
 		
 		// Send command to all nodes.
-		Node[] nodes = cluster.getNodes();
+		String command = sb.toString();
+		Node[] nodes = cluster.getNodes();		
+		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		try {
-			Info.sendCommandToNodes(policy, nodes, sb.toString());
-		}
-		catch (AerospikeException ae) {
-			throw new AerospikeException("Create index failed: " + ae.getMessage());
+		for (Node node : nodes) {
+			Info info = new Info(node.getConnection(timeout), command);
+			String response = info.getValue();
+			
+			// Command is successful if OK or index already exists.
+			if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
+				throw new AerospikeException("Create index failed: " + response);
+			}
 		}
 	}
 
@@ -862,19 +875,23 @@ public class AerospikeClient {
 		if (setName != null && setName.length() > 0) {
 			sb.append(";set=");
 			sb.append(setName);
-		}
-		
+		}		
 		sb.append(";indexname=");
 		sb.append(indexName);
 		
 		// Send command to all nodes.
-		Node[] nodes = cluster.getNodes();
+		String command = sb.toString();
+		Node[] nodes = cluster.getNodes();		
+		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		try {
-			Info.sendCommandToNodes(policy, nodes, sb.toString());
-		}
-		catch (AerospikeException ae) {
-			throw new AerospikeException("Drop index failed: " + ae.getMessage());
+		for (Node node : nodes) {
+			Info info = new Info(node.getConnection(timeout), command);
+			String response = info.getValue();
+			
+			// Command is successful if ok or index did not previously exist.
+			if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
+				throw new AerospikeException("Drop index failed: " + response);
+			}
 		}
 	}
 }
