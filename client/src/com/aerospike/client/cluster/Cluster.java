@@ -10,9 +10,9 @@
 package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -31,7 +31,7 @@ public final class Cluster implements Runnable {
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	private final ConcurrentHashMap<Partition,Node> partitionWriteMap;
+	private volatile HashMap<String,Node[]> partitionWriteMap;
 	
 	// Random node index.
 	private volatile int nodeIndex;
@@ -49,13 +49,10 @@ public final class Cluster implements Runnable {
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
 		connectionLimit = policy.maxThreads + 1;
-		connectionTimeout = policy.timeout;		
-		
+		connectionTimeout = policy.timeout;				
 		aliases = new HashSet<Host>();
-		nodes = new Node[0];
-		
-		// Preallocate 2 namespaces each with default number of partitions.
-		partitionWriteMap = new ConcurrentHashMap<Partition,Node>(Node.PARTITIONS * 2); 
+		nodes = new Node[0];	
+		partitionWriteMap = new HashMap<String,Node[]>(); 
 
 		// Tend cluster until all nodes identified.
         waitTillStabilized();
@@ -209,9 +206,32 @@ public final class Cluster implements Runnable {
 		return aliases.contains(alias);
 	}
 	
-	protected void updatePartition(Partition key, Node node) {
-		// Log.debug(key.toString() + ',' + node.getName());
-		partitionWriteMap.put(key, node);
+	protected void updatePartitions(Connection conn, Node node) throws AerospikeException {
+		// Use copy on write semantics to update partitionWriteMap.
+		HashMap<String,Node[]> map = partitionWriteMap;
+		PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
+		Partition partition;
+		boolean copied = false;
+		
+		while ((partition = tokens.getNext()) != null) {
+			Node[] nodeArray = map.get(partition.namespace);
+			
+			if (nodeArray == null) {
+				if (! copied) {
+					// Make shallow copy of map.
+					map = new HashMap<String,Node[]>(map);
+					copied = true;
+				}
+				nodeArray = new Node[Node.PARTITIONS];
+				map.put(partition.namespace, nodeArray);
+			}
+			// Log.debug(partition.toString() + ',' + node.getName());
+			nodeArray[partition.partitionId] = node;
+		}
+		
+		if (copied) {
+			partitionWriteMap = map;
+		}
 	}
 
 	private void seedNodes() {
@@ -395,22 +415,23 @@ public final class Cluster implements Runnable {
 	}
 	
 	public Node getNode(Partition partition) throws AerospikeException.InvalidNode {
-		Node node = partitionWriteMap.get(partition);
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,Node[]> map = partitionWriteMap;
+		Node[] nodeArray = map.get(partition.namespace);
 		
-		if (node == null || ! node.isActive()) {
-			if (Log.debugEnabled()) {
-				Log.debug("Choose random node " + node + " for " + partition);
+		if (nodeArray != null) {
+			Node node = nodeArray[partition.partitionId];
+			
+			if (node != null && node.isActive()) {
+				return node;
 			}
-			node = getRandomNode();
 		}
 		/*
-		else {
-			if (Log.debugEnabled()) {
-				Log.debug("Map node " + node + " for " + partition);
-			}
+		if (Log.debugEnabled()) {
+			Log.debug("Choose random node for " + partition);
 		}
 		*/
-		return node;
+		return getRandomNode();
 	}
 
 	private Node getRandomNode() throws AerospikeException.InvalidNode {

@@ -151,12 +151,7 @@ public final class Node {
 			if (Log.debugEnabled()) {
 				Log.debug("Node " + this + " partition generation " + generation + " changed.");
 			}
-			PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
-			Partition partition;
-			
-			while ((partition = tokens.getNext()) != null) {
-				cluster.updatePartition(partition, this);
-			}		
+			cluster.updatePartitions(conn, this);
 			partitionGeneration = generation;
 		}
 	}

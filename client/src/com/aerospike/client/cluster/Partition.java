@@ -13,8 +13,8 @@ import com.aerospike.client.Key;
 import com.aerospike.client.command.Buffer;
 
 public final class Partition {
-	private final String namespace;
-	private final int partitionId;
+	public final String namespace;
+	public final int partitionId;
 	
 	public Partition(Key key) {
 		this.namespace = key.namespace;
