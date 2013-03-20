@@ -69,7 +69,7 @@ public final class QueryExecutor extends RecordSet {
 			}
 			// All threads complete.  Tell RecordSet thread to return complete to user.
 			// This is done by adding a null record to the queue.
-			put(null);
+			put(new KeyRecord(null, null));
 		}
 	}
 

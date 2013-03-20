@@ -35,10 +35,10 @@ public class Query extends Example {
 		String binName = params.getBinName("querybin");  
 		int size = 5;
 
-		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		createIndex(client, params, indexName, binName);
+		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		runQuery(client, params, indexName, binName, valuePrefix);
-		dropIndex(client, params, indexName);
+		//dropIndex(client, params, indexName);
 	}
 	
 	private void writeRecords(
@@ -72,9 +72,6 @@ public class Query extends Example {
 		Policy policy = new Policy();
 		policy.timeout = 0; // Do not timeout on index create.
 		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
-		
-		console.info("Sleep 3 seconds for index to be initialized.");	
-		Thread.sleep(3000);
 	}
 
 	private void runQuery(
@@ -100,21 +97,25 @@ public class Query extends Example {
 		RecordSet rs = client.query(null, stmt);
 		
 		try {
-			if (! rs.next()) {
+			int count = 0;
+			
+			while (rs.next()) {
+				Key key = rs.getKey();
+				Record record = rs.getRecord();
+				String result = (String)record.getValue(binName);
+				
+				if (result.equals(filter.getObject())) {
+					console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
+						key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
+				}
+				else {
+					console.error("Query mismatch: Expected %s. Received %s.", filter, result);
+				}
+				count++;
+			}
+			
+			if (count == 0) {
 				console.error("Query failed. No records returned.");			
-				return;
-			}
-			
-			Key key = rs.getKey();
-			Record record = rs.getRecord();
-			String result = (String)record.getValue(binName);
-			
-			if (result.equals(filter.getObject())) {
-				console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
-					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
-			}
-			else {
-				console.error("Query mismatch: Expected %s. Received %s.", filter, result);
 			}
 		}
 		finally {
@@ -122,6 +123,7 @@ public class Query extends Example {
 		}
 	}
 	
+	/*
 	private void dropIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -132,4 +134,5 @@ public class Query extends Example {
 		
 		client.dropIndex(null, params.namespace, params.set, indexName);		
 	}
+	*/
 }

@@ -24,7 +24,7 @@ import com.aerospike.client.Record;
 public abstract class RecordSet {
 	private final BlockingQueue<KeyRecord> queue;
 	private KeyRecord record;
-	private volatile boolean valid;
+	private volatile boolean valid = true;
 
 	/**
 	 * Initialize record set with underlying producer/consumer queue.
@@ -47,8 +47,8 @@ public abstract class RecordSet {
 		if (valid) {
 			try {
 				record = queue.take();
-				
-				if (record == null) {
+
+				if (record.key == null) {
 					checkForException();
 					valid = false;
 				}
