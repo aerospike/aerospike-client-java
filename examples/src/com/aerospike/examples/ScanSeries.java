@@ -24,7 +24,7 @@ public class ScanSeries extends Example implements ScanCallback {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		console.info("Scan namespace " + params.namespace);
+		console.info("ScanSeries database for namespace [" +params.namespace + "] set ["+params.set + "]");
 		
 		// Use low scan priority.  This will take more time, but it will reduce
 		// the load on the server.
@@ -37,7 +37,7 @@ public class ScanSeries extends Example implements ScanCallback {
 		
 		for (String nodeName : nodeList) {
 			console.info("Scan node " + nodeName);
-			client.scanNode(policy, nodeName, params.namespace, null, this);
+			client.scanNode(policy, nodeName, params.namespace, params.set, this);
 			
 			for (Map.Entry<String,Metrics> entry : setMap.entrySet()) {
 				console.info("Node " + nodeName + " set " + entry.getKey() + " count: " +  entry.getValue().count);

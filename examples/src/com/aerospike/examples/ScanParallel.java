@@ -19,7 +19,7 @@ public class ScanParallel extends Example implements ScanCallback {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		console.info("Scan database.");
+		console.info("ScanParallel database for namespace [" +params.namespace + "] set ["+params.set + "]");
 		recordCount = 0;
 		long begin = System.currentTimeMillis();
 		ScanPolicy policy = new ScanPolicy();
