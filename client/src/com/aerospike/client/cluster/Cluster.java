@@ -292,7 +292,18 @@ public final class Cluster implements Runnable {
 		for (Host host : hosts) {
 			try {
 				NodeValidator nv = new NodeValidator(host, connectionTimeout);
-				Node node = new Node(this, nv, connectionLimit);				
+				Node node = findNode(nv.name);
+				
+				if (node != null) {
+					// Duplicate node name found.  This usually occurs when the server 
+					// services list contains both internal and external IP addresses 
+					// for the same node.  Add new host to list of alias filters
+					// and do not add new node.
+					node.addAlias(host);
+					aliases.add(host);
+					continue;
+				}
+				node = new Node(this, nv, connectionLimit);				
 				addAliases(node);			
 				list.add(node);
 			}
@@ -468,6 +479,15 @@ public final class Cluster implements Runnable {
 	}
 
 	public Node getNode(String nodeName) throws AerospikeException.InvalidNode {
+		Node node = findNode(nodeName);
+		
+		if (node == null) {			
+			throw new AerospikeException.InvalidNode();
+		}
+		return node;
+	}
+
+	private Node findNode(String nodeName) {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		
@@ -476,7 +496,7 @@ public final class Cluster implements Runnable {
 				return node;
 			}
 		}
-		throw new AerospikeException.InvalidNode();
+		return null;
 	}
 
 	public void close() {

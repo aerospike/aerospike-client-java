@@ -34,7 +34,7 @@ public final class Node {
 	private final Cluster cluster;
 	private final String name;
 	private final Host host;
-	private final Host[] aliases;
+	private Host[] aliases;
 	private final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
 	private final AtomicInteger health;
@@ -244,6 +244,22 @@ public final class Node {
 	 */
 	public Host[] getAliases() {
 		return aliases;
+	}
+	
+	/**
+	 * Add node alias to list.
+	 */
+	public void addAlias(Host aliasToAdd) {
+		// Aliases are only referenced in the cluster tend thread,
+		// so synchronization is not necessary.
+		Host[] tmpAliases = new Host[aliases.length + 1];
+		int count = 0;
+		
+		for (Host host : aliases) {
+			tmpAliases[count++] = host;
+		}
+		tmpAliases[count] = aliasToAdd;
+		aliases = tmpAliases;
 	}
 
 	/**
