@@ -10,9 +10,12 @@
 package com.aerospike.client;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.List;
 import java.util.Map;
+
+import org.msgpack.packer.Packer;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -117,6 +120,11 @@ public abstract class Value {
 	public abstract int write(byte[] buffer, int offset) throws AerospikeException;
 	
 	/**
+	 * Serialize the value using MessagePack.
+	 */
+	public abstract void pack(Packer packer) throws IOException;
+
+	/**
 	 * Get wire protocol value type.
 	 */
 	public abstract int getType();
@@ -140,6 +148,11 @@ public abstract class Value {
 			return 0;
 		}
 		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.writeNil();
+		}
+
 		@Override
 		public int getType() {
 			return ParticleType.NULL;
@@ -179,6 +192,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packBytes(packer, bytes);
+		}
+
+		@Override
 		public int getType() {
 			return ParticleType.BLOB;
 		}
@@ -214,6 +232,11 @@ public abstract class Value {
 			return Buffer.stringToUtf8(value, buffer, offset);
 		}
 		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packString(packer, value);
+		}
+
 		@Override
 		public int getType() {
 			return ParticleType.STRING;
@@ -252,6 +275,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.write(value);
+		}
+
+		@Override
 		public int getType() {
 			return ParticleType.INTEGER;
 		}
@@ -288,6 +316,11 @@ public abstract class Value {
 			return 8;
 		}
 		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.write(value);
+		}
+
 		@Override
 		public int getType() {
 			return ParticleType.INTEGER;
@@ -337,6 +370,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packBlob(packer, object);
+		}
+
+		@Override
 		public int getType() {
 			return ParticleType.JBLOB;
 		}
@@ -366,7 +404,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPack.packObject(list);
+			bytes = MsgPack.pack(list);
 			return bytes.length;
 		}
 		
@@ -376,6 +414,11 @@ public abstract class Value {
 			return bytes.length;
 		}
 		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packList(packer, list);
+		}
+
 		@Override
 		public int getType() {
 			return ParticleType.LIST;
@@ -406,7 +449,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPack.packObject(map);
+			bytes = MsgPack.pack(map);
 			return bytes.length;
 		}
 		
@@ -416,6 +459,11 @@ public abstract class Value {
 			return bytes.length;
 		}
 		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packMap(packer, map);
+		}
+
 		@Override
 		public int getType() {
 			return ParticleType.MAP;

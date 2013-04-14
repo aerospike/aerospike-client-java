@@ -693,7 +693,7 @@ public class AerospikeClient {
 		sb.append(";content=");
 		sb.append(content);
 		sb.append(";content-len=");
-		sb.append(content.length());
+		sb.append(content.length() + 1);
 		sb.append(";udf-type=");
 		sb.append(language.id);
 		sb.append(";");
@@ -730,12 +730,12 @@ public class AerospikeClient {
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(Policy policy, Key key, String fileName, String functionName, Object... args) 
+	public final Object execute(Policy policy, Key key, String fileName, String functionName, Value... args) 
 		throws AerospikeException {
 		SingleCommand command = new SingleCommand(cluster, key);
 		command.setWrite(Command.INFO2_WRITE);
 		
-		byte[] argBytes = MsgPack.packArray(args);
+		byte[] argBytes = MsgPack.pack(args);
 		command.estimateUdfSize(fileName, functionName, argBytes);
 		
 		command.begin();

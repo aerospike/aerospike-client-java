@@ -47,7 +47,7 @@ public class UserDefinedFunction extends Example {
 		client.put(params.writePolicy, key, bin);
 		
 		String expected = bin.value.toString();
-		String received = (String)client.execute(params.policy, key, "records", "getbin", bin.name);
+		String received = (String)client.execute(params.policy, key, "records", "getbin", Value.get(bin.name));
 
 		if (received != null && received.equals(expected)) {
 			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s", 
@@ -83,7 +83,7 @@ public class UserDefinedFunction extends Example {
 
 		client.put(params.writePolicy, key, bin);
 		
-		Object ret = client.execute(params.policy, key, "records", "getbin", bin.name);
+		Object ret = client.execute(params.policy, key, "records", "getbin", Value.get(bin.name));
 
 		String expected = bin.value.toString();
 		String received = (ret == null)? null : ret.toString();
