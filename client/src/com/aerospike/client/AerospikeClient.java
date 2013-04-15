@@ -693,7 +693,7 @@ public class AerospikeClient {
 		sb.append(";content=");
 		sb.append(content);
 		sb.append(";content-len=");
-		sb.append(content.length() + 1);
+		sb.append(content.length());
 		sb.append(";udf-type=");
 		sb.append(language.id);
 		sb.append(";");
