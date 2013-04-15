@@ -12,7 +12,7 @@ package com.aerospike.client.util;
 import com.aerospike.client.Log;
 
 public final class ThreadLocalData {
-	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
+	//private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
 	private static final int THREAD_LOCAL_CUTOFF = 1024 * 128;  // 128 KB
 	
 	private static final ThreadLocal<byte[]> SendBufferThreadLocal = new ThreadLocal<byte[]>() {
@@ -34,9 +34,10 @@ public final class ThreadLocalData {
 	public static byte[] resizeSendBuffer(int size) {
 		// Do not store extremely large buffers in thread local storage.
 		if (size > THREAD_LOCAL_CUTOFF) {
+			/* Removed check because in memory namespaces with no disk backing can have sizes > 1 MB
 			if (size > MAX_BUFFER_SIZE) {
 				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid send buffer size: " + size);
-			}
+			}*/
 			
 			if (Log.debugEnabled()) {
 				Log.debug("Thread " + Thread.currentThread().getId() + " allocate send buffer on heap " + size);
@@ -58,9 +59,10 @@ public final class ThreadLocalData {
 	public static byte[] resizeReceiveBuffer(int size) {
 		// Do not store extremely large buffers in thread local storage.
 		if (size > THREAD_LOCAL_CUTOFF) {
+			/* Removed check because in memory namespaces with no disk backing can have sizes > 1 MB
 			if (size > MAX_BUFFER_SIZE) {
 				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid receive buffer size: " + size);
-			}
+			}*/
 			
 			if (Log.debugEnabled()) {
 				Log.debug("Thread " + Thread.currentThread().getId() + " allocate receive buffer on heap " + size);
