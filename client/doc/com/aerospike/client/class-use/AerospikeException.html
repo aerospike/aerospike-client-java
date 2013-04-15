@@ -211,12 +211,36 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#createIndex(com.aerospike.client.policy.Policy, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.aerospike.client.query.IndexType)">createIndex</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+            java.lang.String&nbsp;namespace,
+            java.lang.String&nbsp;setName,
+            java.lang.String&nbsp;indexName,
+            java.lang.String&nbsp;binName,
+            <A HREF="../../../../com/aerospike/client/query/IndexType.html" title="enum in com.aerospike.client.query">IndexType</A>&nbsp;indexType)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create secondary index.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;boolean</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#delete(com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key)">delete</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
        <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete record for specified key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#dropIndex(com.aerospike.client.policy.Policy, java.lang.String, java.lang.String, java.lang.String)">dropIndex</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+          java.lang.String&nbsp;namespace,
+          java.lang.String&nbsp;setName,
+          java.lang.String&nbsp;indexName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete secondary index.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -245,11 +269,11 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
-<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, java.lang.Object...)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, com.aerospike.client.Value...)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
         java.lang.String&nbsp;fileName,
         java.lang.String&nbsp;functionName,
-        java.lang.Object...&nbsp;args)</CODE>
+        <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;args)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute user defined function on server and return results.</TD>
