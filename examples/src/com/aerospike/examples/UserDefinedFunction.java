@@ -66,16 +66,16 @@ public class UserDefinedFunction extends Example {
 
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
-		inner.add(8);
+		inner.add(8L);
 		
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
-		innerMap.put("a", 1);
-		innerMap.put(2, "b");
+		innerMap.put("a", 1L);
+		innerMap.put(2L, "b");
 		innerMap.put("list", inner);
 		
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
-		list.add(4);
+		list.add(4L);
 		list.add(inner);
 		list.add(innerMap);
 
@@ -83,19 +83,16 @@ public class UserDefinedFunction extends Example {
 
 		client.put(params.writePolicy, key, bin);
 		
-		Object ret = client.execute(params.policy, key, "records", "getbin", Value.get(bin.name));
+		Object received = client.execute(params.policy, key, "records", "getbin", Value.get(bin.name));
 
-		String expected = bin.value.toString();
-		String received = (ret == null)? null : ret.toString();
-		
-		if (received != null && received.equals(expected)) {
-			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s", 
+		if (received != null && received.equals(list)) {
+			console.info("UDF data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
-			console.error("UDF mismatch");
-			console.error("Expected %s", expected);
-			console.error("Received %s", received);
+			console.error("UDF data mismatch");
+			console.error("Expected " + list);
+			console.error("Received " + received);
 		}
 	}	
 }

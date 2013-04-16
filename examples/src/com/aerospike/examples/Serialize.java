@@ -181,10 +181,10 @@ public class Serialize extends Example {
 				key.namespace, key.setName, key.userKey));
 		}
 
-		List<?> receivedList;
+		Object received;
 
 		try {
-			receivedList = (List<?>) record.getValue(bin.name);
+			received = (List<?>) record.getValue(bin.name);
 		}
 		catch (Exception e) {
 			throw new Exception(String.format(
@@ -192,19 +192,15 @@ public class Serialize extends Example {
 				key.namespace, key.setName, key.userKey, bin.name));
 		}
 
-		String expected = list.toString();
-		String received = receivedList.toString();
-		
-		if (received != null && received.equals(expected)) {
+		if (received != null && received.equals(list)) {
 			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
 			console.error("Data mismatch");
-			console.error("Expected %s", expected);
-			console.error("Received %s", received);
+			console.error("Expected " + list);
+			console.error("Received " + received);
 		}
-
 		console.info("Read complex object successful.");
 	}
 }
