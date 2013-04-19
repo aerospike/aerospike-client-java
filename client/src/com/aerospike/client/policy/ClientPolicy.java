@@ -10,9 +10,9 @@
 package com.aerospike.client.policy;
 
 /**
- * Container object for client policy attributes.
+ * Container object for client policy Command.
  */
-public final class ClientPolicy {
+public class ClientPolicy {
 	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.
@@ -20,13 +20,19 @@ public final class ClientPolicy {
 	public int timeout = 1000;
 
 	/**
-	 * Estimate of threads concurrently using the client instance.  This field is used to size
-	 * connection pools.
+	 * Estimate of incoming threads concurrently using synchronous methods in the client instance.
+	 * This field is used to size the synchronous connection pool for each server node.
 	 */
 	public int maxThreads = 300;
 	
 	/**
+	 * Maximum socket idle in seconds.  Socket connection pools will discard sockets
+	 * that have been idle longer than the maximum.
+	 */
+	public int maxSocketIdle = 14;
+
+	/**
 	 * Throw exception if host connection fails during addHost().
 	 */
-	public boolean failIfNotConnected;
+	public boolean failIfNotConnected;	
 }

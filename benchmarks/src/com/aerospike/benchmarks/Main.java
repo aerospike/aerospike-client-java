@@ -1,7 +1,18 @@
+/*
+ * Aerospike Client - Java Library
+ *
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
+ */
 package com.aerospike.benchmarks;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Scanner;
@@ -11,114 +22,35 @@ import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.Option;
+import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.AsyncClientPolicy;
 
 public class Main implements Log.Callback {
 	
-	private static SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
-	private String[] readSettings(String throughput_file) throws IOException {
-		Scanner scanner = new Scanner(new FileInputStream(throughput_file), "UTF-8");
-		String[] settings = scanner.nextLine().split(",");
-		scanner.close();
-		return settings;
-	}
-
-	private void doInserts() throws InterruptedException {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
-
-		// Create N insert tasks
-		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
-
-		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTask(this.kvs, this.startKey, this.nKeys, this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters);
-			es.execute(it);
-		}
+	public static void main(String[] args) {
+		Main program = null;
 		
-		int counterold = 0;
-
-		while (this.counters.write.count.get() < this.nKeys) {
-			int counterget = this.counters.write.count.get();
-			int tps = counterget - counterold;
-			System.out.println(" Wrote " + counterget + " elements " + tps + " tps "+ this.counters.write.fail.get() + " fails)");
-			counterold = counterget;
-			Thread.sleep(1000);
+		try {
+			program = new Main(args);
+			program.runBenchmarks();
 		}
-
-		System.out.println("Wrote " + this.counters.write.count.get() + " elements " + this.counters.write.fail.get() + " fails)");
-		es.shutdownNow();
-	}
-
-	private void doRWTest() throws InterruptedException {
-		// Certain setting can change dynamically based on the throughput file. Because 
-		// of this, we pass these variable settings as AtomicIntegers, and via reference. 
-		AtomicIntegerArray settingsArr = new AtomicIntegerArray(4);
-		settingsArr.set(0, this.throughput);
-		settingsArr.set(1, this.readPct);
-		settingsArr.set(2, this.singleBinReadPct);
-		settingsArr.set(3, this.singleBinUpdatePct);
-
-		// Start RW tasks...
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
-		for (int i=0 ; i<this.nTasks; i++) {
-			RWTask rt;
-			if (this.validate) {
-				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
-				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
-				rt = new RWTask(this.kvs, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
-			} else {
-				rt = new RWTask(this.kvs, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
-			}
-			es.execute(rt);
+		catch (UsageException ue) {
 		}
-
-		// wait for all the tasks to finish setting up for validation
-		if (this.validate) {
-			while(counters.loadValuesFinishedTasks.get() < this.nTasks) {
-				Thread.sleep(1000);
-				//System.out.println("tasks done = "+counters.loadValuesFinishedTasks.get()+ ", g_ntasks = "+g_ntasks);
+		catch (Exception e) {		
+			System.out.println("Error: " + e.getMessage());
+			
+			if (program != null && program.debug) {
+				e.printStackTrace();
 			}
-			// set flag that everyone is ready - this will allow the individual tasks to go
-			counters.loadValuesFinished.set(true);
-		}
-
-		// Set start time 
-		this.counters.start_time = System.currentTimeMillis();
-
-		// Wait for completion
-		for (; this.runTime == 0 || this.counters.timeElapsed.get() < this.runTime; this.counters.timeElapsed.incrementAndGet()) {
-
-			long time = System.currentTimeMillis();
-			
-			int	numWrites = this.counters.write.count.getAndSet(0);
-			int failWrites = this.counters.write.fail.getAndSet(0);
-			
-			int	numReads = this.counters.read.count.getAndSet(0);
-			int failReads = this.counters.read.fail.getAndSet(0);
-			
-			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(tps=" + numWrites + " fail=" + failWrites + ")" +
-				" read(tps=" + numReads + " fail=" + failReads + ")" +
-				" total(tps=" + (numWrites + numReads) + " fail=" + (failWrites + failReads) + ")"
-				);
-
-			if (throughput_file.length() > 0) {
-				// set target throughput and read/update percentage based on throughput_file
-				try {
-					String[] settings = readSettings(throughput_file);
-					settingsArr.set(0, Integer.parseInt(settings[0]));
-					settingsArr.set(1, Integer.parseInt(settings[1]));
-				} catch (Exception e) {
-					System.out.println("can't read throughput file!");
-				}
-			}
-			
-			Thread.sleep(1000);
 		}
 	}
 
@@ -143,220 +75,253 @@ public class Main implements Log.Callback {
 	private int             timeout = 0;
 	private String          throughput_file = "";
 	private int             runTime = 0;
-	private CLKeyValueStore kvs	 = null;
+	private int             asyncTaskThreads;
 	private boolean         debug = false;
+	private boolean         asyncEnabled;
 
-	private CounterStore counters = new CounterStore();
-	
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) {
-		// create the command line parser
+	private AsyncClientPolicy  clientPolicy = new AsyncClientPolicy();
+	private CounterStore       counters = new CounterStore();
+
+	public Main(String[] args) throws Exception {
+		Options options = new Options();
+		options.addOption("h", "hosts", true, "Set the Aerospike host node.");
+		options.addOption("p", "port", true, "Set the port on which to connect to Aerospike.");
+		options.addOption("n", "namespace", true, "Set the Aerospike namespace.");
+        options.addOption("s", "set", true, "Set the Aerospike set name.");
+		options.addOption("k", "keys", true,
+			"Set the number of keys the client is dealing with. " + 
+			"If using an 'insert' workload (detailed below), the client will write this " + 
+			"number of keys, starting from value = start_value. Otherwise, the client " + 
+			"will read and update randomly across the values between start_value and " + 
+			"start_value + num_keys."
+			);
+		options.addOption("l", "keylength", true, "Set the length of the string to use as a key.");
+		options.addOption("b", "bins", true, 
+			"Set the number of Aerospike bins. " +
+			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
+			);
+		options.addOption("o", "objectSpec", true, 
+			"I | S <size> | B <size>\n" +
+			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
+			"for integer, 'S' for string, or 'B' for Java blob. If type is 'I' (integer), " + 
+			"do not set a size (integers are always 8 bytes). If object_type is 'S' " + 
+			"(string), this value represents the length of the string."
+			);
+		options.addOption("S", "startkey", true, 
+			"Set the starting value of the working set of keys. " + 
+			"If using an 'insert' workload, the start_value indicates the first value to write. " + 
+			"Otherwise, the start_value indicates the smallest value in the working set of keys."
+			);
+		options.addOption("w", "workload", true, 
+			"I | RU,<percent>[,<percent2>][,<percent3>] | RMU <percent> | RMI <percent> | RMD <percent>\n" +
+			"Set the desired workload.\n\n" +  
+			"   -w I sets a linear 'insert' workload.\n\n" +
+			"   -w RU,80 sets a random read-update workload with 80% reads and 20% writes.\n\n" + 
+			"   -w RU,80,60,40 sets a random multi-bin read-update workload with 80% reads.\n\n" + 
+			"      60% will read a single bin.\n\n" + 
+			"       40% will read all bins.\n\n" + 
+			"    -w RMU 30 sets a random read-modify-update workload with 30% reads.\n\n" +      
+			"    -w RMI 20 sets a random read-modify-increment workload with 20% reads.\n\n" + 	    
+			"    -w RMD 70 sets a read-modify-decrement workload workload with 70% reads."
+			);
+		options.addOption("g", "throughput", true, 
+			"Set a target transactions per second for the client. The client should not exceed this " + 
+			"average throughput, though it will try to catch-up if it falls behind."
+			);
+		options.addOption("T", "timeout", true, "Set the transaction timeout in milliseconds.");
+		options.addOption("z", "threads", true, 
+			"Set the number of threads the client will use to generate load. " + 
+			"It is not recommended to use a value greater than 125."
+			);
+		//options.addOption("v", "validate", false, "Validate data.");
+		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
+		options.addOption("u", "usage", false, "Print usage.");
 		
-		Main test = new Main(args);
-		if (test.writeKeys) {
-			try {
-				test.doInserts(); 
-			} catch (Exception e) {
-				System.out.println(" Do Inserts - interrupted ");
-				if (test.debug) {
-					e.printStackTrace();
+		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
+		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
+		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
+		options.addOption("R", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
+		options.addOption("U", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
+
+		// parse the command line arguments
+		CommandLineParser parser = new PosixParser();
+		CommandLine line = parser.parse(options, args);
+		
+		if (args.length == 0 || line.hasOption("u")) {
+			logUsage(options);
+			throw new UsageException();
+		}
+		
+		if (line.hasOption("hosts")) {
+			this.hosts = line.getOptionValue("hosts").split(",");
+		} else {
+			this.hosts = new String[1];
+			this.hosts[0] = "127.0.0.1";
+		}
+
+		if (line.hasOption("port")) {
+			this.port = Integer.parseInt(line.getOptionValue("port"));
+		} else {
+			this.port = 3000;
+		}
+
+		if (line.hasOption("namespace")) {
+			this.namespace = line.getOptionValue("namespace");
+		} else {
+			this.namespace = "test";
+		}
+
+        if (line.hasOption("set")) {
+        	this.set = line.getOptionValue("set");
+        }
+                   
+		if (line.hasOption("keys")) {
+			this.nKeys = Integer.parseInt(line.getOptionValue("keys"));
+		} else {
+			this.nKeys = 100000;
+		}
+
+		if (line.hasOption("keylength")) {
+			this.keySize = Integer.parseInt(line.getOptionValue("keylength"));
+		}
+
+		if (line.hasOption("bins")) {
+			this.nBins = Integer.parseInt(line.getOptionValue("bins"));
+		}
+
+		if (line.hasOption("objectSpec")) {
+			String[] objectsArr = line.getOptionValue("objectSpec").split(",");
+			this.objectSpec = new DBObjectSpec[objectsArr.length];
+			for (int i=0; i<objectsArr.length; i++) {
+				String[] objarr = objectsArr[i].split(":");
+				DBObjectSpec dbobj = new DBObjectSpec();
+				dbobj.type = objarr[0].charAt(0);
+				if (objarr.length > 1) {
+					dbobj.size = Integer.parseInt(objarr[1]);
 				}
+				this.objectSpec[i] = dbobj;
 			}
 		} else {
-			try {
-				test.doRWTest(); 
-			} catch (Exception e) {
-				System.out.println(" Do RW Test - interrupted ");
-				if (test.debug) {
-					e.printStackTrace();
-				}
-			}
+			this.objectSpec = new DBObjectSpec[1];
+			DBObjectSpec dbobj = new DBObjectSpec(); 
+			dbobj.type = 'I';	// If the object is not specified, it has one bin of integer type
+			this.objectSpec[0] = dbobj;
 		}
-	}
 
+		if (line.hasOption("startkey")) {
+			this.startKey = Integer.parseInt(line.getOptionValue("startkey"));
+		}
 
-		
-	public Main(String[] args) {
-		CommandLineParser parser = new PosixParser();
+		if (line.hasOption("workloadfile")) {
+			this.throughput_file = line.getOptionValue("workloadfile");
+		}
 
-		// create the Options
-		Options options = new Options();
-		options.addOption("h", "hosts", true, "hosts");
-		options.addOption("p", "port", true, "port");
-		options.addOption("n", "namespace", true, "namespace");
-        options.addOption("S", "set", true, "set");
-		options.addOption("k", "keys", true, "number of keys");
-		options.addOption("l", "keylength", true, "key length");
-		options.addOption("b", "bins", true, "number of bins");
-		options.addOption("o", "objectSpec", true, "Specification of object types and sizes");
-		options.addOption("s", "startkey", true, "start key");
-		options.addOption("f", "workloadfile", true, "workload file location");
-		options.addOption("w", "workload", true, "cycle type (I for insert, RU for read/update), readpct, singlebinreadpct, singlebinupdatepct");
-		options.addOption("g", "throughput", true, "throughput");
-		options.addOption("T", "timeout", true, "timeout");
-		options.addOption("z", "threads", true, "number of threads");
-		options.addOption("D", "debug", true, "enable debug mode");
-
-		Option replicationOpt = new Option("replication", "replicate data");
-		options.addOption(replicationOpt);
-
-		Option validateOpt = new Option("validate", "validate data");
-		options.addOption(validateOpt);
-
-		Option verboseOpt = new Option("verbose", "verbose output");
-		options.addOption(verboseOpt);
-
-		try {
-			// parse the command line arguments
-			CommandLine line = parser.parse( options, args );
-			/*
-			if (args.length == 0) {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("run_load_test", options);
-				System.exit(-1);
+		if (line.hasOption("workload")) {
+			String[] workloadOpts = line.getOptionValue("workload").split(",");
+			this.cycleType = workloadOpts[0];
+			if(this.cycleType.equals("I")) {
+				this.writeKeys = true;
 			}
-			*/
-			
-			if (line.hasOption("hosts")) {
-				this.hosts = line.getOptionValue("hosts").split(",");
-			} else {
-				this.hosts = new String[1];
-				this.hosts[0] = "127.0.0.1";
-			}
-
-			if (line.hasOption("port")) {
-				this.port = Integer.parseInt(line.getOptionValue("port"));
-			} else {
-				this.port = 3000;
-			}
-
-			if (line.hasOption("namespace")) {
-				this.namespace = line.getOptionValue("namespace");
-			} else {
-				this.namespace = "test";
-			}
-
-            if (line.hasOption("set")) {
-            	set = line.getOptionValue("set");
-            }
-
-			if (line.hasOption("keys")) {
-				this.nKeys = Integer.parseInt(line.getOptionValue("keys"));
-			} else {
-				this.nKeys = 100000;
-			}
-
-			if (line.hasOption("keylength")) {
-				this.keySize = Integer.parseInt(line.getOptionValue("keylength"));
-			}
-
-			if (line.hasOption("bins")) {
-				this.nBins = Integer.parseInt(line.getOptionValue("bins"));
-			}
-
-			if (line.hasOption("objectSpec")) {
-				String[] objectsArr = line.getOptionValue("objectSpec").split(",");
-				this.objectSpec = new DBObjectSpec[objectsArr.length];
-				for (int i=0; i<objectsArr.length; i++) {
-					String[] objarr = objectsArr[i].split(":");
-					DBObjectSpec dbobj = new DBObjectSpec();
-					dbobj.type = objarr[0].charAt(0);
-					if (objarr.length > 1) {
-						dbobj.size = Integer.parseInt(objarr[1]);
-					}
-					this.objectSpec[i] = dbobj;
-				}
-			} else {
-				this.objectSpec = new DBObjectSpec[1];
-				DBObjectSpec dbobj = new DBObjectSpec(); 
-				dbobj.type = 'I';	// If the object is not specified, it has one bin of integer type
-				this.objectSpec[0] = dbobj;
-			}
-
-			if (line.hasOption("startkey")) {
-				this.startKey = Integer.parseInt(line.getOptionValue("startkey"));
-			}
-
-			if (line.hasOption("workloadfile")) {
-				this.throughput_file = line.getOptionValue("workloadfile");
-			}
-
-			if (line.hasOption("workload")) {
-				String[] workloadOpts = line.getOptionValue("workload").split(",");
-				this.cycleType = workloadOpts[0];
-				if(this.cycleType.equals("I")) {
-					this.writeKeys = true;
-				}
-				if (workloadOpts.length > 1) {
-					if (this.cycleType.equals("I")) {
-						System.out.println("insert workload expects only one parameter");
-						System.exit(-1);
-					} else if (this.cycleType.equals("RMU")) {
-						System.out.println("read-modify-update workload expects only one parameter");
-						System.exit(-1);
-					} else if (this.cycleType.equals("RMI")) {
-						System.out.println("read-modify-increment workload expects only one parameter");
-						System.exit(-1);
-					} else if (this.cycleType.equals("RMD")) {
-						System.out.println("read-modify-decrement workload expects only one parameter");
-						System.exit(-1);
-					}
-
-					this.readPct = Integer.parseInt(workloadOpts[1]);
-				} else if (this.cycleType.equals("RU")) {
-					System.out.println("read-update workload expects only one parameter");
+			if (workloadOpts.length > 1) {
+				if (this.cycleType.equals("I")) {
+					System.out.println("insert workload expects only one parameter");
+					System.exit(-1);
+				} else if (this.cycleType.equals("RMU")) {
+					System.out.println("read-modify-update workload expects only one parameter");
+					System.exit(-1);
+				} else if (this.cycleType.equals("RMI")) {
+					System.out.println("read-modify-increment workload expects only one parameter");
+					System.exit(-1);
+				} else if (this.cycleType.equals("RMD")) {
+					System.out.println("read-modify-decrement workload expects only one parameter");
 					System.exit(-1);
 				}
-				if (workloadOpts.length > 2) {
-					this.singleBinReadPct = Integer.parseInt(workloadOpts[2]);
-					this.singleBinUpdatePct = Integer.parseInt(workloadOpts[3]);
-				}
-			} else {
-				this.cycleType = "RU";
-				this.readPct = 90;
+
+				this.readPct = Integer.parseInt(workloadOpts[1]);
+			} else if (this.cycleType.equals("RU")) {
+				System.out.println("read-update workload expects only one parameter");
+				System.exit(-1);
 			}
-
-			if (line.hasOption("throughput")) {
-				this.throughput = Integer.parseInt(line.getOptionValue("throughput"));
+			if (workloadOpts.length > 2) {
+				this.singleBinReadPct = Integer.parseInt(workloadOpts[2]);
+				this.singleBinUpdatePct = Integer.parseInt(workloadOpts[3]);
 			}
-			
-			if (line.hasOption("timeout")) {
-				this.timeout = Integer.parseInt(line.getOptionValue("timeout"));
-			}			 
-
-			if (line.hasOption("threads")) {
-				this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
-			}  
-
-			if (line.hasOption("validate")) {
-				this.validate = true;
-			}
-
-			if (line.hasOption("runtime")) {
-				this.runTime = Integer.parseInt(line.getOptionValue("runtime"));
-			}
-
-			if (line.hasOption("debug")) {
-				this.debug = true;
-			}
-
-		} catch(Exception e) {
-			System.out.println( "Unexpected exception:" + e.toString() );
+		} else {
+			this.cycleType = "RU";
+			this.readPct = 90;
 		}
 
-		if (this.nThreads > 1) {
+		if (line.hasOption("throughput")) {
+			this.throughput = Integer.parseInt(line.getOptionValue("throughput"));
+		}
+		
+		if (line.hasOption("timeout")) {
+			this.timeout = Integer.parseInt(line.getOptionValue("timeout"));
+		}			 
+
+		if (line.hasOption("threads")) {
+			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
+		}  
+
+		if (line.hasOption("validate")) {
+			this.validate = true;
+		}
+
+		if (line.hasOption("runtime")) {
+			this.runTime = Integer.parseInt(line.getOptionValue("runtime"));
+		}
+
+		if (line.hasOption("debug")) {
+			this.debug = true;
+		}
+
+        if (line.hasOption("async")) {
+        	this.asyncEnabled = true;
+        }
+        
+        if (line.hasOption("asyncMaxCommands")) {
+        	this.clientPolicy.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
+        }
+        
+        if (line.hasOption("asyncSelectorTimeout")) {
+        	this.clientPolicy.asyncSelectorTimeout =  Integer.parseInt(line.getOptionValue("asyncSelectorTimeout"));
+        }
+
+        if (line.hasOption("asyncSelectorThreads")) {
+        	this.clientPolicy.asyncSelectorThreads =  Integer.parseInt(line.getOptionValue("asyncSelectorThreads"));
+        }
+        
+        if (line.hasOption("asyncTaskThreads")) {
+        	this.asyncTaskThreads = Integer.parseInt(line.getOptionValue("asyncTaskThreads"));
+        	
+        	if (asyncTaskThreads == 0) {
+        		this.clientPolicy.asyncTaskThreadPool = Executors.newCachedThreadPool();
+        	}
+        	else {           		
+        		this.clientPolicy.asyncTaskThreadPool = Executors.newFixedThreadPool(asyncTaskThreads);
+        	}
+        }
+
+        if (this.nThreads > 1) {
 			//this.nTasks = 2*this.nThreads;
 			this.nTasks = nThreads;
 		}
 
-		System.out.println("load_test against: " +this.hosts[0] + ":"+this.port 
-			+ ", namespace: "+this.namespace 
+		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
+			+ ", namespace: " + this.namespace 
 			+ ", num keys: "
-			+ this.nKeys+", threads "+this.nThreads
+			+ this.nKeys + ", threads " + this.nThreads
 			+ ", read-write ratio: " 
 			+ this.readPct + "/" + (100-this.readPct));
+	
+		if (this.asyncEnabled) {
+			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
+			System.out.println("Async: MaxConnTotal " +  clientPolicy.asyncMaxCommands
+				+ ", MaxConnAction: " + clientPolicy.asyncMaxCommandAction
+				+ ", SelectorTimeout: " + clientPolicy.asyncSelectorTimeout
+				+ ", SelectorThreads: " + clientPolicy.asyncSelectorThreads
+				+ ", TaskThreadPool: " + threadPoolName);
+		}
 
 		if (this.keySize == 0) {
 			this.keySize = (Integer.toString(this.nKeys+this.startKey)).length();
@@ -395,19 +360,219 @@ public class Main implements Log.Callback {
 		Log.setLevel(level);
 		Log.setCallback(this);		
 
-		try {
-			this.kvs = new CLKeyValueStore(this.hosts[0], this.port, this.namespace, this.set, this.counters);
-		}
-		catch (Exception e) {
-			System.out.println(e.getMessage());
-			System.exit(-1);
-		}
+		clientPolicy.failIfNotConnected = true;
 	}
 	
+	private static void logUsage(Options options) {
+		HelpFormatter formatter = new HelpFormatter();
+		StringWriter sw = new StringWriter();
+		PrintWriter pw = new PrintWriter(sw);
+		String syntax = Main.class.getName() + " [<options>]";
+		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
+
+		System.out.println(sw.toString());
+	}
+
+	public void runBenchmarks() throws Exception {
+		if (this.asyncEnabled) {
+			AsyncClient client = new AsyncClient(clientPolicy, hosts[0], port);		
+
+			try {
+				if (writeKeys) {
+					doAsyncInserts(client); 
+				} 
+				else {
+					doAsyncRWTest(client); 
+				}
+			}
+			finally {
+				client.close();
+			}			
+		}
+		else {			
+			AerospikeClient client = new AerospikeClient(clientPolicy, hosts[0], port);		
+
+			try {
+				if (writeKeys) {
+					doInserts(client); 
+				} 
+				else {
+					doRWTest(client); 
+				}
+			}
+			finally {
+				client.close();
+			}
+		}
+	}
+
+	private void doInserts(AerospikeClient client) throws Exception {	
+		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+
+		// Create N insert tasks
+		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+
+		for (int i=0 ; i<ntasks; i++) {
+			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, this.startKey, this.nKeys, 
+				this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+			
+			es.execute(it);
+		}	
+		collectInsertStats();
+		es.shutdownNow();
+	}
+
+	private void doAsyncInserts(AsyncClient client) throws Exception {	
+		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+
+		// Create N insert tasks
+		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+
+		for (int i=0 ; i<ntasks; i++) {
+			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, this.startKey, this.nKeys, 
+					this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+			
+			es.execute(it);
+		}
+		collectInsertStats();
+		es.shutdownNow();
+	}
+
+	private void collectInsertStats() throws Exception {	
+		int total = 0;
+		
+		while (total < this.nKeys) {
+			long time = System.currentTimeMillis();
+			
+			int	numWrites = this.counters.write.count.getAndSet(0);
+			int failWrites = this.counters.write.fail.getAndSet(0);
+			total += numWrites;
+			
+			String date = SimpleDateFormat.format(new Date(time));
+			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + " fail=" + failWrites + ")");
+
+			Thread.sleep(1000);
+		}
+	}
+
+	private void doRWTest(AerospikeClient client) throws Exception {
+		AtomicIntegerArray settingsArr = initSettings();
+		
+		// Start RW tasks...
+		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		
+		for (int i=0 ; i<this.nTasks; i++) {
+			RWTask rt;
+			if (this.validate) {
+				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
+				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
+				
+				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+			} else {
+				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+			}
+			es.execute(rt);
+		}
+		collectRWStats(null, settingsArr);
+	}
+
+	private void doAsyncRWTest(AsyncClient client) throws Exception {
+		AtomicIntegerArray settingsArr = initSettings();
+		
+		// Start RW tasks...
+		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		
+		for (int i=0 ; i<this.nTasks; i++) {
+			RWTask rt;
+			if (this.validate) {
+				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
+				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
+				
+				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
+			} else {
+				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+			}
+			es.execute(rt);
+		}
+		collectRWStats(client, settingsArr);
+	}
+
+	private AtomicIntegerArray initSettings() {
+		// Certain setting can change dynamically based on the throughput file. Because 
+		// of this, we pass these variable settings as AtomicIntegers, and via reference. 
+		AtomicIntegerArray settingsArr = new AtomicIntegerArray(4);
+		settingsArr.set(0, this.throughput);
+		settingsArr.set(1, this.readPct);
+		settingsArr.set(2, this.singleBinReadPct);
+		settingsArr.set(3, this.singleBinUpdatePct);
+		return settingsArr;
+	}
+	
+	private void collectRWStats(AsyncClient client, AtomicIntegerArray settingsArr) throws Exception {		
+		// wait for all the tasks to finish setting up for validation
+		if (this.validate) {
+			while(counters.loadValuesFinishedTasks.get() < this.nTasks) {
+				Thread.sleep(1000);
+				//System.out.println("tasks done = "+counters.loadValuesFinishedTasks.get()+ ", g_ntasks = "+g_ntasks);
+			}
+			// set flag that everyone is ready - this will allow the individual tasks to go
+			counters.loadValuesFinished.set(true);
+		}
+
+		// Set start time 
+		this.counters.start_time = System.currentTimeMillis();
+
+		// Wait for completion
+		for (; this.runTime == 0 || this.counters.timeElapsed.get() < this.runTime; this.counters.timeElapsed.incrementAndGet()) {
+
+			long time = System.currentTimeMillis();
+			
+			int	numWrites = this.counters.write.count.getAndSet(0);
+			int failWrites = this.counters.write.fail.getAndSet(0);
+			
+			int	numReads = this.counters.read.count.getAndSet(0);
+			int failReads = this.counters.read.fail.getAndSet(0);
+			
+			//int used = (client != null)? client.getAsyncConnUsed() : 0;
+			//Node[] nodes = client.getNodes();
+			
+			String date = SimpleDateFormat.format(new Date(time));
+			System.out.println(date.toString() + " write(tps=" + numWrites + " fail=" + failWrites + ")" +
+				" read(tps=" + numReads + " fail=" + failReads + ")" +
+				" total(tps=" + (numWrites + numReads) + " fail=" + (failWrites + failReads) + ")"
+				//+ " buffused=" + used
+				//+ " nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
+				);
+
+			if (throughput_file.length() > 0) {
+				// set target throughput and read/update percentage based on throughput_file
+				try {
+					String[] settings = readSettings(throughput_file);
+					settingsArr.set(0, Integer.parseInt(settings[0]));
+					settingsArr.set(1, Integer.parseInt(settings[1]));
+				} catch (Exception e) {
+					System.out.println("can't read throughput file!");
+				}
+			}		
+			Thread.sleep(1000);
+		}
+	}
+
+	private String[] readSettings(String throughput_file) throws IOException {
+		Scanner scanner = new Scanner(new FileInputStream(throughput_file), "UTF-8");
+		String[] settings = scanner.nextLine().split(",");
+		scanner.close();
+		return settings;
+	}
+
 	@Override
 	public void log(Level level, String message) {
 		String date = SimpleDateFormat.format(new Date());
 		System.out.println(date.toString() + ' ' + level.toString() + 
 			" Thread " + Thread.currentThread().getId() + ' ' + message);		
+	}
+	
+	private static class UsageException extends Exception {
+		private static final long serialVersionUID = 1L;
 	}
 }

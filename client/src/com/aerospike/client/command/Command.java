@@ -9,21 +9,21 @@
  */
 package com.aerospike.client.command;
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.util.HashSet;
+import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.Log;
+import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.Value;
+import com.aerospike.client.command.BatchNode.BatchNamespace;
+import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.ThreadLocalData1;
 
-public abstract class Command {
+public class Command {		
 	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
@@ -38,30 +38,304 @@ public abstract class Command {
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
 	public static final int INFO2_GENERATION_DUP	= (1 << 4); // Create a duplicate on a generation collision.
 	public static final int INFO2_WRITE_UNIQUE		= (1 << 5); // Fail if record already exists.
-	//private final int INFO2_WRITE_BINUNIQUE		= (1 << 6);
-
-	public static final int INFO3_LAST				= (1 << 0); // this is the last of a multi-part message
-	//public static final int  INFO3_TRACE			= (1 << 1); // apply server trace logging for this transaction
-	//public static final int  INFO3_TOMBSTONE		= (1 << 2); // if set on response, a version was a delete tombstone	
-			
-	public final static int DIGEST_SIZE = 20;
+	//public static final int INFO2_WRITE_BINUNIQUE	= (1 << 6);
 	
-	public static final int MSG_TIMEOUT_OFFSET = 22;
-	public static final int MSG_REMAINING_HEADER_SIZE = 22;
+	public static final int INFO3_LAST              = (1 << 0); // this is the last of a multi-part message
+
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
 	public static final int OPERATION_HEADER_SIZE = 8;
+	public static final int MSG_REMAINING_HEADER_SIZE = 22;
+	public static final int DIGEST_SIZE = 20;
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
 
 	protected byte[] sendBuffer;
-	protected byte[] receiveBuffer;
 	protected int sendOffset;
 
 	public Command() {
+		this.sendBuffer = ThreadLocalData1.getBuffer();
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	
+	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
+		int fieldCount = estimateKeySize(key);
+		
+		for (Bin bin : bins) {
+			estimateOperationSize(bin);
+		}		
+		begin();
+		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
+		writeKey(key);
+				
+		for (Bin bin : bins) {
+			writeOperation(bin, operation);
+		}
+		end();
+	}
+
+	public void setDelete(WritePolicy policy, Key key) {
+		int fieldCount = estimateKeySize(key);
+		begin();
+		writeHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
+		writeKey(key);
+		end();
+	}
+
+	public final void setTouch(WritePolicy policy, Key key) {
+		int fieldCount = estimateKeySize(key);
+		estimateOperationSize();
+		begin();
+		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
+		writeKey(key);
+		writeOperation(Operation.Type.TOUCH);
+		end();
+	}
+
+	public final void setExists(Key key) {
+		int fieldCount = estimateKeySize(key);
+		begin();
+		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+		writeKey(key);
+		end();
+	}
+
+	public final void setRead(Key key) {
+		int fieldCount = estimateKeySize(key);
+		begin();
+		writeHeader(Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+		writeKey(key);
+		end();
+	}
+
+	public final void setRead(Key key, String[] binNames) {	
+		int fieldCount = estimateKeySize(key);
+		
+		for (String binName : binNames) {
+			estimateOperationSize(binName);
+		}
+		begin();
+		writeHeader(Command.INFO1_READ, 0, fieldCount, binNames.length);
+		writeKey(key);
+		
+		for (String binName : binNames) {
+			writeOperation(binName, Operation.Type.READ);
+		}
+		end();
+	}
+
+	public final void setReadHeader(Key key) {
+		int fieldCount = estimateKeySize(key);
+		estimateOperationSize((String)null);
+		begin();
+		
+		// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
+		// The workaround is to request a non-existent bin.
+		// TODO: Fix this on server.
+		//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		writeHeader(Command.INFO1_READ, 0, fieldCount, 1);
+		
+		writeKey(key);
+		writeOperation((String)null, Operation.Type.READ);
+		end();
+	}
+
+	public final void setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
+		int fieldCount = estimateKeySize(key);
+		int readAttr = 0;
+		int writeAttr = 0;
+		boolean readHeader = false;
+					
+		for (Operation operation : operations) {
+			switch (operation.type) {
+			case READ:
+				readAttr |= Command.INFO1_READ;
+				
+				// Read all bins if no bin is specified.
+				if (operation.binName == null) {
+					readAttr |= Command.INFO1_GET_ALL;
+				}
+				break;
+				
+			case READ_HEADER:
+				// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
+				// The workaround is to request a non-existent bin.
+				// TODO: Fix this on server.
+				//readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				readAttr |= Command.INFO1_READ;
+				readHeader = true;
+				break;
+				
+			default:
+				writeAttr = Command.INFO2_WRITE;
+				break;				
+			}
+			estimateOperationSize(operation);
+		}
+		begin();
+		
+		if (writeAttr != 0) {
+			writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
+		}
+		else {
+			writeHeader(readAttr, writeAttr, fieldCount, operations.length);			
+		}
+		writeKey(key);
+					
+		for (Operation operation : operations) {
+			writeOperation(operation);
+		}
+		
+		if (readHeader) {
+			writeOperation((String)null, Operation.Type.READ);
+		}
+		end();
+	}
+
+	public final void setUdf(Key key, String fileName, String functionName, Value[] args) 
+		throws AerospikeException {
+		int fieldCount = estimateKeySize(key);		
+		byte[] argBytes = MsgPack.pack(args);
+		fieldCount += estimateUdfSize(fileName, functionName, argBytes);
+		
+		begin();
+		writeHeader(0, Command.INFO2_WRITE, fieldCount, 0);
+		writeKey(key);
+		writeField(fileName, FieldType.UDF_FILENAME);
+		writeField(functionName, FieldType.UDF_FUNCTION);
+		writeField(argBytes, FieldType.UDF_ARGLIST);
+		end();
+	}
+
+	public final void setBatchExists(BatchNamespace batchNamespace) {
+		// Estimate buffer size
+		List<Key> keys = batchNamespace.keys;
+		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+
+		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+				
+		begin();
+
+		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+	
+		for (Key key : keys) {
+			byte[] digest = key.digest;
+		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
+		    sendOffset += digest.length;
+		}
+		end();
+	}
+
+	public final void setBatchGet(BatchNamespace batchNamespace, HashSet<String> binNames, int readAttr) {
+		// Estimate buffer size
+		List<Key> keys = batchNamespace.keys;
+		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+
+		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+		
+		if (binNames != null) {
+			for (String binName : binNames) {
+				estimateOperationSize(binName);
+			}			
+		}
+		
+		begin();
+
+		int operationCount = (binNames == null)? 0 : binNames.size();
+		writeHeader(readAttr, 0, 2, operationCount);		
+		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+	
+		for (Key key : keys) {
+			byte[] digest = key.digest;
+		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
+		    sendOffset += digest.length;
+		}
+		
+		if (binNames != null) {
+			for (String binName : binNames) {
+				writeOperation(binName, Operation.Type.READ);
+			}
+		}
+		end();
+	}
+	
+	public final void setScan(ScanPolicy policy, String namespace, String setName) {		
+		int fieldCount = 0;
+		
+		if (namespace != null) {
+			sendOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		if (setName != null) {
+			sendOffset += Buffer.estimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		// Estimate scan options size.
+		sendOffset += 2 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
+		begin();
+		byte readAttr = Command.INFO1_READ;
+		
+		if (! policy.includeBinData) {
+			readAttr |= Command.INFO1_NOBINDATA;
+		}
+		
+		writeHeader(readAttr, 0, fieldCount, 0);
+				
+		if (namespace != null) {
+			writeField(namespace, FieldType.NAMESPACE);
+		}
+		
+		if (setName != null) {
+			writeField(setName, FieldType.TABLE);
+		}
+	
+		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+		byte priority = (byte)policy.priority.ordinal();
+		priority <<= 4;
+		
+		if (policy.failOnClusterChange) {
+			priority |= 0x08;
+		}		
+		sendBuffer[sendOffset++] = priority;
+		sendBuffer[sendOffset++] = (byte)policy.scanPercent;
+		end();
+	}
+
+	public final int estimateKeySize(Key key) {
+		int fieldCount = 0;
+		
+		if (key.namespace != null) {
+			sendOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		if (key.setName != null) {
+			sendOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		sendOffset += key.digest.length + FIELD_HEADER_SIZE;
+		fieldCount++;
+		
+		return fieldCount;
+	}
+
+	public final int estimateUdfSize(String fileName, String functionName, byte[] bytes) {
+		sendOffset += Buffer.estimateSizeUtf8(fileName) + FIELD_HEADER_SIZE;		
+		sendOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;		
+		sendOffset += bytes.length;
+		return 3;
+	}
+
 	public final void estimateOperationSize(Bin bin) throws AerospikeException {
 		sendOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
 		sendOffset += bin.value.estimateSize();
@@ -80,6 +354,93 @@ public abstract class Command {
 		sendOffset += OPERATION_HEADER_SIZE;
 	}
 	
+	public final void begin() {
+		if (sendOffset > sendBuffer.length) {
+			sendBuffer = ThreadLocalData1.resizeBuffer(sendOffset);
+		}
+	}
+	
+	/**
+	 * Header write for write operations.
+	 */
+	public final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
+        // Set flags.
+		int generation = 0;
+		int expiration = 0;
+    	
+    	if (policy != null) {
+    		switch (policy.recordExistsAction) {
+    		case UPDATE:
+    			break;
+    		case EXPECT_GEN_EQUAL:
+        		generation = policy.generation;    			
+        		writeAttr |= Command.INFO2_GENERATION;
+    			break;
+    		case EXPECT_GEN_GT:
+        		generation = policy.generation;    			
+        		writeAttr |= Command.INFO2_GENERATION_GT;
+    			break;
+    		case FAIL:
+        		writeAttr |= Command.INFO2_WRITE_UNIQUE;
+    			break;
+    		case DUPLICATE:
+        		generation = policy.generation;    			
+        		writeAttr |= Command.INFO2_GENERATION_DUP;
+    			break;
+    		}
+    		expiration = policy.expiration;
+    	}
+		// Write all header data except total size which must be written last. 
+		sendBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		sendBuffer[9]  = (byte)readAttr;
+		sendBuffer[10] = (byte)writeAttr;
+		sendBuffer[11] = 0; // info3
+		sendBuffer[12] = 0; // unused
+		sendBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(generation, sendBuffer, 14);
+		Buffer.intToBytes(expiration, sendBuffer, 18);		
+		
+		// Initialize timeout. It will be written later.
+		sendBuffer[22] = 0;
+		sendBuffer[23] = 0;
+		sendBuffer[24] = 0;
+		sendBuffer[25] = 0;
+		
+		Buffer.shortToBytes(fieldCount, sendBuffer, 26);
+		Buffer.shortToBytes(operationCount, sendBuffer, 28);		
+		sendOffset = MSG_TOTAL_HEADER_SIZE;
+	}
+
+	/**
+	 * Generic header write.
+	 */
+	public final void writeHeader(int readAttr, int writeAttr, int fieldCount, int operationCount) {		
+		// Write all header data except total size which must be written last. 
+		sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		sendBuffer[9] = (byte)readAttr;
+		sendBuffer[10] = (byte)writeAttr;
+		
+		for (int i = 11; i < 26; i++) {
+			sendBuffer[i] = 0;
+		}
+		Buffer.shortToBytes(fieldCount, sendBuffer, 26);
+		Buffer.shortToBytes(operationCount, sendBuffer, 28);
+		sendOffset = MSG_TOTAL_HEADER_SIZE;
+	}
+
+	public final void writeKey(Key key) {
+		// Write key into buffer.
+		if (key.namespace != null) {
+			writeField(key.namespace, FieldType.NAMESPACE);
+		}
+		
+		if (key.setName != null) {
+			writeField(key.setName, FieldType.TABLE);
+		}
+	
+		writeField(key.digest, FieldType.DIGEST_RIPE);
+	}	
+
 	public final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
         int nameLength = Buffer.stringToUtf8(bin.name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
         int valueLength = bin.value.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
@@ -135,7 +496,7 @@ public abstract class Command {
 		sendOffset += len;
 	}
 		
-	public final void writeField(byte[] bytes, int type) throws AerospikeException {
+	public final void writeField(byte[] bytes, int type) {
 	    System.arraycopy(bytes, 0, sendBuffer, sendOffset + FIELD_HEADER_SIZE, bytes.length);
 	    writeFieldHeader(bytes.length, type);
 		sendOffset += bytes.length;
@@ -146,140 +507,18 @@ public abstract class Command {
 		sendOffset += 4;
 		sendBuffer[sendOffset++] = (byte)type;
 	}
-	
-	public final void execute(Policy policy) throws AerospikeException {
+
+	public final void end() {
 		// Write total size of message which is the current offset.
 		long size = (sendOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(size, sendBuffer, 0);
-
-		if (policy == null) {
-			policy = new Policy();
-		}
-		        
-		int maxIterations = policy.maxRetries + 1;
-		int remainingMillis = policy.timeout;
-		long limit = System.currentTimeMillis() + remainingMillis;
-        int failedNodes = 0;
-        int failedConns = 0;
-        int i;
-
-        // Execute command until successful, timed out or maximum iterations have been reached.
-		for (i = 0; i < maxIterations; i++) {
-			Node node = null;
-			try {		
-				node = getNode();
-				Connection conn = node.getConnection(remainingMillis);
-				
-				try {
-					// Reset timeout in send buffer (destined for server) and socket.
-					Buffer.intToBytes(remainingMillis, sendBuffer, MSG_TIMEOUT_OFFSET);
-					
-					// Send command.
-					send(conn);
-					
-					// Parse results.
-					parseResult(conn.getInputStream());
-					
-					// Reflect healthy status.
-					conn.updateLastUsed();
-					node.restoreHealth();
-					
-					// Put connection back in pool.
-					node.putConnection(conn);
-					
-					// Command has completed successfully.  Exit method.
-					return;
-				}
-				catch (AerospikeException ae) {
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
-					throw ae;
-				}
-				catch (RuntimeException re) {
-					// All runtime exceptions are considered fatal.  Do not retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
-					throw re;
-				}
-				catch (IOException ioe) {
-					// IO errors are considered temporary anomalies.  Retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
-					
-					if (Log.debugEnabled()) {
-						Log.debug("Node " + node + ": " + Util.getErrorMessage(ioe));
-					}
-					// IO error means connection to server node is unhealthy.
-					// Reflect this status.
-					node.decreaseHealth(60);
-				}
-			}
-			catch (AerospikeException.InvalidNode ine) {
-				// Node is currently inactive.  Retry.
-				failedNodes++;
-			}
-			catch (AerospikeException.Connection ce) {
-				// Socket connection error has occurred. Decrease health and retry.
-				node.decreaseHealth(60);
-				
-				if (Log.debugEnabled()) {
-					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));
-				}
-				failedConns++;	
-			}
-
-			// Check for client timeout.
-			if (policy.timeout > 0) {
-				remainingMillis = (int)(limit - System.currentTimeMillis());
-
-				if (remainingMillis <= 0) {
-					break;
-				}
-			}
-			// Sleep before trying again.
-			Util.sleep(policy.sleepBetweenRetries);
-		}
-		
-		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
-		}
-		throw new AerospikeException.Timeout();
 	}
 	
-	private final void send(Connection conn) throws IOException {
-		final OutputStream os = conn.getOutputStream();
-		
-		// Never write more than 8 KB at a time.  Apparently, the jni socket write does an extra 
-		// malloc and free if buffer size > 8 KB.
-		final int max = sendOffset;
-		int pos = 0;
-		int len;
-		
-		while (pos < max) {
-			len = max - pos;
-			
-			if (len > 8192)
-				len = 8192;
-			
-			os.write(sendBuffer, pos, len);
-			pos += len;
-		}
+	public final byte[] getSendBuffer() {
+		return sendBuffer;
 	}
 	
-	public static void readFully(InputStream is, byte[] buf, int length) throws IOException {
-		int pos = 0;
-	
-		while (pos < length) {
-			int count = is.read(buf, pos, length - pos);
-		    
-			if (count < 0)
-		    	throw new EOFException();
-			
-			pos += count;
-		}
+	public final int getSendOffset() {
+		return sendOffset;
 	}
-	
-	protected abstract Node getNode() throws AerospikeException.InvalidNode;
-	protected abstract void parseResult(InputStream is) throws AerospikeException, IOException;
 }

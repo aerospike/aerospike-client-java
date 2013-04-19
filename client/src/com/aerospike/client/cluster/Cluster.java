@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -20,7 +21,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
-public final class Cluster implements Runnable {
+public class Cluster implements Runnable {
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
 	
@@ -34,26 +35,33 @@ public final class Cluster implements Runnable {
 	private volatile HashMap<String,Node[]> partitionWriteMap;
 	
 	// Random node index.
-	private volatile int nodeIndex;
+	private final AtomicInteger nodeIndex;
 	
-	// Size of node's connection pool.
-	private final int connectionLimit;
+	// Size of node's synchronous connection pool.
+	protected final int connectionQueueSize;
 	
 	// Initial connection timeout.
 	private final int connectionTimeout;
 
+	// Maximum socket idle in seconds.
+	protected final int maxSocketIdle;
+
 	// Tend thread variables.
-	private final Thread tendThread;
+	private Thread tendThread;
 	private volatile boolean tendValid;
 	
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
-		connectionLimit = policy.maxThreads + 1;
-		connectionTimeout = policy.timeout;				
+		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
+		connectionTimeout = policy.timeout;
+		maxSocketIdle = policy.maxSocketIdle;
 		aliases = new HashSet<Host>();
 		nodes = new Node[0];	
-		partitionWriteMap = new HashMap<String,Node[]>(); 
-
+		partitionWriteMap = new HashMap<String,Node[]>();		
+		nodeIndex = new AtomicInteger();
+	}
+	
+	public void initTendThread() {		
 		// Tend cluster until all nodes identified.
         waitTillStabilized();
         
@@ -84,7 +92,7 @@ public final class Cluster implements Runnable {
         tendThread.start();
 	}
 	
-	public void addSeeds(Host[] hosts) {
+	public final void addSeeds(Host[] hosts) {
 		// Use copy on write semantics.
 		Host[] seedArray = new Host[seeds.length + hosts.length];
 		int count = 0;
@@ -106,7 +114,7 @@ public final class Cluster implements Runnable {
 		seeds = seedArray;
 	}
 
-	private boolean findSeed(Host search) {
+	private final boolean findSeed(Host search) {
 		for (Host seed : seeds) {
 			if (seed.equals(search)) {
 				return true;
@@ -124,7 +132,7 @@ public final class Cluster implements Runnable {
      * control as well.  Do not return an error since future 
      * database requests may still succeed.
      */
-    private void waitTillStabilized() {
+    private final void waitTillStabilized() {
 		long limit = System.currentTimeMillis() + connectionTimeout;
 		int count = -1;
 		
@@ -141,7 +149,7 @@ public final class Cluster implements Runnable {
 		} while (System.currentTimeMillis() < limit);
     }
     	
-	public void run() {
+	public final void run() {
 		while (tendValid) {			
 			// Tend cluster.
 			try {
@@ -160,7 +168,7 @@ public final class Cluster implements Runnable {
     /**
      * Check health of all nodes in the cluster.
      */
-	private void tend() {
+	private final void tend() {
 		// All node additions/deletions are performed in tend thread.
 		// Remove sick nodes.
 		ArrayList<Node> removeList = new ArrayList<Node>();
@@ -202,11 +210,11 @@ public final class Cluster implements Runnable {
 		}
 	}
 	
-	protected boolean findAlias(Host alias) {
+	protected final boolean findAlias(Host alias) {
 		return aliases.contains(alias);
 	}
 	
-	protected void updatePartitions(Connection conn, Node node) throws AerospikeException {
+	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
 		// Use copy on write semantics to update partitionWriteMap.
 		HashMap<String,Node[]> map = partitionWriteMap;
 		PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
@@ -234,7 +242,7 @@ public final class Cluster implements Runnable {
 		}
 	}
 
-	private void seedNodes() {
+	private final void seedNodes() {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		
@@ -257,7 +265,7 @@ public final class Cluster implements Runnable {
 					}
 										
 					if (! findNodeName(list, nv.name)) {
-						Node node = new Node(this, nv, connectionLimit);
+						Node node = createNode(nv);
 						addAliases(node);
 						list.add(node);
 					}
@@ -276,7 +284,7 @@ public final class Cluster implements Runnable {
 		}
 	}
 	
-	private static boolean findNodeName(ArrayList<Node> list, String name) {
+	private final static boolean findNodeName(ArrayList<Node> list, String name) {
 		for (Node node : list) {
 			if (node.getName().equals(name)) {
 				return true;
@@ -284,8 +292,8 @@ public final class Cluster implements Runnable {
 		}
 		return false;
 	}
-		
-	private void addNodes(List<Host> hosts) {
+	
+	private final void addNodes(List<Host> hosts) {
 		// Add all nodes at once to avoid copying entire array multiple times.
 		ArrayList<Node> list = new ArrayList<Node>(hosts.size());
 		
@@ -303,7 +311,7 @@ public final class Cluster implements Runnable {
 					aliases.add(host);
 					continue;
 				}
-				node = new Node(this, nv, connectionLimit);				
+				node = createNode(nv);		
 				addAliases(node);			
 				list.add(node);
 			}
@@ -319,7 +327,11 @@ public final class Cluster implements Runnable {
 		}
 	}
 	
-	private void addAliases(Node node) {		
+	protected Node createNode(NodeValidator nv) {
+		return new Node(this, nv);
+	}
+		
+	private final void addAliases(Node node) {		
 		// Add node's aliases to global alias set.
 		// Aliases are only used in tend thread, so synchronization is not necessary.
 		for (Host alias : node.getAliases()) {
@@ -330,7 +342,7 @@ public final class Cluster implements Runnable {
 	/**
 	 * Add nodes using copy on write semantics.
 	 */
-	private void addNodesCopy(List<Node> nodesToAdd) {
+	private final void addNodesCopy(List<Node> nodesToAdd) {
 		// Create temporary nodes array.
 		Node[] nodeArray = new Node[nodes.length + nodesToAdd.size()];
 		int count = 0;
@@ -352,7 +364,7 @@ public final class Cluster implements Runnable {
 		nodes = nodeArray;
 	}
 	
-	private void removeNodes(List<Node> nodesToRemove) {
+	private final void removeNodes(List<Node> nodesToRemove) {
 		// There is no need to delete nodes from partitionWriteMap because the nodes 
 		// have already been set to inactive. Further connection requests will result 
 		// in an exception and a different node will be tried.
@@ -375,7 +387,7 @@ public final class Cluster implements Runnable {
 	/**
 	 * Remove nodes using copy on write semantics.
 	 */
-	private void removeNodesCopy(List<Node> nodesToRemove) {
+	private final void removeNodesCopy(List<Node> nodesToRemove) {
 		// Create temporary nodes array.
 		// Since nodes are only marked for deletion using node references in the nodes array,
 		// and the tend thread is the only thread modifying nodes, we are guaranteed that nodes
@@ -386,8 +398,8 @@ public final class Cluster implements Runnable {
 		// Add nodes that are not in remove list.
 		for (Node node : nodes) {
 			if (findNode(node, nodesToRemove)) {				
-				if (Log.debugEnabled()) {
-					Log.debug("Remove node " + node);
+				if (Log.infoEnabled()) {
+					Log.info("Remove node " + node);
 				}
 			}
 			else {
@@ -410,7 +422,7 @@ public final class Cluster implements Runnable {
 		nodes = nodeArray;
 	}
 
-	private static boolean findNode(Node search, List<Node> nodeList) {
+	private final static boolean findNode(Node search, List<Node> nodeList) {
 		for (Node node : nodeList) {
 			if (node.equals(search)) {
 				return true;
@@ -419,13 +431,13 @@ public final class Cluster implements Runnable {
 		return false;
 	}
 	
-	public boolean isConnected() {
+	public final boolean isConnected() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		return nodeArray.length > 0 && tendValid;
 	}
 	
-	public Node getNode(Partition partition) throws AerospikeException.InvalidNode {
+	public final Node getNode(Partition partition) throws AerospikeException.InvalidNode {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Node[]> map = partitionWriteMap;
 		Node[] nodeArray = map.get(partition.namespace);
@@ -445,21 +457,13 @@ public final class Cluster implements Runnable {
 		return getRandomNode();
 	}
 
-	private Node getRandomNode() throws AerospikeException.InvalidNode {
+	private final Node getRandomNode() throws AerospikeException.InvalidNode {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
-		int index;
 				
 		for (int i = 0; i < nodeArray.length; i++) {			
-			// Must synchronize with other non-tending threads, so nodeIndex is consistent.
-			synchronized (this) {
-				if (nodeIndex >= nodeArray.length) {
-					nodeIndex = 0;
-				}
-				index = nodeIndex; 
-				nodeIndex++;
-			}
-			
+			// Must handle concurrency with other non-tending threads, so nodeIndex is consistent.
+			int index = Math.abs(nodeIndex.getAndIncrement() % nodeArray.length);						
 			Node node = nodeArray[index];
 			
 			if (node.isActive()) {
@@ -472,7 +476,7 @@ public final class Cluster implements Runnable {
 		throw new AerospikeException.InvalidNode();		
 	}
 
-	public Node[] getNodes() {
+	public final Node[] getNodes() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		return nodeArray;
@@ -497,6 +501,10 @@ public final class Cluster implements Runnable {
 			}
 		}
 		return null;
+	}
+
+	public final int getMaxSocketIdle() {
+		return maxSocketIdle;
 	}
 
 	public void close() {

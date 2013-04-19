@@ -18,7 +18,7 @@ import java.util.HashMap;
 
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.util.ThreadLocalData;
+import com.aerospike.client.util.ThreadLocalData1;
 
 /**
  * Access Citrusleaf's monitoring protocol - the "Info" protocol.
@@ -56,7 +56,7 @@ public final class Info {
 	 * @param command		command sent to server
 	 */
 	public Info(Connection conn, String command) throws AerospikeException {
-		buffer = ThreadLocalData.getSendBuffer();		
+		buffer = ThreadLocalData1.getBuffer();		
 		offset = 8;  // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -75,7 +75,7 @@ public final class Info {
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, String... commands) throws AerospikeException {
-		buffer = ThreadLocalData.getSendBuffer();		
+		buffer = ThreadLocalData1.getBuffer();		
 		offset = 8;  // Skip size field.
 		
 		// The command format is: <name1>\n<name2>\n...
@@ -94,7 +94,7 @@ public final class Info {
 	 * @param conn			connection to server node
 	 */
 	public Info(Connection conn) throws AerospikeException {
-		buffer = ThreadLocalData.getSendBuffer();		
+		buffer = ThreadLocalData1.getBuffer();		
 		offset = 8;  // Skip size field.		
 		sendCommand(conn);
 	}
@@ -328,7 +328,7 @@ public final class Info {
 			length = (int)(size & 0xFFFFFFFFFFFFL);
 
 			if (length > buffer.length) {
-				buffer = ThreadLocalData.resizeSendBuffer(length);
+				buffer = ThreadLocalData1.resizeBuffer(length);
 			}
 			readFully(in, buffer, length);		
 			offset = 0;

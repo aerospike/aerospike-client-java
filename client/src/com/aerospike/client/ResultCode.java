@@ -14,6 +14,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Asynchronous max concurrent database commands have been exceeded and therefore rejected.
+	 */
+	public static final int COMMAND_REJECTED = -6;
+
+	/**
 	 * Query was terminated by user.
 	 */
 	public static final int QUERY_TERMINATED = -5;

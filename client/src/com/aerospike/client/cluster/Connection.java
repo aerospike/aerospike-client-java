@@ -27,9 +27,16 @@ public final class Connection {
 	private final Socket socket;
 	private InputStream in;
 	private OutputStream out;
+	private final long maxSocketIdleMillis;
 	private long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
+		this(address, timeoutMillis, 14);
+	}
+
+	public Connection(InetSocketAddress address, int timeoutMillis, int maxSocketIdleSeconds) throws AerospikeException.Connection {
+		this.maxSocketIdleMillis = (long)maxSocketIdleSeconds * 1000L;
+
 		try {
 			socket = new Socket();
 			socket.setTcpNoDelay(true);
@@ -47,10 +54,10 @@ public final class Connection {
 	}
 
 	/**
-	 * Is socket connected and used within the last 14 seconds.
+	 * Is socket connected and used within specified limits.
 	 */
 	public boolean isValid() {
-		return socket.isConnected() && (System.currentTimeMillis() - lastUsed) <= 14000;
+		return socket.isConnected() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
 
 	public void setTimeout(int timeout) throws SocketException {

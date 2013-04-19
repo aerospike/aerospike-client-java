@@ -19,63 +19,14 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.policy.ScanPolicy;
 
 public final class ScanCommand extends MultiCommand {
 	private final ScanCallback callback;
-	private volatile boolean valid;
+	private volatile boolean valid = true;
 
 	public ScanCommand(Node node, ScanCallback callback) {
 		super(node);
 		this.callback = callback;
-	}
-
-	public void scan(ScanPolicy policy, String namespace, String setName) throws AerospikeException {
-		valid = true;
-		
-		int fieldCount = 0;
-		
-		if (namespace != null) {
-			sendOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
-		
-		if (setName != null) {
-			sendOffset += Buffer.estimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
-		
-		// Estimate scan options size.
-		sendOffset += 2 + FIELD_HEADER_SIZE;
-		fieldCount++;
-
-		begin();
-		byte readAttr = Command.INFO1_READ;
-		
-		if (! policy.includeBinData) {
-			readAttr |= Command.INFO1_NOBINDATA;
-		}
-		
-		writeHeader(readAttr, fieldCount, 0);
-				
-		if (namespace != null) {
-			writeField(namespace, FieldType.NAMESPACE);
-		}
-		
-		if (setName != null) {
-			writeField(setName, FieldType.TABLE);
-		}
-	
-		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-		byte priority = (byte)policy.priority.ordinal();
-		priority <<= 4;
-		
-		if (policy.failOnClusterChange) {
-			priority |= 0x08;
-		}		
-		sendBuffer[sendOffset++] = priority;
-		sendBuffer[sendOffset++] = (byte)policy.scanPercent;		
-		execute(policy);
 	}
 
 	protected boolean parseRecordResults(int receiveSize) 
@@ -97,7 +48,7 @@ public final class ScanCommand extends MultiCommand {
 			byte info3 = receiveBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
-			if ((info3 & INFO3_LAST) == INFO3_LAST) {
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			

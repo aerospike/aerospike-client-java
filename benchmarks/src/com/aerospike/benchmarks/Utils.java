@@ -1,8 +1,14 @@
+/*
+ * Aerospike Client - Java Library
+ *
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
+ */
 package com.aerospike.benchmarks;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileWriter;
 import java.util.Date;
 import java.util.Random;
 
@@ -51,25 +57,5 @@ public class Utils {
 			i /= 10;
 		}
 		return key;
-	}
-	
-	protected static void writeMismatchedKVP(int client_num, String clientdir, String key, Object getVal, Object toVal) {
-		File f = new File(clientdir+"mismatchedKVP_"+client_num+".csv");
-		if(!f.exists()) {
-			try {
-				f.createNewFile();
-			} catch (Exception e) {
-				System.out.println("couldn't create new file for some reason");
-			}
-		}
-		try {
-			FileWriter fw = new FileWriter(clientdir+"mismatchedKVP_"+client_num+".csv", true);
-			BufferedWriter out = new BufferedWriter(fw);
-			out.write("key: "+key+", expected:"+getVal+", found:"+toVal+"\n");
-			out.close();
-		} catch (Exception e) {
-			System.out.println("couldn't write to file for some reason");
-		}
-
-	}
+	}	
 }

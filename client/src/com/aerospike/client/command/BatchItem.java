@@ -10,8 +10,31 @@
 package com.aerospike.client.command;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+
+import com.aerospike.client.Key;
 
 public final class BatchItem {
+	
+	public static HashMap<Key,BatchItem> generateMap(Key[] keys) {
+		
+		HashMap<Key,BatchItem> keyMap = new HashMap<Key,BatchItem>(keys.length);
+		
+		for (int i = 0; i < keys.length; i++) {
+			Key key = keys[i];
+			BatchItem item = keyMap.get(key);
+			
+			if (item == null) {
+				item = new BatchItem(i);
+				keyMap.put(key, item);
+			}
+			else {
+				item.addDuplicate(i);
+			}
+		}
+		return keyMap;
+	}
+	
 	private int index;
 	private ArrayList<Integer> duplicates;
 	

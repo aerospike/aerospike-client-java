@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.util.ThreadLocalData;
+import com.aerospike.client.util.ThreadLocalData1;
 
 /**
  * Unique record identifier. Records can be identified using a specified namespace,
@@ -225,7 +225,7 @@ public final class Key {
 		
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
-		byte[] buffer = ThreadLocalData.getSendBuffer();
+		byte[] buffer = ThreadLocalData1.getBuffer();
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
 		buffer[setLength] = (byte)keyType;		

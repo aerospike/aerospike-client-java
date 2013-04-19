@@ -66,7 +66,7 @@ public class Query extends Example {
 		String indexName,
 		String binName
 	) throws Exception {
-		console.info("Create index: ns=%s set=%s index=%s, bin=%s",
+		console.info("Create index: ns=%s set=%s index=%s bin=%s",
 			params.namespace, params.set, indexName, binName);			
 		
 		Policy policy = new Policy();

@@ -82,7 +82,8 @@ public final class ScanExecutor {
 		
 		public void run() {
 			try {
-				command.scan(policy, namespace, setName);
+				command.setScan(policy, namespace, setName);
+				command.execute(policy);
 			}
 			catch (Exception e) {
 				// Terminate other scan threads.

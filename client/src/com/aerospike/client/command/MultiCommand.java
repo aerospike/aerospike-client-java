@@ -18,8 +18,8 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Node;
 
-public abstract class MultiCommand extends Command {
-	private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
+public abstract class MultiCommand extends SyncCommand {
+	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 10;  // 10 MB
 	
 	private BufferedInputStream bis;
 	protected final Node node;
@@ -27,18 +27,11 @@ public abstract class MultiCommand extends Command {
 	
 	protected MultiCommand(Node node) {
 		this.node = node;
-		this.sendBuffer = null;
-		this.receiveBuffer = null;
+		this.receiveBuffer = new byte[2048];
 	}
 	
 	protected final Node getNode() { 
 		return node;
-	}
-	
-	public final void begin() {
-		// Batch, Scan, and Query use buffers allocated on the heap (not thread local).
-		sendBuffer = new byte[sendOffset];
-		receiveBuffer = new byte[2048];
 	}
 
 	protected final void writeHeader(int readAttr, int fieldCount, int operationCount) throws AerospikeException {		

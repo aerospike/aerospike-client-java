@@ -1,23 +1,37 @@
+/*
+ * Aerospike Client - Java Library
+ *
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
+ */
 package com.aerospike.benchmarks;
 
-import java.util.Arrays;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.util.Util;
 
 //
 // Always generates random reads
 // between start and end
 //
-public class RWTask implements Runnable {
+public abstract class RWTask implements Runnable {
 
+	final AerospikeClient client;
+	final String namespace;
+	final String setName;
 	Random rgen;
 	int nKeys;
 	int startKey;
@@ -29,17 +43,33 @@ public class RWTask implements Runnable {
 	AtomicIntegerArray settingsArr;
 	boolean validate;
 	int runTime;
-	Object[] validationValues	= null;
-	int[] validationGenerations = null;
+	ExpectedValue[] expectedValues;
 	CounterStore counters;
 	AtomicInteger timeElapsed;
-	CLKeyValueStore kvs;
 	WritePolicy policy;
 	WritePolicy writePolicyGeneration;
-	boolean debug = false;
+	boolean debug;
 
-	public RWTask(CLKeyValueStore kvs, int nKeys, int startKey, int keySize, DBObjectSpec[] objects, int nBins, String cycleType, int timeout, AtomicIntegerArray settingsArr, /*int client_num, String clientdir,*/ boolean validate, int runTime, CounterStore counters, boolean debug) {
-		this.kvs         = kvs;
+	public RWTask(
+		AerospikeClient client, 
+		String namespace,
+		String setName,
+		int nKeys, 
+		int startKey, 
+		int keySize, 
+		DBObjectSpec[] objects, 
+		int nBins, 
+		String cycleType, 
+		int timeout, 
+		AtomicIntegerArray settingsArr, 
+		boolean validate, 
+		int runTime, 
+		CounterStore counters, 
+		boolean debug
+	) {
+		this.client      = client;
+		this.namespace   = namespace;
+		this.setName     = setName;
 		this.nKeys       = nKeys;
 		this.startKey    = startKey;
 		this.keySize     = keySize;
@@ -63,187 +93,12 @@ public class RWTask implements Runnable {
 		writePolicyGeneration.timeout = timeout;
 		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
-	}
-	
-	/**
-	** setupValidation()
-	** Read existing values from the database, save them away in our validation arrays
-	**/
-	private void setupValidation() {
-		// load starting values
-		for(int i=0; i<this.nKeys; i++) {
-			ResponseObj response = kvs.GetValue(policy, Utils.genKey(this.startKey+i, this.keySize));
-			this.validationValues[i]      = response.value;
-			this.validationGenerations[i] = response.generation;
-		}
-
-		// Tell the global counter that this task is finished loading
-		this.counters.loadValuesFinishedTasks.incrementAndGet();
-
-		// wait for all tasks to be finished loading
-		while(!this.counters.loadValuesFinished.get()) {
-			try {
-				Thread.sleep(10);
-			} catch (Exception e) {
-				System.out.println("can't sleep while waiting for all values to load");
-			}
-		}
-	}
-	
-	/**
-	** doRead
-	** Read the key at the given index.
-	**/
-	protected void doRead(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
-		ResponseObj responseObj;
-
-		if (!multiBin) {
-			// read one bin, maybe validate
-			int bin = 0;
-			responseObj = kvs.GetSingleBin(policy, key, Integer.toString(bin));
-			if(this.validate) {
-				try {
-					Object expectedVal;
-					Object newVal;
-					if (this.validationValues[keyIdx] != null) {
-						expectedVal = ((Object[]) this.validationValues[keyIdx])[bin];
-					} else {
-						expectedVal = null;
-					}
-					if (responseObj.value != null) {
-						newVal = ((Object[]) responseObj.value)[0];
-					} else {
-						newVal = null;
-					}
-					if (newVal == null || !newVal.equals(expectedVal)) {
-						this.counters.valueMismatchCnt.incrementAndGet();
-						Utils.writeMismatchedKVP(0, "", key, expectedVal, newVal);
-						System.out.println("MISMATCH | original value = "  + expectedVal+", new value = "+newVal);
-					} 
-				} catch (Exception e) {
-					System.out.println("couldn't cast stored value to Object array");
-				}
-			}
-		} else {
-			// read all bins, maybe validate
-			responseObj = kvs.GetValue(policy, key);
-			if (this.validate) {
-				Object expectedVal    = this.validationValues[keyIdx];
-				String expectedValStr = Arrays.toString((Object[]) expectedVal);
-				String newValStr      = Arrays.toString((Object[]) responseObj.value);
-				if(responseObj.value == null || !expectedValStr.equals(newValStr)) {
-					this.counters.valueMismatchCnt.incrementAndGet();
-					Utils.writeMismatchedKVP(0, "", key, expectedValStr, newValStr);
-					System.out.println("MISMATCH | original Val = "+expectedValStr+", new value = "+newValStr);
-				} 
-			}
-		}
-	}
-	
-	/**
-	** doWrite
-	** Write the key at the given index
-	**/
-	protected void doWrite(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
-		Bin[] bins;
-
-		if (this.validate) {
-			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, this.validationGenerations[keyIdx]+1);
-		} else {
-			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, 0);
-		}
-		
-		if (!multiBin) {
-			// write one bin
-			int bin = 0 ;
-						
-			try {
-				kvs.SetValue(policy, key, bins);
-				
-				if (this.validate) {
-					if (this.validationValues[keyIdx] != null) {
-						Object[] valarr = (Object[]) validationValues[keyIdx];
-						valarr[bin] = bins[bin].value;
-						this.validationValues[keyIdx] = valarr;
-					}
-				}
-				counters.write.count.getAndIncrement();
-			}
-			catch (Exception e) {
-				counters.write.fail.getAndIncrement();
-				System.out.println(e.getMessage());
-				Util.sleep(10);
-			}			
-		} else {
-			// write all bins
-			try {
-				kvs.SetValue(policy, key, bins);
-				
-				if (this.validate) {
-					Object[] valarr = new Object[bins.length];
-					int i=0;
-					for (Bin bin : bins) {
-						valarr[i] = bin.value;
-						i++;
-					}
-					this.validationValues[keyIdx] = valarr;
-					this.validationGenerations[keyIdx] += 1;
-				}
-				counters.write.count.getAndIncrement();
-			}
-			catch (Exception e) {
-				counters.write.fail.getAndIncrement();
-				System.out.println(e.getMessage());
-				Util.sleep(10);
-			}			
-		}
-	}
-	
-	/**
-	** doIncrement
-	** Increment (or decrement, if incrValue is negative) the key at the given index.
-	**/
-	protected void doIncrement(int keyIdx, int incrValue) {
-		// get key
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
-		
-		// set up bin for increment
-		Bin[] bins = new Bin[] {new Bin("", incrValue)};
-		
-		try {
-			kvs.IncrementValue(writePolicyGeneration, key, bins);
-			
-			if (this.validate) {
-				Object[] valarr = new Object[this.nBins];
-				valarr[0] = incrValue;	
-				this.validationValues[keyIdx] = valarr;
-				this.validationGenerations[keyIdx] += 1;
-			}
-			counters.write.count.getAndIncrement();
-		}
-		catch (AerospikeException ae) {
-			counters.write.fail.getAndIncrement();
-			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-				this.counters.generationErrCnt.incrementAndGet();					
-			}
-			System.out.println(ae.getMessage());
-			Util.sleep(10);
-		}
-		catch (Exception e) {		
-			counters.write.fail.getAndIncrement();
-			System.out.println(e.getMessage());
-			Util.sleep(10);
-		}
-	}
+	}	
 	
 	public void run() {
  
 		// if we're going to be validating, load the data.
 		if (this.validate) {
-			this.validationValues      = new Object[this.nKeys];
-			this.validationGenerations = new int[	this.nKeys];
 			setupValidation();
 		}
 
@@ -320,4 +175,157 @@ public class RWTask implements Runnable {
 			}
 		}
 	}
+	
+	/**
+	 * Read existing values from the database, save them away in our validation arrays.
+	 */
+	private void setupValidation() {
+		this.expectedValues = new ExpectedValue[this.nKeys];
+		
+		// load starting values
+		for (int i = 0; i < this.nKeys; i++) {
+			Bin[] bins = null;
+			int generation = 0;
+			
+			try {
+				Key key = new Key(this.namespace, this.setName, Utils.genKey(this.startKey+i, this.keySize));
+				Record record = client.get(this.policy, key);
+				
+				if (record != null && record.bins != null) {
+					Map<String,Object> map = record.bins;
+					int max = map.size();
+					bins = new Bin[max];
+					
+					for (int j = 0; j < max; j++) {
+						String name = Integer.toString(j);
+						bins[j] = new Bin(name, map.get(name));
+					}
+					generation = record.generation;
+				}
+				counters.read.count.getAndIncrement();
+			}
+			catch (Exception e) {				
+				counters.read.fail.getAndIncrement();
+				System.out.println(e.getMessage());
+			}
+			expectedValues[i] = new ExpectedValue(bins, generation);
+		}
+
+		// Tell the global counter that this task is finished loading
+		this.counters.loadValuesFinishedTasks.incrementAndGet();
+
+		// wait for all tasks to be finished loading
+		while(! this.counters.loadValuesFinished.get()) {
+			try {
+				Thread.sleep(10);
+			} catch (Exception e) {
+				System.out.println("can't sleep while waiting for all values to load");
+			}
+		}
+	}
+	
+	/**
+	 * Write the key at the given index
+	 */
+	protected void doWrite(int keyIdx, boolean multiBin) {
+		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+		Bin[] bins;
+
+		if (this.validate) {
+			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, this.expectedValues[keyIdx].generation+1);
+		} else {
+			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, 0);
+		}
+		
+		try {
+			put(new Key(this.namespace, this.setName, key), bins);
+			
+			if (this.validate) {
+				this.expectedValues[keyIdx].write(bins);
+			}
+		}
+		catch (AerospikeException ae) {
+			counters.write.fail.getAndIncrement();
+			if (ae.getResultCode() != ResultCode.TIMEOUT) {
+				System.out.println(ae.getMessage());
+			}
+		}	
+		catch (Exception e) {
+			counters.write.fail.getAndIncrement();
+			System.out.println(e.getMessage());
+		}
+	}
+
+	/**
+	 * Increment (or decrement, if incrValue is negative) the key at the given index.
+	 */
+	protected void doIncrement(int keyIdx, int incrValue) {
+		// get key
+		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+		
+		// set up bin for increment
+		Bin[] bins = new Bin[] {new Bin("", incrValue)};
+		
+		try {
+			add(new Key(this.namespace, this.setName, key), bins);
+			
+			if (this.validate) {
+				this.expectedValues[keyIdx].add(bins, incrValue);
+			}
+		}
+		catch (AerospikeException ae) {
+			counters.write.fail.getAndIncrement();
+			
+			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
+				this.counters.generationErrCnt.incrementAndGet();					
+			}
+			
+			if (ae.getResultCode() != ResultCode.TIMEOUT) {
+				System.out.println(ae.getMessage());
+			}
+		}
+		catch (Exception e) {		
+			counters.write.fail.getAndIncrement();
+			System.out.println(e.getMessage());
+		}
+	}
+		
+	/**
+	 * Read the key at the given index.
+	 */
+	protected void doRead(int keyIdx, boolean multiBin) {
+		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+
+		try {
+			if (multiBin) {
+				// read all bins, maybe validate
+				get(keyIdx, new Key(this.namespace, this.setName, key));			
+			} 
+			else {
+				// read one bin, maybe validate
+				get(keyIdx, new Key(this.namespace, this.setName, key), Integer.toString(0));			
+			}
+		}
+		catch (AerospikeException ae) {
+			counters.read.fail.getAndIncrement();
+			if (ae.getResultCode() != ResultCode.TIMEOUT) {
+				System.out.println(ae.getMessage());
+			}
+		}	
+		catch (Exception e) {
+			counters.read.fail.getAndIncrement();
+			System.out.println(e.getMessage());
+		}	
+	}
+	
+	protected void validateRead(int keyIdx, Record record) {	
+		if (! this.expectedValues[keyIdx].validate(record)) {
+			this.counters.valueMismatchCnt.incrementAndGet();
+		}
+	}
+	
+	protected abstract void put(Key key, Bin[] bins) throws AerospikeException;
+	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
+	protected abstract void get(int keyIdx, Key key, String binName) throws AerospikeException;
+	protected abstract void get(int keyIdx, Key key) throws AerospikeException;
 }

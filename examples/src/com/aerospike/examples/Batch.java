@@ -70,7 +70,7 @@ public class Batch extends Example {
 		for (int i = 0; i < existsArray.length; i++) {
 			Key key = keys[i];
 			boolean exists = existsArray[i];
-            console.info("Record: ns=%s set=%s key=%s, exists=%s",
+            console.info("Record: ns=%s set=%s key=%s exists=%s",
             	key.namespace, key.setName, key.userKey, exists);                        	
         }
     }
@@ -103,7 +103,7 @@ public class Batch extends Example {
 				level = Level.INFO;
 				value = record.getValue(binName);
 			}
-	        console.write(level, "Record: ns=%s set=%s key=%s, bin=%s value=%s",
+	        console.write(level, "Record: ns=%s set=%s key=%s bin=%s value=%s",
 	            key.namespace, key.setName, key.userKey, binName, value);
         }
 		
@@ -136,12 +136,12 @@ public class Batch extends Example {
 			int generation = 0;
 			int expiration = 0;
 			
-			if (record != null && record.expiration > 0) {
+			if (record != null && (record.generation > 0 || record.expiration > 0)) {
 				level = Level.INFO;
 				generation = record.generation;
 				expiration = record.expiration;
 			}
-	        console.write(level, "Record: ns=%s set=%s key=%s, generation=%d expiration=%d",
+	        console.write(level, "Record: ns=%s set=%s key=%s generation=%d expiration=%d",
 	            key.namespace, key.setName, key.userKey, generation, expiration);
         }
 		

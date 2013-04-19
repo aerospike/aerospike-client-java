@@ -11,15 +11,12 @@ package com.aerospike.client.command;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.BatchExecutor.BatchNamespace;
-import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandExists extends MultiCommand {
 	private final HashMap<Key,BatchItem> keyMap;
@@ -29,28 +26,6 @@ public final class BatchCommandExists extends MultiCommand {
 		super(node);
 		this.keyMap = keyMap;
 		this.existsArray = existsArray;
-	}
-	
-	public void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException {
-		// Estimate buffer size
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * Command.DIGEST_SIZE;
-
-		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
-				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-				
-		begin();
-
-		writeHeader(INFO1_READ | INFO1_NOBINDATA, 2, 0);		
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
-		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-	
-		for (Key key : keys) {
-			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
-		    sendOffset += digest.length;
-		}
-		execute(policy);
 	}
 	
 	/**
@@ -74,7 +49,7 @@ public final class BatchCommandExists extends MultiCommand {
 			byte info3 = receiveBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
-			if ((info3 & INFO3_LAST) == INFO3_LAST) {
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			

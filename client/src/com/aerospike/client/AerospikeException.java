@@ -170,4 +170,16 @@ public class AerospikeException extends Exception {
 			super(ResultCode.QUERY_TERMINATED, e);
 		}
 	}
+	
+	/**
+	 * Exception thrown when asynchronous command was rejected because the 
+	 * max concurrent database commands have been exceeded.
+	 */
+	public static final class CommandRejected extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public CommandRejected() {
+			super(ResultCode.COMMAND_REJECTED);
+		}
+	}
 }

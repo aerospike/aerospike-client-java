@@ -142,7 +142,7 @@ public final class QueryCommand extends MultiCommand {
 			byte info3 = receiveBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
-			if ((info3 & INFO3_LAST) == INFO3_LAST) {
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			

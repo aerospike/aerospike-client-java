@@ -80,8 +80,8 @@ public class PutGet extends Example {
 		String expected = bin.value.toString();
 		
 		if (received != null && received.equals(expected)) {
-			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s", 
-				key.namespace, key.setName, key.userKey, bin.name, received);
+			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s generation=%d expiration=%d", 
+				key.namespace, key.setName, key.userKey, bin.name, received, record.generation, record.expiration);
 		}
 		else {
 			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);

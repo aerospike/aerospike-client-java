@@ -22,17 +22,16 @@ package com.aerospike.examples;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 
 import javax.swing.JPanel;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.PosixParser;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 
@@ -54,7 +53,10 @@ public class Main extends JPanel {
 		"ScanParallel",
 		"ScanSeries",
 		"UserDefinedFunction",
-		"Query"
+		"Query",
+		"AsyncPutGet",
+		"AsyncBatch",
+		"AsyncScan"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 
@@ -75,8 +77,8 @@ public class Main extends JPanel {
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
-			CommandLineParser clp = new GnuParser();
-			CommandLine cl = clp.parse(options, args, false);
+			CommandLineParser parser = new PosixParser();
+			CommandLine cl = parser.parse(options, args, false);
 
 			if (args.length == 0 || cl.hasOption("u")) {
 				logUsage(console, options);
@@ -106,7 +108,7 @@ public class Main extends JPanel {
 				GuiDisplay.startGui(exampleNames, params, console);
 			}
 			else {
-				runExamplesCommandLine(console, params, exampleNames);				
+				runExamples(console, params, exampleNames);				
 			}
 		}
 		catch (Exception ex) {
@@ -155,33 +157,25 @@ public class Main extends JPanel {
 	/**
 	 * Connect and run one or more client examples.
 	 */
-	private static void runExamplesCommandLine(Console console, Parameters params, String[] examples) throws Exception {
-		AerospikeClient client = new AerospikeClient(params.host, params.port);
-
-		try {
-			for (String exampleName : examples) {
-				runExample(exampleName, client, params, console);
+	public static void runExamples(Console console, Parameters params, String[] examples) throws Exception {
+		ArrayList<String> syncExamples = new ArrayList<String>();
+		ArrayList<String> asyncExamples = new ArrayList<String>();
+		
+		for (String example : examples) {
+			if (example.startsWith("Async")) {
+				asyncExamples.add(example);
+			}
+			else {
+				syncExamples.add(example);
 			}
 		}
-		finally {
-			client.close();
+		
+		if (syncExamples.size() > 0) {
+			Example.runExamples(console, params, syncExamples);
 		}
-	}
-
-	/**
-	 * Run client example.
-	 */
-	public static void runExample(String exampleName, AerospikeClient client, Parameters params, Console console) throws Exception {
-		String fullName = "com.aerospike.examples." + exampleName;
-		Class<?> cls = Class.forName(fullName);
-
-		if (Example.class.isAssignableFrom(cls)) {
-			Constructor<?> ctor = cls.getDeclaredConstructor(Console.class);
-			Example example = (Example)ctor.newInstance(console);
-			example.run(client, params);
-		}
-		else {
-			console.error("Invalid example: " + exampleName);
+		
+		if (asyncExamples.size() > 0) {
+			AsyncExample.runExamples(console, params, asyncExamples);
 		}
 	}
 }

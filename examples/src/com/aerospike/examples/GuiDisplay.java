@@ -25,6 +25,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.swing.BorderFactory;
@@ -41,13 +42,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 
 public class GuiDisplay extends JPanel {
 
 	private static final long serialVersionUID = 1L;
-	private AerospikeClient client = null;
 	private Parameters params;
 	private Console console;
 
@@ -68,7 +67,6 @@ public class GuiDisplay extends JPanel {
 	private static final String EXIT_LBL = "Quit";
 
 	private GuiDisplay(String[] initExampleChoices, Parameters params, Console console) throws AerospikeException {
-		this.client = new AerospikeClient(params.host, params.port);
 		this.params = params;
 		this.console = console;
 
@@ -227,9 +225,6 @@ public class GuiDisplay extends JPanel {
 					Frame = Frame.getParent();
 				} while (!(Frame instanceof JFrame));
 				((JFrame) Frame).dispose();
-				if (null != client) {
-					client.close();
-				}
 			}
 		}
 	}
@@ -238,16 +233,20 @@ public class GuiDisplay extends JPanel {
 	 * Run the user selected examples
 	 */
 	private void run_selected_examples() {
+		ArrayList<String> list = new ArrayList<String>(32);
+		
 		for (String name : Main.getAllExampleNames()) {
 			if (this.selections.get(name).isSelected()) {
-				try {
-					Main.runExample(name, this.client, this.params, this.console);
-					console.write("-------------" + name + " example ended -------------");
-				}
-				catch (Exception ex) {
-					console.write("Exception (" + ex.toString() + ") encountered when running " + name);
-				}
+				list.add(name);
 			}
+		}
+		String[] examples = list.toArray(new String[list.size()]);
+		
+		try {
+			Main.runExamples(this.console, this.params, examples);
+		}
+		catch (Exception ex) {
+			console.write("Exception (" + ex.toString() + ") encountered.");
 		}
 	}
 

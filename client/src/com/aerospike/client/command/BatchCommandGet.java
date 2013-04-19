@@ -13,67 +13,26 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
-import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.BatchExecutor.BatchNamespace;
-import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends MultiCommand {
 	private final HashMap<Key,BatchItem> keyMap;
 	private final HashSet<String> binNames;
 	private final Record[] records;
-	private final int readAttr;
 
-	public BatchCommandGet(Node node, HashMap<Key,BatchItem> keyMap, HashSet<String> binNames, Record[] records, int readAttr) {
+	public BatchCommandGet(Node node, HashMap<Key,BatchItem> keyMap, HashSet<String> binNames, Record[] records) {
 		super(node);
 		this.keyMap = keyMap;
 		this.binNames = binNames;
 		this.records = records;
-		this.readAttr = readAttr;
 	}
-
-	public void executeBatch(Policy policy, BatchNamespace batchNamespace) throws AerospikeException {
-		// Estimate buffer size
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * Command.DIGEST_SIZE;
-
-		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
-				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-		
-		if (binNames != null) {
-			for (String binName : binNames) {
-				estimateOperationSize(binName);
-			}			
-		}
-		
-		begin();
-
-		int operationCount = (binNames == null)? 0 : binNames.size();
-		writeHeader(readAttr, 2, operationCount);		
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
-		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-	
-		for (Key key : keys) {
-			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
-		    sendOffset += digest.length;
-		}
-		
-		if (binNames != null) {
-			for (String binName : binNames) {
-				writeOperation(binName, Operation.Type.READ);
-			}
-		}	
-		execute(policy);
-	}	
 
 	/**
 	 * Parse all results in the batch.  Add records to shared list.
@@ -96,7 +55,7 @@ public final class BatchCommandGet extends MultiCommand {
 			byte info3 = receiveBuffer[3];
 
 			// If this is the end marker of the response, do not proceed further
-			if ((info3 & INFO3_LAST) == INFO3_LAST) {
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			

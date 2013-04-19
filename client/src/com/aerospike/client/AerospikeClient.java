@@ -20,10 +20,11 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.command.FieldType;
+import com.aerospike.client.command.DeleteCommand;
+import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.ScanExecutor;
-import com.aerospike.client.command.SingleCommand;
+import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -33,7 +34,6 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.QueryExecutor;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.util.MsgPack;
 import com.aerospike.client.util.Util;
 
 /**
@@ -57,7 +57,7 @@ public class AerospikeClient {
 	// Member variables.
 	//-------------------------------------------------------
 	
-	private Cluster cluster;
+	protected Cluster cluster;
 	
 	//-------------------------------------------------------
 	// Constructors
@@ -132,6 +132,7 @@ public class AerospikeClient {
 			policy = new ClientPolicy();
 		}
 		cluster = new Cluster(policy, hosts);
+		cluster.initTendThread();
 		
 		if (policy.failIfNotConnected && ! cluster.isConnected()) {
 			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
@@ -160,6 +161,7 @@ public class AerospikeClient {
 			return;
 		}	
 		cluster = new Cluster(new ClientPolicy(), hosts);
+		cluster.initTendThread();
 	}
 
 	//-------------------------------------------------------
@@ -222,8 +224,9 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if write fails
 	 */
 	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.Type.WRITE, bins);
+		WriteCommand command = new WriteCommand(cluster, key);
+		command.setWrite(policy, Operation.Type.WRITE, key, bins);
+		command.execute(policy);
 	}
 
 	//-------------------------------------------------------
@@ -242,8 +245,9 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if append fails
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.Type.APPEND, bins);
+		WriteCommand command = new WriteCommand(cluster, key);
+		command.setWrite(policy, Operation.Type.APPEND, key, bins);
+		command.execute(policy);
 	}
 	
 	/**
@@ -258,10 +262,11 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if prepend fails
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.Type.PREPEND, bins);
+		WriteCommand command = new WriteCommand(cluster, key);
+		command.setWrite(policy, Operation.Type.PREPEND, key, bins);
+		command.execute(policy);
 	}
-	
+
 	//-------------------------------------------------------
 	// Arithmetic Operations
 	//-------------------------------------------------------
@@ -278,10 +283,11 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if add fails
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		 SingleCommand command = new SingleCommand(cluster, key);
-		 command.write(policy, Operation.Type.ADD, bins);
+		WriteCommand command = new WriteCommand(cluster, key);
+		command.setWrite(policy, Operation.Type.ADD, key, bins);
+		command.execute(policy);
 	}
-	
+
 	//-------------------------------------------------------
 	// Delete Operations
 	//-------------------------------------------------------
@@ -296,15 +302,12 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if delete fails
 	 */
 	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setWrite(Command.INFO2_WRITE | Command.INFO2_DELETE);
-		command.begin();
-		command.writeHeader(policy, 0);
-		command.writeKey();
+		DeleteCommand command = new DeleteCommand(cluster, key);
+		command.setDelete(policy, key);		
 		command.execute(policy);
 		return command.getResultCode() == ResultCode.OK;
 	}
-	
+
 	//-------------------------------------------------------
 	// Touch Operations
 	//-------------------------------------------------------
@@ -318,13 +321,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if touch fails
 	 */
 	public final void touch(WritePolicy policy, Key key) throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setWrite(Command.INFO2_WRITE);
-		command.estimateOperationSize();
-		command.begin();
-		command.writeHeader(policy, 1);
-		command.writeKey();
-		command.writeOperation(Operation.Type.TOUCH);
+		WriteCommand command = new WriteCommand(cluster, key);
+		command.setTouch(policy, key);
 		command.execute(policy);
 	}
 
@@ -342,15 +340,12 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final boolean exists(Policy policy, Key key) throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		command.begin();
-		command.writeHeader(0);
-		command.writeKey();
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setExists(key);
 		command.execute(policy);
 		return command.getResultCode() == ResultCode.OK;
 	}
-	
+
 	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
@@ -381,15 +376,12 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key) throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setRead(Command.INFO1_READ | Command.INFO1_GET_ALL);
-		command.begin();
-		command.writeHeader(0);
-		command.writeKey();
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setRead(key);
 		command.execute(policy);
 		return command.getRecord();
 	}
-	
+
 	/**
 	 * Read record header and bins for specified key.
 	 * The policy can be used to specify timeouts.
@@ -401,23 +393,12 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setRead(Command.INFO1_READ);
-		
-		for (String binName : binNames) {
-			command.estimateOperationSize(binName);
-		}
-		command.begin();
-		command.writeHeader(binNames.length);
-		command.writeKey();
-		
-		for (String binName : binNames) {
-			command.writeOperation(binName, Operation.Type.READ);
-		}
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setRead(key, binNames);
 		command.execute(policy);
 		return command.getRecord();
 	}
-	
+
 	/**
 	 * Read record generation and expiration only for specified key.  Bins are not read.
 	 * The policy can be used to specify timeouts.
@@ -428,17 +409,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-		// The workaround is to request a non-existent bin.
-		// TODO: Fix this on server.
-		//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		command.setRead(Command.INFO1_READ);
-		command.estimateOperationSize((String)null);
-		command.begin();
-		command.writeHeader(0);
-		command.writeKey();
-		command.writeOperation((String)null, Operation.Type.READ);
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setReadHeader(key);
 		command.execute(policy);
 		return command.getRecord();
 	}
@@ -463,7 +435,7 @@ public class AerospikeClient {
 		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
 	}
-	
+
 	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
@@ -479,17 +451,11 @@ public class AerospikeClient {
 	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
 		throws AerospikeException {
 		Record[] records = new Record[keys.length];
-		
-		// Create lookup table for bin name filtering.
-		HashSet<String> names = new HashSet<String>(binNames.length);
-		
-		for (String binName : binNames) {
-			names.add(binName);
-		}
+		HashSet<String> names = binNamesToHashSet(binNames);
 		BatchExecutor.executeBatch(cluster, policy, keys, null, records, names, Command.INFO1_READ);
 		return records;
 	}
-	
+
 	/**
 	 * Read multiple record header data for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
@@ -506,7 +472,7 @@ public class AerospikeClient {
 		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
 	}
-	
+
 	//-------------------------------------------------------
 	// Generic Database Operations
 	//-------------------------------------------------------
@@ -523,62 +489,13 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations) 
-		throws AerospikeException {
-		
-		SingleCommand command = new SingleCommand(cluster, key);
-		int readAttr = 0;
-		int writeAttr = 0;
-		boolean readHeader = false;
-					
-		for (Operation operation : operations) {
-			switch (operation.type) {
-			case READ:
-				readAttr |= Command.INFO1_READ;
-				
-				// Read all bins if no bin is specified.
-				if (operation.binName == null) {
-					readAttr |= Command.INFO1_GET_ALL;
-				}
-				break;
-				
-			case READ_HEADER:
-				// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-				// The workaround is to request a non-existent bin.
-				// TODO: Fix this on server.
-				//readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
-				readAttr |= Command.INFO1_READ;
-				readHeader = true;
-				break;
-				
-			default:
-				writeAttr = Command.INFO2_WRITE;
-				break;				
-			}
-			command.estimateOperationSize(operation);
-		}
-		command.setRead(readAttr);
-		command.setWrite(writeAttr);
-		command.begin();
-		
-		if (writeAttr != 0) {
-			command.writeHeader(policy, operations.length);
-		}
-		else {
-			command.writeHeader(operations.length);			
-		}
-		command.writeKey();
-					
-		for (Operation operation : operations) {
-			command.writeOperation(operation);
-		}
-		
-		if (readHeader) {
-			command.writeOperation((String)null, Operation.Type.READ);
-		}
+		throws AerospikeException {		
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setOperate(policy, key, operations);
 		command.execute(policy);
 		return command.getRecord();
 	}
-	
+
 	//-------------------------------------------------------
 	// Scan Operations
 	//-------------------------------------------------------
@@ -598,8 +515,7 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback)
-		throws AerospikeException {
-		
+		throws AerospikeException {	
 		if (policy == null) {
 			policy = new ScanPolicy();
 		}
@@ -635,8 +551,7 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback) 
-		throws AerospikeException {
-		
+		throws AerospikeException {		
 		if (policy == null) {
 			policy = new ScanPolicy();
 		}
@@ -663,9 +578,9 @@ public class AerospikeClient {
 	 */
 	private final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback) 
 		throws AerospikeException {
-
 		ScanCommand command = new ScanCommand(node, callback);
-		command.scan(policy, namespace, setName);
+		command.setScan(policy, namespace, setName);
+		command.execute(policy);
 	}
 
 	//-------------------------------------------------------
@@ -732,18 +647,8 @@ public class AerospikeClient {
 	 */
 	public final Object execute(Policy policy, Key key, String fileName, String functionName, Value... args) 
 		throws AerospikeException {
-		SingleCommand command = new SingleCommand(cluster, key);
-		command.setWrite(Command.INFO2_WRITE);
-		
-		byte[] argBytes = MsgPack.pack(args);
-		command.estimateUdfSize(fileName, functionName, argBytes);
-		
-		command.begin();
-		command.writeHeader(0);
-		command.writeKey();
-		command.writeField(fileName, FieldType.UDF_FILENAME);
-		command.writeField(functionName, FieldType.UDF_FUNCTION);
-		command.writeField(argBytes, FieldType.UDF_ARGLIST);
+		ReadCommand command = new ReadCommand(cluster, key);
+		command.setUdf(key, fileName, functionName, args);		
 		command.execute(policy);
 		
 		Record record = command.getRecord();
@@ -893,5 +798,19 @@ public class AerospikeClient {
 				throw new AerospikeException("Drop index failed: " + response);
 			}
 		}
+	}
+	
+	//-------------------------------------------------------
+	// Private Methods
+	//-------------------------------------------------------
+
+	protected static HashSet<String> binNamesToHashSet(String[] binNames) {
+		// Create lookup table for bin name filtering.
+		HashSet<String> names = new HashSet<String>(binNames.length);
+		
+		for (String binName : binNames) {
+			names.add(binName);
+		}
+		return names;
 	}
 }

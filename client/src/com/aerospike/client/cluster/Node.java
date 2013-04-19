@@ -24,31 +24,30 @@ import com.aerospike.client.Log;
 /**
  * Server node representation.  This class manages server node connections and health status.
  */
-public final class Node {
+public class Node {
 	/**
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
 	private static final int FULL_HEALTH = 300;
 
-	private final Cluster cluster;
+	protected final Cluster cluster;
 	private final String name;
 	private final Host host;
 	private Host[] aliases;
-	private final InetSocketAddress address;
+	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
 	private final AtomicInteger health;
 	private int partitionGeneration;
-	private volatile boolean active;
+	protected volatile boolean active;
 
 	/**
 	 * Initialize server node with connection parameters.
 	 * 
 	 * @param cluster			collection of active server nodes 
 	 * @param nv				connection parameters
-	 * @param connectionLimit	max socket connections to store in pool
 	 */
-	public Node(Cluster cluster, NodeValidator nv, int connectionLimit) {
+	public Node(Cluster cluster, NodeValidator nv) {
 		this.cluster = cluster;
 		this.name = nv.name;
 		this.aliases = nv.aliases;
@@ -58,7 +57,7 @@ public final class Node {
 		// by IP address (not hostname). 
 		this.host = aliases[0];
 		
-		connectionQueue = new ArrayBlockingQueue<Connection>(connectionLimit);
+		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);		
 		health = new AtomicInteger(FULL_HEALTH);
 		partitionGeneration = -1;
 		active = true;
@@ -70,7 +69,7 @@ public final class Node {
 	 * @param friends		other nodes in the cluster, populated by this method
 	 * @throws Exception	if status request fails
 	 */
-	public void refresh(List<Host> friends) throws Exception {
+	public final void refresh(List<Host> friends) throws Exception {
 		Connection conn = getConnection(1000);
 		
 		try {
@@ -88,7 +87,7 @@ public final class Node {
 		}
 	}
 	
-	private void verifyNodeName(HashMap <String,String> infoMap) throws AerospikeException {
+	private final void verifyNodeName(HashMap <String,String> infoMap) throws AerospikeException {
 		// If the node name has changed, remove node from cluster and hope one of the other host
 		// aliases is still valid.  Round-robbin DNS may result in a hostname that resolves to a
 		// new address.
@@ -106,7 +105,7 @@ public final class Node {
 		}
 	}
 	
-	private void addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
+	private final void addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
 		// Parse the service addresses and add the friends to the list.
 		String friendString = infoMap.get("services");
 		
@@ -128,7 +127,7 @@ public final class Node {
 		}
 	}
 		
-	private static boolean findAlias(List<Host> friends, Host alias) {
+	private final static boolean findAlias(List<Host> friends, Host alias) {
 		for (Host host : friends) {
 			if (host.equals(alias)) {
 				return true;
@@ -137,7 +136,7 @@ public final class Node {
 		return false;
 	}
 
-	private void updatePartitions(Connection conn, HashMap<String,String> infoMap) 
+	private final void updatePartitions(Connection conn, HashMap<String,String> infoMap) 
 		throws AerospikeException, IOException {	
 		String genString = infoMap.get("partition-generation");
 				
@@ -163,7 +162,7 @@ public final class Node {
 	 * @return						socket connection
 	 * @throws AerospikeException	if a connection could not be provided 
 	 */
-	public Connection getConnection(int timeoutMillis) throws AerospikeException {
+	public final Connection getConnection(int timeoutMillis) throws AerospikeException.Connection {
 		Connection conn;
 		
 		while ((conn = connectionQueue.poll()) != null) {		
@@ -180,8 +179,8 @@ public final class Node {
 				}
 			}
 			conn.close();
-		}	
-		return new Connection(address, timeoutMillis);		
+		}
+		return new Connection(address, timeoutMillis, cluster.maxSocketIdle);		
 	}
 	
 	/**
@@ -189,7 +188,7 @@ public final class Node {
 	 * 
 	 * @param conn					socket connection
 	 */
-	public void putConnection(Connection conn) {
+	public final void putConnection(Connection conn) {
 		if (! active || ! connectionQueue.offer(conn)) {
 			conn.close();
 		}
@@ -198,7 +197,7 @@ public final class Node {
 	/**
 	 * Set node status as healthy after successful database operation.
 	 */
-	public void restoreHealth() {
+	public final void restoreHealth() {
 		// There can be cases where health is full, but active is false.
 		// Once a node has been marked inactive, it stays inactive.
 		health.set(FULL_HEALTH);
@@ -209,7 +208,7 @@ public final class Node {
 	 * 
 	 * @param value					health points
 	 */
-	public void decreaseHealth(int value) {
+	public final void decreaseHealth(int value) {
 		//if (Log.debugEnabled()) {
 		//	Log.debug("Node " + this + " decrease health " + value);
 		//}
@@ -221,35 +220,35 @@ public final class Node {
 	/**
 	 * Return server node IP address and port.
 	 */
-	public Host getHost() {
+	public final Host getHost() {
 		return host;
 	}
 	
 	/**
 	 * Return whether node is currently active.
 	 */
-	public boolean isActive() {
+	public final boolean isActive() {
 		return active;
 	}
 
 	/**
 	 * Return server node name.
 	 */
-	public String getName() {
+	public final String getName() {
 		return name;
 	}
 
 	/**
 	 * Return server node IP address aliases.
 	 */
-	public Host[] getAliases() {
+	public final Host[] getAliases() {
 		return aliases;
 	}
-	
+
 	/**
 	 * Add node alias to list.
 	 */
-	public void addAlias(Host aliasToAdd) {
+	public final void addAlias(Host aliasToAdd) {
 		// Aliases are only referenced in the cluster tend thread,
 		// so synchronization is not necessary.
 		Host[] tmpAliases = new Host[aliases.length + 1];
@@ -265,29 +264,29 @@ public final class Node {
 	/**
 	 * Close all server node socket connections.
 	 */
-	public void close() {
+	public final void close() {
 		active = false;
 		closeConnections();
 	}
 	
 	@Override
-	public String toString() {
+	public final String toString() {
 		return name + ' ' + host;
 	}
 
 	@Override
-	public int hashCode() {
+	public final int hashCode() {
 		return name.hashCode();
 	}
 
 	@Override
-	public boolean equals(Object obj) {
+	public final boolean equals(Object obj) {
 		Node other = (Node) obj;
 		return this.name.equals(other.name);
 	}
 	
 	@Override
-	protected void finalize() throws Throwable {
+	protected final void finalize() throws Throwable {
 		try {
 			// Close connections that slipped through the cracks on race conditions.
 			closeConnections();
@@ -297,7 +296,7 @@ public final class Node {
 		}
 	}
 	
-	private void closeConnections() {
+	protected void closeConnections() {
 		// Empty connection pool.
 		Connection conn;
 		while ((conn = connectionQueue.poll()) != null) {			
