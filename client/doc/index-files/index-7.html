@@ -105,6 +105,24 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeC
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.Key[], java.lang.String...)"><B>get(Policy, Key[], String...)</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Read multiple record headers and bins for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key)"><B>get(Policy, RecordListener, Key)</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read entire record for specified key.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key, java.lang.String...)"><B>get(Policy, RecordListener, Key, String...)</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read record header and bins for specified key.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[])"><B>get(Policy, RecordArrayListener, Key[])</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple records for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[])"><B>get(Policy, RecordSequenceListener, Key[])</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple records for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[], java.lang.String...)"><B>get(Policy, RecordArrayListener, Key[], String...)</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple record headers and bins for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[], java.lang.String...)"><B>get(Policy, RecordSequenceListener, Key[], String...)</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple record headers and bins for specified keys in one batch call.
 <DT><A HREF="../com/aerospike/client/Operation.html#get(java.lang.String)"><B>get(String)</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A>
 <DD>Create read bin database operation.
@@ -181,6 +199,9 @@ Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Val
 <DT><A HREF="../com/aerospike/client/Value.html#getAsNull()"><B>getAsNull()</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>
 <DD>Get null value instance.
+<DT><A HREF="../com/aerospike/client/async/AsyncNode.html#getAsyncConnection()"><B>getAsyncConnection()</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncNode.html" title="class in com.aerospike.client.async">AsyncNode</A>
+<DD>Get asynchronous socket connection from connection pool for the server node.
 <DT><A HREF="../com/aerospike/client/Info.html#getBuffer()"><B>getBuffer()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>
 <DD>Get response buffer.
@@ -199,6 +220,15 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeC
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.Key[])"><B>getHeader(Policy, Key[])</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Read multiple record header data for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key)"><B>getHeader(Policy, RecordListener, Key)</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read record generation and expiration only for specified key.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[])"><B>getHeader(Policy, RecordArrayListener, Key[])</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple record header data for specified keys in one batch call.
+<DT><A HREF="../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[])"><B>getHeader(Policy, RecordSequenceListener, Key[])</B></A> - 
+Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/async/AsyncClient.html" title="class in com.aerospike.client.async">AsyncClient</A>
+<DD>Asynchronously read multiple record header data for specified keys in one batch call.
 <DT><A HREF="../com/aerospike/client/Operation.html#getHeader()"><B>getHeader()</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Operation.html" title="class in com.aerospike.client">Operation</A>
 <DD>Create read record header database operation.

@@ -92,6 +92,10 @@ Packages that use <A HREF="../../../../../com/aerospike/client/policy/Policy.htm
 <TD>&nbsp;&nbsp;</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><A HREF="#com.aerospike.client.async"><B>com.aerospike.client.async</B></A></TD>
+<TD>&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
 <TD><A HREF="#com.aerospike.client.policy"><B>com.aerospike.client.policy</B></A></TD>
 <TD>&nbsp;&nbsp;</TD>
 </TR>
@@ -232,6 +236,146 @@ Uses of <A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Register package containing user defined functions with server.</TD>
+</TR>
+</TABLE>
+&nbsp;
+<P>
+<A NAME="com.aerospike.client.async"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+Uses of <A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A> in <A HREF="../../../../../com/aerospike/client/async/package-summary.html">com.aerospike.client.async</A></FONT></TH>
+</TR>
+</TABLE>
+&nbsp;
+<P>
+
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableSubHeadingColor">
+<TH ALIGN="left" COLSPAN="2">Methods in <A HREF="../../../../../com/aerospike/client/async/package-summary.html">com.aerospike.client.async</A> with parameters of type <A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#exists(com.aerospike.client.policy.Policy, com.aerospike.client.listener.ExistsArrayListener, com.aerospike.client.Key[])">exists</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+       <A HREF="../../../../../com/aerospike/client/listener/ExistsArrayListener.html" title="interface in com.aerospike.client.listener">ExistsArrayListener</A>&nbsp;listener,
+       <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously check if multiple record keys exist in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#exists(com.aerospike.client.policy.Policy, com.aerospike.client.listener.ExistsListener, com.aerospike.client.Key)">exists</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+       <A HREF="../../../../../com/aerospike/client/listener/ExistsListener.html" title="interface in com.aerospike.client.listener">ExistsListener</A>&nbsp;listener,
+       <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously determine if a record key exists.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#exists(com.aerospike.client.policy.Policy, com.aerospike.client.listener.ExistsSequenceListener, com.aerospike.client.Key[])">exists</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+       <A HREF="../../../../../com/aerospike/client/listener/ExistsSequenceListener.html" title="interface in com.aerospike.client.listener">ExistsSequenceListener</A>&nbsp;listener,
+       <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously check if multiple record keys exist in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[])">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordArrayListener.html" title="interface in com.aerospike.client.listener">RecordArrayListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple records for specified keys in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[], java.lang.String...)">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordArrayListener.html" title="interface in com.aerospike.client.listener">RecordArrayListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys,
+    java.lang.String...&nbsp;binNames)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple record headers and bins for specified keys in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key)">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordListener.html" title="interface in com.aerospike.client.listener">RecordListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read entire record for specified key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key, java.lang.String...)">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordListener.html" title="interface in com.aerospike.client.listener">RecordListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+    java.lang.String...&nbsp;binNames)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read record header and bins for specified key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[])">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordSequenceListener.html" title="interface in com.aerospike.client.listener">RecordSequenceListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple records for specified keys in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#get(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[], java.lang.String...)">get</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+    <A HREF="../../../../../com/aerospike/client/listener/RecordSequenceListener.html" title="interface in com.aerospike.client.listener">RecordSequenceListener</A>&nbsp;listener,
+    <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys,
+    java.lang.String...&nbsp;binNames)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple record headers and bins for specified keys in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordArrayListener, com.aerospike.client.Key[])">getHeader</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+          <A HREF="../../../../../com/aerospike/client/listener/RecordArrayListener.html" title="interface in com.aerospike.client.listener">RecordArrayListener</A>&nbsp;listener,
+          <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple record header data for specified keys in one batch call.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordListener, com.aerospike.client.Key)">getHeader</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+          <A HREF="../../../../../com/aerospike/client/listener/RecordListener.html" title="interface in com.aerospike.client.listener">RecordListener</A>&nbsp;listener,
+          <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read record generation and expiration only for specified key.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>AsyncClient.</B><B><A HREF="../../../../../com/aerospike/client/async/AsyncClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.listener.RecordSequenceListener, com.aerospike.client.Key[])">getHeader</A></B>(<A HREF="../../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+          <A HREF="../../../../../com/aerospike/client/listener/RecordSequenceListener.html" title="interface in com.aerospike.client.listener">RecordSequenceListener</A>&nbsp;listener,
+          <A HREF="../../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>[]&nbsp;keys)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Asynchronously read multiple record header data for specified keys in one batch call.</TD>
 </TR>
 </TABLE>
 &nbsp;

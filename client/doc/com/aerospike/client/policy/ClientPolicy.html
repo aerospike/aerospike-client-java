@@ -93,13 +93,16 @@ Class ClientPolicy</H2>
 java.lang.Object
   <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.policy.ClientPolicy</B>
 </PRE>
+<DL>
+<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../../com/aerospike/client/async/AsyncClientPolicy.html" title="class in com.aerospike.client.async">AsyncClientPolicy</A></DD>
+</DL>
 <HR>
 <DL>
-<DT><PRE>public final class <B>ClientPolicy</B><DT>extends java.lang.Object</DL>
+<DT><PRE>public class <B>ClientPolicy</B><DT>extends java.lang.Object</DL>
 </PRE>
 
 <P>
-Container object for client policy attributes.
+Container object for client policy Command.
 <P>
 
 <P>
@@ -125,10 +128,18 @@ Container object for client policy attributes.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ClientPolicy.html#maxSocketIdle">maxSocketIdle</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum socket idle in seconds.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/policy/ClientPolicy.html#maxThreads">maxThreads</A></B></CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Estimate of threads concurrently using the client instance.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Estimate of incoming threads concurrently using synchronous methods in the client instance.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -205,8 +216,21 @@ maxThreads</H3>
 <PRE>
 public int <B>maxThreads</B></PRE>
 <DL>
-<DD>Estimate of threads concurrently using the client instance.  This field is used to size
- connection pools.
+<DD>Estimate of incoming threads concurrently using synchronous methods in the client instance.
+ This field is used to size the synchronous connection pool for each server node.
+<P>
+<DL>
+</DL>
+</DL>
+<HR>
+
+<A NAME="maxSocketIdle"><!-- --></A><H3>
+maxSocketIdle</H3>
+<PRE>
+public int <B>maxSocketIdle</B></PRE>
+<DL>
+<DD>Maximum socket idle in seconds.  Socket connection pools will discard sockets
+ that have been idle longer than the maximum.
 <P>
 <DL>
 </DL>
