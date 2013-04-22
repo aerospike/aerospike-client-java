@@ -11,7 +11,6 @@ package com.aerospike.client.cluster;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -26,7 +25,7 @@ public class Cluster implements Runnable {
 	private volatile Host[] seeds;
 	
 	// All aliases for all nodes in cluster.
-	private final HashSet<Host> aliases;
+	private final HashMap<Host,Node> aliases;
 
 	// Active nodes in cluster.
 	private volatile Node[] nodes;	
@@ -55,7 +54,7 @@ public class Cluster implements Runnable {
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
 		maxSocketIdle = policy.maxSocketIdle;
-		aliases = new HashSet<Host>();
+		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	
 		partitionWriteMap = new HashMap<String,Node[]>();		
 		nodeIndex = new AtomicInteger();
@@ -169,32 +168,27 @@ public class Cluster implements Runnable {
      * Check health of all nodes in the cluster.
      */
 	private final void tend() {
-		// All node additions/deletions are performed in tend thread.
-		// Remove sick nodes.
-		ArrayList<Node> removeList = new ArrayList<Node>();
-		
-		for (Node node : nodes) {
-			if (! node.isActive()) {
-				removeList.add(node);
-			}
-		}
-		
-		if (removeList.size() > 0) {
-			removeNodes(removeList);
-		}
-
+		// All node additions/deletions are performed in tend thread.		
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
 			seedNodes();
 		}
 
+		// Clear node reference counts.
+		for (Node node : nodes) {
+			node.referenceCount = 0;
+			node.responded = false;
+		}
+		
 		// Refresh all known nodes.
 		ArrayList<Host> friendList = new ArrayList<Host>();
-
+		int refreshCount = 0;
+		
 		for (Node node : nodes) {
 			try {
 				if (node.isActive()) {
 					node.refresh(friendList);
+					refreshCount++;
 				}
 			}
 			catch (Exception e) {
@@ -204,14 +198,23 @@ public class Cluster implements Runnable {
 			}
 		}
 		
-		// Add friends to cluster.
-		if (friendList.size() > 0) {
-			addNodes(friendList);
+		// Handle nodes changes determined from refreshes.
+		ArrayList<Node> addList = findNodesToAdd(friendList);
+		ArrayList<Node> removeList = findNodesToRemove(refreshCount);
+		
+		// Remove nodes in a batch.
+		if (removeList.size() > 0) {
+			removeNodes(removeList);
+		}
+
+		// Add nodes in a batch.
+		if (addList.size() > 0) {
+			addNodes(addList);
 		}
 	}
 	
-	protected final boolean findAlias(Host alias) {
-		return aliases.contains(alias);
+	protected final Node findAlias(Host alias) {
+		return aliases.get(alias);
 	}
 	
 	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
@@ -293,8 +296,7 @@ public class Cluster implements Runnable {
 		return false;
 	}
 	
-	private final void addNodes(List<Host> hosts) {
-		// Add all nodes at once to avoid copying entire array multiple times.
+	private final ArrayList<Node> findNodesToAdd(List<Host> hosts) {
 		ArrayList<Node> list = new ArrayList<Node>(hosts.size());
 		
 		for (Host host : hosts) {
@@ -307,12 +309,12 @@ public class Cluster implements Runnable {
 					// services list contains both internal and external IP addresses 
 					// for the same node.  Add new host to list of alias filters
 					// and do not add new node.
+					node.referenceCount++;
 					node.addAlias(host);
-					aliases.add(host);
+					aliases.put(host, node);
 					continue;
 				}
 				node = createNode(nv);		
-				addAliases(node);			
 				list.add(node);
 			}
 			catch (Exception e) {
@@ -321,21 +323,88 @@ public class Cluster implements Runnable {
 				}
 			}
 		}
-		
-		if (list.size() > 0) {
-			addNodesCopy(list);
-		}
+		return list;
 	}
-	
+
 	protected Node createNode(NodeValidator nv) {
 		return new Node(this, nv);
 	}
 		
+	private final ArrayList<Node> findNodesToRemove(int refreshCount) {
+		ArrayList<Node> removeList = new ArrayList<Node>();
+		
+		for (Node node : nodes) {
+			if (! node.isActive()) {
+				// Inactive nodes must be removed.
+				removeList.add(node);
+				continue;
+			}
+			
+			switch (nodes.length) {
+			case 1:
+				// Single node clusters rely solely on node health.
+				if (node.isUnhealthy()) {
+					removeList.add(node);						
+				}
+				break;
+				
+			case 2:
+				// Two node clusters require at least one successful refresh before removing.
+				if (refreshCount == 1 && node.referenceCount == 0 && ! node.responded) {
+					// Node is not referenced nor did it respond.
+					removeList.add(node);
+				}
+				break;
+				
+			default:
+				// Multi-node clusters require two successful node refreshes before removing.
+				if (refreshCount >= 2 && node.referenceCount == 0) {
+					// Node is not referenced by other nodes.
+					// Check if node responded to info request.
+					if (node.responded) {
+						// Node is alive, but not referenced by other nodes.  Check if mapped.
+						if (! findNodeInPartitionMap(node)) {
+							// Node doesn't have any partitions mapped to it.
+							// There is not point in keeping it in the cluster.
+							removeList.add(node);							
+						}
+					}
+					else {
+						// Node not responding. Remove it.
+						removeList.add(node);
+					}		
+				}
+				break;
+			}
+		}
+		return removeList;
+	}
+	
+	private final boolean findNodeInPartitionMap(Node filter) {
+		for (Node[] nodeArray : partitionWriteMap.values()) {
+			for (Node node : nodeArray) {
+				// Use reference equality for performance.
+				if (node == filter) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	private final void addNodes(List<Node> nodesToAdd) {
+		// Add all nodes at once to avoid copying entire array multiple times.		
+		for (Node node : nodesToAdd) {
+			addAliases(node);
+		}
+		addNodesCopy(nodesToAdd);
+	}
+	
 	private final void addAliases(Node node) {		
 		// Add node's aliases to global alias set.
 		// Aliases are only used in tend thread, so synchronization is not necessary.
 		for (Host alias : node.getAliases()) {
-			aliases.add(alias);
+			aliases.put(alias, node);
 		}
 	}
 	
@@ -354,8 +423,8 @@ public class Cluster implements Runnable {
 		
 		// Add new Nodes
 		for (Node node : nodesToAdd) {			
-			if (Log.debugEnabled()) {
-				Log.debug("Add node " + node);
+			if (Log.infoEnabled()) {
+				Log.info("Add node " + node);
 			}
 			nodeArray[count++] = node;
 		}
@@ -482,7 +551,7 @@ public class Cluster implements Runnable {
 		return nodeArray;
 	}
 
-	public Node getNode(String nodeName) throws AerospikeException.InvalidNode {
+	public final Node getNode(String nodeName) throws AerospikeException.InvalidNode {
 		Node node = findNode(nodeName);
 		
 		if (node == null) {			
@@ -491,7 +560,7 @@ public class Cluster implements Runnable {
 		return node;
 	}
 
-	private Node findNode(String nodeName) {
+	private final Node findNode(String nodeName) {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		

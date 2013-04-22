@@ -72,14 +72,10 @@ public abstract class InsertTask implements Runnable {
 					put(policy, new Key(this.namespace, this.setName, key), bins);
 				}
 				catch (AerospikeException ae) {
-					counters.write.fail.getAndIncrement();
-					if (ae.getResultCode() != ResultCode.TIMEOUT) {
-						System.out.println(ae.getMessage());
-					}
+					writeFailure(ae);
 				}	
 				catch (Exception e) {
-					counters.write.fail.getAndIncrement();
-					System.out.println(e.getMessage());
+					writeFailure(e);
 				}
 				i++;
 			}
@@ -87,6 +83,28 @@ public abstract class InsertTask implements Runnable {
 		catch (Exception ex) {
 			System.out.println("Insert task error: " + ex.getMessage());
 			ex.printStackTrace();
+		}
+	}
+	
+	protected void writeFailure(AerospikeException ae) {
+		counters.write.fail.getAndIncrement();
+		
+		if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
+			counters.generationErrCnt.getAndIncrement();					
+		}
+		
+		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
+			//System.out.println(ae.getMessage());
+			ae.printStackTrace();
+		}
+	}
+
+	protected void writeFailure(Exception e) {
+		counters.write.fail.getAndIncrement();
+		
+		if (debug) {
+			//System.out.println(ae.getMessage());
+			e.printStackTrace();
 		}
 	}
 	

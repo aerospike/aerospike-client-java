@@ -205,8 +205,7 @@ public abstract class RWTask implements Runnable {
 				counters.read.count.getAndIncrement();
 			}
 			catch (Exception e) {				
-				counters.read.fail.getAndIncrement();
-				System.out.println(e.getMessage());
+				readFailure(e);
 			}
 			expectedValues[i] = new ExpectedValue(bins, generation);
 		}
@@ -245,14 +244,10 @@ public abstract class RWTask implements Runnable {
 			}
 		}
 		catch (AerospikeException ae) {
-			counters.write.fail.getAndIncrement();
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			writeFailure(ae);
 		}	
 		catch (Exception e) {
-			counters.write.fail.getAndIncrement();
-			System.out.println(e.getMessage());
+			writeFailure(e);
 		}
 	}
 
@@ -274,19 +269,10 @@ public abstract class RWTask implements Runnable {
 			}
 		}
 		catch (AerospikeException ae) {
-			counters.write.fail.getAndIncrement();
-			
-			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-				this.counters.generationErrCnt.incrementAndGet();					
-			}
-			
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			writeFailure(ae);
 		}
-		catch (Exception e) {		
-			counters.write.fail.getAndIncrement();
-			System.out.println(e.getMessage());
+		catch (Exception e) {
+			writeFailure(e);
 		}
 	}
 		
@@ -307,14 +293,10 @@ public abstract class RWTask implements Runnable {
 			}
 		}
 		catch (AerospikeException ae) {
-			counters.read.fail.getAndIncrement();
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			readFailure(ae);
 		}	
 		catch (Exception e) {
-			counters.read.fail.getAndIncrement();
-			System.out.println(e.getMessage());
+			readFailure(e);
 		}	
 	}
 	
@@ -323,7 +305,47 @@ public abstract class RWTask implements Runnable {
 			this.counters.valueMismatchCnt.incrementAndGet();
 		}
 	}
+
+	protected void writeFailure(AerospikeException ae) {
+		counters.write.fail.getAndIncrement();
+		
+		if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
+			counters.generationErrCnt.getAndIncrement();					
+		}
+		
+		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
+			//System.out.println(ae.getMessage());
+			ae.printStackTrace();
+		}
+	}
+
+	protected void writeFailure(Exception e) {
+		counters.write.fail.getAndIncrement();
+		
+		if (debug) {
+			//System.out.println(ae.getMessage());
+			e.printStackTrace();
+		}
+	}
 	
+	protected void readFailure(AerospikeException ae) {
+		counters.read.fail.getAndIncrement();
+		
+		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
+			//System.out.println(ae.getMessage());
+			ae.printStackTrace();
+		}
+	}
+
+	protected void readFailure(Exception e) {
+		counters.read.fail.getAndIncrement();
+		
+		if (debug) {
+			//System.out.println(ae.getMessage());
+			e.printStackTrace();
+		}
+	}
+
 	protected abstract void put(Key key, Bin[] bins) throws AerospikeException;
 	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
 	protected abstract void get(int keyIdx, Key key, String binName) throws AerospikeException;

@@ -42,70 +42,45 @@ public abstract class AsyncCommand implements Runnable {
 		
 		timeout = policy.timeout;
 		
-		if (timeout > 0) {		
+		if (timeout > 0) {	
 			limit = System.currentTimeMillis() + timeout;
 		}
 
 		byteBuffer = cluster.getByteBuffer();
-
-		int maxIterations = policy.maxRetries + 1;		
-        int failedNodes = 0;
-        int failedConns = 0;
-        int i;
-
-        // Execute command until successful, timed out or maximum iterations have been reached.
-		for (i = 0; i < maxIterations; i++) {
-			try {		
-				node = getNode();
-	    		conn = node.getAsyncConnection();
-				
-				int size = command.getSendOffset();
-				
-				if (size > byteBuffer.capacity()) {
-					byteBuffer = ByteBuffer.allocateDirect(size);
-				}
-				
-				byteBuffer.clear();
-				byteBuffer.put(command.getSendBuffer(), 0, size);
-				byteBuffer.flip();
-
-				conn.execute(this);
-				return;
-			}
-			catch (AerospikeException.InvalidNode ine) {
-				// Node is currently inactive.  Retry.
-				failedNodes++;
-			}
-			catch (AerospikeException.Connection ce) {
-				// Socket connection error has occurred. Decrease health and retry.
-				node.decreaseHealth(60);
-				
-				if (Log.debugEnabled()) {
-					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));
-				}
-				failedConns++;
-			}
-			catch (Exception e) {
-				cluster.putByteBuffer(byteBuffer);
-				throw new AerospikeException(e);
-			}
-
-			// Check for client timeout.
-			if (limit > 0 && System.currentTimeMillis() > limit) {
-				break;
-			}
-
-			// Sleep before trying again.
-			Util.sleep(policy.sleepBetweenRetries);
-		}
 		
-		cluster.putByteBuffer(byteBuffer);
-		
-		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
+		try {
+			node = getNode();
+			conn = node.getAsyncConnection();
+	
+			int size = command.getSendOffset();
+			
+			if (size > byteBuffer.capacity()) {
+				byteBuffer = ByteBuffer.allocateDirect(size);
+			}
+			
+			byteBuffer.clear();
+			byteBuffer.put(command.getSendBuffer(), 0, size);
+			byteBuffer.flip();
+	
+			conn.execute(this);
 		}
-		throw new AerospikeException.Timeout();
+		catch (AerospikeException.InvalidNode ai) {
+			cluster.putByteBuffer(byteBuffer);
+			throw ai;
+		}
+		catch (AerospikeException.Connection ce) {
+			// Socket connection error has occurred.
+			node.decreaseHealth();
+			cluster.putByteBuffer(byteBuffer);
+			throw ce;
+		}
+		catch (Exception e) {
+			if (conn != null) {
+				node.putAsyncConnection(conn);
+			}
+			cluster.putByteBuffer(byteBuffer);
+			throw new AerospikeException(e);
+		}
 	}
 	
 	protected final void write() throws IOException {
@@ -120,11 +95,13 @@ public abstract class AsyncCommand implements Runnable {
 		
 		if (limit > 0 && current > limit) {
 			// Command has timed out.
+			/*
 			if (Log.debugEnabled()) {
 				int elapsed = ((int)(current - limit)) + timeout;
 				Log.debug("Client timeout: timeout=" + timeout + " elapsed=" + elapsed);
 			}
-			node.decreaseHealth(20);
+			*/
+			node.decreaseHealth();
 			fail(new AerospikeException.Timeout());
 			return false;
 		}
@@ -164,7 +141,7 @@ public abstract class AsyncCommand implements Runnable {
 		if (Log.debugEnabled()) {
 			Log.debug("Node " + node + ": " + Util.getErrorMessage(ae));
 		}
-		node.decreaseHealth(60);
+		node.decreaseHealth();
 		fail(ae);
 	}
 
@@ -174,7 +151,7 @@ public abstract class AsyncCommand implements Runnable {
 		}
 		// IO error means connection to server node is unhealthy.
 		// Reflect this status.
-		node.decreaseHealth(60);
+		node.decreaseHealth();
 		fail(new AerospikeException(ioe));
 	}
 	
@@ -187,10 +164,7 @@ public abstract class AsyncCommand implements Runnable {
 	
 	private final void fail(AerospikeException ae) {		
 		complete = true;
-		
-		if (conn != null) {
-			conn.close();
-		}
+		conn.close();
 		cluster.putByteBuffer(byteBuffer);		
 		onFailure(ae);
 	}

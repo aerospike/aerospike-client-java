@@ -29,7 +29,7 @@ public class Node {
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
-	private static final int FULL_HEALTH = 300;
+	private static final int FULL_HEALTH = 100;
 
 	protected final Cluster cluster;
 	private final String name;
@@ -39,6 +39,8 @@ public class Node {
 	private final ArrayBlockingQueue<Connection> connectionQueue;
 	private final AtomicInteger health;
 	private int partitionGeneration;
+	protected int referenceCount;
+	protected boolean responded;
 	protected volatile boolean active;
 
 	/**
@@ -76,13 +78,14 @@ public class Node {
 			HashMap<String,String> infoMap = Info.request(conn, "node", "partition-generation", "services");
 			verifyNodeName(infoMap);			
 			restoreHealth();
+			responded = true;
 			addFriends(infoMap, friends);
 			updatePartitions(conn, infoMap);
 			putConnection(conn);
 		}
 		catch (Exception e) {
 			conn.close();
-			decreaseHealth(50);
+			decreaseHealth();
 			throw e;
 		}
 	}
@@ -94,7 +97,7 @@ public class Node {
 		String infoName = infoMap.get("node");
 		
 		if (infoName == null || infoName.length() == 0) {
-			decreaseHealth(80);
+			decreaseHealth();
 			throw new AerospikeException.Parse("Node name is empty");
 		}
 
@@ -120,9 +123,15 @@ public class Node {
 			String host = friendInfo[0];
 			int port = Integer.parseInt(friendInfo[1]);
 			Host alias = new Host(host, port);
+			Node node = cluster.findAlias(alias);
 			
-			if (! cluster.findAlias(alias)  && ! findAlias(friends, alias)) {
-				friends.add(alias);
+			if (node != null) {
+				node.referenceCount++;
+			}
+			else {
+				if (! findAlias(friends, alias)) {
+					friends.add(alias);					
+				}
 			}
 		}
 	}
@@ -205,18 +214,18 @@ public class Node {
 
 	/**
 	 * Decrease server health status after a connection failure.
-	 * 
-	 * @param value					health points
 	 */
-	public final void decreaseHealth(int value) {
-		//if (Log.debugEnabled()) {
-		//	Log.debug("Node " + this + " decrease health " + value);
-		//}
-		if (health.addAndGet(-value) <= 0) {
-			active = false;
-		}
+	public final void decreaseHealth() {
+		health.decrementAndGet();
 	}
-
+	
+	/**
+	 * Has consecutive node connection errors become critical. 
+	 */
+	public final boolean isUnhealthy() {
+		return health.get() <= 0;
+	}
+	
 	/**
 	 * Return server node IP address and port.
 	 */

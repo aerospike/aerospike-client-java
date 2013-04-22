@@ -106,11 +106,15 @@ public final class SelectorManager extends Thread {
     	
     	while ((command = commandQueue.poll()) != null) {
 	    	try {
-		    	command.conn.register(command, selector);
-	    		
 	    		if (command.timeout > 0) {
-	    			timeoutQueue.addLast(command);
-	    		}
+		    		if (command.checkTimeout()) {
+		    			timeoutQueue.addLast(command);
+		    		}
+		    		else {
+		    			continue;
+		    		}
+	    		}	    		
+		    	command.conn.register(command, selector);
 	    	}
     		catch (Exception e) {
     			// Connection will be released in this method.

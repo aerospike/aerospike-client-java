@@ -85,7 +85,7 @@ public abstract class SyncCommand extends Command {
 					}
 					// IO error means connection to server node is unhealthy.
 					// Reflect this status.
-					node.decreaseHealth(60);
+					node.decreaseHealth();
 				}
 			}
 			catch (AerospikeException.InvalidNode ine) {
@@ -94,7 +94,7 @@ public abstract class SyncCommand extends Command {
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Decrease health and retry.
-				node.decreaseHealth(60);
+				node.decreaseHealth();
 				
 				if (Log.debugEnabled()) {
 					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));

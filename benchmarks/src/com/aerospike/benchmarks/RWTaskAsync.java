@@ -15,7 +15,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
@@ -108,15 +107,7 @@ public class RWTaskAsync extends RWTask {
 	
 		@Override
 		public void onFailure(AerospikeException ae) {
-			counters.write.fail.getAndIncrement();
-			
-			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-				counters.generationErrCnt.getAndIncrement();					
-			}
-			
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			writeFailure(ae);
 		}
 	}
 
@@ -128,11 +119,7 @@ public class RWTaskAsync extends RWTask {
 
 		@Override
 		public void onFailure(AerospikeException ae) {
-			counters.read.fail.getAndIncrement();
-			
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			readFailure(ae);
 		}
 	}
 	
@@ -152,11 +139,7 @@ public class RWTaskAsync extends RWTask {
 
 		@Override
 		public void onFailure(AerospikeException ae) {
-			counters.read.fail.getAndIncrement();
-			
-			if (ae.getResultCode() != ResultCode.TIMEOUT) {
-				System.out.println(ae.getMessage());
-			}
+			readFailure(ae);
 		}
 	}
 }

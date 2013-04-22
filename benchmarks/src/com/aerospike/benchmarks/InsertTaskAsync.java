@@ -12,7 +12,6 @@ package com.aerospike.benchmarks;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
@@ -54,14 +53,6 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 
 	@Override
 	public void onFailure(AerospikeException ae) {
-		counters.write.fail.getAndIncrement();
-
-		if (ae.getResultCode() != ResultCode.TIMEOUT) {
-			System.out.println(ae.getMessage());
-			
-			if (debug) {
-				ae.printStackTrace();
-			}
-		}
+		writeFailure(ae);
 	}
 }
