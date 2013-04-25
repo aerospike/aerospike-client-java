@@ -583,6 +583,34 @@ public class AerospikeClient {
 		command.execute(policy);
 	}
 
+	//----------------------------------------------------------
+	// Large Set/Stack functions (Supported by 3.0 servers only)
+	//----------------------------------------------------------
+
+	/**
+	 * Initialize large set operator.  This operator can be used to create and manage a list 
+	 * within a single bin.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 */
+	public final LargeSet getLargeSet(Policy policy, Key key, String binName) {
+		return new LargeSet(this, policy, key, binName);
+	}	
+
+	/**
+	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
+	 * within a single bin.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 */
+	public final LargeStack getLargeStack(Policy policy, Key key, String binName) {
+		return new LargeStack(this, policy, key, binName);
+	}	
+
 	//-------------------------------------------------------
 	// User defined functions (Supported by 3.0 servers only)
 	//-------------------------------------------------------
@@ -801,7 +829,7 @@ public class AerospikeClient {
 	}
 	
 	//-------------------------------------------------------
-	// Private Methods
+	// Internal Methods
 	//-------------------------------------------------------
 
 	protected static HashSet<String> binNamesToHashSet(String[] binNames) {

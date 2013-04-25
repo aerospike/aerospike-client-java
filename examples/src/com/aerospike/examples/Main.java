@@ -52,11 +52,13 @@ public class Main extends JPanel {
 		"DeleteBin",
 		"ScanParallel",
 		"ScanSeries",
-		"UserDefinedFunction",
-		"Query",
 		"AsyncPutGet",
 		"AsyncBatch",
-		"AsyncScan"
+		"AsyncScan",
+		"UserDefinedFunction",
+		"Query",
+		"LargeSet",
+		"LargeStack"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 

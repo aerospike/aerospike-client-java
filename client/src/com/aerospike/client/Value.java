@@ -12,6 +12,7 @@ package com.aerospike.client;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -51,6 +52,13 @@ public abstract class Value {
 	 */
 	public static Value get(long value) {
 		return new LongValue(value);
+	}
+
+	/**
+	 * Get value array instance.
+	 */
+	public static Value get(Value[] value) {
+		return new ValueArray(value);
 	}
 
 	/**
@@ -390,6 +398,51 @@ public abstract class Value {
 		}
 	}
 	
+	/**
+	 * Value array.
+	 * Supported by 3.0 servers only.
+	 */
+	public static final class ValueArray extends Value {
+		private final Value[] array;
+		private byte[] bytes;
+
+		public ValueArray(Value[] array) {
+			this.array = array;
+		}
+		
+		@Override
+		public int estimateSize() throws AerospikeException {
+			bytes = MsgPack.pack(array);
+			return bytes.length;
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
+			return bytes.length;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPack.packValueArray(packer, array);
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.LIST;
+		}
+		
+		@Override
+		public Object getObject() {
+			return array;
+		}
+
+		@Override
+		public String toString() {
+			return Arrays.toString(array);
+		}
+	}
+
 	/**
 	 * List value.
 	 * Supported by 3.0 servers only.
