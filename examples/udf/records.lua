@@ -88,16 +88,13 @@ function create_record(r,b1,v1,b2,v2)
  end
 
 -- delete a record
-function delete_record(r,name)
-    info ("here");
-    if aerospike:exist(r) then
-        info("exist. delete now");
-    	return aerospike.remove(r)
+function delete_record(r)
+    if aerospike:exists(r) then
+    	return aerospike:remove(r)
     else
-        info("not exist, delete should do nothing");
-    	return aerospike.remove(r)
+    	return 1
     end
- end
+end
 
 -- @TODO return record as is
 -- function echo_record(record) 
