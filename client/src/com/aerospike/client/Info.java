@@ -58,6 +58,9 @@ public final class Info {
 	public Info(Connection conn, String command) throws AerospikeException {
 		buffer = ThreadLocalData1.getBuffer();		
 		offset = 8;  // Skip size field.
+		offset += Buffer.estimateSizeUtf8(command) + 1;
+		resizeBuffer(offset);
+		offset = 8;
 
 		// The command format is: <name1>\n<name2>\n...
 		offset += Buffer.stringToUtf8(command, buffer, offset);
@@ -78,11 +81,17 @@ public final class Info {
 		buffer = ThreadLocalData1.getBuffer();		
 		offset = 8;  // Skip size field.
 		
+		for (String command : commands) {
+			offset += Buffer.estimateSizeUtf8(command) + 1;
+		}
+		resizeBuffer(offset);
+		offset = 8;
+
 		// The command format is: <name1>\n<name2>\n...
 		for (String command : commands) {
 			offset += Buffer.stringToUtf8(command, buffer, offset);
 			buffer[offset++] = '\n';
-		}		
+		}
 		sendCommand(conn);
 	}
 	
@@ -326,10 +335,7 @@ public final class Info {
 			
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
-
-			if (length > buffer.length) {
-				buffer = ThreadLocalData1.resizeBuffer(length);
-			}
+			resizeBuffer(length);
 			readFully(in, buffer, length);		
 			offset = 0;
 		}
@@ -338,6 +344,12 @@ public final class Info {
 		}
 	}
 
+	private void resizeBuffer(int size) {
+		if (size > buffer.length) {
+			buffer = ThreadLocalData1.resizeBuffer(size);
+		}
+	}
+	
 	private static void readFully(InputStream in, byte[] buffer, int length) 
 		throws IOException {
 		int pos = 0;
