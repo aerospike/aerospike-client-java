@@ -56,11 +56,15 @@ public final class Info {
 	 * @param command		command sent to server
 	 */
 	public Info(Connection conn, String command) throws AerospikeException {
-		buffer = ThreadLocalData1.getBuffer();		
-		offset = 8;  // Skip size field.
-		offset += Buffer.estimateSizeUtf8(command) + 1;
-		resizeBuffer(offset);
-		offset = 8;
+		buffer = ThreadLocalData1.getBuffer();
+
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if ((command.length() * 2 + 9) > buffer.length) {
+			offset = Buffer.estimateSizeUtf8(command) + 9;
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
 		offset += Buffer.stringToUtf8(command, buffer, offset);
@@ -78,14 +82,26 @@ public final class Info {
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, String... commands) throws AerospikeException {
-		buffer = ThreadLocalData1.getBuffer();		
-		offset = 8;  // Skip size field.
+		buffer = ThreadLocalData1.getBuffer();
+		
+		// First, do quick conservative buffer size estimate.
+		offset = 8;
 		
 		for (String command : commands) {
-			offset += Buffer.estimateSizeUtf8(command) + 1;
+			offset += command.length() * 2 + 1;
 		}
-		resizeBuffer(offset);
-		offset = 8;
+		
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if (offset > buffer.length) {
+			offset = 8;
+			
+			for (String command : commands) {
+				offset += Buffer.estimateSizeUtf8(command) + 1;
+			}
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
 		for (String command : commands) {
