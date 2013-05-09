@@ -225,6 +225,22 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#create(java.lang.String)">create</A></B>(java.lang.String&nbsp;configName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a stack in a single record bin.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#create(java.lang.String)">create</A></B>(java.lang.String&nbsp;configName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create a list in a single record bin.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#createIndex(com.aerospike.client.policy.Policy, java.lang.String, java.lang.String, java.lang.String, java.lang.String, com.aerospike.client.query.IndexType)">createIndex</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
             java.lang.String&nbsp;namespace,
             java.lang.String&nbsp;setName,
@@ -234,6 +250,14 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create secondary index.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#delete(com.aerospike.client.Value)">delete</A></B>(<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete value from list.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -266,6 +290,14 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>Value.ValueArray.</B><B><A HREF="../../../../com/aerospike/client/Value.ValueArray.html#estimateSize()">estimateSize</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
 <TD><CODE><B>Value.ListValue.</B><B><A HREF="../../../../com/aerospike/client/Value.ListValue.html#estimateSize()">estimateSize</A></B>()</CODE>
 
 <BR>
@@ -284,7 +316,7 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, com.aerospike.client.Value...)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
-        java.lang.String&nbsp;fileName,
+        java.lang.String&nbsp;packageName,
         java.lang.String&nbsp;functionName,
         <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;args)</CODE>
 
@@ -349,6 +381,22 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.Map&lt;?,?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#getConfig()">getConfig</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return map of stack configuration parameters.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.Map&lt;?,?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#getConfig()">getConfig</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return map of list configuration parameters.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A></CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.Key)">getHeader</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
           <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
@@ -367,6 +415,23 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#insert(java.lang.String, com.aerospike.client.Value)">insert</A></B>(java.lang.String&nbsp;configName,
+       <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Insert value into list.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#insert(com.aerospike.client.Value)">insert</A></B>(<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Insert value into list.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A></CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#operate(com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key, com.aerospike.client.Operation...)">operate</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
@@ -377,6 +442,24 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.List&lt;?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#peek(int)">peek</A></B>(int&nbsp;peekCount)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select items from top of stack.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.List&lt;?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#peek(int, java.lang.String, com.aerospike.client.Value...)">peek</A></B>(int&nbsp;peekCount,
+     java.lang.String&nbsp;filterName,
+     <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;filterArgs)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select items from top of stack.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#prepend(com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key, com.aerospike.client.Bin...)">prepend</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
@@ -384,6 +467,23 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Prepend bin string values to existing record bin values.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#push(java.lang.String, com.aerospike.client.Value)">push</A></B>(java.lang.String&nbsp;configName,
+     <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Push value onto stack.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#push(com.aerospike.client.Value)">push</A></B>(<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Push value onto stack.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -402,7 +502,19 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
       <A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return results.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return record iterator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query">ResultSet</A></CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#queryAggregate(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, java.lang.String, java.lang.String, com.aerospike.client.Value...)">queryAggregate</A></B>(<A HREF="../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+               <A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement,
+               java.lang.String&nbsp;packageName,
+               java.lang.String&nbsp;functionName,
+               <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;functionArgs)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query, apply statement's aggregation function, and return result iterator.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -532,12 +644,54 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.List&lt;?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#search(com.aerospike.client.Value)">search</A></B>(<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select value from list.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.util.List&lt;?&gt;</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#search(com.aerospike.client.Value, java.lang.String, com.aerospike.client.Value...)">search</A></B>(<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value,
+       java.lang.String&nbsp;filterName,
+       <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;filterArgs)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Select value from list and apply specified Lua filter.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#size()">size</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return size of stack.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B>LargeSet.</B><B><A HREF="../../../../com/aerospike/client/LargeSet.html#size()">size</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return size of list.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#touch(com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key)">touch</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
       <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create record if it does not already exist.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B>LargeStack.</B><B><A HREF="../../../../com/aerospike/client/LargeStack.html#trim(int)">trim</A></B>(int&nbsp;trimCount)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Delete items from the top of stack.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -1016,6 +1170,14 @@ Uses of <A HREF="../../../../com/aerospike/client/AerospikeException.html" title
 <TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
 <TR BGCOLOR="#CCCCFF" CLASS="TableSubHeadingColor">
 <TH ALIGN="left" COLSPAN="2">Methods in <A HREF="../../../../com/aerospike/client/query/package-summary.html">com.aerospike.client.query</A> that throw <A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;boolean</CODE></FONT></TD>
+<TD><CODE><B>ResultSet.</B><B><A HREF="../../../../com/aerospike/client/query/ResultSet.html#next()">next</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Retrieve next record.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">

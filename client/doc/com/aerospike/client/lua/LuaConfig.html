@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>
-RecordSet
+LuaConfig
 </TITLE>
 
 
@@ -13,7 +13,7 @@ RecordSet
 function windowTitle()
 {
     if (location.href.indexOf('is-external=true') == -1) {
-        parent.document.title="RecordSet";
+        parent.document.title="LuaConfig";
     }
 }
 </SCRIPT>
@@ -38,7 +38,7 @@ function windowTitle()
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/RecordSet.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/LuaConfig.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -53,11 +53,11 @@ function windowTitle()
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;PREV CLASS&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../../index.html?com/aerospike/client/query/RecordSet.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="RecordSet.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../../index.html?com/aerospike/client/lua/LuaConfig.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="LuaConfig.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {
@@ -74,9 +74,9 @@ function windowTitle()
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#methods_inherited_from_class_java.lang.Object">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;FIELD&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;METHOD</FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_top"></A>
@@ -86,29 +86,69 @@ DETAIL:&nbsp;FIELD&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_detail">METHO
 <!-- ======== START OF CLASS DATA ======== -->
 <H2>
 <FONT SIZE="-1">
-com.aerospike.client.query</FONT>
+com.aerospike.client.lua</FONT>
 <BR>
-Class RecordSet</H2>
+Class LuaConfig</H2>
 <PRE>
 java.lang.Object
-  <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.query.RecordSet</B>
+  <IMG SRC="../../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.lua.LuaConfig</B>
 </PRE>
 <HR>
 <DL>
-<DT><PRE>public final class <B>RecordSet</B><DT>extends java.lang.Object</DL>
+<DT><PRE>public final class <B>LuaConfig</B><DT>extends java.lang.Object</DL>
 </PRE>
 
 <P>
-This class manages record retrieval from queries.
- Multiple threads will retrieve records from the server nodes and put these records on the queue.
- The single user thread consumes these records from the queue.
+Lua static configuration variables.  These variables apply to all AerospikeClient instances
+ in a single process.
 <P>
 
 <P>
 <HR>
 
 <P>
+<!-- =========== FIELD SUMMARY =========== -->
 
+<A NAME="field_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Field Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/lua/LuaConfig.html#InstancePoolSize">InstancePoolSize</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Maximum number of Lua runtime instances to cache at any point in time.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;java.lang.String</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/lua/LuaConfig.html#SourceDirectory">SourceDirectory</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Directory location which contains user defined Lua source files.</TD>
+</TR>
+</TABLE>
+&nbsp;
+<!-- ======== CONSTRUCTOR SUMMARY ======== -->
+
+<A NAME="constructor_summary"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
+<B>Constructor Summary</B></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/lua/LuaConfig.html#LuaConfig()">LuaConfig</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+</TR>
+</TABLE>
+&nbsp;
 <!-- ========== METHOD SUMMARY =========== -->
 
 <A NAME="method_summary"><!-- --></A>
@@ -116,38 +156,6 @@ This class manages record retrieval from queries.
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <TH ALIGN="left" COLSPAN="2"><FONT SIZE="+2">
 <B>Method Summary</B></FONT></TH>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/RecordSet.html#close()">close</A></B>()</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cancel query.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/RecordSet.html#getKey()">getKey</A></B>()</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get record's unique identifier.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/RecordSet.html#getRecord()">getRecord</A></B>()</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get record's header and bin data.</TD>
-</TR>
-<TR BGCOLOR="white" CLASS="TableRowColor">
-<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>&nbsp;boolean</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/RecordSet.html#next()">next</A></B>()</CODE>
-
-<BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Retrieve next record.</TD>
 </TR>
 </TABLE>
 &nbsp;<A NAME="methods_inherited_from_class_java.lang.Object"><!-- --></A>
@@ -162,70 +170,57 @@ This class manages record retrieval from queries.
 &nbsp;
 <P>
 
-<!-- ============ METHOD DETAIL ========== -->
+<!-- ============ FIELD DETAIL =========== -->
 
-<A NAME="method_detail"><!-- --></A>
+<A NAME="field_detail"><!-- --></A>
 <TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
 <TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
 <TH ALIGN="left" COLSPAN="1"><FONT SIZE="+2">
-<B>Method Detail</B></FONT></TH>
+<B>Field Detail</B></FONT></TH>
 </TR>
 </TABLE>
 
-<A NAME="next()"><!-- --></A><H3>
-next</H3>
+<A NAME="SourceDirectory"><!-- --></A><H3>
+SourceDirectory</H3>
 <PRE>
-public final boolean <B>next</B>()
-                   throws <A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+public static java.lang.String <B>SourceDirectory</B></PRE>
 <DL>
-<DD>Retrieve next record.  This method will block until a record is retrieved 
- or the query is cancelled.
+<DD>Directory location which contains user defined Lua source files.
 <P>
-<DD><DL>
-
-<DT><B>Returns:</B><DD>whether record exists - if false, no more records are available
-<DT><B>Throws:</B>
-<DD><CODE><A HREF="../../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
-</DD>
+<DL>
+</DL>
 </DL>
 <HR>
 
-<A NAME="close()"><!-- --></A><H3>
-close</H3>
+<A NAME="InstancePoolSize"><!-- --></A><H3>
+InstancePoolSize</H3>
 <PRE>
-public final void <B>close</B>()</PRE>
+public static int <B>InstancePoolSize</B></PRE>
 <DL>
-<DD>Cancel query.
+<DD>Maximum number of Lua runtime instances to cache at any point in time.
+ Each query with an aggregation function requires a Lua instance.
+ If the number of concurrent queries exceeds the Lua pool size, a new Lua 
+ instance will still be created, but it will not be returned to the pool.
 <P>
-<DD><DL>
+<DL>
 </DL>
-</DD>
 </DL>
-<HR>
 
-<A NAME="getKey()"><!-- --></A><H3>
-getKey</H3>
-<PRE>
-public final <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A> <B>getKey</B>()</PRE>
-<DL>
-<DD>Get record's unique identifier.
-<P>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
+<!-- ========= CONSTRUCTOR DETAIL ======== -->
 
-<A NAME="getRecord()"><!-- --></A><H3>
-getRecord</H3>
+<A NAME="constructor_detail"><!-- --></A>
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableHeadingColor">
+<TH ALIGN="left" COLSPAN="1"><FONT SIZE="+2">
+<B>Constructor Detail</B></FONT></TH>
+</TR>
+</TABLE>
+
+<A NAME="LuaConfig()"><!-- --></A><H3>
+LuaConfig</H3>
 <PRE>
-public final <A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A> <B>getRecord</B>()</PRE>
+public <B>LuaConfig</B>()</PRE>
 <DL>
-<DD>Get record's header and bin data.
-<P>
-<DD><DL>
-</DL>
-</DD>
 </DL>
 <!-- ========= END OF CLASS DATA ========= -->
 <HR>
@@ -243,7 +238,7 @@ public final <A HREF="../../../../com/aerospike/client/Record.html" title="class
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/RecordSet.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/LuaConfig.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -258,11 +253,11 @@ public final <A HREF="../../../../com/aerospike/client/Record.html" title="class
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;PREV CLASS&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../../index.html?com/aerospike/client/query/RecordSet.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="RecordSet.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../../index.html?com/aerospike/client/lua/LuaConfig.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="LuaConfig.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {
@@ -279,9 +274,9 @@ public final <A HREF="../../../../com/aerospike/client/Record.html" title="class
 </TR>
 <TR>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;FIELD&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_summary">METHOD</A></FONT></TD>
+  SUMMARY:&nbsp;NESTED&nbsp;|&nbsp;<A HREF="#field_summary">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_summary">CONSTR</A>&nbsp;|&nbsp;<A HREF="#methods_inherited_from_class_java.lang.Object">METHOD</A></FONT></TD>
 <TD VALIGN="top" CLASS="NavBarCell3"><FONT SIZE="-2">
-DETAIL:&nbsp;FIELD&nbsp;|&nbsp;CONSTR&nbsp;|&nbsp;<A HREF="#method_detail">METHOD</A></FONT></TD>
+DETAIL:&nbsp;<A HREF="#field_detail">FIELD</A>&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&nbsp;METHOD</FONT></TD>
 </TR>
 </TABLE>
 <A NAME="skip-navbar_bottom"></A>

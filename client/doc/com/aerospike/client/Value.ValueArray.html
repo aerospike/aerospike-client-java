@@ -3,7 +3,7 @@
 <HTML>
 <HEAD>
 <TITLE>
-Value.LongValue
+Value.ValueArray
 </TITLE>
 
 
@@ -13,7 +13,7 @@ Value.LongValue
 function windowTitle()
 {
     if (location.href.indexOf('is-external=true') == -1) {
-        parent.document.title="Value.LongValue";
+        parent.document.title="Value.ValueArray";
     }
 }
 </SCRIPT>
@@ -38,7 +38,7 @@ function windowTitle()
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/Value.LongValue.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/Value.ValueArray.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -53,11 +53,11 @@ function windowTitle()
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../com/aerospike/client/Value.ListValue.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Value.MapValue.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../index.html?com/aerospike/client/Value.LongValue.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="Value.LongValue.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../index.html?com/aerospike/client/Value.ValueArray.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="Value.ValueArray.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {
@@ -88,22 +88,23 @@ DETAIL:&nbsp;FIELD&nbsp;|&nbsp;<A HREF="#constructor_detail">CONSTR</A>&nbsp;|&n
 <FONT SIZE="-1">
 com.aerospike.client</FONT>
 <BR>
-Class Value.LongValue</H2>
+Class Value.ValueArray</H2>
 <PRE>
 java.lang.Object
   <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">com.aerospike.client.Value</A>
-      <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.Value.LongValue</B>
+      <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.Value.ValueArray</B>
 </PRE>
 <DL>
 <DT><B>Enclosing class:</B><DD><A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></DD>
 </DL>
 <HR>
 <DL>
-<DT><PRE>public static final class <B>Value.LongValue</B><DT>extends <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></DL>
+<DT><PRE>public static final class <B>Value.ValueArray</B><DT>extends <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></DL>
 </PRE>
 
 <P>
-Long value.
+Value array.
+ Supported by 3.0 servers only.
 <P>
 
 <P>
@@ -139,7 +140,7 @@ Long value.
 <B>Constructor Summary</B></FONT></TH>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#Value.LongValue(long)">Value.LongValue</A></B>(long&nbsp;value)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#Value.ValueArray(com.aerospike.client.Value[])">Value.ValueArray</A></B>(<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[]&nbsp;array)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
@@ -157,7 +158,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#estimateSize()">estimateSize</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#estimateSize()">estimateSize</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Calculate number of bytes necessary to serialize the value in the wire protocol.</TD>
@@ -165,7 +166,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;org.luaj.vm2.LuaValue</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#getLuaValue()">getLuaValue</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#getLuaValue()">getLuaValue</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return value as an Object.</TD>
@@ -173,7 +174,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#getObject()">getObject</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#getObject()">getObject</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return original value as an Object.</TD>
@@ -181,7 +182,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#getType()">getType</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#getType()">getType</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get wire protocol value type.</TD>
@@ -189,7 +190,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#pack(org.msgpack.packer.Packer)">pack</A></B>(org.msgpack.packer.Packer&nbsp;packer)</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#pack(org.msgpack.packer.Packer)">pack</A></B>(org.msgpack.packer.Packer&nbsp;packer)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Serialize the value using MessagePack.</TD>
@@ -197,7 +198,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;java.lang.String</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#toString()">toString</A></B>()</CODE>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#toString()">toString</A></B>()</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
@@ -205,7 +206,7 @@ Long value.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;int</CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.LongValue.html#write(byte[], int)">write</A></B>(byte[]&nbsp;buffer,
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html#write(byte[], int)">write</A></B>(byte[]&nbsp;buffer,
       int&nbsp;offset)</CODE>
 
 <BR>
@@ -243,10 +244,10 @@ Long value.
 </TR>
 </TABLE>
 
-<A NAME="Value.LongValue(long)"><!-- --></A><H3>
-Value.LongValue</H3>
+<A NAME="Value.ValueArray(com.aerospike.client.Value[])"><!-- --></A><H3>
+Value.ValueArray</H3>
 <PRE>
-public <B>Value.LongValue</B>(long&nbsp;value)</PRE>
+public <B>Value.ValueArray</B>(<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[]&nbsp;array)</PRE>
 <DL>
 </DL>
 
@@ -263,7 +264,8 @@ public <B>Value.LongValue</B>(long&nbsp;value)</PRE>
 <A NAME="estimateSize()"><!-- --></A><H3>
 estimateSize</H3>
 <PRE>
-public int <B>estimateSize</B>()</PRE>
+public int <B>estimateSize</B>()
+                 throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
 <DD><B>Description copied from class: <CODE><A HREF="../../../com/aerospike/client/Value.html#estimateSize()">Value</A></CODE></B></DD>
 <DD>Calculate number of bytes necessary to serialize the value in the wire protocol.
@@ -272,7 +274,9 @@ public int <B>estimateSize</B>()</PRE>
 <DT><B>Specified by:</B><DD><CODE><A HREF="../../../com/aerospike/client/Value.html#estimateSize()">estimateSize</A></CODE> in class <CODE><A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></CODE></DL>
 </DD>
 <DD><DL>
-</DL>
+
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE></DL>
 </DD>
 </DL>
 <HR>
@@ -394,7 +398,7 @@ public java.lang.String <B>toString</B>()</PRE>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../overview-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-summary.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
-  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/Value.LongValue.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
+  <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="class-use/Value.ValueArray.html"><FONT CLASS="NavBarFont1"><B>Use</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="package-tree.html"><FONT CLASS="NavBarFont1"><B>Tree</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../deprecated-list.html"><FONT CLASS="NavBarFont1"><B>Deprecated</B></FONT></A>&nbsp;</TD>
   <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1">    <A HREF="../../../index-files/index-1.html"><FONT CLASS="NavBarFont1"><B>Index</B></FONT></A>&nbsp;</TD>
@@ -409,11 +413,11 @@ public java.lang.String <B>toString</B>()</PRE>
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../com/aerospike/client/Value.ListValue.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
-&nbsp;<A HREF="../../../com/aerospike/client/Value.MapValue.html" title="class in com.aerospike.client"><B>NEXT CLASS</B></A></FONT></TD>
+&nbsp;<A HREF="../../../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-  <A HREF="../../../index.html?com/aerospike/client/Value.LongValue.html" target="_top"><B>FRAMES</B></A>  &nbsp;
-&nbsp;<A HREF="Value.LongValue.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
+  <A HREF="../../../index.html?com/aerospike/client/Value.ValueArray.html" target="_top"><B>FRAMES</B></A>  &nbsp;
+&nbsp;<A HREF="Value.ValueArray.html" target="_top"><B>NO FRAMES</B></A>  &nbsp;
 &nbsp;<SCRIPT type="text/javascript">
   <!--
   if(window==top) {

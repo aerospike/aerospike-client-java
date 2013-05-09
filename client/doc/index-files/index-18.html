@@ -137,6 +137,12 @@ Variable in class com.aerospike.client.policy.<A HREF="../com/aerospike/client/p
 <DT><A HREF="../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy"><B>ScanPolicy</B></A> - Class in <A HREF="../com/aerospike/client/policy/package-summary.html">com.aerospike.client.policy</A><DD>Container object for optional parameters used in scan operations.<DT><A HREF="../com/aerospike/client/policy/ScanPolicy.html#ScanPolicy()"><B>ScanPolicy()</B></A> - 
 Constructor for class com.aerospike.client.policy.<A HREF="../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy">ScanPolicy</A>
 <DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/LargeSet.html#search(com.aerospike.client.Value)"><B>search(Value)</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A>
+<DD>Select value from list.
+<DT><A HREF="../com/aerospike/client/LargeSet.html#search(com.aerospike.client.Value, java.lang.String, com.aerospike.client.Value...)"><B>search(Value, String, Value...)</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A>
+<DD>Select value from list and apply specified Lua filter.
 <DT><A HREF="../com/aerospike/client/ResultCode.html#SERIALIZE_ERROR"><B>SERIALIZE_ERROR</B></A> - 
 Static variable in class com.aerospike.client.<A HREF="../com/aerospike/client/ResultCode.html" title="class in com.aerospike.client">ResultCode</A>
 <DD>Client serialization error.
@@ -178,7 +184,7 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClWri
 <DD>Specify highest expected generation.
 <DT><A HREF="../com/aerospike/client/query/Statement.html#setBinNames(java.lang.String...)"><B>setBinNames(String...)</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
-<DD>&nbsp;
+<DD>Set query bin names.
 <DT><A HREF="../com/aerospike/client/Log.html#setCallback(com.aerospike.client.Log.Callback)"><B>setCallback(Log.Callback)</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Log.html" title="class in com.aerospike.client">Log</A>
 <DD>Set optional log callback implementation.
@@ -206,10 +212,10 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClSca
 <DD>Specify scan termination setting.
 <DT><A HREF="../com/aerospike/client/query/Statement.html#setFilters(com.aerospike.client.query.Filter...)"><B>setFilters(Filter...)</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
-<DD>&nbsp;
+<DD>Set optional query filters.
 <DT><A HREF="../com/aerospike/client/query/Statement.html#setIndexName(java.lang.String)"><B>setIndexName(String)</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
-<DD>&nbsp;
+<DD>Set query index name.
 <DT><A HREF="../com/aerospike/client/Log.html#setLevel(com.aerospike.client.Log.Level)"><B>setLevel(Log.Level)</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Log.html" title="class in com.aerospike.client">Log</A>
 <DD>Set log level filter.
@@ -221,7 +227,7 @@ Variable in class com.aerospike.client.<A HREF="../com/aerospike/client/Key.html
 <DD>Optional set name.
 <DT><A HREF="../com/aerospike/client/query/Statement.html#setNamespace(java.lang.String)"><B>setNamespace(String)</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
-<DD>&nbsp;
+<DD>Set query namespace.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ClOptions.html#setOneShot()"><B>setOneShot()</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClOptions.html" title="class in net.citrusleaf">CitrusleafClient.ClOptions</A>
 <DD>Specify no transaction retries.
@@ -230,18 +236,30 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClSca
 <DD>Specify server scan priority setting.
 <DT><A HREF="../com/aerospike/client/query/Statement.html#setSetName(java.lang.String)"><B>setSetName(String)</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
-<DD>&nbsp;
+<DD>Set optional query setname.
+<DT><A HREF="../com/aerospike/client/query/Statement.html#setTaskId(int)"><B>setTaskId(int)</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
+<DD>Set optional query task id.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html#setThreadsPerNode(int)"><B>setThreadsPerNode(int)</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html" title="class in net.citrusleaf">CitrusleafClient.ClScanningOptions</A>
 <DD>Specify number of client scan threads per node - not yet supported.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ClOptions.html#setTimeout(int)"><B>setTimeout(int)</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClOptions.html" title="class in net.citrusleaf">CitrusleafClient.ClOptions</A>
 <DD>Specify timeout.
+<DT><A HREF="../com/aerospike/client/LargeSet.html#size()"><B>size()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A>
+<DD>Return size of list.
+<DT><A HREF="../com/aerospike/client/LargeStack.html#size()"><B>size()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeStack.html" title="class in com.aerospike.client">LargeStack</A>
+<DD>Return size of stack.
 <DT><A HREF="../com/aerospike/client/policy/Policy.html#sleepBetweenRetries"><B>sleepBetweenRetries</B></A> - 
 Variable in class com.aerospike.client.policy.<A HREF="../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>
 <DD>Milliseconds to sleep between retries if a transaction fails and the 
  timeout was not exceeded.
-<DT><A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query"><B>Statement</B></A> - Class in <A HREF="../com/aerospike/client/query/package-summary.html">com.aerospike.client.query</A><DD>SQL statement creation routines.<DT><A HREF="../com/aerospike/client/query/Statement.html#Statement()"><B>Statement()</B></A> - 
+<DT><A HREF="../com/aerospike/client/lua/LuaConfig.html#SourceDirectory"><B>SourceDirectory</B></A> - 
+Static variable in class com.aerospike.client.lua.<A HREF="../com/aerospike/client/lua/LuaConfig.html" title="class in com.aerospike.client.lua">LuaConfig</A>
+<DD>Directory location which contains user defined Lua source files.
+<DT><A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query"><B>Statement</B></A> - Class in <A HREF="../com/aerospike/client/query/package-summary.html">com.aerospike.client.query</A><DD>Query statement parameters.<DT><A HREF="../com/aerospike/client/query/Statement.html#Statement()"><B>Statement()</B></A> - 
 Constructor for class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
 <DD>&nbsp;
 </DL>

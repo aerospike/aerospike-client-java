@@ -229,7 +229,7 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 <CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, com.aerospike.client.Value...)">execute</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
         <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
-        java.lang.String&nbsp;fileName,
+        java.lang.String&nbsp;packageName,
         java.lang.String&nbsp;functionName,
         <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;args)</CODE>
 
@@ -312,6 +312,26 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#getLargeSet(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">getLargeSet</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+            <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+            java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large set operator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/LargeStack.html" title="class in com.aerospike.client">LargeStack</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#getLargeStack(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">getLargeStack</A></B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+              <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+              java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large stack operator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;java.util.List&lt;java.lang.String&gt;</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#getNodeNames()">getNodeNames</A></B>()</CODE>
 
@@ -371,7 +391,19 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
       <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return results.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return record iterator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query">ResultSet</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#queryAggregate(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, java.lang.String, java.lang.String, com.aerospike.client.Value...)">queryAggregate</A></B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+               <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement,
+               java.lang.String&nbsp;packageName,
+               java.lang.String&nbsp;functionName,
+               <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;functionArgs)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query, apply statement's aggregation function, and return result iterator.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -937,6 +969,38 @@ public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/
 </DL>
 <HR>
 
+<A NAME="getLargeSet(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)"><!-- --></A><H3>
+getLargeSet</H3>
+<PRE>
+public final <A HREF="../../../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A> <B>getLargeSet</B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+                                  <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+                                  java.lang.String&nbsp;binName)</PRE>
+<DL>
+<DD>Initialize large set operator.  This operator can be used to create and manage a list 
+ within a single bin.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>binName</CODE> - bin name</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getLargeStack(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)"><!-- --></A><H3>
+getLargeStack</H3>
+<PRE>
+public final <A HREF="../../../com/aerospike/client/LargeStack.html" title="class in com.aerospike.client">LargeStack</A> <B>getLargeStack</B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+                                      <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+                                      java.lang.String&nbsp;binName)</PRE>
+<DL>
+<DD>Initialize large stack operator.  This operator can be used to create and manage a stack 
+ within a single bin.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>binName</CODE> - bin name</DL>
+</DD>
+</DL>
+<HR>
+
 <A NAME="register(com.aerospike.client.policy.Policy, java.lang.String, java.lang.String, com.aerospike.client.Language)"><!-- --></A><H3>
 register</H3>
 <PRE>
@@ -950,7 +1014,7 @@ public final void <B>register</B>(<A HREF="../../../com/aerospike/client/policy/
  This method is only supported by Aerospike 3.0 servers.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>clientPath</CODE> - path of client file containing user defined functions<DD><CODE>serverPath</CODE> - path to store user defined functions on the server<DD><CODE>language</CODE> - language of user defined functions
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>clientPath</CODE> - path of client file containing user defined functions, relative to current directory<DD><CODE>serverPath</CODE> - path to store user defined functions on the server, relative to configured script directory.<DD><CODE>language</CODE> - language of user defined functions
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if register fails</DL>
 </DD>
@@ -962,17 +1026,21 @@ execute</H3>
 <PRE>
 public final java.lang.Object <B>execute</B>(<A HREF="../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
                                       <A HREF="../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
-                                      java.lang.String&nbsp;fileName,
+                                      java.lang.String&nbsp;packageName,
                                       java.lang.String&nbsp;functionName,
                                       <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;args)
                                throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
 <DD>Execute user defined function on server and return results.
  The function operates on a single record.
+ The package name is used to locate the udf file location:
+ <p>
+ udf file = <server udf dir>/<package name>.lua
+ <p>
  This method is only supported by Aerospike 3.0 servers.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>fileName</CODE> - server file where user defined function resides<DD><CODE>functionName</CODE> - user defined function<DD><CODE>args</CODE> - arguments passed in to user defined function
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>key</CODE> - unique record identifier<DD><CODE>packageName</CODE> - server package name where user defined function resides<DD><CODE>functionName</CODE> - user defined function<DD><CODE>args</CODE> - arguments passed in to user defined function
 <DT><B>Returns:</B><DD>return value of user defined function
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if transaction fails</DL>
@@ -987,11 +1055,46 @@ public final <A HREF="../../../com/aerospike/client/query/RecordSet.html" title=
                              <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)
                       throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
 <DL>
-<DD>Execute query and return results.
+<DD>Execute query and return record iterator.  The query executor puts records on a queue in 
+ separate threads.  The calling thread concurrently pops records off the queue through the 
+ record iterator.
+ <p>
+ This method is only supported by Aerospike 3.0 servers.
 <P>
 <DD><DL>
 <DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>statement</CODE> - database query command
-<DT><B>Returns:</B><DD>collection of query results
+<DT><B>Returns:</B><DD>record iterator
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if query fails</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="queryAggregate(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, java.lang.String, java.lang.String, com.aerospike.client.Value...)"><!-- --></A><H3>
+queryAggregate</H3>
+<PRE>
+public final <A HREF="../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query">ResultSet</A> <B>queryAggregate</B>(<A HREF="../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+                                      <A HREF="../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement,
+                                      java.lang.String&nbsp;packageName,
+                                      java.lang.String&nbsp;functionName,
+                                      <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;functionArgs)
+                               throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Execute query, apply statement's aggregation function, and return result iterator. The query 
+ executor puts results on a queue in separate threads.  The calling thread concurrently pops 
+ results off the queue through the result iterator.
+ <p>
+ The aggregation function is called on both server and client (final reduce).  Therefore,
+ the Lua script files must also reside on both server and client.
+ The library name is used to locate the udf file location:
+ <p>
+ udf file = <udf dir>/<package name>.lua
+ <p>
+ This method is only supported by Aerospike 3.0 servers.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - generic configuration parameters, pass in null for defaults<DD><CODE>statement</CODE> - database query command<DD><CODE>packageName</CODE> - server package where user defined function resides<DD><CODE>functionName</CODE> - aggregation function name<DD><CODE>functionArgs</CODE> - arguments to pass to function name, if any
+<DT><B>Returns:</B><DD>result iterator
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if query fails</DL>
 </DD>

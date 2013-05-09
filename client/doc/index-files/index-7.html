@@ -141,6 +141,9 @@ Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Val
 <DT><A HREF="../com/aerospike/client/Value.html#get(long)"><B>get(long)</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>
 <DD>Get long value instance.
+<DT><A HREF="../com/aerospike/client/Value.html#get(com.aerospike.client.Value[])"><B>get(Value[])</B></A> - 
+Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>
+<DD>Get value array instance.
 <DT><A HREF="../com/aerospike/client/Value.html#get(java.lang.Object)"><B>get(Object)</B></A> - 
 Static method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>
 <DD>Determine value given generic object.
@@ -205,6 +208,12 @@ Method in class com.aerospike.client.async.<A HREF="../com/aerospike/client/asyn
 <DT><A HREF="../com/aerospike/client/Info.html#getBuffer()"><B>getBuffer()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>
 <DD>Get response buffer.
+<DT><A HREF="../com/aerospike/client/LargeSet.html#getConfig()"><B>getConfig()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A>
+<DD>Return map of list configuration parameters.
+<DT><A HREF="../com/aerospike/client/LargeStack.html#getConfig()"><B>getConfig()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/LargeStack.html" title="class in com.aerospike.client">LargeStack</A>
+<DD>Return map of stack configuration parameters.
 <DT><A HREF="../com/aerospike/client/cluster/Node.html#getConnection(int)"><B>getConnection(int)</B></A> - 
 Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>
 <DD>Get a socket connection from connection pool to the server node.
@@ -214,6 +223,12 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html"
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.html#getDigest(java.lang.String, byte[], java.util.Collection, net.citrusleaf.CitrusleafClient.ClOptions)"><B>getDigest(String, byte[], Collection&lt;String&gt;, CitrusleafClient.ClOptions)</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Get bin name/value pairs for specified key digest and list of bin names.
+<DT><A HREF="../com/aerospike/client/query/Statement.html#getFunctionArgs()"><B>getFunctionArgs()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
+<DD>Return aggregation function arguments.
+<DT><A HREF="../com/aerospike/client/query/Statement.html#getFunctionName()"><B>getFunctionName()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
+<DD>Return aggregation function name.
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#getHeader(com.aerospike.client.policy.Policy, com.aerospike.client.Key)"><B>getHeader(Policy, Key)</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Read record generation and expiration only for specified key.
@@ -238,9 +253,45 @@ Method in class com.aerospike.client.cluster.<A HREF="../com/aerospike/client/cl
 <DT><A HREF="../com/aerospike/client/query/RecordSet.html#getKey()"><B>getKey()</B></A> - 
 Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query">RecordSet</A>
 <DD>Get record's unique identifier.
+<DT><A HREF="../com/aerospike/client/AerospikeClient.html#getLargeSet(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)"><B>getLargeSet(Policy, Key, String)</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
+<DD>Initialize large set operator.
+<DT><A HREF="../com/aerospike/client/AerospikeClient.html#getLargeStack(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)"><B>getLargeStack(Policy, Key, String)</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
+<DD>Initialize large stack operator.
 <DT><A HREF="../com/aerospike/client/Info.html#getLength()"><B>getLength()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>
 <DD>Get response length.
+<DT><A HREF="../com/aerospike/client/Value.BlobValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.BlobValue.html" title="class in com.aerospike.client">Value.BlobValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.BytesValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.BytesValue.html" title="class in com.aerospike.client">Value.BytesValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>
+<DD>Return value as an Object.
+<DT><A HREF="../com/aerospike/client/Value.IntegerValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.IntegerValue.html" title="class in com.aerospike.client">Value.IntegerValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.ListValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.ListValue.html" title="class in com.aerospike.client">Value.ListValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.LongValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.LongValue.html" title="class in com.aerospike.client">Value.LongValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.MapValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.MapValue.html" title="class in com.aerospike.client">Value.MapValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.NullValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.NullValue.html" title="class in com.aerospike.client">Value.NullValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.StringValue.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client">Value.StringValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.ValueArray.html#getLuaValue()"><B>getLuaValue()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.ValueArray.html" title="class in com.aerospike.client">Value.ValueArray</A>
+<DD>&nbsp;
 <DT><A HREF="../com/aerospike/client/AerospikeException.html#getMessage()"><B>getMessage()</B></A> - 
 Method in exception com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A>
 <DD>&nbsp;
@@ -262,6 +313,9 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeC
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#getNodes()"><B>getNodes()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Return array of active server nodes in the cluster.
+<DT><A HREF="../com/aerospike/client/query/ResultSet.html#getObject()"><B>getObject()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query">ResultSet</A>
+<DD>Get record's header and bin data.
 <DT><A HREF="../com/aerospike/client/Value.BlobValue.html#getObject()"><B>getObject()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.BlobValue.html" title="class in com.aerospike.client">Value.BlobValue</A>
 <DD>&nbsp;
@@ -289,6 +343,12 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.Null
 <DT><A HREF="../com/aerospike/client/Value.StringValue.html#getObject()"><B>getObject()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client">Value.StringValue</A>
 <DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.ValueArray.html#getObject()"><B>getObject()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.ValueArray.html" title="class in com.aerospike.client">Value.ValueArray</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/query/Statement.html#getPackageName()"><B>getPackageName()</B></A> - 
+Method in class com.aerospike.client.query.<A HREF="../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>
+<DD>Return aggregation file name.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html#getPriority()"><B>getPriority()</B></A> - 
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ClScanningOptions.html" title="class in net.citrusleaf">CitrusleafClient.ClScanningOptions</A>
 <DD>Get server scan priority setting.
@@ -330,6 +390,9 @@ Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.Null
 <DD>&nbsp;
 <DT><A HREF="../com/aerospike/client/Value.StringValue.html#getType()"><B>getType()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client">Value.StringValue</A>
+<DD>&nbsp;
+<DT><A HREF="../com/aerospike/client/Value.ValueArray.html#getType()"><B>getType()</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Value.ValueArray.html" title="class in com.aerospike.client">Value.ValueArray</A>
 <DD>&nbsp;
 <DT><A HREF="../com/aerospike/client/Info.html#getValue()"><B>getValue()</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/Info.html" title="class in com.aerospike.client">Info</A>

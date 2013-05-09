@@ -53,7 +53,7 @@ function windowTitle()
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;<A HREF="../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
 &nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../../index.html?com/aerospike/client/query/Statement.html" target="_top"><B>FRAMES</B></A>  &nbsp;
@@ -95,11 +95,11 @@ java.lang.Object
 </PRE>
 <HR>
 <DL>
-<DT><PRE>public class <B>Statement</B><DT>extends java.lang.Object</DL>
+<DT><PRE>public final class <B>Statement</B><DT>extends java.lang.Object</DL>
 </PRE>
 
 <P>
-SQL statement creation routines.
+Query statement parameters.
 <P>
 
 <P>
@@ -133,20 +133,27 @@ SQL statement creation routines.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#create(java.lang.String)">create</A></B>(java.lang.String&nbsp;sql)</CODE>
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[]</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#getFunctionArgs()">getFunctionArgs</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create statement from string.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return aggregation function arguments.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
-<CODE>static&nbsp;<A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#create(java.lang.String, java.lang.Object...)">create</A></B>(java.lang.String&nbsp;sql,
-       java.lang.Object...&nbsp;args)</CODE>
+<CODE>&nbsp;java.lang.String</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#getFunctionName()">getFunctionName</A></B>()</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create statement from format string and argument values.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return aggregation function name.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;java.lang.String</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#getPackageName()">getPackageName</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return aggregation file name.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -154,7 +161,7 @@ SQL statement creation routines.
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setBinNames(java.lang.String...)">setBinNames</A></B>(java.lang.String...&nbsp;binNames)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set query bin names.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -162,7 +169,7 @@ SQL statement creation routines.
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setFilters(com.aerospike.client.query.Filter...)">setFilters</A></B>(<A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A>...&nbsp;filters)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set optional query filters.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -170,7 +177,7 @@ SQL statement creation routines.
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setIndexName(java.lang.String)">setIndexName</A></B>(java.lang.String&nbsp;indexName)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set query index name.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -178,7 +185,7 @@ SQL statement creation routines.
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setNamespace(java.lang.String)">setNamespace</A></B>(java.lang.String&nbsp;namespace)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set query namespace.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -186,7 +193,15 @@ SQL statement creation routines.
 <TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setSetName(java.lang.String)">setSetName</A></B>(java.lang.String&nbsp;setName)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set optional query setname.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Statement.html#setTaskId(int)">setTaskId</A></B>(int&nbsp;taskId)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Set optional query task id.</TD>
 </TR>
 </TABLE>
 &nbsp;<A NAME="methods_inherited_from_class_java.lang.Object"><!-- --></A>
@@ -233,6 +248,8 @@ setNamespace</H3>
 <PRE>
 public void <B>setNamespace</B>(java.lang.String&nbsp;namespace)</PRE>
 <DL>
+<DD>Set query namespace.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -244,6 +261,8 @@ setSetName</H3>
 <PRE>
 public void <B>setSetName</B>(java.lang.String&nbsp;setName)</PRE>
 <DL>
+<DD>Set optional query setname.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -255,6 +274,8 @@ setIndexName</H3>
 <PRE>
 public void <B>setIndexName</B>(java.lang.String&nbsp;indexName)</PRE>
 <DL>
+<DD>Set query index name.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -266,6 +287,8 @@ setBinNames</H3>
 <PRE>
 public void <B>setBinNames</B>(java.lang.String...&nbsp;binNames)</PRE>
 <DL>
+<DD>Set query bin names.
+<P>
 <DD><DL>
 </DL>
 </DD>
@@ -277,18 +300,7 @@ setFilters</H3>
 <PRE>
 public void <B>setFilters</B>(<A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A>...&nbsp;filters)</PRE>
 <DL>
-<DD><DL>
-</DL>
-</DD>
-</DL>
-<HR>
-
-<A NAME="create(java.lang.String)"><!-- --></A><H3>
-create</H3>
-<PRE>
-public static <A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A> <B>create</B>(java.lang.String&nbsp;sql)</PRE>
-<DL>
-<DD>Create statement from string.
+<DD>Set optional query filters.
 <P>
 <DD><DL>
 </DL>
@@ -296,13 +308,51 @@ public static <A HREF="../../../../com/aerospike/client/query/Statement.html" ti
 </DL>
 <HR>
 
-<A NAME="create(java.lang.String, java.lang.Object...)"><!-- --></A><H3>
-create</H3>
+<A NAME="setTaskId(int)"><!-- --></A><H3>
+setTaskId</H3>
 <PRE>
-public static <A HREF="../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A> <B>create</B>(java.lang.String&nbsp;sql,
-                               java.lang.Object...&nbsp;args)</PRE>
+public void <B>setTaskId</B>(int&nbsp;taskId)</PRE>
 <DL>
-<DD>Create statement from format string and argument values.
+<DD>Set optional query task id.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getPackageName()"><!-- --></A><H3>
+getPackageName</H3>
+<PRE>
+public java.lang.String <B>getPackageName</B>()</PRE>
+<DL>
+<DD>Return aggregation file name.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getFunctionName()"><!-- --></A><H3>
+getFunctionName</H3>
+<PRE>
+public java.lang.String <B>getFunctionName</B>()</PRE>
+<DL>
+<DD>Return aggregation function name.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getFunctionArgs()"><!-- --></A><H3>
+getFunctionArgs</H3>
+<PRE>
+public <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[] <B>getFunctionArgs</B>()</PRE>
+<DL>
+<DD>Return aggregation function arguments.
 <P>
 <DD><DL>
 </DL>
@@ -339,7 +389,7 @@ public static <A HREF="../../../../com/aerospike/client/query/Statement.html" ti
 
 <TR>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
-&nbsp;<A HREF="../../../../com/aerospike/client/query/RecordSet.html" title="class in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
+&nbsp;<A HREF="../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query"><B>PREV CLASS</B></A>&nbsp;
 &nbsp;NEXT CLASS</FONT></TD>
 <TD BGCOLOR="white" CLASS="NavBarCell2"><FONT SIZE="-2">
   <A HREF="../../../../index.html?com/aerospike/client/query/Statement.html" target="_top"><B>FRAMES</B></A>  &nbsp;

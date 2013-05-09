@@ -115,7 +115,19 @@ Uses of <A HREF="../../../../../com/aerospike/client/policy/QueryPolicy.html" ti
       <A HREF="../../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement)</CODE>
 
 <BR>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return results.</TD>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query and return record iterator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../../../com/aerospike/client/query/ResultSet.html" title="class in com.aerospike.client.query">ResultSet</A></CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../../com/aerospike/client/AerospikeClient.html#queryAggregate(com.aerospike.client.policy.QueryPolicy, com.aerospike.client.query.Statement, java.lang.String, java.lang.String, com.aerospike.client.Value...)">queryAggregate</A></B>(<A HREF="../../../../../com/aerospike/client/policy/QueryPolicy.html" title="class in com.aerospike.client.policy">QueryPolicy</A>&nbsp;policy,
+               <A HREF="../../../../../com/aerospike/client/query/Statement.html" title="class in com.aerospike.client.query">Statement</A>&nbsp;statement,
+               java.lang.String&nbsp;packageName,
+               java.lang.String&nbsp;functionName,
+               <A HREF="../../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;functionArgs)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Execute query, apply statement's aggregation function, and return result iterator.</TD>
 </TR>
 </TABLE>
 &nbsp;

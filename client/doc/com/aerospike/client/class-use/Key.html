@@ -154,7 +154,7 @@ Uses of <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.
 <CODE>&nbsp;java.lang.Object</CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#execute(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String, java.lang.String, com.aerospike.client.Value...)">execute</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
-        java.lang.String&nbsp;fileName,
+        java.lang.String&nbsp;packageName,
         java.lang.String&nbsp;functionName,
         <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>...&nbsp;args)</CODE>
 
@@ -237,6 +237,26 @@ Uses of <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/LargeSet.html" title="class in com.aerospike.client">LargeSet</A></CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#getLargeSet(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">getLargeSet</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+            <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+            java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large set operator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;<A HREF="../../../../com/aerospike/client/LargeStack.html" title="class in com.aerospike.client">LargeStack</A></CODE></FONT></TD>
+<TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#getLargeStack(com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">getLargeStack</A></B>(<A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+              <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+              java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large stack operator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;<A HREF="../../../../com/aerospike/client/Record.html" title="class in com.aerospike.client">Record</A></CODE></FONT></TD>
 <TD><CODE><B>AerospikeClient.</B><B><A HREF="../../../../com/aerospike/client/AerospikeClient.html#operate(com.aerospike.client.policy.WritePolicy, com.aerospike.client.Key, com.aerospike.client.Operation...)">operate</A></B>(<A HREF="../../../../com/aerospike/client/policy/WritePolicy.html" title="class in com.aerospike.client.policy">WritePolicy</A>&nbsp;policy,
         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
@@ -282,6 +302,32 @@ Uses of <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create record if it does not already exist.</TD>
+</TR>
+</TABLE>
+&nbsp;
+<P>
+
+<TABLE BORDER="1" WIDTH="100%" CELLPADDING="3" CELLSPACING="0" SUMMARY="">
+<TR BGCOLOR="#CCCCFF" CLASS="TableSubHeadingColor">
+<TH ALIGN="left" COLSPAN="2">Constructors in <A HREF="../../../../com/aerospike/client/package-summary.html">com.aerospike.client</A> with parameters of type <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A></FONT></TH>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/LargeSet.html#LargeSet(com.aerospike.client.AerospikeClient, com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">LargeSet</A></B>(<A HREF="../../../../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>&nbsp;client,
+         <A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+         <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+         java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large set operator.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/LargeStack.html#LargeStack(com.aerospike.client.AerospikeClient, com.aerospike.client.policy.Policy, com.aerospike.client.Key, java.lang.String)">LargeStack</A></B>(<A HREF="../../../../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>&nbsp;client,
+           <A HREF="../../../../com/aerospike/client/policy/Policy.html" title="class in com.aerospike.client.policy">Policy</A>&nbsp;policy,
+           <A HREF="../../../../com/aerospike/client/Key.html" title="class in com.aerospike.client">Key</A>&nbsp;key,
+           java.lang.String&nbsp;binName)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Initialize large stack operator.</TD>
 </TR>
 </TABLE>
 &nbsp;

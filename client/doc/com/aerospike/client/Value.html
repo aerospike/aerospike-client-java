@@ -94,7 +94,7 @@ java.lang.Object
   <IMG SRC="../../../resources/inherit.gif" ALT="extended by "><B>com.aerospike.client.Value</B>
 </PRE>
 <DL>
-<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../com/aerospike/client/Value.BlobValue.html" title="class in com.aerospike.client">Value.BlobValue</A>, <A HREF="../../../com/aerospike/client/Value.BytesValue.html" title="class in com.aerospike.client">Value.BytesValue</A>, <A HREF="../../../com/aerospike/client/Value.IntegerValue.html" title="class in com.aerospike.client">Value.IntegerValue</A>, <A HREF="../../../com/aerospike/client/Value.ListValue.html" title="class in com.aerospike.client">Value.ListValue</A>, <A HREF="../../../com/aerospike/client/Value.LongValue.html" title="class in com.aerospike.client">Value.LongValue</A>, <A HREF="../../../com/aerospike/client/Value.MapValue.html" title="class in com.aerospike.client">Value.MapValue</A>, <A HREF="../../../com/aerospike/client/Value.NullValue.html" title="class in com.aerospike.client">Value.NullValue</A>, <A HREF="../../../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client">Value.StringValue</A></DD>
+<DT><B>Direct Known Subclasses:</B> <DD><A HREF="../../../com/aerospike/client/Value.BlobValue.html" title="class in com.aerospike.client">Value.BlobValue</A>, <A HREF="../../../com/aerospike/client/Value.BytesValue.html" title="class in com.aerospike.client">Value.BytesValue</A>, <A HREF="../../../com/aerospike/client/Value.IntegerValue.html" title="class in com.aerospike.client">Value.IntegerValue</A>, <A HREF="../../../com/aerospike/client/Value.ListValue.html" title="class in com.aerospike.client">Value.ListValue</A>, <A HREF="../../../com/aerospike/client/Value.LongValue.html" title="class in com.aerospike.client">Value.LongValue</A>, <A HREF="../../../com/aerospike/client/Value.MapValue.html" title="class in com.aerospike.client">Value.MapValue</A>, <A HREF="../../../com/aerospike/client/Value.NullValue.html" title="class in com.aerospike.client">Value.NullValue</A>, <A HREF="../../../com/aerospike/client/Value.StringValue.html" title="class in com.aerospike.client">Value.StringValue</A>, <A HREF="../../../com/aerospike/client/Value.ValueArray.html" title="class in com.aerospike.client">Value.ValueArray</A></DD>
 </DL>
 <HR>
 <DL>
@@ -181,6 +181,14 @@ Polymorphic value classes used to efficiently serialize objects into the wire pr
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;String value.</TD>
 </TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;class</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.ValueArray.html" title="class in com.aerospike.client">Value.ValueArray</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Value array.</TD>
+</TR>
 </TABLE>
 &nbsp;
 <!-- ======== CONSTRUCTOR SUMMARY ======== -->
@@ -258,6 +266,14 @@ Polymorphic value classes used to efficiently serialize objects into the wire pr
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.html#get(com.aerospike.client.Value[])">get</A></B>(<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[]&nbsp;value)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get value array instance.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A></CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/Value.html#getAsBlob(java.lang.Object)">getAsBlob</A></B>(java.lang.Object&nbsp;value)</CODE>
 
 <BR>
@@ -286,6 +302,14 @@ Polymorphic value classes used to efficiently serialize objects into the wire pr
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Get null value instance.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>abstract &nbsp;org.luaj.vm2.LuaValue</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/Value.html#getLuaValue()">getLuaValue</A></B>()</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Return value as an Object.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -405,6 +429,19 @@ get</H3>
 public static <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A> <B>get</B>(long&nbsp;value)</PRE>
 <DL>
 <DD>Get long value instance.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="get(com.aerospike.client.Value[])"><!-- --></A><H3>
+get</H3>
+<PRE>
+public static <A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A> <B>get</B>(<A HREF="../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>[]&nbsp;value)</PRE>
+<DL>
+<DD>Get value array instance.
 <P>
 <DD><DL>
 </DL>
@@ -548,6 +585,19 @@ getObject</H3>
 public abstract java.lang.Object <B>getObject</B>()</PRE>
 <DL>
 <DD>Return original value as an Object.
+<P>
+<DD><DL>
+</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="getLuaValue()"><!-- --></A><H3>
+getLuaValue</H3>
+<PRE>
+public abstract org.luaj.vm2.LuaValue <B>getLuaValue</B>()</PRE>
+<DL>
+<DD>Return value as an Object.
 <P>
 <DD><DL>
 </DL>
