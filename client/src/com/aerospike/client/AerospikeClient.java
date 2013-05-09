@@ -31,8 +31,10 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.QueryExecutor;
+import com.aerospike.client.query.QueryAggregateExecutor;
+import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Util;
 
@@ -620,8 +622,8 @@ public class AerospikeClient {
 	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param clientPath			path of client file containing user defined functions
-	 * @param serverPath			path to store user defined functions on the server
+	 * @param clientPath			path of client file containing user defined functions, relative to current directory
+	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
@@ -663,20 +665,24 @@ public class AerospikeClient {
 	/**
 	 * Execute user defined function on server and return results.
 	 * The function operates on a single record.
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * udf file = <server udf dir>/<package name>.lua
+	 * <p>
 	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
-	 * @param fileName				server file where user defined function resides
+	 * @param packageName			server package name where user defined function resides
 	 * @param functionName			user defined function
 	 * @param args					arguments passed in to user defined function
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(Policy policy, Key key, String fileName, String functionName, Value... args) 
+	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
 		throws AerospikeException {
 		ReadCommand command = new ReadCommand(cluster, key);
-		command.setUdf(key, fileName, functionName, args);		
+		command.setUdf(key, packageName, functionName, args);		
 		command.execute(policy);
 		
 		Record record = command.getRecord();
@@ -711,26 +717,60 @@ public class AerospikeClient {
 	//-------------------------------------------------------
 
 	/**
-	 * Execute query and return results.
+	 * Execute query and return record iterator.  The query executor puts records on a queue in 
+	 * separate threads.  The calling thread concurrently pops records off the queue through the 
+	 * record iterator.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
-	 * @return						collection of query results
+	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public final RecordSet query(QueryPolicy policy, Statement statement) 
-		throws AerospikeException {
-		
+	public final RecordSet query(QueryPolicy policy, Statement statement) throws AerospikeException {
 		if (policy == null) {
 			policy = new QueryPolicy();
 		}
-		
-		// Retry policy must be one-shot for queries.
-		policy.maxRetries = 0;
-		
-		return new QueryExecutor(policy, statement, cluster.getNodes());
+		QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, cluster.getNodes());
+		return executor.getRecordSet();
 	}
 	
+	/**
+	 * Execute query, apply statement's aggregation function, and return result iterator. The query 
+	 * executor puts results on a queue in separate threads.  The calling thread concurrently pops 
+	 * results off the queue through the result iterator.
+	 * <p>
+	 * The aggregation function is called on both server and client (final reduce).  Therefore,
+	 * the Lua script files must also reside on both server and client.
+	 * The library name is used to locate the udf file location:
+	 * <p>
+	 * udf file = <udf dir>/<package name>.lua
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @param packageName			server package where user defined function resides
+	 * @param functionName			aggregation function name
+	 * @param functionArgs			arguments to pass to function name, if any
+	 * @return						result iterator
+	 * @throws AerospikeException	if query fails
+	 */
+	public final ResultSet queryAggregate(
+		QueryPolicy policy,
+		Statement statement,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = new QueryPolicy();
+		}
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, cluster.getNodes(), packageName, functionName, functionArgs);
+		return executor.getResultSet();
+	}
+
 	/**
 	 * Create secondary index.
 	 * 

@@ -16,10 +16,16 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.luaj.vm2.LuaInteger;
+import org.luaj.vm2.LuaNil;
+import org.luaj.vm2.LuaString;
+import org.luaj.vm2.LuaValue;
 import org.msgpack.packer.Packer;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.lua.LuaList;
+import com.aerospike.client.lua.LuaMap;
 import com.aerospike.client.util.MsgPack;
 
 /**
@@ -143,6 +149,11 @@ public abstract class Value {
 	public abstract Object getObject();
 	
 	/**
+	 * Return value as an Object.
+	 */
+	public abstract LuaValue getLuaValue();
+
+	/**
 	 * Empty value.
 	 */
 	public static final class NullValue extends Value {
@@ -171,6 +182,11 @@ public abstract class Value {
 			return null;
 		}
 		
+		@Override
+		public LuaValue getLuaValue() {
+			return LuaNil.NIL;
+		}
+
 		@Override
 		public String toString() {
 			return null;
@@ -215,6 +231,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public LuaValue getLuaValue() {
+			return LuaString.valueOf(bytes);
+		}
+
+		@Override
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
 		}
@@ -255,6 +276,11 @@ public abstract class Value {
 			return value;
 		}
 		
+		@Override
+		public LuaValue getLuaValue() {
+			return LuaString.valueOf(value);
+		}
+
 		@Override
 		public String toString() {
 			return value;
@@ -298,6 +324,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public LuaValue getLuaValue() {
+			return LuaInteger.valueOf(value);
+		}
+
+		@Override
 		public String toString() {
 			return Integer.toString(value);
 		}
@@ -339,6 +370,11 @@ public abstract class Value {
 			return value;
 		}
 		
+		@Override
+		public LuaValue getLuaValue() {
+			return LuaInteger.valueOf(value);
+		}
+
 		@Override
 		public String toString() {
 			return Long.toString(value);
@@ -393,6 +429,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public LuaValue getLuaValue() {
+			return LuaString.valueOf(bytes);
+		}
+
+		@Override
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
 		}
@@ -435,6 +476,11 @@ public abstract class Value {
 		@Override
 		public Object getObject() {
 			return array;
+		}
+
+		@Override
+		public LuaValue getLuaValue() {
+			return null;
 		}
 
 		@Override
@@ -482,6 +528,12 @@ public abstract class Value {
 			return list;
 		}
 
+		@SuppressWarnings("unchecked")
+		@Override
+		public LuaValue getLuaValue() {
+			return new LuaList<Object>((List<Object>)list);
+		}
+		
 		@Override
 		public String toString() {
 			return list.toString();
@@ -525,6 +577,12 @@ public abstract class Value {
 		@Override
 		public Object getObject() {
 			return map;
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public LuaValue getLuaValue() {
+			return new LuaMap<Object,Object>((Map<Object,Object>)map);
 		}
 		
 		@Override

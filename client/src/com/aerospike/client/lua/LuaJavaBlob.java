@@ -1,15 +1,19 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.lua;
 
-public enum Order {
-	ASC,
-	DESC,
+import org.luaj.vm2.LuaUserdata;
+
+public final class LuaJavaBlob extends LuaUserdata {
+
+	public LuaJavaBlob(Object object) {
+		super(object);
+	}
 }

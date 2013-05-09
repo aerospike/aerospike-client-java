@@ -170,7 +170,7 @@ public final class MsgPack {
 	// Unpack methods
 	//-------------------------------------------------------
 
-	public static Object parseList(byte[] buf, int offset, int len) throws AerospikeException {
+	public static List<?> parseList(byte[] buf, int offset, int len) throws AerospikeException {
 		try {
 			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
 			return unpackList(unpacker.readValue());
@@ -180,7 +180,7 @@ public final class MsgPack {
 		}
 	}
 
-	public static Object parseMap(byte[] buf, int offset, int len) throws AerospikeException {
+	public static Map<?,?> parseMap(byte[] buf, int offset, int len) throws AerospikeException {
 		try {
 			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
 			return unpackMap(unpacker.readValue());

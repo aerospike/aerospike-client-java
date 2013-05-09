@@ -13,30 +13,32 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.QueryPolicy;
 
-public final class QueryExecutor extends RecordSet {
+public abstract class QueryExecutor {
 	
 	private final QueryPolicy policy;
-	private final Statement statement;
-	private final QueryThread[] threads;
+	protected final Statement statement;
+	private QueryThread[] threads;
 	private volatile int nextThread;
 	private volatile Exception exception;
 	
-	public QueryExecutor(QueryPolicy policy, Statement statement, Node[] nodes) {
-		super(policy.recordQueueSize);
+	public QueryExecutor(QueryPolicy policy, Statement statement) {
 		this.policy = policy;
+		this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 		this.statement = statement;
-		
+	}
+	
+	protected final void startThreads(Node[] nodes) {		
 		// Initialize threads.
 		threads = new QueryThread[nodes.length];
 
 		for (int i = 0; i < nodes.length; i++) {
-			QueryCommand command = new QueryCommand(nodes[i], this);
+			QueryCommand command = createCommand(nodes[i]);
 			threads[i] = new QueryThread(command);
 		}
 		
 		// Initialize maximum number of nodes to query in parallel.
 		nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
-		
+
 		// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.
 		int max = nextThread;
 
@@ -45,7 +47,7 @@ public final class QueryExecutor extends RecordSet {
 		}
 	}
 	
-	private void threadCompleted() {
+	private final void threadCompleted() {
 		int index = -1;
 		
 		// Determine if a new thread needs to be started.
@@ -68,12 +70,11 @@ public final class QueryExecutor extends RecordSet {
 				}
 			}
 			// All threads complete.  Tell RecordSet thread to return complete to user.
-			// This is done by adding a null record to the queue.
-			put(new KeyRecord(null, null));
+			sendCompleted();
 		}
 	}
 
-    private void stopThreads(Exception cause) {
+    private final void stopThreads(Exception cause) {
     	// Exception may be null, so can't synchronize on it.
     	// Use statement instead.
     	synchronized (statement) {
@@ -93,7 +94,7 @@ public final class QueryExecutor extends RecordSet {
 		}
     }
 
-	protected void checkForException() throws AerospikeException {
+	protected final void checkForException() throws AerospikeException {
 		// Throw an exception if an error occurred.
 		if (exception != null) {
 			if (exception instanceof AerospikeException) {
@@ -131,4 +132,7 @@ public final class QueryExecutor extends RecordSet {
 			command.stop();
 		}
 	}
+	
+	protected abstract QueryCommand createCommand(Node node);
+	protected abstract void sendCompleted();
 }

@@ -192,16 +192,16 @@ public class Command {
 		end();
 	}
 
-	public final void setUdf(Key key, String fileName, String functionName, Value[] args) 
+	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		int fieldCount = estimateKeySize(key);		
 		byte[] argBytes = MsgPack.pack(args);
-		fieldCount += estimateUdfSize(fileName, functionName, argBytes);
+		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		begin();
 		writeHeader(0, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(key);
-		writeField(fileName, FieldType.UDF_FILENAME);
+		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
 		end();
@@ -329,8 +329,8 @@ public class Command {
 		return fieldCount;
 	}
 
-	public final int estimateUdfSize(String fileName, String functionName, byte[] bytes) {
-		sendOffset += Buffer.estimateSizeUtf8(fileName) + FIELD_HEADER_SIZE;		
+	public final int estimateUdfSize(String packageName, String functionName, byte[] bytes) {
+		sendOffset += Buffer.estimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;		
 		sendOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;		
 		sendOffset += bytes.length;
 		return 3;

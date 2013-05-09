@@ -35,7 +35,6 @@ public class UserDefinedFunction extends Example {
 		policy.timeout = 5000; // Registration takes longer than a normal request.
 		client.register(policy, "udf/records.lua", "records.lua", Language.LUA);
 	}
-	
 
 	private void example1(AerospikeClient client, Parameters params) throws Exception {	
 		Key key = new Key(params.namespace, params.set, "udfkey");

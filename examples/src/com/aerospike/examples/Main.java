@@ -56,9 +56,10 @@ public class Main extends JPanel {
 		"AsyncBatch",
 		"AsyncScan",
 		"UserDefinedFunction",
-		"Query",
 		"LargeSet",
-		"LargeStack"
+		"LargeStack",
+		"Query",
+		"QueryAggregate"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 

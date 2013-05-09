@@ -13,26 +13,26 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 
 /**
  * This class manages record retrieval from queries.
  * Multiple threads will retrieve records from the server nodes and put these records on the queue.
  * The single user thread consumes these records from the queue.
  */
-public final class RecordSet {
-	private final QueryExecutor executor;
-	private final BlockingQueue<KeyRecord> queue;
-	private KeyRecord record;
+public final class ResultSet {
+	public static final Integer END = new Integer(-1);
+	
+	private final QueryAggregateExecutor executor;
+	private final BlockingQueue<Object> queue;
+	private Object row;
 	private volatile boolean valid = true;
 
 	/**
 	 * Initialize record set with underlying producer/consumer queue.
 	 */
-	protected RecordSet(QueryExecutor executor, int capacity) {
+	protected ResultSet(QueryAggregateExecutor executor, int capacity) {
 		this.executor = executor;
-		this.queue = new ArrayBlockingQueue<KeyRecord>(capacity);
+		this.queue = new ArrayBlockingQueue<Object>(capacity);
 	}
 	
 	//-------------------------------------------------------
@@ -48,9 +48,9 @@ public final class RecordSet {
 	public final boolean next() throws AerospikeException {
 		if (valid) {
 			try {
-				record = queue.take();
+				row = queue.take();
 
-				if (record.key == null) {
+				if (row == END) {
 					executor.checkForException();
 					valid = false;
 				}
@@ -72,19 +72,12 @@ public final class RecordSet {
 	//-------------------------------------------------------
 	// Meta-data retrieval methods
 	//-------------------------------------------------------
-	
-	/**
-	 * Get record's unique identifier.
-	 */
-	public final Key getKey() {
-		return record.key;
-	}
-	
+		
 	/**
 	 * Get record's header and bin data.
 	 */
-	public final Record getRecord() {
-		return record.record;
+	public final Object getObject() {
+		return row;
 	}
 		
 	//-------------------------------------------------------
@@ -92,17 +85,17 @@ public final class RecordSet {
 	//-------------------------------------------------------
 	
 	/**
-	 * Put a record on the queue.
+	 * Put object on the queue.
 	 */
-	protected final boolean put(KeyRecord record) {
+	public final boolean put(Object object) {
 		if (valid) {
 			try {
-				queue.put(record);
+				queue.put(object);
 			}
 			catch (InterruptedException ie) {
 				valid = false;
 			}
 		}
 		return valid;
-	}
+	}	
 }
