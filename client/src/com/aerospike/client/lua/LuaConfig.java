@@ -15,7 +15,7 @@ package com.aerospike.client.lua;
  */
 public final class LuaConfig {
 	/**
-	 * File location of user defined Lua source files.
+	 * Directory location which contains user defined Lua source files.
 	 */
 	public static String SourceDirectory = "udf";
 	
