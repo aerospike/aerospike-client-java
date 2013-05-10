@@ -21,12 +21,15 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.ThreadLocalData1;
 
 /**
- * Access Citrusleaf's monitoring protocol - the "Info" protocol.
+ * Access server's info monitoring protocol.
  * <p>
  * The info protocol is a name/value pair based system, where an individual
  * database server node is queried to determine its configuration and status.
- * The list of supported names can be found on the Citrusleaf Wiki under the TCP
- * wire protocol specification.
+ * The list of supported names can be found at:
+ * <p>
+ * <a href="https://docs.aerospike.com/display/AS2/Config+Parameters+Reference">https://docs.aerospike.com/display/AS2/Config+Parameters+Reference</a>
+ * <p>
+ * 
  */
 public final class Info {	
 	//-------------------------------------------------------
