@@ -1,13 +1,12 @@
 /*
- *  Citrusleaf client examples -- gui control
+ * Aerospike client examples -- gui control
  *
- *  Copyright 2011 by Citrusleaf, Inc.  All rights reserved.
- *  
- *  Availability of this source code to partners and customers includes
- *  redistribution rights covered by individual contract. Please check
- *  your contract for exact rights and responsibilities.
+ * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
  */
-
 package com.aerospike.examples;
 
 import java.awt.BorderLayout;
@@ -256,7 +255,7 @@ public class GuiDisplay extends JPanel {
 	public static void startGui(String[] examples, Parameters params, Console console) throws AerospikeException {
 		JDesktopPane desk;
 
-		frame =  new JFrame("Citrusleaf JAVA client examples");
+		frame =  new JFrame("Aerospike Java client examples");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		desk = new JDesktopPane();
 

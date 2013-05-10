@@ -1,23 +1,12 @@
 /*
- *  Citrusleaf client examples
+ * Aerospike client examples
  *
- *  Copyright 2011 by Citrusleaf, Inc.  All rights reserved.
- *  
- *  Availability of this source code to partners and customers includes
- *  redistribution rights covered by individual contract. Please check
- *  your contract for exact rights and responsibilities.
+ * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
  */
-
-/*
- * Use notes. This stand-alone application provides a number of functional
- * end user tests. Simply compile this file with the Citrusleaf library
- * and enjoy the fine example-ish goodness. 
- * 
- * It does rely on the Apache Commons CLI (Command Line Interpreter)
- * library available from http://commons.apache.org/cli/ . This library has been stable
- * in its 1.2 version since 2002.
- */
-
 package com.aerospike.examples;
 
 import java.io.PrintWriter;
