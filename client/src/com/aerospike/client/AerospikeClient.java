@@ -743,7 +743,7 @@ public class AerospikeClient {
 	 * <p>
 	 * The aggregation function is called on both server and client (final reduce).  Therefore,
 	 * the Lua script files must also reside on both server and client.
-	 * The library name is used to locate the udf file location:
+	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
 	 * <p>
