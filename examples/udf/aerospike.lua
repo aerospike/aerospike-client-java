@@ -9,19 +9,19 @@ local sandboxed = {}
 --
 -- ############################################################################
 
-function trace(m, ...)
+function log_trace(m, ...)
     return aerospike:log(4, string.format(m, ...))
 end
 
-function debug(m, ...)
+function log_debug(m, ...)
     return aerospike:log(3, string.format(m, ...))
 end
 
-function info(m, ...)
+function log_info(m, ...)
     return aerospike:log(2, string.format(m, ...))
 end
 
-function warn(m, ...)
+function log_warn(m, ...)
     return aerospike:log(1, string.format(m, ...))
 end
 
@@ -48,10 +48,10 @@ function env_record()
         ["putX"] = putX,
 
         -- logging functions
-        ["trace"] = trace,
-        ["debug"] = debug,
-        ["info"] = info,
-        ["warn"] = warn,
+        ["trace"] = log_trace,
+        ["debug"] = log_debug,
+        ["info"] = log_info,
+        ["warn"] = log_warn,
         
         -- standard lua functions
         ["error"] = error,
@@ -241,3 +241,4 @@ function apply_stream(f, scope, istream, ostream, ...)
         return 2
     end
 end
+

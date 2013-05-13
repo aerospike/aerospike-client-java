@@ -14,56 +14,38 @@ import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.PackageLib;
 import org.luaj.vm2.lib.VarArgFunction;
 
 public final class LuaIteratorLib extends OneArgFunction {
 
-	public LuaIteratorLib() {
+	private final LuaInstance instance;
+
+	public LuaIteratorLib(LuaInstance instance) {
+		this.instance = instance;
 	}
 
-	private LuaTable init() {
-		LuaTable table = new LuaTable();
-		bind(table, Arg1.class, new String[] {"has_next"});
-		bind(table, ArgV.class, new String[] {"next"});
+	public LuaValue call(LuaValue env) {
+		LuaTable table = new LuaTable(0,5);
+		table.set("has_next", new hasnext());
+		table.set("next", new next());
 		
-		String packageName = "iterator";
-		env.set(packageName, table);
-		PackageLib.instance.LOADED.set(packageName, table);
+		instance.registerPackage("iterator", table);
 		return table;
 	}
-	
-	public LuaValue call(LuaValue arg) {
-		switch (opcode) {
-		case 0: // init library
-			return init();
-		}
-		return NIL;
-	}
 
-	public static final class Arg1 extends OneArgFunction {
+	public static final class hasnext extends OneArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
 			LuaIterator iter = (LuaIterator)arg;
-			
-			switch (opcode) {
-			case 0:  // has_next
-				return LuaBoolean.valueOf(iter.hasNext());
-			}
-			return NIL;
+			return LuaBoolean.valueOf(iter.hasNext());
 		}
 	}
 	
-	public static final class ArgV extends VarArgFunction {
+	public static final class next extends VarArgFunction {
 		@Override
 		public Varargs invoke(Varargs args) {
 			LuaIterator iter = (LuaIterator)arg(1);
-			
-			switch (opcode) {
-			case 0: // next
-				return iter.next();
-			}
-			return NONE;
+			return iter.next();
 		}
 	}
 }

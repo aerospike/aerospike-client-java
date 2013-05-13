@@ -13,80 +13,68 @@ import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.PackageLib;
 import org.luaj.vm2.lib.TwoArgFunction;
 
 public final class LuaStreamLib extends OneArgFunction {
 	
-	public LuaStreamLib() {
+	private final LuaInstance instance;
+
+	public LuaStreamLib(LuaInstance instance) {
+		this.instance = instance;
 	}
 	
-	private LuaTable init() {
-		LuaTable meta = new LuaTable();
-		bind(meta, Meta1.class, new String[] {"__tostring"});
+	public LuaValue call(LuaValue env) {
+		LuaTable meta = new LuaTable(0,1);
+		meta.set("__tostring", new tostring());
 		
-		LuaTable table = new LuaTable();
+		LuaTable table = new LuaTable(0,10);
 		table.setmetatable(meta);
-		bind(table, Arg1.class, new String[] {"read", "readable", "writable"});
-		bind(table, Arg2.class, new String[] {"write"});
+		table.set("read", new read());
+		table.set("readable", new readable());
+		table.set("writeable", new writeable());
+		table.set("write", new write());
 		
-		String packageName = "stream";
-		env.set(packageName, table);
-		PackageLib.instance.LOADED.set(packageName, table);
+		instance.registerPackage("stream", table);
 		return table;
 	}
 
-	@Override
-	public LuaValue call(LuaValue arg) {
-		switch (opcode) {
-		case 0: // init library
-			return init();
-		}
-		return NIL;
-	}
-
-	public static final class Meta1 extends OneArgFunction {
+	public static final class tostring extends OneArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
 			LuaStream stream = (LuaStream)arg;
-			
-			switch (opcode) {
-			case 0:  // __tostring
-				return stream.toLuaString();
-			}
-			return NIL;
+			return stream.toLuaString();
 		}
 	}
 
-	public static final class Arg1 extends OneArgFunction {
+	public static final class read extends OneArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
 			LuaStream stream = (LuaStream)arg;
-			
-			switch (opcode) {
-			case 0:  // read
-				return stream.read();
-				
-			case 1:  // readable
-				return LuaBoolean.valueOf(stream.readable());
-				
-			case 2:  // writable
-				return LuaBoolean.valueOf(stream.writeable());
-			}
-			return NIL;
+			return stream.read();
 		}
 	}
 
-	public static final class Arg2 extends TwoArgFunction {
+	public static final class readable extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			LuaStream stream = (LuaStream)arg;
+			return LuaBoolean.valueOf(stream.readable());
+		}
+	}
+
+	public static final class writeable extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			LuaStream stream = (LuaStream)arg;
+			return LuaBoolean.valueOf(stream.writeable());
+		}
+	}
+
+	public static final class write extends TwoArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg1, LuaValue arg2) {
 			LuaStream stream = (LuaStream)arg1;
-			
-			switch (opcode) {
-			case 0:  // write
-				stream.write(arg2);
-				return NIL;
-			}
+			stream.write(arg2);
 			return NIL;
 		}
 	}

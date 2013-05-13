@@ -13,15 +13,17 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
+import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
-import org.luaj.vm2.LuaThread;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.compiler.LuaC;
 import org.luaj.vm2.lib.CoroutineLib;
+import org.luaj.vm2.lib.DebugLib;
+import org.luaj.vm2.lib.LibFunction;
 import org.luaj.vm2.lib.PackageLib;
 import org.luaj.vm2.lib.StringLib;
 import org.luaj.vm2.lib.TableLib;
@@ -38,14 +40,14 @@ import com.aerospike.client.util.MsgPack;
 
 public final class LuaInstance {
 	
-	private final LuaTable globals;
+	private final Globals globals = new Globals();
 	private final PackageLib packageLib;
 	
 	public LuaInstance() throws IOException {
-		globals = new LuaTable();
 		globals.load(new JseBaseLib());
 		packageLib = new PackageLib();
 		globals.load(packageLib);
+		//globals.load(new Bit32Lib()); // not needed for 5.1 compatibility	
 		globals.load(new TableLib());
 		globals.load(new StringLib());
 		globals.load(new CoroutineLib());
@@ -53,20 +55,35 @@ public final class LuaInstance {
 		globals.load(new JseIoLib());
 		globals.load(new JseOsLib());
 		globals.load(new LuajavaLib());
-		globals.load(new LuaIteratorLib());
-		globals.load(new LuaListLib());
-		globals.load(new LuaMapLib());
-		globals.load(new LuaStreamLib());
-		LuaThread.setGlobals(globals);
+		globals.load(new DebugLib());
+		globals.load(new LuaIteratorLib(this));
+		globals.load(new LuaListLib(this));
+		globals.load(new LuaMapLib(this));
+		globals.load(new LuaStreamLib(this));
 		LuaC.install();
-		
+		globals.compiler = LuaC.instance;
+
+		load("compat52");
 		load("as");
 		load("stream_ops");
 		load("aerospike");
 	}
+
+	public void registerPackage(String packageName, LuaTable table) {
+		globals.set(packageName, table);
+		packageLib.loaded.set(packageName, table);
+	}
+
+	public LuaValue getPackage(String packageName) {
+		return globals.get(packageName);
+	}
+	
+	public void load(LibFunction function) {
+		globals.load(function);
+	}
 	
 	public void load(String packageName) throws IOException {
-		if (packageLib.LOADED.get(packageName).toboolean()) {
+		if (packageLib.loaded.get(packageName).toboolean()) {
 			return;
 		}
 		
@@ -74,7 +91,7 @@ public final class LuaInstance {
 		LuaClosure function = new LuaClosure(prototype, globals);
 		function.invoke();
 		
-		packageLib.LOADED.set(packageName, globals);
+		packageLib.loaded.set(packageName, globals);
 	}
 
 	public void call(String functionName, LuaValue[] args) {
