@@ -20,6 +20,7 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.luaj.vm2.LoadState;
+import org.luaj.vm2.LuaString;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.compiler.DumpState;
 import org.luaj.vm2.compiler.LuaC;
@@ -90,7 +91,9 @@ public final class LuaCache {
 			if ( firstByte != '\033')
 				throw new IOException("Invalid lua byte code");
 			
-			return LoadState.loadBinaryChunk(firstByte, is, packageName);
+			Prototype prototype = LoadState.loadBinaryChunk(firstByte, is, packageName);
+	        prototype.source = LuaString.valueOf(packageName);
+			return prototype;
 		}
 		finally {
 			is.close();

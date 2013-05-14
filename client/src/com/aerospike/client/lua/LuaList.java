@@ -11,26 +11,16 @@ package com.aerospike.client.lua;
 
 import java.util.List;
 
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 
 public class LuaList<T> extends LuaUserdata {
 
-	protected final List<T> list;
+	protected List<T> list;
 
 	public LuaList(List<T> list) {
 		super(list);
 		this.list = list;
-	}
-	
-	public LuaInteger size() {
-		return LuaInteger.valueOf(list.size());
-	}
-	
-	public LuaString toLuaString() {
-		return LuaString.valueOf(list.toString());
 	}
 
 	public LuaValue getValue(LuaValue index) {
@@ -39,8 +29,8 @@ public class LuaList<T> extends LuaUserdata {
 	}
 
 	@SuppressWarnings("unchecked")
-	public void setValue(LuaValue index, LuaValue value) {
-		list.set(index.toint() - 1, (T)value);
+	public void setValue(int index, LuaValue value) {
+		list.set(index, (T)value);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -53,7 +43,7 @@ public class LuaList<T> extends LuaUserdata {
 		list.add(index, (T)value);
 	}
 
-	public LuaList<T> take(LuaValue items) {
+	public final LuaList<T> take(LuaValue items) {
 		int max = items.toint();
 		
 		if (max > list.size()) {
@@ -62,7 +52,7 @@ public class LuaList<T> extends LuaUserdata {
 		return subList(0, max);
 	}
 	
-	public LuaList<T> drop(LuaValue items) {
+	public final LuaList<T> drop(LuaValue items) {
 		int min = items.toint();
 		
 		if (min > list.size()) {
@@ -72,10 +62,49 @@ public class LuaList<T> extends LuaUserdata {
 	}
 
 	public LuaList<T> subList(int begin, int end) {		
-		return new LuaList<T>(list.subList(begin, end));
+		list = list.subList(begin, end);
+		return new LuaList<T>(list);
 	}
 	
-	public LuaUserdata iterator() {
-		return new LuaListIterator<T>(list.iterator());
+	@SuppressWarnings("unchecked")
+	public final void ensureSize(int size) {		
+		if (size > list.size()) {
+			for (int i = list.size(); i < size; i++) {
+				list.add((T)LuaValue.NIL);
+			}
+		}
+	}
+	
+	public static final class LuaValueList extends LuaList<LuaValue> {
+
+		public LuaValueList(List<LuaValue> list) {
+			super(list);
+		}
+		
+		@Override
+		public LuaValue getValue(LuaValue index) {
+			return list.get(index.toint() - 1);
+		}
+
+		@Override
+		public void setValue(int index, LuaValue value) {
+			list.set(index, value);
+		}
+
+		@Override
+		public void append(LuaValue value) {
+			list.add(value);
+		}
+		
+		@Override
+		public void append(int index, LuaValue value) {
+			list.add(index, value);
+		}
+
+		@Override
+		public LuaList<LuaValue> subList(int begin, int end) {		
+			list = list.subList(begin, end);
+			return new LuaValueList(list);
+		}
 	}
 }

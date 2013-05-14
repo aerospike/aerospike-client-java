@@ -56,7 +56,6 @@ public final class LuaInstance {
 		globals.load(new JseOsLib());
 		globals.load(new LuajavaLib());
 		globals.load(new DebugLib());
-		globals.load(new LuaIteratorLib(this));
 		globals.load(new LuaListLib(this));
 		globals.load(new LuaMapLib(this));
 		globals.load(new LuaStreamLib(this));

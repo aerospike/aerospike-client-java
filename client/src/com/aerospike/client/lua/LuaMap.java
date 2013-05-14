@@ -11,8 +11,6 @@ package com.aerospike.client.lua;
 
 import java.util.Map;
 
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 
@@ -25,37 +23,17 @@ public class LuaMap<K,V> extends LuaUserdata {
 		this.map = map;
 	}
 	
-	public LuaInteger size() {
-		return LuaInteger.valueOf(map.size());
-	}
-	
-	public LuaString toLuaString() {
-		return LuaString.valueOf(map.toString());
-	}
-
 	public LuaValue getValue(LuaValue key) {
-		Object object = map.get(getObject(key));
+		Object object = map.get(getKeyObject(key));
 		return (object instanceof LuaValue)? (LuaValue)object : new LuaUserdata(object);
 	}
 
 	@SuppressWarnings("unchecked")
-	public void setValue(LuaValue key, LuaValue value) {
-		map.put((K)getObject(key), (V)value);
-	}
-
-	public LuaValue keys() {
-		return new LuaListIterator<K>(map.keySet().iterator());
-	}
-
-	public LuaValue values() {
-		return new LuaListIterator<V>(map.values().iterator());
-	}
-
-	public LuaUserdata iterator() {
-		return new LuaMapIterator<K,V>(map.entrySet().iterator());
+	public final void setValue(LuaValue key, LuaValue value) {
+		map.put((K)getKeyObject(key), (V)value);
 	}
 	
-	public static Object getObject(LuaValue val) {
+	public static final Object getKeyObject(LuaValue val) {
 		switch (val.type()) {
 		case LuaValue.TBOOLEAN:
 			return val.toboolean();
@@ -72,6 +50,18 @@ public class LuaMap<K,V> extends LuaUserdata {
 		case LuaValue.TNIL:
 		default:
 			return null;
+		}
+	}
+	
+	public static final class LuaValueMap extends LuaMap<LuaValue,LuaValue> {
+
+		public LuaValueMap(Map<LuaValue,LuaValue> map) {
+			super(map);
+		}
+		
+		@Override
+		public LuaValue getValue(LuaValue key) {
+			return map.get(getKeyObject(key));
 		}
 	}
 }
