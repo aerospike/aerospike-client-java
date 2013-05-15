@@ -9,16 +9,18 @@
 -- This script emulates 5.1 features that were deprecated in 5.2.  Therefore, Lua 5.1 scripts can be written
 -- that also run within a 5.2 interpreter.
 --
+local lua_debug = debug
+
 setfenv = setfenv or function(f, t)
-    f = (type(f) == 'function' and f or debug.getinfo(f + 1, 'f').func)
+    f = (type(f) == 'function' and f or lua_debug.getinfo(f + 1, 'f').func)
     local name
     local up = 0
     repeat
         up = up + 1
-        name = debug.getupvalue(f, up)
+        name = lua_debug.getupvalue(f, up)
     until name == '_ENV' or name == nil
     if name then
-        debug.upvaluejoin(f, up, function() return t end, 1)
+        lua_debug.upvaluejoin(f, up, function() return t end, 1)
     end
 end
 
