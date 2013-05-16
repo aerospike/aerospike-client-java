@@ -1,5 +1,9 @@
 package com.aerospike.examples;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
@@ -33,12 +37,11 @@ public class LargeSet extends Example {
 		set.create(null);
 		
 		// Verify large set was created with default configuration.
-		/*
 		Map<?,?> map = set.getConfig();
 		
 		for (Entry<?,?> entry : map.entrySet()) {
 			console.info(entry.getKey().toString() + ',' + entry.getValue());
-		}*/
+		}
 		
 		// Write values.
 		set.insert(Value.get("listvalue1"));
@@ -46,6 +49,7 @@ public class LargeSet extends Example {
 		//set.insert(Value.get("listvalue3"));
 		
 		// Delete last value.
+		// Comment out until delete supported on server.
 		//set.delete(Value.get("listvalue3"));
 		
 		int size = set.size();
@@ -54,9 +58,16 @@ public class LargeSet extends Example {
 			throw new Exception("Size mismatch. Expected 2 Received " + size);
 		}
 		
-		/*
-		Object result = set.search(Value.get("listvalue2"));
-		console.info(result.toString());
-		*/
+		List<?> list = set.search(Value.get("listvalue2"));
+		String received = (String)list.get(0);
+		String expected = "listvalue2";
+		
+		if (received != null && received.equals(expected)) {
+			console.info("Data matched: namespace=%s set=%s key=%s value=%s", 
+				key.namespace, key.setName, key.userKey, received);
+		}
+		else {
+			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
+		}
 	}	
 }

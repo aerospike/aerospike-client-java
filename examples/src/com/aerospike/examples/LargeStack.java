@@ -10,6 +10,8 @@
 package com.aerospike.examples;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Key;
@@ -44,12 +46,11 @@ public class LargeStack extends Example {
 		stack.create(null);
 		
 		// Verify large stack was created with default configuration.
-		/*
 		Map<?,?> map = stack.getConfig();
 		
 		for (Entry<?,?> entry : map.entrySet()) {
 			console.info(entry.getKey().toString() + ',' + entry.getValue());
-		}*/
+		}
 			
 		// Write values.
 		stack.push(Value.get("stackvalue1"));
@@ -57,6 +58,7 @@ public class LargeStack extends Example {
 		//stack.push(Value.get("stackvalue3"));
 		
 		// Delete last value.
+		// Comment out until trim supported on server.
 		//stack.trim(1);
 		
 		int size = stack.size();
@@ -74,11 +76,11 @@ public class LargeStack extends Example {
 				key.namespace, key.setName, key.userKey, received);
 		}
 		else {
-			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);
+			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
 		}
 		
 		/*
-		list = stack.peek(1, "stumbleUnCompress5", Value.get(1));
+		list = stack.peek(1, "myFilter", Value.get(1));
 		received = (String)list.get(0);
 		expected = "stackvalue2";
 		
@@ -87,7 +89,7 @@ public class LargeStack extends Example {
 				key.namespace, key.setName, key.userKey, received);
 		}
 		else {
-			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);
+			console.error("Data mismatch: Expected %s. Received %s.", expected, received);
 		}*/
 	}	
 }
