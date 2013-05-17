@@ -13,6 +13,7 @@ import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteOrder;
@@ -51,9 +52,14 @@ public final class LuaCache {
 	private static Prototype loadOrCompilePackage(String packageName) throws IOException {
 		File source = new File(LuaConfig.SourceDirectory, packageName + ".lua");
 		File target = new File(LuaConfig.SourceDirectory, packageName + ".out");
-		long sourceLastModified = source.lastModified();			
-				
-		if (sourceLastModified > target.lastModified()) {
+		long sourceLastModified = source.lastModified();
+		long targetLastModified = target.lastModified();
+		
+		if (sourceLastModified == 0 && targetLastModified == 0) {
+			throw new FileNotFoundException("Failed to read " + source.getAbsolutePath());
+		}
+		
+		if (sourceLastModified > targetLastModified) {
 			return compile(packageName, source, target);
 		}
 		else {
