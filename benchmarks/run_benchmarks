@@ -1,4 +1,4 @@
-# Java Load Test Script.
+# Java Benchmarks Script.
 #
 # Build with maven before running this script.
 # mvn package
