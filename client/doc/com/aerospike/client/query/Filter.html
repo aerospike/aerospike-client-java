@@ -114,9 +114,8 @@ java.lang.Object
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;<A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Filter.html#create(java.lang.String, com.aerospike.client.query.Operator, com.aerospike.client.Value)">create</A></B>(java.lang.String&nbsp;name,
-       <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;operator,
-       <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Filter.html#equal(java.lang.String, com.aerospike.client.Value)">equal</A></B>(java.lang.String&nbsp;name,
+      <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Create single filter for query.</TD>
@@ -124,10 +123,8 @@ java.lang.Object
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;<A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A></CODE></FONT></TD>
-<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Filter.html#range(java.lang.String, com.aerospike.client.query.Operator, com.aerospike.client.Value, com.aerospike.client.query.Operator, com.aerospike.client.Value)">range</A></B>(java.lang.String&nbsp;name,
-      <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;beginOperator,
+<TD><CODE><B><A HREF="../../../../com/aerospike/client/query/Filter.html#range(java.lang.String, com.aerospike.client.Value, com.aerospike.client.Value)">range</A></B>(java.lang.String&nbsp;name,
       <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;begin,
-      <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;endOperator,
       <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;end)</CODE>
 
 <BR>
@@ -156,35 +153,32 @@ java.lang.Object
 </TR>
 </TABLE>
 
-<A NAME="create(java.lang.String, com.aerospike.client.query.Operator, com.aerospike.client.Value)"><!-- --></A><H3>
-create</H3>
+<A NAME="equal(java.lang.String, com.aerospike.client.Value)"><!-- --></A><H3>
+equal</H3>
 <PRE>
-public static <A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A> <B>create</B>(java.lang.String&nbsp;name,
-                            <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;operator,
-                            <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</PRE>
+public static <A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A> <B>equal</B>(java.lang.String&nbsp;name,
+                           <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;value)</PRE>
 <DL>
 <DD>Create single filter for query.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name<DD><CODE>operator</CODE> - currently ignored<DD><CODE>value</CODE> - filter value
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name<DD><CODE>value</CODE> - filter value
 <DT><B>Returns:</B><DD>filter instance</DL>
 </DD>
 </DL>
 <HR>
 
-<A NAME="range(java.lang.String, com.aerospike.client.query.Operator, com.aerospike.client.Value, com.aerospike.client.query.Operator, com.aerospike.client.Value)"><!-- --></A><H3>
+<A NAME="range(java.lang.String, com.aerospike.client.Value, com.aerospike.client.Value)"><!-- --></A><H3>
 range</H3>
 <PRE>
 public static <A HREF="../../../../com/aerospike/client/query/Filter.html" title="class in com.aerospike.client.query">Filter</A> <B>range</B>(java.lang.String&nbsp;name,
-                           <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;beginOperator,
                            <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;begin,
-                           <A HREF="../../../../com/aerospike/client/query/Operator.html" title="enum in com.aerospike.client.query">Operator</A>&nbsp;endOperator,
                            <A HREF="../../../../com/aerospike/client/Value.html" title="class in com.aerospike.client">Value</A>&nbsp;end)</PRE>
 <DL>
 <DD>Create range filter for query.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name<DD><CODE>beginOperator</CODE> - currently ignored<DD><CODE>begin</CODE> - filter begin value<DD><CODE>endOperator</CODE> - currently ignored<DD><CODE>end</CODE> - filter end value
+<DT><B>Parameters:</B><DD><CODE>name</CODE> - bin name<DD><CODE>begin</CODE> - filter begin value<DD><CODE>end</CODE> - filter end value
 <DT><B>Returns:</B><DD>filter instance</DL>
 </DD>
 </DL>
