@@ -15,11 +15,3 @@ Installation instructions:
 2) Decompress archive to a local directory.
 
 3) Run build_all script.
-
-4) To run the examples in GUI form:
--- cd examples
--- ./run_example_swing -h 127.0.0.1 -p 3000 -n test
--- Select an example from the left side list. The example source code will 
-be displayed.
--- 
-
