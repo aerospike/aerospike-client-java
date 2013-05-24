@@ -8,7 +8,6 @@ import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.Operator;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 
@@ -89,7 +88,7 @@ public class QueryAggregate extends Example {
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, Operator.GTE, begin, Operator.LTE, end));
+		stmt.setFilters(Filter.range(binName, begin, end));
 		
 		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin");
 		

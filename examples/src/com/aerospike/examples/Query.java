@@ -9,7 +9,6 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.Operator;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 
@@ -92,7 +91,7 @@ public class Query extends Example {
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.create(binName, Operator.EQUALS, filter));
+		stmt.setFilters(Filter.equal(binName, filter));
 		
 		RecordSet rs = client.query(null, stmt);
 		

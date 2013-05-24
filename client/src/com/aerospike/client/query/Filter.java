@@ -18,39 +18,32 @@ public final class Filter {
 	 * Create single filter for query.
 	 * 
 	 * @param name			bin name
-	 * @param operator		currently ignored
 	 * @param value			filter value
 	 * @return				filter instance
 	 */
-	public static Filter create(String name, Operator operator, Value value) {
-		return new Filter(name, operator, value, operator, value);
+	public static Filter equal(String name, Value value) {
+		return new Filter(name, value, value);
 	}
 	
 	/**
 	 * Create range filter for query.
 	 * 
 	 * @param name			bin name
-	 * @param beginOperator	currently ignored
 	 * @param begin			filter begin value
-	 * @param endOperator	currently ignored
 	 * @param end			filter end value
 	 * @return				filter instance
 	 */
-	public static Filter range(String name, Operator beginOperator, Value begin, Operator endOperator, Value end) {
-		return new Filter(name, beginOperator, begin, endOperator, end);
+	public static Filter range(String name, Value begin, Value end) {
+		return new Filter(name, begin, end);
 	}
 
 	private final String name;
-	//private final Operator beginOperator;
 	private final Value begin;
-	//private final Operator endOperator;
 	private final Value end;
 		
-	private Filter(String name, Operator beginOperator, Value begin, Operator endOperator, Value end) {
+	private Filter(String name, Value begin, Value end) {
 		this.name = name;
-		//this.beginOperator = beginOperator;
 		this.begin = begin;
-		//this.endOperator = endOperator;
 		this.end = end;
 	}
 
