@@ -41,7 +41,8 @@ public final class Key {
 	
 	/**
 	 * Original user key. This key is immediately converted to a hash digest.
-	 * This key is not used or returned by the server.
+	 * This key is not used or returned by the server.  If the user key needs 
+	 * to persist on the server, the key should be explicitly stored in a bin.
 	 */
 	public final Object userKey;
 	
