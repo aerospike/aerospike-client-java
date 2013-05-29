@@ -127,6 +127,15 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case COMMAND_REJECTED:
+			return "Command rejected";
+		
+		case QUERY_TERMINATED:
+			return "Query terminated";
+		
+		case SCAN_TERMINATED:
+			return "Scan terminated";
+
 		case INVALID_NODE_ERROR:
 			return "Invalid node";
 
