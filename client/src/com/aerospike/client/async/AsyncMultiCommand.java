@@ -117,7 +117,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		receiveOffset = 0;
 		
 		while (receiveOffset < receiveSize) {
-			resultCode = receiveBuffer[5];
+			resultCode = receiveBuffer[receiveOffset + 5];
 
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.
@@ -126,13 +126,13 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 
 			// If this is the end marker of the response, do not proceed further
-			if ((receiveBuffer[3] & Command.INFO3_LAST) != 0) {
+			if ((receiveBuffer[receiveOffset + 3] & Command.INFO3_LAST) != 0) {
 				return true;
 			}			
-			generation = Buffer.bytesToInt(receiveBuffer, 6);
-			expiration = Buffer.bytesToInt(receiveBuffer, 10);
-			fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-			opCount = Buffer.bytesToShort(receiveBuffer, 20);
+			generation = Buffer.bytesToInt(receiveBuffer, receiveOffset + 6);
+			expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
+			fieldCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 18);
+			opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
 
 			receiveOffset += Command.MSG_REMAINING_HEADER_SIZE;
 			
