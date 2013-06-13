@@ -6,6 +6,8 @@ then
   exit
 fi
 
+cd `dirname $0`
+
 target=$1
 srcpath=../client/doc
 trgpath=/var/www/website/web/java_api
@@ -18,7 +20,7 @@ then
   host="builds@www.aerospike.com"
 else
   echo Invalid website target: $target
-  echo "Usage: $0 java|csharp stage|prod"
+  echo "Usage: $0 stage|prod"
   exit  
 fi
 
