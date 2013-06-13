@@ -56,6 +56,12 @@ public abstract class QueryCommand extends MultiCommand {
 			sendOffset += filterSize;
 			fieldCount++;
 		}
+		else {
+			// Calling query with no filters is more efficiently handled by a primary index scan. 
+			// Estimate scan options size.
+			sendOffset += 2 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
 		
 		if (statement.binNames != null) {
 			sendOffset += FIELD_HEADER_SIZE;
@@ -111,6 +117,14 @@ public abstract class QueryCommand extends MultiCommand {
 			for (Filter filter : statement.filters) {
 				sendOffset = filter.write(sendBuffer, sendOffset);
 			}
+		}
+		else {
+			// Calling query with no filters is more efficiently handled by a primary index scan. 
+			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+			byte priority = (byte)policy.priority.ordinal();
+			priority <<= 4;			
+			sendBuffer[sendOffset++] = priority;
+			sendBuffer[sendOffset++] = (byte)100;
 		}
 		
 		if (statement.binNames != null) {
