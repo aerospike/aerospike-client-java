@@ -93,9 +93,27 @@ public final class ResultSet {
 				queue.put(object);
 			}
 			catch (InterruptedException ie) {
-				valid = false;
+				abort();
 			}
 		}
 		return valid;
-	}	
+	}
+	
+	/**
+	 * Abort retrieval with end token.
+	 */
+	private final void abort() {
+		valid = false;
+		
+		// It's critical that the end put succeeds.
+		// Loop through all interrupts.
+		while (true) {
+			try {
+				queue.put(END);
+				return;
+			}
+			catch (InterruptedException ie) {
+			}
+		}
+	}
 }

@@ -22,6 +22,8 @@ import com.aerospike.client.Record;
  * The single user thread consumes these records from the queue.
  */
 public final class RecordSet {
+	public static final KeyRecord END = new KeyRecord(null, null);
+	
 	private final QueryExecutor executor;
 	private final BlockingQueue<KeyRecord> queue;
 	private KeyRecord record;
@@ -50,7 +52,7 @@ public final class RecordSet {
 			try {
 				record = queue.take();
 
-				if (record.key == null) {
+				if (record == END) {
 					executor.checkForException();
 					valid = false;
 				}
@@ -100,9 +102,27 @@ public final class RecordSet {
 				queue.put(record);
 			}
 			catch (InterruptedException ie) {
-				valid = false;
+				abort();
 			}
 		}
 		return valid;
+	}
+	
+	/**
+	 * Abort retrieval with end token.
+	 */
+	private final void abort() {
+		valid = false;
+		
+		// It's critical that the end put succeeds.
+		// Loop through all interrupts.
+		while (true) {
+			try {
+				queue.put(END);
+				return;
+			}
+			catch (InterruptedException ie) {
+			}
+		}
 	}
 }

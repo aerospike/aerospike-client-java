@@ -29,7 +29,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	
 	@Override
 	protected void sendCompleted() {		
-		recordSet.put(new KeyRecord(null, null));
+		recordSet.put(RecordSet.END);
 	}
 	
 	public RecordSet getRecordSet() {
