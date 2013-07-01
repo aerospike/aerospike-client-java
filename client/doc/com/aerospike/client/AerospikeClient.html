@@ -430,6 +430,18 @@ Instantiate an <code>AerospikeClient</code> object to access an Aerospike
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>&nbsp;void</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#scanNode(com.aerospike.client.policy.ScanPolicy, com.aerospike.client.cluster.Node, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)">scanNode</A></B>(<A HREF="../../../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy">ScanPolicy</A>&nbsp;policy,
+         <A HREF="../../../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>&nbsp;node,
+         java.lang.String&nbsp;namespace,
+         java.lang.String&nbsp;setName,
+         <A HREF="../../../com/aerospike/client/ScanCallback.html" title="interface in com.aerospike.client">ScanCallback</A>&nbsp;callback)</CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Read all records in specified namespace and set for one node only.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>&nbsp;void</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/AerospikeClient.html#scanNode(com.aerospike.client.policy.ScanPolicy, java.lang.String, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)">scanNode</A></B>(<A HREF="../../../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy">ScanPolicy</A>&nbsp;policy,
          java.lang.String&nbsp;nodeName,
          java.lang.String&nbsp;namespace,
@@ -962,9 +974,32 @@ public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/
  within the scope of this call.
 <P>
 <DD><DL>
-<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters, pass in null for defaults<DD><CODE>nodeName</CODE> - server node name;<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters, pass in null for defaults<DD><CODE>nodeName</CODE> - server node name<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
 <DT><B>Throws:</B>
 <DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if scan fails</DL>
+</DD>
+</DL>
+<HR>
+
+<A NAME="scanNode(com.aerospike.client.policy.ScanPolicy, com.aerospike.client.cluster.Node, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)"><!-- --></A><H3>
+scanNode</H3>
+<PRE>
+public final void <B>scanNode</B>(<A HREF="../../../com/aerospike/client/policy/ScanPolicy.html" title="class in com.aerospike.client.policy">ScanPolicy</A>&nbsp;policy,
+                           <A HREF="../../../com/aerospike/client/cluster/Node.html" title="class in com.aerospike.client.cluster">Node</A>&nbsp;node,
+                           java.lang.String&nbsp;namespace,
+                           java.lang.String&nbsp;setName,
+                           <A HREF="../../../com/aerospike/client/ScanCallback.html" title="interface in com.aerospike.client">ScanCallback</A>&nbsp;callback)
+                    throws <A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></PRE>
+<DL>
+<DD>Read all records in specified namespace and set for one node only.
+ <p>
+ This call will block until the scan is complete - callbacks are made
+ within the scope of this call.
+<P>
+<DD><DL>
+<DT><B>Parameters:</B><DD><CODE>policy</CODE> - scan configuration parameters, pass in null for defaults<DD><CODE>node</CODE> - server node<DD><CODE>namespace</CODE> - namespace - equivalent to database name<DD><CODE>setName</CODE> - optional set name - equivalent to database table<DD><CODE>callback</CODE> - read callback method - called with record data
+<DT><B>Throws:</B>
+<DD><CODE><A HREF="../../../com/aerospike/client/AerospikeException.html" title="class in com.aerospike.client">AerospikeException</A></CODE> - if transaction fails</DL>
 </DD>
 </DL>
 <HR>

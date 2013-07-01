@@ -96,6 +96,9 @@ Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html"
 Method in class net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.html" title="class in net.citrusleaf">CitrusleafClient</A>
 <DD>Scan the database nodes in parallel, using specified namespace and set
  filters, and default options, returning a single result code.
+<DT><A HREF="../com/aerospike/client/ResultCode.html#SCAN_ABORT"><B>SCAN_ABORT</B></A> - 
+Static variable in class com.aerospike.client.<A HREF="../com/aerospike/client/ResultCode.html" title="class in com.aerospike.client">ResultCode</A>
+<DD>Scan aborted by server.
 <DT><A HREF="../com/aerospike/client/ResultCode.html#SCAN_TERMINATED"><B>SCAN_TERMINATED</B></A> - 
 Static variable in class com.aerospike.client.<A HREF="../com/aerospike/client/ResultCode.html" title="class in com.aerospike.client">ResultCode</A>
 <DD>Scan was terminated by user.
@@ -125,6 +128,9 @@ Method in interface com.aerospike.client.<A HREF="../com/aerospike/client/ScanCa
 Method in interface net.citrusleaf.<A HREF="../net/citrusleaf/CitrusleafClient.ScanCallback.html" title="interface in net.citrusleaf">CitrusleafClient.ScanCallback</A>
 <DD>This method will be called for each record returned from a scan.
 <DT><A HREF="../com/aerospike/client/AerospikeClient.html#scanNode(com.aerospike.client.policy.ScanPolicy, java.lang.String, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)"><B>scanNode(ScanPolicy, String, String, String, ScanCallback)</B></A> - 
+Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
+<DD>Read all records in specified namespace and set for one node only.
+<DT><A HREF="../com/aerospike/client/AerospikeClient.html#scanNode(com.aerospike.client.policy.ScanPolicy, com.aerospike.client.cluster.Node, java.lang.String, java.lang.String, com.aerospike.client.ScanCallback)"><B>scanNode(ScanPolicy, Node, String, String, ScanCallback)</B></A> - 
 Method in class com.aerospike.client.<A HREF="../com/aerospike/client/AerospikeClient.html" title="class in com.aerospike.client">AerospikeClient</A>
 <DD>Read all records in specified namespace and set for one node only.
 <DT><A HREF="../net/citrusleaf/CitrusleafClient.html#scanNode(java.lang.String, java.lang.String, java.lang.String, boolean, int, net.citrusleaf.CitrusleafClient.ClOptions, net.citrusleaf.CitrusleafClient.ClScanningOptions, net.citrusleaf.CitrusleafClient.ScanCallback, java.lang.Object)"><B>scanNode(String, String, String, boolean, int, CitrusleafClient.ClOptions, CitrusleafClient.ClScanningOptions, CitrusleafClient.ScanCallback, Object)</B></A> - 

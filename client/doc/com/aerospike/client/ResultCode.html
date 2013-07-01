@@ -159,6 +159,54 @@ Database operation error codes.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INDEX_FOUND">INDEX_FOUND</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index already exists.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INDEX_GENERIC">INDEX_GENERIC</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Generic secondary index error.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INDEX_NOTFOUND">INDEX_NOTFOUND</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Requested secondary index does not exist.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INDEX_NOTREADABLE">INDEX_NOTREADABLE</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index not available.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INDEX_OOM">INDEX_OOM</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index memory space exceeded.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INVALID_DATA">INVALID_DATA</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Database command data is invalid.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#INVALID_NODE_ERROR">INVALID_NODE_ERROR</A></B></CODE>
 
 <BR>
@@ -224,6 +272,30 @@ Database operation error codes.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#QUERY_ABORTED">QUERY_ABORTED</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index query aborted.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#QUERY_GENERIC">QUERY_GENERIC</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Generic query error.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#QUERY_QUEUEFULL">QUERY_QUEUEFULL</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index queue full.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#QUERY_TERMINATED">QUERY_TERMINATED</A></B></CODE>
 
 <BR>
@@ -232,10 +304,26 @@ Database operation error codes.
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
 <CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#QUERY_TIMEOUT">QUERY_TIMEOUT</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Secondary index query timed out on server.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
 <TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#RECORD_TOO_BIG">RECORD_TOO_BIG</A></B></CODE>
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Record size exceeds limit.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#SCAN_ABORT">SCAN_ABORT</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Scan aborted by server.</TD>
 </TR>
 <TR BGCOLOR="white" CLASS="TableRowColor">
 <TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
@@ -284,6 +372,14 @@ Database operation error codes.
 
 <BR>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Client or server has timed out.</TD>
+</TR>
+<TR BGCOLOR="white" CLASS="TableRowColor">
+<TD ALIGN="right" VALIGN="top" WIDTH="1%"><FONT SIZE="-1">
+<CODE>static&nbsp;int</CODE></FONT></TD>
+<TD><CODE><B><A HREF="../../../com/aerospike/client/ResultCode.html#UDF_BAD_RESPONSE">UDF_BAD_RESPONSE</A></B></CODE>
+
+<BR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;A user defined function returned an error code.</TD>
 </TR>
 </TABLE>
 &nbsp;
@@ -594,6 +690,150 @@ public static final int <B>KEY_BUSY</B></PRE>
 <P>
 <DL>
 <DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.KEY_BUSY">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="SCAN_ABORT"><!-- --></A><H3>
+SCAN_ABORT</H3>
+<PRE>
+public static final int <B>SCAN_ABORT</B></PRE>
+<DL>
+<DD>Scan aborted by server.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.SCAN_ABORT">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INVALID_DATA"><!-- --></A><H3>
+INVALID_DATA</H3>
+<PRE>
+public static final int <B>INVALID_DATA</B></PRE>
+<DL>
+<DD>Database command data is invalid.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INVALID_DATA">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="UDF_BAD_RESPONSE"><!-- --></A><H3>
+UDF_BAD_RESPONSE</H3>
+<PRE>
+public static final int <B>UDF_BAD_RESPONSE</B></PRE>
+<DL>
+<DD>A user defined function returned an error code.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.UDF_BAD_RESPONSE">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INDEX_FOUND"><!-- --></A><H3>
+INDEX_FOUND</H3>
+<PRE>
+public static final int <B>INDEX_FOUND</B></PRE>
+<DL>
+<DD>Secondary index already exists.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INDEX_FOUND">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INDEX_NOTFOUND"><!-- --></A><H3>
+INDEX_NOTFOUND</H3>
+<PRE>
+public static final int <B>INDEX_NOTFOUND</B></PRE>
+<DL>
+<DD>Requested secondary index does not exist.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INDEX_NOTFOUND">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INDEX_OOM"><!-- --></A><H3>
+INDEX_OOM</H3>
+<PRE>
+public static final int <B>INDEX_OOM</B></PRE>
+<DL>
+<DD>Secondary index memory space exceeded.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INDEX_OOM">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INDEX_NOTREADABLE"><!-- --></A><H3>
+INDEX_NOTREADABLE</H3>
+<PRE>
+public static final int <B>INDEX_NOTREADABLE</B></PRE>
+<DL>
+<DD>Secondary index not available.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INDEX_NOTREADABLE">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="INDEX_GENERIC"><!-- --></A><H3>
+INDEX_GENERIC</H3>
+<PRE>
+public static final int <B>INDEX_GENERIC</B></PRE>
+<DL>
+<DD>Generic secondary index error.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.INDEX_GENERIC">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="QUERY_ABORTED"><!-- --></A><H3>
+QUERY_ABORTED</H3>
+<PRE>
+public static final int <B>QUERY_ABORTED</B></PRE>
+<DL>
+<DD>Secondary index query aborted.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.QUERY_ABORTED">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="QUERY_QUEUEFULL"><!-- --></A><H3>
+QUERY_QUEUEFULL</H3>
+<PRE>
+public static final int <B>QUERY_QUEUEFULL</B></PRE>
+<DL>
+<DD>Secondary index queue full.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.QUERY_QUEUEFULL">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="QUERY_TIMEOUT"><!-- --></A><H3>
+QUERY_TIMEOUT</H3>
+<PRE>
+public static final int <B>QUERY_TIMEOUT</B></PRE>
+<DL>
+<DD>Secondary index query timed out on server.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.QUERY_TIMEOUT">Constant Field Values</A></DL>
+</DL>
+<HR>
+
+<A NAME="QUERY_GENERIC"><!-- --></A><H3>
+QUERY_GENERIC</H3>
+<PRE>
+public static final int <B>QUERY_GENERIC</B></PRE>
+<DL>
+<DD>Generic query error.
+<P>
+<DL>
+<DT><B>See Also:</B><DD><A HREF="../../../constant-values.html#com.aerospike.client.ResultCode.QUERY_GENERIC">Constant Field Values</A></DL>
 </DL>
 
 <!-- ========= CONSTRUCTOR DETAIL ======== -->
