@@ -546,7 +546,7 @@ public class AerospikeClient {
 	 * within the scope of this call.
 	 * 
 	 * @param policy				scan configuration parameters, pass in null for defaults
-	 * @param nodeName				server node name;
+	 * @param nodeName				server node name
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
@@ -554,13 +554,6 @@ public class AerospikeClient {
 	 */
 	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback) 
 		throws AerospikeException {		
-		if (policy == null) {
-			policy = new ScanPolicy();
-		}
-		
-		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 0;
-
 		Node node = cluster.getNode(nodeName);
 		scanNode(policy, node, namespace, setName, callback);
 	}
@@ -578,8 +571,14 @@ public class AerospikeClient {
 	 * @param callback				read callback method - called with record data
 	 * @throws AerospikeException	if transaction fails
 	 */
-	private final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback) 
+	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = new ScanPolicy();
+		}
+		// Retry policy must be one-shot for scans.
+		policy.maxRetries = 0;
+
 		ScanCommand command = new ScanCommand(node, callback);
 		command.setScan(policy, namespace, setName);
 		command.execute(policy);
