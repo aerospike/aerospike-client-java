@@ -14,7 +14,7 @@ default:
 	mkdir -p $(TMP_DIR)/examples
 	mkdir -p $(TMP_DIR)/benchmarks
 	mkdir -p $(TMP_DIR)/servlets
-	cp package/{README,build_all} $(TMP_DIR)
+	cp package/{README,build_all,license.txt} $(TMP_DIR)
 	cp -r client/{README,depends,doc,src} $(TMP_DIR)/client
 	cp -r examples/{README,depends,run_examples,run_examples_swing,src,udf} $(TMP_DIR)/examples
 	cp -r benchmarks/{README,run_benchmarks,src} $(TMP_DIR)/benchmarks
