@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -121,7 +121,66 @@ public final class ResultCode {
 	 */
 	public static final int KEY_BUSY = 14;
 	
+	/**
+	 * Scan aborted by server.
+	 */
+	public static final int SCAN_ABORT = 15;
 	
+	/**
+	 * Database command data is invalid.
+	 */
+	public static final int INVALID_DATA = 99;
+	
+	/**
+	 * A user defined function returned an error code.
+	 */
+	public static final int UDF_BAD_RESPONSE = 100;
+	
+	/**
+	 * Secondary index already exists.
+	 */
+	public static final int INDEX_FOUND = 200;
+	
+	/**
+	 * Requested secondary index does not exist.
+	 */
+	public static final int INDEX_NOTFOUND = 201;
+	
+	/**
+	 * Secondary index memory space exceeded.
+	 */
+	public static final int INDEX_OOM = 202;
+	
+	/**
+	 * Secondary index not available.
+	 */
+	public static final int INDEX_NOTREADABLE = 203;
+	
+	/**
+	 * Generic secondary index error.
+	 */
+	public static final int INDEX_GENERIC = 204;
+	
+	/**
+	 * Secondary index query aborted.
+	 */
+	public static final int QUERY_ABORTED = 210;
+	
+	/**
+	 * Secondary index queue full.
+	 */
+	public static final int QUERY_QUEUEFULL = 211;
+	
+	/**
+	 * Secondary index query timed out on server.
+	 */
+	public static final int QUERY_TIMEOUT = 212;
+	
+	/**
+	 * Generic query error.
+	 */
+	public static final int QUERY_GENERIC = 213;
+		
 	/**
 	 * Return result code as a string.
 	 */
@@ -189,6 +248,42 @@ public final class ResultCode {
 		
 		case KEY_BUSY:
 			return "Hot key";
+			
+		case SCAN_ABORT:
+			return "Scan aborted";
+			
+		case INVALID_DATA:
+			return "Invalid command data";
+			
+		case UDF_BAD_RESPONSE:
+			return "UDF returned error";
+			
+		case INDEX_FOUND:
+			return "Index already exists";
+			
+		case INDEX_NOTFOUND:
+			return "Index not found";
+			
+		case INDEX_OOM:
+			return "Index out of memory";
+			
+		case INDEX_NOTREADABLE:
+			return "Index not readable";
+			
+		case INDEX_GENERIC:
+			return "Index error";
+			
+		case QUERY_ABORTED:
+			return "Query aborted";
+			
+		case QUERY_QUEUEFULL:
+			return "Query queue full";
+			
+		case QUERY_TIMEOUT:
+			return "Query timeout";
+			
+		case QUERY_GENERIC:
+			return "Query error";
 			
 		default:
 			return "";
