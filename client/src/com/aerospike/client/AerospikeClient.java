@@ -639,7 +639,7 @@ public class AerospikeClient {
 		sb.append(";content-len=");
 		sb.append(content.length());
 		sb.append(";udf-type=");
-		sb.append(language.id);
+		sb.append(language);
 		sb.append(";");
 		
 		// Send command to all nodes.
