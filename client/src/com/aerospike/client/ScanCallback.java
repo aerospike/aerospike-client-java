@@ -21,6 +21,9 @@ public interface ScanCallback {
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * initiating scan call.
 	 * 
+	 * Multiple threads will likely be calling scanCallback in parallel.  Therefore, your scanCallback
+	 * implementation should be thread safe.
+	 * 
 	 * @param key					unique record identifier
 	 * @param record				container for bins and record meta-data
 	 * @throws AerospikeException	if error occurs or scan should be terminated.
