@@ -2604,7 +2604,7 @@ public class CitrusleafClient extends AerospikeClient implements Log.Callback {
 		if (scanOpts != null) {
 			policy.concurrentNodes = scanOpts.mConcurrentNodes;
 			policy.failOnClusterChange = scanOpts.mFailOnClusterChange;
-			policy.threadsPerNode = scanOpts.mThreadsPerNode;
+			//policy.threadsPerNode = scanOpts.mThreadsPerNode;
 		}
 		policy.includeBinData = ! noBinData;
 		policy.scanPercent = 100;

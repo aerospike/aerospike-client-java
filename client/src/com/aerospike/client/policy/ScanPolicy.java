@@ -14,11 +14,6 @@ package com.aerospike.client.policy;
  */
 public final class ScanPolicy extends Policy {
 	/**
-	 * Number of threads per node scan. 
-	 */
-	public int threadsPerNode = 1;
-
-	/**
 	 * Fraction of data to scan - not yet supported.
 	 */
 	public int scanPercent = 100;
