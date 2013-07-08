@@ -526,7 +526,7 @@ public class Cluster implements Runnable {
 		return getRandomNode();
 	}
 
-	private final Node getRandomNode() throws AerospikeException.InvalidNode {
+	public final Node getRandomNode() throws AerospikeException.InvalidNode {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 				

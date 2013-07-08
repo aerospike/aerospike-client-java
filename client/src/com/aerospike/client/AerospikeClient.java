@@ -642,23 +642,25 @@ public class AerospikeClient {
 		sb.append(language);
 		sb.append(";");
 		
-		// Send command to all nodes.
+		// Send UDF to one node. That node will distribute the UDF to other nodes.
 		String command = sb.toString();
-		Node[] nodes = cluster.getNodes();		
+		Node node = cluster.getRandomNode();
 		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		for (Node node : nodes) {
-			Info info = new Info(node.getConnection(timeout), command);
-			NameValueParser parser = info.getNameValueParser();
-			
-			while (parser.next()) {
-				String name = parser.getName();
-	
-				if (name.equals("error")) {
-					throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
-				}
+		Info info = new Info(node.getConnection(timeout), command);
+		NameValueParser parser = info.getNameValueParser();
+		
+		while (parser.next()) {
+			String name = parser.getName();
+
+			if (name.equals("error")) {
+				throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
 			}
 		}
+		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
+		// may return before the UDF is available on all nodes.  Hard code sleep for now.
+		// TODO: Fix server so control is only returned when UDF registration is complete.
+		Util.sleep(100);
 	}
 	
 	/**
@@ -807,21 +809,25 @@ public class AerospikeClient {
 		sb.append(",");
 		sb.append(indexType);
 		sb.append(";priority=normal");
-		
-		// Send command to all nodes.
+
+		// Send index command to one node. That node will distribute the command to other nodes.
 		String command = sb.toString();
-		Node[] nodes = cluster.getNodes();		
+		Node node = cluster.getRandomNode();
 		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		for (Node node : nodes) {
-			Info info = new Info(node.getConnection(timeout), command);
-			String response = info.getValue();
-			
-			// Command is successful if OK or index already exists.
-			if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
-				throw new AerospikeException("Create index failed: " + response);
-			}
+		Info info = new Info(node.getConnection(timeout), command);
+		String response = info.getValue();
+		
+		// Command is successful if OK or index already exists.
+		if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
+			throw new AerospikeException("Create index failed: " + response);
 		}
+		
+		// The server index command distribution to other nodes is done asynchronously.  
+		// Therefore, the server may return before the index is available on all nodes.  
+		// Hard code sleep for now.
+		// TODO: Fix server so control is only returned when index is available on all nodes.
+		Util.sleep(100);
 	}
 
 	/**
@@ -851,20 +857,24 @@ public class AerospikeClient {
 		sb.append(";indexname=");
 		sb.append(indexName);
 		
-		// Send command to all nodes.
+		// Send drop index command to one node. That node will distribute the command to other nodes.
 		String command = sb.toString();
-		Node[] nodes = cluster.getNodes();		
+		Node node = cluster.getRandomNode();
 		int timeout = (policy == null)? 0 : policy.timeout;
 		
-		for (Node node : nodes) {
-			Info info = new Info(node.getConnection(timeout), command);
-			String response = info.getValue();
-			
-			// Command is successful if ok or index did not previously exist.
-			if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
-				throw new AerospikeException("Drop index failed: " + response);
-			}
+		Info info = new Info(node.getConnection(timeout), command);
+		String response = info.getValue();
+		
+		// Command is successful if ok or index did not previously exist.
+		if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
+			throw new AerospikeException("Drop index failed: " + response);
 		}
+		
+		// The server drop index command distribution to other nodes is done asynchronously.  
+		// Therefore, the server may return before the index is dropped on all nodes.  
+		// Hard code sleep for now.
+		// TODO: Fix server so control is only returned when index is dropped on all nodes.
+		Util.sleep(100);
 	}
 	
 	//-------------------------------------------------------
