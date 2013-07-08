@@ -20,7 +20,7 @@ public interface ScanCallback {
 	 * exception if the scan should be aborted.  If any exception is thrown, parallel scan threads
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * initiating scan call.
-	 * 
+	 * <p>
 	 * Multiple threads will likely be calling scanCallback in parallel.  Therefore, your scanCallback
 	 * implementation should be thread safe.
 	 * 
