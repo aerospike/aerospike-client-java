@@ -281,7 +281,7 @@ public final class Buffer {
 			return bytesToBigInteger(buf, offset, len);
 	
 		// This will work for negative integers too which 
-		// will be represented in two's complemenet representation.
+		// will be represented in two's compliment representation.
 		long val = 0;
 		
 		for (int i = 0; i < len; i++) {
