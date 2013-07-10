@@ -115,10 +115,11 @@ public final class MsgPack {
 		ObjectOutputStream ostream = new ObjectOutputStream(bstream);
 		ostream.writeObject(val);
 		ostream.close();
-		byte[] buf = bstream.toByteArray();
-		buf[0] = ParticleType.JBLOB;
-		System.arraycopy(val, 0, buf, 1, buf.length);
-		packer.write(buf);
+		byte[] src = bstream.toByteArray();
+        byte[] trg = new byte[src.length + 1];		
+		trg[0] = ParticleType.JBLOB;
+		System.arraycopy(src, 0, trg, 1, src.length);
+		packer.write(trg);
 	}
 
 	private static void packObject(Packer packer, Object obj) throws IOException {
