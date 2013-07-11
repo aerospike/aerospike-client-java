@@ -10,7 +10,7 @@ import com.aerospike.client.policy.Policy;
  * Create and manage a stack within a single bin. A stack is last in/first out (LIFO).
  */
 public final class LargeStack {
-	private static final String Filename = "LSTACK";
+	private static final String Filename = "lstack";
 	
 	private final AerospikeClient client;
 	private final Policy policy;

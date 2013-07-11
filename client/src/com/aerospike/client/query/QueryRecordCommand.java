@@ -16,6 +16,7 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -39,6 +40,9 @@ public final class QueryRecordCommand extends QueryCommand {
 			int resultCode = receiveBuffer[5];
 			
 			if (resultCode != 0) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+					return false;
+				}
 				throw new AerospikeException(resultCode);
 			}
 

@@ -18,7 +18,7 @@ import com.aerospike.client.policy.Policy;
  * Create and manage a list within a single bin.
  */
 public final class LargeSet {
-	private static final String Filename = "LSET";
+	private static final String Filename = "lset";
 	
 	private final AerospikeClient client;
 	private final Policy policy;

@@ -15,6 +15,7 @@ import java.util.concurrent.BlockingQueue;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -40,6 +41,9 @@ public final class QueryAggregateCommand extends QueryCommand {
 			int resultCode = receiveBuffer[5];
 			
 			if (resultCode != 0) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+					return false;
+				}
 				throw new AerospikeException(resultCode);
 			}
 
