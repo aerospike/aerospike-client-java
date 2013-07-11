@@ -4,5 +4,9 @@
 cd `dirname $0`
 source run_command
 
+runCommand ./build_docs
+
 cd ..
 runCommand make package
+
+rm -rf /tmp/doc
