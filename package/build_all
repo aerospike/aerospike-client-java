@@ -1,28 +1,8 @@
 # Build Java projects with Maven.
 # Maven and Java must be installed prior to running this script.
 
-# Add jars to maven repository. This only needs to be done once.
-for i in client examples
-do
-  cd $i/depends
-  ./maven_add
-  cd ../..
-done
+# Add gnu-crypto to local maven repository. This only needs to be done once.
+mvn install:install-file -Dfile=client/depends/gnu-crypto.jar -DgroupId=org.gnu -DartifactId=gnu-crypto -Dversion=2.0.1 -Dpackaging=jar
 
-# Clean java projects.
-for i in client examples benchmarks servlets
-do
-  cd $i
-  mvn clean
-  cd ..
-done
-
-# Build java projects.
-cd client
-mvn install
-
-for i in examples benchmarks servlets
-do
-  cd ../$i
-  mvn package
-done
+mvn clean
+mvn package

@@ -17,9 +17,10 @@ default:
 	cp package/{README,build_all,license.txt} $(TMP_DIR)
 	cp -r client/{README,depends,src} $(TMP_DIR)/client
 	cp -r /tmp/doc $(TMP_DIR)/client
-	cp -r examples/{README,depends,run_examples,run_examples_swing,src,udf} $(TMP_DIR)/examples
+	cp -r examples/{README,run_examples,run_examples_swing,src,udf} $(TMP_DIR)/examples
 	cp -r benchmarks/{README,run_benchmarks,src} $(TMP_DIR)/benchmarks
 	cp -r servlets/{README,src,webapp} $(TMP_DIR)/servlets
+	scripts/package_pom pom.xml > $(TMP_DIR)/pom.xml
 	scripts/package_pom client/pom.xml > $(TMP_DIR)/client/pom.xml
 	scripts/package_pom examples/pom.xml > $(TMP_DIR)/examples/pom.xml
 	scripts/package_pom benchmarks/pom.xml > $(TMP_DIR)/benchmarks/pom.xml
