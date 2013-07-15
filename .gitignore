@@ -6,4 +6,6 @@
 bin
 target
 *.tgz
+*.zip
 *.out
+package/*.jar

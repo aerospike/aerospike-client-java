@@ -26,4 +26,7 @@ default:
 	scripts/package_pom benchmarks/pom.xml > $(TMP_DIR)/benchmarks/pom.xml
 	scripts/package_pom servlets/pom.xml > $(TMP_DIR)/servlets/pom.xml
 	tar cf - -C /tmp $(NAME) | gzip -c > package/$(NAME).tgz
+	sh -c 'cd /tmp ; zip -r $(NAME).zip $(NAME)'
+	mv /tmp/$(NAME).zip package
+	cp client/target/aerospike-client-* package	
 	rm -rf $(TMP_DIR)
