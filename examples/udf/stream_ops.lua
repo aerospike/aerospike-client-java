@@ -323,7 +323,6 @@ function StreamOps:groupby(f)
     end
 
     local function _merge(l1, l2)
-        info("merge: %s %s", tostring(v1), tostring(v2));
         local l = list.clone(l1)
         for v in list.iterator(l2) do
             list.append(l, v)

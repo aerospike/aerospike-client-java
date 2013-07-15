@@ -1,7 +1,7 @@
 
 
 -- A table to track whether we had sandboxed a function
-local sandboxed = {}
+sandboxed = {}
 
 -- ############################################################################
 --

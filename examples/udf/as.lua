@@ -18,6 +18,21 @@ function list.clone(l)
     return list(ll)
 end
 
+-- Merge two list
+-- returns a new list with elements of l1 preceeding of l2
+--
+function list.merge(l1, l2)
+    local ll = {}
+    for v in list.iterator(l1) do
+        table.insert(ll,v)
+    end
+
+    for v in list.iterator(l2) do
+        table.insert(ll, v)
+    end
+    return list(ll)
+end
+
 -- ############################################################################
 --
 -- Map
