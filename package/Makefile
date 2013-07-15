@@ -7,7 +7,7 @@ TMP_DIR=/tmp/$(NAME)
 
 .PHONY: default
 default:
-	rm -rf package/aerospike-client-java*
+	rm -rf package/aerospike-client-*
 	rm -rf $(TMP_DIR)
 	mkdir -p $(TMP_DIR)
 	mkdir -p $(TMP_DIR)/client
@@ -20,11 +20,6 @@ default:
 	cp -r examples/{README,run_examples,run_examples_swing,src,udf} $(TMP_DIR)/examples
 	cp -r benchmarks/{README,run_benchmarks,src} $(TMP_DIR)/benchmarks
 	cp -r servlets/{README,src,webapp} $(TMP_DIR)/servlets
-	scripts/package_pom pom.xml > $(TMP_DIR)/pom.xml
-	scripts/package_pom client/pom.xml > $(TMP_DIR)/client/pom.xml
-	scripts/package_pom examples/pom.xml > $(TMP_DIR)/examples/pom.xml
-	scripts/package_pom benchmarks/pom.xml > $(TMP_DIR)/benchmarks/pom.xml
-	scripts/package_pom servlets/pom.xml > $(TMP_DIR)/servlets/pom.xml
 	tar cf - -C /tmp $(NAME) | gzip -c > package/$(NAME).tgz
 	sh -c 'cd /tmp ; zip -r $(NAME).zip $(NAME)'
 	mv /tmp/$(NAME).zip package

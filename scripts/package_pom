@@ -30,4 +30,6 @@ awk 'BEGIN{OFS=""}
     {
         print $0
     }
-}' $fn
+}' $fn > $fn.tmp
+
+mv $fn.tmp $fn

@@ -1,0 +1,11 @@
+# Update version in all pom.xml files.
+
+cd `dirname $0`
+source run_command
+
+cd ..
+runCommand scripts/package_pom pom.xml
+runCommand scripts/package_pom client/pom.xml
+runCommand scripts/package_pom examples/pom.xml
+runCommand scripts/package_pom benchmarks/pom.xml
+runCommand scripts/package_pom servlets/pom.xml

@@ -5,6 +5,7 @@ cd `dirname $0`
 source run_command
 
 cd ..
+
+runCommand scripts/update_version
 runCommand make clean
 runCommand make
-exit 0
