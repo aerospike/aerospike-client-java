@@ -11,6 +11,8 @@ import com.aerospike.client.policy.Policy;
 
 public class AsyncPutGet extends AsyncExample {
 	
+	private boolean completed;
+	
 	public AsyncPutGet(Console console) {
 		super(console);
 	}
@@ -124,14 +126,17 @@ public class AsyncPutGet extends AsyncExample {
 	}
 	
 	private synchronized void waitTillComplete() {
-		try {
-			super.wait();
-		}
-		catch (InterruptedException ie) {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
 		}
 	}
 
 	private synchronized void notifyCompleted() {
+		completed = true;
 		super.notify();
 	}
 }

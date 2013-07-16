@@ -27,6 +27,7 @@ public class AsyncBatch extends AsyncExample {
 	private final int size = 8;
 	private final AtomicInteger taskCount = new AtomicInteger();
 	private int taskSize;
+	private boolean completed;
 	
 	public AsyncBatch(Console console) {
 		super(console);
@@ -244,10 +245,12 @@ public class AsyncBatch extends AsyncExample {
     }
 
 	private synchronized void waitTillComplete() {
-		try {
-			super.wait();
-		}
-		catch (InterruptedException ie) {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
 		}
 	}
 
@@ -258,6 +261,7 @@ public class AsyncBatch extends AsyncExample {
 	}
 
 	private synchronized void allTasksComplete() {
+		completed = true;
 		super.notify();
 	}
 }

@@ -11,6 +11,7 @@ import com.aerospike.client.util.Util;
 public class AsyncScan extends AsyncExample {
 		
 	private int recordCount = 0;
+	private boolean completed;
 
 	public AsyncScan(Console console) {
 		super(console);
@@ -60,14 +61,17 @@ public class AsyncScan extends AsyncExample {
 	}
 	
 	private synchronized void waitTillComplete() {
-		try {
-			super.wait();
-		}
-		catch (InterruptedException ie) {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
 		}
 	}
 
 	private synchronized void notifyComplete() {
+		completed = true;
 		super.notify();
 	}
 }
