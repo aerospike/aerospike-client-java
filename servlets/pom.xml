@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike</artifactId>
   <packaging>war</packaging>
-  <version>2.1.0</version>
+  <version>3.0.5</version>
 
   <name>aerospike-servlet</name>
 
@@ -13,7 +13,7 @@
     <dependency> 
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>2.1.0</version>
+      <version>3.0.5</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
