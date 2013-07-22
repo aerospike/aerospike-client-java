@@ -19,6 +19,7 @@ do
 	runCommand scripts/package_pom $version $i
 done
 
-runCommand git commit -m '"Update version."' $files
-runCommand git tag -a -m "$version" $version
-runCommand git push --tags
+msg="Update version $version"
+git commit -m "$msg" $files
+git tag -a -m "$version" $version
+git push --tags
