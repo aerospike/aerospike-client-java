@@ -480,10 +480,8 @@ public class Command {
 	}
 
 	public final void writeOperation(Operation.Type operation) {
-        sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = 0;
+        Buffer.intToBytes(4, sendBuffer, sendOffset);
+		sendOffset += 4;
         sendBuffer[sendOffset++] = (byte) operation.protocolType;
         sendBuffer[sendOffset++] = 0;
         sendBuffer[sendOffset++] = 0;
