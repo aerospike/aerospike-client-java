@@ -1,11 +1,13 @@
 #!/bin/sh
-fn=$1
 
-origin=`pwd`
-cd `dirname $0`
-source run_command
-version=`./version`
-cd $origin
+if [ $# -lt 2 ]
+then
+    echo "Usage: $0 <version> <filename>"
+    exit
+fi
+
+version=$1
+fn=$2
 
 awk 'BEGIN{OFS=""}
 {

@@ -1,11 +1,24 @@
-# Update version in all pom.xml files.
+# Update version in all pom.xml files, commit and tag.
+
+if [ $# -lt 1 ]
+then
+	echo "Usage: $0 <version>"
+	exit
+fi
+
+version=$1
 
 cd `dirname $0`
 source run_command
 
 cd ..
-runCommand scripts/package_pom pom.xml
-runCommand scripts/package_pom client/pom.xml
-runCommand scripts/package_pom examples/pom.xml
-runCommand scripts/package_pom benchmarks/pom.xml
-runCommand scripts/package_pom servlets/pom.xml
+files="pom.xml client/pom.xml examples/pom.xml benchmarks/pom.xml servlets/pom.xml"
+
+for i in $files
+do
+	runCommand scripts/package_pom $version $i
+done
+
+runCommand git commit -m '"Update version."' $files
+runCommand git tag -a -m "$version" $version
+runCommand git push --tags
