@@ -139,7 +139,11 @@ public final class Key {
 	 * Removed Object constructor because the type must be determined using multiple "instanceof"
 	 * checks.  If the type is not known, java serialization (slow) is used for byte conversion.
 	 * These two performance penalties make this constructor unsuitable in all cases from
-	 * a performance perspective. 
+	 * a performance perspective.
+	 * 
+	 * The preferred method when using compound java key objects is to explicitly convert the 
+	 * object to a byte[], String (or other known type) and call the associated Key constructor.
+	 * 
 	public Key(String namespace, String setName, Object key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
