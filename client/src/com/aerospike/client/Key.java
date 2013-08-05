@@ -135,26 +135,17 @@ public final class Key {
 		digest = computeDigest(setName, key);
 	}
 
-	/**
-	 * Initialize key from namespace, optional set name and user key.
-	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
-	 * 
-	 * This is the slowest of the Key constructors because the type
-	 * must be determined using multiple "instanceof" checks.
-	 * 
-	 * @param namespace				namespace
-	 * @param setName				optional set name, enter null when set does not exist
-	 * @param key					user defined unique identifier within set.
-	 * @throws AerospikeException	if digest computation fails
-	 */
+	/*
+	 * Removed Object constructor because the type must be determined using multiple "instanceof"
+	 * checks.  If the type is not known, java serialization (slow) is used for byte conversion.
+	 * These two performance penalties make this constructor unsuitable in all cases from
+	 * a performance perspective. 
 	public Key(String namespace, String setName, Object key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = key;
 		digest = computeDigest(setName, Value.get(key));
-	}
+	} */
 	
 	/**
 	 * Initialize key from namespace, digest and optional set name.
