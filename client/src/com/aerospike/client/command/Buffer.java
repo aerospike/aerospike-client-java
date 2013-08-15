@@ -23,6 +23,10 @@ public final class Buffer {
 	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
 		
+		if (len <= 0) {
+			return null;
+		}
+		
 		switch (type) {
 		case ParticleType.STRING:
 			return Buffer.utf8ToString(buf, offset, len);

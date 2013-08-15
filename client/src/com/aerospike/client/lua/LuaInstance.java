@@ -103,6 +103,10 @@ public final class LuaInstance {
 	}
 
 	public static LuaValue getValue(int type, byte[] buf, int offset, int len) throws AerospikeException {
+		if (len <= 0) {
+			return LuaValue.NIL;
+		}
+		
 		switch (type) {
 		case ParticleType.STRING:
 	        byte[] copy = new byte[len];
