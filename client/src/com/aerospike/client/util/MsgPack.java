@@ -172,6 +172,10 @@ public final class MsgPack {
 	//-------------------------------------------------------
 
 	public static List<?> parseList(byte[] buf, int offset, int len) throws AerospikeException {
+		if (len <= 0) {
+			return new ArrayList<Object>(0);
+		}
+		
 		try {
 			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
 			return unpackList(unpacker.readValue());
@@ -182,6 +186,10 @@ public final class MsgPack {
 	}
 
 	public static Map<?,?> parseMap(byte[] buf, int offset, int len) throws AerospikeException {
+		if (len <= 0) {
+			return new HashMap<Object,Object>(0);
+		}
+
 		try {
 			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
 			return unpackMap(unpacker.readValue());

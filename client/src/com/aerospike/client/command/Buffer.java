@@ -23,10 +23,6 @@ public final class Buffer {
 	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
 		
-		if (len <= 0) {
-			return null;
-		}
-		
 		switch (type) {
 		case ParticleType.STRING:
 			return Buffer.utf8ToString(buf, offset, len);
@@ -266,7 +262,12 @@ public final class Buffer {
     }
 
     public static Object bytesToObject(byte[] buf, int offset, int length)
-		throws AerospikeException.Serialize {		
+		throws AerospikeException.Serialize {
+    	
+    	if (length <= 0) {
+    		return null;
+    	}
+    	
 		try {
 			ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length);
 			ObjectInputStream oistream = new ObjectInputStream(bastream);
