@@ -85,8 +85,8 @@ public final class LargeSet {
 	 * @param value				value to select
 	 * @return					list of entries selected
 	 */
-	public final List<?> search(Value value) throws AerospikeException {
-		return (List<?>) client.execute(policy, key, Filename, "lset_search", binName, value, Value.get(0));
+	public final Object search(Value value) throws AerospikeException {
+		return client.execute(policy, key, Filename, "lset_search", binName, value, Value.get(0));
 	}
 
 	/**
@@ -97,8 +97,8 @@ public final class LargeSet {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> search(Value value, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>) client.execute(policy, key, Filename, "lset_search_then_filter", binName, value, Value.get(0), Value.get(filterName), Value.get(filterArgs));
+	public final Object search(Value value, String filterName, Value... filterArgs) throws AerospikeException {
+		return client.execute(policy, key, Filename, "lset_search_then_filter", binName, value, Value.get(0), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
