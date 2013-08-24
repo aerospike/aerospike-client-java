@@ -67,6 +67,8 @@ public final class LuaInstance {
 		load("as");
 		load("stream_ops");
 		load("aerospike");
+		
+		globals.load(new LuaAerospikeLib(this));
 	}
 
 	public void registerPackage(String packageName, LuaTable table) {
