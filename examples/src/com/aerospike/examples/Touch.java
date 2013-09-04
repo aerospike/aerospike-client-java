@@ -14,7 +14,7 @@ public class Touch extends Example {
 	}
 
 	/**
-	 * Add integer values.
+	 * Demonstrate touch command.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {

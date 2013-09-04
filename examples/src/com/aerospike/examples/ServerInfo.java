@@ -34,11 +34,13 @@ public class ServerInfo extends Example {
 		}
 
 		for (Map.Entry<String,String> entry : map.entrySet()) {
-			if (entry.getKey().equals("statistics")) {
+			String key = entry.getKey();
+			
+			if (key.equals("statistics") || key.equals("query-stat")) {
 				LogNameValueTokens(entry.getValue());
 			}
 			else {
-				console.write(entry.getKey() + '=' + entry.getValue());
+				console.write(key + '=' + entry.getValue());
 			}
 		}
 	}
