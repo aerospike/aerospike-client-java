@@ -11,7 +11,7 @@ default:
 configure: $(HOME)/.m2/repository/org/gnu/gnu-crypto/2.0.1/gnu-crypto-2.0.1.jar
 
 $(HOME)/.m2/repository/org/gnu/gnu-crypto/2.0.1/gnu-crypto-2.0.1.jar:
-	(cd client/depends; ./maven_add)
+	mvn install:install-file -Dfile=client/depends/gnu-crypto.jar -DgroupId=org.gnu -DartifactId=gnu-crypto -Dversion=2.0.1 -Dpackaging=jar
 
 .PHONY: clean
 clean: 
