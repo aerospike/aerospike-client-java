@@ -36,19 +36,22 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	protected int expiration;
 	protected int fieldCount;
 	protected int opCount;
+	private final boolean stopOnNotFound;
 	private boolean inHeader = true;
 		
-	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node) {
+	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound) {
 		super(cluster);
 		this.parent = parent;
 		this.node = node;
+		this.stopOnNotFound = stopOnNotFound;
 		this.binNames = null;
 	}
 
-	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, HashSet<String> binNames) {
+	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound, HashSet<String> binNames) {
 		super(cluster);
 		this.parent = parent;
 		this.node = node;
+		this.stopOnNotFound = stopOnNotFound;
 		this.binNames = binNames;
 	}
 
@@ -119,10 +122,15 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		while (receiveOffset < receiveSize) {
 			resultCode = receiveBuffer[receiveOffset + 5];
 
-			// The only valid server return codes are "ok" and "not found".
-			// If other return codes are received, then abort the batch.
-			if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
-				throw new AerospikeException(resultCode);								
+			if (resultCode != 0) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+					if (stopOnNotFound) {
+						return true;
+					}
+				}
+				else {
+					throw new AerospikeException(resultCode);
+				}
 			}
 
 			// If this is the end marker of the response, do not proceed further

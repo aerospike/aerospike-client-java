@@ -31,7 +31,7 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 		HashSet<String> binNames,
 		Record[] records
 	) {
-		super(parent, cluster, node, binNames);
+		super(parent, cluster, node, false, binNames);
 		this.keyMap = keyMap;
 		this.records = records;
 	}
