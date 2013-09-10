@@ -39,12 +39,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 
 import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.ButtonModel;
 import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
@@ -53,19 +56,17 @@ import javax.swing.border.EtchedBorder;
 
 import com.aerospike.client.AerospikeException;
 
-public class GuiDisplay implements Runnable{
+public class GuiDisplay implements ActionListener, Runnable{
+	private static String sourcePath = "src/com/aerospike/examples/";
+	
 	private Parameters params;
 	private Console console;
 
-	static String sourcePath = "src/com/aerospike/examples/";
-	// check box gui items
-	private HashMap<String, JCheckBox> selections;
-	JButton runButton, exitButton;
-	private CheckBoxListener myCbListener = null;
+	private ButtonGroup buttonGroup;
+	private JButton runButton, exitButton;
 
 	private JFrame frmAerospikeExamples;
 	private JTextArea sourceTextPane;
-	private String[] initExampleChoices;
 	private JScrollPane scrollPane;
 	private JPanel connectionPanel;
 	private JLabel lblServerHost;
@@ -94,11 +95,11 @@ public class GuiDisplay implements Runnable{
 	/**
 	 * Present a GUI with check boxes
 	 */
-	public static void startGui(final String[] examples, final Parameters params, final Console console) throws AerospikeException {
+	public static void startGui(final Parameters params, final Console console) throws AerospikeException {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					GuiDisplay window = new GuiDisplay(examples, params, console);
+					GuiDisplay window = new GuiDisplay(params, console);
 
 
 					window.frmAerospikeExamples.addWindowListener(new WindowAdapter() {
@@ -126,10 +127,9 @@ public class GuiDisplay implements Runnable{
 	/**
 	 * Create the application.
 	 */
-	public GuiDisplay(String[] initExampleChoices, Parameters params, Console console) {
+	public GuiDisplay(Parameters params, Console console) {
 		this.params = params;
 		this.console = console;
-		this.initExampleChoices = initExampleChoices;
 		initialize();
 	}
 
@@ -274,31 +274,18 @@ public class GuiDisplay implements Runnable{
 		consoleScrollPane.setSize(new Dimension(width, height));
 		splitPane.setRightComponent(consoleScrollPane);
 
-
-		// set up checkboxs for all examples
-		//
-
-		myCbListener = new CheckBoxListener();
-		selections = new HashMap<String, JCheckBox>();
-		JCheckBox jcb = null;
+		buttonGroup = new ButtonGroup();
+		JRadioButton jrb;		
+		
 		for (String example : Main.getAllExampleNames()) {
-			jcb = new JCheckBox(example);     // register listeners for CBs
-			jcb.addItemListener(myCbListener);
-			selections.put(example, jcb);
-			examplePanel.add(jcb);
-		}
-
-
-		// check the boxes based on user's initial choices
-		for (String example : initExampleChoices) {
-			jcb = selections.get(example);
-			if (null != jcb) {
-				jcb.setSelected(true);
-			}
+			jrb = new JRadioButton(example);
+			jrb.setActionCommand(example);
+			jrb.addActionListener(this);	
+			buttonGroup.add(jrb);
+			examplePanel.add(jrb);
 		}
 
 		frmAerospikeExamples.pack();
-
 
 		try
 		{
@@ -339,8 +326,8 @@ public class GuiDisplay implements Runnable{
 		reader2=new Thread(this);
 		reader2.setDaemon(true);
 		reader2.start();
-
 	}
+	
 	/**
 	 * SourcePath Dialog to prompt user for alternate source code path
 	 */
@@ -384,68 +371,45 @@ public class GuiDisplay implements Runnable{
 			setLocationRelativeTo(parent);
 		}
 	}
-	/**
-	 * Checkbox listener is needed to update the source code box
-	 */
-	private class CheckBoxListener implements ItemListener {
-		public void itemStateChanged(ItemEvent e) {
-			if (0 == sourcePath.length()) {
-				// user indicated to skip source browsing
-				return;
-			}
 
-			if (e.getStateChange() == ItemEvent.SELECTED) {
-				Object cbSource = e.getItemSelectable();
-				for (String example : Main.getAllExampleNames()) {
-					// find the checked item and push out the source code
-					if (cbSource == selections.get(example)) {
-						String sourceText = readfile(sourcePath + example + ".java");
-						if (0 == sourceText.length()) {
-							// did not get source code content, ask the user for location and give it one more try
-							SourcePathDialog spDialog = new SourcePathDialog(frmAerospikeExamples);
-							spDialog.setVisible(true);
-							if (0 < sourcePath.length()) {
-								if (sourcePath.charAt(sourcePath.length()-1) != '/') 
-									sourcePath += "/";
-								sourceText =  readfile(sourcePath + example + ".java");
-								if (0 == sourceText.length()) {
-									sourceText = "Failed to read source file: " + sourcePath + example + ".java";
-								}
-							}
-						}
-						if (0 == sourceText.length()) {
-							// user no longer want to see skip source window from this point on?
-							if (0 == sourcePath.length()) {
-								sourceTextPane.setText("");
-							}
-						}
-						else {
-							sourceTextPane.setText(sourceText);
-							sourceTextPane.setSize(sourceTextPane.getPreferredSize());
-							sourceTextPane.setCaretPosition(0);
-							sourceTextPane.revalidate();
-						}
-
-
-						break;
-					}
+	public void actionPerformed(ActionEvent e) {
+		String example = e.getActionCommand();
+		String sourceText = readfile(sourcePath + example + ".java");
+		if (0 == sourceText.length()) {
+			// did not get source code content, ask the user for location and give it one more try
+			SourcePathDialog spDialog = new SourcePathDialog(frmAerospikeExamples);
+			spDialog.setVisible(true);
+			if (0 < sourcePath.length()) {
+				if (sourcePath.charAt(sourcePath.length()-1) != '/') 
+					sourcePath += "/";
+				sourceText =  readfile(sourcePath + example + ".java");
+				if (0 == sourceText.length()) {
+					sourceText = "Failed to read source file: " + sourcePath + example + ".java";
 				}
 			}
 		}
-	}
+		if (0 == sourceText.length()) {
+			// user no longer want to see skip source window from this point on?
+			if (0 == sourcePath.length()) {
+				sourceTextPane.setText("");
+			}
+		}
+		else {
+			sourceTextPane.setText(sourceText);
+			sourceTextPane.setSize(sourceTextPane.getPreferredSize());
+			sourceTextPane.setCaretPosition(0);
+			sourceTextPane.revalidate();
+		}
+	}	
 
 	/**
 	 * Run the user selected examples
 	 */
 	private void run_selected_examples() {
-		ArrayList<String> list = new ArrayList<String>(32);
-
-		for (String name : Main.getAllExampleNames()) {
-			if (this.selections.get(name).isSelected()) {
-				list.add(name);
-			}
-		}
-		String[] examples = list.toArray(new String[list.size()]);
+		ButtonModel selected = buttonGroup.getSelection();
+		String example = selected.getActionCommand();		
+		String[] examples = new String[1];
+		examples[0] = example;
 
 		try {
 			params.host = seedHostTextField.getText().trim();
@@ -458,6 +422,7 @@ public class GuiDisplay implements Runnable{
 			console.write("Exception (" + ex.toString() + ") encountered.");
 		}
 	}
+	
 	/**
 	 * Utility to read in a source file	
 	 */

@@ -97,7 +97,7 @@ public class Main extends JPanel {
 			}
 
 			if (cl.hasOption("g")) {
-				GuiDisplay.startGui(exampleNames, params, console);
+				GuiDisplay.startGui(params, console);
 			}
 			else {
 				runExamples(console, params, exampleNames);				
