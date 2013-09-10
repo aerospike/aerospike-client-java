@@ -20,8 +20,6 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
@@ -35,14 +33,11 @@ import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
 import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.HashMap;
 
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
 import javax.swing.ButtonModel;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -489,8 +484,6 @@ public class GuiDisplay implements ActionListener, Runnable{
 			consoleTextArea.append("\nConsole reports an Internal error.");
 			consoleTextArea.append("The error is: "+e);
 		}
-
-
 	}
 
 	public synchronized String readLine(PipedInputStream in) throws IOException
@@ -503,7 +496,7 @@ public class GuiDisplay implements ActionListener, Runnable{
 			byte b[]=new byte[available];
 			in.read(b);
 			input=input+new String(b,0,b.length);
-		}while( !input.endsWith("\n") &&  !input.endsWith("\r\n") && !quit);
+		} while( !input.endsWith("\n") &&  !input.endsWith("\r\n") && !quit);
 		return input;
 	}
 }
