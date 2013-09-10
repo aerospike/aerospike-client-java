@@ -141,9 +141,7 @@ public class Main extends JPanel {
 		if (set.equals("empty")) {
 			set = "";
 		}
-		Parameters params = new Parameters(host, port, namespace, set);
-		params.setServerSpecific();
-		return params;
+		return new Parameters(host, port, namespace, set);
 	}
 	
 	/**
@@ -162,6 +160,8 @@ public class Main extends JPanel {
 			}
 		}
 		
+		params.setServerSpecific();
+
 		if (syncExamples.size() > 0) {
 			Example.runExamples(console, params, syncExamples);
 		}

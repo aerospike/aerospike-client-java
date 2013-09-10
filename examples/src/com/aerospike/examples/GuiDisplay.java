@@ -1,7 +1,7 @@
 /*
  * Aerospike client examples -- gui control
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -18,8 +18,12 @@ import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;
@@ -28,6 +32,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -39,18 +46,18 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.border.EtchedBorder;
 
 import com.aerospike.client.AerospikeException;
 
-public class GuiDisplay {
+public class GuiDisplay implements Runnable{
 	private Parameters params;
 	private Console console;
 
 	static String sourcePath = "src/com/aerospike/examples/";
-	
 	// check box gui items
 	private HashMap<String, JCheckBox> selections;
 	JButton runButton, exitButton;
@@ -58,9 +65,31 @@ public class GuiDisplay {
 
 	private JFrame frmAerospikeExamples;
 	private JTextArea sourceTextPane;
-	private JPanel exampleSelection;
 	private String[] initExampleChoices;
 	private JScrollPane scrollPane;
+	private JPanel connectionPanel;
+	private JLabel lblServerHost;
+	private JTextField seedHostTextField;
+	private JLabel lblPort;
+	private JTextField portTextField;
+	private JLabel lblnameSpace;
+	private JTextField namespaceTextField;
+	private JLabel lblSet;
+	private JTextField txtSetTextfield;
+	private JSplitPane splitPane;
+	private JScrollPane exampleScrollPane;
+	private JPanel examplePanel;
+	private JPanel mainPanel;
+	private JScrollPane consoleScrollPane;
+	private JTextArea consoleTextArea;
+
+
+	private static Thread reader;
+	private static Thread reader2;
+	private static boolean quit;
+
+	private static PipedInputStream pin=new PipedInputStream();
+	private static PipedInputStream pin2=new PipedInputStream();
 
 	/**
 	 * Present a GUI with check boxes
@@ -75,6 +104,14 @@ public class GuiDisplay {
 					window.frmAerospikeExamples.addWindowListener(new WindowAdapter() {
 						public void windowClosing(WindowEvent e) {
 							return;
+						}
+						public synchronized void windowClosed(WindowEvent evt)
+						{
+							quit=true;
+							this.notifyAll(); // stop all threads
+							try { reader.join(1000);pin.close();   } catch (Exception e){}
+							try { reader2.join(1000);pin2.close(); } catch (Exception e){}
+							System.exit(0);
 						}
 					});
 
@@ -101,27 +138,33 @@ public class GuiDisplay {
 	 */
 	private void initialize() {
 		frmAerospikeExamples = new JFrame();
-		frmAerospikeExamples.setTitle("Aerospike Examples");
+		frmAerospikeExamples.setTitle("Aerospike Java Client Examples");
 		frmAerospikeExamples.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		frmAerospikeExamples.pack();
 		frmAerospikeExamples.getContentPane().setLayout(new BorderLayout(0, 0));
-		
-		exampleSelection = new JPanel();
-		exampleSelection.setLayout(new BoxLayout(exampleSelection, BoxLayout.Y_AXIS));
-		frmAerospikeExamples.getContentPane().add(exampleSelection, BorderLayout.WEST);
-		
+
+		splitPane = new JSplitPane();
+		splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
+		frmAerospikeExamples.getContentPane().add(splitPane, BorderLayout.CENTER);
+
+		mainPanel = new JPanel();
+		splitPane.setLeftComponent(mainPanel);
+		mainPanel.setLayout(new BorderLayout(0, 0));
 		JPanel buttonPanel = new JPanel();
-		frmAerospikeExamples.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
 		buttonPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
-		
+
 		runButton = new JButton("Run");
 		runButton.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent ev) {
+				consoleTextArea.setText("");
 				run_selected_examples();
 			}
 		});
 		buttonPanel.add(runButton);
-		
+		mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
 		exitButton = new JButton("Quit");
 		exitButton.addMouseListener(new MouseAdapter() {
 			@Override
@@ -135,16 +178,103 @@ public class GuiDisplay {
 			}
 		});
 		buttonPanel.add(exitButton);
-		
 		sourceTextPane = new JTextArea();
-		sourceTextPane.setTabSize(5);
+		sourceTextPane.setTabSize(2);
 		sourceTextPane.setEditable(false);
 
 		scrollPane = new JScrollPane(sourceTextPane);
 		scrollPane.setViewportBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
 		scrollPane.setPreferredSize(new Dimension(600,100));
-		frmAerospikeExamples.getContentPane().add(scrollPane, BorderLayout.CENTER);
-		
+		mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+		connectionPanel = new JPanel();
+		connectionPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+
+		lblServerHost = new JLabel("Server Host");
+		connectionPanel.add(lblServerHost);
+
+
+		seedHostTextField = new JTextField();
+		seedHostTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.host = seedHostTextField.getText();
+			}
+		});
+		connectionPanel.add(seedHostTextField);
+		seedHostTextField.setColumns(10);
+
+		lblPort = new JLabel("Port");
+		connectionPanel.add(lblPort);
+
+		portTextField = new JTextField();
+		portTextField.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				String newValue = namespaceTextField.getText();
+				if (newValue != null && newValue != ""){
+					try{
+						params.port = Integer.parseInt(newValue);
+					} catch (NumberFormatException ne) {
+						//ne.printStackTrace();
+					}
+				}
+			}
+		});
+		connectionPanel.add(portTextField);
+		portTextField.setColumns(4);
+
+		lblnameSpace = new JLabel("Namespace");
+		connectionPanel.add(lblnameSpace);
+
+		namespaceTextField = new JTextField();
+		namespaceTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.namespace = namespaceTextField.getText();
+			}
+		});
+		connectionPanel.add(namespaceTextField);
+		namespaceTextField.setColumns(10);
+
+		lblSet = new JLabel("Set");
+		connectionPanel.add(lblSet);
+
+		txtSetTextfield = new JTextField();
+		txtSetTextfield.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.set = txtSetTextfield.getText();
+			}
+		});
+		connectionPanel.add(txtSetTextfield);
+		txtSetTextfield.setColumns(10);
+		mainPanel.add(connectionPanel, BorderLayout.NORTH);
+
+		examplePanel = new JPanel();
+		examplePanel.setLayout(new BoxLayout(examplePanel, BoxLayout.Y_AXIS));
+
+		exampleScrollPane = new JScrollPane(examplePanel);
+		mainPanel.add(exampleScrollPane, BorderLayout.WEST);
+
+		// init values
+		seedHostTextField.setText(params.host);
+		portTextField.setText(Integer.toString(params.port));
+		namespaceTextField.setText(params.namespace);
+		txtSetTextfield.setText(params.set);
+
+		//int width = 785;
+		int width = 1000;
+		int height = 220;
+		consoleTextArea = new JTextArea();
+		consoleTextArea.setSize(new Dimension(width, height));
+		consoleTextArea.setEditable(false);
+		consoleScrollPane = new JScrollPane(consoleTextArea);
+		consoleScrollPane.setPreferredSize(new Dimension(width, height));
+		consoleScrollPane.setSize(new Dimension(width, height));
+		splitPane.setRightComponent(consoleScrollPane);
+
+
 		// set up checkboxs for all examples
 		//
 
@@ -155,10 +285,10 @@ public class GuiDisplay {
 			jcb = new JCheckBox(example);     // register listeners for CBs
 			jcb.addItemListener(myCbListener);
 			selections.put(example, jcb);
-			exampleSelection.add(jcb);
+			examplePanel.add(jcb);
 		}
-		
-		
+
+
 		// check the boxes based on user's initial choices
 		for (String example : initExampleChoices) {
 			jcb = selections.get(example);
@@ -166,10 +296,51 @@ public class GuiDisplay {
 				jcb.setSelected(true);
 			}
 		}
-		exampleSelection.setSize(exampleSelection.getPreferredSize());
+
 		frmAerospikeExamples.pack();
+
+
+		try
+		{
+			PipedOutputStream pout=new PipedOutputStream(pin);
+			System.setOut(new PrintStream(pout,true));
+		}
+		catch (java.io.IOException io)
+		{
+			consoleTextArea.append("Couldn't redirect STDOUT to this console\n"+io.getMessage());
+		}
+		catch (SecurityException se)
+		{
+			consoleTextArea.append("Couldn't redirect STDOUT to this console\n"+se.getMessage());
+		}
+
+		try
+		{
+			PipedOutputStream pout2=new PipedOutputStream(pin2);
+			System.setErr(new PrintStream(pout2,true));
+		}
+		catch (java.io.IOException io)
+		{
+			consoleTextArea.append("Couldn't redirect STDERR to this console\n"+io.getMessage());
+		}
+		catch (SecurityException se)
+		{
+			consoleTextArea.append("Couldn't redirect STDERR to this console\n"+se.getMessage());
+		}
+
+		quit=false; // signals the Threads that they should exit
+
+		// Starting two separate threads to read from the PipedInputStreams
+		//
+		reader=new Thread(this);
+		reader.setDaemon(true);
+		reader.start();
+		//
+		reader2=new Thread(this);
+		reader2.setDaemon(true);
+		reader2.start();
+
 	}
-	
 	/**
 	 * SourcePath Dialog to prompt user for alternate source code path
 	 */
@@ -189,7 +360,7 @@ public class GuiDisplay {
 			panel.add(tfSourcePath);
 			// panel.setBorder(new LineBorder(Color.GRAY));
 
-			
+
 			btnOK = new JButton("OK");
 
 			btnOK.addActionListener(new ActionListener() {
@@ -201,7 +372,7 @@ public class GuiDisplay {
 				}
 
 			});
-			
+
 			JPanel bp = new JPanel();
 			bp.add(btnOK);
 
@@ -213,7 +384,6 @@ public class GuiDisplay {
 			setLocationRelativeTo(parent);
 		}
 	}
-	
 	/**
 	 * Checkbox listener is needed to update the source code box
 	 */
@@ -223,7 +393,7 @@ public class GuiDisplay {
 				// user indicated to skip source browsing
 				return;
 			}
-				
+
 			if (e.getStateChange() == ItemEvent.SELECTED) {
 				Object cbSource = e.getItemSelectable();
 				for (String example : Main.getAllExampleNames()) {
@@ -255,7 +425,7 @@ public class GuiDisplay {
 							sourceTextPane.setCaretPosition(0);
 							sourceTextPane.revalidate();
 						}
-						
+
 
 						break;
 					}
@@ -269,22 +439,25 @@ public class GuiDisplay {
 	 */
 	private void run_selected_examples() {
 		ArrayList<String> list = new ArrayList<String>(32);
-		
+
 		for (String name : Main.getAllExampleNames()) {
 			if (this.selections.get(name).isSelected()) {
 				list.add(name);
 			}
 		}
 		String[] examples = list.toArray(new String[list.size()]);
-		
+
 		try {
+			params.host = seedHostTextField.getText().trim();
+			params.port = Integer.parseInt(portTextField.getText().trim());
+			params.namespace = namespaceTextField.getText().trim();
+			params.set = txtSetTextfield.getText().trim();
 			Main.runExamples(this.console, this.params, examples);
 		}
 		catch (Exception ex) {
 			console.write("Exception (" + ex.toString() + ") encountered.");
 		}
 	}
-
 	/**
 	 * Utility to read in a source file	
 	 */
@@ -319,5 +492,53 @@ public class GuiDisplay {
 			return("File " + fn + " cannot be read. \nReason = " + ex.toString());
 		}
 		return contents.toString();
+	}
+
+	public synchronized void run()
+	{
+		try
+		{
+			while (Thread.currentThread()==reader)
+			{
+				try { this.wait(100);}catch(InterruptedException ie) {}
+				if (pin.available()!=0)
+				{
+					String input=this.readLine(pin);
+					consoleTextArea.append(input);
+				}
+				if (quit) return;
+			}
+
+			while (Thread.currentThread()==reader2)
+			{
+				try { this.wait(100);}catch(InterruptedException ie) {}
+				if (pin2.available()!=0)
+				{
+					String input=this.readLine(pin2);
+					consoleTextArea.append(input);
+				}
+				if (quit) return;
+			}
+		} catch (Exception e)
+		{
+			consoleTextArea.append("\nConsole reports an Internal error.");
+			consoleTextArea.append("The error is: "+e);
+		}
+
+
+	}
+
+	public synchronized String readLine(PipedInputStream in) throws IOException
+	{
+		String input="";
+		do
+		{
+			int available=in.available();
+			if (available==0) break;
+			byte b[]=new byte[available];
+			in.read(b);
+			input=input+new String(b,0,b.length);
+		}while( !input.endsWith("\n") &&  !input.endsWith("\r\n") && !quit);
+		return input;
 	}
 }
