@@ -24,15 +24,10 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
-import java.io.PrintStream;
 
 import javax.swing.BoxLayout;
 import javax.swing.ButtonGroup;
@@ -50,16 +45,15 @@ import javax.swing.JTextField;
 import javax.swing.border.EtchedBorder;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.util.Environment;
 
-public class GuiDisplay implements ActionListener, Runnable{
+public class GuiDisplay implements ActionListener {
 	private static String sourcePath = "src/com/aerospike/examples/";
 	
 	private Parameters params;
 	private Console console;
-
 	private ButtonGroup buttonGroup;
 	private JButton runButton, exitButton;
-
 	private JFrame frmAerospikeExamples;
 	private JTextArea sourceTextPane;
 	private JScrollPane scrollPane;
@@ -79,38 +73,14 @@ public class GuiDisplay implements ActionListener, Runnable{
 	private JScrollPane consoleScrollPane;
 	private JTextArea consoleTextArea;
 
-
-	private static Thread reader;
-	private static Thread reader2;
-	private static boolean quit;
-
-	private static PipedInputStream pin=new PipedInputStream();
-	private static PipedInputStream pin2=new PipedInputStream();
-
 	/**
-	 * Present a GUI with check boxes
+	 * Present a GUI
 	 */
-	public static void startGui(final Parameters params, final Console console) throws AerospikeException {
+	public static void startGui(final Parameters params) throws AerospikeException {
 		EventQueue.invokeLater(new Runnable() {
 			public void run() {
 				try {
-					GuiDisplay window = new GuiDisplay(params, console);
-
-
-					window.frmAerospikeExamples.addWindowListener(new WindowAdapter() {
-						public void windowClosing(WindowEvent e) {
-							return;
-						}
-						public synchronized void windowClosed(WindowEvent evt)
-						{
-							quit=true;
-							this.notifyAll(); // stop all threads
-							try { reader.join(1000);pin.close();   } catch (Exception e){}
-							try { reader2.join(1000);pin2.close(); } catch (Exception e){}
-							System.exit(0);
-						}
-					});
-
+					GuiDisplay window = new GuiDisplay(params);
 					window.frmAerospikeExamples.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -122,9 +92,9 @@ public class GuiDisplay implements ActionListener, Runnable{
 	/**
 	 * Create the application.
 	 */
-	public GuiDisplay(Parameters params, Console console) {
+	public GuiDisplay(Parameters params) {
 		this.params = params;
-		this.console = console;
+		this.console = new GuiConsole();
 		initialize();
 	}
 
@@ -164,7 +134,6 @@ public class GuiDisplay implements ActionListener, Runnable{
 		exitButton.addMouseListener(new MouseAdapter() {
 			@Override
 			public void mouseClicked(MouseEvent arg0) {
-				console.write("Goodbye!");
 				Container Frame = exitButton.getParent();
 				do {
 					Frame = Frame.getParent();
@@ -279,48 +248,7 @@ public class GuiDisplay implements ActionListener, Runnable{
 			buttonGroup.add(jrb);
 			examplePanel.add(jrb);
 		}
-
 		frmAerospikeExamples.pack();
-
-		try
-		{
-			PipedOutputStream pout=new PipedOutputStream(pin);
-			System.setOut(new PrintStream(pout,true));
-		}
-		catch (java.io.IOException io)
-		{
-			consoleTextArea.append("Couldn't redirect STDOUT to this console\n"+io.getMessage());
-		}
-		catch (SecurityException se)
-		{
-			consoleTextArea.append("Couldn't redirect STDOUT to this console\n"+se.getMessage());
-		}
-
-		try
-		{
-			PipedOutputStream pout2=new PipedOutputStream(pin2);
-			System.setErr(new PrintStream(pout2,true));
-		}
-		catch (java.io.IOException io)
-		{
-			consoleTextArea.append("Couldn't redirect STDERR to this console\n"+io.getMessage());
-		}
-		catch (SecurityException se)
-		{
-			consoleTextArea.append("Couldn't redirect STDERR to this console\n"+se.getMessage());
-		}
-
-		quit=false; // signals the Threads that they should exit
-
-		// Starting two separate threads to read from the PipedInputStreams
-		//
-		reader=new Thread(this);
-		reader.setDaemon(true);
-		reader.start();
-		//
-		reader2=new Thread(this);
-		reader2.setDaemon(true);
-		reader2.start();
 	}
 	
 	/**
@@ -402,19 +330,34 @@ public class GuiDisplay implements ActionListener, Runnable{
 	 */
 	private void run_selected_examples() {
 		ButtonModel selected = buttonGroup.getSelection();
-		String example = selected.getActionCommand();		
-		String[] examples = new String[1];
-		examples[0] = example;
-
+		
+		if (selected == null) {
+			console.error("Please select an example and then press Run");
+			return;
+		}
+		
 		try {
+			String example = selected.getActionCommand();		
+			final String[] examples = new String[1];
+			examples[0] = example;
+
 			params.host = seedHostTextField.getText().trim();
 			params.port = Integer.parseInt(portTextField.getText().trim());
 			params.namespace = namespaceTextField.getText().trim();
 			params.set = txtSetTextfield.getText().trim();
-			Main.runExamples(this.console, this.params, examples);
+			
+			new Thread() {
+				public void run() {
+					try {
+						Main.runExamples(console, params, examples);
+					} catch (Exception ex) {
+						console.error("Exception (" + ex.toString() + ") encountered.");
+					}
+				}
+			}.start();
 		}
 		catch (Exception ex) {
-			console.write("Exception (" + ex.toString() + ") encountered.");
+			console.error("Exception (" + ex.toString() + ") encountered.");
 		}
 	}
 	
@@ -453,50 +396,11 @@ public class GuiDisplay implements ActionListener, Runnable{
 		}
 		return contents.toString();
 	}
-
-	public synchronized void run()
-	{
-		try
-		{
-			while (Thread.currentThread()==reader)
-			{
-				try { this.wait(100);}catch(InterruptedException ie) {}
-				if (pin.available()!=0)
-				{
-					String input=this.readLine(pin);
-					consoleTextArea.append(input);
-				}
-				if (quit) return;
-			}
-
-			while (Thread.currentThread()==reader2)
-			{
-				try { this.wait(100);}catch(InterruptedException ie) {}
-				if (pin2.available()!=0)
-				{
-					String input=this.readLine(pin2);
-					consoleTextArea.append(input);
-				}
-				if (quit) return;
-			}
-		} catch (Exception e)
-		{
-			consoleTextArea.append("\nConsole reports an Internal error.");
-			consoleTextArea.append("The error is: "+e);
+	
+	private class GuiConsole extends Console {
+		@Override
+		public void write(final String message) {
+			consoleTextArea.append(message + Environment.Newline);
 		}
-	}
-
-	public synchronized String readLine(PipedInputStream in) throws IOException
-	{
-		String input="";
-		do
-		{
-			int available=in.available();
-			if (available==0) break;
-			byte b[]=new byte[available];
-			in.read(b);
-			input=input+new String(b,0,b.length);
-		} while( !input.endsWith("\n") &&  !input.endsWith("\r\n") && !quit);
-		return input;
 	}
 }
