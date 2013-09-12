@@ -42,6 +42,11 @@ public class LargeStack extends Example {
 		// Initialize large stack operator.
 		com.aerospike.client.LargeStack stack = client.getLargeStack(params.policy, key, binName, null);
 				
+		// Write values.
+		stack.push(Value.get("stackvalue1"));
+		stack.push(Value.get("stackvalue2"));
+		//stack.push(Value.get("stackvalue3"));
+		
 		// Verify large stack was created with default configuration.
 		Map<?,?> map = stack.getConfig();
 		
@@ -49,11 +54,6 @@ public class LargeStack extends Example {
 			console.info(entry.getKey().toString() + ',' + entry.getValue());
 		}
 			
-		// Write values.
-		stack.push(Value.get("stackvalue1"));
-		stack.push(Value.get("stackvalue2"));
-		//stack.push(Value.get("stackvalue3"));
-		
 		// Delete last value.
 		// Comment out until trim supported on server.
 		//stack.trim(1);

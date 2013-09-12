@@ -127,7 +127,7 @@ public final class LargeSet {
 	 * Return map of set configuration parameters.
 	 */
 	public final Map<?,?> getConfig() throws AerospikeException {
-		return (Map<?,?>)client.execute(policy, key, PackageName, "config", binName);
+		return (Map<?,?>)client.execute(policy, key, PackageName, "get_config", binName);
 	}
 	
 	/**
