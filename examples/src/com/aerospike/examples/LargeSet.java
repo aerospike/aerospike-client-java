@@ -57,7 +57,7 @@ public class LargeSet extends Example {
 			throw new Exception("Size mismatch. Expected 2 Received " + size);
 		}
 		
-		String received = (String)set.search(Value.get("listvalue2"));
+		String received = (String)set.get(Value.get("listvalue2"));
 		String expected = "listvalue2";
 		
 		if (received != null && received.equals(expected)) {

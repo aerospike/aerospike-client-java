@@ -585,19 +585,46 @@ public class AerospikeClient {
 	}
 
 	//----------------------------------------------------------
-	// Large Set/Stack functions (Supported by 3.0 servers only)
+	// Large collection functions (Supported by 3.0 servers only)
 	//----------------------------------------------------------
 
 	/**
-	 * Initialize large set operator.  This operator can be used to create and manage a list 
+	 * Initialize large list operator.  This operator can be used to create and manage a list 
 	 * within a single bin.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeSet getLargeSet(Policy policy, Key key, String binName) {
-		return new LargeSet(this, policy, key, binName);
+	public final LargeList getLargeList(Policy policy, Key key, String binName, String userModule) {
+		return new LargeList(this, policy, key, binName, userModule);
+	}	
+
+	/**
+	 * Initialize large map operator.  This operator can be used to create and manage a map 
+	 * within a single bin.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeMap getLargeMap(Policy policy, Key key, String binName, String userModule) {
+		return new LargeMap(this, policy, key, binName, userModule);
+	}	
+
+	/**
+	 * Initialize large set operator.  This operator can be used to create and manage a set 
+	 * within a single bin.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeSet getLargeSet(Policy policy, Key key, String binName, String userModule) {
+		return new LargeSet(this, policy, key, binName, userModule);
 	}	
 
 	/**
@@ -607,9 +634,10 @@ public class AerospikeClient {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeStack getLargeStack(Policy policy, Key key, String binName) {
-		return new LargeStack(this, policy, key, binName);
+	public final LargeStack getLargeStack(Policy policy, Key key, String binName, String userModule) {
+		return new LargeStack(this, policy, key, binName, userModule);
 	}	
 
 	//-------------------------------------------------------
