@@ -36,7 +36,7 @@ public final class LuaExecutor implements Runnable {
 			LuaInstance lua = LuaCache.getInstance();
 			
 			try {
-				lua.load(statement.getPackageName());
+				lua.load(statement.getPackageName(), false);
 				
 				LuaValue[] args = new LuaValue[4 + statement.getFunctionArgs().length];
 				args[0] = lua.getFunction(statement.getFunctionName());
