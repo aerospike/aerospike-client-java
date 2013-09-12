@@ -40,11 +40,8 @@ public class LargeStack extends Example {
 		client.delete(params.writePolicy, key);
 		
 		// Initialize large stack operator.
-		com.aerospike.client.LargeStack stack = client.getLargeStack(params.policy, key, binName);
-		
-		// Create large stack in a single bin.
-		stack.create(null);
-		
+		com.aerospike.client.LargeStack stack = client.getLargeStack(params.policy, key, binName, null);
+				
 		// Verify large stack was created with default configuration.
 		Map<?,?> map = stack.getConfig();
 		
