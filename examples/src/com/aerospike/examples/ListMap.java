@@ -23,6 +23,10 @@ public class ListMap extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {	
+		if (! params.hasUdf) {
+			console.info("List/Map functions are not supported by the connected Aerospike server.");
+			return;
+		}
 		testListStrings(client, params);
 		testListComplex(client, params);
 		testMapStrings(client, params);
