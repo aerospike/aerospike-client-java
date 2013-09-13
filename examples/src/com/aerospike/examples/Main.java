@@ -44,6 +44,7 @@ public class Main extends JPanel {
 		"AsyncPutGet",
 		"AsyncBatch",
 		"AsyncScan",
+		"ListMap",
 		"UserDefinedFunction",
 		"LargeSet",
 		"LargeStack",
