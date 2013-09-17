@@ -64,7 +64,7 @@ public abstract class Value {
 	 * Get value array instance.
 	 */
 	public static Value get(Value[] value) {
-		return new ValueArray(value);
+		return (value == null)? new NullValue() : new ValueArray(value);
 	}
 
 	/**

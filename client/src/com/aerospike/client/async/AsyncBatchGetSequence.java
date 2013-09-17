@@ -26,7 +26,7 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 		HashSet<String> binNames,
 		RecordSequenceListener listener
 	) {
-		super(parent, cluster, node, binNames);
+		super(parent, cluster, node, false, binNames);
 		this.listener = listener;
 	}
 		

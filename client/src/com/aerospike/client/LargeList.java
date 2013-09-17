@@ -15,10 +15,10 @@ import java.util.Map;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Create and manage a set within a single bin.
+ * Create and manage a list within a single bin.
  */
-public final class LargeSet {
-	private static final String PackageName = "lset";
+public final class LargeList {
+	private static final String PackageName = "llist";
 	
 	private final AerospikeClient client;
 	private final Policy policy;
@@ -27,15 +27,15 @@ public final class LargeSet {
 	private final Value userModule;
 	
 	/**
-	 * Initialize large set operator.
+	 * Initialize large list operator.
 	 * 
 	 * @param client				client
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default set
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default list
 	 */
-	public LargeSet(AerospikeClient client, Policy policy, Key key, String binName, String userModule) {
+	public LargeList(AerospikeClient client, Policy policy, Key key, String binName, String userModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
@@ -44,7 +44,7 @@ public final class LargeSet {
 	}
 	
 	/**
-	 * Add a value to the set.  If the set does not exist, create it using specified userModule configuration.
+	 * Add a value to the list.  If the list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param value				value to add
 	 */
@@ -53,7 +53,7 @@ public final class LargeSet {
 	}
 
 	/**
-	 * Add values to the set.  If the set does not exist, create it using specified userModule configuration.
+	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param values			values to add
 	 */
@@ -62,7 +62,7 @@ public final class LargeSet {
 	}
 	
 	/**
-	 * Delete value from set.
+	 * Delete value from list.
 	 * 
 	 * @param value				value to delete
 	 */
@@ -71,35 +71,36 @@ public final class LargeSet {
 	}
 
 	/**
-	 * Select value from set.
+	 * Select values from list.
 	 * 
 	 * @param value				value to select
-	 * @return					found value
+	 * @return					list of entries selected
 	 */
-	public final Object get(Value value) throws AerospikeException {
-		return client.execute(policy, key, PackageName, "get", binName, value);
+	public final List<?> find(Value value) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find", binName, value);
 	}
 
 	/**
-	 * Check existence of value in the set.
+	 * Select values from list and apply specified Lua filter.
 	 * 
-	 * @param value				value to check
-	 * @return					true if found, otherwise false
+	 * @param value				value to select
+	 * @param filterName		Lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to Lua function name
+	 * @return					list of entries selected
 	 */
-	public final boolean exists(Value value) throws AerospikeException {
-		int ret = (Integer)client.execute(policy, key, PackageName, "exists", binName, value);
-		return ret == 1;
+	public final List<?> findThenFilter(Value value, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, userModule, Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
-	 * Return list of all objects in the set.
+	 * Return all objects in the list.
 	 */
 	public final List<?> scan() throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "scan", binName);
 	}
 
 	/**
-	 * Select values from set and apply specified Lua filter.
+	 * Select values from list and apply specified Lua filter.
 	 * 
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
@@ -110,37 +111,37 @@ public final class LargeSet {
 	}
 
 	/**
-	 * Delete bin containing the set.
+	 * Delete bin containing the list.
 	 */
 	public final void destroy() throws AerospikeException {
 		client.execute(policy, key, PackageName, "destroy", binName);
 	}
 
 	/**
-	 * Return size of set.
+	 * Return size of list.
 	 */
 	public final int size() throws AerospikeException {
 		return (Integer)client.execute(policy, key, PackageName, "size", binName);
 	}
 
 	/**
-	 * Return map of set configuration parameters.
+	 * Return map of list configuration parameters.
 	 */
 	public final Map<?,?> getConfig() throws AerospikeException {
-		return (Map<?,?>)client.execute(policy, key, PackageName, "get_config", binName);
+		return (Map<?,?>)client.execute(policy, key, PackageName, "config", binName);
 	}
 	
 	/**
-	 * Set maximum number of entries in the set.
+	 * Set maximum number of entries in the list.
 	 *  
-	 * @param capacity			max entries in set
+	 * @param capacity			max entries in list
 	 */
 	public final void setCapacity(int capacity) throws AerospikeException {
 		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
 	}
 
 	/**
-	 * Return maximum number of entries in the set.
+	 * Return maximum number of entries in the list.
 	 */
 	public final int getCapacity() throws AerospikeException {
 		return (Integer)client.execute(policy, key, PackageName, "get_capacity", binName);

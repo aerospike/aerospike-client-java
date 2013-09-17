@@ -79,6 +79,11 @@ public final class ReadCommand extends SingleCommand {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
         		return;
         	}
+        	
+        	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+                record = parseRecord(opCount, fieldCount, generation, expiration);
+                handleUdfError();
+        	}
         	throw new AerospikeException(resultCode);
         }
                   
@@ -88,6 +93,28 @@ public final class ReadCommand extends SingleCommand {
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);            
+	}
+	
+	private void handleUdfError() throws AerospikeException {	
+		String ret = (String)record.bins.get("FAILURE");
+		
+		if (ret != null) {
+			String[] list;
+			String message;
+			int code;
+			
+			try {
+    			list = ret.split(":");
+    			code = Integer.parseInt(list[2].trim());
+    			message = list[0] + ':' + list[1] + ' ' + list[3];
+			}
+			catch (Exception e) {
+				// Use generic exception if parse error occurs.
+	        	throw new AerospikeException(resultCode);
+			}
+			
+			throw new AerospikeException(code, message);
+		}
 	}
 	
 	private final Record parseRecord(
@@ -164,7 +191,7 @@ public final class ReadCommand extends SingleCommand {
 	    }
 	    return new Record(bins, duplicates, generation, expiration);
 	}
-
+	
 	public Record getRecord() {
 		return record;
 	}

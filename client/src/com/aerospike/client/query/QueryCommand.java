@@ -15,7 +15,7 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
 import com.aerospike.client.command.MultiCommand;
-import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.MsgPack;
 
 public abstract class QueryCommand extends MultiCommand {
@@ -25,7 +25,7 @@ public abstract class QueryCommand extends MultiCommand {
 		super(node);
 	}
 
-	public void query(QueryPolicy policy, Statement statement) throws AerospikeException {
+	public void query(Policy policy, Statement statement) throws AerospikeException {
 		byte[] functionArgBuffer = null;
 		int fieldCount = 0;
 		int filterSize = 0;
@@ -146,7 +146,7 @@ public abstract class QueryCommand extends MultiCommand {
 		
 		if (statement.functionName != null) {
 			writeFieldHeader(1, FieldType.UDF_OP);
-			sendBuffer[sendOffset++] = (byte)1;
+			sendBuffer[sendOffset++] = (statement.returnData)? (byte)1 : (byte)2;
 			writeField(statement.packageName, FieldType.UDF_PACKAGE_NAME);
 			writeField(statement.functionName, FieldType.UDF_FUNCTION);
 			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);

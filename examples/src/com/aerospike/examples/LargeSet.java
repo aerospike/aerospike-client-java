@@ -1,6 +1,5 @@
 package com.aerospike.examples;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -15,7 +14,7 @@ public class LargeSet extends Example {
 	}
 
 	/**
-	 * Perform operations on a list within a single bin.
+	 * Perform operations on a set within a single bin.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -24,17 +23,19 @@ public class LargeSet extends Example {
 			return;
 		}
 
-		Key key = new Key(params.namespace, params.set, "listkey");
-		String binName = params.getBinName("listbin");
+		Key key = new Key(params.namespace, params.set, "setkey");
+		String binName = params.getBinName("setbin");
 		
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.LargeSet set = client.getLargeSet(params.policy, key, binName);
-		
-		// Create large set in a single bin.
-		set.create(null);
+		com.aerospike.client.LargeSet set = client.getLargeSet(params.policy, key, binName, null);
+						
+		// Write values.
+		set.add(Value.get("setvalue1"));
+		set.add(Value.get("setvalue2"));
+		//set.insert(Value.get("setvalue3"));
 		
 		// Verify large set was created with default configuration.
 		Map<?,?> map = set.getConfig();
@@ -42,15 +43,10 @@ public class LargeSet extends Example {
 		for (Entry<?,?> entry : map.entrySet()) {
 			console.info(entry.getKey().toString() + ',' + entry.getValue());
 		}
-		
-		// Write values.
-		set.insert(Value.get("listvalue1"));
-		set.insert(Value.get("listvalue2"));
-		//set.insert(Value.get("listvalue3"));
-		
+
 		// Delete last value.
 		// Comment out until delete supported on server.
-		//set.delete(Value.get("listvalue3"));
+		//set.delete(Value.get("setvalue3"));
 		
 		int size = set.size();
 		
@@ -58,8 +54,8 @@ public class LargeSet extends Example {
 			throw new Exception("Size mismatch. Expected 2 Received " + size);
 		}
 		
-		String received = (String)set.search(Value.get("listvalue2"));
-		String expected = "listvalue2";
+		String received = (String)set.get(Value.get("setvalue2"));
+		String expected = "setvalue2";
 		
 		if (received != null && received.equals(expected)) {
 			console.info("Data matched: namespace=%s set=%s key=%s value=%s", 

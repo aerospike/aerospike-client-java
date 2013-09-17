@@ -17,7 +17,7 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 	private final ExistsSequenceListener listener;
 	
 	public AsyncBatchExistsSequence(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, ExistsSequenceListener listener) {
-		super(parent, cluster, node);
+		super(parent, cluster, node, false);
 		this.listener = listener;
 	}
 		

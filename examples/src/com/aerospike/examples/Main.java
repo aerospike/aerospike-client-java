@@ -44,10 +44,12 @@ public class Main extends JPanel {
 		"AsyncPutGet",
 		"AsyncBatch",
 		"AsyncScan",
+		"ListMap",
 		"UserDefinedFunction",
 		"LargeSet",
 		"LargeStack",
-		"Query",
+		"QueryInteger",
+		"QueryString",
 		"QueryAggregate"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
@@ -56,8 +58,6 @@ public class Main extends JPanel {
 	 * Main entry point.
 	 */
 	public static void main(String[] args) {
-
-		Console console = new Console();
 
 		try {
 			Options options = new Options();
@@ -73,14 +73,14 @@ public class Main extends JPanel {
 			CommandLine cl = parser.parse(options, args, false);
 
 			if (args.length == 0 || cl.hasOption("u")) {
-				logUsage(console, options);
+				logUsage(options);
 				return;
 			}
 			Parameters params = parseParameters(cl);
 			String[] exampleNames = cl.getArgs();
 			
 			if ((exampleNames.length == 0) && (!cl.hasOption("g"))) {
-				logUsage(console, options);
+				logUsage(options);
 				return;			
 			}
 			
@@ -97,14 +97,15 @@ public class Main extends JPanel {
 			}
 
 			if (cl.hasOption("g")) {
-				GuiDisplay.startGui(exampleNames, params, console);
+				GuiDisplay.startGui(params);
 			}
 			else {
+				Console console = new Console();
 				runExamples(console, params, exampleNames);				
 			}
 		}
 		catch (Exception ex) {
-			console.error(ex.getMessage());
+			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
@@ -112,20 +113,20 @@ public class Main extends JPanel {
 	/**
 	 * Write usage to console.
 	 */
-	private static void logUsage(Console console, Options options) {
+	private static void logUsage(Options options) {
 		HelpFormatter formatter = new HelpFormatter();
 		StringWriter sw = new StringWriter();
 		PrintWriter pw = new PrintWriter(sw);
 		String syntax = Main.class.getName() + " [<options>] all|(<example1> <example2> ...)";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
-		console.write(sw.toString());
-		console.write("examples:");
+		System.out.println(sw.toString());
+		System.out.println("examples:");
 
 		for (String name : ExampleNames) {
-			console.write(name.toString());			
+			System.out.println(name.toString());			
 		}
-		console.write("");
-		console.write("All examples will be run if 'all' is specified as an example.");
+		System.out.println();
+		System.out.println("All examples will be run if 'all' is specified as an example.");
 	}
 
 	/**
@@ -141,9 +142,7 @@ public class Main extends JPanel {
 		if (set.equals("empty")) {
 			set = "";
 		}
-		Parameters params = new Parameters(host, port, namespace, set);
-		params.setServerSpecific();
-		return params;
+		return new Parameters(host, port, namespace, set);
 	}
 	
 	/**
@@ -162,6 +161,8 @@ public class Main extends JPanel {
 			}
 		}
 		
+		params.setServerSpecific();
+
 		if (syncExamples.size() > 0) {
 			Example.runExamples(console, params, syncExamples);
 		}

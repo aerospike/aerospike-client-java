@@ -3,22 +3,23 @@ package com.aerospike.examples;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Language;
+import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.ResultSet;
+import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 
-public class QueryAggregate extends Example {
+public class QueryInteger extends Example {
 
-	public QueryAggregate(Console console) {
+	public QueryInteger(Console console) {
 		super(console);
 	}
 
 	/**
-	 * Create secondary index and query on it and apply aggregation user defined function.
+	 * Create secondary index on an integer bin and query on it.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -26,16 +27,16 @@ public class QueryAggregate extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		String indexName = "aggindex";
-		String keyPrefix = "aggkey";
-		String binName = params.getBinName("aggbin");  
-		int size = 10;
+		
+		String indexName = "queryindexint";
+		String keyPrefix = "querykeyint";
+		String binName = params.getBinName("querybinint");  
+		int size = 50;
 
-		client.register(params.policy, "udf/sum_example.lua", "sum_example.lua", Language.LUA);
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
-		//dropIndex(client, params, indexName);*/
+		//dropIndex(client, params, indexName);
 	}
 	
 	private void createIndex(
@@ -59,13 +60,11 @@ public class QueryAggregate extends Example {
 		String binName,
 		int size
 	) throws Exception {
+		console.info("Write " + size + " records.");
+
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);
-			
-			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, bin.name, bin.value);
-			
+			Bin bin = new Bin(binName, i);	
 			client.put(params.writePolicy, key, bin);
 		}
 	}
@@ -77,8 +76,8 @@ public class QueryAggregate extends Example {
 		String binName
 	) throws Exception {
 		
-		Value begin = Value.get(4);
-		Value end = Value.get(7);
+		Value begin = Value.get(14);
+		Value end = Value.get(18);
 		
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
 			params.namespace, params.set, indexName, binName, begin, end);			
@@ -90,35 +89,24 @@ public class QueryAggregate extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilters(Filter.range(binName, begin, end));
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin");
+		RecordSet rs = client.query(null, stmt);
 		
 		try {
-			int expected = 22; // 4 + 5 + 6 + 7
 			int count = 0;
 			
 			while (rs.next()) {
-				Object object = rs.getObject();
-				int sum;
+				Key key = rs.getKey();
+				Record record = rs.getRecord();
+				int result = (Integer)record.getValue(binName);
 				
-				if (object instanceof Integer) {
-					sum = (Integer)rs.getObject();
-				}
-				else {
-					console.error("Return value not an integer: " + object);
-					continue;
-				}
+				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
+					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
 				
-				if (expected == (int)sum) {
-					console.info("Sum matched: value=%d", expected);
-				}
-				else {
-					console.error("Sum mismatch: Expected %d. Received %d.", expected, (int)sum);
-				}
 				count++;
 			}
 			
-			if (count == 0) {
-				console.error("Query failed. No records returned.");			
+			if (count != 5) {
+				console.error("Query count mismatch. Expected 5. Received " + count);			
 			}
 		}
 		finally {

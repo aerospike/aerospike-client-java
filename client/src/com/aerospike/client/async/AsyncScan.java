@@ -18,7 +18,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 	private final RecordSequenceListener listener;
 	
 	public AsyncScan(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, RecordSequenceListener listener) {
-		super(parent, cluster, node);
+		super(parent, cluster, node, true);
 		this.listener = listener;
 	}
 		

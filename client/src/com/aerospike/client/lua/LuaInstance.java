@@ -9,7 +9,6 @@
  */
 package com.aerospike.client.lua;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -43,7 +42,7 @@ public final class LuaInstance {
 	private final Globals globals = new Globals();
 	private final PackageLib packageLib;
 	
-	public LuaInstance() throws IOException {
+	public LuaInstance() throws AerospikeException {
 		globals.load(new JseBaseLib());
 		packageLib = new PackageLib();
 		globals.load(packageLib);
@@ -63,10 +62,10 @@ public final class LuaInstance {
 		LuaC.install();
 		globals.compiler = LuaC.instance;
 
-		load("compat52");
-		load("as");
-		load("stream_ops");
-		load("aerospike");
+		load("compat52", true);
+		load("as", true);
+		load("stream_ops", true);
+		load("aerospike", true);
 		
 		globals.load(new LuaAerospikeLib(this));
 	}
@@ -84,12 +83,12 @@ public final class LuaInstance {
 		globals.load(function);
 	}
 	
-	public void load(String packageName) throws IOException {
+	public void load(String packageName, boolean system) throws AerospikeException {
 		if (packageLib.loaded.get(packageName).toboolean()) {
 			return;
 		}
 		
-		Prototype prototype = LuaCache.loadPackage(packageName);
+		Prototype prototype = LuaCache.loadPackage(packageName, system);
 		LuaClosure function = new LuaClosure(prototype, globals);
 		function.invoke();
 		

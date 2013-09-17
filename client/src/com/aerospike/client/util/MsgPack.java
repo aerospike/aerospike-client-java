@@ -128,6 +128,12 @@ public final class MsgPack {
 			return;
 		}
 		
+		if (obj instanceof com.aerospike.client.Value) {
+			com.aerospike.client.Value value = (com.aerospike.client.Value) obj;
+			value.pack(packer);
+			return;
+		}
+		
 		if (obj instanceof String) {
 			packString(packer, (String) obj);
 			return;
@@ -148,12 +154,6 @@ public final class MsgPack {
 			return;
 		}
 
-		if (obj instanceof com.aerospike.client.Value) {
-			com.aerospike.client.Value value = (com.aerospike.client.Value) obj;
-			value.pack(packer);
-			return;
-		}
-		
 		if (obj instanceof List<?>) {
 			packList(packer, (List<?>) obj);
 			return;

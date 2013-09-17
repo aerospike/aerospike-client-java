@@ -1,7 +1,7 @@
 /*
  * Aerospike client examples -- gui control
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -11,111 +11,246 @@ package com.aerospike.examples;
 
 import java.awt.BorderLayout;
 import java.awt.Container;
+import java.awt.Dimension;
+import java.awt.EventQueue;
 import java.awt.FlowLayout;
 import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.awt.event.ItemEvent;
-import java.awt.event.ItemListener;
-import java.awt.event.WindowAdapter;
-import java.awt.event.WindowEvent;
+import java.awt.event.FocusAdapter;
+import java.awt.event.FocusEvent;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
 
-import javax.swing.BorderFactory;
+import javax.swing.BoxLayout;
+import javax.swing.ButtonGroup;
+import javax.swing.ButtonModel;
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
-import javax.swing.JDesktopPane;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
-import javax.swing.JInternalFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JScrollBar;
+import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
+import javax.swing.JSplitPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
+import javax.swing.border.EtchedBorder;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.util.Environment;
 
-public class GuiDisplay extends JPanel {
-
-	private static final long serialVersionUID = 1L;
+public class GuiDisplay implements ActionListener {
+	private static String sourcePath = "src/com/aerospike/examples/";
+	
 	private Parameters params;
 	private Console console;
+	private ButtonGroup buttonGroup;
+	private JButton runButton, exitButton;
+	private JFrame frmAerospikeExamples;
+	private JTextArea sourceTextPane;
+	private JScrollPane scrollPane;
+	private JPanel connectionPanel;
+	private JLabel lblServerHost;
+	private JTextField seedHostTextField;
+	private JLabel lblPort;
+	private JTextField portTextField;
+	private JLabel lblnameSpace;
+	private JTextField namespaceTextField;
+	private JLabel lblSet;
+	private JTextField txtSetTextfield;
+	private JSplitPane splitPane;
+	private JScrollPane exampleScrollPane;
+	private JPanel examplePanel;
+	private JPanel mainPanel;
+	private JScrollPane consoleScrollPane;
+	private JTextArea consoleTextArea;
 
-	static String sourcePath = "src/com/aerospike/examples/";
-
-	// content frames
-	static JFrame frame;
-	static JInternalFrame userselect_frame, source_frame;
-	static JTextArea jtaSourcefile;
-	static JScrollPane scrollPane;
-
-	// check box gui items
-	private HashMap<String, JCheckBox> selections;
-	JButton runButton, exitButton;
-	private CheckBoxListener myCbListener = null;
-	private ButtonListener myBtListener = null;
-	private static final String RUNTEST_LBL = "Run";
-	private static final String EXIT_LBL = "Quit";
-
-	private GuiDisplay(String[] initExampleChoices, Parameters params, Console console) throws AerospikeException {
-		this.params = params;
-		this.console = console;
-
-		//
-		// set up checkboxs for all examples
-		//
-		JPanel jplCheckBox = new JPanel();
-		jplCheckBox.setLayout(new GridLayout(0, 1));	//0 rows, 1 Column
-
-		myCbListener = new CheckBoxListener();
-		selections = new HashMap<String, JCheckBox>();
-		for (String example : Main.getAllExampleNames()) {
-			JCheckBox jcb = new JCheckBox(example);     // register listeners for CBs
-			jcb.addItemListener(myCbListener);
-			selections.put(example, jcb);
-			jplCheckBox.add(jcb);
-		}
-		
-		// check the boxes based on user's initial choices
-		for (String example : initExampleChoices) {
-			JCheckBox jcb = selections.get(example);
-			if (null != jcb) {
-				jcb.setSelected(true);
+	/**
+	 * Present a GUI
+	 */
+	public static void startGui(final Parameters params) throws AerospikeException {
+		EventQueue.invokeLater(new Runnable() {
+			public void run() {
+				try {
+					GuiDisplay window = new GuiDisplay(params);
+					window.frmAerospikeExamples.setVisible(true);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
 			}
-		}
-
-		setLayout(new BorderLayout());
-		add(jplCheckBox, BorderLayout.WEST);
-
-		//
-		// set up buttons
-		//
-		myBtListener = new ButtonListener();
-		runButton = new JButton(RUNTEST_LBL);
-		exitButton = new JButton(EXIT_LBL);
-
-		// Register listeners for buttons
-		runButton.addActionListener(myBtListener);
-		exitButton.addActionListener(myBtListener);
-
-		// Put buttons as a tool bar on the bottom
-		JPanel toolbar = new JPanel();
-		toolbar.setLayout(new FlowLayout(FlowLayout.LEFT));
-		toolbar.add(runButton);
-		toolbar.add(exitButton);
-
-		add(toolbar, BorderLayout.SOUTH);
-		setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
+		});
 	}
 
+	/**
+	 * Create the application.
+	 */
+	public GuiDisplay(Parameters params) {
+		this.params = params;
+		this.console = new GuiConsole();
+		initialize();
+	}
+
+	/**
+	 * Initialize the contents of the frame.
+	 */
+	private void initialize() {
+		frmAerospikeExamples = new JFrame();
+		frmAerospikeExamples.setTitle("Aerospike Java Client Examples");
+		frmAerospikeExamples.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+		frmAerospikeExamples.pack();
+		frmAerospikeExamples.getContentPane().setLayout(new BorderLayout(0, 0));
+
+		splitPane = new JSplitPane();
+		splitPane.setOrientation(JSplitPane.VERTICAL_SPLIT);
+		frmAerospikeExamples.getContentPane().add(splitPane, BorderLayout.CENTER);
+
+		mainPanel = new JPanel();
+		splitPane.setLeftComponent(mainPanel);
+		mainPanel.setLayout(new BorderLayout(0, 0));
+		JPanel buttonPanel = new JPanel();
+		buttonPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+
+		runButton = new JButton("Run");
+		runButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent ev) {
+				consoleTextArea.setText("");
+				run_selected_examples();
+			}
+		});
+		buttonPanel.add(runButton);
+		mainPanel.add(buttonPanel, BorderLayout.SOUTH);
+
+		exitButton = new JButton("Quit");
+		exitButton.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent arg0) {
+				Container Frame = exitButton.getParent();
+				do {
+					Frame = Frame.getParent();
+				} while (!(Frame instanceof JFrame));
+				((JFrame) Frame).dispose();
+			}
+		});
+		buttonPanel.add(exitButton);
+		sourceTextPane = new JTextArea();
+		sourceTextPane.setTabSize(2);
+		sourceTextPane.setEditable(false);
+
+		scrollPane = new JScrollPane(sourceTextPane);
+		scrollPane.setViewportBorder(new EtchedBorder(EtchedBorder.LOWERED, null, null));
+		scrollPane.setPreferredSize(new Dimension(600,100));
+		mainPanel.add(scrollPane, BorderLayout.CENTER);
+
+		connectionPanel = new JPanel();
+		connectionPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+
+		lblServerHost = new JLabel("Server Host");
+		connectionPanel.add(lblServerHost);
+
+
+		seedHostTextField = new JTextField();
+		seedHostTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.host = seedHostTextField.getText();
+			}
+		});
+		connectionPanel.add(seedHostTextField);
+		seedHostTextField.setColumns(10);
+
+		lblPort = new JLabel("Port");
+		connectionPanel.add(lblPort);
+
+		portTextField = new JTextField();
+		portTextField.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent arg0) {
+				String newValue = namespaceTextField.getText();
+				if (newValue != null && newValue != ""){
+					try{
+						params.port = Integer.parseInt(newValue);
+					} catch (NumberFormatException ne) {
+						//ne.printStackTrace();
+					}
+				}
+			}
+		});
+		connectionPanel.add(portTextField);
+		portTextField.setColumns(4);
+
+		lblnameSpace = new JLabel("Namespace");
+		connectionPanel.add(lblnameSpace);
+
+		namespaceTextField = new JTextField();
+		namespaceTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.namespace = namespaceTextField.getText();
+			}
+		});
+		connectionPanel.add(namespaceTextField);
+		namespaceTextField.setColumns(10);
+
+		lblSet = new JLabel("Set");
+		connectionPanel.add(lblSet);
+
+		txtSetTextfield = new JTextField();
+		txtSetTextfield.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.set = txtSetTextfield.getText();
+			}
+		});
+		connectionPanel.add(txtSetTextfield);
+		txtSetTextfield.setColumns(10);
+		mainPanel.add(connectionPanel, BorderLayout.NORTH);
+
+		examplePanel = new JPanel();
+		examplePanel.setLayout(new BoxLayout(examplePanel, BoxLayout.Y_AXIS));
+
+		exampleScrollPane = new JScrollPane(examplePanel);
+		mainPanel.add(exampleScrollPane, BorderLayout.WEST);
+
+		// init values
+		seedHostTextField.setText(params.host);
+		portTextField.setText(Integer.toString(params.port));
+		namespaceTextField.setText(params.namespace);
+		txtSetTextfield.setText(params.set);
+
+		//int width = 785;
+		int width = 1000;
+		int height = 220;
+		consoleTextArea = new JTextArea();
+		consoleTextArea.setSize(new Dimension(width, height));
+		consoleTextArea.setEditable(false);
+		consoleScrollPane = new JScrollPane(consoleTextArea);
+		consoleScrollPane.setPreferredSize(new Dimension(width, height));
+		consoleScrollPane.setSize(new Dimension(width, height));
+		splitPane.setRightComponent(consoleScrollPane);
+
+		buttonGroup = new ButtonGroup();
+		JRadioButton jrb;		
+		
+		for (String example : Main.getAllExampleNames()) {
+			jrb = new JRadioButton(example);
+			jrb.setActionCommand(example);
+			jrb.addActionListener(this);	
+			buttonGroup.add(jrb);
+			examplePanel.add(jrb);
+		}
+		frmAerospikeExamples.pack();
+	}
+	
 	/**
 	 * SourcePath Dialog to prompt user for alternate source code path
 	 */
@@ -135,16 +270,19 @@ public class GuiDisplay extends JPanel {
 			panel.add(tfSourcePath);
 			// panel.setBorder(new LineBorder(Color.GRAY));
 
-			
+
 			btnOK = new JButton("OK");
 
 			btnOK.addActionListener(new ActionListener() {
+				@Override
 				public void actionPerformed(ActionEvent e) {
 					// retrieve the new source path from user's input
 					GuiDisplay.sourcePath = tfSourcePath.getText().trim();
 					dispose();
 				}
+
 			});
+
 			JPanel bp = new JPanel();
 			bp.add(btnOK);
 
@@ -157,143 +295,72 @@ public class GuiDisplay extends JPanel {
 		}
 	}
 
-	/**
-	 * Checkbox listener is needed to update the source code box
-	 */
-	private class CheckBoxListener implements ItemListener {
-		public void itemStateChanged(ItemEvent e) {
-			if (0 == sourcePath.length()) {
-				// user indicated to skip source browsing
-				return;
-			}
-				
-			if (e.getStateChange() == ItemEvent.SELECTED) {
-				Object cbSource = e.getItemSelectable();
-				for (String example : Main.getAllExampleNames()) {
-					// find the checked item and push out the source code
-					if (cbSource == selections.get(example)) {
-						String sourceText = readfile(sourcePath + example + ".java");
-						if (0 == sourceText.length()) {
-							// did not get source code content, ask the user for location and give it one more try
-							SourcePathDialog spDialog = new SourcePathDialog(frame);
-							spDialog.setVisible(true);
-							if (0 < sourcePath.length()) {
-								if (sourcePath.charAt(sourcePath.length()-1) != '/') 
-									sourcePath += "/";
-								sourceText =  readfile(sourcePath + example + ".java");
-								if (0 == sourceText.length()) {
-									sourceText = "Failed to read source file: " + sourcePath + example + ".java";
-								}
-							}
-						}
-						if (0 == sourceText.length()) {
-							// user no longer want to see skip source window from this point on?
-							if (0 == sourcePath.length()) {
-								source_frame.dispose();
-							}
-						}
-						else {
-							source_frame.setTitle(example + " example source");
-							jtaSourcefile.setText(sourceText);
-						}
-						
-						JScrollBar verticalScrollBar = scrollPane.getVerticalScrollBar();
-						JScrollBar horizontalScrollBar = scrollPane.getHorizontalScrollBar();
-						verticalScrollBar.setValue(verticalScrollBar.getMinimum());
-						horizontalScrollBar.setValue(horizontalScrollBar.getMinimum());
-
-						break;
-					}
+	public void actionPerformed(ActionEvent e) {
+		String example = e.getActionCommand();
+		String sourceText = readfile(sourcePath + example + ".java");
+		if (0 == sourceText.length()) {
+			// did not get source code content, ask the user for location and give it one more try
+			SourcePathDialog spDialog = new SourcePathDialog(frmAerospikeExamples);
+			spDialog.setVisible(true);
+			if (0 < sourcePath.length()) {
+				if (sourcePath.charAt(sourcePath.length()-1) != '/') 
+					sourcePath += "/";
+				sourceText =  readfile(sourcePath + example + ".java");
+				if (0 == sourceText.length()) {
+					sourceText = "Failed to read source file: " + sourcePath + example + ".java";
 				}
 			}
 		}
-	}
-
-	/**
-	 * Listener to listen to button events
-	 */
-	private class ButtonListener implements ActionListener {
-		public void actionPerformed(ActionEvent ae) {
-			if (RUNTEST_LBL.equals(ae.getActionCommand())) {
-				run_selected_examples();
-			}
-			else if  (EXIT_LBL.equals(ae.getActionCommand())) {
-				console.write("Goodbye!");
-				Container Frame = exitButton.getParent();
-				do {
-					Frame = Frame.getParent();
-				} while (!(Frame instanceof JFrame));
-				((JFrame) Frame).dispose();
+		if (0 == sourceText.length()) {
+			// user no longer want to see skip source window from this point on?
+			if (0 == sourcePath.length()) {
+				sourceTextPane.setText("");
 			}
 		}
-	}
+		else {
+			sourceTextPane.setText(sourceText);
+			sourceTextPane.setSize(sourceTextPane.getPreferredSize());
+			sourceTextPane.setCaretPosition(0);
+			sourceTextPane.revalidate();
+		}
+	}	
 
 	/**
 	 * Run the user selected examples
 	 */
 	private void run_selected_examples() {
-		ArrayList<String> list = new ArrayList<String>(32);
+		ButtonModel selected = buttonGroup.getSelection();
 		
-		for (String name : Main.getAllExampleNames()) {
-			if (this.selections.get(name).isSelected()) {
-				list.add(name);
-			}
+		if (selected == null) {
+			console.error("Please select an example and then press Run");
+			return;
 		}
-		String[] examples = list.toArray(new String[list.size()]);
 		
 		try {
-			Main.runExamples(this.console, this.params, examples);
+			String example = selected.getActionCommand();		
+			final String[] examples = new String[1];
+			examples[0] = example;
+
+			params.host = seedHostTextField.getText().trim();
+			params.port = Integer.parseInt(portTextField.getText().trim());
+			params.namespace = namespaceTextField.getText().trim();
+			params.set = txtSetTextfield.getText().trim();
+			
+			new Thread() {
+				public void run() {
+					try {
+						Main.runExamples(console, params, examples);
+					} catch (Exception ex) {
+						console.error("Exception (" + ex.toString() + ") encountered.");
+					}
+				}
+			}.start();
 		}
 		catch (Exception ex) {
-			console.write("Exception (" + ex.toString() + ") encountered.");
+			console.error("Exception (" + ex.toString() + ") encountered.");
 		}
 	}
-
-	/**
-	 * Present a GUI with check boxes
-	 */
-	public static void startGui(String[] examples, Parameters params, Console console) throws AerospikeException {
-		JDesktopPane desk;
-
-		frame =  new JFrame("Aerospike Java client examples");
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		desk = new JDesktopPane();
-
-		source_frame = new JInternalFrame("Source file area", true, false, false, true);
-		source_frame.setBounds(200, 0, 950, 400);
-		source_frame.setVisible(true);
-
-		jtaSourcefile = new JTextArea(200,200);
-		jtaSourcefile.setEditable(false);
-		scrollPane = new JScrollPane(jtaSourcefile, 
-					     JScrollPane.VERTICAL_SCROLLBAR_ALWAYS,
-					     JScrollPane.HORIZONTAL_SCROLLBAR_ALWAYS);
-		source_frame.setContentPane(scrollPane);
-
-		// source_frame and jtaSourcefile must be created before the GuiDisplay object is created.
-		// If the users has inital selections it will cause the checkbox 
-		// listener to fire and tries to set the source_frame content
-		userselect_frame = new JInternalFrame("Select examples", false, false, false, false);
-		userselect_frame.setBounds(0, 0, 200, 400);
-		userselect_frame.setVisible(true);
-		userselect_frame.setContentPane(new GuiDisplay(examples, params, console));
-		userselect_frame.pack();
-
-		desk.add(userselect_frame);
-		desk.add(source_frame);
-		frame.add(desk);
-
-		frame.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent e) {
-				return;
-			}
-		});
-
-		frame.setSize(1200,500);
-		frame.setVisible(true);
-		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-	}
-
+	
 	/**
 	 * Utility to read in a source file	
 	 */
@@ -328,5 +395,12 @@ public class GuiDisplay extends JPanel {
 			return("File " + fn + " cannot be read. \nReason = " + ex.toString());
 		}
 		return contents.toString();
+	}
+	
+	private class GuiConsole extends Console {
+		@Override
+		public void write(final String message) {
+			consoleTextArea.append(message + Environment.Newline);
+		}
 	}
 }

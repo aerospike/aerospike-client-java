@@ -22,7 +22,7 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 	private final boolean[] existsArray;
 	
 	public AsyncBatchExistsArray(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, HashMap<Key,BatchItem> keyMap, boolean[] existsArray) {
-		super(parent, cluster, node);
+		super(parent, cluster, node, false);
 		this.keyMap = keyMap;
 		this.existsArray = existsArray;
 	}
