@@ -24,6 +24,7 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
+	boolean useNewInfo;
 
 	public NodeValidator(Host host, int timeoutMillis) throws AerospikeException {
 		setAliases(host);
@@ -53,10 +54,12 @@ public final class NodeValidator {
 				
 				try {			
 					String nodeName = Info.request(conn, "node");
-					
+					String buildVersion = Info.request(conn, "build");
 					if (nodeName != null) {
 						this.name = nodeName;
 						this.address = address;
+						String[] vNumber = buildVersion.split("\\.");
+						this.useNewInfo = Integer.parseInt(vNumber[0])>=3 || (Integer.parseInt(vNumber[0])>=2 && (Integer.parseInt(vNumber[1])>=6 && Integer.parseInt(vNumber[2])>=6 ));
 						return;
 					}
 				}

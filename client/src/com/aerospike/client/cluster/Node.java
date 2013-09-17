@@ -41,6 +41,7 @@ public class Node {
 	private int partitionGeneration;
 	protected int referenceCount;
 	protected boolean responded;
+	private final boolean useNewInfo;
 	protected volatile boolean active;
 
 	/**
@@ -54,6 +55,7 @@ public class Node {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
+		this.useNewInfo = nv.useNewInfo;
 		
 		// Assign host to first IP alias because the server identifies nodes 
 		// by IP address (not hostname). 
@@ -253,7 +255,14 @@ public class Node {
 	public final Host[] getAliases() {
 		return aliases;
 	}
-
+	
+	/**
+	 * Return flag to use new info protocol or not.
+	 */
+	public final boolean getVersion() {
+		return useNewInfo;
+	}
+	
 	/**
 	 * Add node alias to list.
 	 */

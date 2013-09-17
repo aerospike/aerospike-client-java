@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
@@ -217,13 +218,23 @@ public class Cluster implements Runnable {
 		return aliases.get(alias);
 	}
 	
+	private PartitionTokenizer getPartitionTokenizer(Connection conn, Node node) throws AerospikeException {
+		
+		if (node.getVersion()) {
+			return new PartitionTokenizerNew(conn, "replicas-master");
+		}
+		else {
+			return new PartitionTokenizerOld(conn, "replicas-write");
+		}
+	}
+	
 	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
 		// Use copy on write semantics to update partitionWriteMap.
 		HashMap<String,Node[]> map = partitionWriteMap;
-		PartitionTokenizer tokens = new PartitionTokenizer(conn, "replicas-write");
-		Partition partition;
-		boolean copied = false;
-		
+		PartitionTokenizer tokens = getPartitionTokenizer(conn, node);
+
+		tokens.updatePartition(map, node);
+		/*
 		while ((partition = tokens.getNext()) != null) {
 			Node[] nodeArray = map.get(partition.namespace);
 			
@@ -242,7 +253,7 @@ public class Cluster implements Runnable {
 		
 		if (copied) {
 			partitionWriteMap = map;
-		}
+		}*/
 	}
 
 	private final void seedNodes() {
