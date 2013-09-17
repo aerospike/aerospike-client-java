@@ -48,7 +48,8 @@ public class Main extends JPanel {
 		"UserDefinedFunction",
 		"LargeSet",
 		"LargeStack",
-		"Query",
+		"QueryInteger",
+		"QueryString",
 		"QueryAggregate"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }

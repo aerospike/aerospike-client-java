@@ -12,14 +12,14 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 
-public class Query extends Example {
+public class QueryString extends Example {
 
-	public Query(Console console) {
+	public QueryString(Console console) {
 		super(console);
 	}
 
 	/**
-	 * Create secondary index and query on it.
+	 * Create secondary index on a string bin and query on it.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -37,9 +37,22 @@ public class Query extends Example {
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		runQuery(client, params, indexName, binName, valuePrefix);
-		//dropIndex(client, params, indexName);
 	}
 	
+	private void createIndex(
+		AerospikeClient client,
+		Parameters params,
+		String indexName,
+		String binName
+	) throws Exception {
+		console.info("Create index: ns=%s set=%s index=%s bin=%s",
+			params.namespace, params.set, indexName, binName);			
+		
+		Policy policy = new Policy();
+		policy.timeout = 0; // Do not timeout on index create.
+		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
+	}
+
 	private void writeRecords(
 		AerospikeClient client,
 		Parameters params,
@@ -57,20 +70,6 @@ public class Query extends Example {
 			
 			client.put(params.writePolicy, key, bin);
 		}
-	}
-
-	private void createIndex(
-		AerospikeClient client,
-		Parameters params,
-		String indexName,
-		String binName
-	) throws Exception {
-		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
-		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
-		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
 	}
 
 	private void runQuery(
@@ -121,17 +120,4 @@ public class Query extends Example {
 			rs.close();
 		}
 	}
-	
-	/*
-	private void dropIndex(
-		AerospikeClient client,
-		Parameters params,
-		String indexName
-	) throws Exception {
-		console.info("Drop index: ns=%s set=%s index=%s",
-			params.namespace, params.set, indexName);			
-		
-		client.dropIndex(null, params.namespace, params.set, indexName);		
-	}
-	*/
 }
