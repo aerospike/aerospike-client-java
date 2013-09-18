@@ -37,6 +37,7 @@ public class QueryString extends Example {
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		runQuery(client, params, indexName, binName, valuePrefix);
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
 	private void createIndex(

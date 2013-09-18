@@ -72,9 +72,9 @@ public class ScanSeries extends Example implements ScanCallback {
 		setMap.put(key.setName, metrics);
 		
 		/*
-		System.out.print(namespace + ',' + set + ',' + Buffer.bytesToHexString(digest));
+		System.out.print(key.namespace + ',' + key.setName + ',' + Buffer.bytesToHexString(key.digest));
 		
-		for (Entry<String,Object> entry : bins.entrySet()) {			
+		for (Entry<String,Object> entry : record.bins.entrySet()) {			
 			System.out.print(',');
 			System.out.print(entry.getKey());
 			System.out.print(',');
