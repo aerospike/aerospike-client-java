@@ -6,7 +6,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
@@ -30,14 +29,15 @@ public class QueryExecute extends Example {
 		}
 		String indexName = "qeindex1";
 		String keyPrefix = "qekey";
-		String binName = params.getBinName("qebin");  
+		String binName1 = params.getBinName("qebin1");  
+		String binName2 = params.getBinName("qebin2");  
 		int size = 10;
 
 		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
-		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQueryExecute(client, params, indexName, binName);
-		validateRecords(client, params, indexName, binName, size);
+		createIndex(client, params, indexName, binName1);
+		writeRecords(client, params, keyPrefix, binName1, binName2, size);
+		runQueryExecute(client, params, indexName, binName1, binName2);
+		validateRecords(client, params, indexName, binName1, binName2, size);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
@@ -59,15 +59,15 @@ public class QueryExecute extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String keyPrefix,
-		String binName,
+		String binName1,
+		String binName2,
 		int size
 	) throws Exception {
 		console.info("Write " + size + " records.");
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);			
-			client.put(params.writePolicy, key, bin);
+			client.put(params.writePolicy, key, new Bin(binName1, i), new Bin(binName2, i));
 		}
 	}
 
@@ -75,29 +75,33 @@ public class QueryExecute extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String indexName,
-		String binName
+		String binName1,
+		String binName2
 	) throws Exception {		
-		Value begin = Value.get(5);
+		Value begin = Value.get(3);
 		Value end = Value.get(9);
 		
-		console.info("Add 100 to: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);			
+		console.info("For ns=%s set=%s index=%s bin=%s >= %s <= %s",
+			params.namespace, params.set, indexName, binName1, begin, end);			
+		console.info("Even integers: add 100 to existing " + binName1);
+		console.info("Multiple of 5: delete " + binName2 + " bin");
+		console.info("Multiple of 9: delete record");
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
-		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilters(Filter.range(binName1, begin, end));
 		
-		client.execute(params.policy, stmt, "record_example", "addBin", Value.get(binName), Value.get(100));
+		client.execute(params.policy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 	}
 	
 	private void validateRecords(
 		AerospikeClient client,
 		Parameters params,
 		String indexName,
-		String binName,
+		String binName1,
+		String binName2,
 		int size
 	) throws Exception {		
 		Value begin = Value.get(1);
@@ -109,47 +113,50 @@ public class QueryExecute extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
-		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilters(Filter.range(binName1, begin, end));
 		
 		RecordSet rs = client.query(null, stmt);
 		
 		try {
+			int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
+			int expectedSize = size - 1;
 			int count = 0;
 			
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				int result = (Integer)record.getValue(binName);
+				Integer value1 = (Integer)record.getValue(binName1);
+				Integer value2 = (Integer)record.getValue(binName2);
 				
-				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
-					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
+				console.info("Record found: ns=%s set=%s bin1=%s value1=%s bin2=%s value2=%s",
+					key.namespace, key.setName, binName1, value1, binName2, value2);
 				
-				String s = Integer.toString(result);
-				
-				if (result >= 100) {
-					int lastDigit = Integer.parseInt(s.substring(s.length()-1, s.length()));
-					
-					if (lastDigit < 5 || lastDigit > 9) {
-						int expected = lastDigit;
-						console.error("Data mismatch. Expected " + expected + ". Received " + result);
-						break;
-					}				
+				if (value1 == null) {
+					console.error("Data mismatch. value1 is null");
+					break;
 				}
-				else {
-					int lastDigit = Integer.parseInt(s.substring(s.length()-1, s.length()));
-					
-					if (lastDigit >= 5 && lastDigit <= 9) {
-						int expected = lastDigit + 100;
-						console.error("Data mismatch. Expected " + expected + ". Received " + result);
-						break;
-					}				
+				int val1 = value1;
+				
+				if (val1 == 9) {			
+					console.error("Data mismatch. value1 " + val1 + " should not exist");
+					break;
+				}
+				
+				if (val1 == 5) {
+					if (value2 != null) {
+						console.error("Data mismatch. value2 " + value2 + " should be null");
+						break;					
+					}
+				}
+				else if (value1 != expectedList[value2-1]) {
+					console.error("Data mismatch. Expected " + expectedList[value2-1] + ". Received " + value1);								
+					break;					
 				}
 				count++;
 			}
 			
-			if (count != size) {
-				console.error("Query count mismatch. Expected " + size + ". Received " + count);			
+			if (count != expectedSize) {
+				console.error("Query count mismatch. Expected " + expectedSize + ". Received " + count);			
 			}
 		}
 		finally {
