@@ -102,7 +102,7 @@ public class QueryExecute extends Example {
 		int size
 	) throws Exception {		
 		Value begin = Value.get(1);
-		Value end = Value.get(size);
+		Value end = Value.get(size + 100);
 		
 		console.info("Validate records");
 		
@@ -132,14 +132,18 @@ public class QueryExecute extends Example {
 					int lastDigit = Integer.parseInt(s.substring(s.length()-1, s.length()));
 					
 					if (lastDigit < 5 || lastDigit > 9) {
-						throw new AerospikeException("Data mismatch.");
+						int expected = lastDigit;
+						console.error("Data mismatch. Expected " + expected + ". Received " + result);
+						break;
 					}				
 				}
 				else {
 					int lastDigit = Integer.parseInt(s.substring(s.length()-1, s.length()));
 					
 					if (lastDigit >= 5 && lastDigit <= 9) {
-						throw new AerospikeException("Data mismatch.");
+						int expected = lastDigit + 100;
+						console.error("Data mismatch. Expected " + expected + ". Received " + result);
+						break;
 					}				
 				}
 				count++;
