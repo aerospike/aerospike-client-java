@@ -35,7 +35,7 @@ public class QueryAggregate extends Example {
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
-		//dropIndex(client, params, indexName);*/
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
 	private void createIndex(
@@ -90,7 +90,7 @@ public class QueryAggregate extends Example {
 		stmt.setBinNames(binName);
 		stmt.setFilters(Filter.range(binName, begin, end));
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin");
+		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin", Value.get(binName));
 		
 		try {
 			int expected = 22; // 4 + 5 + 6 + 7
@@ -125,17 +125,4 @@ public class QueryAggregate extends Example {
 			rs.close();
 		}
 	}
-	
-	/*
-	private void dropIndex(
-		AerospikeClient client,
-		Parameters params,
-		String indexName
-	) throws Exception {
-		console.info("Drop index: ns=%s set=%s index=%s",
-			params.namespace, params.set, indexName);			
-		
-		client.dropIndex(null, params.namespace, params.set, indexName);		
-	}
-	*/
 }
