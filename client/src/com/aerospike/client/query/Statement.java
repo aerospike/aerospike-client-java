@@ -24,6 +24,7 @@ public final class Statement {
 	String functionName;
 	Value[] functionArgs;
 	int taskId;
+	boolean returnData;
 	
 	/**
 	 * Set query namespace.
@@ -75,10 +76,11 @@ public final class Statement {
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
 	 */
-	void setAggregateFunction(String packageName, String functionName, Value[] functionArgs) {
+	void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.functionArgs = functionArgs;
+		this.returnData = returnData;
 	}
 	
 	/**

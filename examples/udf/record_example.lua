@@ -45,6 +45,12 @@ function writeWithValidation(r,name,value)
     end
 end
 
+-- Add value to existing bin.
+function addBin(r,name,value)
+    r[name] = r[name] + value
+    aerospike:update(r)
+end
+
 -- Set expiration of record
 -- function expire(r,ttl)
 --    if record.ttl(r) == gen then

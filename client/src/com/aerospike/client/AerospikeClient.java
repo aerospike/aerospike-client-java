@@ -35,6 +35,7 @@ import com.aerospike.client.query.QueryAggregateExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
+import com.aerospike.client.query.ServerExecutor;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Util;
 
@@ -591,6 +592,8 @@ public class AerospikeClient {
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
 	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -604,6 +607,8 @@ public class AerospikeClient {
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
 	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -617,6 +622,8 @@ public class AerospikeClient {
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
 	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -630,6 +637,8 @@ public class AerospikeClient {
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
 	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -741,6 +750,35 @@ public class AerospikeClient {
 		throw new AerospikeException("Invalid UDF return value");
 	}
 	
+	//----------------------------------------------------------
+	// Query/Execute UDF (Supported by 3.0 servers only)
+	//----------------------------------------------------------
+
+	/**
+	 * Apply user defined function on records that match the statement filter.
+	 * Records are not returned to the client.
+	 * This call will block until the command is complete.
+	 * <p>
+	 * This method is only supported by Aerospike 3.0 servers.
+	 * 
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param statement				record filter
+	 * @param packageName			server package where user defined function resides
+	 * @param functionName			function name
+	 * @param functionArgs			to pass to function name, if any
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void execute(
+		Policy policy,
+		Statement statement,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException {	
+		ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
+		executor.execute(cluster.getNodes());
+	}
+
 	//-------------------------------------------------------
 	// Query functions (Supported by 3.0 servers only)
 	//-------------------------------------------------------
@@ -802,6 +840,7 @@ public class AerospikeClient {
 
 	/**
 	 * Create secondary index.
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -860,6 +899,7 @@ public class AerospikeClient {
 
 	/**
 	 * Delete secondary index.
+	 * This method is only supported by Aerospike 3.0 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name

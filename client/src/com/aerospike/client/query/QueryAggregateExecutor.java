@@ -34,7 +34,7 @@ public final class QueryAggregateExecutor extends QueryExecutor {
 		Value[] functionArgs
 	) {
 		super(policy, statement);
-		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 		LuaExecutor luaExecutor = new LuaExecutor(statement, inputQueue, resultSet);
