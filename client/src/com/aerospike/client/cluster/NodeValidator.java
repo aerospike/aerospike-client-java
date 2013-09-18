@@ -25,7 +25,7 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
-	boolean useNewInfo;
+	boolean useNewInfo = true;
 
 	public NodeValidator(Host host, int timeoutMillis) throws AerospikeException {
 		setAliases(host);
@@ -62,7 +62,8 @@ public final class NodeValidator {
 						//check new info protocol support for >= 2.6.6 build
 						String[] vNumber = buildVersion.split("\\.");
 						try {
-							this.useNewInfo = Integer.parseInt(vNumber[0])>=3 || (Integer.parseInt(vNumber[0])>=2 && (Integer.parseInt(vNumber[1])>=6 && Integer.parseInt(vNumber[2])>=6 ));
+							int initialVersionNumber = Integer.parseInt(vNumber[0]);
+							this.useNewInfo = initialVersionNumber >= 3 || (initialVersionNumber >= 2 && (Integer.parseInt(vNumber[1]) >= 6 && Integer.parseInt(vNumber[2]) >= 6 ));
 						}
 						catch (NumberFormatException e) {
 							return;
