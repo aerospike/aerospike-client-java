@@ -27,8 +27,14 @@ public abstract class PartitionTokenizer {
 	
 	public PartitionTokenizer(Connection conn, String name) throws AerospikeException {
 		// Use low-level info methods and parse byte array directly for maximum performance.
+
+		//Older Info protocol
 		// Send format:    replicas-write\n
 		// Receive format: replicas-write\t<ns1>:<partition id1>;<ns2>:<partition id2>...\n
+
+		//New Info Protocol
+		// Send format:	   replicas-master\n
+		// Receive format: replicas-master\t<ns1>:<<base 64 encoded bitmap>;<ns2><<base 64 encoded bitmap>... \n
 		Info info = new Info(conn, name);
 		this.length = info.getLength();
 
@@ -41,5 +47,5 @@ public abstract class PartitionTokenizer {
 	}
 	
 	//public abstract Partition getNext() throws AerospikeException;
-	public abstract void updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException;
+	public abstract HashMap<String,Node[]> updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException;
 }

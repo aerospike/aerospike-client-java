@@ -13,6 +13,7 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -53,13 +54,19 @@ public final class NodeValidator {
 				Connection conn = new Connection(address, timeoutMillis);
 				
 				try {			
-					String nodeName = Info.request(conn, "node");
-					String buildVersion = Info.request(conn, "build");
-					if (nodeName != null) {
-						this.name = nodeName;
+					HashMap<String,String> map = Info.request(conn, "node", "build");
+					String buildVersion = map.get("build");
+					if (map != null) {
+						this.name = map.get("node");
 						this.address = address;
+						//check new info protocol support for >= 2.6.6 build
 						String[] vNumber = buildVersion.split("\\.");
-						this.useNewInfo = Integer.parseInt(vNumber[0])>=3 || (Integer.parseInt(vNumber[0])>=2 && (Integer.parseInt(vNumber[1])>=6 && Integer.parseInt(vNumber[2])>=6 ));
+						try {
+							this.useNewInfo = Integer.parseInt(vNumber[0])>=3 || (Integer.parseInt(vNumber[0])>=2 && (Integer.parseInt(vNumber[1])>=6 && Integer.parseInt(vNumber[2])>=6 ));
+						}
+						catch (NumberFormatException e) {
+							return;
+						}
 						return;
 					}
 				}

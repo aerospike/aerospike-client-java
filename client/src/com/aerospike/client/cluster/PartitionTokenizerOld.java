@@ -71,7 +71,7 @@ public final class PartitionTokenizerOld extends PartitionTokenizer {
 		return null;
 	}*/
 	
-	public void updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException {
+	public HashMap<String,Node[]> updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException {
 		HashMap<String,Node[]> map = partitionWriteMap;
 		int begin = offset;
 		Node[] nodeArray;
@@ -135,6 +135,7 @@ public final class PartitionTokenizerOld extends PartitionTokenizer {
 			}
 			offset++;
 		}
+		return map;
 	}
 	
 	private String getTruncatedResponse() {

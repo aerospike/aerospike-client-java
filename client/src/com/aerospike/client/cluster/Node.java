@@ -41,7 +41,7 @@ public class Node {
 	private int partitionGeneration;
 	protected int referenceCount;
 	protected boolean responded;
-	private final boolean useNewInfo;
+	protected final boolean useNewInfo;
 	protected volatile boolean active;
 
 	/**
@@ -254,13 +254,6 @@ public class Node {
 	 */
 	public final Host[] getAliases() {
 		return aliases;
-	}
-	
-	/**
-	 * Return flag to use new info protocol or not.
-	 */
-	public final boolean getVersion() {
-		return useNewInfo;
 	}
 	
 	/**

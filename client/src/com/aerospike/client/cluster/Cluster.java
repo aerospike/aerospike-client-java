@@ -17,7 +17,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
@@ -220,7 +219,7 @@ public class Cluster implements Runnable {
 	
 	private PartitionTokenizer getPartitionTokenizer(Connection conn, Node node) throws AerospikeException {
 		
-		if (node.getVersion()) {
+		if (node.useNewInfo) {
 			return new PartitionTokenizerNew(conn, "replicas-master");
 		}
 		else {
@@ -233,7 +232,8 @@ public class Cluster implements Runnable {
 		HashMap<String,Node[]> map = partitionWriteMap;
 		PartitionTokenizer tokens = getPartitionTokenizer(conn, node);
 
-		tokens.updatePartition(map, node);
+		partitionWriteMap = tokens.updatePartition(map, node);
+		//older code: remove after review
 		/*
 		while ((partition = tokens.getNext()) != null) {
 			Node[] nodeArray = map.get(partition.namespace);

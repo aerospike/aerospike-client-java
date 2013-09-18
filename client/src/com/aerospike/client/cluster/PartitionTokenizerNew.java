@@ -72,7 +72,7 @@ public final class PartitionTokenizerNew extends PartitionTokenizer {
 		}
 		return null;
 	}*/
-	public void updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException {
+	public HashMap<String,Node[]> updatePartition(HashMap<String,Node[]> partitionWriteMap, Node node) throws AerospikeException {
 		HashMap<String,Node[]> map = partitionWriteMap;
 		int begin = offset;
 		Node[] nodeArray;
@@ -110,9 +110,7 @@ public final class PartitionTokenizerNew extends PartitionTokenizer {
 				restoreBuffer = Base64.decode(buffer, begin, offset);
 				nodeArray = map.get(namespace);
 				boolean copied = false;
-				for (int i = 0; i < Node.PARTITIONS; i++) {
-					if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
-						if (nodeArray == null) {
+				if (nodeArray == null) {
 							if (! copied) {
 								// Make shallow copy of map.
 								map = new HashMap<String,Node[]>(map);
@@ -121,7 +119,9 @@ public final class PartitionTokenizerNew extends PartitionTokenizer {
 							nodeArray = new Node[Node.PARTITIONS];
 							map.put(namespace, nodeArray);
 						}
-						
+
+				for (int i = 0; i < Node.PARTITIONS; i++) {
+					if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
 						nodeArray[i] = node;
 						if (copied) {
 							partitionWriteMap = map;
@@ -132,6 +132,7 @@ public final class PartitionTokenizerNew extends PartitionTokenizer {
 			}
 			offset++;
 		}
+		return map;
 	}
 	
 	private String getTruncatedResponse() {
