@@ -55,18 +55,27 @@ public final class NodeValidator {
 				
 				try {			
 					HashMap<String,String> map = Info.request(conn, "node", "build");
-					String buildVersion = map.get("build");
-					if (map != null) {
-						this.name = map.get("node");
+					String nodeName = map.get("node");
+					
+					if (nodeName != null) {
+						this.name = nodeName;
 						this.address = address;
-						//check new info protocol support for >= 2.6.6 build
-						String[] vNumber = buildVersion.split("\\.");
-						try {
-							int initialVersionNumber = Integer.parseInt(vNumber[0]);
-							this.useNewInfo = initialVersionNumber >= 3 || (initialVersionNumber >= 2 && (Integer.parseInt(vNumber[1]) >= 6 && Integer.parseInt(vNumber[2]) >= 6 ));
-						}
-						catch (NumberFormatException e) {
-							return;
+						
+						// Check new info protocol support for >= 2.6.6 build
+						String buildVersion = map.get("build");
+						
+						if (buildVersion != null) {
+							try {
+								String[] vNumber = buildVersion.split("\\.");
+								int v1 = Integer.parseInt(vNumber[0]);
+								int v2 = Integer.parseInt(vNumber[1]);
+								int v3 = Integer.parseInt(vNumber[2]);
+								
+								this.useNewInfo = v1 > 2 || (v1 == 2 && (v2 > 6 || (v2 == 6 && v3 >= 6)));
+							}
+							catch (Exception e) {
+								// Unexpected exception. Use default info protocol.
+							}
 						}
 						return;
 					}

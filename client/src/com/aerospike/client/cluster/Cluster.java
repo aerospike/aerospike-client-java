@@ -217,43 +217,21 @@ public class Cluster implements Runnable {
 		return aliases.get(alias);
 	}
 	
-	private PartitionTokenizer getPartitionTokenizer(Connection conn, Node node) throws AerospikeException {
+	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
+		HashMap<String,Node[]> map;
 		
 		if (node.useNewInfo) {
-			return new PartitionTokenizerNew(conn, "replicas-master");
+			PartitionTokenizerNew tokens = new PartitionTokenizerNew(conn);
+			map = tokens.updatePartition(partitionWriteMap, node);
 		}
 		else {
-			return new PartitionTokenizerOld(conn, "replicas-write");
-		}
-	}
-	
-	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
-		// Use copy on write semantics to update partitionWriteMap.
-		HashMap<String,Node[]> map = partitionWriteMap;
-		PartitionTokenizer tokens = getPartitionTokenizer(conn, node);
-
-		partitionWriteMap = tokens.updatePartition(map, node);
-		//older code: remove after review
-		/*
-		while ((partition = tokens.getNext()) != null) {
-			Node[] nodeArray = map.get(partition.namespace);
-			
-			if (nodeArray == null) {
-				if (! copied) {
-					// Make shallow copy of map.
-					map = new HashMap<String,Node[]>(map);
-					copied = true;
-				}
-				nodeArray = new Node[Node.PARTITIONS];
-				map.put(partition.namespace, nodeArray);
-			}
-			// Log.debug(partition.toString() + ',' + node.getName());
-			nodeArray[partition.partitionId] = node;
+			PartitionTokenizerOld tokens = new PartitionTokenizerOld(conn);
+			map = tokens.updatePartition(partitionWriteMap, node);
 		}
 		
-		if (copied) {
+		if (map != null) {		
 			partitionWriteMap = map;
-		}*/
+		}
 	}
 
 	private final void seedNodes() {
