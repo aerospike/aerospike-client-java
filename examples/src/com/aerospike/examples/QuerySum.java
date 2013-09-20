@@ -11,9 +11,9 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 
-public class Average extends Example {
+public class QuerySum extends Example {
 
-	public Average(Console console) {
+	public QuerySum(Console console) {
 		super(console);
 	}
 
@@ -26,14 +26,14 @@ public class Average extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		String indexName = "avgindex";
-		String keyPrefix = "avgkey";
-		String binName = params.getBinName("l2");  
+		String indexName = "aggindex";
+		String keyPrefix = "aggkey";
+		String binName = params.getBinName("aggbin");  
 		int size = 10;
 
-		client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
+		client.register(params.policy, "udf/sum_example.lua", "sum_example.lua", Language.LUA);
 		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, size);
+		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
@@ -56,16 +56,17 @@ public class Average extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String keyPrefix,
+		String binName,
 		int size
 	) throws Exception {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin("l1", i);
+			Bin bin = new Bin(binName, i);
 			
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 			
-			client.put(params.writePolicy, key, bin, new Bin("l2", 1));
+			client.put(params.writePolicy, key, bin);
 		}
 	}
 
@@ -76,22 +77,43 @@ public class Average extends Example {
 		String binName
 	) throws Exception {
 		
-		console.info("Query for: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
+		Value begin = Value.get(4);
+		Value end = Value.get(7);
+		
+		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
+			params.namespace, params.set, indexName, binName, begin, end);			
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
-		stmt.setFilters(Filter.equal(binName, Value.get(1)));
+		stmt.setBinNames(binName);
+		stmt.setFilters(Filter.range(binName, begin, end));
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "average_example", "average");
+		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin", Value.get(binName));
 		
 		try {
+			int expected = 22; // 4 + 5 + 6 + 7
 			int count = 0;
 			
 			while (rs.next()) {
-				console.info("Rec " + rs.getObject());
+				Object object = rs.getObject();
+				int sum;
+				
+				if (object instanceof Integer) {
+					sum = (Integer)rs.getObject();
+				}
+				else {
+					console.error("Return value not an integer: " + object);
+					continue;
+				}
+				
+				if (expected == (int)sum) {
+					console.info("Sum matched: value=%d", expected);
+				}
+				else {
+					console.error("Sum mismatch: Expected %d. Received %d.", expected, (int)sum);
+				}
 				count++;
 			}
 			

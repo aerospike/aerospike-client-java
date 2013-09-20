@@ -50,7 +50,9 @@ public class Main extends JPanel {
 		"LargeStack",
 		"QueryInteger",
 		"QueryString",
-		"QueryAggregate"
+		"QuerySum",
+		"QueryAverage",
+		"QueryExecute"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
 

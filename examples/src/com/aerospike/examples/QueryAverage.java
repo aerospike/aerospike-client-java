@@ -1,5 +1,7 @@
 package com.aerospike.examples;
 
+import java.util.Map;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -11,9 +13,9 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 
-public class QueryAggregate extends Example {
+public class QueryAverage extends Example {
 
-	public QueryAggregate(Console console) {
+	public QueryAverage(Console console) {
 		super(console);
 	}
 
@@ -26,14 +28,14 @@ public class QueryAggregate extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		String indexName = "aggindex";
-		String keyPrefix = "aggkey";
-		String binName = params.getBinName("aggbin");  
+		String indexName = "avgindex";
+		String keyPrefix = "avgkey";
+		String binName = params.getBinName("l2");  
 		int size = 10;
 
-		client.register(params.policy, "udf/sum_example.lua", "sum_example.lua", Language.LUA);
+		client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
 		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
+		writeRecords(client, params, keyPrefix, size);
 		runQuery(client, params, indexName, binName);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
@@ -56,17 +58,16 @@ public class QueryAggregate extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String keyPrefix,
-		String binName,
 		int size
 	) throws Exception {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);
+			Bin bin = new Bin("l1", i);
 			
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 			
-			client.put(params.writePolicy, key, bin);
+			client.put(params.writePolicy, key, bin, new Bin("l2", 1));
 		}
 	}
 
@@ -77,48 +78,39 @@ public class QueryAggregate extends Example {
 		String binName
 	) throws Exception {
 		
-		Value begin = Value.get(4);
-		Value end = Value.get(7);
-		
-		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);			
+		console.info("Query for: ns=%s set=%s index=%s bin=%s",
+			params.namespace, params.set, indexName, binName);			
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setIndexName(indexName);
-		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilters(Filter.range(binName, Value.get(0), Value.get(1000)));
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin", Value.get(binName));
+		ResultSet rs = client.queryAggregate(null, stmt, "average_example", "average");
 		
 		try {
-			int expected = 22; // 4 + 5 + 6 + 7
-			int count = 0;
-			
-			while (rs.next()) {
-				Object object = rs.getObject();
-				int sum;
+			if (rs.next()) {
+				Object obj = rs.getObject();
 				
-				if (object instanceof Integer) {
-					sum = (Integer)rs.getObject();
+				if (obj instanceof Map<?,?>) {
+					Map<?,?> map = (Map<?,?>)obj;
+					long sum = (Long)map.get("sum");
+					long count = (Long)map.get("count");
+					double avg = (double) sum / count;
+					console.info("Sum=" + sum + " Count=" + count + " Average=" + avg);					
+					
+					double expected = 5.5;
+					if (avg != expected) {
+						console.error("Data mismatch: Expected %d. Received %d.", expected, avg);
+					}
 				}
-				else {
-					console.error("Return value not an integer: " + object);
-					continue;
+				else {			
+					console.error("Unexpected object returned: " + obj);
 				}
-				
-				if (expected == (int)sum) {
-					console.info("Sum matched: value=%d", expected);
-				}
-				else {
-					console.error("Sum mismatch: Expected %d. Received %d.", expected, (int)sum);
-				}
-				count++;
 			}
-			
-			if (count == 0) {
-				console.error("Query failed. No records returned.");			
+			else {
+				console.error("Query failed. No records returned.");
 			}
 		}
 		finally {
