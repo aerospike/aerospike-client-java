@@ -120,7 +120,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		receiveOffset = 0;
 		
 		while (receiveOffset < receiveSize) {
-			resultCode = receiveBuffer[receiveOffset + 5];
+			resultCode = receiveBuffer[receiveOffset + 5] & 0xFF;
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {

@@ -28,7 +28,7 @@ public final class WriteCommand extends SingleCommand {
 	
 		long sz = Buffer.bytesToLong(receiveBuffer, 0);
 		byte headerLength = receiveBuffer[8];
-		int resultCode = receiveBuffer[13];
+		int resultCode = receiveBuffer[13] & 0xFF;
 		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
 				
 		// Read remaining message bytes.

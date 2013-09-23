@@ -38,7 +38,7 @@ public final class BatchCommandExists extends MultiCommand {
 		
 		while (receiveOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5];
+			int resultCode = receiveBuffer[5] & 0xFF;
 
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.

@@ -24,7 +24,7 @@ public final class AsyncWrite extends AsyncSingleCommand {
 	}
 
 	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
-		int resultCode = byteBuffer.get(5);
+		int resultCode = byteBuffer.get(5) & 0xFF;
 		
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);

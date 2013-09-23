@@ -38,7 +38,7 @@ public final class QueryAggregateCommand extends QueryCommand {
 		
 		while (receiveOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5];
+			int resultCode = receiveBuffer[5] & 0xFF;
 			
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {

@@ -31,7 +31,7 @@ public final class DeleteCommand extends SingleCommand {
 	
 		long sz = Buffer.bytesToLong(receiveBuffer, 0);
 		byte headerLength = receiveBuffer[8];
-		resultCode = receiveBuffer[13];
+		resultCode = receiveBuffer[13] & 0xFF;
 		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
 				
 		// Read remaining message bytes.

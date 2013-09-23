@@ -26,7 +26,7 @@ public final class AsyncDelete extends AsyncSingleCommand {
 	}
 	
 	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
-		int resultCode = byteBuffer.get(5);
+		int resultCode = byteBuffer.get(5) & 0xFF;
 		        
         if (resultCode == 0) {
         	existed = true;

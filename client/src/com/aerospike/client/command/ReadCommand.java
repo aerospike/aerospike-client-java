@@ -41,7 +41,7 @@ public final class ReadCommand extends SingleCommand {
 //		byte info2 = header[10];
 //      byte info3 = header[11];
 //      byte unused = header[12];
-		resultCode = receiveBuffer[13];
+		resultCode = receiveBuffer[13] & 0xFF;
 		int generation = Buffer.bytesToInt(receiveBuffer, 14);
 		int expiration = Buffer.bytesToInt(receiveBuffer, 18);
 //		int transactionTtl = get_ntohl(header, 22);

@@ -44,7 +44,7 @@ public final class AsyncRead extends AsyncSingleCommand {
 		byteBuffer.position(0);
 		byteBuffer.get(receiveBuffer, 0, receiveSize);
 			
-		int resultCode = receiveBuffer[5];
+		int resultCode = receiveBuffer[5] & 0xFF;
 		int generation = Buffer.bytesToInt(receiveBuffer, 6);
 		int expiration = Buffer.bytesToInt(receiveBuffer, 10);
 		int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
