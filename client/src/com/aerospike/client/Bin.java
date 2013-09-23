@@ -149,4 +149,12 @@ public final class Bin {
 	public static Bin asNull(String name) {
 		return new Bin(name, Value.getAsNull());
 	}
+
+	/**
+	 * Return string representation of bin.
+	 */
+	@Override
+	public String toString() {
+		return name + ':' + value;
+	}
 }

@@ -11,6 +11,7 @@ package com.aerospike.client;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 /**
  * Container object for records.  Records are equivalent to rows.
@@ -60,5 +61,40 @@ public final class Record {
 	 */
 	public Object getValue(String name) {
 		return (bins == null)? null : bins.get(name);
+	}
+	
+	/**
+	 * Return string representation of record.
+	 */
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("(gen:");
+		sb.append(generation);
+		sb.append("),(exp:");
+		sb.append(expiration);
+		sb.append("),(bins:");
+		boolean sep = false;
+		
+		for (Entry<String,Object> entry : bins.entrySet()) {
+			if (sep) {
+				sb.append(',');
+			}
+			else {
+				sep = true;
+			}
+			sb.append('(');
+			sb.append(entry.getKey());
+			sb.append(':');
+			sb.append(entry.getValue());
+			sb.append(')');
+			
+			if (sb.length() > 1000) {
+				sb.append("...");
+				break;
+			}
+		}
+		sb.append(')');
+		return sb.toString();
 	}
 }
