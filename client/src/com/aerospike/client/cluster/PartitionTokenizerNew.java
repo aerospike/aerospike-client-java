@@ -15,7 +15,6 @@ import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
-import com.aerospike.client.Log;
 import com.aerospike.client.command.Buffer;
 
 /**
