@@ -12,7 +12,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.policy.Policy;
 
 public class UserDefinedFunction extends Example {
 
@@ -39,9 +38,7 @@ public class UserDefinedFunction extends Example {
 	}
 	
 	private void register(AerospikeClient client) throws Exception {
-		Policy policy = new Policy();
-		policy.timeout = 5000; // Registration takes longer than a normal request.
-		client.register(policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		client.register(null, "udf/record_example.lua", "record_example.lua", Language.LUA);
 	}
 
 	private void writeUsingUdf(AerospikeClient client, Parameters params) throws Exception {	
