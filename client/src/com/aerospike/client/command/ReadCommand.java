@@ -110,7 +110,7 @@ public final class ReadCommand extends SingleCommand {
 			}
 			catch (Exception e) {
 				// Use generic exception if parse error occurs.
-	        	throw new AerospikeException(resultCode);
+	        	throw new AerospikeException(resultCode, ret);
 			}
 			
 			throw new AerospikeException(code, message);
