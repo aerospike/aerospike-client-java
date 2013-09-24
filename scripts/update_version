@@ -19,7 +19,13 @@ do
 	runCommand scripts/package_pom $version $i
 done
 
-msg="Update version $version"
-git commit -m "$msg" $files
-git tag -a -m "$version" $version
-git push --tags
+read -p "Create tag(y/n)? "
+
+if [ "$REPLY" == "y" ]
+then
+	echo Creating tag $version
+	msg="Update version $version"
+	git commit -m "$msg" $files
+	git tag -a -m "$version" $version
+	git push --tags
+fi
