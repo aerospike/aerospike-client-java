@@ -263,7 +263,7 @@ public final class MsgPack {
 			return oistream.readObject();
 			
 		default:
-			return Arrays.copyOfRange(raw, 1, raw.length - 1);
+			return Arrays.copyOfRange(raw, 1, raw.length);
 		}
 	}
 }

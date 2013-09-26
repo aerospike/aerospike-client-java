@@ -216,7 +216,7 @@ public class ListMap extends Example {
 	}
 
 	private static void validate(byte[] expected, byte[] received) throws Exception {		
-		if (Arrays.equals(expected, received)) {
+		if (! Arrays.equals(expected, received)) {
 			throw new Exception(String.format(
 				"Mismatch: expected=%s received=%s", Arrays.toString(expected), Arrays.toString(received))); 
 		}
