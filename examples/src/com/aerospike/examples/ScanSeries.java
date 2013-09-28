@@ -74,11 +74,13 @@ public class ScanSeries extends Example implements ScanCallback {
 		/*
 		System.out.print(key.namespace + ',' + key.setName + ',' + Buffer.bytesToHexString(key.digest));
 		
-		for (Entry<String,Object> entry : record.bins.entrySet()) {			
-			System.out.print(',');
-			System.out.print(entry.getKey());
-			System.out.print(',');
-			System.out.print(entry.getValue());
+		if (record.bins != null) {
+			for (Entry<String,Object> entry : record.bins.entrySet()) {	
+				System.out.print(',');
+				System.out.print(entry.getKey());
+				System.out.print(',');
+				System.out.print(entry.getValue());
+			}
 		}
 		System.out.println();
 		*/

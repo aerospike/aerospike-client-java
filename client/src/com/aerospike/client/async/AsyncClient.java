@@ -560,9 +560,10 @@ public class AsyncClient extends AerospikeClient {
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
+	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName)
+	public final void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = new ScanPolicy();
@@ -570,6 +571,6 @@ public class AsyncClient extends AerospikeClient {
 		
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
-		new AsyncScanExecutor(cluster, policy, listener, namespace, setName);
+		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
 	}
 }

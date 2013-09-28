@@ -11,14 +11,16 @@ public final class ScanExecutor {
 	private final String namespace;
 	private final String setName;
 	private final ScanCallback callback;
+	private final String[] binNames;
 	private ScanThread[] threads;
 	private Exception exception;
 	
-	public ScanExecutor(ScanPolicy policy, String namespace, String setName, ScanCallback callback) {
+	public ScanExecutor(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String[] binNames) {
 		this.policy = policy;
 		this.namespace = namespace;
 		this.setName = setName;
 		this.callback = callback;
+		this.binNames = binNames;
 	}
 	
 	public void scanParallel(Node[] nodes)
@@ -82,7 +84,7 @@ public final class ScanExecutor {
 		
 		public void run() {
 			try {
-				command.setScan(policy, namespace, setName);
+				command.setScan(policy, namespace, setName, binNames);
 				command.execute(policy);
 			}
 			catch (Exception e) {

@@ -515,9 +515,10 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
+	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
 	 * @throws AerospikeException	if scan fails
 	 */
-	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback)
+	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {	
 		if (policy == null) {
 			policy = new ScanPolicy();
@@ -529,12 +530,12 @@ public class AerospikeClient {
 		Node[] nodes = cluster.getNodes();
 
 		if (policy.concurrentNodes) {
-			ScanExecutor executor = new ScanExecutor(policy, namespace, setName, callback);
+			ScanExecutor executor = new ScanExecutor(policy, namespace, setName, callback, binNames);
 			executor.scanParallel(nodes);
 		}
 		else {
 			for (Node node : nodes) {
-				scanNode(policy, node, namespace, setName, callback);
+				scanNode(policy, node, namespace, setName, callback, binNames);
 			}
 		}
 	}
@@ -551,12 +552,13 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
+	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
 	 * @throws AerospikeException	if scan fails
 	 */
-	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback) 
+	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames) 
 		throws AerospikeException {		
 		Node node = cluster.getNode(nodeName);
-		scanNode(policy, node, namespace, setName, callback);
+		scanNode(policy, node, namespace, setName, callback, binNames);
 	}
 
 	/**
@@ -570,9 +572,10 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
+	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback) 
+	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
 		throws AerospikeException {
 		if (policy == null) {
 			policy = new ScanPolicy();
@@ -581,7 +584,7 @@ public class AerospikeClient {
 		policy.maxRetries = 0;
 
 		ScanCommand command = new ScanCommand(node, callback);
-		command.setScan(policy, namespace, setName);
+		command.setScan(policy, namespace, setName, binNames);
 		command.execute(policy);
 	}
 

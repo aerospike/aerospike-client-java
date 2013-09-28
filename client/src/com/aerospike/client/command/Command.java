@@ -264,7 +264,7 @@ public class Command {
 		end();
 	}
 	
-	public final void setScan(ScanPolicy policy, String namespace, String setName) {		
+	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {		
 		int fieldCount = 0;
 		
 		if (namespace != null) {
@@ -281,6 +281,12 @@ public class Command {
 		sendOffset += 2 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
+		if (binNames != null) {
+			for (String binName : binNames) {
+				estimateOperationSize(binName);
+			}			
+		}
+
 		begin();
 		byte readAttr = Command.INFO1_READ;
 		
@@ -288,7 +294,8 @@ public class Command {
 			readAttr |= Command.INFO1_NOBINDATA;
 		}
 		
-		writeHeader(readAttr, 0, fieldCount, 0);
+		int operationCount = (binNames == null)? 0 : binNames.length;
+		writeHeader(readAttr, 0, fieldCount, operationCount);
 				
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -307,6 +314,12 @@ public class Command {
 		}		
 		sendBuffer[sendOffset++] = priority;
 		sendBuffer[sendOffset++] = (byte)policy.scanPercent;
+		
+		if (binNames != null) {
+			for (String binName : binNames) {
+				writeOperation(binName, Operation.Type.READ);
+			}
+		}
 		end();
 	}
 

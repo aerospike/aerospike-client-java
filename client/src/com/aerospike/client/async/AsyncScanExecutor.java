@@ -23,12 +23,13 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 		ScanPolicy policy,
 		RecordSequenceListener listener,
 		String namespace,
-		String setName
+		String setName,
+		String[] binNames
 	) throws AerospikeException {
 		this.listener = listener;
 		
 		Command command = new Command();
-		command.setScan(policy, namespace, setName);
+		command.setScan(policy, namespace, setName, binNames);
 
 		Node[] nodes = cluster.getNodes();
 		completedSize = nodes.length;
