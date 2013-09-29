@@ -76,7 +76,7 @@ public abstract class Value {
 
 	/**
 	 * Get list or null value instance.
-	 * Support by 3.0 servers only.
+	 * Supported by Aerospike 3 servers only.
 	 */
 	public static Value getAsList(List<?> value) {
 		return (value == null)? new NullValue() : new ListValue(value);
@@ -84,7 +84,7 @@ public abstract class Value {
 	
 	/**
 	 * Get map or null value instance.
-	 * Support by 3.0 servers only.
+	 * Supported by Aerospike 3 servers only.
 	 */
 	public static Value getAsMap(Map<?,?> value) {
 		return (value == null)? new NullValue() : new MapValue(value);
@@ -441,7 +441,7 @@ public abstract class Value {
 	
 	/**
 	 * Value array.
-	 * Supported by 3.0 servers only.
+	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class ValueArray extends Value {
 		private final Value[] array;
@@ -491,7 +491,7 @@ public abstract class Value {
 
 	/**
 	 * List value.
-	 * Supported by 3.0 servers only.
+	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class ListValue extends Value {
 		private final List<?> list;
@@ -542,7 +542,7 @@ public abstract class Value {
 
 	/**
 	 * Map value.
-	 * Supported by 3.0 servers only.
+	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class MapValue extends Value {
 		private final Map<?,?> map;

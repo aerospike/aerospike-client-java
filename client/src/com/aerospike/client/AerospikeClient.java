@@ -515,7 +515,8 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
-	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
@@ -552,7 +553,8 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
-	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.  
+	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames) 
@@ -572,7 +574,8 @@ public class AerospikeClient {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
-	 * @param binNames				optional bin filters, all bins will be returned if parameter not specified
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.  
+	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if transaction fails
 	 */
 	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
@@ -588,15 +591,15 @@ public class AerospikeClient {
 		command.execute(policy);
 	}
 
-	//----------------------------------------------------------
-	// Large collection functions (Supported by 3.0 servers only)
-	//----------------------------------------------------------
+	//-------------------------------------------------------------------
+	// Large collection functions (Supported by Aerospike 3 servers only)
+	//-------------------------------------------------------------------
 
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
 	 * within a single bin.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -611,7 +614,7 @@ public class AerospikeClient {
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
 	 * within a single bin.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -626,7 +629,7 @@ public class AerospikeClient {
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
 	 * within a single bin.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -641,7 +644,7 @@ public class AerospikeClient {
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
 	 * within a single bin.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -652,13 +655,13 @@ public class AerospikeClient {
 		return new LargeStack(this, policy, key, binName, userModule);
 	}	
 
-	//-------------------------------------------------------
-	// User defined functions (Supported by 3.0 servers only)
-	//-------------------------------------------------------
+	//---------------------------------------------------------------
+	// User defined functions (Supported by Aerospike 3 servers only)
+	//---------------------------------------------------------------
 	
 	/**
 	 * Register package containing user defined functions with server.
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param clientPath			path of client file containing user defined functions, relative to current directory
@@ -710,7 +713,7 @@ public class AerospikeClient {
 	 * <p>
 	 * udf file = <server udf dir>/<package name>.lua
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -754,7 +757,7 @@ public class AerospikeClient {
 	}
 	
 	//----------------------------------------------------------
-	// Query/Execute UDF (Supported by 3.0 servers only)
+	// Query/Execute UDF (Supported by Aerospike 3 servers only)
 	//----------------------------------------------------------
 
 	/**
@@ -762,7 +765,7 @@ public class AerospikeClient {
 	 * Records are not returned to the client.
 	 * This call will block until the command is complete.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param statement				record filter
@@ -782,16 +785,16 @@ public class AerospikeClient {
 		executor.execute(cluster.getNodes());
 	}
 
-	//-------------------------------------------------------
-	// Query functions (Supported by 3.0 servers only)
-	//-------------------------------------------------------
+	//--------------------------------------------------------
+	// Query functions (Supported by Aerospike 3 servers only)
+	//--------------------------------------------------------
 
 	/**
 	 * Execute query and return record iterator.  The query executor puts records on a queue in 
 	 * separate threads.  The calling thread concurrently pops records off the queue through the 
 	 * record iterator.
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -817,7 +820,7 @@ public class AerospikeClient {
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
 	 * <p>
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -843,7 +846,7 @@ public class AerospikeClient {
 
 	/**
 	 * Create secondary index.
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -902,7 +905,7 @@ public class AerospikeClient {
 
 	/**
 	 * Delete secondary index.
-	 * This method is only supported by Aerospike 3.0 servers.
+	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
