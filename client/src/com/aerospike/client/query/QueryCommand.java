@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -16,7 +16,7 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.MsgPacker;
 
 public abstract class QueryCommand extends MultiCommand {
 	protected volatile boolean valid = true;
@@ -85,7 +85,7 @@ public abstract class QueryCommand extends MultiCommand {
 			sendOffset += Buffer.estimateSizeUtf8(statement.functionName) + FIELD_HEADER_SIZE;
 			
 			if (statement.functionArgs.length > 0) {
-				functionArgBuffer = MsgPack.pack(statement.functionArgs);
+				functionArgBuffer = MsgPacker.pack(statement.functionArgs);
 			}
 			else {
 				functionArgBuffer = new byte[0];

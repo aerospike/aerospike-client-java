@@ -35,7 +35,6 @@ import org.luaj.vm2.lib.jse.LuajavaLib;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.util.MsgPack;
 
 public final class LuaInstance {
 	
@@ -103,7 +102,7 @@ public final class LuaInstance {
 		return globals.get(functionName);
 	}
 
-	public static LuaValue getValue(int type, byte[] buf, int offset, int len) throws AerospikeException {
+	public LuaValue getValue(int type, byte[] buf, int offset, int len) throws AerospikeException {
 		if (len <= 0) {
 			return LuaValue.NIL;
 		}
@@ -127,21 +126,23 @@ public final class LuaInstance {
 		case ParticleType.BLOB:
 	        byte[] blob = new byte[len];
 	        System.arraycopy(buf, offset, blob, 0, len);
-			return LuaString.valueOf(blob, 0, len);
+			return new LuaBytes(blob);
 			
 		case ParticleType.JBLOB:
 			Object object = Buffer.bytesToObject(buf, offset, len);
 			return new LuaJavaBlob(object);
 			
-		case ParticleType.LIST:
-			@SuppressWarnings("unchecked")
-			List<Object> list = (List<Object>)MsgPack.parseList(buf, offset, len);
-			return new LuaList<Object>(list);
+		case ParticleType.LIST: {
+			LuaUnpacker unpacker = new LuaUnpacker(this);
+			List<LuaValue> list = unpacker.parseList(buf, offset, len);
+			return new LuaList(this, list);
+		}
 
-		case ParticleType.MAP:
-			@SuppressWarnings("unchecked")
-			Map<Object,Object> map = (Map<Object,Object>)MsgPack.parseMap(buf, offset, len);
-			return new LuaMap<Object,Object>(map);
+		case ParticleType.MAP: {
+			LuaUnpacker unpacker = new LuaUnpacker(this);
+			Map<LuaValue,LuaValue> map = unpacker.parseMap(buf, offset, len);
+			return new LuaMap(this, map);
+		}
 		
 		default:
 			return LuaValue.NIL;

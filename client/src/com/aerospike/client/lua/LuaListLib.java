@@ -12,8 +12,6 @@ package com.aerospike.client.lua;
 import java.util.ArrayList;
 import java.util.Iterator;
 
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -22,8 +20,6 @@ import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 import org.luaj.vm2.lib.ZeroArgFunction;
-
-import com.aerospike.client.lua.LuaList.LuaValueList;
 
 public final class LuaListLib extends OneArgFunction {
 
@@ -73,16 +69,15 @@ public final class LuaListLib extends OneArgFunction {
 	}
 
 	public static final class create extends VarArgFunction {
-		private final LuaValue meta;
+		private final LuaInstance instance;
 		
 		public create(LuaInstance instance) {
-			this.meta = instance.getPackage("List");
+			this.instance = instance;
 		}
 		
 		@Override
 		public Varargs invoke(Varargs args) {
-			LuaValueList list = new LuaValueList(new ArrayList<LuaValue>());
-			list.setmetatable(meta);
+			LuaList list = new LuaList(instance, new ArrayList<LuaValue>());
 			
 			if (args.istable(2)) {
 				LuaTable table = args.checktable(2);
@@ -103,17 +98,10 @@ public final class LuaListLib extends OneArgFunction {
 	}
 
 	public static final class iterator extends OneArgFunction {		
-		@SuppressWarnings("unchecked")
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaList<?> list = (LuaList<?>)arg;
-			
-			if (list instanceof LuaValueList) {
-				return new nextLuaValue((Iterator<LuaValue>)list.list.iterator());
-			}
-			else {
-				return new nextObject(list.list.iterator());				
-			}
+		public LuaValue call(LuaValue l) {
+			LuaList list = (LuaList)l;
+			return new nextLuaValue(list.iterator());
 		}
 	}
 	
@@ -130,88 +118,69 @@ public final class LuaListLib extends OneArgFunction {
 		}
 	}
 
-	public static final class nextObject extends ZeroArgFunction {
-		private final Iterator<?> iter;
-		
-		public nextObject(Iterator<?> iter) {
-			this.iter = iter;
-		}
-		
-		@Override
-		public LuaValue call() {
-			if (iter.hasNext()) {
-				Object obj = iter.next();
-				return LuaUtil.objectToLua(obj);				
-			}
-			return NIL;
-		}
-	}
-
 	public static final class append extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			list.append(arg2);
+		public LuaValue call(LuaValue l, LuaValue value) {
+			LuaList list = (LuaList)l;
+			list.append(value);
 			return NIL;
 		}
 	}
 
 	public static final class prepend extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			list.append(0, arg2);
+		public LuaValue call(LuaValue l, LuaValue value) {
+			LuaList list = (LuaList)l;
+			list.prepend(value);
 			return NIL;
 		}
 	}
 	
 	public static final class take extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			return list.take(arg2);
+		public LuaValue call(LuaValue l, LuaValue count) {
+			LuaList list = (LuaList)l;
+			return list.take(count);
 		}
 	}
 	
 	public static final class drop extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			return list.drop(arg2);
+		public LuaValue call(LuaValue l, LuaValue count) {
+			LuaList list = (LuaList)l;
+			return list.drop(count);
 		}
 	}
 	
 	public static final class len extends OneArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaList<?> list = (LuaList<?>)arg;
-			return LuaInteger.valueOf(list.list.size());
+		public LuaValue call(LuaValue l) {
+			LuaList list = (LuaList)l;
+			return list.size();
 		}
 	}
 
 	public static final class tostring extends OneArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaList<?> list = (LuaList<?>)arg;
-			return LuaString.valueOf(list.list.toString());
+		public LuaValue call(LuaValue l) {
+			LuaList list = (LuaList)l;
+			return list.toLuaString();
 		}
 	}
 
 	public static final class index extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			return list.getValue(arg2);
+		public LuaValue call(LuaValue l, LuaValue index) {
+			LuaList list = (LuaList)l;
+			return list.get(index);
 		}
 	}
 
 	public static final class newindex extends ThreeArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
-			LuaList<?> list = (LuaList<?>)arg1;
-			int index = arg2.toint();
-			list.ensureSize(index);
-			list.setValue(index - 1, arg3);
+		public LuaValue call(LuaValue l, LuaValue index, LuaValue value) {
+			LuaList list = (LuaList)l;
+			list.set(index, value);
 			return NIL;
 		}
 	}

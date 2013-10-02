@@ -9,59 +9,62 @@
  */
 package com.aerospike.client.lua;
 
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import org.luaj.vm2.LuaInteger;
+import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 
-public class LuaMap<K,V> extends LuaUserdata {
+public final class LuaMap extends LuaUserdata implements LuaData {
 
-	protected final Map<K,V> map;
+	private final Map<LuaValue,LuaValue> map;
 
-	public LuaMap(Map<K,V> map) {
+	public LuaMap(LuaInstance instance, Map<LuaValue,LuaValue> map) {
 		super(map);
 		this.map = map;
-	}
-	
-	public LuaValue getValue(LuaValue key) {
-		Object object = map.get(getKeyObject(key));
-		return (object instanceof LuaValue)? (LuaValue)object : new LuaUserdata(object);
+		setmetatable(instance.getPackage("Map"));
 	}
 
-	@SuppressWarnings("unchecked")
-	public final void setValue(LuaValue key, LuaValue value) {
-		map.put((K)getKeyObject(key), (V)value);
+	public void put(LuaValue key, LuaValue value) {
+		map.put(key, value);
 	}
 	
-	public static final Object getKeyObject(LuaValue val) {
-		switch (val.type()) {
-		case LuaValue.TBOOLEAN:
-			return val.toboolean();
-			
-		case LuaValue.TNUMBER:
-			return val.tolong();
-			
-		case LuaValue.TSTRING:
-			return val.tostring();
-			
-		case LuaValue.TINT:
-			return val.toint();
-		
-		case LuaValue.TNIL:
-		default:
-			return null;
-		}
+	public LuaValue get(LuaValue key) {
+		return map.get(key);
 	}
-	
-	public static final class LuaValueMap extends LuaMap<LuaValue,LuaValue> {
 
-		public LuaValueMap(Map<LuaValue,LuaValue> map) {
-			super(map);
-		}
+	public Iterator<Entry<LuaValue,LuaValue>> entrySetIterator() {
+		return map.entrySet().iterator();
+	}
+	
+	public Iterator<LuaValue> keySetIterator() {
+		return map.keySet().iterator();
+	}
+
+	public Iterator<LuaValue> valuesIterator() {
+		return map.values().iterator();
+	}
+
+	public LuaInteger size() {
+		return LuaInteger.valueOf(map.size());
+	}
+
+	public LuaString toLuaString() {
+		return LuaString.valueOf(map.toString());
+	}
+	
+	public Object luaToObject() {
+		Map<Object,Object> target = new HashMap<Object,Object>(map.size());
 		
-		@Override
-		public LuaValue getValue(LuaValue key) {
-			return map.get(getKeyObject(key));
+		for (Entry<LuaValue,LuaValue> entry : map.entrySet()) {
+			Object key = LuaUtil.luaToObject(entry.getKey());
+			Object value = LuaUtil.luaToObject(entry.getValue());
+			target.put(key, value);
 		}
+		return target;
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -20,7 +20,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.MsgPacker;
 import com.aerospike.client.util.ThreadLocalData1;
 
 public class Command {		
@@ -195,7 +195,7 @@ public class Command {
 	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		int fieldCount = estimateKeySize(key);		
-		byte[] argBytes = MsgPack.pack(args);
+		byte[] argBytes = MsgPacker.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		begin();

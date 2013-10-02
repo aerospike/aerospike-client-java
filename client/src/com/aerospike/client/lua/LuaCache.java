@@ -55,10 +55,15 @@ public final class LuaCache {
 	}
 
 	private static InputStream getSystemStream(String packageName) throws AerospikeException {
-		String path = "/udf/" + packageName + ".lua";
+		String path = "udf/" + packageName + ".lua";
 		
 		try {
-			return LuaCache.class.getResourceAsStream(path);
+			InputStream is = ClassLoader.getSystemResourceAsStream(path);
+			
+			if (is == null) {
+				throw new Exception();
+			}
+			return is;
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Failed to read resource: " + path);

@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -9,14 +9,9 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -24,14 +19,13 @@ import java.util.Map.Entry;
 import org.msgpack.MessagePack;
 import org.msgpack.packer.BufferPacker;
 import org.msgpack.packer.Packer;
-import org.msgpack.unpacker.BufferUnpacker;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 
-public final class MsgPack {
-	private static final MessagePack msgpack = new MessagePack();
+public final class MsgPacker {
+	protected static final MessagePack msgpack = new MessagePack();
 
 	//-------------------------------------------------------
 	// Pack methods
@@ -165,105 +159,5 @@ public final class MsgPack {
 		}
 		
 		packBlob(packer, obj);
-	}
-
-	//-------------------------------------------------------
-	// Unpack methods
-	//-------------------------------------------------------
-
-	public static List<?> parseList(byte[] buf, int offset, int len) throws AerospikeException {
-		if (len <= 0) {
-			return new ArrayList<Object>(0);
-		}
-		
-		try {
-			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
-			return unpackList(unpacker.readValue());
-		} 
-		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
-		}
-	}
-
-	public static Map<?,?> parseMap(byte[] buf, int offset, int len) throws AerospikeException {
-		if (len <= 0) {
-			return new HashMap<Object,Object>(0);
-		}
-
-		try {
-			BufferUnpacker unpacker = msgpack.createBufferUnpacker(buf, offset, len);
-			return unpackMap(unpacker.readValue());
-		} 
-		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
-		}
-	}
-	
-	private static Object unpackObject(org.msgpack.type.Value in) throws IOException, ClassNotFoundException {
-		switch (in.getType()) {
-			case INTEGER:
-				return in.asIntegerValue().getLong();
-				
-			case RAW:
-				return unpackBlob(in);
-				
-			case MAP:
-				return unpackMap(in);
-				
-			case ARRAY:
-				return unpackList(in);
-				
-			default:
-				return null;
-		}
-	}
-	
-	private static List<Object> unpackList(org.msgpack.type.Value in) throws IOException, ClassNotFoundException {
-		ArrayList<Object> out = new ArrayList<Object>();
-		
-		if (! in.isArrayValue()) {
-			return out;
-		}
-		
-		org.msgpack.type.Value[] elements = in.asArrayValue().getElementArray();
-		
-		for (org.msgpack.type.Value v : elements) {
-			out.add(unpackObject(v));
-		}
-		return out;
-	}
-	
-	private static Map<Object,Object> unpackMap(org.msgpack.type.Value in) throws IOException, ClassNotFoundException {
-		HashMap<Object,Object> out = new HashMap<Object,Object>();
-		
-		if (! in.isMapValue()) {
-			return out;
-		}
-		
-		org.msgpack.type.Value[] elements = in.asMapValue().getKeyValueArray();
-		
-		for (int i = 0; i < elements.length; i++) {
-			Object key = unpackObject(elements[i]);
-			Object val = unpackObject(elements[++i]);
-			out.put(key, val);
-		}
-		return out;
-	}
-	
-	private static Object unpackBlob(org.msgpack.type.Value in) throws IOException, ClassNotFoundException {
-		byte[] raw = in.asRawValue().getByteArray();
-		
-		switch (raw[0]) {
-		case ParticleType.STRING:
-			return Buffer.utf8ToString(raw, 1, raw.length - 1);
-
-		case ParticleType.JBLOB:
-			ByteArrayInputStream bastream = new ByteArrayInputStream(raw, 1, raw.length - 1);
-			ObjectInputStream oistream = new ObjectInputStream(bastream);
-			return oistream.readObject();
-			
-		default:
-			return Arrays.copyOfRange(raw, 1, raw.length);
-		}
 	}
 }

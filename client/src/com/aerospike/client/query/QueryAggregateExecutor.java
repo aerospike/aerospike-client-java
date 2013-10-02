@@ -12,18 +12,27 @@ package com.aerospike.client.query;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
+import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.lua.LuaExecutor;
+import com.aerospike.client.lua.LuaCache;
+import com.aerospike.client.lua.LuaInputStream;
+import com.aerospike.client.lua.LuaInstance;
+import com.aerospike.client.lua.LuaOutputStream;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.util.Util;
 
-public final class QueryAggregateExecutor extends QueryExecutor {
+public final class QueryAggregateExecutor extends QueryExecutor implements Runnable {
 	
+	private final Node[] nodes;
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;
 	private final Thread luaThread;
+	private LuaInstance lua;
 	
 	public QueryAggregateExecutor(
 		QueryPolicy policy, 
@@ -32,13 +41,13 @@ public final class QueryAggregateExecutor extends QueryExecutor {
 		String packageName, 
 		String functionName, 
 		Value[] functionArgs
-	) {
+	) throws AerospikeException {
 		super(policy, statement);
-		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
+		this.nodes = nodes;
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
-		LuaExecutor luaExecutor = new LuaExecutor(statement, inputQueue, resultSet);
-		
+		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
+
 		// Work around luaj LuaInteger static initialization bug.
 		// Calling LuaInteger.valueOf(long) is required because LuaValue.valueOf() does not have
 		// a method that takes in a long parameter.  The problem is directly calling
@@ -47,19 +56,52 @@ public final class QueryAggregateExecutor extends QueryExecutor {
 		// If LuaValue.valueOf() is called before any luaj calls, then the static initializer in
 		// LuaInteger will be initialized properly.  		
 		LuaValue.valueOf(0);
-		
+				
 		// Start Lua thread which reads from a queue, applies aggregate function and 
 		// writes to a result set. 
-		luaThread = new Thread(luaExecutor);
+		luaThread = new Thread(this);
 		luaThread.start();
+	}
+	
+	public void run() {
+		try {
+			runThreads();
+		}
+		catch (Exception e) {
+			Log.error("Lua error: " + Util.getErrorMessage(e));
+			sendCompleted();
+		}
+	}
+
+	public void runThreads() throws AerospikeException {		
+		lua = LuaCache.getInstance();
 		
 		// Start thread queries to each node.
-		startThreads(nodes);
+		startThreads(nodes);		
+
+		try {
+			lua.load(statement.getPackageName(), false);
+			
+			LuaValue[] args = new LuaValue[4 + statement.getFunctionArgs().length];
+			args[0] = lua.getFunction(statement.getFunctionName());
+			args[1] = LuaInteger.valueOf(2);
+			args[2] = new LuaInputStream(inputQueue);
+			args[3] = new LuaOutputStream(resultSet);
+			int count = 4;
+			
+			for (Value value : statement.getFunctionArgs()) {
+				args[count++] = value.getLuaValue();
+			}
+			lua.call("apply_stream", args);
+		}
+		finally {			
+			LuaCache.putInstance(lua);
+		}
 	}
 	
 	@Override
 	protected QueryCommand createCommand(Node node) {
-		return new QueryAggregateCommand(node, inputQueue);
+		return new QueryAggregateCommand(node, lua, inputQueue);
 	}
 	
 	@Override

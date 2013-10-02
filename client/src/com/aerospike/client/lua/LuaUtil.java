@@ -1,53 +1,41 @@
+/*
+ * Aerospike Client - Java Library
+ *
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ *
+ * Availability of this source code to partners and customers includes
+ * redistribution rights covered by individual contract. Please check your
+ * contract for exact rights and responsibilities.
+ */
 package com.aerospike.client.lua;
 
-import java.util.List;
-import java.util.Map;
-
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaString;
-import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
+
+import com.aerospike.client.Log;
+import com.aerospike.client.query.ResultSet;
 
 public final class LuaUtil {
 	
-	@SuppressWarnings("unchecked")
-	public static LuaValue objectToLua(Object obj) {
-		if (obj instanceof LuaValue) {
-			return (LuaValue)obj;
-		}
-
-		if (obj == null) {
-			return LuaValue.NIL;
-		}
+	public static Object luaToObject(LuaValue source) {
+		switch (source.type()) {
+		case LuaValue.TNUMBER:
+			return source.tolong();
 		
-		if (obj instanceof String) {
-			return LuaString.valueOf((String)obj);
+		case LuaValue.TBOOLEAN:
+			return source.toboolean();
+			
+		case LuaValue.TSTRING:
+			return source.tojstring();
+			
+		case LuaValue.TUSERDATA:
+			LuaData data = (LuaData)source;
+			return data.luaToObject();
+			
+		default:
+			if (Log.warnEnabled()) {
+				Log.warn("Invalid lua type: " + source.type());
+			}
+			return ResultSet.END;
 		}
-		
-		if (obj instanceof byte[]) {
-			return LuaValue.valueOf((byte[])obj);
-		}
-		
-		if (obj instanceof Integer) {
-			return LuaInteger.valueOf((Integer)obj);
-		}
-		
-		if (obj instanceof Long) {
-			return LuaInteger.valueOf((Long)obj);
-		}
-
-		if (obj instanceof com.aerospike.client.Value) {
-			com.aerospike.client.Value value = (com.aerospike.client.Value) obj;
-			return value.getLuaValue();
-		}
-		
-		if (obj instanceof List<?>) {
-			return new LuaList<Object>((List<Object>) obj);
-		}
-		
-		if (obj instanceof Map<?,?>) {
-			return new LuaMap<Object,Object>((Map<Object,Object>) obj);
-		}
-		return new LuaUserdata(obj);
-	}
+	}	
 }

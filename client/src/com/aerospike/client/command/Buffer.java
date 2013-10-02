@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -16,7 +16,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.MsgUnpacker;
 
 public final class Buffer {
 
@@ -37,10 +37,10 @@ public final class Buffer {
 			return Buffer.bytesToObject(buf, offset, len);
 			
 		case ParticleType.LIST:
-			return MsgPack.parseList(buf, offset, len);
+			return MsgUnpacker.parseObjectList(buf, offset, len);
 
 		case ParticleType.MAP:
-			return MsgPack.parseMap(buf, offset, len);
+			return MsgUnpacker.parseObjectMap(buf, offset, len);
 		
 		default:
 			return null;

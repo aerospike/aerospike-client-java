@@ -700,10 +700,6 @@ public class AerospikeClient {
 				throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
 			}
 		}
-		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
-		// may return before the UDF is available on all nodes.  Hard code sleep for now.
-		// TODO: Fix server so control is only returned when UDF registration is complete.
-		Util.sleep(100);
 	}
 	
 	/**
@@ -895,12 +891,6 @@ public class AerospikeClient {
 		if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
 			throw new AerospikeException("Create index failed: " + response);
 		}
-		
-		// The server index command distribution to other nodes is done asynchronously.  
-		// Therefore, the server may return before the index is available on all nodes.  
-		// Hard code sleep for now.
-		// TODO: Fix server so control is only returned when index is available on all nodes.
-		Util.sleep(100);
 	}
 
 	/**
@@ -943,12 +933,6 @@ public class AerospikeClient {
 		if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
 			throw new AerospikeException("Drop index failed: " + response);
 		}
-		
-		// The server drop index command distribution to other nodes is done asynchronously.  
-		// Therefore, the server may return before the index is dropped on all nodes.  
-		// Hard code sleep for now.
-		// TODO: Fix server so control is only returned when index is dropped on all nodes.
-		Util.sleep(100);
 	}
 	
 	//-------------------------------------------------------

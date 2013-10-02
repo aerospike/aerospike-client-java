@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2012 by Aerospike, Inc. All rights reserved.
+ * Copyright 2013 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -24,9 +24,7 @@ import org.msgpack.packer.Packer;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.lua.LuaList;
-import com.aerospike.client.lua.LuaMap;
-import com.aerospike.client.util.MsgPack;
+import com.aerospike.client.util.MsgPacker;
 
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
@@ -217,7 +215,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packBytes(packer, bytes);
+			MsgPacker.packBytes(packer, bytes);
 		}
 
 		@Override
@@ -263,7 +261,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packString(packer, value);
+			MsgPacker.packString(packer, value);
 		}
 
 		@Override
@@ -415,7 +413,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packBlob(packer, object);
+			MsgPacker.packBlob(packer, object);
 		}
 
 		@Override
@@ -453,7 +451,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPack.pack(array);
+			bytes = MsgPacker.pack(array);
 			return bytes.length;
 		}
 		
@@ -465,7 +463,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packValueArray(packer, array);
+			MsgPacker.packValueArray(packer, array);
 		}
 
 		@Override
@@ -503,7 +501,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPack.pack(list);
+			bytes = MsgPacker.pack(list);
 			return bytes.length;
 		}
 		
@@ -515,7 +513,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packList(packer, list);
+			MsgPacker.packList(packer, list);
 		}
 
 		@Override
@@ -528,10 +526,9 @@ public abstract class Value {
 			return list;
 		}
 
-		@SuppressWarnings("unchecked")
 		@Override
 		public LuaValue getLuaValue() {
-			return new LuaList<Object>((List<Object>)list);
+			return null;
 		}
 		
 		@Override
@@ -554,7 +551,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPack.pack(map);
+			bytes = MsgPacker.pack(map);
 			return bytes.length;
 		}
 		
@@ -566,7 +563,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPack.packMap(packer, map);
+			MsgPacker.packMap(packer, map);
 		}
 
 		@Override
@@ -579,10 +576,9 @@ public abstract class Value {
 			return map;
 		}
 		
-		@SuppressWarnings("unchecked")
 		@Override
 		public LuaValue getLuaValue() {
-			return new LuaMap<Object,Object>((Map<Object,Object>)map);
+			return null;
 		}
 		
 		@Override

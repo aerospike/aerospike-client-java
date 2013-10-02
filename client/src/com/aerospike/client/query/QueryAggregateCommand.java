@@ -23,10 +23,12 @@ import com.aerospike.client.lua.LuaInstance;
 
 public final class QueryAggregateCommand extends QueryCommand {
 	
+	private final LuaInstance instance;
 	private final BlockingQueue<LuaValue> inputQueue;
 
-	public QueryAggregateCommand(Node node, BlockingQueue<LuaValue> inputQueue) {
+	public QueryAggregateCommand(Node node, LuaInstance instance, BlockingQueue<LuaValue> inputQueue) {
 		super(node);
+		this.instance = instance;
 		this.inputQueue = inputQueue;
 	}
 	
@@ -74,7 +76,7 @@ public final class QueryAggregateCommand extends QueryCommand {
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
-			LuaValue aggregateValue = LuaInstance.getValue(particleType, receiveBuffer, 0, particleBytesSize);
+			LuaValue aggregateValue = instance.getValue(particleType, receiveBuffer, 0, particleBytesSize);
 						
 			if (! name.equals("SUCCESS")) {
 				throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);

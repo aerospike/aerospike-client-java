@@ -9,15 +9,6 @@
  */
 package com.aerospike.client.lua;
 
-import org.luaj.vm2.LuaUserdata;
-
-public final class LuaJavaBlob extends LuaUserdata implements LuaData {
-
-	public LuaJavaBlob(Object object) {
-		super(object);
-	}
-	
-	public Object luaToObject() {
-		return m_instance;
-	}
+public interface LuaData {
+	public Object luaToObject();
 }

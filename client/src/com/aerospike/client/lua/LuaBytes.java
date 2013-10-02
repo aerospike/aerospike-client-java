@@ -11,7 +11,7 @@ package com.aerospike.client.lua;
 
 import org.luaj.vm2.LuaUserdata;
 
-public class LuaBytes extends LuaUserdata {
+public class LuaBytes extends LuaUserdata implements LuaData {
 
 	protected byte[] bytes;
 
@@ -37,5 +37,9 @@ public class LuaBytes extends LuaUserdata {
 		}
 		System.arraycopy(bytes, 0, target, 0, length);
 		bytes = target;
+	}
+	
+	public Object luaToObject() {
+		return bytes;
 	}
 }

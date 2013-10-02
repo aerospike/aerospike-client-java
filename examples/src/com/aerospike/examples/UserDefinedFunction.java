@@ -12,6 +12,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.Util;
 
 public class UserDefinedFunction extends Example {
 
@@ -28,7 +29,7 @@ public class UserDefinedFunction extends Example {
 			console.info("User defined functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		register(client);
+		register(client, params);
 		writeUsingUdf(client, params);
 		writeIfGenerationNotChanged(client, params);
 		writeIfNotExists(client, params);
@@ -37,8 +38,13 @@ public class UserDefinedFunction extends Example {
 		writeBlobUsingUdf(client, params);
 	}
 	
-	private void register(AerospikeClient client) throws Exception {
-		client.register(null, "udf/record_example.lua", "record_example.lua", Language.LUA);
+	private void register(AerospikeClient client, Parameters params) throws Exception {
+		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		
+		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
+		// may return before the UDF is available on all nodes.  Hard code sleep for now.
+		// TODO: Fix server so control is only returned when UDF registration is complete.
+		Util.sleep(1000);
 	}
 
 	private void writeUsingUdf(AerospikeClient client, Parameters params) throws Exception {	

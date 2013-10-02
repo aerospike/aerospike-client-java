@@ -13,8 +13,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
@@ -22,8 +20,6 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.ThreeArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
-
-import com.aerospike.client.lua.LuaMap.LuaValueMap;
 
 public final class LuaMapLib extends OneArgFunction {
 
@@ -53,7 +49,6 @@ public final class LuaMapLib extends OneArgFunction {
 	}
 
 	public static final class MetaLib extends OneArgFunction {
-
 		private final LuaInstance instance;
 
 		public MetaLib(LuaInstance instance) {
@@ -73,16 +68,15 @@ public final class LuaMapLib extends OneArgFunction {
 	}
 
 	public static final class create extends VarArgFunction {
-		private final LuaValue meta;
+		private final LuaInstance instance;
 		
 		public create(LuaInstance instance) {
-			this.meta = instance.getPackage("Map");
+			this.instance = instance;
 		}
 		
 		@Override
 		public Varargs invoke(Varargs args) {
-			LuaValueMap map = new LuaValueMap(new HashMap<LuaValue,LuaValue>());
-			map.setmetatable(meta);
+			LuaMap map = new LuaMap(instance, new HashMap<LuaValue,LuaValue>());
 			
 			if (args.istable(2)) {
 				LuaTable table = args.checktable(2);
@@ -95,7 +89,7 @@ public final class LuaMapLib extends OneArgFunction {
 						 break;
 
 					 LuaValue v = n.arg(2);
-					 map.setValue(k, v);
+					 map.put(k, v);
 				 }
 			}				
 			return LuaValue.varargsOf(new LuaValue[] {map});
@@ -105,15 +99,8 @@ public final class LuaMapLib extends OneArgFunction {
 	public static final class iterator extends OneArgFunction {		
 		@Override
 		public LuaValue call(LuaValue arg) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg;
-			
-			if (map instanceof LuaValueMap) {
-				LuaValueMap lmap = (LuaValueMap)map;
-				return new nextLuaValue(lmap.map.entrySet().iterator());
-			}
-			else {
-				return new nextObject(map.map.entrySet().iterator());				
-			}
+			LuaMap map = (LuaMap)arg;
+			return new nextLuaValue(map.entrySetIterator());
 		}
 	}
 
@@ -134,85 +121,51 @@ public final class LuaMapLib extends OneArgFunction {
 		}
 	}
 
-	@SuppressWarnings("rawtypes")
-	public static final class nextObject extends VarArgFunction {
-		private final Iterator iter;
-		
-		public nextObject(Iterator iter) {
-			this.iter = iter;
-		}
-		
+	public static final class keys extends OneArgFunction {
 		@Override
-		public Varargs invoke(Varargs args) {
-			if (iter.hasNext()) {
-				Entry<?,?> entry = (Entry<?,?>) iter.next();
-				LuaValue key = LuaUtil.objectToLua(entry.getKey());
-				LuaValue value = LuaUtil.objectToLua(entry.getValue());
-				return LuaValue.varargsOf(new LuaValue[] {key, value});
-			}
-			return NONE;
+		public LuaValue call(LuaValue m) {
+			LuaMap map = (LuaMap)m;
+			return new LuaListLib.nextLuaValue(map.keySetIterator());
 		}
 	}
 
-	public static final class keys extends OneArgFunction {		
+	public static final class values extends OneArgFunction {	
 		@Override
 		public LuaValue call(LuaValue arg) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg;
-			
-			if (map instanceof LuaValueMap) {
-				LuaValueMap lmap = (LuaValueMap)map;
-				return new LuaListLib.nextLuaValue(lmap.map.keySet().iterator());
-			}
-			else {
-				return new LuaListLib.nextObject(map.map.keySet().iterator());				
-			}
-		}
-	}
-
-	public static final class values extends OneArgFunction {		
-		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg;
-			
-			if (map instanceof LuaValueMap) {
-				LuaValueMap lmap = (LuaValueMap)map;
-				return new LuaListLib.nextLuaValue(lmap.map.values().iterator());
-			}
-			else {
-				return new LuaListLib.nextObject(map.map.values().iterator());				
-			}
+			LuaMap map = (LuaMap)arg;
+			return new LuaListLib.nextLuaValue(map.valuesIterator());
 		}
 	}
 
 	public static final class len extends OneArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg;
-			return LuaInteger.valueOf(map.map.size());
+			LuaMap map = (LuaMap)arg;
+			return map.size();
 		}
 	}
 
 	public static final class tostring extends OneArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg;
-			return LuaString.valueOf(map.map.toString());
+		public LuaValue call(LuaValue m) {
+			LuaMap map = (LuaMap)m;
+			return map.toLuaString();
 		}
 	}
 
 	public static final class index extends TwoArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg1;
-			return map.getValue(arg2);
+		public LuaValue call(LuaValue m, LuaValue key) {
+			LuaMap map = (LuaMap)m;
+			return map.get(key);
 		}
 	}
 
 	public static final class newindex extends ThreeArgFunction {
 		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
-			LuaMap<?,?> map = (LuaMap<?,?>)arg1;
-			map.setValue(arg2, arg3);
+		public LuaValue call(LuaValue m, LuaValue key, LuaValue value) {
+			LuaMap map = (LuaMap)m;
+			map.put(key, value);
 			return NIL;
 		}
 	}

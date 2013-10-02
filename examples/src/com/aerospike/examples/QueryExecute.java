@@ -11,6 +11,7 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.util.Util;
 
 public class QueryExecute extends Example {
 
@@ -33,7 +34,7 @@ public class QueryExecute extends Example {
 		String binName2 = params.getBinName("qebin2");  
 		int size = 10;
 
-		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		register(client, params);
 		createIndex(client, params, indexName, binName1);
 		writeRecords(client, params, keyPrefix, binName1, binName2, size);
 		runQueryExecute(client, params, indexName, binName1, binName2);
@@ -41,6 +42,15 @@ public class QueryExecute extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
+	private void register(AerospikeClient client, Parameters params) throws Exception {
+		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		
+		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
+		// may return before the UDF is available on all nodes.  Hard code sleep for now.
+		// TODO: Fix server so control is only returned when UDF registration is complete.
+		Util.sleep(1000);
+	}
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -53,6 +63,12 @@ public class QueryExecute extends Example {
 		Policy policy = new Policy();
 		policy.timeout = 0; // Do not timeout on index create.
 		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+		
+		// The server index command distribution to other nodes is done asynchronously.  
+		// Therefore, the server may return before the index is available on all nodes.  
+		// Hard code sleep for now.
+		// TODO: Fix server so control is only returned when index is available on all nodes.
+		Util.sleep(1000);
 	}
 
 	private void writeRecords(
