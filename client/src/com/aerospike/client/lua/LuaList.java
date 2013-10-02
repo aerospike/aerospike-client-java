@@ -74,6 +74,10 @@ public final class LuaList extends LuaUserdata implements LuaData {
 		return subList(min, list.size());
 	}
 
+	public LuaList copy() {		
+		return subList(0, list.size());
+	}
+
 	public LuaList subList(int begin, int end) {		
 		return new LuaList(instance, list.subList(begin, end));
 	}
