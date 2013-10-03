@@ -14,15 +14,18 @@ import org.luaj.vm2.LuaUserdata;
 public class LuaBytes extends LuaUserdata implements LuaData {
 
 	protected byte[] bytes;
+	protected int type;
 
-	public LuaBytes(int size) {
+	public LuaBytes(LuaInstance instance, int size) {
 		super(new byte[size]);
 		bytes = (byte[])super.m_instance;
+		setmetatable(instance.getPackage("Bytes"));
 	}
 	
-	public LuaBytes(byte[] bytes) {
+	public LuaBytes(LuaInstance instance, byte[] bytes) {
 		super(bytes);
 		this.bytes = bytes;
+		setmetatable(instance.getPackage("Bytes"));
 	}
 	
 	public void setLength(int length) {

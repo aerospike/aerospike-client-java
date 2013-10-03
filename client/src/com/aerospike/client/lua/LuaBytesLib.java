@@ -36,32 +36,24 @@ public final class LuaBytesLib extends OneArgFunction {
 		LuaTable meta = new LuaTable(0,2);
 		meta.set("__call", new create(instance));
 		
-		LuaTable table = new LuaTable(0,8);
+		LuaTable table = new LuaTable(0,10);
 		table.setmetatable(meta);
 		table.set("size", new len());
-		table.set("tostring", new tostring());
+		table.set("set_size", new set_size());
 		
-		new putint(table, 0, "put_int16");
-		new putint(table, 1, "put_int32");
-		new putint(table, 2, "put_int64");
-		
-		table.set("put_string", new put_string());
-		table.set("put_bytes", new put_bytes());
-
-		new putint(table, 0, "set_int16");
-		new putint(table, 1, "set_int32");
-		new putint(table, 2, "set_int64");
-
-		table.set("set_string", new put_string());
-		table.set("set_bytes", new put_bytes());
-
 		new getint(table, 0, "get_int16");
 		new getint(table, 1, "get_int32");
 		new getint(table, 2, "get_int64");
 
-		table.set("get_string", new get_string());
-		table.set("get_bytes", new get_bytes());
-		table.set("set_len", new set_len());
+		new setint(table, 0, "set_int16");
+		new setint(table, 1, "set_int32");
+		new setint(table, 2, "set_int64");
+		
+		table.set("set_string", new set_string());
+		table.set("set_bytes", new set_bytes());
+
+		table.set("get_type", new get_type());
+		table.set("set_type", new set_type());
 
 		instance.registerPackage("bytes", table);
 		return table;
@@ -88,18 +80,25 @@ public final class LuaBytesLib extends OneArgFunction {
 	}
 
 	public static final class create extends VarArgFunction {
-		private final LuaValue meta;
+		private final LuaInstance instance;
 		
 		public create(LuaInstance instance) {
-			this.meta = instance.getPackage("Bytes");
+			this.instance = instance;
 		}
 		
 		@Override
 		public Varargs invoke(Varargs args) {
 			int size = args.toint(2);
-			LuaBytes bytes = new LuaBytes(size);		
-			bytes.setmetatable(meta);			
+			LuaBytes bytes = new LuaBytes(instance, size);		
 			return LuaValue.varargsOf(new LuaValue[] {bytes});
+		}
+	}
+
+	public static final class get_type extends OneArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg) {
+			LuaBytes bytes = (LuaBytes)arg;
+			return LuaInteger.valueOf(bytes.type);
 		}
 	}
 
@@ -138,7 +137,16 @@ public final class LuaBytesLib extends OneArgFunction {
 		}
 	}
 	
-	public static final class put_string extends ThreeArgFunction {
+	public static final class set_type extends TwoArgFunction {
+		@Override
+		public LuaValue call(LuaValue arg1, LuaValue arg2) {
+			LuaBytes bytes = (LuaBytes)arg1;
+			bytes.type = arg2.toint();
+			return NIL;
+		}
+	}
+
+	public static final class set_string extends ThreeArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 			byte[] bytes = ((LuaBytes)arg1).bytes;
@@ -149,7 +157,7 @@ public final class LuaBytesLib extends OneArgFunction {
 		}
 	}
 
-	public static final class put_bytes extends VarArgFunction {
+	public static final class set_bytes extends VarArgFunction {
 		@Override
 		public Varargs invoke(Varargs args) {
 			byte[] dest = ((LuaBytes)args.arg(1)).bytes;
@@ -164,7 +172,7 @@ public final class LuaBytesLib extends OneArgFunction {
 				return NIL;
 			}
 			
-			if (destPos < 0 || (destPos + length) > src.length) {
+			if (destPos < 0 || (destPos + length) > dest.length) {
 				return NIL;
 			}
 			System.arraycopy(src, 0, dest, destPos, length);
@@ -172,8 +180,8 @@ public final class LuaBytesLib extends OneArgFunction {
 		}
 	}
 
-	public static final class putint extends ThreeArgFunction {
-		public putint(LuaTable table, int id, String name) {
+	public static final class setint extends ThreeArgFunction {
+		public setint(LuaTable table, int id, String name) {
 			super.opcode = id;
 			super.name = name;
 			table.set(name, this);
@@ -238,37 +246,14 @@ public final class LuaBytesLib extends OneArgFunction {
 			return LuaString.valueOf(val);
 		}
 	}
-
-	public static final class get_bytes extends ThreeArgFunction {
-		@Override
-		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
-			byte[] src = ((LuaBytes)arg1).bytes;
-			int srcPos = arg2.toint() - 1;
-			int length = arg3.toint();
-			
-			if (srcPos > src.length) {
-				return NIL;
-			}
-			
-			int remaining = src.length - srcPos;
-			
-			if (length > remaining) {
-				length = remaining;
-			}
-				
-			byte[] dest = new byte[length];
-			System.arraycopy(src, srcPos, dest, 0, length);
-			return new LuaBytes(dest);
-		}
-	}
 	
-	public static final class set_len extends TwoArgFunction {
+	public static final class set_size extends TwoArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg1, LuaValue arg2) {
 			LuaBytes bytes = (LuaBytes)arg1;
-			int length = arg2.toint() - 1;
-			bytes.setLength(length);
-			return bytes;
+			int size = arg2.toint();
+			bytes.setLength(size);
+			return NIL;
 		}
 	}
 }

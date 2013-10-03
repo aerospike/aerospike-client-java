@@ -126,7 +126,7 @@ public final class LuaInstance {
 		case ParticleType.BLOB:
 	        byte[] blob = new byte[len];
 	        System.arraycopy(buf, offset, blob, 0, len);
-			return new LuaBytes(blob);
+			return new LuaBytes(this, blob);
 			
 		case ParticleType.JBLOB:
 			Object object = Buffer.bytesToObject(buf, offset, len);

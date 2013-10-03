@@ -43,7 +43,7 @@ public class LuaUnpacker extends MsgUnpacker<LuaValue> {
 
 	@Override
 	protected LuaBytes getBlob(byte[] value) {
-		return new LuaBytes(value);
+		return new LuaBytes(instance, value);
 	}
 
 	@Override
