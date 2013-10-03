@@ -42,7 +42,8 @@ public final class LuaListLib extends OneArgFunction {
 		table.set("prepend", new prepend());
 		table.set("take", new take());
 		table.set("drop", new drop());
-		table.set("clone", new clone());
+		// list.clone is defined in as.lua
+		// table.set("clone", new clone());
 		
 		instance.registerPackage("list", table);
 		return table;
@@ -94,14 +95,6 @@ public final class LuaListLib extends OneArgFunction {
 				 }
 			}				
 			return LuaValue.varargsOf(new LuaValue[] {list});
-		}
-	}
-
-	public static final class clone extends OneArgFunction {		
-		@Override
-		public LuaValue call(LuaValue l) {
-			LuaList list = (LuaList)l;
-			return list.copy();
 		}
 	}
 

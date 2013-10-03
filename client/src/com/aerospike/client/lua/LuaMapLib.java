@@ -37,12 +37,12 @@ public final class LuaMapLib extends OneArgFunction {
 		LuaTable table = new LuaTable(0,8);
 		table.setmetatable(meta);
 		table.set("size", new len());
-		iterator iter = new iterator();
-		table.set("iterator", iter);
-		table.set("pairs", iter);
+		table.set("pairs", new iterator());
 		table.set("keys", new keys());
 		table.set("values", new values());
-		table.set("tostring", new tostring());
+		// map.clone and map.merge are defined in as.lua.
+		//table.set("clone", new clone());
+		//table.set("merge", new merge());
 		
 		instance.registerPackage("map", table);
 		return table;
