@@ -100,7 +100,6 @@ public class QueryAverage extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setIndexName(indexName);
 		stmt.setFilters(Filter.range(binName, Value.get(0), Value.get(1000)));
 		
 		ResultSet rs = client.queryAggregate(null, stmt, "average_example", "average");

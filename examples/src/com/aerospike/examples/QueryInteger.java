@@ -92,7 +92,6 @@ public class QueryInteger extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setIndexName(indexName);
 		stmt.setBinNames(binName);
 		stmt.setFilters(Filter.range(binName, begin, end));
 		
