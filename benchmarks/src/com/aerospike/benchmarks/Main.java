@@ -101,7 +101,7 @@ public class Main implements Log.Callback {
 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
 			);
 		options.addOption("o", "objectSpec", true, 
-			"I | S <size> | B <size>\n" +
+			"I | S:<size> | B:<size>\n" +
 			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
 			"for integer, 'S' for string, or 'B' for Java blob. If type is 'I' (integer), " + 
 			"do not set a size (integers are always 8 bytes). If object_type is 'S' " + 

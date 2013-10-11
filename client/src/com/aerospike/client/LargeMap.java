@@ -5,7 +5,7 @@ import java.util.Map;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Create and manage a map within a single bin. A map is last in/first out (LIFO).
+ * Create and manage a map within a single bin.
  */
 public final class LargeMap {
 	private static final String PackageName = "lmap";
