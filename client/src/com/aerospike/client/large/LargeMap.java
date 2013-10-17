@@ -1,7 +1,11 @@
-package com.aerospike.client;
+package com.aerospike.client.large;
 
 import java.util.Map;
 
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 
 /**
