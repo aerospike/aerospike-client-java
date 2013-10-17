@@ -1,5 +1,8 @@
 package com.aerospike.examples;
 
+import java.io.IOException;
+import java.net.ConnectException;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -8,6 +11,7 @@ import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public class AsyncPutGet extends AsyncExample {
 	
@@ -25,14 +29,14 @@ public class AsyncPutGet extends AsyncExample {
 		Key key = new Key(params.namespace, params.set, "putgetkey");
 		Bin bin = new Bin(params.getBinName("putgetbin"), "value");
 
-		runPutGet1(client, params, key, bin);
+		runPutGetInline(client, params, key, bin);
 		waitTillComplete();
-		runPutGet2(client, params, key, bin);
+		runPutGetWithRetry(client, params, key, bin);
 		waitTillComplete();
 	}
 	
 	// Inline asynchronous put/get calls.
-	private void runPutGet1(final AsyncClient client, final Parameters params, final Key key, final Bin bin) throws AerospikeException {
+	private void runPutGetInline(final AsyncClient client, final Parameters params, final Key key, final Bin bin) throws AerospikeException {
 		
 		console.info("Put: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 		params.writePolicy.timeout = 50;
@@ -67,19 +71,20 @@ public class AsyncPutGet extends AsyncExample {
 		}, key, bin);		
 	}	
 
-	// Separate combined class asynchronous put/get calls.
-	private void runPutGet2(AsyncClient client, Parameters params, Key key, Bin bin) throws Exception {
+	// Asynchronous put/get calls with retry.
+	private void runPutGetWithRetry(AsyncClient client, Parameters params, Key key, Bin bin) throws Exception {
 		console.info("Put: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
-		client.put(params.writePolicy, new CombinedListener(client, params.policy, key, bin), key, bin);
+		client.put(params.writePolicy, new WriteHandler(client, params.writePolicy, key, bin), key, bin);
 	}
 	
-	private class CombinedListener implements WriteListener, RecordListener {
+	private class WriteHandler implements WriteListener {
 		private final AsyncClient client;
-		private final Policy policy;
+		private final WritePolicy policy;
 		private final Key key;
 		private final Bin bin;
+    	private int failCount = 0;
 		
-		public CombinedListener(AsyncClient client, Policy policy, Key key, Bin bin) {
+		public WriteHandler(AsyncClient client, WritePolicy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
@@ -91,13 +96,50 @@ public class AsyncPutGet extends AsyncExample {
 			try {
 				// Write succeeded.  Now call read.
 				console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
-				client.get(policy, this, key);
+				client.get(policy, new ReadHandler(client, policy, key, bin), key);
 			}
 			catch (Exception e) {				
 				console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 			}
 		}
 		
+		// Error callback.
+		public void onFailure(AerospikeException e) {
+		   // Retry up to 2 more times.
+           if (++failCount <= 2) {
+            	Throwable t = e.getCause();
+            	
+            	// Check for common socket errors.
+            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+                    console.info("Retrying put: " + key.userKey);
+                    try {
+                    	client.put(policy, this, key, bin);
+                        return;
+                    }
+                    catch (Exception ex) {
+                    	// Fall through to error case.
+                    }
+            	}
+        	}
+			console.error("Put failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+			notifyCompleted();
+		}
+	}
+
+	private class ReadHandler implements RecordListener {
+		private final AsyncClient client;
+		private final Policy policy;
+		private final Key key;
+		private final Bin bin;
+    	private int failCount = 0;
+		
+		public ReadHandler(AsyncClient client, Policy policy, Key key, Bin bin) {
+			this.client = client;
+			this.policy = policy;
+			this.key = key;
+			this.bin = bin;
+		}
+				
 		// Read success callback.
 		public void onSuccess(Key key, Record record) {
 			// Verify received bin value is what was written.
@@ -107,7 +149,23 @@ public class AsyncPutGet extends AsyncExample {
 
 		// Error callback.
 		public void onFailure(AerospikeException e) {
-			console.error("Command failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+			// Retry up to 2 more times.
+			if (++failCount <= 2) {
+            	Throwable t = e.getCause();
+            	
+            	// Check for common socket errors.
+            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+                    console.info("Retrying get: " + key.userKey);
+                    try {
+                    	client.get(policy, this, key);
+                        return;
+                    }
+                    catch (Exception ex) {
+                    	// Fall through to error case.
+                    }
+            	}
+        	}
+			console.error("Get failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 			notifyCompleted();
 		}
 	}
