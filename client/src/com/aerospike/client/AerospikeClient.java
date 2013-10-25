@@ -17,6 +17,7 @@ import java.util.Map;
 
 import com.aerospike.client.Info.NameValueParser;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Command;
@@ -693,16 +694,28 @@ public class AerospikeClient {
 		String command = sb.toString();
 		Node node = cluster.getRandomNode();
 		int timeout = (policy == null)? 0 : policy.timeout;
+		Connection conn = node.getConnection(timeout);
 		
-		Info info = new Info(node.getConnection(timeout), command);
-		NameValueParser parser = info.getNameValueParser();
-		
-		while (parser.next()) {
-			String name = parser.getName();
+		try {			
+			Info info = new Info(conn, command);
+			NameValueParser parser = info.getNameValueParser();
+			
+			while (parser.next()) {
+				String name = parser.getName();
 
-			if (name.equals("error")) {
-				throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
+				if (name.equals("error")) {
+					throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
+				}
 			}
+			node.putConnection(conn);
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw new AerospikeException(re);
 		}
 	}
 	
@@ -884,12 +897,7 @@ public class AerospikeClient {
 		sb.append(";priority=normal");
 
 		// Send index command to one node. That node will distribute the command to other nodes.
-		String command = sb.toString();
-		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		
-		Info info = new Info(node.getConnection(timeout), command);
-		String response = info.getValue();
+		String response = sendInfoCommand(policy, sb.toString());
 		
 		// Command is successful if OK or index already exists.
 		if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
@@ -925,13 +933,8 @@ public class AerospikeClient {
 		sb.append(";indexname=");
 		sb.append(indexName);
 		
-		// Send drop index command to one node. That node will distribute the command to other nodes.
-		String command = sb.toString();
-		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		
-		Info info = new Info(node.getConnection(timeout), command);
-		String response = info.getValue();
+		// Send index command to one node. That node will distribute the command to other nodes.
+		String response = sendInfoCommand(policy, sb.toString());
 		
 		// Command is successful if ok or index did not previously exist.
 		if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
@@ -951,5 +954,26 @@ public class AerospikeClient {
 			names.add(binName);
 		}
 		return names;
+	}
+	
+	private String sendInfoCommand(Policy policy, String command) throws AerospikeException {		
+		Node node = cluster.getRandomNode();
+		int timeout = (policy == null)? 0 : policy.timeout;
+		Connection conn = node.getConnection(timeout);
+		Info info;
+		
+		try {
+			info = new Info(conn, command);
+			node.putConnection(conn);
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw new AerospikeException(re);
+		}
+		return info.getValue();
 	}
 }
