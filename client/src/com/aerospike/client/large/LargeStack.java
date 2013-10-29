@@ -53,7 +53,7 @@ public final class LargeStack {
 	 * @param values			values to push
 	 */
 	public final void push(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "push", binName, Value.get(values), userModule);
+		client.execute(policy, key, PackageName, "push_all", binName, Value.get(values), userModule);
 	}
 	
 	/**
@@ -82,7 +82,7 @@ public final class LargeStack {
 	 * @return					list of items selected
 	 */
 	public final List<?> filter(int peekCount, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(peekCount), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(peekCount), userModule, Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
