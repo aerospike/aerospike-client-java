@@ -19,7 +19,7 @@ public abstract class QueryExecutor {
 	protected final Statement statement;
 	private QueryThread[] threads;
 	private volatile int nextThread;
-	private volatile Exception exception;
+	protected volatile Exception exception;
 	
 	public QueryExecutor(QueryPolicy policy, Statement statement) {
 		this.policy = policy;
@@ -48,7 +48,7 @@ public abstract class QueryExecutor {
 	}
 	
 	private final void threadCompleted() {
-		int index = -1;
+	   	int index = -1;
 		
 		// Determine if a new thread needs to be started.
 		synchronized (threads) {
@@ -74,7 +74,7 @@ public abstract class QueryExecutor {
 		}
 	}
 
-    private final void stopThreads(Exception cause) {
+	protected final void stopThreads(Exception cause) {
     	// Exception may be null, so can't synchronize on it.
     	// Use statement instead.
     	synchronized (statement) {
@@ -92,6 +92,7 @@ public abstract class QueryExecutor {
 			catch (Exception e) {
 			}
 		}
+		sendCompleted();
     }
 
 	protected final void checkForException() throws AerospikeException {
@@ -125,7 +126,10 @@ public abstract class QueryExecutor {
 				stopThreads(e);
 			}			
 			complete = true;
-			threadCompleted();
+			
+		   	if (exception == null) {
+				threadCompleted();
+		   	}
 		}
 
 		public void stopThread() {

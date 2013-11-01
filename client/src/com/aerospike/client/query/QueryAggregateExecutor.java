@@ -16,7 +16,6 @@ import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.lua.LuaCache;
@@ -24,7 +23,6 @@ import com.aerospike.client.lua.LuaInputStream;
 import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.lua.LuaOutputStream;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.util.Util;
 
 public final class QueryAggregateExecutor extends QueryExecutor implements Runnable {
 	
@@ -68,8 +66,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			runThreads();
 		}
 		catch (Exception e) {
-			Log.error("Lua error: " + Util.getErrorMessage(e));
-			sendCompleted();
+			super.stopThreads(e);
 		}
 	}
 
@@ -111,7 +108,9 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			inputQueue.put(LuaValue.NIL);
 			
 			// Ensure lua thread completes before sending end command to result set.
-			luaThread.join(1000);
+			if (exception == null) {
+				luaThread.join(1000);
+			}
 		}
 		catch (InterruptedException ie) {
 		}
