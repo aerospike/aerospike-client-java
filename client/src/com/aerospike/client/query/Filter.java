@@ -26,7 +26,9 @@ public final class Filter {
 	}
 	
 	/**
-	 * Create range filter for query.
+	 * Create range filter for query.  
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
 	 * 
 	 * @param name			bin name
 	 * @param begin			filter begin value
