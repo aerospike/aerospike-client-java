@@ -94,8 +94,8 @@ public class QueryExecute extends Example {
 		String binName1,
 		String binName2
 	) throws Exception {		
-		Value begin = Value.get(3);
-		Value end = Value.get(9);
+		int begin = 3;
+		int end = 9;
 		
 		console.info("For ns=%s set=%s index=%s bin=%s >= %s <= %s",
 			params.namespace, params.set, indexName, binName1, begin, end);			
@@ -119,8 +119,8 @@ public class QueryExecute extends Example {
 		String binName2,
 		int size
 	) throws Exception {		
-		Value begin = Value.get(1);
-		Value end = Value.get(size + 100);
+		int begin = 1;
+		int end = size + 100;
 		
 		console.info("Validate records");
 		

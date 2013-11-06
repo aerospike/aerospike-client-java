@@ -15,7 +15,32 @@ import com.aerospike.client.command.Buffer;
 
 public final class Filter {
 	/**
-	 * Create single filter for query.
+	 * Create long equality filter for query.
+	 * 
+	 * @param name			bin name
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equal(String name, long value) {
+		Value val = Value.get(value);
+		return new Filter(name, val, val);
+	}
+
+	/**
+	 * Create string equality filter for query.
+	 * 
+	 * @param name			bin name
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter equal(String name, String value) {
+		Value val = Value.get(value);
+		return new Filter(name, val, val);
+	}
+
+	/**
+	 * Create equality filter for query.
+	 * This method exists for backward compatibility only.  Do not use.
 	 * 
 	 * @param name			bin name
 	 * @param value			filter value
@@ -29,6 +54,21 @@ public final class Filter {
 	 * Create range filter for query.  
 	 * Range arguments must be longs or integers which can be cast to longs.
 	 * String ranges are not supported.
+	 * 
+	 * @param name			bin name
+	 * @param begin			filter begin value
+	 * @param end			filter end value
+	 * @return				filter instance
+	 */
+	public static Filter range(String name, long begin, long end) {
+		return new Filter(name, Value.get(begin), Value.get(end));
+	}
+
+	/**
+	 * Create range filter for query.  
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 * This method exists for backward compatibility only.  Do not use.
 	 * 
 	 * @param name			bin name
 	 * @param begin			filter begin value

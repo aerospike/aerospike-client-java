@@ -6,7 +6,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
-import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
@@ -100,7 +99,7 @@ public class QueryAverage extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.range(binName, Value.get(0), Value.get(1000)));
+		stmt.setFilters(Filter.range(binName, 0, 1000));
 		
 		ResultSet rs = client.queryAggregate(null, stmt, "average_example", "average");
 		

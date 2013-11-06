@@ -4,7 +4,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
@@ -83,8 +82,8 @@ public class QueryInteger extends Example {
 		String binName
 	) throws Exception {
 		
-		Value begin = Value.get(14);
-		Value end = Value.get(18);
+		int begin = 14;
+		int end = 18;
 		
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
 			params.namespace, params.set, indexName, binName, begin, end);			

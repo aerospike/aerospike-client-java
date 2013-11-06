@@ -93,8 +93,8 @@ public class QuerySum extends Example {
 		String binName
 	) throws Exception {
 		
-		Value begin = Value.get(4);
-		Value end = Value.get(7);
+		int begin = 4;
+		int end = 7;
 		
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
 			params.namespace, params.set, indexName, binName, begin, end);			

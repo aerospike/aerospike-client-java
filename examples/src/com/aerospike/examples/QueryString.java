@@ -4,7 +4,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
@@ -88,7 +87,7 @@ public class QueryString extends Example {
 		String valuePrefix
 	) throws Exception {
 		
-		Value filter = Value.get(valuePrefix + 3);
+		String filter = valuePrefix + 3;
 		
 		console.info("Query for: ns=%s set=%s index=%s bin=%s filter=%s",
 			params.namespace, params.set, indexName, binName, filter);			
@@ -109,7 +108,7 @@ public class QueryString extends Example {
 				Record record = rs.getRecord();
 				String result = (String)record.getValue(binName);
 				
-				if (result.equals(filter.getObject())) {
+				if (result.equals(filter)) {
 					console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
 						key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
 				}
