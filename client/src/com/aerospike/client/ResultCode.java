@@ -10,7 +10,8 @@
 package com.aerospike.client;
 
 /**
- * Database operation error codes.
+ * Database operation error codes.  The positive numbers align with the server
+ * side file proto.h.
  */
 public final class ResultCode {
 	/**
@@ -125,6 +126,11 @@ public final class ResultCode {
 	 * Scan aborted by server.
 	 */
 	public static final int SCAN_ABORT = 15;
+	
+	/**
+	 * Unsupported Server Feature (e.g. Scan + UDF)
+	 */
+	public static final int UNSUPPORTED_FEATURE = 16;
 	
 	/**
 	 * Database command data is invalid.
@@ -251,6 +257,9 @@ public final class ResultCode {
 			
 		case SCAN_ABORT:
 			return "Scan aborted";
+			
+		case UNSUPPORTED_FEATURE:
+			return "Unsupported Server Feature";
 			
 		case INVALID_DATA:
 			return "Invalid command data";
