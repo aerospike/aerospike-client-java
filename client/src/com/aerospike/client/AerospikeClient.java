@@ -35,6 +35,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.ExecuteTask;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.QueryAggregateExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
@@ -776,7 +777,9 @@ public class AerospikeClient {
 	/**
 	 * Apply user defined function on records that match the statement filter.
 	 * Records are not returned to the client.
-	 * This call will block until the command is complete.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * ExecuteTask instance.
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
@@ -787,15 +790,16 @@ public class AerospikeClient {
 	 * @param functionArgs			to pass to function name, if any
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void execute(
+	public final ExecuteTask execute(
 		Policy policy,
 		Statement statement,
 		String packageName,
 		String functionName,
 		Value... functionArgs
-	) throws AerospikeException {	
+	) throws AerospikeException {
 		ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
 		executor.execute(cluster.getNodes());
+		return new ExecuteTask(cluster, statement);
 	}
 
 	//--------------------------------------------------------

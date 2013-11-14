@@ -1,5 +1,7 @@
 package com.aerospike.client.query;
 
+import java.util.Random;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Node;
@@ -22,6 +24,11 @@ public final class ServerExecutor {
 		this.policy = policy;
 		this.statement = statement;
 		this.statement.setAggregateFunction(packageName, functionName, functionArgs, false);
+		
+		if (this.statement.taskId == 0) {
+			Random r = new Random();
+			this.statement.taskId = r.nextInt(Integer.MAX_VALUE);
+		}
 	}
 	
 	public void execute(Node[] nodes)

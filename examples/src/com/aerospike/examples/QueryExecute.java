@@ -7,6 +7,7 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.query.ExecuteTask;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
@@ -108,9 +109,10 @@ public class QueryExecute extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilters(Filter.range(binName1, begin, end));
 		
-		client.execute(params.policy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
+		ExecuteTask task = client.execute(params.policy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
+		task.waitTillComplete();
 	}
-	
+
 	private void validateRecords(
 		AerospikeClient client,
 		Parameters params,
