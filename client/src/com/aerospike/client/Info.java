@@ -17,6 +17,7 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.util.ThreadLocalData1;
 
@@ -270,7 +271,37 @@ public final class Info {
 	}
 
 	//-------------------------------------------------------
-	// Get Info via Socket Address
+	// Get Info via Node.
+	//-------------------------------------------------------
+
+	/**
+	 * Get one info value by name from the specified database server node.
+	 * 
+	 * @param node					server node
+	 * @param name					name of value to retrieve
+	 * @return						info value
+	 */
+	public static String request(Node node, String name) 
+		throws AerospikeException {
+		Connection conn = node.getConnection(DEFAULT_TIMEOUT);
+		
+		try {
+			String response = Info.request(conn, name);
+			node.putConnection(conn);
+			return response;
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw re;
+		}
+	}
+
+	//-------------------------------------------------------
+	// Get Info via Connection
 	//-------------------------------------------------------
 
 	/**

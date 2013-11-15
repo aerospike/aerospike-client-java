@@ -12,7 +12,6 @@ package com.aerospike.client.query;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 
@@ -61,8 +60,7 @@ public final class ExecuteTask {
 		boolean done = false;
 
 		for (Node node : nodes) {
-			Connection conn = node.getConnection(1000);
-			String response = Info.request(conn, command);
+			String response = Info.request(node, command);
 			String find = "job_id=" + taskId + ':';
 			int index = response.indexOf(find);
 
