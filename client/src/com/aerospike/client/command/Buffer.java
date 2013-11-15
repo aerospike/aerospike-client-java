@@ -113,10 +113,10 @@ public final class Buffer {
 		for (int i = 0; i < max; i++) {
 			char ch = value.charAt(i);
 			
-			if (ch <= 0x7F) {
+			if (ch < 0x80) {
 				count++;
 			}
-			else if (ch <= 0x7FF) {
+			else if (ch < 0x800) {
 			    count += 2;
 			} 
 			else if (Character.isHighSurrogate(ch)) {
@@ -145,15 +145,13 @@ public final class Buffer {
         int startOffset = offset;
         
         for (int i = 0; i < length; i++) {
-            char c = s.charAt(i);
-            if (c < 0x7f) {
-                buf[offset] = (byte) c;
-                offset++;
+            int c = s.charAt(i);
+            if (c < 0x80) {
+                buf[offset++] = (byte) c;
             }
-            else if (c < 0x07FF) {
-                buf[offset] = (byte) (0xC0 | (c >> 6));
-                buf[offset+1] = (byte) (0x80 | (c & 0x5f));
-                offset += 2;
+            else if (c < 0x800) {
+            	buf[offset++] = (byte)(0xc0 | ((c >> 6)));
+            	buf[offset++] = (byte)(0x80 | (c & 0x3f));
             }
             else {
 		    	// Encountered a different encoding other than 2-byte UTF8. Let java handle it.
@@ -179,16 +177,17 @@ public final class Buffer {
     	int origoffset = offset;
 
         while (offset < limit ) {
-            if ((buf[offset] & 0x80) == 0) { // 1 byte
-                char c = (char) buf[offset];
-                charBuffer[charCount++] = c; 
-                offset++;
-            }
-            else if ((buf[offset] & 0xE0) == 0xC0) { // 2 bytes
-                char c =  (char) (((buf[offset] & 0x1f) << 6) | (buf[offset+1] & 0x3f));
-                charBuffer[charCount++] = c;
+        	int b1 = buf[offset];
+        	
+        	if (b1 >= 0) {
+                charBuffer[charCount++] = (char)b1;
+                offset++;        		
+        	}
+        	else if ((b1 >> 5) == -2) {
+        		int b2 = buf[offset + 1];
+        		charBuffer[charCount++] = (char) (((b1 << 6) ^ b2) ^ 0x0f80);
                 offset += 2;
-            }
+        	}
 		    else {
 		    	// Encountered an UTF encoding which uses more than 2 bytes. 
 		    	// Use a native function to do the conversion.
