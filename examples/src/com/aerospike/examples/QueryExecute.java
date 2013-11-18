@@ -7,12 +7,13 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.query.ExecuteTask;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.task.ExecuteTask;
+import com.aerospike.client.task.IndexTask;
+import com.aerospike.client.task.RegisterTask;
 
 public class QueryExecute extends Example {
 
@@ -44,12 +45,8 @@ public class QueryExecute extends Example {
 	}
 	
 	private void register(AerospikeClient client, Parameters params) throws Exception {
-		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
-		
-		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
-		// may return before the UDF is available on all nodes.  Hard code sleep for now.
-		// TODO: Fix server so control is only returned when UDF registration is complete.
-		Util.sleep(1000);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		task.waitTillComplete();
 	}
 
 	private void createIndex(
@@ -63,13 +60,8 @@ public class QueryExecute extends Example {
 		
 		Policy policy = new Policy();
 		policy.timeout = 0; // Do not timeout on index create.
-		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-		
-		// The server index command distribution to other nodes is done asynchronously.  
-		// Therefore, the server may return before the index is available on all nodes.  
-		// Hard code sleep for now.
-		// TODO: Fix server so control is only returned when index is available on all nodes.
-		Util.sleep(1000);
+		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+		task.waitTillComplete();
 	}
 
 	private void writeRecords(

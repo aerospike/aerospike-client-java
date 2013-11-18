@@ -84,14 +84,16 @@ public abstract class QueryExecutor {
 	    	exception = cause;  		
     	}
     	
-		for (QueryThread thread : threads) {
-			try {
-				thread.stopThread();
-				thread.interrupt();
+    	if (threads != null) {
+			for (QueryThread thread : threads) {
+				try {
+					thread.stopThread();
+					thread.interrupt();
+				}
+				catch (Exception e) {
+				}
 			}
-			catch (Exception e) {
-			}
-		}
+    	}
 		sendCompleted();
     }
 

@@ -35,7 +35,6 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.query.ExecuteTask;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.QueryAggregateExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
@@ -43,6 +42,9 @@ import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.ServerExecutor;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.task.ExecuteTask;
+import com.aerospike.client.task.IndexTask;
+import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Util;
 
 /**
@@ -667,6 +669,10 @@ public class AerospikeClient {
 	
 	/**
 	 * Register package containing user defined functions with server.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * RegisterTask instance.
+	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -675,7 +681,7 @@ public class AerospikeClient {
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
-	public final void register(Policy policy, String clientPath, String serverPath, Language language) 
+	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
 		throws AerospikeException {
 		
 		String content = Util.readFileEncodeBase64(clientPath);
@@ -709,6 +715,7 @@ public class AerospikeClient {
 				}
 			}
 			node.putConnection(conn);
+			return new RegisterTask(cluster, serverPath);
 		}
 		catch (AerospikeException ae) {
 			conn.close();
@@ -863,6 +870,10 @@ public class AerospikeClient {
 
 	/**
 	 * Create secondary index.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -873,7 +884,7 @@ public class AerospikeClient {
 	 * @param indexType				type of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
-	public final void createIndex(
+	public final IndexTask createIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 
@@ -903,10 +914,17 @@ public class AerospikeClient {
 		// Send index command to one node. That node will distribute the command to other nodes.
 		String response = sendInfoCommand(policy, sb.toString());
 		
-		// Command is successful if OK or index already exists.
-		if (! response.equalsIgnoreCase("OK") && ! response.equals("FAIL:208:ERR FOUND") ) {
-			throw new AerospikeException("Create index failed: " + response);
+		if (response.equalsIgnoreCase("OK")) {
+			// Return task that could optionally be polled for completion.
+			return new IndexTask(cluster, namespace, indexName);
 		}
+		
+		if (response.equals("FAIL:208:ERR FOUND")) {
+			// Index has already been created.  Do not need to poll for completion.
+			return new IndexTask();
+		}
+			
+		throw new AerospikeException("Create index failed: " + response);
 	}
 
 	/**

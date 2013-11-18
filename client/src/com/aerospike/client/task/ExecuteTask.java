@@ -7,54 +7,35 @@
  * redistribution rights covered by individual contract. Please check your
  * contract for exact rights and responsibilities.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.task;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.query.Statement;
 
 /**
- * Task used to poll for long running execute job completion.
+ * Task used to poll for long running server execute job completion.
  */
-public final class ExecuteTask {
-	private Cluster cluster;
+public final class ExecuteTask extends Task {
 	private int taskId;
 	private boolean scan;
 
 	/**
-	 * Initialize task with fields needed to query server nodes for query status.
+	 * Initialize task with fields needed to query server nodes.
 	 */
 	public ExecuteTask(Cluster cluster, Statement statement) {
-		this.cluster = cluster;
-		this.taskId = statement.taskId;
-		this.scan = statement.filters == null;
+		super(cluster, false);
+		this.taskId = statement.getTaskId();
+		this.scan = statement.isScan();
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using default sleep interval.
+	 * Query all nodes for task completion status.
 	 */
-	public void waitTillComplete() throws AerospikeException {
-		waitTillComplete(1000);
-	}
-
-	/**
-	 * Wait for asynchronous task to complete using given sleep interval.
-	 */
-	public void waitTillComplete(int sleepInterval) throws AerospikeException {
-		boolean done = false;
-		
-		while (! done) {
-			Util.sleep(sleepInterval);
-			done = requestStatus();
-		}
-	}
-
-	/**
-	 * Query all nodes for task status.
-	 */
-	private boolean requestStatus() throws AerospikeException {
+	@Override
+	public boolean isDone() throws AerospikeException {
 		String command = (scan) ? "scan-list" : "query-list";
 		Node[] nodes = cluster.getNodes();
 		boolean done = false;

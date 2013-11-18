@@ -85,6 +85,20 @@ public final class Statement {
 	}
 	
 	/**
+	 * Return if full namespace/set scan is specified.
+	 */
+	public boolean isScan() {
+		return filters == null;
+	}
+
+	/**
+	 * Return query filters.
+	 */
+	public Filter[] getFilters() {
+		return filters;
+	}
+
+	/**
 	 * Return aggregation file name.
 	 */
 	public String getPackageName() {
@@ -103,5 +117,12 @@ public final class Statement {
 	 */
 	public Value[] getFunctionArgs() {
 		return functionArgs;
+	}
+	
+	/**
+	 * Return task ID.
+	 */
+	public int getTaskId() {
+		return taskId;
 	}
 }

@@ -10,7 +10,7 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.task.IndexTask;
 
 public class QueryString extends Example {
 
@@ -51,13 +51,8 @@ public class QueryString extends Example {
 		
 		Policy policy = new Policy();
 		policy.timeout = 0; // Do not timeout on index create.
-		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
-		
-		// The server index command distribution to other nodes is done asynchronously.  
-		// Therefore, the server may return before the index is available on all nodes.  
-		// Hard code sleep for now.
-		// TODO: Fix server so control is only returned when index is available on all nodes.
-		Util.sleep(1000);
+		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
+		task.waitTillComplete();
 	}
 
 	private void writeRecords(
