@@ -18,8 +18,8 @@ import com.aerospike.client.cluster.Node;
  * Task used to poll for long running create index completion.
  */
 public final class IndexTask extends Task {
-	private String namespace;
-	private String indexName;
+	private final String namespace;
+	private final String indexName;
 
 	/**
 	 * Initialize task with fields needed to query server nodes.
@@ -35,6 +35,8 @@ public final class IndexTask extends Task {
 	 */
 	public IndexTask() {
 		super(null, true);
+		namespace = null;
+		indexName = null;
 	}
 
 	/**

@@ -18,7 +18,7 @@ import com.aerospike.client.cluster.Node;
  * Task used to poll for UDF registration completion.
  */
 public final class RegisterTask extends Task {
-	private String packageName;
+	private final String packageName;
 
 	/**
 	 * Initialize task with fields needed to query server nodes.
