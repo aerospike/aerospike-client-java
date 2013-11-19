@@ -45,6 +45,13 @@ public abstract class Value {
 	}
 	
 	/**
+	 * Get byte segment or null value instance.
+	 */
+	public static Value get(byte[] value, int offset, int length) {
+		return (value == null)? new NullValue() : new ByteSegmentValue(value, offset, length);
+	}
+
+	/**
 	 * Get integer value instance.
 	 */
 	public static Value get(int value) {
@@ -236,6 +243,70 @@ public abstract class Value {
 		@Override
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
+		}
+	}
+
+	/**
+	 * Byte segment value.
+	 */
+	public static final class ByteSegmentValue extends Value {		
+		private final byte[] bytes;
+		private final int offset;
+		private final int length;
+
+		public ByteSegmentValue(byte[] bytes, int offset, int length) {
+			this.bytes = bytes;
+			this.offset = offset;
+			this.length = length;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return length;
+
+		}
+		
+		@Override
+		public int write(byte[] buffer, int targetOffset) {
+			System.arraycopy(bytes, offset, buffer, targetOffset, length);
+			return length;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			MsgPacker.packBytes(packer, bytes, offset, length);
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.BLOB;
+		}
+		
+		@Override
+		public Object getObject() {
+			return this;
+		}
+		
+		@Override
+		public LuaValue getLuaValue() {
+			return LuaString.valueOf(bytes, offset, length);
+		}
+
+		@Override
+		public String toString() {
+			return Buffer.bytesToHexString(bytes, offset, length);
+		}
+		
+		public byte[] getBytes() {
+			return bytes;
+		}
+
+		public int getOffset() {
+			return offset;
+		}
+
+		public int getLength() {
+			return length;
 		}
 	}
 

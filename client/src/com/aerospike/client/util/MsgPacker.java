@@ -71,6 +71,13 @@ public final class MsgPacker {
 		packer.write(buf);
 	}
 
+	public static void packBytes(Packer packer, byte[] val, int offset, int length) throws IOException {
+        byte[] buf = new byte[length + 1];		
+		buf[0] = ParticleType.BLOB;
+		System.arraycopy(val, offset, buf, 1, length);
+		packer.write(buf);
+	}
+
 	public static void packString(Packer packer, String val) throws IOException {
         int size = Buffer.estimateSizeUtf8(val);
         byte[] buf = new byte[size + 1];		

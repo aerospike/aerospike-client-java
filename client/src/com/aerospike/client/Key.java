@@ -90,6 +90,27 @@ public final class Key {
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
+	 * @param offset				byte array segment offset
+	 * @param length				byte array segment length
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		Value value = new Value.ByteSegmentValue(key, offset, length);
+		this.userKey = value;
+		digest = computeDigest(setName, value);
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, int key) throws AerospikeException {

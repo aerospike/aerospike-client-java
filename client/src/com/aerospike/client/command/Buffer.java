@@ -260,6 +260,15 @@ public final class Buffer {
 		return sb.toString();
     }
 
+    public static String bytesToHexString(byte[] buf, int offset, int length) {
+		StringBuilder sb = new StringBuilder(length * 2);
+		
+		for (int i = offset; i < length; i++) {
+    		sb.append(String.format("%02x", buf[i]));
+		}
+		return sb.toString();
+    }
+
     public static Object bytesToObject(byte[] buf, int offset, int length)
 		throws AerospikeException.Serialize {
     	
