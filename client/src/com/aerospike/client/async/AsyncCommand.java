@@ -11,6 +11,7 @@ package com.aerospike.client.async;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
@@ -27,9 +28,9 @@ public abstract class AsyncCommand implements Runnable {
 	protected ByteBuffer byteBuffer;
 	protected final AsyncCluster cluster;
 	protected AsyncNode node;
+	private final AtomicBoolean complete = new AtomicBoolean();
 	private long limit;
 	protected int timeout;
-	private boolean complete;
 	
 	public AsyncCommand(AsyncCluster cluster) {
 		this.cluster = cluster;
@@ -88,7 +89,7 @@ public abstract class AsyncCommand implements Runnable {
 	}
 
 	protected final boolean checkTimeout() {
-		if (complete) {
+		if (complete.get()) {
 			return false;
 		}
 		long current = System.currentTimeMillis();
@@ -112,7 +113,7 @@ public abstract class AsyncCommand implements Runnable {
 		try {
 			read();
 			
-			if (! complete) {
+			if (! complete.get()) {
 				conn.setReadable();
 			}
 		}
@@ -128,13 +129,16 @@ public abstract class AsyncCommand implements Runnable {
 	}
 	
 	protected final void finish() {
-		complete = true;
-		conn.unregister();
-		conn.updateLastUsed();
-		node.putAsyncConnection(conn);
-		node.restoreHealth();
-		cluster.putByteBuffer(byteBuffer);
-		onSuccess();
+		// Finish could be called from a separate asyncTaskThreadPool thread.
+		// Make sure SelectorManager thread has not already caused a transaction timeout.
+		if (complete.compareAndSet(false, true)) {			
+			conn.unregister();
+			conn.updateLastUsed();
+			node.putAsyncConnection(conn);
+			node.restoreHealth();
+			cluster.putByteBuffer(byteBuffer);
+			onSuccess();
+		}
 	}
 	
 	protected final void failConnection(AerospikeException ae) {
@@ -162,11 +166,13 @@ public abstract class AsyncCommand implements Runnable {
 		fail(ae);
 	}
 	
-	private final void fail(AerospikeException ae) {		
-		complete = true;
-		conn.close();
-		cluster.putByteBuffer(byteBuffer);		
-		onFailure(ae);
+	private final void fail(AerospikeException ae) {
+		// Make sure transaction has not already succeeded before failing.
+		if (complete.compareAndSet(false, true)) {			
+			conn.close();
+			cluster.putByteBuffer(byteBuffer);		
+			onFailure(ae);
+		}
 	}
 
 	protected abstract AsyncNode getNode() throws AerospikeException.InvalidNode;
