@@ -167,7 +167,7 @@ public abstract class AsyncCommand implements Runnable {
 	}
 	
 	private final void fail(AerospikeException ae) {
-		// Make sure transaction has not already succeeded before failing.
+		// Make sure transaction has not already completed before failing.
 		if (complete.compareAndSet(false, true)) {			
 			conn.close();
 			cluster.putByteBuffer(byteBuffer);		
