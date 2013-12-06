@@ -110,8 +110,6 @@ public abstract class QueryExecutor {
 	}
 
 	private final class QueryThread extends Thread {
-		// It's ok to construct QueryCommand in another thread,
-		// because QueryCommand no longer uses thread local data.
 		private final QueryCommand command;
 		private boolean complete;
 
@@ -121,6 +119,7 @@ public abstract class QueryExecutor {
 
 		public void run() {
 			try {
+				command.resetSendBuffer();
 				command.query(policy, statement);
 			}
 			catch (Exception e) {

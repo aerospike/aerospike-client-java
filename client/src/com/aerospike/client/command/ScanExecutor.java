@@ -74,8 +74,6 @@ public final class ScanExecutor {
     }
 
     private final class ScanThread extends Thread {
-		// It's ok to construct ScanCommand in another thread,
-		// because ScanCommand no longer uses thread local data.
 		private final ScanCommand command;
 
 		public ScanThread(ScanCommand command) {
@@ -84,6 +82,7 @@ public final class ScanExecutor {
 		
 		public void run() {
 			try {
+				command.resetSendBuffer();
 				command.setScan(policy, namespace, setName, binNames);
 				command.execute(policy);
 			}

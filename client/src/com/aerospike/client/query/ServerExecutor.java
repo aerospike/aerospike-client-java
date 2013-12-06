@@ -90,6 +90,7 @@ public final class ServerExecutor {
 		
 		public void run() {
 			try {
+				command.resetSendBuffer();
 				command.query(policy, statement);
 			}
 			catch (Exception e) {

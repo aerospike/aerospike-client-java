@@ -58,6 +58,14 @@ public class Command {
 		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 	
+	/**
+	 * Sometimes the command is transferred to a different thread.
+	 * Must reset sendBuffer when command is used in another thread.
+	 */
+	public final void resetSendBuffer() {		
+		this.sendBuffer = ThreadLocalData1.getBuffer();
+	}
+	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		int fieldCount = estimateKeySize(key);
 		
