@@ -38,6 +38,7 @@ public class Main extends JPanel {
 		"Serialize",
 		"Expire",
 		"Touch",
+		"Operate",
 		"DeleteBin",
 		"ScanParallel",
 		"ScanSeries",

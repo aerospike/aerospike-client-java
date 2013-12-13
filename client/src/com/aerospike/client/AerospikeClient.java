@@ -492,6 +492,9 @@ public class AerospikeClient {
 	 * Perform multiple read/write operations on a single key in one batch call.
 	 * An example would be to add an integer value to an existing record and then
 	 * read the result, all in one database call.
+	 * <p>
+	 * Write operations are always performed first, regardless of operation order 
+	 * relative to read operations.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
