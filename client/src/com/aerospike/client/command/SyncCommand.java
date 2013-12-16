@@ -30,15 +30,14 @@ public abstract class SyncCommand extends Command {
 			policy = new Policy();
 		}
 		        
-		int maxIterations = policy.maxRetries + 1;
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
         int failedNodes = 0;
         int failedConns = 0;
-        int i;
+        int iterations = 0;
 
         // Execute command until successful, timed out or maximum iterations have been reached.
-		for (i = 0; i < maxIterations; i++) {
+		while (true) {
 			Node node = null;
 			try {		
 				node = getNode();
@@ -102,23 +101,30 @@ public abstract class SyncCommand extends Command {
 				failedConns++;	
 			}
 
+			if (++iterations > policy.maxRetries) {
+				break;
+			}
+			
 			// Check for client timeout.
 			if (policy.timeout > 0) {
-				remainingMillis = (int)(limit - System.currentTimeMillis());
-
+				remainingMillis = (int)(limit - System.currentTimeMillis() - policy.sleepBetweenRetries);
+				
 				if (remainingMillis <= 0) {
 					break;
 				}
 			}
-			// Sleep before trying again.
-			Util.sleep(policy.sleepBetweenRetries);
+			
+			if (policy.sleepBetweenRetries > 0) {
+				// Sleep before trying again.
+				Util.sleep(policy.sleepBetweenRetries);
+			}
 		}
 		
 		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + 
+			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + iterations + 
 				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
 		}
-		throw new AerospikeException.Timeout();
+		throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
 	}
 	
 	private final void send(Connection conn) throws IOException {
