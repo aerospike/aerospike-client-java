@@ -465,11 +465,13 @@ public class Main implements Log.Callback {
 			long time = System.currentTimeMillis();
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
-			int failWrites = this.counters.write.fail.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);
 			total += numWrites;
 			
 			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + " fail=" + failWrites + ")");
+			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + 
+				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 
 			Thread.sleep(1000);
 		}
@@ -548,18 +550,20 @@ public class Main implements Log.Callback {
 			long time = System.currentTimeMillis();
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
-			int failWrites = this.counters.write.fail.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);
 			
 			int	numReads = this.counters.read.count.getAndSet(0);
-			int failReads = this.counters.read.fail.getAndSet(0);
+			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
+			int errorReads = this.counters.read.errors.getAndSet(0);
 			
 			//int used = (client != null)? client.getAsyncConnUsed() : 0;
 			//Node[] nodes = client.getNodes();
 			
 			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(tps=" + numWrites + " fail=" + failWrites + ")" +
-				" read(tps=" + numReads + " fail=" + failReads + ")" +
-				" total(tps=" + (numWrites + numReads) + " fail=" + (failWrites + failReads) + ")"
+			System.out.println(date.toString() + " write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")" +
+				" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads + ")" +
+				" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")"
 				//+ " buffused=" + used
 				//+ " nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
 				);

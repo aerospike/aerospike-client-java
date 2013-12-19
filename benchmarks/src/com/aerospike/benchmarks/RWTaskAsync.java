@@ -55,7 +55,7 @@ public class RWTaskAsync extends RWTask {
 	protected void put(Key key, Bin[] bins) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.write.fail.get() > 0) {
+		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
 		client.put(policy, writeHandler, key, bins);
@@ -64,7 +64,7 @@ public class RWTaskAsync extends RWTask {
 	protected void add(Key key, Bin[] bins) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.write.fail.get() > 0) {
+		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
 		client.add(writePolicyGeneration, writeHandler, key, bins);
@@ -73,7 +73,7 @@ public class RWTaskAsync extends RWTask {
 	protected void get(int keyIdx, Key key, String binName) throws AerospikeException {		
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.read.fail.get() > 0) {
+		if (counters.read.timeouts.get() > 0) {
 			Thread.yield();
 		}
 		
@@ -88,7 +88,7 @@ public class RWTaskAsync extends RWTask {
 	protected void get(int keyIdx, Key key) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.read.fail.get() > 0) {
+		if (counters.read.timeouts.get() > 0) {
 			Thread.yield();
 		}
 

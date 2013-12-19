@@ -84,23 +84,22 @@ public abstract class InsertTask implements Runnable {
 	}
 	
 	protected void writeFailure(AerospikeException ae) {
-		counters.write.fail.getAndIncrement();
-		
-		if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-			counters.generationErrCnt.getAndIncrement();					
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+			counters.write.timeouts.getAndIncrement();
 		}
-		
-		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
-			//System.out.println(ae.getMessage());
-			ae.printStackTrace();
+		else {			
+			counters.write.errors.getAndIncrement();
+			
+			if (debug) {
+				ae.printStackTrace();
+			}
 		}
 	}
 
 	protected void writeFailure(Exception e) {
-		counters.write.fail.getAndIncrement();
+		counters.write.errors.getAndIncrement();
 		
 		if (debug) {
-			//System.out.println(ae.getMessage());
 			e.printStackTrace();
 		}
 	}

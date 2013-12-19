@@ -40,7 +40,7 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 	protected void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.write.fail.get() > 0) {
+		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
 		client.put(policy, this, key, bins);
