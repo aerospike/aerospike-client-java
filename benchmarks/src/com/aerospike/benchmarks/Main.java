@@ -31,6 +31,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.policy.WritePolicy;
 
 public class Main implements Log.Callback {
 	
@@ -72,15 +73,15 @@ public class Main implements Log.Callback {
 	private int             nThreads = 16;
 	private int             nTasks = 1;
 	private int             throughput = 0;
-	private int             timeout = 0;
 	private String          throughput_file = "";
 	private int             runTime = 0;
 	private int             asyncTaskThreads;
 	private boolean         debug = false;
 	private boolean         asyncEnabled;
 
-	private AsyncClientPolicy  clientPolicy = new AsyncClientPolicy();
-	private CounterStore       counters = new CounterStore();
+	private AsyncClientPolicy clientPolicy = new AsyncClientPolicy();
+	private WritePolicy writePolicy = new WritePolicy();
+	private CounterStore counters = new CounterStore();
 
 	public Main(String[] args) throws Exception {
 		Options options = new Options();
@@ -129,10 +130,16 @@ public class Main implements Log.Callback {
 			"average throughput, though it will try to catch-up if it falls behind."
 			);
 		options.addOption("T", "timeout", true, "Set the transaction timeout in milliseconds.");
+		options.addOption("M", "maxRetries", true, "Maximum number of retries before aborting the current transaction.");
+		options.addOption("L", "sleepBetweenRetries", true, 
+			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
+			"Enter zero to skip sleep."	
+			);
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. " + 
 			"It is not recommended to use a value greater than 125."
 			);
+		
 		//options.addOption("v", "validate", false, "Validate data.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
@@ -171,9 +178,9 @@ public class Main implements Log.Callback {
 			this.namespace = "test";
 		}
 
-        if (line.hasOption("set")) {
-        	this.set = line.getOptionValue("set");
-        }
+		if (line.hasOption("set")) {
+			this.set = line.getOptionValue("set");
+		}
                    
 		if (line.hasOption("keys")) {
 			this.nKeys = Integer.parseInt(line.getOptionValue("keys"));
@@ -256,9 +263,17 @@ public class Main implements Log.Callback {
 		}
 		
 		if (line.hasOption("timeout")) {
-			this.timeout = Integer.parseInt(line.getOptionValue("timeout"));
+			this.writePolicy.timeout = Integer.parseInt(line.getOptionValue("timeout"));
 		}			 
 
+		if (line.hasOption("maxRetries")) {
+			this.writePolicy.maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
+		}
+		
+		if (line.hasOption("sleepBetweenRetries")) {
+			this.writePolicy.sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
+		}
+		
 		if (line.hasOption("threads")) {
 			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
 		}  
@@ -309,10 +324,15 @@ public class Main implements Log.Callback {
 
 		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
 			+ ", namespace: " + this.namespace 
-			+ ", num keys: "
-			+ this.nKeys + ", threads " + this.nThreads
-			+ ", read-write ratio: " 
-			+ this.readPct + "/" + (100-this.readPct));
+			+ ", set: " + (this.set.length() > 0? this.set : "<empty>")
+			+ ", threads: " + this.nThreads
+			+ ", read-write ratio: " + this.readPct + "/" + (100-this.readPct));
+		
+		System.out.println("keys: " + this.nKeys
+			+ ", bins: " + this.nBins 
+			+ ", timeout: " + this.writePolicy.timeout
+			+ ", maxRetries: " + this.writePolicy.maxRetries 
+			+ ", sleepBetweenRetries: " + this.writePolicy.sleepBetweenRetries);
 	
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
@@ -414,7 +434,7 @@ public class Main implements Log.Callback {
 
 		for (int i=0 ; i<ntasks; i++) {
 			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, this.startKey, this.nKeys, 
-				this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+				this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
 		}	
@@ -430,7 +450,7 @@ public class Main implements Log.Callback {
 
 		for (int i=0 ; i<ntasks; i++) {
 			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, this.startKey, this.nKeys, 
-					this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+					this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
 		}
@@ -467,9 +487,9 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			} else {
-				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -488,9 +508,9 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
+				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
 			} else {
-				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}

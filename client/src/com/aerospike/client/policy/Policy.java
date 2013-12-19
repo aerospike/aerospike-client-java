@@ -38,7 +38,7 @@ public class Policy {
 
 	/**
 	 * Milliseconds to sleep between retries if a transaction fails and the 
-	 * timeout was not exceeded.
+	 * timeout was not exceeded.  Enter zero to skip sleep.
 	 */
 	public int sleepBetweenRetries = 500;
 }

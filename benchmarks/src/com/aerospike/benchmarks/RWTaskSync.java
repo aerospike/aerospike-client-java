@@ -16,6 +16,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Synchronous read/write task.
@@ -32,14 +33,14 @@ public class RWTaskSync extends RWTask {
 		DBObjectSpec[] objects, 
 		int nBins, 
 		String cycleType, 
-		int timeout, 
+		WritePolicy policy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, timeout, settingsArr, validate, runTime, counters, debug);		
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, policy, settingsArr, validate, runTime, counters, debug);		
 	}
 		
 	protected void put(Key key, Bin[] bins) throws AerospikeException {

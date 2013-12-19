@@ -27,12 +27,12 @@ public final class InsertTaskSync extends InsertTask {
 		int nKeys, 
 		int keySize, 
 		int nBins, 
-		int timeout, 
+		WritePolicy policy, 
 		DBObjectSpec[] spec, 
 		CounterStore counters,
 		boolean debug
 	) {
-		super(namespace, setName, startKey, nKeys, keySize, nBins, timeout, spec, counters, debug);
+		super(namespace, setName, startKey, nKeys, keySize, nBins, policy, spec, counters, debug);
 		this.client = client;
 	}
 	

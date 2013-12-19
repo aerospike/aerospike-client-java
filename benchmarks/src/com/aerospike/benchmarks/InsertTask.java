@@ -25,9 +25,9 @@ public abstract class InsertTask implements Runnable {
 	final int nKeys;
 	final int keySize;
 	final int nBins;	
-	final int timeout;
-	final CounterStore counters;
+	final WritePolicy policy;
 	final DBObjectSpec[] spec;
+	final CounterStore counters;
 	final boolean debug;
 	
 	public InsertTask(
@@ -37,7 +37,7 @@ public abstract class InsertTask implements Runnable {
 		int nKeys, 
 		int keySize, 
 		int nBins, 
-		int timeout, 
+		WritePolicy policy, 
 		DBObjectSpec[] spec, 
 		CounterStore counters,
 		boolean debug
@@ -48,17 +48,14 @@ public abstract class InsertTask implements Runnable {
 		this.nKeys = nKeys;
 		this.keySize = keySize;
 		this.nBins = nBins;
-		this.counters = counters;
+		this.policy = policy;
 		this.spec = spec;
-		this.timeout = timeout;
+		this.counters = counters;
 		this.debug = debug;
 	}
 
 	public void run() {
-		try {
-			WritePolicy policy = new WritePolicy();
-			policy.timeout = timeout;
-			
+		try {			
 			String key;
 			Bin[] bins;			
 			Random r = new Random();

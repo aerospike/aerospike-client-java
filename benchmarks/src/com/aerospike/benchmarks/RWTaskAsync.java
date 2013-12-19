@@ -18,6 +18,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Asynchronous read/write task.
@@ -38,14 +39,14 @@ public class RWTaskAsync extends RWTask {
 		DBObjectSpec[] objects, 
 		int nBins, 
 		String cycleType, 
-		int timeout, 
+		WritePolicy policy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, timeout, settingsArr, validate, runTime, counters, debug);
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, policy, settingsArr, validate, runTime, counters, debug);
 		this.client = client;
 		writeHandler = new WriteHandler();
 		readHandler = new ReadHandler();
