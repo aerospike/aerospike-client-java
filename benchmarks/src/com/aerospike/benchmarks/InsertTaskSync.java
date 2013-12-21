@@ -37,7 +37,16 @@ public final class InsertTaskSync extends InsertTask {
 	}
 	
 	protected void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException {
-		client.put(policy, key, bins);
-		counters.write.count.getAndIncrement();
+		if (counters.write.latency != null) {
+			long begin = System.currentTimeMillis();
+			client.put(policy, key, bins);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+		else {
+			client.put(policy, key, bins);
+			counters.write.count.getAndIncrement();			
+		}
 	}
 }

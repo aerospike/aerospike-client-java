@@ -58,7 +58,13 @@ public class RWTaskAsync extends RWTask {
 		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
-		client.put(policy, writeHandler, key, bins);
+
+		if (counters.write.latency != null) {
+			client.put(policy, new LatencyWriteHandler(), key, bins);	
+		}
+		else {
+			client.put(policy, writeHandler, key, bins);
+		}
 	}
 		
 	protected void add(Key key, Bin[] bins) throws AerospikeException {
@@ -67,7 +73,13 @@ public class RWTaskAsync extends RWTask {
 		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
-		client.add(writePolicyGeneration, writeHandler, key, bins);
+		
+		if (counters.write.latency != null) {
+			client.add(writePolicyGeneration, new LatencyWriteHandler(), key, bins);
+		}
+		else {
+			client.add(writePolicyGeneration, writeHandler, key, bins);			
+		}
 	}
 	
 	protected void get(int keyIdx, Key key, String binName) throws AerospikeException {		
@@ -77,8 +89,8 @@ public class RWTaskAsync extends RWTask {
 			Thread.yield();
 		}
 		
-		if (validate) {
-			client.get(policy, new ValidateHandler(keyIdx), key, binName);
+		if (counters.read.latency != null) {		
+			client.get(policy, new LatencyReadHandler(), key, binName);
 		}
 		else {			
 			client.get(policy, readHandler, key, binName);
@@ -92,8 +104,8 @@ public class RWTaskAsync extends RWTask {
 			Thread.yield();
 		}
 
-		if (validate) {
-			client.get(policy, new ValidateHandler(keyIdx), key);
+		if (counters.read.latency != null) {	
+			client.get(policy, new LatencyReadHandler(), key);
 		}
 		else {			
 			client.get(policy, readHandler, key);
@@ -124,6 +136,47 @@ public class RWTaskAsync extends RWTask {
 		}
 	}
 	
+	private final class LatencyWriteHandler implements WriteListener {
+		private long begin;
+		
+		public LatencyWriteHandler() {
+			this.begin = System.currentTimeMillis();
+		}
+		
+		@Override
+		public void onSuccess(Key key) {
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+
+		@Override
+		public void onFailure(AerospikeException ae) {
+			writeFailure(ae);
+		}		
+	}
+	
+	private final class LatencyReadHandler implements RecordListener {
+		private long begin;
+		
+		public LatencyReadHandler() {
+			this.begin = System.currentTimeMillis();
+		}
+		
+		@Override
+		public void onSuccess(Key key, Record record) {
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.read.count.getAndIncrement();			
+			counters.read.latency.add(elapsed);
+		}
+
+		@Override
+		public void onFailure(AerospikeException ae) {
+			readFailure(ae);
+		}		
+	}
+	
+	/*
 	private final class ValidateHandler implements RecordListener {
 		
 		private final int keyIdx;
@@ -142,5 +195,5 @@ public class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
 		}
-	}
+	}*/
 }

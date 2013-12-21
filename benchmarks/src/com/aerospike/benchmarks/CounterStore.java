@@ -14,10 +14,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CounterStore {
 	
-	public static class Current {		
+	public static class Current {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
+		LatencyManager latency;
 	}
 		
 	Current write = new Current();

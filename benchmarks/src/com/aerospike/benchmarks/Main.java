@@ -130,14 +130,27 @@ public class Main implements Log.Callback {
 			"average throughput, though it will try to catch-up if it falls behind."
 			);
 		options.addOption("T", "timeout", true, "Set the transaction timeout in milliseconds.");
-		options.addOption("M", "maxRetries", true, "Maximum number of retries before aborting the current transaction.");
-		options.addOption("L", "sleepBetweenRetries", true, 
+		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
+		options.addOption("sleepBetweenRetries", true, 
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
 			"Enter zero to skip sleep."	
 			);
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. " + 
 			"It is not recommended to use a value greater than 125."
+			);	
+		options.addOption("latency", true, 
+			"<number of latency columns>,<range shift increment>\n" +
+			"Show transaction latency percentages using elapsed time ranges.\n" +
+			"<number of latency columns>: Number of elapsed time ranges.\n" +
+			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n\n" + 
+			"A latency definition of '-latency 7,1' results in this layout:\n" +
+			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
+			"       x%   x%   x%   x%   x%    x%    x%\n" +
+			"A latency definition of '-latency 4,3' results in this layout:\n" +
+			"    <=1ms >1ms >8ms >64ms\n" +
+			"       x%   x%   x%    x%\n\n" +
+			"Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."
 			);
 		
 		//options.addOption("v", "validate", false, "Validate data.");
@@ -318,10 +331,17 @@ public class Main implements Log.Callback {
         }
 
         if (this.nThreads > 1) {
-			//this.nTasks = 2*this.nThreads;
 			this.nTasks = nThreads;
 		}
-
+        
+        if (line.hasOption("latency")) {
+			String[] latencyOpts = line.getOptionValue("latency").split(",");
+			int columns = Integer.parseInt(latencyOpts[0]);
+			int bitShift = Integer.parseInt(latencyOpts[1]);
+			counters.read.latency = new LatencyManager(columns, bitShift);
+			counters.write.latency = new LatencyManager(columns, bitShift);      	
+        }
+        
 		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
 			+ ", namespace: " + this.namespace 
 			+ ", set: " + (this.set.length() > 0? this.set : "<empty>")
@@ -466,12 +486,17 @@ public class Main implements Log.Callback {
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
-			int errorWrites = this.counters.write.errors.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);		
 			total += numWrites;
-			
+
 			String date = SimpleDateFormat.format(new Date(time));
 			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + 
 				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+			}
 
 			Thread.sleep(1000);
 		}
@@ -567,6 +592,12 @@ public class Main implements Log.Callback {
 				//+ " buffused=" + used
 				//+ " nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
 				);
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+				this.counters.read.latency.printResults(System.out, "read");
+			}
 
 			if (throughput_file.length() > 0) {
 				// set target throughput and read/update percentage based on throughput_file
