@@ -59,7 +59,7 @@ public abstract class InsertTask implements Runnable {
 			String key;
 			Bin[] bins;			
 			Random r = new Random();
-			int i = this.counters.write.count.get();
+			int i = 0;
 
 			while (i < this.nKeys) {
 				key	 = Utils.genKey(this.startKey+i, this.keySize);

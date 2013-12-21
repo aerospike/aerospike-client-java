@@ -451,12 +451,15 @@ public class Main implements Log.Callback {
 
 		// Create N insert tasks
 		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+		int start = this.startKey;
+		int keysPerTask = this.nKeys / ntasks + 1;
 
 		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, this.startKey, this.nKeys, 
+			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, start, keysPerTask, 
 				this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
+			start += keysPerTask;
 		}	
 		collectInsertStats();
 		es.shutdownNow();
@@ -467,12 +470,15 @@ public class Main implements Log.Callback {
 
 		// Create N insert tasks
 		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+		int start = this.startKey;
+		int keysPerTask = this.nKeys / ntasks + 1;
 
 		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, this.startKey, this.nKeys, 
+			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, start, keysPerTask, 
 					this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
+			start += keysPerTask;
 		}
 		collectInsertStats();
 		es.shutdownNow();
