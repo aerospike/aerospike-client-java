@@ -34,11 +34,10 @@ public class QueryFilter extends Example {
 		String indexName = "profileindex";
 		String keyPrefix = "profilekey";
 		String binName = params.getBinName("name");  
-		int size = 10;
 
 		register(client, params);
 		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
+		writeRecords(client, params, keyPrefix, binName);
 		runQuery(client, params, indexName, binName);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
@@ -67,8 +66,7 @@ public class QueryFilter extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String keyPrefix,
-		String binName,
-		int size
+		String binName
 	) throws Exception {
 		writeRecord(client, params, keyPrefix + 1, "Charlie", "cpass");
 		writeRecord(client, params, keyPrefix + 2, "Bill", "hknfpkj");
