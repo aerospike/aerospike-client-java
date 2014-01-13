@@ -37,17 +37,11 @@ public final class LatencyManager {
 	
 	public void printHeader(PrintStream stream) {		
 		int limit = 1;
-		stream.print("     <=1ms   >1ms");
+		stream.print("      <=1ms >1ms");
 		
 		for (int i = 2; i < buckets.length; i++) {			
 			limit <<= bitShift;
 			String s = " >" + limit + "ms";
-			int size = s.length();
-			
-			while (size < 7) {
-				stream.print(' ');
-				size++;
-			}			
 			stream.print(s);
 		}
 		stream.println();
@@ -79,19 +73,37 @@ public final class LatencyManager {
 		
 		// Print cumulative results.
 		stream.print(prefix);
-		
-		for (int i = 0; i < array.length; i++) {
-			long percent = Math.round((double)array[i] * 100.0 / sum);
-			String s = Long.toString(percent) + "%";
-			int size = s.length();
-			int max = (i == 0)? 10 - prefix.length() : 7; 
-			
-			while (size < max) {
-				stream.print(' ');
-				size++;
-			}
-			stream.print(s);
-		}
-		stream.println();
+        int spaces = 6 - prefix.length();
+
+        for (int j = 0; j < spaces; j++) {
+        	stream.print(' ');
+        }
+
+        double sumDouble = (double)sum;
+        int limit = 1;
+
+        printColumn(stream, limit, sumDouble, array[0]);
+        printColumn(stream, limit, sumDouble, array[1]);
+
+        for (int i = 2; i < array.length; i++) {
+            limit <<= bitShift;
+            printColumn(stream, limit, sumDouble, array[i]);
+        }
+		stream.println();        
 	}
+	
+    private void printColumn(PrintStream stream, int limit, double sum, int value) {
+        long percent = 0;
+
+        if (value > 0) {
+            percent = Math.round((double)value * 100.0 / sum);
+        }
+        String percentString = Long.toString(percent) + "%";      
+        int spaces = Integer.toString(limit).length() + 4 - percentString.length();
+
+        for (int j = 0; j < spaces; j++) {
+        	stream.print(' ');
+        }
+        stream.print(percentString);
+    }
 }
