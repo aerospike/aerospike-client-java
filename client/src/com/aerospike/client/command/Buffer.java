@@ -16,7 +16,7 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.util.MsgUnpacker;
+import com.aerospike.client.util.Unpacker;
 
 public final class Buffer {
 
@@ -37,10 +37,10 @@ public final class Buffer {
 			return Buffer.bytesToObject(buf, offset, len);
 			
 		case ParticleType.LIST:
-			return MsgUnpacker.parseObjectList(buf, offset, len);
+			return Unpacker.unpackObjectList(buf, offset, len);
 
 		case ParticleType.MAP:
-			return MsgUnpacker.parseObjectMap(buf, offset, len);
+			return Unpacker.unpackObjectMap(buf, offset, len);
 		
 		default:
 			return null;
@@ -368,7 +368,7 @@ public final class Buffer {
     }
 	
     public static void shortToBytes(int v, byte[] buf, int offset) {
-        buf[offset] = (byte) ((v >> 8) & 0xff);
+        buf[offset] = (byte) ((v >>> 8) & 0xff);
         buf[offset+1] = (byte) (v & 0xff);
     }
 

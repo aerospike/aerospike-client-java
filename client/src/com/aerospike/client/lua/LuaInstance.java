@@ -136,14 +136,14 @@ public final class LuaInstance {
 			return new LuaJavaBlob(object);
 			
 		case ParticleType.LIST: {
-			LuaUnpacker unpacker = new LuaUnpacker(this);
-			List<LuaValue> list = unpacker.parseList(buf, offset, len);
+			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
+			List<LuaValue> list = unpacker.unpackList();
 			return new LuaList(this, list);
 		}
 
 		case ParticleType.MAP: {
-			LuaUnpacker unpacker = new LuaUnpacker(this);
-			Map<LuaValue,LuaValue> map = unpacker.parseMap(buf, offset, len);
+			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
+			Map<LuaValue,LuaValue> map = unpacker.unpackMap();
 			return new LuaMap(this, map);
 		}
 		

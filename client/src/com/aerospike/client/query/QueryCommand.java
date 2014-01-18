@@ -16,7 +16,7 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.MsgPacker;
+import com.aerospike.client.util.Packer;
 
 public abstract class QueryCommand extends MultiCommand {
 	protected volatile boolean valid = true;
@@ -85,7 +85,7 @@ public abstract class QueryCommand extends MultiCommand {
 			sendOffset += Buffer.estimateSizeUtf8(statement.functionName) + FIELD_HEADER_SIZE;
 			
 			if (statement.functionArgs.length > 0) {
-				functionArgBuffer = MsgPacker.pack(statement.functionArgs);
+				functionArgBuffer = Packer.pack(statement.functionArgs);
 			}
 			else {
 				functionArgBuffer = new byte[0];

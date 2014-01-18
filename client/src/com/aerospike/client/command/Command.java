@@ -20,7 +20,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.util.MsgPacker;
+import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.ThreadLocalData1;
 
 public class Command {		
@@ -203,7 +203,7 @@ public class Command {
 	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		int fieldCount = estimateKeySize(key);		
-		byte[] argBytes = MsgPacker.pack(args);
+		byte[] argBytes = Packer.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		begin();
