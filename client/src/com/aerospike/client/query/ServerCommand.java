@@ -16,11 +16,12 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.policy.Policy;
 
 public final class ServerCommand extends QueryCommand {
 	
-	public ServerCommand(Node node) {
-		super(node);
+	public ServerCommand(Node node, Policy policy, Statement statement) {
+		super(node, policy, statement);
 	}
 	
 	@Override
@@ -29,11 +30,11 @@ public final class ServerCommand extends QueryCommand {
 		// Server commands (Query/Execute UDF) should only send back a return code.
 		// Keep parsing logic to empty socket buffer just in case server does
 		// send records back.
-		receiveOffset = 0;
+		dataOffset = 0;
 		
-		while (receiveOffset < receiveSize) {
+		while (dataOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5] & 0xFF;
+			int resultCode = dataBuffer[5] & 0xFF;
 			
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
@@ -42,22 +43,22 @@ public final class ServerCommand extends QueryCommand {
 				throw new AerospikeException(resultCode);
 			}
 
-			byte info3 = receiveBuffer[3];
+			byte info3 = dataBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}		
 			
-			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
+			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			
 			parseKey(fieldCount);
 
 			for (int i = 0 ; i < opCount; i++) {
 	    		readBytes(8);	
-				int opSize = Buffer.bytesToInt(receiveBuffer, 0);
-				byte nameSize = receiveBuffer[7];
+				int opSize = Buffer.bytesToInt(dataBuffer, 0);
+				byte nameSize = dataBuffer[7];
 	    		
 				readBytes(nameSize);
 		

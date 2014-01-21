@@ -22,7 +22,7 @@ import com.aerospike.client.util.Util;
 /**
  * Asynchronous command handler.
  */
-public abstract class AsyncCommand implements Runnable {
+public abstract class AsyncCommand extends Command implements Runnable {
 	
 	protected AsyncConnection conn;
 	protected ByteBuffer byteBuffer;
@@ -31,16 +31,14 @@ public abstract class AsyncCommand implements Runnable {
 	private final AtomicBoolean complete = new AtomicBoolean();
 	private long limit;
 	protected int timeout;
+	protected boolean inHeader = true;
 	
 	public AsyncCommand(AsyncCluster cluster) {
 		this.cluster = cluster;
 	}
 	
-	public void execute(Policy policy, Command command) throws AerospikeException {
-		if (policy == null) {
-			policy = new Policy();
-		}
-		
+	public void execute() throws AerospikeException {
+		Policy policy = getPolicy();
 		timeout = policy.timeout;
 		
 		if (timeout > 0) {	
@@ -51,16 +49,15 @@ public abstract class AsyncCommand implements Runnable {
 		
 		try {
 			node = getNode();
-			conn = node.getAsyncConnection();
-	
-			int size = command.getSendOffset();
-			
-			if (size > byteBuffer.capacity()) {
-				byteBuffer = ByteBuffer.allocateDirect(size);
+			conn = node.getAsyncConnection();			
+			writeBuffer();
+				
+			if (dataOffset > byteBuffer.capacity()) {
+				byteBuffer = ByteBuffer.allocateDirect(dataOffset);
 			}
 			
 			byteBuffer.clear();
-			byteBuffer.put(command.getSendBuffer(), 0, size);
+			byteBuffer.put(dataBuffer, 0, dataOffset);
 			byteBuffer.flip();
 	
 			conn.execute(this);
@@ -83,7 +80,7 @@ public abstract class AsyncCommand implements Runnable {
 			throw new AerospikeException(e);
 		}
 	}
-	
+
 	protected final void write() throws IOException {
 		conn.write(byteBuffer);
 	}

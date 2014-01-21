@@ -54,14 +54,12 @@ public final class BatchExecutor extends Thread {
 		try {
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {			
 				if (records != null) {
-					BatchCommandGet command = new BatchCommandGet(batchNode.node, keyMap, binNames, records);
-					command.setBatchGet(batchNamespace, binNames, readAttr);
-					command.execute(policy);
+					BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
+					command.execute();
 				}
 				else {
-					BatchCommandExists command = new BatchCommandExists(batchNode.node, keyMap, existsArray);
-					command.setBatchExists(batchNamespace);
-					command.execute(policy);
+					BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
+					command.execute();
 				}
 			}
 		}

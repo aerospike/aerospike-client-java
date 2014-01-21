@@ -15,7 +15,7 @@ import com.aerospike.client.policy.QueryPolicy;
 
 public abstract class QueryExecutor {
 	
-	private final QueryPolicy policy;
+	protected final QueryPolicy policy;
 	protected final Statement statement;
 	private QueryThread[] threads;
 	private volatile int nextThread;
@@ -119,8 +119,7 @@ public abstract class QueryExecutor {
 
 		public void run() {
 			try {
-				command.resetSendBuffer();
-				command.query(policy, statement);
+				command.execute();
 			}
 			catch (Exception e) {
 				// Terminate other query threads.

@@ -21,35 +21,48 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.util.ThreadLocalData1;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.ThreadLocalData;
 
-public final class AsyncRead extends AsyncSingleCommand {
+public class AsyncRead extends AsyncSingleCommand {
+	private final Policy policy;
 	private final RecordListener listener;
+	private final String[] binNames;
 	private Record record;
-	private byte[] receiveBuffer;
-	private int receiveOffset;
 	
-	public AsyncRead(AsyncCluster cluster, Key key, RecordListener listener) {
+	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
 		super(cluster, key);
+		this.policy = (policy == null) ? new Policy() : policy;
 		this.listener = listener;
+		this.binNames = binNames;
 	}
 
-	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
-		receiveBuffer = ThreadLocalData1.getBuffer();
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setRead(key, binNames);
+	}
+
+	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
+		dataBuffer = ThreadLocalData.getBuffer();
 		
-		if (receiveSize > receiveBuffer.length) {
-			receiveBuffer = ThreadLocalData1.resizeBuffer(receiveSize);
+		if (receiveSize > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(receiveSize);
 		}
-		// Copy entire message to receiveBuffer.
+		// Copy entire message to dataBuffer.
 		byteBuffer.position(0);
-		byteBuffer.get(receiveBuffer, 0, receiveSize);
+		byteBuffer.get(dataBuffer, 0, receiveSize);
 			
-		int resultCode = receiveBuffer[5] & 0xFF;
-		int generation = Buffer.bytesToInt(receiveBuffer, 6);
-		int expiration = Buffer.bytesToInt(receiveBuffer, 10);
-		int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-		int opCount = Buffer.bytesToShort(receiveBuffer, 20);
-		receiveOffset = Command.MSG_REMAINING_HEADER_SIZE;
+		int resultCode = dataBuffer[5] & 0xFF;
+		int generation = Buffer.bytesToInt(dataBuffer, 6);
+		int expiration = Buffer.bytesToInt(dataBuffer, 10);
+		int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+		int opCount = Buffer.bytesToShort(dataBuffer, 20);
+		dataOffset = Command.MSG_REMAINING_HEADER_SIZE;
 		        
         if (resultCode == 0) {
             if (opCount == 0) {
@@ -84,24 +97,24 @@ public final class AsyncRead extends AsyncSingleCommand {
 		if (fieldCount != 0) {
 			// Just skip over all the fields
 			for (int i = 0; i < fieldCount; i++) {
-				int fieldSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-				receiveOffset += 4 + fieldSize;
+				int fieldSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldSize;
 			}
 		}
 	
 		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			byte particleType = receiveBuffer[receiveOffset+5];
-			byte version = receiveBuffer[receiveOffset+6];
-			byte nameSize = receiveBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
-			receiveOffset += 4 + 4 + nameSize;
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			byte particleType = dataBuffer[dataOffset+5];
+			byte version = dataBuffer[dataOffset+6];
+			byte nameSize = dataBuffer[dataOffset+7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
+			dataOffset += 4 + 4 + nameSize;
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = null;
 	        
-			value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
-			receiveOffset += particleBytesSize;
+			value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 	
 			Map<String,Object> vmap = null;
 			
@@ -144,13 +157,13 @@ public final class AsyncRead extends AsyncSingleCommand {
 	    return new Record(bins, duplicates, generation, expiration);
 	}
 
-	protected void onSuccess() {
+	protected final void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, record);
 		}
 	}
 
-	protected void onFailure(AerospikeException e) {
+	protected final void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);
 		}

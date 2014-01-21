@@ -9,17 +9,14 @@
  */
 package com.aerospike.client;
 
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.util.ThreadLocalData1;
+import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Access server's info monitoring protocol.
@@ -60,7 +57,7 @@ public final class Info {
 	 * @param command		command sent to server
 	 */
 	public Info(Connection conn, String command) throws AerospikeException {
-		buffer = ThreadLocalData1.getBuffer();
+		buffer = ThreadLocalData.getBuffer();
 
 		// If conservative estimate may be exceeded, get exact estimate
 		// to preserve memory and resize buffer.
@@ -86,7 +83,7 @@ public final class Info {
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, String... commands) throws AerospikeException {
-		buffer = ThreadLocalData1.getBuffer();
+		buffer = ThreadLocalData.getBuffer();
 		
 		// First, do quick conservative buffer size estimate.
 		offset = 8;
@@ -123,7 +120,7 @@ public final class Info {
 	 * @param conn			connection to server node
 	 */
 	public Info(Connection conn) throws AerospikeException {
-		buffer = ThreadLocalData1.getBuffer();		
+		buffer = ThreadLocalData.getBuffer();		
 		offset = 8;  // Skip size field.		
 		sendCommand(conn);
 	}
@@ -376,17 +373,15 @@ public final class Info {
 			Buffer.longToBytes(size, buffer, 0);
 
 			// Write.
-			OutputStream out = conn.getOutputStream();
-			out.write(buffer, 0, offset);
+			conn.write(buffer, offset);
 
 			// Read - reuse input buffer.
-			InputStream in = conn.getInputStream();
-			readFully(in, buffer, 8);
+			conn.readFully(buffer, 8);
 			
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
 			resizeBuffer(length);
-			readFully(in, buffer, length);		
+			conn.readFully(buffer, length);		
 			offset = 0;
 		}
 		catch (IOException ioe) {
@@ -396,21 +391,7 @@ public final class Info {
 
 	private void resizeBuffer(int size) {
 		if (size > buffer.length) {
-			buffer = ThreadLocalData1.resizeBuffer(size);
-		}
-	}
-	
-	private static void readFully(InputStream in, byte[] buffer, int length) 
-		throws IOException {
-		int pos = 0;
-	
-		while (pos < length) {
-			int count = in.read(buffer, pos, length - pos);
-		    
-			if (count < 0)
-		    	throw new EOFException();
-			
-			pos += count;
+			buffer = ThreadLocalData.resizeBuffer(size);
 		}
 	}
 

@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ * Copyright 2014 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -12,25 +12,19 @@ package com.aerospike.client.async;
 import java.nio.ByteBuffer;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncWrite extends AsyncSingleCommand {
+public final class AsyncTouch extends AsyncSingleCommand {
 	private final WritePolicy policy;
 	private final WriteListener listener;
-	private final Bin[] bins;
-	private final Operation.Type operation;
 		
-	public AsyncWrite(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) {
+	public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) {
 		super(cluster, key);
 		this.policy = (policy == null)? new WritePolicy() : policy;
 		this.listener = listener;
-		this.bins = bins;
-		this.operation = operation;
 	}
 
 	@Override
@@ -40,7 +34,7 @@ public final class AsyncWrite extends AsyncSingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setWrite(policy, operation, key, bins);
+		setTouch(policy, key);
 	}
 
 	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {

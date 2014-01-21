@@ -67,7 +67,7 @@ public final class Packer {
 	private ArrayList<BufferItem> bufferList;
 	
 	public Packer() {
-		this.buffer = ThreadLocalData1.getBuffer();
+		this.buffer = ThreadLocalData.getBuffer();
 	}
 	
 	public void packValueArray(Value[] values) throws IOException {

@@ -20,14 +20,15 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.lua.LuaInstance;
+import com.aerospike.client.policy.Policy;
 
 public final class QueryAggregateCommand extends QueryCommand {
 	
 	private final LuaInstance instance;
 	private final BlockingQueue<LuaValue> inputQueue;
 
-	public QueryAggregateCommand(Node node, LuaInstance instance, BlockingQueue<LuaValue> inputQueue) {
-		super(node);
+	public QueryAggregateCommand(Node node, Policy policy, Statement statement, LuaInstance instance, BlockingQueue<LuaValue> inputQueue) {
+		super(node, policy, statement);
 		this.instance = instance;
 		this.inputQueue = inputQueue;
 	}
@@ -36,11 +37,11 @@ public final class QueryAggregateCommand extends QueryCommand {
 	protected boolean parseRecordResults(int receiveSize) 
 		throws AerospikeException, IOException {
 		// Read/parse remaining message bytes one record at a time.
-		receiveOffset = 0;
+		dataOffset = 0;
 		
-		while (receiveOffset < receiveSize) {
+		while (dataOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5] & 0xFF;
+			int resultCode = dataBuffer[5] & 0xFF;
 			
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
@@ -49,15 +50,15 @@ public final class QueryAggregateCommand extends QueryCommand {
 				throw new AerospikeException(resultCode);
 			}
 
-			byte info3 = receiveBuffer[3];
+			byte info3 = dataBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			
-			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
+			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			
 			parseKey(fieldCount);
 			
@@ -67,16 +68,16 @@ public final class QueryAggregateCommand extends QueryCommand {
 
 			// Parse aggregateValue.
     		readBytes(8);	
-			int opSize = Buffer.bytesToInt(receiveBuffer, 0);
-			byte particleType = receiveBuffer[5];
-			byte nameSize = receiveBuffer[7];
+			int opSize = Buffer.bytesToInt(dataBuffer, 0);
+			byte particleType = dataBuffer[5];
+			byte nameSize = dataBuffer[7];
     		
 			readBytes(nameSize);
-			String name = Buffer.utf8ToString(receiveBuffer, 0, nameSize);
+			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
-			LuaValue aggregateValue = instance.getValue(particleType, receiveBuffer, 0, particleBytesSize);
+			LuaValue aggregateValue = instance.getValue(particleType, dataBuffer, 0, particleBytesSize);
 						
 			if (! name.equals("SUCCESS")) {
 				throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);

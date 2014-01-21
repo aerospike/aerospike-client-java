@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ * Copyright 2014 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -17,15 +17,14 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.WritePolicy;
 
-public final class DeleteCommand extends SingleCommand {
-	private final WritePolicy policy;
-	private boolean existed;
+public final class ExistsCommand extends SingleCommand {
+	private final Policy policy;
+	private boolean exists;
 
-	public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) {
+	public ExistsCommand(Cluster cluster, Policy policy, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = (policy == null) ? new Policy() : policy;
 	}
 	
 	@Override
@@ -35,7 +34,7 @@ public final class DeleteCommand extends SingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setDelete(policy, key);
+		setExists(key);
 	}
 
 	protected void parseResult(Connection conn) throws AerospikeException, IOException {
@@ -46,11 +45,11 @@ public final class DeleteCommand extends SingleCommand {
 	    if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
 	    	throw new AerospikeException(resultCode);        	
 	    }        	
-		existed = resultCode == 0;
+		exists = resultCode == 0;
 		emptySocket(conn);
 	}
 	
-	public boolean existed() {
-		return existed;
+	public boolean exists() {
+		return exists;
 	}
 }

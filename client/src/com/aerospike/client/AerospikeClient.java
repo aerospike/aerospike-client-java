@@ -22,9 +22,14 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.DeleteCommand;
+import com.aerospike.client.command.ExecuteCommand;
+import com.aerospike.client.command.ExistsCommand;
+import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
+import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.ScanExecutor;
+import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
@@ -235,9 +240,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if write fails
 	 */
 	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		WriteCommand command = new WriteCommand(cluster, key);
-		command.setWrite(policy, Operation.Type.WRITE, key, bins);
-		command.execute(policy);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -256,9 +260,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if append fails
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		WriteCommand command = new WriteCommand(cluster, key);
-		command.setWrite(policy, Operation.Type.APPEND, key, bins);
-		command.execute(policy);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
+		command.execute();
 	}
 	
 	/**
@@ -273,9 +276,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if prepend fails
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		WriteCommand command = new WriteCommand(cluster, key);
-		command.setWrite(policy, Operation.Type.PREPEND, key, bins);
-		command.execute(policy);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -294,9 +296,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if add fails
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		WriteCommand command = new WriteCommand(cluster, key);
-		command.setWrite(policy, Operation.Type.ADD, key, bins);
-		command.execute(policy);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -313,10 +314,9 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if delete fails
 	 */
 	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
-		DeleteCommand command = new DeleteCommand(cluster, key);
-		command.setDelete(policy, key);		
-		command.execute(policy);
-		return command.getResultCode() == ResultCode.OK;
+		DeleteCommand command = new DeleteCommand(cluster, policy, key);
+		command.execute();
+		return command.existed();
 	}
 
 	//-------------------------------------------------------
@@ -332,9 +332,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if touch fails
 	 */
 	public final void touch(WritePolicy policy, Key key) throws AerospikeException {
-		WriteCommand command = new WriteCommand(cluster, key);
-		command.setTouch(policy, key);
-		command.execute(policy);
+		TouchCommand command = new TouchCommand(cluster, policy, key);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -351,10 +350,9 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final boolean exists(Policy policy, Key key) throws AerospikeException {
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setExists(key);
-		command.execute(policy);
-		return command.getResultCode() == ResultCode.OK;
+		ExistsCommand command = new ExistsCommand(cluster, policy, key);
+		command.execute();
+		return command.exists();
 	}
 
 	/**
@@ -387,9 +385,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key) throws AerospikeException {
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setRead(key);
-		command.execute(policy);
+		ReadCommand command = new ReadCommand(cluster, policy, key, null);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -404,9 +401,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setRead(key, binNames);
-		command.execute(policy);
+		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -420,9 +416,8 @@ public class AerospikeClient {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setReadHeader(key);
-		command.execute(policy);
+		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -504,9 +499,8 @@ public class AerospikeClient {
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations) 
 		throws AerospikeException {		
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setOperate(policy, key, operations);
-		command.execute(policy);
+		OperateCommand command = new OperateCommand(cluster, policy, key, operations);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -597,9 +591,8 @@ public class AerospikeClient {
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
 
-		ScanCommand command = new ScanCommand(node, callback);
-		command.setScan(policy, namespace, setName, binNames);
-		command.execute(policy);
+		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames);
+		command.execute();
 	}
 
 	//-------------------------------------------------------------------
@@ -749,9 +742,8 @@ public class AerospikeClient {
 	 */
 	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
 		throws AerospikeException {
-		ReadCommand command = new ReadCommand(cluster, key);
-		command.setUdf(key, packageName, functionName, args);		
-		command.execute(policy);
+		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
+		command.execute();
 		
 		Record record = command.getRecord();
 		

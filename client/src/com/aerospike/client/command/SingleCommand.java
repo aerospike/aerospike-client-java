@@ -9,30 +9,43 @@
  */
 package com.aerospike.client.command;
 
+import java.io.IOException;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.util.ThreadLocalData2;
 
 public abstract class SingleCommand extends SyncCommand {
 	private final Cluster cluster;
+	protected final Key key;
 	private final Partition partition;
 
 	public SingleCommand(Cluster cluster, Key key) {
 		this.cluster = cluster;
+		this.key = key;
 		this.partition = new Partition(key);
-		this.receiveBuffer = ThreadLocalData2.getBuffer();
-	}
-	
-	public final void resizeReceiveBuffer(int size) {
-		if (size > receiveBuffer.length) {
-			receiveBuffer = ThreadLocalData2.resizeBuffer(size);
-		}
 	}
 	
 	protected final Node getNode() throws AerospikeException.InvalidNode { 
 		return cluster.getNode(partition);
-	}		
+	}	
+
+	protected final void emptySocket(Connection conn) throws IOException
+	{
+		// There should not be any more bytes.
+		// Empty the socket to be safe.
+		long sz = Buffer.bytesToLong(dataBuffer, 0);
+		int headerLength = dataBuffer[8];
+		int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
+
+		// Read remaining message bytes.
+		if (receiveSize > 0)
+		{
+			sizeBuffer(receiveSize);
+			conn.readFully(dataBuffer, receiveSize);
+		}
+	}
 }

@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ * Copyright 2014 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -13,21 +13,22 @@ import java.nio.ByteBuffer;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.listener.ExistsListener;
+import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
-public final class AsyncExists extends AsyncSingleCommand {
+public class AsyncReadHeader extends AsyncSingleCommand {
 	private final Policy policy;
-	private final ExistsListener listener;
-	private boolean exists;
+	private final RecordListener listener;
+	private Record record;
 	
-	public AsyncExists(AsyncCluster cluster, Policy policy, ExistsListener listener, Key key) {
+	public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) {
 		super(cluster, key);
 		this.policy = (policy == null) ? new Policy() : policy;
 		this.listener = listener;
 	}
-		
+
 	@Override
 	protected Policy getPolicy() {
 		return policy;
@@ -35,32 +36,34 @@ public final class AsyncExists extends AsyncSingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setExists(key);
+		setReadHeader(key);
 	}
 
-	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
+	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
 		int resultCode = byteBuffer.get(5) & 0xFF;
-		        
+
         if (resultCode == 0) {
-        	exists = true;
+        	int generation = byteBuffer.getInt(6);
+    		int expiration = byteBuffer.getInt(10);
+    		record = new Record(null, null, generation, expiration);
         }
         else {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-            	exists = false;
+        		record = null;
         	}
         	else {
         		throw new AerospikeException(resultCode);
         	}
-        }
-	}	
+        }		        
+	}
 
-	protected void onSuccess() {
+	protected final void onSuccess() {
 		if (listener != null) {
-			listener.onSuccess(key, exists);
+			listener.onSuccess(key, record);
 		}
 	}
 
-	protected void onFailure(AerospikeException e) {
+	protected final void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);
 		}

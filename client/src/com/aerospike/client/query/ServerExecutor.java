@@ -38,7 +38,7 @@ public final class ServerExecutor {
 		int count = 0;
 		
 		for (Node node : nodes) {
-			ServerCommand command = new ServerCommand(node);
+			ServerCommand command = new ServerCommand(node, policy, statement);
 			ServerThread thread = new ServerThread(command);
 			threads[count++] = thread;
 			thread.start();
@@ -90,8 +90,7 @@ public final class ServerExecutor {
 		
 		public void run() {
 			try {
-				command.resetSendBuffer();
-				command.query(policy, statement);
+				command.execute();
 			}
 			catch (Exception e) {
 				// Terminate other threads.

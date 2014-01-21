@@ -30,7 +30,7 @@ public final class ScanExecutor {
 		int count = 0;
 		
 		for (Node node : nodes) {
-			ScanCommand command = new ScanCommand(node, callback);
+			ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames);
 			ScanThread thread = new ScanThread(command);
 			threads[count++] = thread;
 			thread.start();
@@ -82,9 +82,7 @@ public final class ScanExecutor {
 		
 		public void run() {
 			try {
-				command.resetSendBuffer();
-				command.setScan(policy, namespace, setName, binNames);
-				command.execute(policy);
+				command.execute();
 			}
 			catch (Exception e) {
 				// Terminate other scan threads.

@@ -18,12 +18,13 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Packer;
-import com.aerospike.client.util.ThreadLocalData1;
+import com.aerospike.client.util.ThreadLocalData;
 
-public class Command {		
+public abstract class Command {		
 	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
@@ -50,29 +51,17 @@ public class Command {
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
 
-	protected byte[] sendBuffer;
-	protected int sendOffset;
-
-	public Command() {
-		this.sendBuffer = ThreadLocalData1.getBuffer();
-		this.sendOffset = MSG_TOTAL_HEADER_SIZE;
-	}
-	
-	/**
-	 * Sometimes the command is transferred to a different thread.
-	 * Must reset sendBuffer when command is used in another thread.
-	 */
-	public final void resetSendBuffer() {		
-		this.sendBuffer = ThreadLocalData1.getBuffer();
-	}
+	protected byte[] dataBuffer;
+	protected int dataOffset;
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
+		begin();
 		int fieldCount = estimateKeySize(key);
 		
 		for (Bin bin : bins) {
 			estimateOperationSize(bin);
 		}		
-		begin();
+		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(key);
 				
@@ -83,17 +72,19 @@ public class Command {
 	}
 
 	public void setDelete(WritePolicy policy, Key key) {
-		int fieldCount = estimateKeySize(key);
 		begin();
+		int fieldCount = estimateKeySize(key);
+		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 		writeKey(key);
 		end();
 	}
 
 	public final void setTouch(WritePolicy policy, Key key) {
+		begin();
 		int fieldCount = estimateKeySize(key);
 		estimateOperationSize();
-		begin();
+		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
 		writeKey(key);
 		writeOperation(Operation.Type.TOUCH);
@@ -101,41 +92,50 @@ public class Command {
 	}
 
 	public final void setExists(Key key) {
-		int fieldCount = estimateKeySize(key);
 		begin();
+		int fieldCount = estimateKeySize(key);
+		sizeBuffer();
 		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 		writeKey(key);
 		end();
 	}
 
 	public final void setRead(Key key) {
-		int fieldCount = estimateKeySize(key);
 		begin();
+		int fieldCount = estimateKeySize(key);
+		sizeBuffer();
 		writeHeader(Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 		writeKey(key);
 		end();
 	}
 
-	public final void setRead(Key key, String[] binNames) {	
-		int fieldCount = estimateKeySize(key);
-		
-		for (String binName : binNames) {
-			estimateOperationSize(binName);
+	public final void setRead(Key key, String[] binNames) {
+		if (binNames != null) {
+			begin();
+			int fieldCount = estimateKeySize(key);
+			
+			for (String binName : binNames) {
+				estimateOperationSize(binName);
+			}
+			sizeBuffer();
+			writeHeader(Command.INFO1_READ, 0, fieldCount, binNames.length);
+			writeKey(key);
+			
+			for (String binName : binNames) {
+				writeOperation(binName, Operation.Type.READ);
+			}
+			end();
 		}
-		begin();
-		writeHeader(Command.INFO1_READ, 0, fieldCount, binNames.length);
-		writeKey(key);
-		
-		for (String binName : binNames) {
-			writeOperation(binName, Operation.Type.READ);
+		else {
+			setRead(key);
 		}
-		end();
 	}
 
 	public final void setReadHeader(Key key) {
+		begin();
 		int fieldCount = estimateKeySize(key);
 		estimateOperationSize((String)null);
-		begin();
+		sizeBuffer();
 		
 		// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
 		// The workaround is to request a non-existent bin.
@@ -149,6 +149,7 @@ public class Command {
 	}
 
 	public final void setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
+		begin();
 		int fieldCount = estimateKeySize(key);
 		int readAttr = 0;
 		int writeAttr = 0;
@@ -180,7 +181,7 @@ public class Command {
 			}
 			estimateOperationSize(operation);
 		}
-		begin();
+		sizeBuffer();
 		
 		if (writeAttr != 0) {
 			writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
@@ -202,11 +203,12 @@ public class Command {
 
 	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
+		begin();
 		int fieldCount = estimateKeySize(key);		
 		byte[] argBytes = Packer.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
-		begin();
+		sizeBuffer();
 		writeHeader(0, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(key);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
@@ -217,13 +219,14 @@ public class Command {
 
 	public final void setBatchExists(BatchNamespace batchNamespace) {
 		// Estimate buffer size
+		begin();
 		List<Key> keys = batchNamespace.keys;
 		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
 
-		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 				
-		begin();
+		sizeBuffer();
 
 		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
 		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
@@ -231,18 +234,19 @@ public class Command {
 	
 		for (Key key : keys) {
 			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
-		    sendOffset += digest.length;
+		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+		    dataOffset += digest.length;
 		}
 		end();
 	}
 
 	public final void setBatchGet(BatchNamespace batchNamespace, HashSet<String> binNames, int readAttr) {
 		// Estimate buffer size
+		begin();
 		List<Key> keys = batchNamespace.keys;
 		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
 
-		sendOffset = MSG_TOTAL_HEADER_SIZE + Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 		
 		if (binNames != null) {
@@ -251,7 +255,7 @@ public class Command {
 			}			
 		}
 		
-		begin();
+		sizeBuffer();
 
 		int operationCount = (binNames == null)? 0 : binNames.size();
 		writeHeader(readAttr, 0, 2, operationCount);		
@@ -260,8 +264,8 @@ public class Command {
 	
 		for (Key key : keys) {
 			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, sendBuffer, sendOffset, digest.length);
-		    sendOffset += digest.length;
+		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+		    dataOffset += digest.length;
 		}
 		
 		if (binNames != null) {
@@ -272,21 +276,22 @@ public class Command {
 		end();
 	}
 	
-	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {		
+	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {
+		begin();
 		int fieldCount = 0;
 		
 		if (namespace != null) {
-			sendOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
+			dataOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 		
 		if (setName != null) {
-			sendOffset += Buffer.estimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+			dataOffset += Buffer.estimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 		
 		// Estimate scan options size.
-		sendOffset += 2 + FIELD_HEADER_SIZE;
+		dataOffset += 2 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
 		if (binNames != null) {
@@ -295,7 +300,7 @@ public class Command {
 			}			
 		}
 
-		begin();
+		sizeBuffer();
 		byte readAttr = Command.INFO1_READ;
 		
 		if (! policy.includeBinData) {
@@ -320,8 +325,8 @@ public class Command {
 		if (policy.failOnClusterChange) {
 			priority |= 0x08;
 		}		
-		sendBuffer[sendOffset++] = priority;
-		sendBuffer[sendOffset++] = (byte)policy.scanPercent;
+		dataBuffer[dataOffset++] = priority;
+		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
 		if (binNames != null) {
 			for (String binName : binNames) {
@@ -331,60 +336,54 @@ public class Command {
 		end();
 	}
 
-	public final int estimateKeySize(Key key) {
+	private final int estimateKeySize(Key key) {
 		int fieldCount = 0;
 		
 		if (key.namespace != null) {
-			sendOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
+			dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 		
 		if (key.setName != null) {
-			sendOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+			dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 		
-		sendOffset += key.digest.length + FIELD_HEADER_SIZE;
+		dataOffset += key.digest.length + FIELD_HEADER_SIZE;
 		fieldCount++;
 		
 		return fieldCount;
 	}
 
-	public final int estimateUdfSize(String packageName, String functionName, byte[] bytes) {
-		sendOffset += Buffer.estimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;		
-		sendOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;		
-		sendOffset += bytes.length;
+	private final int estimateUdfSize(String packageName, String functionName, byte[] bytes) {
+		dataOffset += Buffer.estimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;		
+		dataOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;		
+		dataOffset += bytes.length;
 		return 3;
 	}
 
-	public final void estimateOperationSize(Bin bin) throws AerospikeException {
-		sendOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
-		sendOffset += bin.value.estimateSize();
+	private final void estimateOperationSize(Bin bin) throws AerospikeException {
+		dataOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
+		dataOffset += bin.value.estimateSize();
 	}
 
-	public final void estimateOperationSize(Operation operation) throws AerospikeException {
-		sendOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
-		sendOffset += operation.binValue.estimateSize();
+	private final void estimateOperationSize(Operation operation) throws AerospikeException {
+		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
+		dataOffset += operation.binValue.estimateSize();
 	}
 
-	public final void estimateOperationSize(String binName) {
-		sendOffset += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
+	private final void estimateOperationSize(String binName) {
+		dataOffset += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 	}
 
-	public final void estimateOperationSize() {
-		sendOffset += OPERATION_HEADER_SIZE;
-	}
-	
-	public final void begin() {
-		if (sendOffset > sendBuffer.length) {
-			sendBuffer = ThreadLocalData1.resizeBuffer(sendOffset);
-		}
+	private final void estimateOperationSize() {
+		dataOffset += OPERATION_HEADER_SIZE;
 	}
 	
 	/**
 	 * Header write for write operations.
 	 */
-	public final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
+	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
         // Set flags.
 		int generation = 0;
 		int expiration = 0;
@@ -412,44 +411,44 @@ public class Command {
     		expiration = policy.expiration;
     	}
 		// Write all header data except total size which must be written last. 
-		sendBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
-		sendBuffer[9]  = (byte)readAttr;
-		sendBuffer[10] = (byte)writeAttr;
-		sendBuffer[11] = 0; // info3
-		sendBuffer[12] = 0; // unused
-		sendBuffer[13] = 0; // clear the result code
-		Buffer.intToBytes(generation, sendBuffer, 14);
-		Buffer.intToBytes(expiration, sendBuffer, 18);		
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)readAttr;
+		dataBuffer[10] = (byte)writeAttr;
+		dataBuffer[11] = 0; // info3
+		dataBuffer[12] = 0; // unused
+		dataBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(generation, dataBuffer, 14);
+		Buffer.intToBytes(expiration, dataBuffer, 18);		
 		
 		// Initialize timeout. It will be written later.
-		sendBuffer[22] = 0;
-		sendBuffer[23] = 0;
-		sendBuffer[24] = 0;
-		sendBuffer[25] = 0;
+		dataBuffer[22] = 0;
+		dataBuffer[23] = 0;
+		dataBuffer[24] = 0;
+		dataBuffer[25] = 0;
 		
-		Buffer.shortToBytes(fieldCount, sendBuffer, 26);
-		Buffer.shortToBytes(operationCount, sendBuffer, 28);		
-		sendOffset = MSG_TOTAL_HEADER_SIZE;
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);		
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
 	/**
 	 * Generic header write.
 	 */
-	public final void writeHeader(int readAttr, int writeAttr, int fieldCount, int operationCount) {		
+	protected final void writeHeader(int readAttr, int writeAttr, int fieldCount, int operationCount) {		
 		// Write all header data except total size which must be written last. 
-		sendBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
-		sendBuffer[9] = (byte)readAttr;
-		sendBuffer[10] = (byte)writeAttr;
+		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9] = (byte)readAttr;
+		dataBuffer[10] = (byte)writeAttr;
 		
 		for (int i = 11; i < 26; i++) {
-			sendBuffer[i] = 0;
+			dataBuffer[i] = 0;
 		}
-		Buffer.shortToBytes(fieldCount, sendBuffer, 26);
-		Buffer.shortToBytes(operationCount, sendBuffer, 28);
-		sendOffset = MSG_TOTAL_HEADER_SIZE;
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	public final void writeKey(Key key) {
+	private final void writeKey(Key key) {
 		// Write key into buffer.
 		if (key.namespace != null) {
 			writeField(key.namespace, FieldType.NAMESPACE);
@@ -462,82 +461,95 @@ public class Command {
 		writeField(key.digest, FieldType.DIGEST_RIPE);
 	}	
 
-	public final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
-        int nameLength = Buffer.stringToUtf8(bin.name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
-        int valueLength = bin.value.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+	private final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
+        int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+        int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
          
-        Buffer.intToBytes(nameLength + valueLength + 4, sendBuffer, sendOffset);
-		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation.protocolType;
-        sendBuffer[sendOffset++] = (byte) bin.value.getType();
-        sendBuffer[sendOffset++] = (byte) 0;
-        sendBuffer[sendOffset++] = (byte) nameLength;
-        sendOffset += nameLength + valueLength;
+        Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
+		dataOffset += 4;
+        dataBuffer[dataOffset++] = (byte) operation.protocolType;
+        dataBuffer[dataOffset++] = (byte) bin.value.getType();
+        dataBuffer[dataOffset++] = (byte) 0;
+        dataBuffer[dataOffset++] = (byte) nameLength;
+        dataOffset += nameLength + valueLength;
 	}
 		
-	public final void writeOperation(Operation operation) throws AerospikeException {
-        int nameLength = Buffer.stringToUtf8(operation.binName, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
-        int valueLength = operation.binValue.write(sendBuffer, sendOffset + OPERATION_HEADER_SIZE + nameLength);
+	private final void writeOperation(Operation operation) throws AerospikeException {
+        int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+        int valueLength = operation.binValue.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
          
-        Buffer.intToBytes(nameLength + valueLength + 4, sendBuffer, sendOffset);
-		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation.type.protocolType;
-        sendBuffer[sendOffset++] = (byte) operation.binValue.getType();
-        sendBuffer[sendOffset++] = (byte) 0;
-        sendBuffer[sendOffset++] = (byte) nameLength;
-        sendOffset += nameLength + valueLength;
+        Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
+		dataOffset += 4;
+        dataBuffer[dataOffset++] = (byte) operation.type.protocolType;
+        dataBuffer[dataOffset++] = (byte) operation.binValue.getType();
+        dataBuffer[dataOffset++] = (byte) 0;
+        dataBuffer[dataOffset++] = (byte) nameLength;
+        dataOffset += nameLength + valueLength;
 	}
 
-	public final void writeOperation(String name, Operation.Type operation) {
-        int nameLength = Buffer.stringToUtf8(name, sendBuffer, sendOffset + OPERATION_HEADER_SIZE);
+	private final void writeOperation(String name, Operation.Type operation) {
+        int nameLength = Buffer.stringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
          
-        Buffer.intToBytes(nameLength + 4, sendBuffer, sendOffset);
-		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation.protocolType;
-        sendBuffer[sendOffset++] = (byte) 0;
-        sendBuffer[sendOffset++] = (byte) 0;
-        sendBuffer[sendOffset++] = (byte) nameLength;
-        sendOffset += nameLength;
+        Buffer.intToBytes(nameLength + 4, dataBuffer, dataOffset);
+		dataOffset += 4;
+        dataBuffer[dataOffset++] = (byte) operation.protocolType;
+        dataBuffer[dataOffset++] = (byte) 0;
+        dataBuffer[dataOffset++] = (byte) 0;
+        dataBuffer[dataOffset++] = (byte) nameLength;
+        dataOffset += nameLength;
 	}
 
-	public final void writeOperation(Operation.Type operation) {
-        Buffer.intToBytes(4, sendBuffer, sendOffset);
-		sendOffset += 4;
-        sendBuffer[sendOffset++] = (byte) operation.protocolType;
-        sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = 0;
-        sendBuffer[sendOffset++] = 0;
+	private final void writeOperation(Operation.Type operation) {
+        Buffer.intToBytes(4, dataBuffer, dataOffset);
+		dataOffset += 4;
+        dataBuffer[dataOffset++] = (byte) operation.protocolType;
+        dataBuffer[dataOffset++] = 0;
+        dataBuffer[dataOffset++] = 0;
+        dataBuffer[dataOffset++] = 0;
 	}
 
 	public final void writeField(String str, int type) {
-		int len = Buffer.stringToUtf8(str, sendBuffer, sendOffset + FIELD_HEADER_SIZE);
+		int len = Buffer.stringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);
 		writeFieldHeader(len, type);
-		sendOffset += len;
+		dataOffset += len;
 	}
 		
 	public final void writeField(byte[] bytes, int type) {
-	    System.arraycopy(bytes, 0, sendBuffer, sendOffset + FIELD_HEADER_SIZE, bytes.length);
+	    System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
 	    writeFieldHeader(bytes.length, type);
-		sendOffset += bytes.length;
+		dataOffset += bytes.length;
 	}
 
 	public final void writeFieldHeader(int size, int type) {
-		Buffer.intToBytes(size+1, sendBuffer, sendOffset);
-		sendOffset += 4;
-		sendBuffer[sendOffset++] = (byte)type;
+		Buffer.intToBytes(size+1, dataBuffer, dataOffset);
+		dataOffset += 4;
+		dataBuffer[dataOffset++] = (byte)type;
+	}
+	
+	protected final void begin() {
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	public final void end() {
+	protected final void sizeBuffer() {
+		dataBuffer = ThreadLocalData.getBuffer();
+		
+		if (dataOffset > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
+		}
+	}
+	
+	protected final void sizeBuffer(int size) {
+		if (size > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(size);
+		}
+	}
+
+	protected final void end() {
 		// Write total size of message which is the current offset.
-		long size = (sendOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-		Buffer.longToBytes(size, sendBuffer, 0);
+		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+		Buffer.longToBytes(size, dataBuffer, 0);
 	}
 	
-	public final byte[] getSendBuffer() {
-		return sendBuffer;
-	}
-	
-	public final int getSendOffset() {
-		return sendOffset;
-	}
+	protected abstract Policy getPolicy();
+	protected abstract void writeBuffer() throws AerospikeException;
 }

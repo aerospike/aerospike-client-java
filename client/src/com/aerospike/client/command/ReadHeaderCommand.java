@@ -1,7 +1,7 @@
 /*
  * Aerospike Client - Java Library
  *
- * Copyright 2013 by Aerospike, Inc. All rights reserved.
+ * Copyright 2012 by Aerospike, Inc. All rights reserved.
  *
  * Availability of this source code to partners and customers includes
  * redistribution rights covered by individual contract. Please check your
@@ -13,19 +13,19 @@ import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.WritePolicy;
 
-public final class DeleteCommand extends SingleCommand {
-	private final WritePolicy policy;
-	private boolean existed;
+public class ReadHeaderCommand extends SingleCommand {
+	private final Policy policy;
+	private Record record;
 
-	public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) {
+	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = (policy == null) ? new Policy() : policy;
 	}
 	
 	@Override
@@ -35,22 +35,32 @@ public final class DeleteCommand extends SingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setDelete(policy, key);
+		setReadHeader(key);
 	}
 
 	protected void parseResult(Connection conn) throws AerospikeException, IOException {
 		// Read header.		
 		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+
 		int resultCode = dataBuffer[13] & 0xFF;
-	
-	    if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
-	    	throw new AerospikeException(resultCode);        	
-	    }        	
-		existed = resultCode == 0;
+
+        if (resultCode == 0) {
+    		int generation = Buffer.bytesToInt(dataBuffer, 14);
+    		int expiration = Buffer.bytesToInt(dataBuffer, 18);
+        	record = new Record(null, null, generation, expiration);       	
+        }
+        else {
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				record = null;
+			}
+			else {
+				throw new AerospikeException(resultCode);
+			}
+		}
 		emptySocket(conn);
 	}
 	
-	public boolean existed() {
-		return existed;
+	public Record getRecord() {
+		return record;
 	}
 }

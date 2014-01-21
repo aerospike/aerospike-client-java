@@ -13,7 +13,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.policy.Policy;
 
@@ -29,14 +28,15 @@ public final class AsyncBatchExistsSequenceExecutor extends AsyncBatchExecutor {
 		super(cluster, keys);
 		this.listener = listener;
 		
+		if (policy == null) {
+			policy = new Policy();
+		}
+
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				Command command = new Command();
-				command.setBatchExists(batchNamespace);
-				
-				AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, listener);
-				async.execute(policy, command);
+				AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, listener);
+				async.execute();
 			}
 		}
 	}
