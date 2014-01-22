@@ -124,6 +124,13 @@ public final class AsyncConnection {
 	public boolean isValid() {
 		return socketChannel.isConnected() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
+	
+	/**
+	 * Is socket connected.
+	 */
+	public boolean isConnected() {
+		return socketChannel.isConnected();
+	}
 		
 	public void updateLastUsed() {
 		lastUsed = System.currentTimeMillis();
