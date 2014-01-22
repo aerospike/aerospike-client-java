@@ -529,11 +529,13 @@ public class AerospikeClient {
 		if (policy == null) {
 			policy = new ScanPolicy();
 		}
-		
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
 		
-		Node[] nodes = cluster.getNodes();
+		Node[] nodes = cluster.getNodes();		
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
+		}
 
 		if (policy.concurrentNodes) {
 			ScanExecutor executor = new ScanExecutor(policy, namespace, setName, callback, binNames);
@@ -799,8 +801,12 @@ public class AerospikeClient {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException {
+		Node[] nodes = cluster.getNodes();
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
 		ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
-		executor.execute(cluster.getNodes());
+		executor.execute(nodes);
 		return new ExecuteTask(cluster, statement);
 	}
 
@@ -824,7 +830,11 @@ public class AerospikeClient {
 		if (policy == null) {
 			policy = new QueryPolicy();
 		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, cluster.getNodes());
+		Node[] nodes = cluster.getNodes();		
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+		}
+		QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, nodes);
 		return executor.getRecordSet();
 	}
 	
@@ -859,7 +869,11 @@ public class AerospikeClient {
 		if (policy == null) {
 			policy = new QueryPolicy();
 		}
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, cluster.getNodes(), packageName, functionName, functionArgs);
+		Node[] nodes = cluster.getNodes();		
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+		}
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, nodes, packageName, functionName, functionArgs);
 		return executor.getResultSet();
 	}
 
