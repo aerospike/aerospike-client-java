@@ -20,7 +20,6 @@ public abstract class AsyncSingleCommand extends AsyncCommand {
 	protected final Key key;
 	private final Partition partition;
 	protected int receiveSize;
-	private boolean inHeader = true;
 	
 	public AsyncSingleCommand(AsyncCluster cluster, Key key) {
 		super(cluster);

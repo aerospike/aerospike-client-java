@@ -27,7 +27,16 @@ public final class WritePolicy extends Policy {
 	public int generation;
 
 	/**
-	 * Record expiration. Seconds record will live before being removed by the server.
+	 * Record expiration. Also known as ttl (time to live).
+	 * Seconds record will live before being removed by the server.
+	 * <p>
+	 * Expiration values:
+	 * <ul>
+	 * <li>-1: Never expire for Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
+	 * versions >= 3.1.4.  For older servers, -1 means a very long (max integer) expiration.</li>
+	 * <li>0: Default to namespace configuration variable "default-ttl" on the server.</li>
+	 * <li>> 0: Actual expiration in seconds.<br></li>
+	 * </ul>
 	 */
 	public int expiration;	
 }

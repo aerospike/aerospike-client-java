@@ -39,12 +39,11 @@ import com.aerospike.client.command.ParticleType;
 public final class LuaInstance {
 	
 	private final Globals globals = new Globals();
-	private final PackageLib packageLib;
+	private final LuaTable loadedTable;
 	
 	public LuaInstance() throws AerospikeException {
 		globals.load(new JseBaseLib());
-		packageLib = new PackageLib();
-		globals.load(packageLib);
+		globals.load(new PackageLib());
 		//globals.load(new Bit32Lib()); // not needed for 5.1 compatibility	
 		globals.load(new TableLib());
 		globals.load(new StringLib());
@@ -54,12 +53,16 @@ public final class LuaInstance {
 		globals.load(new JseOsLib());
 		globals.load(new LuajavaLib());
 		globals.load(new DebugLib());
+		
+		LuaTable packageTable = (LuaTable)globals.get("package");
+		loadedTable = (LuaTable)packageTable.get("loaded");
+		
 		globals.load(new LuaBytesLib(this));
 		globals.load(new LuaListLib(this));
 		globals.load(new LuaMapLib(this));
-		globals.load(new LuaStreamLib(this));
-		LuaC.install();
-		globals.compiler = LuaC.instance;
+		globals.load(new LuaStreamLib(this));		
+		
+		LuaC.install(globals);
 
 		load("compat52", true);
 		load("as", true);
@@ -70,8 +73,8 @@ public final class LuaInstance {
 	}
 
 	public void registerPackage(String packageName, LuaTable table) {
-		globals.set(packageName, table);
-		packageLib.loaded.set(packageName, table);
+		globals.set(packageName, table);		
+		loadedTable.set(packageName, LuaValue.TRUE);
 	}
 
 	public LuaValue getPackage(String packageName) {
@@ -83,7 +86,7 @@ public final class LuaInstance {
 	}
 	
 	public void load(String packageName, boolean system) throws AerospikeException {
-		if (packageLib.loaded.get(packageName).toboolean()) {
+		if (loadedTable.get(packageName).toboolean()) {
 			return;
 		}
 		
@@ -91,7 +94,7 @@ public final class LuaInstance {
 		LuaClosure function = new LuaClosure(prototype, globals);
 		function.invoke();
 		
-		packageLib.loaded.set(packageName, globals);
+		loadedTable.set(packageName, LuaValue.TRUE);
 	}
 
 	public void call(String functionName, LuaValue[] args) {
@@ -133,14 +136,14 @@ public final class LuaInstance {
 			return new LuaJavaBlob(object);
 			
 		case ParticleType.LIST: {
-			LuaUnpacker unpacker = new LuaUnpacker(this);
-			List<LuaValue> list = unpacker.parseList(buf, offset, len);
+			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
+			List<LuaValue> list = unpacker.unpackList();
 			return new LuaList(this, list);
 		}
 
 		case ParticleType.MAP: {
-			LuaUnpacker unpacker = new LuaUnpacker(this);
-			Map<LuaValue,LuaValue> map = unpacker.parseMap(buf, offset, len);
+			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
+			Map<LuaValue,LuaValue> map = unpacker.unpackMap();
 			return new LuaMap(this, map);
 		}
 		

@@ -14,9 +14,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class CounterStore {
 	
-	public static class Current {		
+	public static class Current {
 		AtomicInteger count = new AtomicInteger();
-		AtomicInteger fail = new AtomicInteger();
+		AtomicInteger timeouts = new AtomicInteger();
+		AtomicInteger errors = new AtomicInteger();
+		LatencyManager latency;
 	}
 		
 	Current write = new Current();
@@ -26,7 +28,6 @@ public class CounterStore {
 
 	AtomicInteger timeElapsed = new AtomicInteger();
 	AtomicInteger tcounter = new AtomicInteger();
-	AtomicInteger generationErrCnt = new AtomicInteger();
 	AtomicInteger valueMismatchCnt = new AtomicInteger();
 	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
 	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);

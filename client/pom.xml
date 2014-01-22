@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client</artifactId>
-  <version>3.0.15</version>
+  <version>3.0.20</version>
   <packaging>jar</packaging>
 
   <name>aerospike-client</name>
@@ -17,20 +17,19 @@
     </dependency>
 
     <dependency> 
-      <groupId>org.msgpack</groupId>
-      <artifactId>msgpack</artifactId>
-      <version>0.6.7</version>
-    </dependency>
-
-    <dependency> 
       <groupId>org.luaj</groupId>
       <artifactId>luaj-jse</artifactId>
-      <version>3.0-alpha2</version>
+      <version>3.0-beta2</version>
     </dependency>
   </dependencies>
     
   <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
+    <resources>
+      <resource>
+        <directory>${project.basedir}/src/resources</directory>
+      </resource>
+    </resources>
     <plugins> 	
       <plugin>	
         <artifactId>maven-compiler-plugin</artifactId>

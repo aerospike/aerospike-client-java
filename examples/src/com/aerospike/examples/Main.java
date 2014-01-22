@@ -38,6 +38,7 @@ public class Main extends JPanel {
 		"Serialize",
 		"Expire",
 		"Touch",
+		"Operate",
 		"DeleteBin",
 		"ScanParallel",
 		"ScanSeries",
@@ -50,6 +51,7 @@ public class Main extends JPanel {
 		"LargeStack",
 		"QueryInteger",
 		"QueryString",
+		"QueryFilter",
 		"QuerySum",
 		"QueryAverage",
 		"QueryExecute"

@@ -13,6 +13,9 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 
+/**
+ * Query filter definition.
+ */
 public final class Filter {
 	/**
 	 * Create long equality filter for query.

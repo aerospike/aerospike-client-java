@@ -31,6 +31,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.policy.WritePolicy;
 
 public class Main implements Log.Callback {
 	
@@ -72,15 +73,15 @@ public class Main implements Log.Callback {
 	private int             nThreads = 16;
 	private int             nTasks = 1;
 	private int             throughput = 0;
-	private int             timeout = 0;
 	private String          throughput_file = "";
 	private int             runTime = 0;
 	private int             asyncTaskThreads;
 	private boolean         debug = false;
 	private boolean         asyncEnabled;
 
-	private AsyncClientPolicy  clientPolicy = new AsyncClientPolicy();
-	private CounterStore       counters = new CounterStore();
+	private AsyncClientPolicy clientPolicy = new AsyncClientPolicy();
+	private WritePolicy writePolicy = new WritePolicy();
+	private CounterStore counters = new CounterStore();
 
 	public Main(String[] args) throws Exception {
 		Options options = new Options();
@@ -129,10 +130,29 @@ public class Main implements Log.Callback {
 			"average throughput, though it will try to catch-up if it falls behind."
 			);
 		options.addOption("T", "timeout", true, "Set the transaction timeout in milliseconds.");
+		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
+		options.addOption("sleepBetweenRetries", true, 
+			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
+			"Enter zero to skip sleep."	
+			);
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. " + 
 			"It is not recommended to use a value greater than 125."
+			);	
+		options.addOption("latency", true, 
+			"<number of latency columns>,<range shift increment>\n" +
+			"Show transaction latency percentages using elapsed time ranges.\n" +
+			"<number of latency columns>: Number of elapsed time ranges.\n" +
+			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n\n" + 
+			"A latency definition of '-latency 7,1' results in this layout:\n" +
+			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
+			"       x%   x%   x%   x%   x%    x%    x%\n" +
+			"A latency definition of '-latency 4,3' results in this layout:\n" +
+			"    <=1ms >1ms >8ms >64ms\n" +
+			"       x%   x%   x%    x%\n\n" +
+			"Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."
 			);
+		
 		//options.addOption("v", "validate", false, "Validate data.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
@@ -171,9 +191,9 @@ public class Main implements Log.Callback {
 			this.namespace = "test";
 		}
 
-        if (line.hasOption("set")) {
-        	this.set = line.getOptionValue("set");
-        }
+		if (line.hasOption("set")) {
+			this.set = line.getOptionValue("set");
+		}
                    
 		if (line.hasOption("keys")) {
 			this.nKeys = Integer.parseInt(line.getOptionValue("keys"));
@@ -256,9 +276,17 @@ public class Main implements Log.Callback {
 		}
 		
 		if (line.hasOption("timeout")) {
-			this.timeout = Integer.parseInt(line.getOptionValue("timeout"));
+			this.writePolicy.timeout = Integer.parseInt(line.getOptionValue("timeout"));
 		}			 
 
+		if (line.hasOption("maxRetries")) {
+			this.writePolicy.maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
+		}
+		
+		if (line.hasOption("sleepBetweenRetries")) {
+			this.writePolicy.sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
+		}
+		
 		if (line.hasOption("threads")) {
 			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
 		}  
@@ -303,16 +331,28 @@ public class Main implements Log.Callback {
         }
 
         if (this.nThreads > 1) {
-			//this.nTasks = 2*this.nThreads;
 			this.nTasks = nThreads;
 		}
-
+        
+        if (line.hasOption("latency")) {
+			String[] latencyOpts = line.getOptionValue("latency").split(",");
+			int columns = Integer.parseInt(latencyOpts[0]);
+			int bitShift = Integer.parseInt(latencyOpts[1]);
+			counters.read.latency = new LatencyManager(columns, bitShift);
+			counters.write.latency = new LatencyManager(columns, bitShift);      	
+        }
+        
 		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
 			+ ", namespace: " + this.namespace 
-			+ ", num keys: "
-			+ this.nKeys + ", threads " + this.nThreads
-			+ ", read-write ratio: " 
-			+ this.readPct + "/" + (100-this.readPct));
+			+ ", set: " + (this.set.length() > 0? this.set : "<empty>")
+			+ ", threads: " + this.nThreads
+			+ ", read-write ratio: " + this.readPct + "/" + (100-this.readPct));
+		
+		System.out.println("keys: " + this.nKeys
+			+ ", bins: " + this.nBins 
+			+ ", timeout: " + this.writePolicy.timeout
+			+ ", maxRetries: " + this.writePolicy.maxRetries 
+			+ ", sleepBetweenRetries: " + this.writePolicy.sleepBetweenRetries);
 	
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
@@ -411,12 +451,15 @@ public class Main implements Log.Callback {
 
 		// Create N insert tasks
 		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+		int start = this.startKey;
+		int keysPerTask = this.nKeys / ntasks + 1;
 
 		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, this.startKey, this.nKeys, 
-				this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+			InsertTask it = new InsertTaskSync(client, this.namespace, this.set, start, keysPerTask, 
+				this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
+			start += keysPerTask;
 		}	
 		collectInsertStats();
 		es.shutdownNow();
@@ -427,12 +470,15 @@ public class Main implements Log.Callback {
 
 		// Create N insert tasks
 		int ntasks = this.nTasks < this.nKeys ? this.nTasks : this.nKeys;
+		int start = this.startKey;
+		int keysPerTask = this.nKeys / ntasks + 1;
 
 		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, this.startKey, this.nKeys, 
-					this.keySize, this.nBins, this.timeout, this.objectSpec, this.counters, debug);
+			InsertTask it = new InsertTaskAsync(client, this.namespace, this.set, start, keysPerTask, 
+					this.keySize, this.nBins, this.writePolicy, this.objectSpec, this.counters, debug);
 			
 			es.execute(it);
+			start += keysPerTask;
 		}
 		collectInsertStats();
 		es.shutdownNow();
@@ -445,11 +491,18 @@ public class Main implements Log.Callback {
 			long time = System.currentTimeMillis();
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
-			int failWrites = this.counters.write.fail.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);		
 			total += numWrites;
-			
+
 			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + " fail=" + failWrites + ")");
+			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites + 
+				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+			}
 
 			Thread.sleep(1000);
 		}
@@ -467,9 +520,9 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			} else {
-				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -488,9 +541,9 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
+				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
 			} else {
-				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.timeout, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -528,21 +581,29 @@ public class Main implements Log.Callback {
 			long time = System.currentTimeMillis();
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
-			int failWrites = this.counters.write.fail.getAndSet(0);
+			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
+			int errorWrites = this.counters.write.errors.getAndSet(0);
 			
 			int	numReads = this.counters.read.count.getAndSet(0);
-			int failReads = this.counters.read.fail.getAndSet(0);
+			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
+			int errorReads = this.counters.read.errors.getAndSet(0);
 			
 			//int used = (client != null)? client.getAsyncConnUsed() : 0;
 			//Node[] nodes = client.getNodes();
 			
 			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(tps=" + numWrites + " fail=" + failWrites + ")" +
-				" read(tps=" + numReads + " fail=" + failReads + ")" +
-				" total(tps=" + (numWrites + numReads) + " fail=" + (failWrites + failReads) + ")"
+			System.out.println(date.toString() + " write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")" +
+				" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads + ")" +
+				" total(tps=" + (numWrites + numReads) + " timeouts=" + (timeoutWrites + timeoutReads) + " errors=" + (errorWrites + errorReads) + ")"
 				//+ " buffused=" + used
 				//+ " nodeused=" + ((AsyncNode)nodes[0]).openCount.get() + ',' + ((AsyncNode)nodes[1]).openCount.get() + ',' + ((AsyncNode)nodes[2]).openCount.get()
 				);
+
+			if (this.counters.write.latency != null) {
+				this.counters.write.latency.printHeader(System.out);
+				this.counters.write.latency.printResults(System.out, "write");
+				this.counters.read.latency.printResults(System.out, "read");
+			}
 
 			if (throughput_file.length() > 0) {
 				// set target throughput and read/update percentage based on throughput_file

@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-examples</artifactId>
-  <version>3.0.15</version>
+  <version>3.0.20</version>
   <packaging>jar</packaging>
 
   <name>aerospike-examples</name>
@@ -13,7 +13,7 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>3.0.15</version>
+      <version>3.0.20</version>
     </dependency>
 
     <!-- Apache command line parser. -->

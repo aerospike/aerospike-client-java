@@ -18,7 +18,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.command.BatchItem;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.policy.Policy;
 
@@ -38,16 +37,17 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		this.recordArray = new Record[keys.length];
 		this.listener = listener;
 		
+		if (policy == null) {
+			policy = new Policy();
+		}
+
 		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
 		
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				Command command = new Command();
-				command.setBatchGet(batchNamespace, binNames, readAttr);
-				
-				AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, keyMap, binNames, recordArray);
-				async.execute(policy, command);
+			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {				
+				AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keyMap, binNames, recordArray, readAttr);
+				async.execute();
 			}
 		}
 	}

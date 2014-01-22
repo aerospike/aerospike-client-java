@@ -151,12 +151,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		Command command = new Command();
-		command.setWrite(policy, Operation.Type.WRITE, key, bins);
-		
-		AsyncWrite async = new AsyncWrite(cluster, key, listener);
-		async.execute(policy, command);
+	public final void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {		
+		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -179,11 +176,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		Command command = new Command();
-		command.setWrite(policy, Operation.Type.APPEND, key, bins);
-		
-		AsyncWrite async = new AsyncWrite(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
+		command.execute();
 	}
 	
 	/**
@@ -202,11 +196,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		Command command = new Command();
-		command.setWrite(policy, Operation.Type.PREPEND, key, bins);
-		
-		AsyncWrite async = new AsyncWrite(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -229,11 +220,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		Command command = new Command();
-		command.setWrite(policy, Operation.Type.ADD, key, bins);
-		
-		AsyncWrite async = new AsyncWrite(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -253,11 +241,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void delete(WritePolicy policy, DeleteListener listener, Key key) throws AerospikeException {
-		Command command = new Command();
-		command.setDelete(policy, key);		
-
-		AsyncDelete async = new AsyncDelete(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncDelete command = new AsyncDelete(cluster, policy, listener, key);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -276,12 +261,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException {
-		Command command = new Command();
-		command.setTouch(policy, key);
-		
-		AsyncWrite async = new AsyncWrite(cluster, key, listener);
-		async.execute(policy, command);
+	public final void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException {		
+		AsyncTouch command = new AsyncTouch(cluster, policy, listener, key);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -301,11 +283,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(Policy policy, ExistsListener listener, Key key) throws AerospikeException {
-		Command command = new Command();
-		command.setExists(key);
-		
-		AsyncExists async = new AsyncExists(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncExists command = new AsyncExists(cluster, policy, listener, key);
+		command.execute();
 	}
 
 	/**
@@ -357,11 +336,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */	
 	public final void get(Policy policy, RecordListener listener, Key key) throws AerospikeException {
-		Command command = new Command();
-		command.setRead(key);
-
-		AsyncRead async = new AsyncRead(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncRead command = new AsyncRead(cluster, policy, listener, key, null);
+		command.execute();
 	}
 	
 	/**
@@ -378,11 +354,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(Policy policy, RecordListener listener, Key key, String... binNames) throws AerospikeException {	
-		Command command = new Command();
-		command.setRead(key, binNames);
-
-		AsyncRead async = new AsyncRead(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncRead command = new AsyncRead(cluster, policy, listener, key, binNames);
+		command.execute();
 	}
 
 	/**
@@ -398,11 +371,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(Policy policy, RecordListener listener, Key key) throws AerospikeException {
-		Command command = new Command();
-		command.setReadHeader(key);
-		
-		AsyncRead async = new AsyncRead(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncReadHeader command = new AsyncReadHeader(cluster, policy, listener, key);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -537,11 +507,8 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations) 
 		throws AerospikeException {		
-		Command command = new Command();
-		command.setOperate(policy, key, operations);
-
-		AsyncRead async = new AsyncRead(cluster, key, listener);
-		async.execute(policy, command);
+		AsyncOperate command = new AsyncOperate(cluster, policy, listener, key, operations);
+		command.execute();
 	}
 
 	//-------------------------------------------------------

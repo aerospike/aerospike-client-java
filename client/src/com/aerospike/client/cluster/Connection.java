@@ -9,6 +9,7 @@
  */
 package com.aerospike.client.cluster;
 
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,8 +26,8 @@ import com.aerospike.client.util.Util;
  */
 public final class Connection {
 	private final Socket socket;
-	private InputStream in;
-	private OutputStream out;
+	private final InputStream in;
+	private final OutputStream out;
 	private final long maxSocketIdleMillis;
 	private long lastUsed;
 	
@@ -40,12 +41,53 @@ public final class Connection {
 		try {
 			socket = new Socket();
 			socket.setTcpNoDelay(true);
-			socket.setSoTimeout(timeoutMillis);
+			
+			if (timeoutMillis > 0) {
+				socket.setSoTimeout(timeoutMillis);
+			}
+			else {				
+				// Do not wait indefinitely on connection if no timeout is specified.
+				// Retry functionality will attempt to reconnect later.
+				timeoutMillis = 2000;
+			}
 			socket.connect(address, timeoutMillis);
+			in = socket.getInputStream();
+			out = socket.getOutputStream();
 			lastUsed = System.currentTimeMillis();
 		}
 		catch (Exception e) {
 			throw new AerospikeException.Connection(e);
+		}
+	}
+	
+	public void write(byte[] buffer, int length) throws IOException {
+		// Never write more than 8 KB at a time.  Apparently, the jni socket write does an extra 
+		// malloc and free if buffer size > 8 KB.
+		final int max = length;
+		int pos = 0;
+		int len;
+		
+		while (pos < max) {
+			len = max - pos;
+			
+			if (len > 8192)
+				len = 8192;
+			
+			out.write(buffer, pos, len);
+			pos += len;
+		}
+	}
+	
+	public void readFully(byte[] buffer, int length) throws IOException {
+		int pos = 0;
+	
+		while (pos < length) {
+			int count = in.read(buffer, pos, length - pos);
+		    
+			if (count < 0)
+		    	throw new EOFException();
+			
+			pos += count;
 		}
 	}
 
@@ -64,16 +106,10 @@ public final class Connection {
 		socket.setSoTimeout(timeout);
 	}
 	
-	public InputStream getInputStream() throws IOException {
-		in = socket.getInputStream();
+	public InputStream getInputStream() {
 		return in;
 	}
-
-	public OutputStream getOutputStream() throws IOException {
-		out = socket.getOutputStream();
-		return out;
-	}
-		
+			
 	public void updateLastUsed() {
 		lastUsed = System.currentTimeMillis();
 	}
@@ -83,15 +119,8 @@ public final class Connection {
 	 */
 	public void close() {
 		try {
-			if (in != null) {
-				in.close();
-				in = null;
-			}
-			
-			if (out != null) {
-				out.close();
-				out = null;
-			}
+			in.close();
+			out.close();			
 			socket.close();
 		}
 		catch (Exception e) {

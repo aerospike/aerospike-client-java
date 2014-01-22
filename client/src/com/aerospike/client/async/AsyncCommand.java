@@ -11,9 +11,9 @@ package com.aerospike.client.async;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Util;
@@ -21,25 +21,24 @@ import com.aerospike.client.util.Util;
 /**
  * Asynchronous command handler.
  */
-public abstract class AsyncCommand implements Runnable {
+public abstract class AsyncCommand extends Command implements Runnable {
 	
 	protected AsyncConnection conn;
 	protected ByteBuffer byteBuffer;
 	protected final AsyncCluster cluster;
 	protected AsyncNode node;
+	private final AtomicBoolean complete = new AtomicBoolean();
 	private long limit;
 	protected int timeout;
-	private boolean complete;
+	private int iteration;
+	protected boolean inHeader = true;
 	
 	public AsyncCommand(AsyncCluster cluster) {
 		this.cluster = cluster;
 	}
 	
-	public void execute(Policy policy, Command command) throws AerospikeException {
-		if (policy == null) {
-			policy = new Policy();
-		}
-		
+	public void execute() throws AerospikeException {
+		Policy policy = getPolicy();
 		timeout = policy.timeout;
 		
 		if (timeout > 0) {	
@@ -47,63 +46,160 @@ public abstract class AsyncCommand implements Runnable {
 		}
 
 		byteBuffer = cluster.getByteBuffer();
+		executeCommand();
+	}
 		
+	public void executeCommand() throws AerospikeException {
+		if (complete.get()) {
+			failOnClientTimeout();
+			return;
+		}
+
 		try {
 			node = getNode();
-			conn = node.getAsyncConnection();
-	
-			int size = command.getSendOffset();
-			
-			if (size > byteBuffer.capacity()) {
-				byteBuffer = ByteBuffer.allocateDirect(size);
+			conn = node.getAsyncConnection();			
+			writeBuffer();
+				
+			if (dataOffset > byteBuffer.capacity()) {
+				byteBuffer = ByteBuffer.allocateDirect(dataOffset);
 			}
 			
 			byteBuffer.clear();
-			byteBuffer.put(command.getSendBuffer(), 0, size);
+			byteBuffer.put(dataBuffer, 0, dataOffset);
 			byteBuffer.flip();
 	
 			conn.execute(this);
 		}
 		catch (AerospikeException.InvalidNode ai) {
-			cluster.putByteBuffer(byteBuffer);
-			throw ai;
+			if (!retryOnInit()) {				
+				throw ai;
+			}
 		}
 		catch (AerospikeException.Connection ce) {
 			// Socket connection error has occurred.
-			node.decreaseHealth();
-			cluster.putByteBuffer(byteBuffer);
-			throw ce;
+			if (!retryOnInit()) {				
+				throw ce;
+			}
 		}
 		catch (Exception e) {
-			if (conn != null) {
-				node.putAsyncConnection(conn);
+			if (!failOnApplicationInit()) {
+				throw new AerospikeException(e);
 			}
-			cluster.putByteBuffer(byteBuffer);
-			throw new AerospikeException(e);
 		}
 	}
-	
+
+	private boolean retryOnInit() throws AerospikeException {
+		if (complete.get()) {
+			failOnClientTimeout();
+			return true;
+		}
+
+		Policy policy = getPolicy();
+		
+		if (++iteration > policy.maxRetries) {
+			return failOnNetworkInit();
+		}
+
+		if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+			// Might as well stop here because the transaction will
+			// timeout after sleep completed.
+			return failOnNetworkInit();
+		}
+
+		// Prepare for retry.
+		resetConnection();
+
+		if (policy.sleepBetweenRetries > 0) {
+			Util.sleep(policy.sleepBetweenRetries);
+		}
+
+		// Retry command recursively.
+		executeCommand();
+		return true;
+	}
+
 	protected final void write() throws IOException {
 		conn.write(byteBuffer);
 	}
 
+	protected final void retryAfterInit(AerospikeException ae) {
+		if (complete.get()) {
+			failOnClientTimeout();
+			return;
+		}
+
+		Policy policy = getPolicy();
+
+		if (++iteration > policy.maxRetries) {
+			failOnNetworkError(ae);
+			return;
+		}
+
+		if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+			// Might as well stop here because the transaction will
+			// timeout after sleep completed.
+			failOnNetworkError(ae);
+			return;
+		}
+
+		// Prepare for retry.
+		resetConnection();
+
+		if (policy.sleepBetweenRetries > 0) {
+			Util.sleep(policy.sleepBetweenRetries);
+		}
+
+		try {
+			// Retry command recursively.
+			executeCommand();
+		}
+		catch (Exception e) {
+			// Command has already been cleaned up.
+			// Notify user of original exception.
+			onFailure(ae);
+		}
+	}
+
+	private void resetConnection() {
+		if (node != null) {
+			node.decreaseHealth();
+		}
+
+		if (limit > 0) {
+			// A lock on reset is required when a client timeout is specified.
+			synchronized (this) {
+				if (conn != null) {
+					conn.close();
+					conn = null;
+				}
+			}
+		}
+		else {
+			if (conn != null) {
+				conn.close();
+				conn = null;
+			}
+		}
+	}
+
 	protected final boolean checkTimeout() {
-		if (complete) {
+		if (complete.get()) {
 			return false;
 		}
-		long current = System.currentTimeMillis();
 		
-		if (limit > 0 && current > limit) {
-			// Command has timed out.
-			/*
-			if (Log.debugEnabled()) {
-				int elapsed = ((int)(current - limit)) + timeout;
-				Log.debug("Client timeout: timeout=" + timeout + " elapsed=" + elapsed);
+		if (limit > 0 && System.currentTimeMillis() > limit) {
+			// Command has timed out in timeout queue thread.
+			// Ensure that command succeeds or fails, but not both.
+			if (complete.compareAndSet(false, true)) {
+				// Timeout thread may contend with retry thread.
+				// Lock before closing.
+				synchronized (this) {
+					if (conn != null) {
+						conn.close();
+					}
+				}
 			}
-			*/
-			node.decreaseHealth();
-			fail(new AerospikeException.Timeout());
-			return false;
+			return false;  // Do not put back on timeout queue.
 		}
 		return true;
 	}
@@ -112,61 +208,108 @@ public abstract class AsyncCommand implements Runnable {
 		try {
 			read();
 			
-			if (! complete) {
+			if (! complete.get()) {
 				conn.setReadable();
 			}
 		}
+        catch (AerospikeException.Connection ac) {
+        	retryAfterInit(ac);
+        }
         catch (AerospikeException ae) {
-        	failCommand(ae);
+			// Fail without retry on non-network errors.
+			failOnApplicationError(ae);
         }
         catch (IOException ioe) {
-			failCommand(ioe);
+        	retryAfterInit(new AerospikeException(ioe));
         }
         catch (Exception e) {
-			failCommand(new AerospikeException(e));
+			// Fail without retry on unknown errors.
+			failOnApplicationError(new AerospikeException(e));
         }
 	}
 	
 	protected final void finish() {
-		complete = true;
-		conn.unregister();
-		conn.updateLastUsed();
-		node.putAsyncConnection(conn);
-		node.restoreHealth();
-		cluster.putByteBuffer(byteBuffer);
-		onSuccess();
-	}
-	
-	protected final void failConnection(AerospikeException ae) {
-		if (Log.debugEnabled()) {
-			Log.debug("Node " + node + ": " + Util.getErrorMessage(ae));
+		// Finish could be called from a separate asyncTaskThreadPool thread.
+		// Make sure SelectorManager thread has not already caused a transaction timeout.
+		if (complete.compareAndSet(false, true)) {			
+			conn.unregister();
+			conn.updateLastUsed();
+			node.putAsyncConnection(conn);
+			node.restoreHealth();
+			cluster.putByteBuffer(byteBuffer);
+			onSuccess();
+		} 
+		else {
+			failOnClientTimeout();
 		}
-		node.decreaseHealth();
-		fail(ae);
 	}
 
-	protected final void failCommand(IOException ioe) {
-		if (Log.debugEnabled()) {
-			Log.debug("Node " + node + ": " + Util.getErrorMessage(ioe));
+	private boolean failOnNetworkInit() {
+		// Ensure that command succeeds or fails, but not both.
+		if (complete.compareAndSet(false, true)) {			
+			closeOnNetworkError();
+			return false;
 		}
-		// IO error means connection to server node is unhealthy.
-		// Reflect this status.
-		node.decreaseHealth();
-		fail(new AerospikeException(ioe));
-	}
-	
-	protected final void failCommand(AerospikeException ae) {		
-		if (Log.debugEnabled()) {
-			Log.debug("Node " + node + ": " + Util.getErrorMessage(ae));
+		else {
+			failOnClientTimeout();
+			return true;
 		}
-		fail(ae);
 	}
-	
-	private final void fail(AerospikeException ae) {		
-		complete = true;
-		conn.close();
-		cluster.putByteBuffer(byteBuffer);		
-		onFailure(ae);
+
+	private boolean failOnApplicationInit() {
+		// Ensure that command succeeds or fails, but not both.
+		if (complete.compareAndSet(false, true)) {			
+			close();
+			return false;
+		}
+		else {
+			failOnClientTimeout();
+			return true;
+		}
+	}
+
+	private void failOnNetworkError(AerospikeException ae) {
+		// Ensure that command succeeds or fails, but not both.
+		if (complete.compareAndSet(false, true)) {			
+			closeOnNetworkError();
+			onFailure(ae);
+		}
+		else {
+			failOnClientTimeout();
+		}
+	}
+
+	protected final void failOnApplicationError(AerospikeException ae) {
+		// Ensure that command succeeds or fails, but not both.
+		if (complete.compareAndSet(false, true)) {			
+			close();
+			onFailure(ae);
+		}
+		else {
+			failOnClientTimeout();
+		}
+	}
+
+	private void failOnClientTimeout() {
+		// Free up resources and notify.
+		closeOnNetworkError();
+		onFailure(new AerospikeException.Timeout());
+	}
+
+	private void closeOnNetworkError() {
+		if (node != null) {
+			node.decreaseHealth();
+		}
+		close();
+	}
+
+	private void close() {
+		// Connection was probably already closed by timeout thread.
+		// Check connected status before closing again.
+		if (conn != null && conn.isConnected()) {
+			conn.close();
+		}
+		cluster.putByteBuffer(byteBuffer);
 	}
 
 	protected abstract AsyncNode getNode() throws AerospikeException.InvalidNode;

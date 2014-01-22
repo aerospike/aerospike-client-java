@@ -88,8 +88,31 @@ public class AerospikeException extends Exception {
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 		
+		public int timeout;
+		public int iterations;
+		public int failedNodes;
+		public int failedConns;
+		
 		public Timeout() {
 			super(ResultCode.TIMEOUT);
+			this.timeout = -1;
+		}
+		
+		public Timeout(int timeout, int iterations, int failedNodes, int failedConns) {
+			super(ResultCode.TIMEOUT);
+			this.timeout = timeout;
+			this.iterations = iterations;
+			this.failedNodes = failedNodes;
+			this.failedConns = failedConns;
+		}
+		
+		@Override
+		public String getMessage() {
+			if (timeout == -1) {
+				return super.getMessage();
+			}
+			return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
+				" failedNodes=" + failedNodes + " failedConns=" + failedConns;
 		}
 	}
 

@@ -39,7 +39,6 @@ public abstract class RWTask implements Runnable {
 	int nBins;
 	DBObjectSpec[] objects;
 	String cycleType;
-	int timeout;
 	AtomicIntegerArray settingsArr;
 	boolean validate;
 	int runTime;
@@ -60,7 +59,7 @@ public abstract class RWTask implements Runnable {
 		DBObjectSpec[] objects, 
 		int nBins, 
 		String cycleType, 
-		int timeout, 
+		WritePolicy policy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
@@ -76,7 +75,7 @@ public abstract class RWTask implements Runnable {
 		this.objects     = objects;
 		this.nBins       = nBins;
 		this.cycleType   = cycleType;
-		this.timeout     = timeout;
+		this.policy      = policy;
 		this.settingsArr = settingsArr;
 		this.validate    = validate;
 		this.runTime     = runTime;
@@ -84,13 +83,16 @@ public abstract class RWTask implements Runnable {
 		this.debug       = debug;
 
 		this.timeElapsed = counters.timeElapsed;
-		this.rgen = new Random(System.currentTimeMillis());
 		
-		policy = new WritePolicy();
-		policy.timeout = timeout;
-		
+		// Use default constructor which uses a different seed for each invocation.
+		// Do not use System.currentTimeMillis() for a seed because it is often
+		// the same across concurrent threads, thus causing hot keys.
+		this.rgen = new Random();
+				
 		writePolicyGeneration = new WritePolicy();
-		writePolicyGeneration.timeout = timeout;
+		writePolicyGeneration.timeout = policy.timeout;
+		writePolicyGeneration.maxRetries = policy.maxRetries;
+		writePolicyGeneration.sleepBetweenRetries = policy.sleepBetweenRetries;
 		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
 	}	
@@ -307,41 +309,43 @@ public abstract class RWTask implements Runnable {
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		counters.write.fail.getAndIncrement();
-		
-		if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-			counters.generationErrCnt.getAndIncrement();					
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+			counters.write.timeouts.getAndIncrement();
 		}
-		
-		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
-			//System.out.println(ae.getMessage());
-			ae.printStackTrace();
+		else {			
+			counters.write.errors.getAndIncrement();
+			
+			if (debug) {
+				ae.printStackTrace();
+			}
 		}
 	}
 
 	protected void writeFailure(Exception e) {
-		counters.write.fail.getAndIncrement();
+		counters.write.errors.getAndIncrement();
 		
 		if (debug) {
-			//System.out.println(ae.getMessage());
 			e.printStackTrace();
 		}
 	}
 	
 	protected void readFailure(AerospikeException ae) {
-		counters.read.fail.getAndIncrement();
-		
-		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
-			//System.out.println(ae.getMessage());
-			ae.printStackTrace();
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+			counters.read.timeouts.getAndIncrement();
+		}
+		else {			
+			counters.read.errors.getAndIncrement();
+			
+			if (debug) {
+				ae.printStackTrace();
+			}
 		}
 	}
 
 	protected void readFailure(Exception e) {
-		counters.read.fail.getAndIncrement();
+		counters.read.errors.getAndIncrement();
 		
 		if (debug) {
-			//System.out.println(ae.getMessage());
 			e.printStackTrace();
 		}
 	}

@@ -12,7 +12,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.task.RegisterTask;
 
 public class UserDefinedFunction extends Example {
 
@@ -39,12 +39,8 @@ public class UserDefinedFunction extends Example {
 	}
 	
 	private void register(AerospikeClient client, Parameters params) throws Exception {
-		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
-		
-		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
-		// may return before the UDF is available on all nodes.  Hard code sleep for now.
-		// TODO: Fix server so control is only returned when UDF registration is complete.
-		Util.sleep(1000);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		task.waitTillComplete();
 	}
 
 	private void writeUsingUdf(AerospikeClient client, Parameters params) throws Exception {	

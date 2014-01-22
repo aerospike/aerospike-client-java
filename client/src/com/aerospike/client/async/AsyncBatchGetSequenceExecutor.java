@@ -15,7 +15,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.Policy;
 
@@ -33,14 +32,15 @@ public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 		super(cluster, keys);
 		this.listener = listener;
 		
+		if (policy == null) {
+			policy = new Policy();
+		}
+
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				Command command = new Command();
-				command.setBatchGet(batchNamespace, binNames, readAttr);
-				
-				AsyncBatchGetSequence async = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, binNames, listener);
-				async.execute(policy, command);
+				AsyncBatchGetSequence async = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, binNames, listener, readAttr);
+				async.execute();
 			}
 		}
 	}

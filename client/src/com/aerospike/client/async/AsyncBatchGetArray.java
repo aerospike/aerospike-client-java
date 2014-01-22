@@ -17,25 +17,46 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.command.BatchItem;
+import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchGetArray extends AsyncMultiCommand {
+	private final BatchNode.BatchNamespace batchNamespace;
+	private final Policy policy;
 	private final HashMap<Key,BatchItem> keyMap;
 	private final Record[] records;
+	private final int readAttr;
 	
 	public AsyncBatchGetArray(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
 		AsyncNode node,
+		BatchNode.BatchNamespace batchNamespace,
+		Policy policy,
 		HashMap<Key,BatchItem> keyMap,
 		HashSet<String> binNames,
-		Record[] records
+		Record[] records,
+		int readAttr
 	) {
 		super(parent, cluster, node, false, binNames);
+		this.batchNamespace = batchNamespace;
+		this.policy = policy;
 		this.keyMap = keyMap;
 		this.records = records;
+		this.readAttr = readAttr;
 	}
 		
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setBatchGet(batchNamespace, binNames, readAttr);
+	}
+
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {		
 		BatchItem item = keyMap.get(key);

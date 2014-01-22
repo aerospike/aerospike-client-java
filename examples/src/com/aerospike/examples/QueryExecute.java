@@ -11,7 +11,9 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.util.Util;
+import com.aerospike.client.task.ExecuteTask;
+import com.aerospike.client.task.IndexTask;
+import com.aerospike.client.task.RegisterTask;
 
 public class QueryExecute extends Example {
 
@@ -43,12 +45,8 @@ public class QueryExecute extends Example {
 	}
 	
 	private void register(AerospikeClient client, Parameters params) throws Exception {
-		client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
-		
-		// The server UDF distribution to other nodes is done asynchronously.  Therefore, the server
-		// may return before the UDF is available on all nodes.  Hard code sleep for now.
-		// TODO: Fix server so control is only returned when UDF registration is complete.
-		Util.sleep(1000);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		task.waitTillComplete();
 	}
 
 	private void createIndex(
@@ -62,13 +60,8 @@ public class QueryExecute extends Example {
 		
 		Policy policy = new Policy();
 		policy.timeout = 0; // Do not timeout on index create.
-		client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-		
-		// The server index command distribution to other nodes is done asynchronously.  
-		// Therefore, the server may return before the index is available on all nodes.  
-		// Hard code sleep for now.
-		// TODO: Fix server so control is only returned when index is available on all nodes.
-		Util.sleep(1000);
+		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+		task.waitTillComplete();
 	}
 
 	private void writeRecords(
@@ -108,9 +101,10 @@ public class QueryExecute extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilters(Filter.range(binName1, begin, end));
 		
-		client.execute(params.policy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
+		ExecuteTask task = client.execute(params.policy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
+		task.waitTillComplete();
 	}
-	
+
 	private void validateRecords(
 		AerospikeClient client,
 		Parameters params,

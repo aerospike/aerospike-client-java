@@ -27,7 +27,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	
 	private final AsyncMultiExecutor parent;
 	private final AsyncNode node;
-	private final HashSet<String> binNames;
+	protected final HashSet<String> binNames;
 	protected byte[] receiveBuffer;
 	protected int receiveSize;
 	protected int receiveOffset;
@@ -37,7 +37,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	protected int fieldCount;
 	protected int opCount;
 	private final boolean stopOnNotFound;
-	private boolean inHeader = true;
 		
 	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound) {
 		super(cluster);

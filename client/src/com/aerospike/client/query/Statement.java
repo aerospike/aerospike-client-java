@@ -57,6 +57,10 @@ public final class Statement {
 	
 	/**
 	 * Set optional query filters.
+	 * Currently, only one filter is allowed by the server on a secondary index lookup.
+	 * If multiple filters are necessary, see QueryFilter example for a workaround.
+	 * QueryFilter demonstrates how to add additional filters in an user-defined 
+	 * aggregation function. 
 	 */
 	public void setFilters(Filter... filters) {
 		this.filters = filters;
@@ -85,6 +89,20 @@ public final class Statement {
 	}
 	
 	/**
+	 * Return if full namespace/set scan is specified.
+	 */
+	public boolean isScan() {
+		return filters == null;
+	}
+
+	/**
+	 * Return query filters.
+	 */
+	public Filter[] getFilters() {
+		return filters;
+	}
+
+	/**
 	 * Return aggregation file name.
 	 */
 	public String getPackageName() {
@@ -103,5 +121,12 @@ public final class Statement {
 	 */
 	public Value[] getFunctionArgs() {
 		return functionArgs;
+	}
+	
+	/**
+	 * Return task ID.
+	 */
+	public int getTaskId() {
+		return taskId;
 	}
 }

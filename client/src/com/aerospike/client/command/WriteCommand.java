@@ -10,35 +10,47 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public final class WriteCommand extends SingleCommand {
+	private final WritePolicy policy;
+	private final Bin[] bins;
+	private final Operation.Type operation;
 
-	public WriteCommand(Cluster cluster, Key key) {
+	public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
 		super(cluster, key);
+		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.bins = bins;
+		this.operation = operation;
 	}
 
-	protected void parseResult(InputStream is) throws AerospikeException, IOException {
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setWrite(policy, operation, key, bins);
+	}
+
+	protected void parseResult(Connection conn) throws AerospikeException, IOException {
 		// Read header.		
-		readFully(is, receiveBuffer, MSG_TOTAL_HEADER_SIZE);
+		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 	
-		long sz = Buffer.bytesToLong(receiveBuffer, 0);
-		byte headerLength = receiveBuffer[8];
-		int resultCode = receiveBuffer[13] & 0xFF;
-		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
-				
-		// Read remaining message bytes.
-        if (receiveSize > 0) {
-        	resizeReceiveBuffer(receiveSize);
-    		readFully(is, receiveBuffer, receiveSize);
-        }
-        
+		int resultCode = dataBuffer[13] & 0xFF;
+		
 	    if (resultCode != 0) {
 	    	throw new AerospikeException(resultCode);        	
 	    }        	
+	    emptySocket(conn);
 	}
 }

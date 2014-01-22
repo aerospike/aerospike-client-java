@@ -52,6 +52,20 @@ public final class Bin {
 	}
 	
 	/**
+	 * Constructor, specifying bin name and byte array segment value.
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 * 
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		byte array value
+	 * @param offset	byte array segment offset
+	 * @param length	byte array segment length
+	 */
+	public Bin(String name, byte[] value, int offset, int length) {
+		this.name = name;
+		this.value = Value.get(value, offset, length);
+	}
+
+	/**
 	 * Constructor, specifying bin name and integer value.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 

@@ -21,17 +21,42 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends MultiCommand {
+	private final BatchNode.BatchNamespace batchNamespace;
+	private final Policy policy;
 	private final HashMap<Key,BatchItem> keyMap;
 	private final HashSet<String> binNames;
 	private final Record[] records;
+	private final int readAttr;
 
-	public BatchCommandGet(Node node, HashMap<Key,BatchItem> keyMap, HashSet<String> binNames, Record[] records) {
+	public BatchCommandGet(
+		Node node,
+		BatchNode.BatchNamespace batchNamespace,
+		Policy policy,		
+		HashMap<Key,BatchItem> keyMap,
+		HashSet<String> binNames,
+		Record[] records,
+		int readAttr
+	) {
 		super(node);
+		this.batchNamespace = batchNamespace;
+		this.policy = policy;
 		this.keyMap = keyMap;
 		this.binNames = binNames;
 		this.records = records;
+		this.readAttr = readAttr;
+	}
+
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setBatchGet(batchNamespace, binNames, readAttr);
 	}
 
 	/**
@@ -40,11 +65,11 @@ public final class BatchCommandGet extends MultiCommand {
 	 */
 	protected boolean parseRecordResults(int receiveSize) throws AerospikeException, IOException {
 		//Parse each message response and add it to the result array
-		receiveOffset = 0;
+		dataOffset = 0;
 		
-		while (receiveOffset < receiveSize) {
+		while (dataOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5] & 0xFF;
+			int resultCode = dataBuffer[5] & 0xFF;
 
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.
@@ -52,17 +77,17 @@ public final class BatchCommandGet extends MultiCommand {
 				throw new AerospikeException(resultCode);								
 			}
 			
-			byte info3 = receiveBuffer[3];
+			byte info3 = dataBuffer[3];
 
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			
-			int generation = Buffer.bytesToInt(receiveBuffer, 6);
-			int expiration = Buffer.bytesToInt(receiveBuffer, 10);
-			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			Key key = parseKey(fieldCount);
 			BatchItem item = keyMap.get(key);
 			
@@ -93,17 +118,17 @@ public final class BatchCommandGet extends MultiCommand {
 		
 		for (int i = 0 ; i < opCount; i++) {
     		readBytes(8);	
-			int opSize = Buffer.bytesToInt(receiveBuffer, 0);
-			byte particleType = receiveBuffer[5];
-			byte version = receiveBuffer[6];
-			byte nameSize = receiveBuffer[7];
+			int opSize = Buffer.bytesToInt(dataBuffer, 0);
+			byte particleType = dataBuffer[5];
+			byte version = dataBuffer[6];
+			byte nameSize = dataBuffer[7];
 			
 			readBytes(nameSize);
-			String name = Buffer.utf8ToString(receiveBuffer, 0, nameSize);
+			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
-	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, 0, particleBytesSize);
+	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
 	
 			// Currently, the batch command returns all the bins even if a subset of
 			// the bins are requested. We have to filter it on the client side.

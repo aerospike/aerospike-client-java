@@ -16,6 +16,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Synchronous read/write task.
@@ -32,39 +33,79 @@ public class RWTaskSync extends RWTask {
 		DBObjectSpec[] objects, 
 		int nBins, 
 		String cycleType, 
-		int timeout, 
+		WritePolicy policy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, timeout, settingsArr, validate, runTime, counters, debug);		
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, policy, settingsArr, validate, runTime, counters, debug);		
 	}
 		
 	protected void put(Key key, Bin[] bins) throws AerospikeException {
-		client.put(policy, key, bins);
-		counters.write.count.getAndIncrement();
+		if (counters.write.latency != null) {
+			long begin = System.currentTimeMillis();
+			client.put(policy, key, bins);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+		else {
+			client.put(policy, key, bins);
+			counters.write.count.getAndIncrement();			
+		}
 	}
 	
 	protected void add(Key key, Bin[] bins) throws AerospikeException {
-		client.add(writePolicyGeneration, key, bins);
-		counters.write.count.getAndIncrement();
+		if (counters.write.latency != null) {
+			long begin = System.currentTimeMillis();
+			client.add(writePolicyGeneration, key, bins);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+		else {
+			client.add(writePolicyGeneration, key, bins);
+			counters.write.count.getAndIncrement();
+		}
 	}
 
 	protected void get(int keyIdx, Key key, String binName) throws AerospikeException {
-		Record record = client.get(policy, key, binName);
-		counters.read.count.getAndIncrement();
-				
+		Record record;
+		
+		if (counters.read.latency != null) {
+			long begin = System.currentTimeMillis();
+			record = client.get(policy, key, binName);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.read.count.getAndIncrement();			
+			counters.read.latency.add(elapsed);
+		}
+		else {
+			record = client.get(policy, key, binName);
+			counters.read.count.getAndIncrement();
+		}
+
 		if (this.validate) {
 			validateRead(keyIdx, record);
 		}
 	}
 	
 	protected void get(int keyIdx, Key key) throws AerospikeException {
-		Record record = client.get(policy, key);
-		counters.read.count.getAndIncrement();
+		Record record;
 		
+		if (counters.read.latency != null) {
+			long begin = System.currentTimeMillis();
+			record = client.get(policy, key);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.read.count.getAndIncrement();			
+			counters.read.latency.add(elapsed);
+		}
+		else {
+			record = client.get(policy, key);
+			counters.read.count.getAndIncrement();
+		}
+	
 		if (this.validate) {
 			validateRead(keyIdx, record);
 		}

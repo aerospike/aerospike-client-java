@@ -11,18 +11,18 @@ package com.aerospike.client.util;
 
 import com.aerospike.client.Log;
 
-public final class ThreadLocalData2 {
+public final class ThreadLocalData {
 	//private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
 	private static final int THREAD_LOCAL_CUTOFF = 1024 * 128;  // 128 KB
 	
-	private static final ThreadLocal<byte[]> BufferThreadLocal2 = new ThreadLocal<byte[]>() {
+	private static final ThreadLocal<byte[]> BufferThreadLocal = new ThreadLocal<byte[]>() {
 		@Override protected byte[] initialValue() {
 			return new byte[8192];
 		}
 	};
 		
 	public static byte[] getBuffer() {
-		return BufferThreadLocal2.get();
+		return BufferThreadLocal.get();
 	}
 	
 	public static byte[] resizeBuffer(int size) {
@@ -30,19 +30,19 @@ public final class ThreadLocalData2 {
 		if (size > THREAD_LOCAL_CUTOFF) {
 			/*
 			if (size > MAX_BUFFER_SIZE) {
-				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid buffer2 size: " + size);
+				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid buffer size: " + size);
 			}*/
 			
 			if (Log.debugEnabled()) {
-				Log.debug("Thread " + Thread.currentThread().getId() + " allocate buffer2 on heap " + size);
+				Log.debug("Thread " + Thread.currentThread().getId() + " allocate buffer on heap " + size);
 			}
 			return new byte[size];		
 		}
 
 		if (Log.debugEnabled()) {
-			Log.debug("Thread " + Thread.currentThread().getId() + " resize buffer2 to " + size);
+			Log.debug("Thread " + Thread.currentThread().getId() + " resize buffer to " + size);
 		}
-		BufferThreadLocal2.set(new byte[size]);
-		return BufferThreadLocal2.get();
+		BufferThreadLocal.set(new byte[size]);
+		return BufferThreadLocal.get();
 	}	
 }

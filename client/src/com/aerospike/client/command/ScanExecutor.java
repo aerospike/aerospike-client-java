@@ -30,7 +30,7 @@ public final class ScanExecutor {
 		int count = 0;
 		
 		for (Node node : nodes) {
-			ScanCommand command = new ScanCommand(node, callback);
+			ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames);
 			ScanThread thread = new ScanThread(command);
 			threads[count++] = thread;
 			thread.start();
@@ -74,8 +74,6 @@ public final class ScanExecutor {
     }
 
     private final class ScanThread extends Thread {
-		// It's ok to construct ScanCommand in another thread,
-		// because ScanCommand no longer uses thread local data.
 		private final ScanCommand command;
 
 		public ScanThread(ScanCommand command) {
@@ -84,8 +82,7 @@ public final class ScanExecutor {
 		
 		public void run() {
 			try {
-				command.setScan(policy, namespace, setName, binNames);
-				command.execute(policy);
+				command.execute();
 			}
 			catch (Exception e) {
 				// Terminate other scan threads.

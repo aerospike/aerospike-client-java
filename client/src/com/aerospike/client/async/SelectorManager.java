@@ -117,8 +117,7 @@ public final class SelectorManager extends Thread {
 		    	command.conn.register(command, selector);
 	    	}
     		catch (Exception e) {
-    			// Connection will be released in this method.
-    			command.failConnection(new AerospikeException(e));
+            	command.retryAfterInit(new AerospikeException(e));
     		}	    	
     	}    	
     }
@@ -162,14 +161,19 @@ public final class SelectorManager extends Thread {
         		key.interestOps(SelectionKey.OP_WRITE);
         	}
         }
+        catch (AerospikeException.Connection ac) {
+        	command.retryAfterInit(ac);
+        }
         catch (AerospikeException ae) {
-			command.failCommand(ae);
+			// Fail without retry on non-network errors.
+			command.failOnApplicationError(ae);
         }
         catch (IOException ioe) {
-			command.failCommand(ioe);
+        	command.retryAfterInit(new AerospikeException(ioe));
         }
         catch (Exception e) {
-			command.failCommand(new AerospikeException(e));
+			// Fail without retry on unknown errors.
+			command.failOnApplicationError(new AerospikeException(e));
         }
     }
  	

@@ -20,11 +20,10 @@ import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaNil;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaValue;
-import org.msgpack.packer.Packer;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.util.MsgPacker;
+import com.aerospike.client.util.Packer;
 
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
@@ -44,6 +43,13 @@ public abstract class Value {
 		return (value == null)? new NullValue() : new BytesValue(value);
 	}
 	
+	/**
+	 * Get byte segment or null value instance.
+	 */
+	public static Value get(byte[] value, int offset, int length) {
+		return (value == null)? new NullValue() : new ByteSegmentValue(value, offset, length);
+	}
+
 	/**
 	 * Get integer value instance.
 	 */
@@ -167,7 +173,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			packer.writeNil();
+			packer.packNil();
 		}
 
 		@Override
@@ -215,7 +221,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packBytes(packer, bytes);
+			packer.packBytes(bytes);
 		}
 
 		@Override
@@ -236,6 +242,70 @@ public abstract class Value {
 		@Override
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
+		}
+	}
+
+	/**
+	 * Byte segment value.
+	 */
+	public static final class ByteSegmentValue extends Value {		
+		private final byte[] bytes;
+		private final int offset;
+		private final int length;
+
+		public ByteSegmentValue(byte[] bytes, int offset, int length) {
+			this.bytes = bytes;
+			this.offset = offset;
+			this.length = length;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return length;
+
+		}
+		
+		@Override
+		public int write(byte[] buffer, int targetOffset) {
+			System.arraycopy(bytes, offset, buffer, targetOffset, length);
+			return length;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.packBytes(bytes, offset, length);
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.BLOB;
+		}
+		
+		@Override
+		public Object getObject() {
+			return this;
+		}
+		
+		@Override
+		public LuaValue getLuaValue() {
+			return LuaString.valueOf(bytes, offset, length);
+		}
+
+		@Override
+		public String toString() {
+			return Buffer.bytesToHexString(bytes, offset, length);
+		}
+		
+		public byte[] getBytes() {
+			return bytes;
+		}
+
+		public int getOffset() {
+			return offset;
+		}
+
+		public int getLength() {
+			return length;
 		}
 	}
 
@@ -261,7 +331,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packString(packer, value);
+			packer.packString(value);
 		}
 
 		@Override
@@ -308,7 +378,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			packer.write(value);
+			packer.packInt(value);
 		}
 
 		@Override
@@ -355,7 +425,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			packer.write(value);
+			packer.packLong(value);
 		}
 
 		@Override
@@ -413,7 +483,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packBlob(packer, object);
+			packer.packBlob(object);
 		}
 
 		@Override
@@ -451,7 +521,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPacker.pack(array);
+			bytes = Packer.pack(array);
 			return bytes.length;
 		}
 		
@@ -463,7 +533,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packValueArray(packer, array);
+			packer.packValueArray(array);
 		}
 
 		@Override
@@ -501,7 +571,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPacker.pack(list);
+			bytes = Packer.pack(list);
 			return bytes.length;
 		}
 		
@@ -513,7 +583,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packList(packer, list);
+			packer.packList(list);
 		}
 
 		@Override
@@ -551,7 +621,7 @@ public abstract class Value {
 		
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = MsgPacker.pack(map);
+			bytes = Packer.pack(map);
 			return bytes.length;
 		}
 		
@@ -563,7 +633,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) throws IOException {
-			MsgPacker.packMap(packer, map);
+			packer.packMap(map);
 		}
 
 		@Override

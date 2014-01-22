@@ -10,7 +10,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,33 +19,48 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.policy.Policy;
 
-public final class ReadCommand extends SingleCommand {
+public class ReadCommand extends SingleCommand {
+	private final Policy policy;
+	private final String[] binNames;
 	private Record record;
-	private int resultCode;
 
-	public ReadCommand(Cluster cluster, Key key) {
+	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
 		super(cluster, key);
+		this.policy = (policy == null) ? new Policy() : policy;
+		this.binNames = binNames;
 	}
 	
-	protected void parseResult(InputStream is) throws AerospikeException, IOException {
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setRead(key, binNames);
+	}
+
+	protected void parseResult(Connection conn) throws AerospikeException, IOException {
 		// Read header.		
-		readFully(is, receiveBuffer, MSG_TOTAL_HEADER_SIZE);
+		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 	
         // A number of these are commented out because we just don't care enough to read
         // that section of the header. If we do care, uncomment and check!        
-		long sz = Buffer.bytesToLong(receiveBuffer, 0);
-		byte headerLength = receiveBuffer[8];
+		long sz = Buffer.bytesToLong(dataBuffer, 0);
+		byte headerLength = dataBuffer[8];
 //		byte info1 = header[9];
 //		byte info2 = header[10];
 //      byte info3 = header[11];
 //      byte unused = header[12];
-		resultCode = receiveBuffer[13] & 0xFF;
-		int generation = Buffer.bytesToInt(receiveBuffer, 14);
-		int expiration = Buffer.bytesToInt(receiveBuffer, 18);
+		int resultCode = dataBuffer[13] & 0xFF;
+		int generation = Buffer.bytesToInt(dataBuffer, 14);
+		int expiration = Buffer.bytesToInt(dataBuffer, 18);
 //		int transactionTtl = get_ntohl(header, 22);
-		int fieldCount = Buffer.bytesToShort(receiveBuffer, 26); // almost certainly 0
-		int opCount = Buffer.bytesToShort(receiveBuffer, 28);
+		int fieldCount = Buffer.bytesToShort(dataBuffer, 26); // almost certainly 0
+		int opCount = Buffer.bytesToShort(dataBuffer, 28);
 		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
 		/*
 		byte version = (byte) (((int)(sz >> 56)) & 0xff);
@@ -71,8 +85,8 @@ public final class ReadCommand extends SingleCommand {
 				
 		// Read remaining message bytes.
         if (receiveSize > 0) {
-        	resizeReceiveBuffer(receiveSize);
-    		readFully(is, receiveBuffer, receiveSize);
+        	sizeBuffer(receiveSize);
+    		conn.readFully(dataBuffer, receiveSize);
         }
         
         if (resultCode != 0) {
@@ -82,7 +96,7 @@ public final class ReadCommand extends SingleCommand {
         	
         	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
                 record = parseRecord(opCount, fieldCount, generation, expiration);
-                handleUdfError();
+                handleUdfError(resultCode);
         	}
         	throw new AerospikeException(resultCode);
         }
@@ -95,7 +109,7 @@ public final class ReadCommand extends SingleCommand {
         record = parseRecord(opCount, fieldCount, generation, expiration);            
 	}
 	
-	private void handleUdfError() throws AerospikeException {	
+	private void handleUdfError(int resultCode) throws AerospikeException {	
 		String ret = (String)record.bins.get("FAILURE");
 		
 		if (ret != null) {
@@ -132,23 +146,21 @@ public final class ReadCommand extends SingleCommand {
 		if (fieldCount != 0) {
 			// Just skip over all the fields
 			for (int i = 0; i < fieldCount; i++) {
-				int fieldSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
+				int fieldSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
 				receiveOffset += 4 + fieldSize;
 			}
 		}
 	
 		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			byte particleType = receiveBuffer[receiveOffset+5];
-			byte version = receiveBuffer[receiveOffset+6];
-			byte nameSize = receiveBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
+			int opSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
+			byte particleType = dataBuffer[receiveOffset+5];
+			byte version = dataBuffer[receiveOffset+6];
+			byte nameSize = dataBuffer[receiveOffset+7];
+			String name = Buffer.utf8ToString(dataBuffer, receiveOffset+8, nameSize);
 			receiveOffset += 4 + 4 + nameSize;
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
-	        Object value = null;
-	        
-			value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
+	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
 	
 			Map<String,Object> vmap = null;
@@ -194,9 +206,5 @@ public final class ReadCommand extends SingleCommand {
 	
 	public Record getRecord() {
 		return record;
-	}
-	
-	public int getResultCode() {
-		return resultCode;
 	}
 }

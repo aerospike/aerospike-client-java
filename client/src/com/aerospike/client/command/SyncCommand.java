@@ -9,10 +9,7 @@
  */
 package com.aerospike.client.command;
 
-import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
@@ -23,36 +20,33 @@ import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {
 
-	protected byte[] receiveBuffer;
-		
-	public final void execute(Policy policy) throws AerospikeException {
-		if (policy == null) {
-			policy = new Policy();
-		}
-		        
-		int maxIterations = policy.maxRetries + 1;
+	public final void execute() throws AerospikeException {
+		Policy policy = getPolicy();        
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
         int failedNodes = 0;
         int failedConns = 0;
-        int i;
+        int iterations = 0;
 
         // Execute command until successful, timed out or maximum iterations have been reached.
-		for (i = 0; i < maxIterations; i++) {
+		while (true) {
 			Node node = null;
 			try {		
 				node = getNode();
 				Connection conn = node.getConnection(remainingMillis);
 				
 				try {
+					// Set command buffer.
+					writeBuffer();
+
 					// Reset timeout in send buffer (destined for server) and socket.
-					Buffer.intToBytes(remainingMillis, sendBuffer, 22);
+					Buffer.intToBytes(remainingMillis, dataBuffer, 22);
 					
 					// Send command.
-					send(conn);
+					conn.write(dataBuffer, dataOffset);
 					
 					// Parse results.
-					parseResult(conn.getInputStream());
+					parseResult(conn);
 					
 					// Reflect healthy status.
 					conn.updateLastUsed();
@@ -102,58 +96,33 @@ public abstract class SyncCommand extends Command {
 				failedConns++;	
 			}
 
+			if (++iterations > policy.maxRetries) {
+				break;
+			}
+			
 			// Check for client timeout.
 			if (policy.timeout > 0) {
-				remainingMillis = (int)(limit - System.currentTimeMillis());
-
+				remainingMillis = (int)(limit - System.currentTimeMillis() - policy.sleepBetweenRetries);
+				
 				if (remainingMillis <= 0) {
 					break;
 				}
 			}
-			// Sleep before trying again.
-			Util.sleep(policy.sleepBetweenRetries);
+			
+			if (policy.sleepBetweenRetries > 0) {
+				// Sleep before trying again.
+				Util.sleep(policy.sleepBetweenRetries);
+			}
 		}
 		
+		/*
 		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + i + 
+			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + iterations + 
 				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
-		}
-		throw new AerospikeException.Timeout();
+		}*/
+		throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
 	}
-	
-	private final void send(Connection conn) throws IOException {
-		final OutputStream os = conn.getOutputStream();
 		
-		// Never write more than 8 KB at a time.  Apparently, the jni socket write does an extra 
-		// malloc and free if buffer size > 8 KB.
-		final int max = sendOffset;
-		int pos = 0;
-		int len;
-		
-		while (pos < max) {
-			len = max - pos;
-			
-			if (len > 8192)
-				len = 8192;
-			
-			os.write(sendBuffer, pos, len);
-			pos += len;
-		}
-	}
-	
-	public static void readFully(InputStream is, byte[] buf, int length) throws IOException {
-		int pos = 0;
-	
-		while (pos < length) {
-			int count = is.read(buf, pos, length - pos);
-		    
-			if (count < 0)
-		    	throw new EOFException();
-			
-			pos += count;
-		}
-	}
-	
 	protected abstract Node getNode() throws AerospikeException.InvalidNode;
-	protected abstract void parseResult(InputStream is) throws AerospikeException, IOException;
+	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 }

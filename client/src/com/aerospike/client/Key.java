@@ -15,7 +15,7 @@ import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.util.ThreadLocalData1;
+import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Unique record identifier. Records can be identified using a specified namespace,
@@ -79,6 +79,27 @@ public final class Key {
 		this.setName = setName;
 		this.userKey = key;
 		digest = computeDigest(setName, new Value.BytesValue(key));
+	}
+
+	/**
+	 * Initialize key from namespace, optional set name and user key.
+	 * The set name and user defined key are converted to a digest before sending to the server.
+	 * The server handles record identifiers by digest only.
+	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * 
+	 * @param namespace				namespace
+	 * @param setName				optional set name, enter null when set does not exist
+	 * @param key					user defined unique identifier within set.
+	 * @param offset				byte array segment offset
+	 * @param length				byte array segment length
+	 * @throws AerospikeException	if digest computation fails
+	 */
+	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
+		this.namespace = namespace; 
+		this.setName = setName;
+		Value value = new Value.ByteSegmentValue(key, offset, length);
+		this.userKey = value;
+		digest = computeDigest(setName, value);
 	}
 
 	/**
@@ -221,7 +242,7 @@ public final class Key {
 		
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
-		byte[] buffer = ThreadLocalData1.getBuffer();
+		byte[] buffer = ThreadLocalData.getBuffer();
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
 		buffer[setLength] = (byte)keyType;		

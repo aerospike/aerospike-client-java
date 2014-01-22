@@ -12,17 +12,20 @@ package com.aerospike.client.lua;
 import java.util.List;
 import java.util.Map;
 
+import org.luaj.vm2.LuaBoolean;
+import org.luaj.vm2.LuaDouble;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaNumber;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaValue;
 
-import com.aerospike.client.util.MsgUnpacker;
+import com.aerospike.client.util.Unpacker;
 
-public class LuaUnpacker extends MsgUnpacker<LuaValue> {		
+public class LuaUnpacker extends Unpacker<LuaValue> {		
 	private LuaInstance instance;
 	
-	public LuaUnpacker(LuaInstance instance) {
+	public LuaUnpacker(LuaInstance instance, byte[] buffer, int offset, int length) {
+		super(buffer, offset, length);
 		this.instance = instance;
 	}
 			
@@ -54,5 +57,15 @@ public class LuaUnpacker extends MsgUnpacker<LuaValue> {
 	@Override
 	protected LuaNumber getLong(long value) {
 		return LuaInteger.valueOf(value);
+	}
+	
+	@Override
+	protected LuaNumber getDouble(double value) {
+		return LuaDouble.valueOf(value);
+	}
+	
+	@Override
+	protected LuaBoolean getBoolean(boolean value) {
+		return LuaBoolean.valueOf(value);
 	}
 }

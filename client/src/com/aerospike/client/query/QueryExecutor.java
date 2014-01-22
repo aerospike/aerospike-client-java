@@ -15,7 +15,7 @@ import com.aerospike.client.policy.QueryPolicy;
 
 public abstract class QueryExecutor {
 	
-	private final QueryPolicy policy;
+	protected final QueryPolicy policy;
 	protected final Statement statement;
 	private QueryThread[] threads;
 	private volatile int nextThread;
@@ -84,14 +84,16 @@ public abstract class QueryExecutor {
 	    	exception = cause;  		
     	}
     	
-		for (QueryThread thread : threads) {
-			try {
-				thread.stopThread();
-				thread.interrupt();
+    	if (threads != null) {
+			for (QueryThread thread : threads) {
+				try {
+					thread.stopThread();
+					thread.interrupt();
+				}
+				catch (Exception e) {
+				}
 			}
-			catch (Exception e) {
-			}
-		}
+    	}
 		sendCompleted();
     }
 
@@ -108,8 +110,6 @@ public abstract class QueryExecutor {
 	}
 
 	private final class QueryThread extends Thread {
-		// It's ok to construct QueryCommand in another thread,
-		// because QueryCommand no longer uses thread local data.
 		private final QueryCommand command;
 		private boolean complete;
 
@@ -119,7 +119,7 @@ public abstract class QueryExecutor {
 
 		public void run() {
 			try {
-				command.query(policy, statement);
+				command.execute();
 			}
 			catch (Exception e) {
 				// Terminate other query threads.

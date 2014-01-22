@@ -25,9 +25,9 @@ public abstract class InsertTask implements Runnable {
 	final int nKeys;
 	final int keySize;
 	final int nBins;	
-	final int timeout;
-	final CounterStore counters;
+	final WritePolicy policy;
 	final DBObjectSpec[] spec;
+	final CounterStore counters;
 	final boolean debug;
 	
 	public InsertTask(
@@ -37,7 +37,7 @@ public abstract class InsertTask implements Runnable {
 		int nKeys, 
 		int keySize, 
 		int nBins, 
-		int timeout, 
+		WritePolicy policy, 
 		DBObjectSpec[] spec, 
 		CounterStore counters,
 		boolean debug
@@ -48,21 +48,18 @@ public abstract class InsertTask implements Runnable {
 		this.nKeys = nKeys;
 		this.keySize = keySize;
 		this.nBins = nBins;
-		this.counters = counters;
+		this.policy = policy;
 		this.spec = spec;
-		this.timeout = timeout;
+		this.counters = counters;
 		this.debug = debug;
 	}
 
 	public void run() {
-		try {
-			WritePolicy policy = new WritePolicy();
-			policy.timeout = timeout;
-			
+		try {			
 			String key;
 			Bin[] bins;			
 			Random r = new Random();
-			int i = this.counters.write.count.get();
+			int i = 0;
 
 			while (i < this.nKeys) {
 				key	 = Utils.genKey(this.startKey+i, this.keySize);
@@ -87,23 +84,22 @@ public abstract class InsertTask implements Runnable {
 	}
 	
 	protected void writeFailure(AerospikeException ae) {
-		counters.write.fail.getAndIncrement();
-		
-		if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-			counters.generationErrCnt.getAndIncrement();					
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+			counters.write.timeouts.getAndIncrement();
 		}
-		
-		if (debug && ae.getResultCode() != ResultCode.TIMEOUT) {
-			//System.out.println(ae.getMessage());
-			ae.printStackTrace();
+		else {			
+			counters.write.errors.getAndIncrement();
+			
+			if (debug) {
+				ae.printStackTrace();
+			}
 		}
 	}
 
 	protected void writeFailure(Exception e) {
-		counters.write.fail.getAndIncrement();
+		counters.write.errors.getAndIncrement();
 		
 		if (debug) {
-			//System.out.println(ae.getMessage());
 			e.printStackTrace();
 		}
 	}

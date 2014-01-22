@@ -28,22 +28,28 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		int nKeys, 
 		int keySize, 
 		int nBins, 
-		int timeout, 
+		WritePolicy policy, 
 		DBObjectSpec[] spec, 
 		CounterStore counters,
 		boolean debug
 	) {
-		super(namespace, setName, startKey, nKeys, keySize, nBins, timeout, spec, counters, debug);
+		super(namespace, setName, startKey, nKeys, keySize, nBins, policy, spec, counters, debug);
 		this.client = client;
 	}
 	
 	protected void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
-		if (counters.write.fail.get() > 0) {
+		if (counters.write.timeouts.get() > 0) {
 			Thread.yield();
 		}
-		client.put(policy, this, key, bins);
+		
+		if (counters.write.latency != null) {		
+			client.put(policy, new LatencyWriteHandler(), key, bins);
+		}
+		else {
+			client.put(policy, this, key, bins);
+		}
 	}
 
 	@Override
@@ -54,5 +60,25 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 	@Override
 	public void onFailure(AerospikeException ae) {
 		writeFailure(ae);
+	}
+	
+	private final class LatencyWriteHandler implements WriteListener {
+		private long begin;
+		
+		public LatencyWriteHandler() {
+			this.begin = System.currentTimeMillis();
+		}
+		
+		@Override
+		public void onSuccess(Key key) {
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+
+		@Override
+		public void onFailure(AerospikeException ae) {
+			writeFailure(ae);
+		}		
 	}
 }

@@ -10,42 +10,47 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public final class DeleteCommand extends SingleCommand {
-	
-	private int resultCode;
+	private final WritePolicy policy;
+	private boolean existed;
 
-	public DeleteCommand(Cluster cluster, Key key) {
+	public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) {
 		super(cluster, key);
+		this.policy = (policy == null) ? new WritePolicy() : policy;
 	}
 	
-	protected void parseResult(InputStream is) throws AerospikeException, IOException {
+	@Override
+	protected Policy getPolicy() {
+		return policy;
+	}
+
+	@Override
+	protected void writeBuffer() throws AerospikeException {
+		setDelete(policy, key);
+	}
+
+	protected void parseResult(Connection conn) throws AerospikeException, IOException {
 		// Read header.		
-		readFully(is, receiveBuffer, MSG_TOTAL_HEADER_SIZE);
+		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+		int resultCode = dataBuffer[13] & 0xFF;
 	
-		long sz = Buffer.bytesToLong(receiveBuffer, 0);
-		byte headerLength = receiveBuffer[8];
-		resultCode = receiveBuffer[13] & 0xFF;
-		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
-				
-		// Read remaining message bytes.
-        if (receiveSize > 0) {
-        	resizeReceiveBuffer(receiveSize);
-    		readFully(is, receiveBuffer, receiveSize);
-        }
-        
 	    if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
 	    	throw new AerospikeException(resultCode);        	
 	    }        	
+		existed = resultCode == 0;
+		emptySocket(conn);
 	}
 	
-	public int getResultCode() {
-		return resultCode;
+	public boolean existed() {
+		return existed;
 	}
 }

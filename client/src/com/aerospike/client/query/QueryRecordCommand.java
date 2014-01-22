@@ -20,24 +20,25 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.policy.Policy;
 
 public final class QueryRecordCommand extends QueryCommand {
 	
 	private final RecordSet recordSet;
 
-	public QueryRecordCommand(Node node, RecordSet recordSet) {
-		super(node);
+	public QueryRecordCommand(Node node, Policy policy, Statement statement, RecordSet recordSet) {
+		super(node, policy, statement);
 		this.recordSet = recordSet;
 	}
 
 	protected boolean parseRecordResults(int receiveSize) 
 		throws AerospikeException, IOException {
 		// Read/parse remaining message bytes one record at a time.
-		receiveOffset = 0;
+		dataOffset = 0;
 		
-		while (receiveOffset < receiveSize) {
+		while (dataOffset < receiveSize) {
     		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = receiveBuffer[5] & 0xFF;
+			int resultCode = dataBuffer[5] & 0xFF;
 			
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
@@ -46,17 +47,17 @@ public final class QueryRecordCommand extends QueryCommand {
 				throw new AerospikeException(resultCode);
 			}
 
-			byte info3 = receiveBuffer[3];
+			byte info3 = dataBuffer[3];
 			
 			// If this is the end marker of the response, do not proceed further
 			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
 				return false;
 			}
 			
-			int generation = Buffer.bytesToInt(receiveBuffer, 6);
-			int expiration = Buffer.bytesToInt(receiveBuffer, 10);
-			int fieldCount = Buffer.bytesToShort(receiveBuffer, 18);
-			int opCount = Buffer.bytesToShort(receiveBuffer, 20);
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			
 			Key key = parseKey(fieldCount);
 
@@ -65,16 +66,16 @@ public final class QueryRecordCommand extends QueryCommand {
 			
 			for (int i = 0 ; i < opCount; i++) {
 	    		readBytes(8);	
-				int opSize = Buffer.bytesToInt(receiveBuffer, 0);
-				byte particleType = receiveBuffer[5];
-				byte nameSize = receiveBuffer[7];
+				int opSize = Buffer.bytesToInt(dataBuffer, 0);
+				byte particleType = dataBuffer[5];
+				byte nameSize = dataBuffer[7];
 	    		
 				readBytes(nameSize);
-				String name = Buffer.utf8ToString(receiveBuffer, 0, nameSize);
+				String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
 		
 				int particleBytesSize = (int) (opSize - (4 + nameSize));
 				readBytes(particleBytesSize);
-		        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, 0, particleBytesSize);
+		        Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
 						
 				if (bins == null) {
 					bins = new HashMap<String,Object>();
