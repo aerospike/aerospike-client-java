@@ -11,7 +11,7 @@ package com.aerospike.client.async;
 
 import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -21,27 +21,33 @@ import com.aerospike.client.cluster.NodeValidator;
 
 public final class AsyncCluster extends Cluster {
 	// ByteBuffer pool used in asynchronous SocketChannel communications.
-	private final ArrayBlockingQueue<ByteBuffer> bufferQueue;
+	private final BufferQueue bufferQueue;
 	
 	// Asynchronous network selectors.
 	private final SelectorManagers selectorManagers;
-
-	// How to handle cases when the asynchronous maximum number of concurrent database commands 
-	// have been exceeded.  
-	private final MaxCommandAction maxCommandAction;
 	
-	// Commands currently used.
-	private final AtomicInteger commandsUsed;
-
 	// Maximum number of concurrent asynchronous commands.
 	private final int maxCommands;
 	
 	public AsyncCluster(AsyncClientPolicy policy, Host[] hosts) throws AerospikeException {
 		super(policy, hosts);
-		maxCommandAction = policy.asyncMaxCommandAction;	
 		maxCommands = policy.asyncMaxCommands;
-		commandsUsed = new AtomicInteger();
-		bufferQueue = new ArrayBlockingQueue<ByteBuffer>(policy.asyncMaxCommands);
+		
+		switch (policy.asyncMaxCommandAction) {
+		case ACCEPT:
+			bufferQueue = new AcceptBufferQueue();
+			break;
+			
+		case REJECT:
+			bufferQueue = new RejectBufferQueue(maxCommands);
+			break;
+			
+		case BLOCK:
+		default:
+			bufferQueue = new BlockBufferQueue(maxCommands);
+			break;
+		}
+		
 		selectorManagers = new SelectorManagers(policy);
 		initTendThread();
 	}
@@ -52,35 +58,11 @@ public final class AsyncCluster extends Cluster {
 	}
 
 	public ByteBuffer getByteBuffer() throws AerospikeException {
-		// If buffers available or always accept command, use standard non-blocking poll().
-		if (commandsUsed.incrementAndGet() <= maxCommands || maxCommandAction == MaxCommandAction.ACCEPT) {			
-			ByteBuffer byteBuffer = bufferQueue.poll();
-			
-			if (byteBuffer != null) {
-				return byteBuffer;
-			}
-			return ByteBuffer.allocateDirect(8192);
-		}
-		
-		// Max buffers exceeded.  Reject command if specified.
-		if (maxCommandAction == MaxCommandAction.REJECT) {
-			commandsUsed.decrementAndGet();
-			throw new AerospikeException.CommandRejected();
-		}
-		
-		// Block until buffer becomes available.
-		try {
-			return bufferQueue.take();	
-		}
-		catch (InterruptedException ie) {
-			commandsUsed.decrementAndGet();
-			throw new AerospikeException("Buffer pool take interrupted.");
-		}
+		return bufferQueue.getByteBuffer();
 	}
 	
 	public void putByteBuffer(ByteBuffer byteBuffer) {
-		commandsUsed.decrementAndGet();
-		bufferQueue.offer(byteBuffer);
+		bufferQueue.putByteBuffer(byteBuffer);
 	}
 	
 	public SelectorManager getSelectorManager() {
@@ -95,5 +77,106 @@ public final class AsyncCluster extends Cluster {
 	public void close() {
 		super.close();		
 		selectorManagers.close();
+	}
+	
+	private static interface BufferQueue {
+		public ByteBuffer getByteBuffer() throws AerospikeException;
+		public void putByteBuffer(ByteBuffer byteBuffer);
+	}
+	
+	/**
+	 * Block buffer queue is bounded and blocks until a buffer
+	 * becomes available.  This queue is a useful throttle to avoid
+	 * concurrent asynchronous commands overwhelming the client.
+	 */
+	private static final class BlockBufferQueue implements BufferQueue {
+		private final ArrayBlockingQueue<ByteBuffer> bufferQueue;
+
+		private BlockBufferQueue(int maxCommands) {		
+			// Preallocate byteBuffers.
+			bufferQueue = new ArrayBlockingQueue<ByteBuffer>(maxCommands);		
+			for (int i = 0; i < maxCommands; i++) {
+				bufferQueue.add(ByteBuffer.allocateDirect(8192));
+			}
+		}
+		
+		@Override
+		public ByteBuffer getByteBuffer() throws AerospikeException {			
+			try {
+				// Wait until byteBuffer becomes available.
+				return bufferQueue.take();
+			}
+			catch (InterruptedException ie) {
+				throw new AerospikeException("Buffer pool take interrupted.");
+			}
+		}
+		
+		@Override
+		public void putByteBuffer(ByteBuffer byteBuffer) {
+			bufferQueue.offer(byteBuffer);
+		}
+	}
+
+	/**
+	 * Reject buffer queue is bounded, but does not block.  
+	 * Commands are rejected when all buffers are being used.
+	 */
+	private static final class RejectBufferQueue implements BufferQueue {
+		private final ArrayBlockingQueue<ByteBuffer> bufferQueue;
+
+		private RejectBufferQueue(int maxCommands) {		
+			// Preallocate byteBuffers.
+			bufferQueue = new ArrayBlockingQueue<ByteBuffer>(maxCommands);		
+			for (int i = 0; i < maxCommands; i++) {
+				bufferQueue.add(ByteBuffer.allocateDirect(8192));
+			}
+		}
+		
+		@Override
+		public ByteBuffer getByteBuffer() throws AerospikeException {			
+			// Check if byteBuffer is available.
+			ByteBuffer byteBuffer = bufferQueue.poll();
+			if (byteBuffer == null) {
+				// Reject command when byteBuffer not available.
+				throw new AerospikeException.CommandRejected();
+			}
+			return byteBuffer;
+		}
+		
+		@Override
+		public void putByteBuffer(ByteBuffer byteBuffer) {
+			bufferQueue.offer(byteBuffer);
+		}
+	}
+	
+	/**
+	 * Accept buffer queue is unbounded and never blocks.  
+	 * Buffers are allocated whenever they are not available.
+	 * The buffer queue grows indefinitely.
+	 * It's critical that users of this queue throttle their
+	 * own asynchronous commands when using this queue.
+	 */
+	private static final class AcceptBufferQueue implements BufferQueue {
+		private final ConcurrentLinkedQueue<ByteBuffer> bufferQueue;
+
+		private AcceptBufferQueue() {		
+			bufferQueue = new ConcurrentLinkedQueue<ByteBuffer>();		
+		}
+		
+		@Override
+		public ByteBuffer getByteBuffer() throws AerospikeException {			
+			// Check if byteBuffer is available.
+			ByteBuffer byteBuffer = bufferQueue.poll();
+			if (byteBuffer == null) {
+				// Allocate new buffer when byteBuffer not available.
+				return ByteBuffer.allocateDirect(8192);
+			}
+			return byteBuffer;
+		}
+		
+		@Override
+		public void putByteBuffer(ByteBuffer byteBuffer) {
+			bufferQueue.offer(byteBuffer);
+		}
 	}
 }
