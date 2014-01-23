@@ -39,7 +39,7 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	 * <p>
 	 * ulimit -n
 	 */
-	public int asyncMaxCommands = 500;
+	public int asyncMaxCommands = 200;
 
 	/**
 	 * Maximum milliseconds to wait for an asynchronous network selector event.  
