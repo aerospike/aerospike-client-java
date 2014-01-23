@@ -20,6 +20,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -45,7 +46,8 @@ public abstract class RWTask implements Runnable {
 	ExpectedValue[] expectedValues;
 	CounterStore counters;
 	AtomicInteger timeElapsed;
-	WritePolicy policy;
+	final Policy readPolicy;
+	final WritePolicy writePolicy;
 	WritePolicy writePolicyGeneration;
 	boolean debug;
 
@@ -59,7 +61,8 @@ public abstract class RWTask implements Runnable {
 		DBObjectSpec[] objects, 
 		int nBins, 
 		String cycleType, 
-		WritePolicy policy, 
+		Policy readPolicy,
+		WritePolicy writePolicy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
@@ -75,7 +78,8 @@ public abstract class RWTask implements Runnable {
 		this.objects     = objects;
 		this.nBins       = nBins;
 		this.cycleType   = cycleType;
-		this.policy      = policy;
+		this.readPolicy  = readPolicy;
+		this.writePolicy = writePolicy;
 		this.settingsArr = settingsArr;
 		this.validate    = validate;
 		this.runTime     = runTime;
@@ -90,9 +94,9 @@ public abstract class RWTask implements Runnable {
 		this.rgen = new Random();
 				
 		writePolicyGeneration = new WritePolicy();
-		writePolicyGeneration.timeout = policy.timeout;
-		writePolicyGeneration.maxRetries = policy.maxRetries;
-		writePolicyGeneration.sleepBetweenRetries = policy.sleepBetweenRetries;
+		writePolicyGeneration.timeout = writePolicy.timeout;
+		writePolicyGeneration.maxRetries = writePolicy.maxRetries;
+		writePolicyGeneration.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
 		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
 	}	
@@ -191,7 +195,7 @@ public abstract class RWTask implements Runnable {
 			
 			try {
 				Key key = new Key(this.namespace, this.setName, Utils.genKey(this.startKey+i, this.keySize));
-				Record record = client.get(this.policy, key);
+				Record record = client.get(this.readPolicy, key);
 				
 				if (record != null && record.bins != null) {
 					Map<String,Object> map = record.bins;

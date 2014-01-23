@@ -13,8 +13,7 @@ public class Expire extends Example {
 	}
 
 	/**
-	 * Write and twice read a an expiration record (the original expiration example), 
-	 * then also write and read a non-expiring tuple using the new "NoExpire" value (-1).
+	 * Demonstrate various record expiration settings. 
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -23,7 +22,7 @@ public class Expire extends Example {
 	} // end runExample()
 	
 	/**
-	 * Write and twice read a an expiration record.
+	 * Write and twice read an expiration record.
 	 */
 	private void expireExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key  = new Key(params.namespace, params.set, "expirekey ");
@@ -51,23 +50,23 @@ public class Expire extends Example {
 		Object received = record.getValue(bin.name);
 		String expected = bin.value.toString();	
 		if (received.equals(expected)) {
-			console.info("Get Record successful: namespace=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s", 
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
-			throw new Exception(String.format("Expire Record mismatch: Expected %s. Received %s.",
+			throw new Exception(String.format("Expire record mismatch: Expected %s. Received %s.",
 				expected, received));
 		}
 
-		// Read the Record after it expires, showing it's gone.
+		// Read the record after it expires, showing it's gone.
 		console.info("Sleeping for 3 seconds ...");
 		Thread.sleep(3 * 1000);
 		record = client.get(params.policy, key, bin.name);
 		if (record == null) {
-			console.info("Expiry of Record successful. Record not found.");
+			console.info("Expiry of record successful. Record not found.");
 		}
 		else {		
-			console.error("ERROR: Found Record when it should have expired.");
+			console.error("Found record when it should have expired.");
 		}
 	} // end expireExample()
 	
@@ -82,44 +81,44 @@ public class Expire extends Example {
 		Bin bin = new Bin(params.getBinName("expirebin"), "noexpirevalue");
 
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s expiration=NoExpire",
-				 key.namespace,  key.setName,  key.userKey, bin.name, bin.value);
+				 key.namespace, key.setName, key.userKey, bin.name, bin.value);
 		
 		// Specify that record NEVER expires. 
 		// The "Never Expire" value is -1, or 0xFFFFFFFF.
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = -1;
-		client.put(writePolicy,  key, bin);
+		client.put(writePolicy, key, bin);
 
 		// Read the record, showing it is there.
 		console.info("Get: namespace=%s set=%s key=%s",
-				 key.namespace,  key.setName,  key.userKey);
+				 key.namespace, key.setName, key.userKey);
 		
-		Record record = client.get(params.policy,  key, bin.name);
+		Record record = client.get(params.policy, key, bin.name);
 		if (record == null) {
 			throw new Exception(String.format(
 				"Failed to get record: namespace=%s set=%s key=%s",
-				 key.namespace,  key.setName,  key.userKey));
+				 key.namespace, key.setName, key.userKey));
 		}
 
 		Object received = record.getValue(bin.name);
 		String expected = bin.value.toString();	
 		if (received.equals(expected)) {
-			console.info("Get Record successful: namespace=%s set=%s key=%s bin=%s value=%s", 
-				 key.namespace,  key.setName,  key.userKey, bin.name, received);
+			console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s", 
+				 key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
-			throw new Exception(String.format("Expire Record mismatch: Expected %s. Received %s.",
+			throw new Exception(String.format("Expire record mismatch: Expected %s. Received %s.",
 				expected, received));
 		}
 		
 		// Read this Record after the Default Expiration, showing it is still there.
 		// We should have set the Namespace TTL at 5 sec.
-		console.info("Sleeping for 10 seconds ... More than the default Namespace TTL");
+		console.info("Sleeping for 10 seconds ...");
 		Thread.sleep(10 * 1000);
-		record = client.get(params.policy,  key, bin.name);
+		record = client.get(params.policy, key, bin.name);
 
 		if (record == null) {
-			console.error("ERROR: Record expired and should NOT have.");
+			console.error("Record expired and should NOT have.");
 		}
 		else {		
 			console.info("Found Record (correctly) after default TTL.");

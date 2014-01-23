@@ -18,6 +18,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
@@ -38,15 +39,16 @@ public class RWTaskAsync extends RWTask {
 		int keySize, 
 		DBObjectSpec[] objects, 
 		int nBins, 
-		String cycleType, 
-		WritePolicy policy, 
+		String cycleType,
+		Policy readPolicy,
+		WritePolicy writePolicy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, policy, settingsArr, validate, runTime, counters, debug);
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, readPolicy, writePolicy, settingsArr, validate, runTime, counters, debug);
 		this.client = client;
 		writeHandler = new WriteHandler();
 		readHandler = new ReadHandler();
@@ -60,10 +62,10 @@ public class RWTaskAsync extends RWTask {
 		}
 
 		if (counters.write.latency != null) {
-			client.put(policy, new LatencyWriteHandler(), key, bins);	
+			client.put(writePolicy, new LatencyWriteHandler(), key, bins);	
 		}
 		else {
-			client.put(policy, writeHandler, key, bins);
+			client.put(writePolicy, writeHandler, key, bins);
 		}
 	}
 		
@@ -90,10 +92,10 @@ public class RWTaskAsync extends RWTask {
 		}
 		
 		if (counters.read.latency != null) {		
-			client.get(policy, new LatencyReadHandler(), key, binName);
+			client.get(readPolicy, new LatencyReadHandler(), key, binName);
 		}
 		else {			
-			client.get(policy, readHandler, key, binName);
+			client.get(readPolicy, readHandler, key, binName);
 		}
 	}
 	
@@ -105,10 +107,10 @@ public class RWTaskAsync extends RWTask {
 		}
 
 		if (counters.read.latency != null) {	
-			client.get(policy, new LatencyReadHandler(), key);
+			client.get(readPolicy, new LatencyReadHandler(), key);
 		}
 		else {			
-			client.get(policy, readHandler, key);
+			client.get(readPolicy, readHandler, key);
 		}
 	}
 	

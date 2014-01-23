@@ -16,6 +16,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
@@ -32,27 +33,28 @@ public class RWTaskSync extends RWTask {
 		int keySize, 
 		DBObjectSpec[] objects, 
 		int nBins, 
-		String cycleType, 
-		WritePolicy policy, 
+		String cycleType,
+		Policy readPolicy,
+		WritePolicy writePolicy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
 		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, policy, settingsArr, validate, runTime, counters, debug);		
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, readPolicy, writePolicy, settingsArr, validate, runTime, counters, debug);		
 	}
 		
 	protected void put(Key key, Bin[] bins) throws AerospikeException {
 		if (counters.write.latency != null) {
 			long begin = System.currentTimeMillis();
-			client.put(policy, key, bins);
+			client.put(writePolicy, key, bins);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			client.put(policy, key, bins);
+			client.put(writePolicy, key, bins);
 			counters.write.count.getAndIncrement();			
 		}
 	}
@@ -76,13 +78,13 @@ public class RWTaskSync extends RWTask {
 		
 		if (counters.read.latency != null) {
 			long begin = System.currentTimeMillis();
-			record = client.get(policy, key, binName);
+			record = client.get(readPolicy, key, binName);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.read.count.getAndIncrement();			
 			counters.read.latency.add(elapsed);
 		}
 		else {
-			record = client.get(policy, key, binName);
+			record = client.get(readPolicy, key, binName);
 			counters.read.count.getAndIncrement();
 		}
 
@@ -96,13 +98,13 @@ public class RWTaskSync extends RWTask {
 		
 		if (counters.read.latency != null) {
 			long begin = System.currentTimeMillis();
-			record = client.get(policy, key);
+			record = client.get(readPolicy, key);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.read.count.getAndIncrement();			
 			counters.read.latency.add(elapsed);
 		}
 		else {
-			record = client.get(policy, key);
+			record = client.get(readPolicy, key);
 			counters.read.count.getAndIncrement();
 		}
 	

@@ -31,6 +31,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public class Main implements Log.Callback {
@@ -80,6 +81,7 @@ public class Main implements Log.Callback {
 	private boolean         asyncEnabled;
 
 	private AsyncClientPolicy clientPolicy = new AsyncClientPolicy();
+	private Policy readPolicy = new Policy();
 	private WritePolicy writePolicy = new WritePolicy();
 	private CounterStore counters = new CounterStore();
 
@@ -129,7 +131,11 @@ public class Main implements Log.Callback {
 			"Set a target transactions per second for the client. The client should not exceed this " + 
 			"average throughput, though it will try to catch-up if it falls behind."
 			);
-		options.addOption("T", "timeout", true, "Set the transaction timeout in milliseconds.");
+		
+		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
+		options.addOption("readTimeout", true, "Set read transaction timeout in milliseconds.");
+		options.addOption("writeTimeout", true, "Set write transaction timeout in milliseconds.");
+	
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true, 
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
@@ -276,15 +282,29 @@ public class Main implements Log.Callback {
 		}
 		
 		if (line.hasOption("timeout")) {
-			this.writePolicy.timeout = Integer.parseInt(line.getOptionValue("timeout"));
+			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
+			this.readPolicy.timeout = timeout;
+			this.writePolicy.timeout = timeout;
+		}			 
+
+		if (line.hasOption("readTimeout")) {
+			this.readPolicy.timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
+		}			 
+
+		if (line.hasOption("writeTimeout")) {
+			this.writePolicy.timeout = Integer.parseInt(line.getOptionValue("writeTimeout"));
 		}			 
 
 		if (line.hasOption("maxRetries")) {
-			this.writePolicy.maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
+			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
+			this.readPolicy.maxRetries = maxRetries;
+			this.writePolicy.maxRetries = maxRetries;
 		}
 		
 		if (line.hasOption("sleepBetweenRetries")) {
-			this.writePolicy.sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
+			int sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
+			this.readPolicy.sleepBetweenRetries = sleepBetweenRetries;
+			this.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 		
 		if (line.hasOption("threads")) {
@@ -342,18 +362,32 @@ public class Main implements Log.Callback {
 			counters.write.latency = new LatencyManager(columns, bitShift);      	
         }
         
+		if (this.keySize == 0) {
+			this.keySize = (Integer.toString(this.nKeys+this.startKey)).length();
+		}
+		
+		int rp = (this.readPct >= 0)? this.readPct : 0; 
+
 		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
 			+ ", namespace: " + this.namespace 
 			+ ", set: " + (this.set.length() > 0? this.set : "<empty>")
 			+ ", threads: " + this.nThreads
-			+ ", read-write ratio: " + this.readPct + "/" + (100-this.readPct));
+			+ ", read-write ratio: " + rp + "/" + (100-rp));
 		
 		System.out.println("keys: " + this.nKeys
-			+ ", bins: " + this.nBins 
-			+ ", timeout: " + this.writePolicy.timeout
-			+ ", maxRetries: " + this.writePolicy.maxRetries 
-			+ ", sleepBetweenRetries: " + this.writePolicy.sleepBetweenRetries);
+			+ ", key length: " + this.keySize
+			+ ", start key: " + this.startKey
+			+ ", bins: " + this.nBins
+			+ ", debug: " + this.debug);
 	
+		System.out.println("read policy: timeout: " + this.readPolicy.timeout
+			+ ", maxRetries: " + this.readPolicy.maxRetries 
+			+ ", sleepBetweenRetries: " + this.readPolicy.sleepBetweenRetries);
+
+		System.out.println("write policy: timeout: " + this.writePolicy.timeout
+			+ ", maxRetries: " + this.writePolicy.maxRetries
+			+ ", sleepBetweenRetries: " + this.writePolicy.sleepBetweenRetries);
+		
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
 			System.out.println("Async: MaxConnTotal " +  clientPolicy.asyncMaxCommands
@@ -361,10 +395,6 @@ public class Main implements Log.Callback {
 				+ ", SelectorTimeout: " + clientPolicy.asyncSelectorTimeout
 				+ ", SelectorThreads: " + clientPolicy.asyncSelectorThreads
 				+ ", TaskThreadPool: " + threadPoolName);
-		}
-
-		if (this.keySize == 0) {
-			this.keySize = (Integer.toString(this.nKeys+this.startKey)).length();
 		}
 
 		if (this.keySize < (Integer.toString(this.nKeys+this.startKey)).length()) {
@@ -520,9 +550,11 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, 
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			} else {
-				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, 
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -541,9 +573,11 @@ public class Main implements Log.Callback {
 				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nTasks)));
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
-				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
+				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins,
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
 			} else {
-				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, this.cycleType, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, 
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
