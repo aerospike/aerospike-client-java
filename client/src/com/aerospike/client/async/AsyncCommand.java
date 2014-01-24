@@ -44,14 +44,13 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		if (timeout > 0) {	
 			limit = System.currentTimeMillis() + timeout;
 		}
-
+		
 		byteBuffer = cluster.getByteBuffer();
 		executeCommand();
 	}
 		
 	public void executeCommand() throws AerospikeException {
 		if (complete.get()) {
-			failOnClientTimeout();
 			return;
 		}
 
@@ -90,7 +89,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 
 	private boolean retryOnInit() throws AerospikeException {
 		if (complete.get()) {
-			failOnClientTimeout();
 			return true;
 		}
 
@@ -124,7 +122,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 
 	protected final void retryAfterInit(AerospikeException ae) {
 		if (complete.get()) {
-			failOnClientTimeout();
 			return;
 		}
 
@@ -198,6 +195,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 						conn.close();
 					}
 				}
+				failOnClientTimeout();
 			}
 			return false;  // Do not put back on timeout queue.
 		}
@@ -239,9 +237,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			cluster.putByteBuffer(byteBuffer);
 			onSuccess();
 		} 
-		else {
-			failOnClientTimeout();
-		}
 	}
 
 	private boolean failOnNetworkInit() {
@@ -251,7 +246,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			return false;
 		}
 		else {
-			failOnClientTimeout();
 			return true;
 		}
 	}
@@ -263,7 +257,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			return false;
 		}
 		else {
-			failOnClientTimeout();
 			return true;
 		}
 	}
@@ -274,9 +267,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			closeOnNetworkError();
 			onFailure(ae);
 		}
-		else {
-			failOnClientTimeout();
-		}
 	}
 
 	protected final void failOnApplicationError(AerospikeException ae) {
@@ -284,9 +274,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		if (complete.compareAndSet(false, true)) {			
 			close();
 			onFailure(ae);
-		}
-		else {
-			failOnClientTimeout();
 		}
 	}
 
