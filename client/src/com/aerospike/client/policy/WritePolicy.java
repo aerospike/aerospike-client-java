@@ -20,6 +20,12 @@ public final class WritePolicy extends Policy {
 	public RecordExistsAction recordExistsAction = RecordExistsAction.UPDATE;
 
 	/**
+	 * Qualify how to handle record writes based on record generation. The default (NONE)
+	 * indicates that the generation is not used to restrict writes.
+	 */
+	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
+
+	/**
 	 * Expected generation. Generation is the number of times a record has been modified
 	 * (including creation) on the server. If a write operation is creating a record, 
 	 * the expected generation would be <code>0</code>.  

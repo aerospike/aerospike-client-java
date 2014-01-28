@@ -6,7 +6,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.policy.RecordExistsAction;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 public class Generation extends Example {
@@ -66,7 +66,7 @@ public class Generation extends Example {
 			key.namespace, key.setName, key.userKey, bin.name, bin.value, record.generation);
 
 		WritePolicy writePolicy = new WritePolicy();
-		writePolicy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
+		writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
 		writePolicy.generation = record.generation;
 		client.put(writePolicy, key, bin);
 

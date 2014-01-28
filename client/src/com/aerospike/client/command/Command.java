@@ -28,9 +28,6 @@ public abstract class Command {
 	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
-	//public static final int INFO1_GET_ALL_NODATA 	= (1 << 2); // Get all bins WITHOUT data (currently unimplemented).
-	//public static final int INFO1_VERIFY			= (1 << 3); // Verify is a GET transaction that includes data.
-	//public static final int INFO1_XDS				= (1 << 4); // Operation is being performed by XDS
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins
 
 	public static final int INFO2_WRITE				= (1 << 0); // Create or update record
@@ -38,11 +35,13 @@ public abstract class Command {
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
 	public static final int INFO2_GENERATION_DUP	= (1 << 4); // Create a duplicate on a generation collision.
-	public static final int INFO2_WRITE_UNIQUE		= (1 << 5); // Fail if record already exists.
-	//public static final int INFO2_WRITE_BINUNIQUE	= (1 << 6);
+	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
 	
-	public static final int INFO3_LAST              = (1 << 0); // this is the last of a multi-part message
-
+	public static final int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
+	public static final int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
+	public static final int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
+	public static final int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
+	
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
 	public static final int OPERATION_HEADER_SIZE = 8;
@@ -383,38 +382,69 @@ public abstract class Command {
 	/**
 	 * Header write for write operations.
 	 */
+	@SuppressWarnings("deprecation")
 	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
         // Set flags.
 		int generation = 0;
 		int expiration = 0;
+		int infoAttr = 0;
     	
-    	if (policy != null) {
-    		switch (policy.recordExistsAction) {
-    		case UPDATE:
-    			break;
-    		case EXPECT_GEN_EQUAL:
-        		generation = policy.generation;    			
-        		writeAttr |= Command.INFO2_GENERATION;
-    			break;
-    		case EXPECT_GEN_GT:
-        		generation = policy.generation;    			
-        		writeAttr |= Command.INFO2_GENERATION_GT;
-    			break;
-    		case FAIL:
-        		writeAttr |= Command.INFO2_WRITE_UNIQUE;
-    			break;
-    		case DUPLICATE:
-        		generation = policy.generation;    			
-        		writeAttr |= Command.INFO2_GENERATION_DUP;
-    			break;
-    		}
-    		expiration = policy.expiration;
-    	}
-		// Write all header data except total size which must be written last. 
+		switch (policy.recordExistsAction) {
+		case UPDATE:
+			break;
+		case UPDATE_ONLY:
+    		infoAttr |= Command.INFO3_UPDATE_ONLY;
+			break;
+		case REPLACE:
+			infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+			break;
+		case REPLACE_ONLY:
+			infoAttr |= Command.INFO3_REPLACE_ONLY;
+			break;
+		case FAIL:
+    		writeAttr |= Command.INFO2_CREATE_ONLY;
+			break;
+		// The remaining enums are replaced by "policy.generationPolicy".
+		// These enums will eventually be removed.
+		// They are handled here for legacy compatibility only.
+		case EXPECT_GEN_EQUAL:
+    		generation = policy.generation;    			
+    		writeAttr |= Command.INFO2_GENERATION;
+			break;
+		case EXPECT_GEN_GT:
+    		generation = policy.generation;    			
+    		writeAttr |= Command.INFO2_GENERATION_GT;
+			break;
+		case DUPLICATE:
+    		generation = policy.generation;			
+    		writeAttr |= Command.INFO2_GENERATION_DUP;
+			break;
+		}
+		
+		switch (policy.generationPolicy) {
+		case NONE:
+			break;
+		case EXPECT_GEN_EQUAL:
+    		generation = policy.generation;    			
+    		writeAttr |= Command.INFO2_GENERATION;
+			break;
+		case EXPECT_GEN_GT:
+    		generation = policy.generation;    			
+    		writeAttr |= Command.INFO2_GENERATION_GT;
+			break;
+		case DUPLICATE:
+    		generation = policy.generation;			
+    		writeAttr |= Command.INFO2_GENERATION_DUP;
+			break;
+		}
+		
+		expiration = policy.expiration;
+
+    	// Write all header data except total size which must be written last. 
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
-		dataBuffer[11] = 0; // info3
+		dataBuffer[11] = (byte)infoAttr;
 		dataBuffer[12] = 0; // unused
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);

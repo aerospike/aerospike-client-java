@@ -14,28 +14,52 @@ package com.aerospike.client.policy;
  */
 public enum RecordExistsAction {
 	/**
-	 * Update record. 
+	 * Create or update record.
+	 * Merge write command bins with existing bins.
 	 */
 	UPDATE,
 
 	/**
-	 * Update/delete record if expected generation is equal to server generation. Otherwise, fail. 
+	 * Update record only. Fail if record does not exist.
+	 * Merge write command bins with existing bins.
 	 */
+	UPDATE_ONLY,
+	
+	/**
+	 * Create or update record.
+	 * Delete existing bins not referenced by write command bins.
+	 */
+	REPLACE,
+	
+	/**
+	 * Update record only. Fail if record does not exist.
+	 * Delete existing bins not referenced by write command bins.
+	 */
+	REPLACE_ONLY,
+
+	/**
+	 * Create only.  Fail if record exists. 
+	 */
+	FAIL,
+		
+	/**
+	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#EXPECT_GEN_EQUAL}
+	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
+	 */
+	@Deprecated
 	EXPECT_GEN_EQUAL,
 
 	/**
-	 * Update/delete record if expected generation greater than the server generation. Otherwise, fail.
-	 * This is useful for restore after backup. 
+	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#EXPECT_GEN_GT}
+	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
 	 */
+	@Deprecated
 	EXPECT_GEN_GT,
-
+	
 	/**
-	 * Fail if record exists. 
+	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#DUPLICATE}
+	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
 	 */
-	FAIL,
-			
-	/**
-	 * Create duplicate record if expected generation is not equal to server generation.
-	 */
+	@Deprecated
 	DUPLICATE
 }

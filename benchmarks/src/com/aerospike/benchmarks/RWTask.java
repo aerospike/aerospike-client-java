@@ -20,8 +20,8 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 
 //
@@ -97,7 +97,7 @@ public abstract class RWTask implements Runnable {
 		writePolicyGeneration.timeout = writePolicy.timeout;
 		writePolicyGeneration.maxRetries = writePolicy.maxRetries;
 		writePolicyGeneration.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
-		writePolicyGeneration.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
+		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
 	}	
 	
