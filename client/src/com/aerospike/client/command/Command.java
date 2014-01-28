@@ -386,7 +386,6 @@ public abstract class Command {
 	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
         // Set flags.
 		int generation = 0;
-		int expiration = 0;
 		int infoAttr = 0;
     	
 		switch (policy.recordExistsAction) {
@@ -438,8 +437,6 @@ public abstract class Command {
 			break;
 		}
 		
-		expiration = policy.expiration;
-
     	// Write all header data except total size which must be written last. 
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
@@ -448,7 +445,7 @@ public abstract class Command {
 		dataBuffer[12] = 0; // unused
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
-		Buffer.intToBytes(expiration, dataBuffer, 18);		
+		Buffer.intToBytes(policy.expiration, dataBuffer, 18);		
 		
 		// Initialize timeout. It will be written later.
 		dataBuffer[22] = 0;

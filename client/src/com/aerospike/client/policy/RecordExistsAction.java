@@ -28,12 +28,16 @@ public enum RecordExistsAction {
 	/**
 	 * Create or update record.
 	 * Delete existing bins not referenced by write command bins.
+	 * Supported by Aerospike 2 server versions >= 2.7.5 and 
+	 * Aerospike 3 server versions >= 3.1.6.
 	 */
 	REPLACE,
 	
 	/**
 	 * Update record only. Fail if record does not exist.
 	 * Delete existing bins not referenced by write command bins.
+	 * Supported by Aerospike 2 server versions >= 2.7.5 and 
+	 * Aerospike 3 server versions >= 3.1.6.
 	 */
 	REPLACE_ONLY,
 
