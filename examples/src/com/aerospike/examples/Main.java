@@ -30,6 +30,7 @@ public class Main extends JPanel {
 	private static final String[] ExampleNames = new String[] {
 		"ServerInfo",
 		"PutGet",
+		"Replace",
 		"Add",
 		"Append",
 		"Prepend",
