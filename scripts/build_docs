@@ -1,8 +1,0 @@
-cd `dirname $0`
-
-rm -rf /tmp/doc
-
-cp=../client/bin:~/.m2/repository/org/gnu/gnu-crypto/2.0.1/gnu-crypto-2.0.1.jar:~/.m2/repository/org/msgpack/msgpack/0.6.7/msgpack-0.6.7.jar:~/.m2/repository/org/luaj/luaj-jse/3.0-alpha2/luaj-jse-3.0-alpha2.jar
-
-javadoc -public -use -version -author -splitindex -doctitle "Aerospike Java Client" -sourcepath ../client/src -classpath "$cp" -d /tmp/doc com.aerospike.client com.aerospike.client.large com.aerospike.client.listener com.aerospike.client.policy com.aerospike.client.task ../client/src/com/aerospike/client/async/AsyncClient.java ../client/src/com/aerospike/client/async/AsyncClientPolicy.java ../client/src/com/aerospike/client/async/AsyncNode.java ../client/src/com/aerospike/client/async/MaxCommandAction.java ../client/src/com/aerospike/client/cluster/Node.java ../client/src/com/aerospike/client/lua/LuaConfig.java ../client/src/com/aerospike/client/query/Filter.java ../client/src/com/aerospike/client/query/IndexType.java ../client/src/com/aerospike/client/query/RecordSet.java ../client/src/com/aerospike/client/query/ResultSet.java ../client/src/com/aerospike/client/query/Statement.java
-

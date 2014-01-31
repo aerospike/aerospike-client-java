@@ -5,4 +5,4 @@
 mvn install:install-file -Dfile=client/depends/gnu-crypto.jar -DgroupId=org.gnu -DartifactId=gnu-crypto -Dversion=2.0.1 -Dpackaging=jar
 
 mvn clean
-mvn package
+mvn install

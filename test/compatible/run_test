@@ -1,1 +1,0 @@
-java -cp target/aerospike-compatible-*-jar-with-dependencies.jar com.aerospike.test.Main $* 
