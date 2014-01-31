@@ -6,6 +6,7 @@
   <artifactId>aerospike-parent</artifactId>
   <version>3.0.21</version>
   <packaging>pom</packaging>
+  <name>top-level</name>
 
   <modules>
     <module>client</module>
