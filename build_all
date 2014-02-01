@@ -3,3 +3,4 @@
 
 mvn clean
 mvn install
+mvn -f client/pom.xml javadoc:javadoc

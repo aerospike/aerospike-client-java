@@ -5,6 +5,7 @@
 .settings
 bin
 target
+doc
 *.tgz
 *.zip
 *.out
