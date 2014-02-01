@@ -1,8 +1,5 @@
 # Build Java projects with Maven.
 # Maven and Java must be installed prior to running this script.
 
-# Add gnu-crypto to local maven repository. This only needs to be done once.
-mvn install:install-file -Dfile=client/depends/gnu-crypto.jar -DgroupId=org.gnu -DartifactId=gnu-crypto -Dversion=2.0.1 -Dpackaging=jar
-
 mvn clean
 mvn install
