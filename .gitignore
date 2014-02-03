@@ -9,4 +9,4 @@ doc
 *.tgz
 *.zip
 *.out
-package/*.jar
+*.jar
