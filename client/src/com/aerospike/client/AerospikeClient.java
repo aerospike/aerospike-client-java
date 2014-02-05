@@ -928,7 +928,7 @@ public class AerospikeClient {
 			return new IndexTask(cluster, namespace, indexName);
 		}
 		
-		if (response.equals("FAIL:208:ERR FOUND")) {
+		if (response.startsWith("FAIL:200")) {
 			// Index has already been created.  Do not need to poll for completion.
 			return new IndexTask();
 		}
@@ -966,11 +966,17 @@ public class AerospikeClient {
 		
 		// Send index command to one node. That node will distribute the command to other nodes.
 		String response = sendInfoCommand(policy, sb.toString());
-		
-		// Command is successful if ok or index did not previously exist.
-		if (! response.equalsIgnoreCase("ok") && ! response.equals("FAIL:202:NO INDEX") ) {
-			throw new AerospikeException("Drop index failed: " + response);
+
+		if (response.equalsIgnoreCase("OK")) {
+			return;
 		}
+		
+		if (response.startsWith("FAIL:201")) {
+			// Index did not previously exist. Return without error.
+			return;
+		}
+			
+		throw new AerospikeException("Drop index failed: " + response);
 	}
 	
 	//-------------------------------------------------------
