@@ -126,10 +126,17 @@ public class ListMap extends Example {
 		client.delete(params.writePolicy, key);
 
 		byte[] blob = new byte[] {3, 52, 125};		
+		List<Integer> list = new ArrayList<Integer>();
+		list.add(100034);
+		list.add(12384955);
+		list.add(3);
+		list.add(512);
+		
 		HashMap<Object,Object> map = new HashMap<Object,Object>();
 		map.put("key1", "string1");
 		map.put("key2", 2);
 		map.put("key3", blob);
+		map.put("key4", list);  // map.put("key4", Value.getAsList(list)) works too
 
 		Bin bin = Bin.asMap(params.getBinName("mapbin2"), map);
 		client.put(params.writePolicy, key, bin);
@@ -137,11 +144,18 @@ public class ListMap extends Example {
 		Record record = client.get(params.policy, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
 		
-		validateSize(3, receivedMap.size());
+		validateSize(4, receivedMap.size());
 		validate("string1", receivedMap.get("key1"));
 		// Server convert numbers to long, so must expect long.
 		validate(2L, receivedMap.get("key2"));
 		validate(blob, (byte[])receivedMap.get("key3"));
+				
+		List<?> receivedInner = (List<?>)receivedMap.get("key4");
+		validateSize(4, receivedInner.size());
+		validate(100034L, receivedInner.get(0));
+		validate(12384955L, receivedInner.get(1));
+		validate(3L, receivedInner.get(2));
+		validate(512L, receivedInner.get(3));
 
 		console.info("Read/Write HashMap<Object,Object> successful");
 	}
