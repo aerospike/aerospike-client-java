@@ -11,7 +11,6 @@ package com.aerospike.benchmarks;
 
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import com.aerospike.client.AerospikeClient;
@@ -23,6 +22,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 
 //
 // Always generates random reads
@@ -42,10 +42,8 @@ public abstract class RWTask implements Runnable {
 	String cycleType;
 	AtomicIntegerArray settingsArr;
 	boolean validate;
-	int runTime;
 	ExpectedValue[] expectedValues;
 	CounterStore counters;
-	AtomicInteger timeElapsed;
 	final Policy readPolicy;
 	final WritePolicy writePolicy;
 	WritePolicy writePolicyGeneration;
@@ -65,7 +63,6 @@ public abstract class RWTask implements Runnable {
 		WritePolicy writePolicy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
-		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
@@ -82,11 +79,8 @@ public abstract class RWTask implements Runnable {
 		this.writePolicy = writePolicy;
 		this.settingsArr = settingsArr;
 		this.validate    = validate;
-		this.runTime     = runTime;
 		this.counters    = counters;
 		this.debug       = debug;
-
-		this.timeElapsed = counters.timeElapsed;
 		
 		// Use default constructor which uses a different seed for each invocation.
 		// Do not use System.currentTimeMillis() for a seed because it is often
@@ -115,8 +109,7 @@ public abstract class RWTask implements Runnable {
 		double singleBinUpdatePct = settingsArr.get(3) / 100.0;
 
 		// Now run...
-		while (runTime == 0 || this.timeElapsed.get() < runTime) {
-					
+		while (true) {
 			// Get random key
 			int curKeyIdx = rgen.nextInt(this.nKeys);
 		
@@ -166,17 +159,15 @@ public abstract class RWTask implements Runnable {
 			}		 
 
 			// throttle throughput
-			long getCounter = counters.tcounter.incrementAndGet();
-			if (throughputget != 0) {
-				long sleepfor = 0;
-				long t = System.currentTimeMillis();
-				if ((t - this.counters.start_time) < (getCounter * 1000 / throughputget)) {
-					sleepfor = (getCounter*1000/throughputget - (t-counters.start_time));
-				} 
+			if (throughputget > 0) {
+				int transactions = counters.write.count.get() + counters.read.count.get();
 				
-				try {
-					Thread.sleep(sleepfor);
-				} catch (Exception e) {
+				if (transactions > throughputget) {
+					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
+					
+					if (millis > 0) {
+						Util.sleep(millis);
+					}
 				}
 			}
 		}

@@ -9,13 +9,10 @@
  */
 package com.aerospike.benchmarks;
 
-import java.io.FileInputStream;
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicIntegerArray;
@@ -74,8 +71,6 @@ public class Main implements Log.Callback {
 	private int             nThreads = 16;
 	private int             nTasks = 1;
 	private int             throughput = 0;
-	private String          throughput_file = "";
-	private int             runTime = 0;
 	private int             asyncTaskThreads;
 	private boolean         debug = false;
 	private boolean         asyncEnabled;
@@ -129,7 +124,7 @@ public class Main implements Log.Callback {
 			);
 		options.addOption("g", "throughput", true, 
 			"Set a target transactions per second for the client. The client should not exceed this " + 
-			"average throughput, though it will try to catch-up if it falls behind."
+			"average throughput."
 			);
 		
 		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
@@ -238,9 +233,10 @@ public class Main implements Log.Callback {
 			this.startKey = Integer.parseInt(line.getOptionValue("startkey"));
 		}
 
+		/*
 		if (line.hasOption("workloadfile")) {
 			this.throughput_file = line.getOptionValue("workloadfile");
-		}
+		}*/
 
 		if (line.hasOption("workload")) {
 			String[] workloadOpts = line.getOptionValue("workload").split(",");
@@ -315,9 +311,10 @@ public class Main implements Log.Callback {
 			this.validate = true;
 		}
 
+		/*
 		if (line.hasOption("runtime")) {
 			this.runTime = Integer.parseInt(line.getOptionValue("runtime"));
-		}
+		}*/
 
 		if (line.hasOption("debug")) {
 			this.debug = true;
@@ -421,10 +418,11 @@ public class Main implements Log.Callback {
 			System.exit(-1);
 		}
 
+		/*
 		if (this.runTime < 0) {
 			System.out.println("runtime (-t) must be >= 0");
 			System.exit(-1);
-		}
+		}*/
 		
 		Log.Level level = (debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
@@ -551,10 +549,10 @@ public class Main implements Log.Callback {
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
 				rt = new RWTaskSync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins, 
-					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.counters, this.debug);
 			} else {
 				rt = new RWTaskSync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, 
-					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -574,10 +572,10 @@ public class Main implements Log.Callback {
 				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nTasks)) - (int) (this.nKeys*(((float) i)/this.nTasks));
 				
 				rt = new RWTaskAsync(client, this.namespace, this.set, tkeys, tstart, this.keySize, this.objectSpec, this.nBins,
-					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);					
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.counters, this.debug);					
 			} else {
 				rt = new RWTaskAsync(client, this.namespace, this.set, this.nKeys, this.startKey, this.keySize, this.objectSpec, this.nBins, 
-					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.runTime, this.counters, this.debug);
+					this.cycleType, this.readPolicy, this.writePolicy, settingsArr, this.validate, this.counters, this.debug);
 			}
 			es.execute(rt);
 		}
@@ -606,12 +604,7 @@ public class Main implements Log.Callback {
 			counters.loadValuesFinished.set(true);
 		}
 
-		// Set start time 
-		this.counters.start_time = System.currentTimeMillis();
-
-		// Wait for completion
-		for (; this.runTime == 0 || this.counters.timeElapsed.get() < this.runTime; this.counters.timeElapsed.incrementAndGet()) {
-
+		while (true) {
 			long time = System.currentTimeMillis();
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
@@ -622,6 +615,8 @@ public class Main implements Log.Callback {
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 			
+			this.counters.periodBegin.set(time);
+
 			//int used = (client != null)? client.getAsyncConnUsed() : 0;
 			//Node[] nodes = client.getNodes();
 			
@@ -639,25 +634,8 @@ public class Main implements Log.Callback {
 				this.counters.read.latency.printResults(System.out, "read");
 			}
 
-			if (throughput_file.length() > 0) {
-				// set target throughput and read/update percentage based on throughput_file
-				try {
-					String[] settings = readSettings(throughput_file);
-					settingsArr.set(0, Integer.parseInt(settings[0]));
-					settingsArr.set(1, Integer.parseInt(settings[1]));
-				} catch (Exception e) {
-					System.out.println("can't read throughput file!");
-				}
-			}		
 			Thread.sleep(1000);
 		}
-	}
-
-	private String[] readSettings(String throughput_file) throws IOException {
-		Scanner scanner = new Scanner(new FileInputStream(throughput_file), "UTF-8");
-		String[] settings = scanner.nextLine().split(",");
-		scanner.close();
-		return settings;
 	}
 
 	@Override

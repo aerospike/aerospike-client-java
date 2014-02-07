@@ -38,11 +38,10 @@ public class RWTaskSync extends RWTask {
 		WritePolicy writePolicy, 
 		AtomicIntegerArray settingsArr, 
 		boolean validate, 
-		int runTime, 
 		CounterStore counters, 
 		boolean debug
 	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, readPolicy, writePolicy, settingsArr, validate, runTime, counters, debug);		
+		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, readPolicy, writePolicy, settingsArr, validate, counters, debug);		
 	}
 		
 	protected void put(Key key, Bin[] bins) throws AerospikeException {

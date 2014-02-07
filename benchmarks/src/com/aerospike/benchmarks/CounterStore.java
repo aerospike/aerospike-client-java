@@ -11,24 +11,22 @@ package com.aerospike.benchmarks;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class CounterStore {
 	
+	Current write = new Current();
+	Current read = new Current();
+
+	AtomicLong periodBegin = new AtomicLong();	
+	AtomicInteger valueMismatchCnt = new AtomicInteger();
+	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
+	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
+
 	public static class Current {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
 		LatencyManager latency;
-	}
-		
-	Current write = new Current();
-	Current read = new Current();
-	
-	long start_time = 0;
-
-	AtomicInteger timeElapsed = new AtomicInteger();
-	AtomicInteger tcounter = new AtomicInteger();
-	AtomicInteger valueMismatchCnt = new AtomicInteger();
-	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
-	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
+	}	
 }
