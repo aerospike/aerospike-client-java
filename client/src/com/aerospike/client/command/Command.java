@@ -400,6 +400,7 @@ public abstract class Command {
 		case REPLACE_ONLY:
 			infoAttr |= Command.INFO3_REPLACE_ONLY;
 			break;
+		case CREATE_ONLY:
 		case FAIL:
     		writeAttr |= Command.INFO2_CREATE_ONLY;
 			break;
