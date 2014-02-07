@@ -28,7 +28,6 @@ public final class ScanCommand extends MultiCommand {
 	private final String setName;
 	private final ScanCallback callback;
 	private final String[] binNames;
-	private volatile boolean valid = true;
 
 	public ScanCommand(
 		Node node,
@@ -116,9 +115,5 @@ public final class ScanCommand extends MultiCommand {
 			callback.scanCallback(key, new Record(bins, null, generation, expiration));
 		}
 		return true;
-	}
-	
-	public void stop() {
-		valid = false;
 	}
 }

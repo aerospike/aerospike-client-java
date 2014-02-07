@@ -117,6 +117,10 @@ public final class BatchCommandGet extends MultiCommand {
 		ArrayList<Map<String, Object>> duplicates = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
+			if (! valid) {
+				throw new AerospikeException.QueryTerminated();
+			}
+			
     		readBytes(8);	
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
 			byte particleType = dataBuffer[5];

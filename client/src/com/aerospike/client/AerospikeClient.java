@@ -367,7 +367,7 @@ public class AerospikeClient {
 	 */
 	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
 		boolean[] existsArray = new boolean[keys.length];
-		BatchExecutor.executeBatch(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return existsArray;
 	}
 
@@ -438,7 +438,7 @@ public class AerospikeClient {
 	 */
 	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
 		Record[] records = new Record[keys.length];
-		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
 	}
 
@@ -458,7 +458,7 @@ public class AerospikeClient {
 		throws AerospikeException {
 		Record[] records = new Record[keys.length];
 		HashSet<String> names = binNamesToHashSet(binNames);
-		BatchExecutor.executeBatch(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+		new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
 		return records;
 	}
 
@@ -475,7 +475,7 @@ public class AerospikeClient {
 	 */
 	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
 		Record[] records = new Record[keys.length];
-		BatchExecutor.executeBatch(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
 	}
 
@@ -538,8 +538,8 @@ public class AerospikeClient {
 		}
 
 		if (policy.concurrentNodes) {
-			ScanExecutor executor = new ScanExecutor(policy, namespace, setName, callback, binNames);
-			executor.scanParallel(nodes);
+			ScanExecutor executor = new ScanExecutor(cluster, nodes, policy, namespace, setName, callback, binNames);
+			executor.scanParallel();
 		}
 		else {
 			for (Node node : nodes) {
@@ -801,12 +801,10 @@ public class AerospikeClient {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException {
-		Node[] nodes = cluster.getNodes();
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		if (policy == null) {
+			policy = new Policy();
 		}
-		ServerExecutor executor = new ServerExecutor(policy, statement, packageName, functionName, functionArgs);
-		executor.execute(nodes);
+		new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 		return new ExecuteTask(cluster, statement);
 	}
 
@@ -830,11 +828,8 @@ public class AerospikeClient {
 		if (policy == null) {
 			policy = new QueryPolicy();
 		}
-		Node[] nodes = cluster.getNodes();		
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(policy, statement, nodes);
+		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
+		executor.execute();
 		return executor.getRecordSet();
 	}
 	
@@ -869,11 +864,8 @@ public class AerospikeClient {
 		if (policy == null) {
 			policy = new QueryPolicy();
 		}
-		Node[] nodes = cluster.getNodes();		
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-		}
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(policy, statement, nodes, packageName, functionName, functionArgs);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+		executor.execute();
 		return executor.getResultSet();
 	}
 

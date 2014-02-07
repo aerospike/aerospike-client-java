@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -21,59 +22,13 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchExecutor extends Thread {
+public final class BatchExecutor {
 	
-	private final Policy policy;
-	private final BatchNode batchNode;
-	private final HashSet<String> binNames;
-	private final HashMap<Key,BatchItem> keyMap;
-	private final Record[] records;
-	private final boolean[] existsArray;
-	private final int readAttr;
-	private Exception exception;
-
+	private final ArrayList<BatchThread> threads;
+	private volatile Exception exception;
+	private boolean completed;
+	
 	public BatchExecutor(
-		Policy policy,
-		BatchNode batchNode,
-		HashMap<Key,BatchItem> keyMap,
-		HashSet<String> binNames,
-		Record[] records,
-		boolean[] existsArray,
-		int readAttr
-	) {
-		this.policy = policy;
-		this.batchNode = batchNode;
-		this.keyMap = keyMap;
-		this.binNames = binNames;
-		this.records = records;
-		this.existsArray = existsArray;
-		this.readAttr = readAttr;
-	}
-	
-	public void run() {
-		try {
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {			
-				if (records != null) {
-					BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
-					command.execute();
-				}
-				else {
-					BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
-					command.execute();
-				}
-			}
-		}
-		catch (Exception e) {
-			exception = e;
-		}
-	}
-	
-	public Exception getException() {
-		return exception;
-	}
-
-	public static void executeBatch
-	(
 		Cluster cluster,
 		Policy policy, 
 		Key[] keys,
@@ -83,38 +38,124 @@ public final class BatchExecutor extends Thread {
 		int readAttr
 	) throws AerospikeException {
 		
-		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
 		List<BatchNode> batchNodes = BatchNode.generateList(cluster, keys);
+		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
 		
-		// Dispatch the work to each node on a different thread.
-		ArrayList<BatchExecutor> threads = new ArrayList<BatchExecutor>(batchNodes.size());
+		// Initialize threads.  There may be multiple threads for a single node because the
+		// wire protocol only allows one namespace per command.  Multiple namespaces 
+		// require multiple threads per node.
+		threads = new ArrayList<BatchThread>(batchNodes.size() * 2);
+		MultiCommand command = null;
 
 		for (BatchNode batchNode : batchNodes) {
-			BatchExecutor thread = new BatchExecutor(policy, batchNode, keyMap, binNames, records, existsArray, readAttr);
-			threads.add(thread);
-			thread.start();
+			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+				if (records != null) {
+					command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
+				}
+				else {
+					command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
+				}
+				threads.add(new BatchThread(command));
+			}
 		}
 		
-		// Wait for all the threads to finish their work and return results.
-		for (BatchExecutor thread : threads) {
+		ExecutorService threadPool = cluster.getThreadPool();
+		
+		for (BatchThread thread : threads) {
+			threadPool.execute(thread);
+		}
+		
+		waitTillComplete();
+		
+		// Throw an exception if an error occurred.
+		if (exception != null) {
+			if (exception instanceof AerospikeException) {
+				throw (AerospikeException)exception;		
+			}
+			else {
+				throw new AerospikeException(exception);
+			}		
+		}		
+	}
+	
+	private void threadCompleted() {
+		// Check status of other threads.
+		for (BatchThread thread : threads) {
+			if (! thread.complete) {
+				// Some threads have not finished. Do nothing.
+				return;
+			}
+		}
+		// All threads complete.
+		notifyCompleted();
+	}
+
+	private void stopThreads(Exception cause) {
+    	synchronized (threads) {
+    	   	if (exception != null) {
+    	   		return;
+    	   	}
+	    	exception = cause;  		
+    	}
+    	
+		for (BatchThread thread : threads) {
 			try {
-				thread.join();
+				thread.stop();
 			}
 			catch (Exception e) {
 			}
 		}
+		notifyCompleted();
+    }
+
+	private synchronized void waitTillComplete() {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
+		}
+	}
+	
+	private synchronized void notifyCompleted() {
+		completed = true;
+		super.notify();
+	}
+
+	private final class BatchThread implements Runnable {
+		private MultiCommand command;
+		private Thread thread;
+		private boolean complete;
+
+		public BatchThread(MultiCommand command) {
+			this.command = command;
+		}
 		
-		// Throw an exception if an error occurred.
-		for (BatchExecutor thread : threads) {
-			Exception e = thread.getException();
+		public void run() {
+			thread = Thread.currentThread();
+
+			try {
+				if (command.isValid()) {
+					command.execute();
+				}
+			}
+			catch (Exception e) {
+				// Terminate other threads.
+				stopThreads(e);
+			}
+			complete = true;
 			
-			if (e != null) {
-				if (e instanceof AerospikeException) {
-					throw (AerospikeException)e;					
-				}
-				else {
-					throw new AerospikeException(e);
-				}
+		   	if (exception == null) {
+				threadCompleted();
+		   	}
+		}
+		
+		public void stop() {
+			command.stop();
+			
+			if (thread != null) {
+				thread.interrupt();
 			}
 		}
 	}

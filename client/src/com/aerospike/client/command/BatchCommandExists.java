@@ -58,7 +58,11 @@ public final class BatchCommandExists extends MultiCommand {
 		dataOffset = 0;
 		
 		while (dataOffset < receiveSize) {
-    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
+			if (! valid) {
+				throw new AerospikeException.QueryTerminated();
+			}
+			
+			readBytes(MSG_REMAINING_HEADER_SIZE);    		
 			int resultCode = dataBuffer[5] & 0xFF;
 
 			// The only valid server return codes are "ok" and "not found".

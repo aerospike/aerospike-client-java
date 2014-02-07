@@ -23,6 +23,7 @@ public abstract class MultiCommand extends SyncCommand {
 	
 	private BufferedInputStream bis;
 	protected final Node node;
+	protected volatile boolean valid = true;
 	
 	protected MultiCommand(Node node) {
 		this.node = node;
@@ -104,5 +105,14 @@ public abstract class MultiCommand extends SyncCommand {
 		dataOffset += length;
 	}
 	
+	
+	public void stop() {
+		valid = false;
+	}
+	
+	public boolean isValid() {
+		return valid;
+	}
+
 	protected abstract boolean parseRecordResults(int receiveSize) throws AerospikeException, IOException;
 }

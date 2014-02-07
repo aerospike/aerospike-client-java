@@ -9,7 +9,11 @@
  */
 package com.aerospike.client.query;
 
+import java.util.concurrent.ExecutorService;
+
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.QueryPolicy;
 
@@ -17,25 +21,34 @@ public abstract class QueryExecutor {
 	
 	protected final QueryPolicy policy;
 	protected final Statement statement;
-	private QueryThread[] threads;
-	private volatile int nextThread;
+	private final Node[] nodes;
+	private final ExecutorService threadPool;
+	private final QueryThread[] threads;
 	protected volatile Exception exception;
+	private int nextThread;
 	
-	public QueryExecutor(QueryPolicy policy, Statement statement) {
+	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement) throws AerospikeException {
 		this.policy = policy;
 		this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 		this.statement = statement;
+		
+		this.nodes = cluster.getNodes();
+
+		if (this.nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+		}
+
+		this.threadPool = cluster.getThreadPool();
+		this.threads = new QueryThread[nodes.length];
 	}
 	
-	protected final void startThreads(Node[] nodes) {		
+	protected final void startThreads() {		
 		// Initialize threads.
-		threads = new QueryThread[nodes.length];
-
 		for (int i = 0; i < nodes.length; i++) {
 			QueryCommand command = createCommand(nodes[i]);
 			threads[i] = new QueryThread(command);
 		}
-		
+
 		// Initialize maximum number of nodes to query in parallel.
 		nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
 
@@ -43,7 +56,7 @@ public abstract class QueryExecutor {
 		int max = nextThread;
 
 		for (int i = 0; i < max; i++) {
-			threads[i].start();
+			threadPool.execute(threads[i]);
 		}
 	}
 	
@@ -59,7 +72,7 @@ public abstract class QueryExecutor {
 		
 		if (index >= 0) {
 			// Start new thread.
-			threads[index].start();
+			threadPool.execute(threads[index]);
 		}
 		else {
 			// All threads have been started. Check status.
@@ -75,26 +88,21 @@ public abstract class QueryExecutor {
 	}
 
 	protected final void stopThreads(Exception cause) {
-    	// Exception may be null, so can't synchronize on it.
-    	// Use statement instead.
-    	synchronized (statement) {
+    	synchronized (threads) {
     	   	if (exception != null) {
     	   		return;
     	   	}
 	    	exception = cause;  		
     	}
     	
-    	if (threads != null) {
-			for (QueryThread thread : threads) {
-				try {
-					thread.stopThread();
-					thread.interrupt();
-				}
-				catch (Exception e) {
-				}
+		for (QueryThread thread : threads) {
+			try {
+				thread.stop();
 			}
-    	}
-		sendCompleted();
+			catch (Exception e) {
+			}
+		}
+ 		sendCompleted();
     }
 
 	protected final void checkForException() throws AerospikeException {
@@ -109,8 +117,9 @@ public abstract class QueryExecutor {
 		}				
 	}
 
-	private final class QueryThread extends Thread {
+	private final class QueryThread implements Runnable {
 		private final QueryCommand command;
+		private Thread thread;
 		private boolean complete;
 
 		public QueryThread(QueryCommand command) {
@@ -118,8 +127,12 @@ public abstract class QueryExecutor {
 		}
 
 		public void run() {
+			thread = Thread.currentThread();		
+
 			try {
-				command.execute();
+				if (command.isValid()) {
+					command.execute();
+				}
 			}
 			catch (Exception e) {
 				// Terminate other query threads.
@@ -132,8 +145,12 @@ public abstract class QueryExecutor {
 		   	}
 		}
 
-		public void stopThread() {
+		public void stop() {
 			command.stop();
+			
+			if (thread != null) {
+				thread.interrupt();
+			}
 		}
 	}
 	

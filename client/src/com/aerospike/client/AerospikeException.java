@@ -40,7 +40,7 @@ public class AerospikeException extends Exception {
 		super(message);
 	}
 
-	public AerospikeException(Exception e) {
+	public AerospikeException(Throwable e) {
 		super(e);
 	}
 	

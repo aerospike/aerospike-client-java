@@ -12,6 +12,8 @@ package com.aerospike.client.cluster;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -36,6 +38,9 @@ public class Cluster implements Runnable {
 	// Random node index.
 	private final AtomicInteger nodeIndex;
 	
+	// Thread pool used in batch, scan and query commands.
+	private final ExecutorService threadPool;
+	
 	// Size of node's synchronous connection pool.
 	protected final int connectionQueueSize;
 	
@@ -53,7 +58,8 @@ public class Cluster implements Runnable {
 		this.seeds = hosts;
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
-		maxSocketIdle = policy.maxSocketIdle;
+		maxSocketIdle = policy.maxSocketIdle;		
+		threadPool = (policy.threadPool == null)? Executors.newCachedThreadPool() : policy.threadPool;
 		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	
 		partitionWriteMap = new HashMap<String,Node[]>();		
@@ -559,6 +565,10 @@ public class Cluster implements Runnable {
 			}
 		}
 		return null;
+	}
+
+	public final ExecutorService getThreadPool() {
+		return threadPool;
 	}
 
 	public final int getMaxSocketIdle() {

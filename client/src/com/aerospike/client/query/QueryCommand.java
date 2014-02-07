@@ -21,7 +21,6 @@ import com.aerospike.client.util.Packer;
 public abstract class QueryCommand extends MultiCommand {
 	private final Policy policy;
 	private final Statement statement;
-	protected volatile boolean valid = true;
 
 	public QueryCommand(Node node, Policy policy, Statement statement) {
 		super(node);
@@ -165,9 +164,5 @@ public abstract class QueryCommand extends MultiCommand {
 			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
 		}
 		end();
-	}
-
-	public final void stop() {
-		valid = false;
 	}
 }

@@ -9,6 +9,8 @@
  */
 package com.aerospike.client.query;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.QueryPolicy;
 
@@ -16,10 +18,14 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	
 	private final RecordSet recordSet;
 	
-	public QueryRecordExecutor(QueryPolicy policy, Statement statement, Node[] nodes) {
-		super(policy, statement);
+	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
+		throws AerospikeException {
+		super(cluster, policy, statement);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		startThreads(nodes);
+	}
+	
+	public void execute() {		
+		startThreads();
 	}
 	
 	@Override

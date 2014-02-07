@@ -9,6 +9,8 @@
  */
 package com.aerospike.client.policy;
 
+import java.util.concurrent.ExecutorService;
+
 /**
  * Container object for client policy Command.
  */
@@ -34,5 +36,15 @@ public class ClientPolicy {
 	/**
 	 * Throw exception if host connection fails during addHost().
 	 */
-	public boolean failIfNotConnected;	
+	public boolean failIfNotConnected;
+	
+	/**
+	 * Underlying thread pool used in batch, scan, and query commands. These commands are often 
+	 * sent to multiple server nodes in parallel threads.  A thread pool improves performance
+	 * because threads do not have to be created/destroyed for each command.
+	 * The default, null, indicates that the following thread pool will be used:
+	 * <p>
+	 * threadPool = Executors.newCachedThreadPool();
+	 */
+	public ExecutorService threadPool;
 }

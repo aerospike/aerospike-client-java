@@ -17,6 +17,7 @@ import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.lua.LuaCache;
 import com.aerospike.client.lua.LuaInputStream;
@@ -26,22 +27,20 @@ import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateExecutor extends QueryExecutor implements Runnable {
 	
-	private final Node[] nodes;
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;
 	private final Thread luaThread;
 	private LuaInstance lua;
 	
 	public QueryAggregateExecutor(
+		Cluster cluster,
 		QueryPolicy policy, 
 		Statement statement, 
-		Node[] nodes, 
 		String packageName, 
 		String functionName, 
 		Value[] functionArgs
 	) throws AerospikeException {
-		super(policy, statement);
-		this.nodes = nodes;
+		super(cluster, policy, statement);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
@@ -54,10 +53,14 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		// If LuaValue.valueOf() is called before any luaj calls, then the static initializer in
 		// LuaInteger will be initialized properly.  		
 		LuaValue.valueOf(0);
-				
+		
+		// Initialize lua thread, but don't start it yet.
+		luaThread = new Thread(this);
+	}
+	
+	public void execute() {		
 		// Start Lua thread which reads from a queue, applies aggregate function and 
 		// writes to a result set. 
-		luaThread = new Thread(this);
 		luaThread.start();
 	}
 	
@@ -74,7 +77,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		lua = LuaCache.getInstance();
 		
 		// Start thread queries to each node.
-		startThreads(nodes);		
+		startThreads();		
 
 		try {
 			lua.load(statement.getPackageName(), false);

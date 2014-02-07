@@ -14,6 +14,7 @@ import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
@@ -21,8 +22,13 @@ import com.aerospike.client.cluster.Partition;
 public final class BatchNode {
 	
 	public static List<BatchNode> generateList(Cluster cluster, Key[] keys) throws AerospikeException {
-				
-		int nodeCount = cluster.getNodes().length;
+		Node[] nodes = cluster.getNodes();
+		
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
+		
+		int nodeCount = nodes.length;
 		int keysPerNode = keys.length / nodeCount + 10;
 
 		// Split keys by server node.
