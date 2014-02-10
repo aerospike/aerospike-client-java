@@ -21,6 +21,8 @@
  ******************************************************************************/
 package com.aerospike.client;
 
+import gnu.crypto.util.Base64;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -556,6 +558,19 @@ public final class Info {
 				return null;
 			}
 			return Buffer.utf8ToString(buffer, valueBegin, len);
+		}
+		
+		/**
+		 * Get Base64 string value.
+		 */
+		public String getStringBase64() {
+			int len = valueEnd - valueBegin;
+			
+			if (len <= 0) {
+				return null;
+			}
+			byte[] bytes = Base64.decode(buffer, valueBegin, len);
+			return Buffer.utf8ToString(bytes, 0, bytes.length);
 		}
 	}
 }

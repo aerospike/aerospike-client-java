@@ -62,6 +62,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
 /**
@@ -716,14 +717,36 @@ public class AerospikeClient {
 		try {			
 			Info info = new Info(conn, command);
 			NameValueParser parser = info.getNameValueParser();
+			String error = null;
+			String file = null;
+			String line = null;
+			String message = null;
 			
 			while (parser.next()) {
 				String name = parser.getName();
 
 				if (name.equals("error")) {
-					throw new AerospikeException(serverPath + " registration failed: " + parser.getValue());
+					error = parser.getValue();
+				}
+				else if (name.equals("file")) {
+					file = parser.getValue();				
+				}
+				else if (name.equals("line")) {
+					line = parser.getValue();				
+				}
+				else if (name.equals("message")) {
+					message = parser.getStringBase64();					
 				}
 			}
+			
+			if (error != null) {			
+				throw new AerospikeException("Registration failed: " + error + Environment.Newline +
+					"File: " + file + Environment.Newline + 
+					"Line: " + line + Environment.Newline +
+					"Message: " + message
+					);
+			}
+			
 			node.putConnection(conn);
 			return new RegisterTask(cluster, serverPath);
 		}
