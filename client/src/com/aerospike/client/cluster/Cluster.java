@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -66,12 +67,31 @@ public class Cluster implements Runnable {
 	private Thread tendThread;
 	private volatile boolean tendValid;
 	
+	// Is threadPool shared with other client instances?
+	private final boolean sharedThreadPool;
+	
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
-		maxSocketIdle = policy.maxSocketIdle;		
-		threadPool = (policy.threadPool == null)? Executors.newCachedThreadPool() : policy.threadPool;
+		maxSocketIdle = policy.maxSocketIdle;
+		
+		if (policy.threadPool == null) {
+			// Create cached thread pool with daemon threads.
+			// Daemon threads automatically terminate when the program terminates.
+			threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+				public final Thread newThread(Runnable runnable) {
+					Thread thread = new Thread(runnable);
+					thread.setDaemon(true);
+					return thread;
+				}
+			});
+		}
+		else {
+			threadPool = policy.threadPool;
+		}
+		sharedThreadPool = policy.sharedThreadPool;
+		
 		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	
 		partitionWriteMap = new HashMap<String,Node[]>();		
@@ -588,6 +608,10 @@ public class Cluster implements Runnable {
 	}
 
 	public void close() {
+		if (! sharedThreadPool) {
+			threadPool.shutdown();
+		}
+		
 		tendValid = false;
 		tendThread.interrupt();
 		
@@ -596,6 +620,6 @@ public class Cluster implements Runnable {
 		
 		for (Node node : nodeArray) {
 			node.close();
-		}
+		}	
 	}
 }

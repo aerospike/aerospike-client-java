@@ -54,9 +54,28 @@ public class ClientPolicy {
 	 * Underlying thread pool used in batch, scan, and query commands. These commands are often 
 	 * sent to multiple server nodes in parallel threads.  A thread pool improves performance
 	 * because threads do not have to be created/destroyed for each command.
-	 * The default, null, indicates that the following thread pool will be used:
-	 * <p>
-	 * threadPool = Executors.newCachedThreadPool();
+	 * The default, null, indicates that the following daemon thread pool will be used:
+	 * <pre>
+	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+	 *     public final Thread newThread(Runnable runnable) {
+	 *			Thread thread = new Thread(runnable);
+	 *			thread.setDaemon(true);
+	 *			return thread;
+	 *		}
+	 *	});
+	 *</pre>
+	 * Daemon threads automatically terminate when the program terminates.
 	 */
 	public ExecutorService threadPool;
+	
+	/**
+	 * Is threadPool shared between other client instances or classes.  If threadPool is
+	 * not shared (default), threadPool will be shutdown when the client instance is closed.
+	 * <p>
+	 * If threadPool is shared, threadPool will not be shutdown when the client instance is 
+	 * closed. This shared threadPool should be shutdown manually before the program 
+	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is 
+	 * constructed to use daemon threads.
+	 */
+	public boolean sharedThreadPool;
 }
