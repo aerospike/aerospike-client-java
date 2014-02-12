@@ -180,7 +180,7 @@ public abstract class Unpacker<T> {
 			
 			case 0xcb: {
 				double val = Double.longBitsToDouble(Buffer.bytesToLong(buffer, offset));
-				offset += 4;			
+				offset += 8;			
 				return getDouble(val);
 			}
 
@@ -224,7 +224,7 @@ public abstract class Unpacker<T> {
 
 			case 0xd3: {
 				long val = Buffer.bytesToLong(buffer, offset);
-				offset += 8;			
+				offset += 8;
 				return getLong(val);
 			}
 
