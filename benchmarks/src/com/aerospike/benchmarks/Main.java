@@ -29,6 +29,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicIntegerArray;
 
+import com.aerospike.client.DefaultAerospikeClient;
+import com.aerospike.client.async.DefaultAsyncClient;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
@@ -455,7 +457,7 @@ public class Main implements Log.Callback {
 
 	public void runBenchmarks() throws Exception {
 		if (this.asyncEnabled) {
-			AsyncClient client = new AsyncClient(clientPolicy, hosts[0], port);		
+			AsyncClient client = new DefaultAsyncClient(clientPolicy, hosts[0], port);
 
 			try {
 				if (writeKeys) {
@@ -470,7 +472,7 @@ public class Main implements Log.Callback {
 			}			
 		}
 		else {			
-			AerospikeClient client = new AerospikeClient(clientPolicy, hosts[0], port);		
+			AerospikeClient client = new DefaultAerospikeClient(clientPolicy, hosts[0], port);
 
 			try {
 				if (writeKeys) {

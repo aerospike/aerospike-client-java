@@ -25,6 +25,7 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.DefaultAerospikeClient;
 import com.aerospike.client.policy.ClientPolicy;
 
 public abstract class Example {
@@ -36,7 +37,7 @@ public abstract class Example {
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
 		ClientPolicy policy = new ClientPolicy();		
-		AerospikeClient client = new AerospikeClient(policy, params.host, params.port);
+		AerospikeClient client = new DefaultAerospikeClient(policy, params.host, params.port);
 
 		try {
 			for (String exampleName : examples) {

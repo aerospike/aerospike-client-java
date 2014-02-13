@@ -26,6 +26,7 @@ import java.util.List;
 
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.async.DefaultAsyncClient;
 
 public abstract class AsyncExample {
 	/**
@@ -37,7 +38,7 @@ public abstract class AsyncExample {
 		policy.asyncSelectorThreads = 1;
 		policy.asyncSelectorTimeout = 10;
 		
-		AsyncClient client = new AsyncClient(policy, params.host, params.port);
+		AsyncClient client = new DefaultAsyncClient(policy, params.host, params.port);
 
 		try {
 			for (String exampleName : examples) {
