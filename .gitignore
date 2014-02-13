@@ -10,3 +10,7 @@ doc
 *.zip
 *.out
 *.jar
+.idea
+*.iml
+*.ipr
+*.iws

@@ -32,11 +32,7 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
+import com.aerospike.client.*;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
@@ -112,7 +108,7 @@ public class AerospikeServlet extends HttpServlet {
 		}
 		
 		try {
-			client = new AerospikeClient(host, port);						
+			client = new DefaultAerospikeClient(host, port);
 			
 			if (client.isConnected())
 				return true;
