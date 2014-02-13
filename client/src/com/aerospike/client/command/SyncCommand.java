@@ -71,8 +71,16 @@ public abstract class SyncCommand extends Command {
 					return;
 				}
 				catch (AerospikeException ae) {
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
+					if (ae.keepConnection()) {
+						// Put connection back in pool.
+						conn.updateLastUsed();
+						node.restoreHealth();
+						node.putConnection(conn);						
+					}
+					else {
+						// Close socket to flush out possible garbage.  Do not put back in pool.
+						conn.close();
+					}
 					throw ae;
 				}
 				catch (RuntimeException re) {

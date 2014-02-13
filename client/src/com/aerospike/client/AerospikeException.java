@@ -88,6 +88,14 @@ public class AerospikeException extends Exception {
 	}
 	
 	/**
+	 * Should connection be put back into pool.
+	 */
+	public final boolean keepConnection() {
+		return (resultCode >= ResultCode.KEY_NOT_FOUND_ERROR && resultCode <= ResultCode.BIN_EXISTS_ERROR) || 
+			   (resultCode == ResultCode.KEY_BUSY);
+	}
+	
+	/**
 	 * Get integer result code.
 	 */
 	public final int getResultCode() {

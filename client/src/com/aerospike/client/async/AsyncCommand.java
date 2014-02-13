@@ -283,8 +283,19 @@ public abstract class AsyncCommand extends Command implements Runnable {
 
 	protected final void failOnApplicationError(AerospikeException ae) {
 		// Ensure that command succeeds or fails, but not both.
-		if (complete.compareAndSet(false, true)) {			
-			close();
+		if (complete.compareAndSet(false, true)) {
+			if (ae.keepConnection()) {
+				// Put connection back in pool.
+				conn.unregister();
+				conn.updateLastUsed();
+				node.putAsyncConnection(conn);
+				node.restoreHealth();
+				cluster.putByteBuffer(byteBuffer);
+			}
+			else {
+				// Close socket to flush out possible garbage.
+				close();
+			}
 			onFailure(ae);
 		}
 	}
