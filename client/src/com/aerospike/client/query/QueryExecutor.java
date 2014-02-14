@@ -34,7 +34,7 @@ public abstract class QueryExecutor {
 	protected final QueryPolicy policy;
 	protected final Statement statement;
 	private final Node[] nodes;
-	private final ExecutorService threadPool;
+	protected final ExecutorService threadPool;
 	private final QueryThread[] threads;
 	protected volatile Exception exception;
 	private int nextThread;

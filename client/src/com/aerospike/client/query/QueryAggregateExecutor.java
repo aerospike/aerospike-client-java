@@ -23,6 +23,8 @@ package com.aerospike.client.query;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
@@ -41,8 +43,8 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;
-	private final Thread luaThread;
 	private LuaInstance lua;
+	private Future<?> future;
 	
 	public QueryAggregateExecutor(
 		Cluster cluster,
@@ -64,16 +66,13 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		//
 		// If LuaValue.valueOf() is called before any luaj calls, then the static initializer in
 		// LuaInteger will be initialized properly.  		
-		LuaValue.valueOf(0);
-		
-		// Initialize lua thread, but don't start it yet.
-		luaThread = new Thread(this);
+		LuaValue.valueOf(0);		
 	}
 	
 	public void execute() {		
 		// Start Lua thread which reads from a queue, applies aggregate function and 
 		// writes to a result set. 
-		luaThread.start();
+		future = threadPool.submit(this);
 	}
 	
 	public void run() {
@@ -121,13 +120,17 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		try {
 			// Send end command to lua thread.
 			inputQueue.put(LuaValue.NIL);
-			
-			// Ensure lua thread completes before sending end command to result set.
-			if (exception == null) {
-				luaThread.join(1000);
-			}
 		}
 		catch (InterruptedException ie) {
+		}
+			
+		if (exception == null) {
+			try {
+				// Ensure lua thread completes before sending end command to result set.
+				future.get(1000, TimeUnit.MILLISECONDS);
+			}
+			catch (Exception e) {
+			}
 		}
 
 		// Send end command to user's result set.
