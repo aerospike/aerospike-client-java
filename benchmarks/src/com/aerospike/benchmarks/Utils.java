@@ -51,12 +51,11 @@ public class Utils {
 			if(type == 'I') {
 				return Value.get(v);
 			} else if(type == 'S') {
-				String vs_sm = Integer.toString(v);
-				String vs = "";
-				while(vs.length() < size) {
-					vs += vs_sm;
+				StringBuilder builder = new StringBuilder();
+				while(builder.length() < size) {
+					builder.append(Integer.toString(v));
 				}
-				return Value.get(vs.substring(vs.length()-size));
+				return Value.get(builder.toString());
 			}
 		}
 		return Value.getAsNull();
