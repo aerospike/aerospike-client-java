@@ -51,9 +51,9 @@ public abstract class Unpacker<T> {
 		this.length = length;
 	}
 	
-	public final List<T> unpackList() throws AerospikeException {
+	public final T unpackList() throws AerospikeException {
 		if (length <= 0) {
-			return new ArrayList<T>(0);
+			return getList(new ArrayList<T>(0));
 		}
 		
 		try {
@@ -72,7 +72,7 @@ public abstract class Unpacker<T> {
 				offset += 4;
 			}
 			else {
-				return new ArrayList<T>(0);
+				return getList(new ArrayList<T>(0));
 			}
 			return unpackList(count);
 		} 
@@ -81,18 +81,18 @@ public abstract class Unpacker<T> {
 		}
 	}
 
-	private List<T> unpackList(int count) throws IOException, ClassNotFoundException {
+	private T unpackList(int count) throws IOException, ClassNotFoundException {
 		ArrayList<T> out = new ArrayList<T>();
 		
 		for (int i = 0; i < count; i++) {
 			out.add(unpackObject());
 		}
-		return out;
+		return getList(out);
 	}
 	
-	public final Map<T,T> unpackMap() throws AerospikeException {
+	public final T unpackMap() throws AerospikeException {
 		if (length <= 0) {
-			return new HashMap<T,T>(0);
+			return getMap(new HashMap<T,T>(0));
 		}
 
 		try {
@@ -111,7 +111,7 @@ public abstract class Unpacker<T> {
 				offset += 4;
 			}
 			else {
-				return new HashMap<T,T>(0);
+				return getMap(new HashMap<T,T>(0));
 			}
 			return unpackMap(count);
 		} 
@@ -120,15 +120,15 @@ public abstract class Unpacker<T> {
 		}
 	}
 	
-	private Map<T,T> unpackMap(int count) throws IOException, ClassNotFoundException {
-		HashMap<T,T> out = new HashMap<T,T>();		
+	private T unpackMap(int count) throws IOException, ClassNotFoundException {
+		HashMap<T,T> out = new HashMap<T,T>();
 
 		for (int i = 0; i < count; i++) {
 			T key = unpackObject();
 			T val = unpackObject();
 			out.put(key, val);
 		}
-		return out;
+		return getMap(out);
 	}
 
 	private T unpackBlob(int count) throws IOException, ClassNotFoundException {
@@ -155,7 +155,6 @@ public abstract class Unpacker<T> {
 		return val;
 	}
 
-	@SuppressWarnings("unchecked")
 	private T unpackObject() throws IOException, ClassNotFoundException {
 		int type = buffer[offset++] & 0xff;
 		
@@ -243,25 +242,25 @@ public abstract class Unpacker<T> {
 			case 0xdc: {
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
-				return (T)unpackList(count);
+				return unpackList(count);
 			}
 			
 			case 0xdd: {
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
-				return (T)unpackList(count);
+				return unpackList(count);
 			}
 				
 			case 0xde: {
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
-				return (T)unpackMap(count);
+				return unpackMap(count);
 			}
 			
 			case 0xdf: {
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
-				return (T)unpackMap(count);
+				return unpackMap(count);
 			}
 			
 			default: {
@@ -270,11 +269,11 @@ public abstract class Unpacker<T> {
 				}
 
 				if ((type & 0xf0) == 0x80) {	
-					return (T)unpackMap(type & 0x0f);
+					return unpackMap(type & 0x0f);
 				}
 				
 				if ((type & 0xf0) == 0x90) {			
-					return (T)unpackList(type & 0x0f);
+					return unpackList(type & 0x0f);
 				}
 
 				if (type < 0x80) {
@@ -298,12 +297,12 @@ public abstract class Unpacker<T> {
 	protected abstract T getDouble(double value);
 	protected abstract T getBoolean(boolean value);
 
-	public static List<Object> unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
+	public static Object unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		return unpacker.unpackList();
 	}
 
-	public static Map<Object,Object> unpackObjectMap(byte[] buffer, int offset, int length) throws AerospikeException {
+	public static Object unpackObjectMap(byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		return unpacker.unpackMap();
 	}

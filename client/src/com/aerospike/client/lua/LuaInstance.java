@@ -21,9 +21,6 @@
  ******************************************************************************/
 package com.aerospike.client.lua;
 
-import java.util.List;
-import java.util.Map;
-
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaInteger;
@@ -149,14 +146,12 @@ public final class LuaInstance {
 			
 		case ParticleType.LIST: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
-			List<LuaValue> list = unpacker.unpackList();
-			return new LuaList(this, list);
+			return unpacker.unpackList();
 		}
 
 		case ParticleType.MAP: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
-			Map<LuaValue,LuaValue> map = unpacker.unpackMap();
-			return new LuaMap(this, map);
+			return unpacker.unpackMap();
 		}
 		
 		default:
