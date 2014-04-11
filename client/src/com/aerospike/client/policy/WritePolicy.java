@@ -51,7 +51,7 @@ public final class WritePolicy extends Policy {
 	 * Expiration values:
 	 * <ul>
 	 * <li>-1: Never expire for Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
-	 * versions >= 3.1.4.  For older servers, -1 means a very long (max integer) expiration.</li>
+	 * versions >= 3.1.4.  Do not use -1 for older servers.</li>
 	 * <li>0: Default to namespace configuration variable "default-ttl" on the server.</li>
 	 * <li>> 0: Actual expiration in seconds.<br></li>
 	 * </ul>
