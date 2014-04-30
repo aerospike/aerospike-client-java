@@ -90,7 +90,7 @@ public final class BatchExecutor {
 		}		
 	}
 	
-	private void threadCompleted() {
+	private synchronized void threadCompleted() {
 		// Check status of other threads.
 		for (BatchThread thread : threads) {
 			if (! thread.complete) {
