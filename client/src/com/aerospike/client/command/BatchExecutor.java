@@ -138,7 +138,7 @@ public final class BatchExecutor {
 	private final class BatchThread implements Runnable {
 		private MultiCommand command;
 		private Thread thread;
-		private boolean complete;
+		private volatile boolean complete;
 
 		public BatchThread(MultiCommand command) {
 			this.command = command;
