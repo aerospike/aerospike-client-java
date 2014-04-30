@@ -132,7 +132,7 @@ public abstract class QueryExecutor {
 	private final class QueryThread implements Runnable {
 		private final QueryCommand command;
 		private Thread thread;
-		private boolean complete;
+		private volatile boolean complete;
 
 		public QueryThread(QueryCommand command) {
 			this.command = command;

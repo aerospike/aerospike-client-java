@@ -135,7 +135,7 @@ public final class ScanExecutor {
     private final class ScanThread implements Runnable {
 		private final ScanCommand command;
 		private Thread thread;
-		private boolean complete;
+		private volatile boolean complete;
 
 		public ScanThread(ScanCommand command) {
 			this.command = command;

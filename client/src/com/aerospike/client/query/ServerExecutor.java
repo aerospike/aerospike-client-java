@@ -130,7 +130,7 @@ public final class ServerExecutor {
 	private final class ServerThread implements Runnable {
 		private final ServerCommand command;
 		private Thread thread;
-		private boolean complete;
+		private volatile boolean complete;
 
 		public ServerThread(ServerCommand command) {
 			this.command = command;
