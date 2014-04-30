@@ -109,7 +109,7 @@ public class Cluster implements Runnable {
         }
         
         // Add other nodes as seeds, if they don't already exist.
-        ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length + 1);
+        ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length);
         for (Node node : nodes) {
         	Host host = node.getHost();
         	if (! findSeed(host)) {
