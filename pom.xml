@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>3.0.23</version>
+  <version>3.0.24</version>
   <packaging>pom</packaging>
 
   <modules>

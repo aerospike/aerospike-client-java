@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client</artifactId>
-  <version>3.0.23</version>
+  <version>3.0.24</version>
   <packaging>jar</packaging>
 
   <name>aerospike-client</name>
