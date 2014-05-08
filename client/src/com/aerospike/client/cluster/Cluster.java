@@ -448,7 +448,7 @@ public class Cluster implements Runnable {
 			nodeArray[count++] = node;
 		}
 		
-		// Add new Nodes
+		// Add new nodes.
 		for (Node node : nodesToAdd) {			
 			if (Log.infoEnabled()) {
 				Log.info("Add node " + node);
