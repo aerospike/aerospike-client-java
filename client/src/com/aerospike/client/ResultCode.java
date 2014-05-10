@@ -47,7 +47,7 @@ public final class ResultCode {
 	public static final int INVALID_NODE_ERROR = -3;
 
 	/**
-	 * Client serialization error.
+	 * Client parse error.
 	 */
 	public static final int PARSE_ERROR = -2;
 
@@ -145,9 +145,19 @@ public final class ResultCode {
 	public static final int UNSUPPORTED_FEATURE = 16;
 	
 	/**
-	 * Database command data is invalid.
+	 * Specified bin name does not exist in record.
 	 */
-	public static final int INVALID_DATA = 99;
+	public static final int BIN_NOT_FOUND = 17;
+
+	/**
+	 * Specified bin name does not exist in record.
+	 */
+	public static final int DEVICE_OVERLOAD = 18;
+
+	/**
+	 * Key type mismatch.
+	 */
+	public static final int KEY_MISMATCH = 19;
 	
 	/**
 	 * A user defined function returned an error code.
@@ -180,6 +190,16 @@ public final class ResultCode {
 	public static final int INDEX_GENERIC = 204;
 	
 	/**
+	 * Index name maximum length exceeded.
+	 */
+	public static final int INDEX_NAME_MAXLEN = 205;
+
+	/**
+	 * Maximum number of indicies exceeded.
+	 */
+	public static final int INDEX_MAXCOUNT = 206;
+
+	/**
 	 * Secondary index query aborted.
 	 */
 	public static final int QUERY_ABORTED = 210;
@@ -199,6 +219,30 @@ public final class ResultCode {
 	 */
 	public static final int QUERY_GENERIC = 213;
 		
+	/**
+	 * Should connection be put back into pool.
+	 */
+	public static boolean keepConnection(int resultCode) {
+		switch (resultCode) {
+		case QUERY_TERMINATED:
+		case SCAN_TERMINATED:
+		case INVALID_NODE_ERROR:
+		case PARSE_ERROR:
+		case SERIALIZE_ERROR:
+		case SERVER_MEM_ERROR:
+		case TIMEOUT:
+		case SERVER_NOT_AVAILABLE:
+		case SCAN_ABORT:
+		case INDEX_OOM:
+		case QUERY_ABORTED:
+		case QUERY_TIMEOUT:
+			return false;
+			
+		default:
+			return true;					
+		}
+	}
+
 	/**
 	 * Return result code as a string.
 	 */
@@ -273,9 +317,15 @@ public final class ResultCode {
 		case UNSUPPORTED_FEATURE:
 			return "Unsupported Server Feature";
 			
-		case INVALID_DATA:
-			return "Invalid command data";
-			
+		case BIN_NOT_FOUND:
+			return "Bin not found";
+
+		case DEVICE_OVERLOAD:
+			return "Device overload";
+
+		case KEY_MISMATCH:
+			return "Key mismatch";
+
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
 			
@@ -294,6 +344,12 @@ public final class ResultCode {
 		case INDEX_GENERIC:
 			return "Index error";
 			
+		case INDEX_NAME_MAXLEN:
+			return "Index name max length exceeded";
+			
+		case INDEX_MAXCOUNT:
+			return "Index count exceeds max";
+		
 		case QUERY_ABORTED:
 			return "Query aborted";
 			
