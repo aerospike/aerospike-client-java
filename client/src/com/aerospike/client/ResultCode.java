@@ -224,6 +224,7 @@ public final class ResultCode {
 	 */
 	public static boolean keepConnection(int resultCode) {
 		switch (resultCode) {
+		case 0: // Exception did not originate on server.
 		case QUERY_TERMINATED:
 		case SCAN_TERMINATED:
 		case INVALID_NODE_ERROR:
