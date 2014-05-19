@@ -26,7 +26,8 @@ package com.aerospike.client.policy;
  */
 public final class ScanPolicy extends Policy {
 	/**
-	 * Fraction of data to scan - not yet supported.
+	 * Percent of data to scan.  Valid integer range is 1 to 100.
+	 * Default is 100.
 	 */
 	public int scanPercent = 100;
 	
