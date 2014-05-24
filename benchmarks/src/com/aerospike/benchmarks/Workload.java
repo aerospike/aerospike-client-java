@@ -21,25 +21,32 @@
  ******************************************************************************/
 package com.aerospike.benchmarks;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-
-public class CounterStore {
+/**
+ * Benchmark workload type.
+ */
+public enum Workload {
+	/**
+	 * Initialize data with sequential key writes.
+	 */
+	INITIALIZE,
 	
-	Current write = new Current();
-	Current read = new Current();
+	/**
+	 * Read/Update. Perform random key, random read all bins or write all bins workload.
+	 */
+	READ_UPDATE,
 	
-	AtomicLong periodBegin = new AtomicLong();	
-	AtomicInteger readNotFound = new AtomicInteger();
-	AtomicInteger valueMismatchCnt = new AtomicInteger();
-	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
-	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
-
-	public static class Current {
-		AtomicInteger count = new AtomicInteger();
-		AtomicInteger timeouts = new AtomicInteger();
-		AtomicInteger errors = new AtomicInteger();
-		LatencyManager latency;
-	}	
+	/**
+	 * Read/Modify/Update. Perform random key, read all bins, write one bin workload.
+	 */
+	READ_MODIFY_UPDATE,
+	
+	/**
+	 * Read/Modify/Increment. Perform random key, read all bins, increment one integer bin workload.
+	 */
+	READ_MODIFY_INCREMENT,
+	
+	/**
+	 * Read/Modify/Decrement. Perform random key, read all bins, decrement one integer bin workload.
+	 */	
+	READ_MODIFY_DECREMENT;
 }

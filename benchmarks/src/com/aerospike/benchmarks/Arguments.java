@@ -21,25 +21,23 @@
  ******************************************************************************/
 package com.aerospike.benchmarks;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
-public class CounterStore {
-	
-	Current write = new Current();
-	Current read = new Current();
-	
-	AtomicLong periodBegin = new AtomicLong();	
-	AtomicInteger readNotFound = new AtomicInteger();
-	AtomicInteger valueMismatchCnt = new AtomicInteger();
-	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
-	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
-
-	public static class Current {
-		AtomicInteger count = new AtomicInteger();
-		AtomicInteger timeouts = new AtomicInteger();
-		AtomicInteger errors = new AtomicInteger();
-		LatencyManager latency;
-	}	
+public class Arguments {
+	public String namespace;
+	public String setName;
+	public Workload workload;
+	public DBObjectSpec[] objectSpec;
+	public Policy readPolicy = new Policy();
+	public WritePolicy writePolicy = new WritePolicy();
+	public int keySize;
+	public int nBins;
+	public int readPct;
+	public int readMultiBinPct;
+	public int writeMultiBinPct;
+	public int throughput;
+	public boolean reportNotFound;
+	public boolean validate;
+	public boolean debug;
 }

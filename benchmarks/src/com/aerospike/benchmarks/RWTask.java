@@ -23,7 +23,6 @@ package com.aerospike.benchmarks;
 
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicIntegerArray;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -32,149 +31,93 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.GenerationPolicy;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 
-//
-// Always generates random reads
-// between start and end
-//
+/**
+ * Random Read/Write workload task.
+ */
 public abstract class RWTask implements Runnable {
 
 	final AerospikeClient client;
-	final String namespace;
-	final String setName;
-	Random rgen;
-	int nKeys;
-	int startKey;
-	int keySize;
-	int nBins;
-	DBObjectSpec[] objects;
-	String cycleType;
-	AtomicIntegerArray settingsArr;
-	boolean validate;
+	final Arguments args;
+	final CounterStore counters;
+	final Random random;
+	final WritePolicy writePolicyGeneration;
 	ExpectedValue[] expectedValues;
-	CounterStore counters;
-	final Policy readPolicy;
-	final WritePolicy writePolicy;
-	WritePolicy writePolicyGeneration;
-	boolean debug;
-
-	public RWTask(
-		AerospikeClient client, 
-		String namespace,
-		String setName,
-		int nKeys, 
-		int startKey, 
-		int keySize, 
-		DBObjectSpec[] objects, 
-		int nBins, 
-		String cycleType, 
-		Policy readPolicy,
-		WritePolicy writePolicy, 
-		AtomicIntegerArray settingsArr, 
-		boolean validate, 
-		CounterStore counters, 
-		boolean debug
-	) {
-		this.client      = client;
-		this.namespace   = namespace;
-		this.setName     = setName;
-		this.nKeys       = nKeys;
-		this.startKey    = startKey;
-		this.keySize     = keySize;
-		this.objects     = objects;
-		this.nBins       = nBins;
-		this.cycleType   = cycleType;
-		this.readPolicy  = readPolicy;
-		this.writePolicy = writePolicy;
-		this.settingsArr = settingsArr;
-		this.validate    = validate;
-		this.counters    = counters;
-		this.debug       = debug;
+	final double readPct;
+	final double readMultiBinPct;
+	final double writeMultiBinPct;
+	final int keyStart;
+	final int keyCount;
+	
+	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+		this.client = client;
+		this.args = args;
+		this.counters = counters;
+		this.keyStart = keyStart;
+		this.keyCount = keyCount;
 		
 		// Use default constructor which uses a different seed for each invocation.
 		// Do not use System.currentTimeMillis() for a seed because it is often
 		// the same across concurrent threads, thus causing hot keys.
-		this.rgen = new Random();
+		random = new Random();
 				
 		writePolicyGeneration = new WritePolicy();
-		writePolicyGeneration.timeout = writePolicy.timeout;
-		writePolicyGeneration.maxRetries = writePolicy.maxRetries;
-		writePolicyGeneration.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
+		writePolicyGeneration.timeout = args.writePolicy.timeout;
+		writePolicyGeneration.maxRetries = args.writePolicy.maxRetries;
+		writePolicyGeneration.sleepBetweenRetries = args.writePolicy.sleepBetweenRetries;
 		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-		writePolicyGeneration.generation = 0;		
+		writePolicyGeneration.generation = 0;
+		
+		readPct = (double)args.readPct / 100.0;
+		readMultiBinPct = (double)args.readMultiBinPct / 100.0;
+		writeMultiBinPct = (double)args.writeMultiBinPct / 100.0;
 	}	
 	
 	public void run() {
- 
-		// if we're going to be validating, load the data.
-		if (this.validate) {
+		// Load data if we're going to be validating.
+		if (args.validate) {
 			setupValidation();
 		}
 
-		// set up parameters...
-		int throughputget         = settingsArr.get(0);
-		double readPct            = settingsArr.get(1) / 100.0;
-		double singleBinReadPct   = settingsArr.get(2) / 100.0;
-		double singleBinUpdatePct = settingsArr.get(3) / 100.0;
-
-		// Now run...
 		while (true) {
 			// Get random key
-			int curKeyIdx = rgen.nextInt(this.nKeys);
+			int key = random.nextInt(keyCount);
 		
-			// Check - is it a read or a write?
-			double randnum = rgen.nextDouble();
-			boolean isWrite = false;
-			if (randnum >= readPct) {
-				isWrite = true;
-			}
-
-			// Single bin or multibin?
-			boolean isMultiBin = false;
-			randnum = rgen.nextDouble();
-			if (isWrite && (randnum < singleBinUpdatePct)) {
-				isMultiBin = true;
-			} else if (randnum < singleBinReadPct) {
-				isMultiBin = true;
-			}		
-
-			// now do the work
 			try {
-				if (this.cycleType.equals("RU")) {
-					if (isWrite) {
-						doWrite(curKeyIdx, isMultiBin);
-					}else{
-						doRead( curKeyIdx, isMultiBin);
-					}
-				} else if (this.cycleType.equals("RMU") || this.cycleType.equals("RMI") || this.cycleType.equals("RMD")) {
-					// read all bins
-					doRead(curKeyIdx, true);
-
-					// write all bins
-					if (this.cycleType.equals("RMU")) {
-						doWrite(curKeyIdx, true);
-					} else if (this.cycleType.equals("RMI")) {
-						doIncrement(curKeyIdx, 1);
-					} else if (this.cycleType.equals("RMD")) {
-						doIncrement(curKeyIdx, -1);
-					}
-				}	 
-			} catch (Exception e) {
-				if (!this.debug) {
-					System.out.println("Exception - " + e.toString());
-				}else{
+				switch (args.workload) {
+				case READ_UPDATE:
+					readUpdate(key);
+					break;
+					
+				case READ_MODIFY_UPDATE:
+					readModifyUpdate(key);		
+					break;
+					
+				case READ_MODIFY_INCREMENT:
+					readModifyIncrement(key);		
+					break;
+					
+				case READ_MODIFY_DECREMENT:
+					readModifyDecrement(key);		
+					break;
+				}
+			} 
+			catch (Exception e) {
+				if (args.debug) {
 					e.printStackTrace();
+				}
+				else {
+					System.out.println("Exception - " + e.toString());
 				}
 			}		 
 
-			// throttle throughput
-			if (throughputget > 0) {
+			// Throttle throughput
+			if (args.throughput > 0) {
 				int transactions = counters.write.count.get() + counters.read.count.get();
 				
-				if (transactions > throughputget) {
+				if (transactions > args.throughput) {
 					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 					
 					if (millis > 0) {
@@ -185,20 +128,52 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 	
+	private void readUpdate(int key) {
+		if (random.nextDouble() < this.readPct) {
+			boolean isMultiBin = random.nextDouble() < readMultiBinPct;
+			doRead(key, isMultiBin);
+		}
+		else {
+			boolean isMultiBin = random.nextDouble() < writeMultiBinPct;
+			doWrite(key, isMultiBin);
+		}		
+	}
+	
+	private void readModifyUpdate(int key) {
+		// Read all bins.
+		doRead(key, true);
+		// Write one bin.
+		doWrite(key, false);
+	}
+	
+	private void readModifyIncrement(int key) {
+		// Read all bins.
+		doRead(key, true);
+		// Increment one bin.
+		doIncrement(key, 1);
+	}
+
+	private void readModifyDecrement(int key) {
+		// Read all bins.
+		doRead(key, true);
+		// Decrement one bin.
+		doIncrement(key, -1);
+	}
+
 	/**
 	 * Read existing values from the database, save them away in our validation arrays.
 	 */
 	private void setupValidation() {
-		this.expectedValues = new ExpectedValue[this.nKeys];
+		expectedValues = new ExpectedValue[keyCount];
 		
-		// load starting values
-		for (int i = 0; i < this.nKeys; i++) {
+		// Load starting values
+		for (int i = 0; i < keyCount; i++) {
 			Bin[] bins = null;
 			int generation = 0;
 			
 			try {
-				Key key = new Key(this.namespace, this.setName, Utils.genKey(this.startKey+i, this.keySize));
-				Record record = client.get(this.readPolicy, key);
+				Key key = new Key(args.namespace, args.setName, Utils.genKey(keyStart + i, args.keySize));
+				Record record = client.get(args.readPolicy, key);
 				
 				if (record != null && record.bins != null) {
 					Map<String,Object> map = record.bins;
@@ -222,12 +197,12 @@ public abstract class RWTask implements Runnable {
 		// Tell the global counter that this task is finished loading
 		this.counters.loadValuesFinishedTasks.incrementAndGet();
 
-		// wait for all tasks to be finished loading
-		while(! this.counters.loadValuesFinished.get()) {
+		// Wait for all tasks to be finished loading
+		while (! this.counters.loadValuesFinished.get()) {
 			try {
 				Thread.sleep(10);
 			} catch (Exception e) {
-				System.out.println("can't sleep while waiting for all values to load");
+				System.out.println("Can't sleep while waiting for all values to load");
 			}
 		}
 	}
@@ -236,19 +211,20 @@ public abstract class RWTask implements Runnable {
 	 * Write the key at the given index
 	 */
 	protected void doWrite(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
+		int binCount = multiBin ? args.nBins : 1;
 		Bin[] bins;
 
-		if (this.validate) {
-			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, this.expectedValues[keyIdx].generation+1);
+		if (args.validate) {
+			bins = Utils.genBins(random, binCount, args.objectSpec, this.expectedValues[keyIdx].generation+1);
 		} else {
-			bins = Utils.genBins(rgen, multiBin ? 1 : this.nBins, objects, 0);
+			bins = Utils.genBins(random, binCount, args.objectSpec, 0);
 		}
 		
 		try {
-			put(new Key(this.namespace, this.setName, key), bins);
+			put(new Key(args.namespace, args.setName, key), bins);
 			
-			if (this.validate) {
+			if (args.validate) {
 				this.expectedValues[keyIdx].write(bins);
 			}
 		}
@@ -265,15 +241,15 @@ public abstract class RWTask implements Runnable {
 	 */
 	protected void doIncrement(int keyIdx, int incrValue) {
 		// get key
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
 		
 		// set up bin for increment
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
 		
 		try {
-			add(new Key(this.namespace, this.setName, key), bins);
+			add(new Key(args.namespace, args.setName, key), bins);
 			
-			if (this.validate) {
+			if (args.validate) {
 				this.expectedValues[keyIdx].add(bins, incrValue);
 			}
 		}
@@ -289,16 +265,16 @@ public abstract class RWTask implements Runnable {
 	 * Read the key at the given index.
 	 */
 	protected void doRead(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(this.startKey+keyIdx, this.keySize);
+		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
 
 		try {
 			if (multiBin) {
-				// read all bins, maybe validate
-				get(keyIdx, new Key(this.namespace, this.setName, key));			
+				// Read all bins, maybe validate
+				get(keyIdx, new Key(args.namespace, args.setName, key));			
 			} 
 			else {
-				// read one bin, maybe validate
-				get(keyIdx, new Key(this.namespace, this.setName, key), Integer.toString(0));			
+				// Read one bin, maybe validate
+				get(keyIdx, new Key(args.namespace, args.setName, key), Integer.toString(0));			
 			}
 		}
 		catch (AerospikeException ae) {
@@ -322,7 +298,7 @@ public abstract class RWTask implements Runnable {
 		else {			
 			counters.write.errors.getAndIncrement();
 			
-			if (debug) {
+			if (args.debug) {
 				ae.printStackTrace();
 			}
 		}
@@ -331,7 +307,7 @@ public abstract class RWTask implements Runnable {
 	protected void writeFailure(Exception e) {
 		counters.write.errors.getAndIncrement();
 		
-		if (debug) {
+		if (args.debug) {
 			e.printStackTrace();
 		}
 	}
@@ -343,7 +319,7 @@ public abstract class RWTask implements Runnable {
 		else {			
 			counters.read.errors.getAndIncrement();
 			
-			if (debug) {
+			if (args.debug) {
 				ae.printStackTrace();
 			}
 		}
@@ -352,7 +328,7 @@ public abstract class RWTask implements Runnable {
 	protected void readFailure(Exception e) {
 		counters.read.errors.getAndIncrement();
 		
-		if (debug) {
+		if (args.debug) {
 			e.printStackTrace();
 		}
 	}

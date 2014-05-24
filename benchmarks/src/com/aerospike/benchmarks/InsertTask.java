@@ -31,39 +31,16 @@ import com.aerospike.client.policy.WritePolicy;
 
 public abstract class InsertTask implements Runnable {
 
-	final String namespace;
-	final String setName;
-	final int startKey;
-	final int nKeys;
-	final int keySize;
-	final int nBins;	
-	final WritePolicy policy;
-	final DBObjectSpec[] spec;
+	final Arguments args;
+	final int keyStart;
+	final int keyCount;
 	final CounterStore counters;
-	final boolean debug;
 	
-	public InsertTask(
-		String namespace,
-		String setName,
-		int startKey, 
-		int nKeys, 
-		int keySize, 
-		int nBins, 
-		WritePolicy policy, 
-		DBObjectSpec[] spec, 
-		CounterStore counters,
-		boolean debug
-	) {
-		this.namespace = namespace;
-		this.setName = setName;
-		this.startKey = startKey;
-		this.nKeys = nKeys;
-		this.keySize = keySize;
-		this.nBins = nBins;
-		this.policy = policy;
-		this.spec = spec;
+	public InsertTask(Arguments args, CounterStore counters, int keyStart, int keyCount) {
+		this.args = args;
 		this.counters = counters;
-		this.debug = debug;
+		this.keyStart = keyStart;
+		this.keyCount = keyCount;
 	}
 
 	public void run() {
@@ -73,12 +50,12 @@ public abstract class InsertTask implements Runnable {
 			Random r = new Random();
 			int i = 0;
 
-			while (i < this.nKeys) {
-				key	 = Utils.genKey(this.startKey+i, this.keySize);
-				bins = Utils.genBins(r, this.nBins, this.spec, 0);
+			while (i < keyCount) {
+				key	 = Utils.genKey(keyStart + i, args.keySize);
+				bins = Utils.genBins(r, args.nBins, args.objectSpec, 0);
 				
 				try {				
-					put(policy, new Key(this.namespace, this.setName, key), bins);
+					put(args.writePolicy, new Key(args.namespace, args.setName, key), bins);
 				}
 				catch (AerospikeException ae) {
 					writeFailure(ae);
@@ -102,7 +79,7 @@ public abstract class InsertTask implements Runnable {
 		else {			
 			counters.write.errors.getAndIncrement();
 			
-			if (debug) {
+			if (args.debug) {
 				ae.printStackTrace();
 			}
 		}
@@ -111,7 +88,7 @@ public abstract class InsertTask implements Runnable {
 	protected void writeFailure(Exception e) {
 		counters.write.errors.getAndIncrement();
 		
-		if (debug) {
+		if (args.debug) {
 			e.printStackTrace();
 		}
 	}

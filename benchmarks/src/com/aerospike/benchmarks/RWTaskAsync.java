@@ -21,8 +21,6 @@
  ******************************************************************************/
 package com.aerospike.benchmarks;
 
-import java.util.concurrent.atomic.AtomicIntegerArray;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -30,8 +28,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Asynchronous read/write task.
@@ -42,24 +38,8 @@ public class RWTaskAsync extends RWTask {
 	private final WriteHandler writeHandler;
 	private final ReadHandler readHandler;
 	
-	public RWTaskAsync(
-		AsyncClient client, 
-		String namespace,
-		String setName,
-		int nKeys, 
-		int startKey, 
-		int keySize, 
-		DBObjectSpec[] objects, 
-		int nBins, 
-		String cycleType,
-		Policy readPolicy,
-		WritePolicy writePolicy, 
-		AtomicIntegerArray settingsArr, 
-		boolean validate, 
-		CounterStore counters, 
-		boolean debug
-	) {
-		super(client, namespace, setName, nKeys, startKey, keySize, objects, nBins, cycleType, readPolicy, writePolicy, settingsArr, validate, counters, debug);
+	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+		super(client, args, counters, keyStart, keyCount);
 		this.client = client;
 		writeHandler = new WriteHandler();
 		readHandler = new ReadHandler();
@@ -73,10 +53,10 @@ public class RWTaskAsync extends RWTask {
 		}
 
 		if (counters.write.latency != null) {
-			client.put(writePolicy, new LatencyWriteHandler(), key, bins);	
+			client.put(args.writePolicy, new LatencyWriteHandler(), key, bins);	
 		}
 		else {
-			client.put(writePolicy, writeHandler, key, bins);
+			client.put(args.writePolicy, writeHandler, key, bins);
 		}
 	}
 		
@@ -103,10 +83,10 @@ public class RWTaskAsync extends RWTask {
 		}
 		
 		if (counters.read.latency != null) {		
-			client.get(readPolicy, new LatencyReadHandler(), key, binName);
+			client.get(args.readPolicy, new LatencyReadHandler(), key, binName);
 		}
 		else {			
-			client.get(readPolicy, readHandler, key, binName);
+			client.get(args.readPolicy, readHandler, key, binName);
 		}
 	}
 	
@@ -118,10 +98,10 @@ public class RWTaskAsync extends RWTask {
 		}
 
 		if (counters.read.latency != null) {	
-			client.get(readPolicy, new LatencyReadHandler(), key);
+			client.get(args.readPolicy, new LatencyReadHandler(), key);
 		}
 		else {			
-			client.get(readPolicy, readHandler, key);
+			client.get(args.readPolicy, readHandler, key);
 		}
 	}
 	
@@ -140,7 +120,12 @@ public class RWTaskAsync extends RWTask {
 	private final class ReadHandler implements RecordListener {
 		@Override
 		public void onSuccess(Key key, Record record) {
-			counters.read.count.getAndIncrement();
+			if (record == null && args.reportNotFound) {
+				counters.readNotFound.getAndIncrement();	
+			}
+			else {
+				counters.read.count.getAndIncrement();		
+			}
 		}
 
 		@Override
@@ -179,8 +164,14 @@ public class RWTaskAsync extends RWTask {
 		@Override
 		public void onSuccess(Key key, Record record) {
 			long elapsed = System.currentTimeMillis() - begin;
-			counters.read.count.getAndIncrement();			
 			counters.read.latency.add(elapsed);
+			
+			if (record == null && args.reportNotFound) {
+				counters.readNotFound.getAndIncrement();	
+			}
+			else {
+				counters.read.count.getAndIncrement();		
+			}
 		}
 
 		@Override
