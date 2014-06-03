@@ -92,21 +92,21 @@ public final class Log {
 	 * Determine if warning log level is enabled.
 	 */
 	public static boolean warnEnabled() {
-		return Level.WARN.ordinal() <= gLevel.ordinal();
+		return gCallback != null && Level.WARN.ordinal() <= gLevel.ordinal();
 	}
 
 	/**
 	 * Determine if info log level is enabled.
 	 */
 	public static boolean infoEnabled() {
-		return Level.INFO.ordinal() <= gLevel.ordinal();
+		return gCallback != null && Level.INFO.ordinal() <= gLevel.ordinal();
 	}
 
 	/**
 	 * Determine if debug log level is enabled.
 	 */
 	public static boolean debugEnabled() {
-		return Level.DEBUG.ordinal() <= gLevel.ordinal();
+		return gCallback != null && Level.DEBUG.ordinal() <= gLevel.ordinal();
 	}
 
 	/**
