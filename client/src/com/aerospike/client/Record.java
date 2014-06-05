@@ -86,25 +86,31 @@ public final class Record {
 		sb.append("),(exp:");
 		sb.append(expiration);
 		sb.append("),(bins:");
-		boolean sep = false;
 		
-		for (Entry<String,Object> entry : bins.entrySet()) {
-			if (sep) {
-				sb.append(',');
-			}
-			else {
-				sep = true;
-			}
-			sb.append('(');
-			sb.append(entry.getKey());
-			sb.append(':');
-			sb.append(entry.getValue());
-			sb.append(')');
+		if (bins != null) {
+			boolean sep = false;
 			
-			if (sb.length() > 1000) {
-				sb.append("...");
-				break;
+			for (Entry<String,Object> entry : bins.entrySet()) {
+				if (sep) {
+					sb.append(',');
+				}
+				else {
+					sep = true;
+				}
+				sb.append('(');
+				sb.append(entry.getKey());
+				sb.append(':');
+				sb.append(entry.getValue());
+				sb.append(')');
+				
+				if (sb.length() > 1000) {
+					sb.append("...");
+					break;
+				}
 			}
+		}
+		else {
+			sb.append("null");
 		}
 		sb.append(')');
 		return sb.toString();
