@@ -23,6 +23,7 @@ package com.aerospike.client.query;
 
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
@@ -34,6 +35,7 @@ import com.aerospike.client.policy.Policy;
 public final class ServerExecutor {
 	
 	private final ServerThread[] threads;
+	private final AtomicInteger completedCount;
 	private volatile Exception exception;
 	private boolean completed;
 	
@@ -52,6 +54,8 @@ public final class ServerExecutor {
 			statement.taskId = r.nextInt(Integer.MAX_VALUE);
 		}
 		
+		completedCount = new AtomicInteger();
+
 		Node[] nodes = cluster.getNodes();
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
@@ -83,15 +87,10 @@ public final class ServerExecutor {
 	}
 
 	private void threadCompleted() {
-		// Check status of other threads.
-		for (ServerThread thread : threads) {
-			if (! thread.complete) {
-				// Some threads have not finished. Do nothing.
-				return;
-			}
+		// Check if all threads completed.
+		if (completedCount.incrementAndGet() >= threads.length) {
+			notifyCompleted();
 		}
-		// All threads complete.
-		notifyCompleted();
 	}
 
 	private void stopThreads(Exception cause) {
@@ -130,7 +129,6 @@ public final class ServerExecutor {
 	private final class ServerThread implements Runnable {
 		private final ServerCommand command;
 		private Thread thread;
-		private volatile boolean complete;
 
 		public ServerThread(ServerCommand command) {
 			this.command = command;
@@ -148,7 +146,6 @@ public final class ServerExecutor {
 				// Terminate other threads.
 				stopThreads(e);
 			}
-			complete = true;
 			
 		   	if (exception == null) {
 				threadCompleted();

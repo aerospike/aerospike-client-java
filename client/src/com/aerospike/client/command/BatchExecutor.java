@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -37,6 +38,7 @@ import com.aerospike.client.policy.Policy;
 public final class BatchExecutor {
 	
 	private final ArrayList<BatchThread> threads;
+	private final AtomicInteger completedCount;
 	private volatile Exception exception;
 	private boolean completed;
 	
@@ -50,6 +52,7 @@ public final class BatchExecutor {
 		int readAttr
 	) throws AerospikeException {
 		
+		completedCount = new AtomicInteger();
 		List<BatchNode> batchNodes = BatchNode.generateList(cluster, keys);
 		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
 		
@@ -91,15 +94,10 @@ public final class BatchExecutor {
 	}
 	
 	private void threadCompleted() {
-		// Check status of other threads.
-		for (BatchThread thread : threads) {
-			if (! thread.complete) {
-				// Some threads have not finished. Do nothing.
-				return;
-			}
+		// Check if all threads completed.
+		if (completedCount.incrementAndGet() >= threads.size()) {
+			notifyCompleted();
 		}
-		// All threads complete.
-		notifyCompleted();
 	}
 
 	private void stopThreads(Exception cause) {
@@ -138,7 +136,6 @@ public final class BatchExecutor {
 	private final class BatchThread implements Runnable {
 		private MultiCommand command;
 		private Thread thread;
-		private volatile boolean complete;
 
 		public BatchThread(MultiCommand command) {
 			this.command = command;
@@ -156,7 +153,6 @@ public final class BatchExecutor {
 				// Terminate other threads.
 				stopThreads(e);
 			}
-			complete = true;
 			
 		   	if (exception == null) {
 				threadCompleted();

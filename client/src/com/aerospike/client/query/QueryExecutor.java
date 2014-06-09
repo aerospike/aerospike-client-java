@@ -22,6 +22,7 @@
 package com.aerospike.client.query;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
@@ -36,14 +37,15 @@ public abstract class QueryExecutor {
 	private final Node[] nodes;
 	protected final ExecutorService threadPool;
 	private final QueryThread[] threads;
+	private final AtomicInteger completedCount;
 	protected volatile Exception exception;
-	private int nextThread;
+	private final int maxConcurrentNodes;
 	
 	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement) throws AerospikeException {
 		this.policy = policy;
 		this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 		this.statement = statement;
-		
+		this.completedCount = new AtomicInteger();
 		this.nodes = cluster.getNodes();
 
 		if (this.nodes.length == 0) {
@@ -52,6 +54,9 @@ public abstract class QueryExecutor {
 
 		this.threadPool = cluster.getThreadPool();
 		this.threads = new QueryThread[nodes.length];
+
+		// Initialize maximum number of nodes to query in parallel.
+		this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length) ? threads.length : policy.maxConcurrentNodes;
 	}
 	
 	protected final void startThreads() {		
@@ -61,39 +66,25 @@ public abstract class QueryExecutor {
 			threads[i] = new QueryThread(command);
 		}
 
-		// Initialize maximum number of nodes to query in parallel.
-		nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
-
-		// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.
-		int max = nextThread;
-
-		for (int i = 0; i < max; i++) {
+		// Start threads.
+		for (int i = 0; i < maxConcurrentNodes; i++) {
 			threadPool.execute(threads[i]);
 		}
 	}
 	
 	private final void threadCompleted() {
-	   	int index = -1;
-		
-		// Determine if a new thread needs to be started.
-		synchronized (threads) {
+		int finished = completedCount.incrementAndGet();
+
+		if (finished < threads.length) {
+			int nextThread = finished + maxConcurrentNodes - 1;
+
+			// Determine if a new thread needs to be started.
 			if (nextThread < threads.length) {
-				index = nextThread++;
+				// Start new thread.
+				threadPool.execute(threads[nextThread]);
 			}
-		}
-		
-		if (index >= 0) {
-			// Start new thread.
-			threadPool.execute(threads[index]);
 		}
 		else {
-			// All threads have been started. Check status.
-			for (QueryThread thread : threads) {
-				if (! thread.complete) {
-					// Some threads have not finished. Do nothing.
-					return;
-				}
-			}
 			// All threads complete.  Tell RecordSet thread to return complete to user.
 			sendCompleted();
 		}
@@ -132,7 +123,6 @@ public abstract class QueryExecutor {
 	private final class QueryThread implements Runnable {
 		private final QueryCommand command;
 		private Thread thread;
-		private volatile boolean complete;
 
 		public QueryThread(QueryCommand command) {
 			this.command = command;
@@ -150,7 +140,6 @@ public abstract class QueryExecutor {
 				// Terminate other query threads.
 				stopThreads(e);
 			}			
-			complete = true;
 			
 		   	if (exception == null) {
 				threadCompleted();

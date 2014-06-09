@@ -22,6 +22,7 @@
 package com.aerospike.client.command;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ScanCallback;
@@ -33,11 +34,13 @@ public final class ScanExecutor {
 	
 	private final ExecutorService threadPool;
 	private final ScanThread[] threads;
+	private final AtomicInteger completedCount;
 	private volatile Exception exception;
-	private int nextThread;
+	private final int maxConcurrentNodes;
 	private boolean completed;
 	
 	public ScanExecutor(Cluster cluster, Node[] nodes, ScanPolicy policy, String namespace, String setName, ScanCallback callback, String[] binNames) {
+		this.completedCount = new AtomicInteger();
 		this.threadPool = cluster.getThreadPool();
 		
 		// Initialize threads.		
@@ -49,14 +52,12 @@ public final class ScanExecutor {
 		}
 		
 		// Initialize maximum number of nodes to query in parallel.
-		nextThread = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
+		maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length)? threads.length : policy.maxConcurrentNodes;
 	}
 	
 	public void scanParallel() throws AerospikeException {
-		// Start threads. Use separate max because threadCompleted() may modify nextThread in parallel.
-		int max = nextThread;
-
-		for (int i = 0; i < max; i++) {
+		// Start threads.
+		for (int i = 0; i < maxConcurrentNodes; i++) {
 			threadPool.execute(threads[i]);
 		}
 		waitTillComplete();
@@ -73,28 +74,18 @@ public final class ScanExecutor {
 	}
 	
 	private void threadCompleted() {
-	   	int index = -1;
-		
-		// Determine if a new thread needs to be started.
-		synchronized (threads) {
+		int finished = completedCount.incrementAndGet();
+
+		if (finished < threads.length) {
+			int nextThread = finished + maxConcurrentNodes - 1;
+
+			// Determine if a new thread needs to be started.
 			if (nextThread < threads.length) {
-				index = nextThread++;
+				// Start new thread.
+				threadPool.execute(threads[nextThread]);
 			}
-		}
-		
-		if (index >= 0) {
-			// Start new thread.
-			threadPool.execute(threads[index]);
 		}
 		else {
-			// All threads have been started. Check status.
-			for (ScanThread thread : threads) {
-				if (! thread.complete) {
-					// Some threads have not finished. Do nothing.
-					return;
-				}
-			}
-			// All threads complete.
 			notifyCompleted();
 		}
 	}
@@ -135,7 +126,6 @@ public final class ScanExecutor {
     private final class ScanThread implements Runnable {
 		private final ScanCommand command;
 		private Thread thread;
-		private volatile boolean complete;
 
 		public ScanThread(ScanCommand command) {
 			this.command = command;
@@ -153,7 +143,6 @@ public final class ScanExecutor {
 				// Terminate other scan threads.
 				stopThreads(e);
 			}
-			complete = true;
 			
 		   	if (exception == null) {
 				threadCompleted();
