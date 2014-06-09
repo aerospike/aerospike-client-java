@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -46,7 +47,7 @@ public class Cluster implements Runnable {
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	private volatile HashMap<String,Node[]> partitionWriteMap;
+	private volatile HashMap<String,AtomicReferenceArray<Node>> partitionWriteMap;
 	
 	// Random node index.
 	private final AtomicInteger nodeIndex;
@@ -94,7 +95,7 @@ public class Cluster implements Runnable {
 		
 		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	
-		partitionWriteMap = new HashMap<String,Node[]>();		
+		partitionWriteMap = new HashMap<String,AtomicReferenceArray<Node>>();		
 		nodeIndex = new AtomicInteger();
 	}
 	
@@ -197,8 +198,8 @@ public class Cluster implements Runnable {
 					Log.warn("Cluster tend failed: " + Util.getErrorMessage(e));
 				}
 			}
-			// Sleep for 2 seconds.
-			Util.sleep(2000);
+			// Sleep for 1 second between polling intervals.
+			Util.sleep(1000);
 		}
 	}
 	
@@ -256,7 +257,7 @@ public class Cluster implements Runnable {
 	}
 	
 	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
-		HashMap<String,Node[]> map;
+		HashMap<String,AtomicReferenceArray<Node>> map;
 		
 		if (node.useNewInfo) {
 			PartitionTokenizerNew tokens = new PartitionTokenizerNew(conn);
@@ -408,8 +409,11 @@ public class Cluster implements Runnable {
 	}
 	
 	private final boolean findNodeInPartitionMap(Node filter) {
-		for (Node[] nodeArray : partitionWriteMap.values()) {
-			for (Node node : nodeArray) {
+		for (AtomicReferenceArray<Node> nodeArray : partitionWriteMap.values()) {
+			int max = nodeArray.length();
+			
+			for (int i = 0; i < max; i++) {
+				Node node = nodeArray.get(i);
 				// Use reference equality for performance.
 				if (node == filter) {
 					return true;
@@ -535,11 +539,11 @@ public class Cluster implements Runnable {
 	
 	public final Node getNode(Partition partition) throws AerospikeException.InvalidNode {
 		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Node[]> map = partitionWriteMap;
-		Node[] nodeArray = map.get(partition.namespace);
+		HashMap<String,AtomicReferenceArray<Node>> map = partitionWriteMap;
+		AtomicReferenceArray<Node> nodeArray = map.get(partition.namespace);
 		
 		if (nodeArray != null) {
-			Node node = nodeArray[partition.partitionId];
+			Node node = nodeArray.get(partition.partitionId);
 			
 			if (node != null && node.isActive()) {
 				return node;

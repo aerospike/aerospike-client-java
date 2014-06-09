@@ -24,6 +24,7 @@ package com.aerospike.client.cluster;
 import gnu.crypto.util.Base64;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
@@ -57,7 +58,7 @@ public final class PartitionTokenizerNew {
 		this.sb = new StringBuilder(32);  // Max namespace length
 	}
 	
-	public HashMap<String,Node[]> updatePartition(HashMap<String,Node[]> map, Node node) throws AerospikeException {
+	public HashMap<String,AtomicReferenceArray<Node>> updatePartition(HashMap<String,AtomicReferenceArray<Node>> map, Node node) throws AerospikeException {
 		int begin = offset;
 		boolean copied = false;
 		
@@ -88,15 +89,15 @@ public final class PartitionTokenizerNew {
 					throw new AerospikeException.Parse("Empty partition id for namespace " +
 						namespace + ". Response=" + response);										
 				}
-				Node[] nodeArray = map.get(namespace);
+				AtomicReferenceArray<Node> nodeArray = map.get(namespace);
 
 				if (nodeArray == null) {
 					if (! copied) {
 						// Make shallow copy of map.
-						map = new HashMap<String,Node[]>(map);
+						map = new HashMap<String,AtomicReferenceArray<Node>>(map);
 						copied = true;
 					}
-					nodeArray = new Node[Node.PARTITIONS];
+					nodeArray = new AtomicReferenceArray<Node>(new Node[Node.PARTITIONS]);
 					map.put(namespace, nodeArray);
 				}
 
@@ -106,7 +107,12 @@ public final class PartitionTokenizerNew {
 				for (int i = 0; i < Node.PARTITIONS; i++) {
 					if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
 						//Log.info("Map: " + namespace + ',' + i + ',' + node);
-						nodeArray[i] = node;
+						
+						// Use lazy set because there is only one producer thread. In addition,
+						// there is a one second delay due to the cluster tend polling interval.  
+						// An extra millisecond for a node change will not make a difference and 
+						// overall performance is improved.
+						nodeArray.lazySet(i, node);
 					}
 				}
 				begin = ++offset;

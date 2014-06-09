@@ -22,6 +22,7 @@
 package com.aerospike.client.cluster;
 
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
@@ -55,24 +56,24 @@ public final class PartitionTokenizerOld {
 		this.sb = new StringBuilder(32);  // Max namespace length
 	}
 	
-	public HashMap<String,Node[]> updatePartition(HashMap<String,Node[]> map, Node node) throws AerospikeException {		
+	public HashMap<String,AtomicReferenceArray<Node>> updatePartition(HashMap<String,AtomicReferenceArray<Node>> map, Node node) throws AerospikeException {		
 		Partition partition;
 		boolean copied = false;
 		
 		while ((partition = getNext()) != null) {
-			Node[] nodeArray = map.get(partition.namespace);
+			AtomicReferenceArray<Node> nodeArray = map.get(partition.namespace);
 			
 			if (nodeArray == null) {
 				if (! copied) {
 					// Make shallow copy of map.
-					map = new HashMap<String,Node[]>(map);
+					map = new HashMap<String,AtomicReferenceArray<Node>>(map);
 					copied = true;
 				}
-				nodeArray = new Node[Node.PARTITIONS];
+				nodeArray = new AtomicReferenceArray<Node>(new Node[Node.PARTITIONS]);
 				map.put(partition.namespace, nodeArray);
 			}
 			// Log.debug(partition.toString() + ',' + node.getName());
-			nodeArray[partition.partitionId] = node;
+			nodeArray.lazySet(partition.partitionId, node);
 		}
 		return (copied)? map : null;
 	}
