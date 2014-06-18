@@ -369,7 +369,7 @@ public abstract class Command {
 	private final int estimateUdfSize(String packageName, String functionName, byte[] bytes) {
 		dataOffset += Buffer.estimateSizeUtf8(packageName) + FIELD_HEADER_SIZE;		
 		dataOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;		
-		dataOffset += bytes.length;
+		dataOffset += bytes.length + FIELD_HEADER_SIZE;
 		return 3;
 	}
 
