@@ -39,7 +39,10 @@ public final class LuaOutputStream extends LuaUserdata implements LuaStream {
 	@Override
 	public void write(LuaValue source) {
 		Object target = LuaUtil.luaToObject(source);
-		resultSet.put(target);
+		
+		if (target != null) {
+			resultSet.put(target);
+		}
 	}
 
 	@Override

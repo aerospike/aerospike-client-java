@@ -1,7 +1,26 @@
-
+-- The Lua Interface to Aerospike
+--
+-- ======================================================================
+-- Copyright [2014] Aerospike, Inc.. Portions may be licensed
+-- to Aerospike, Inc. under one or more contributor license agreements.
+--
+-- Licensed under the Apache License, Version 2.0 (the "License");
+-- you may not use this file except in compliance with the License.
+-- You may obtain a copy of the License at
+--
+--  http://www.apache.org/licenses/LICENSE-2.0
+--
+-- Unless required by applicable law or agreed to in writing, software
+-- distributed under the License is distributed on an "AS IS" BASIS,
+-- WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-- See the License for the specific language governing permissions and
+-- limitations under the License.
+-- ======================================================================
 
 -- A table to track whether we had sandboxed a function
 sandboxed = {}
+
+ldebug = debug;
 
 -- ############################################################################
 --
@@ -54,6 +73,7 @@ function env_record()
         ["warn"] = warn,
         
         -- standard lua functions
+        ["collectgarbage"] = collectgarbage,
         ["error"] = error,
         ["getmetatable"] = getmetatable,
         ["ipairs"] = ipairs,
@@ -125,71 +145,6 @@ function apply_record(f, r, ...)
         return nil
     end
 end
-
---
--- Creates a new environment for use in apply_stream functions
---
--- function env_stream()
---     return {
-
---         -- aerospike types
---         ["record"] = record,
---         ["iterator"] = iterator,
---         ["list"] = list,
---         ["map"] = map,
---         ["bytes"] = bytes,
---         ["aerospike"] = aerospike,
-
---         -- logging functions
---         ["trace"] = trace,
---         ["debug"] = debug,
---         ["info"] = info,
---         ["warn"] = warn,
-        
---         -- standard lua functions
---         ["error"] = error,
---         ["getmetatable"] = getmetatable,
---         ["ipairs"] = ipairs,
---         ["load"] = load,
---         ["module"] = module,
---         ["next"] = next,
---         ["pairs"] = pairs,
---         ["print"] = print,
---         ["pcall"] = pcall,
---         ["rawequal"] = rawequal,
---         ["rawget"] = rawget,
---         ["rawset"] = rawset,
---         ["require"] = require,
---         ["require"] = require,
---         ["select"] = select,
---         ["setmetatable"] = setmetatable,
---         ["setfenv"] = setfenv,
---         ["tonumber"] = tonumber,
---         ["tostring"] = tostring,
---         ["type"] = type,
---         ["unpack"] = unpack,
---         ["xpcall"] = xpcall,
-
---         -- standard lua objects
---         ["math"] = math,
---         ["io"] = io,
---         ["os"] = {
---             ['clock'] = os.clock,
---             ['date'] = os.date,
---             ['difftime'] = os.difftime,
---             ['getenv'] = os.getenv,
---             ['setlocale'] = os.setlocale,
---             ['time'] = os.time,
---             ['tmpname'] = os.tmpname
---         },
---         ["package"] = package,
---         ["string"] = string,
---         ["table"] = table,
-
---         -- standard lua variables
---         ["_G"] = {}
---     }
--- end
 
 --
 -- Apply function to an iterator and arguments.

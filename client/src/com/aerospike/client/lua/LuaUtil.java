@@ -19,7 +19,6 @@ package com.aerospike.client.lua;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.Log;
-import com.aerospike.client.query.ResultSet;
 
 public final class LuaUtil {
 	
@@ -37,12 +36,15 @@ public final class LuaUtil {
 		case LuaValue.TUSERDATA:
 			LuaData data = (LuaData)source;
 			return data.luaToObject();
+		
+		case LuaValue.TNIL:
+			return null;
 			
 		default:
 			if (Log.warnEnabled()) {
 				Log.warn("Invalid lua type: " + source.type());
 			}
-			return ResultSet.END;
+			return null;
 		}
 	}	
 }
