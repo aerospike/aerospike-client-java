@@ -84,12 +84,19 @@ public final class QueryAggregateCommand extends QueryCommand {
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
-			LuaValue aggregateValue = instance.getValue(particleType, dataBuffer, 0, particleBytesSize);
-						
+			
 			if (! name.equals("SUCCESS")) {
-				throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);
+				if (name.equals("FAILURE")) {
+			        Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+					throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
+				}
+				else {
+					throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);
+				}
 			}
 			
+			LuaValue aggregateValue = instance.getValue(particleType, dataBuffer, 0, particleBytesSize);
+									
 			if (! valid) {
 				throw new AerospikeException.QueryTerminated();
 			}
