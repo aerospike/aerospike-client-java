@@ -87,11 +87,11 @@ public final class QueryAggregateCommand extends QueryCommand {
 			
 			if (! name.equals("SUCCESS")) {
 				if (name.equals("FAILURE")) {
-			        Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+					Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
 					throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
 				}
 				else {
-					throw new AerospikeException("Query aggregate expected bin name SUCCESS.  Received " + name);
+					throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
 				}
 			}
 			
