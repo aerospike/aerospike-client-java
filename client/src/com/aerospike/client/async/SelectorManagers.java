@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.util.Util;
 
-public final class SelectorManagers {
+public final class SelectorManagers implements Closeable {
 	
 	private final SelectorManager[] managers;
     private final AtomicInteger current = new AtomicInteger();

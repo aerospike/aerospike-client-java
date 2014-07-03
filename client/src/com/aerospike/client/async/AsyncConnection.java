@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.io.Closeable;
 import java.io.EOFException;
 import java.io.IOException;
 import java.net.InetSocketAddress;
@@ -33,7 +34,7 @@ import com.aerospike.client.util.Util;
 /**
  * Asynchronous socket channel connection wrapper.
  */
-public final class AsyncConnection {
+public final class AsyncConnection implements Closeable{
 	private final SocketChannel socketChannel;
 	private final SelectorManager manager;
 	private SelectionKey key;

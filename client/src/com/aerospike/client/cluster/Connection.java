@@ -16,10 +16,7 @@
  */
 package com.aerospike.client.cluster;
 
-import java.io.EOFException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -31,7 +28,7 @@ import com.aerospike.client.util.Util;
 /**
  * Socket connection wrapper.
  */
-public final class Connection {
+public final class Connection implements Closeable{
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
