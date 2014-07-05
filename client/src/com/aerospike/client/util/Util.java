@@ -83,39 +83,27 @@ public final class Util {
 			throw new AerospikeException("Failed to read " + path, e);
 		}
 	}
+	
 	/**
-	 * This method converts a String to a time stamp using the same algorithm as
-	 * the Aerospike loader
-	 * @param dateTime
-	 * @param format
-	 * @param timeZoneOffset
-	 * @return
+	 * Convert a string to a time stamp using the same algorithm as the Aerospike loader.
 	 */
-	public static long toTimeStamp(String dateTime, SimpleDateFormat format, int timeZoneOffset) throws ParseException{
+	public static long toTimeStamp(String dateTime, SimpleDateFormat format, int timeZoneOffset) throws ParseException {
 		Date formatDate = format.parse(dateTime);
 		long miliSecondForDate = formatDate.getTime()
 				- timeZoneOffset;
-		return miliSecondForDate / 1000;
-		
+		return miliSecondForDate / 1000;		
 	}
+	
 	/**
-	 * this method converts a String to a time stamp using a string pattern
-	 * @param dateTime
-	 * @param pattern
-	 * @param timeZoneOffset
-	 * @return
-	 * @throws ParseException
+	 * Convert a string to a time stamp using a string pattern.
 	 */
-	public static long toTimeStamp(String dateTime, String pattern, int timeZoneOffset) throws ParseException{
+	public static long toTimeStamp(String dateTime, String pattern, int timeZoneOffset) throws ParseException {
 		SimpleDateFormat format = new SimpleDateFormat(pattern);
 		return toTimeStamp(dateTime, format, timeZoneOffset);
-		
 	}
+	
 	/**
-	 * this method converts a time stamp (time in milliseconds) to a string
-	 * @param timeStamp - long integer representing the time in milliseconds
-	 * @param format
-	 * @return
+	 * Convert a time stamp (time in milliseconds) to a string.
 	 */
 	public static String fromTimeStamp(long timeStamp, SimpleDateFormat format){
 		Date formatDate = new Date(timeStamp);
@@ -123,14 +111,10 @@ public final class Util {
 	}
 	
 	/**
-	 * this method converts a time stamp (time in milliseconds) to a string using a string pattern
-	 * @param timeStamp - long integer representing the time in milliseconds
-	 * @param pattern
-	 * @return
+	 * Convert a time stamp (time in milliseconds) to a string using a string pattern.
 	 */
 	public static String fromTimeStamp(long timeStamp, String pattern){
 		SimpleDateFormat format = new SimpleDateFormat(pattern);
 		return fromTimeStamp(timeStamp, format);
 	}
-
 }

@@ -262,4 +262,9 @@ public final class Key {
 		hash.update(buffer, setLength, keyLength + 1);
 		return hash.digest();
 	}
+	
+	@Override
+	public String toString() {
+		return this.namespace + ":" + this.setName + ":" + this.userKey + ":" + this.digest;
+	}
 }

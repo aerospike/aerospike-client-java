@@ -39,13 +39,14 @@ public class Policy {
 	 * Maximum number of retries before aborting the current transaction.
 	 * A retry is attempted when there is a network error other than timeout.  
 	 * If maxRetries is exceeded, the abort will occur even if the timeout 
-	 * has not yet been exceeded.
+	 * has not yet been exceeded.  The default number of retries is 2.
 	 */
 	public int maxRetries = 2;
 
 	/**
 	 * Milliseconds to sleep between retries if a transaction fails and the 
 	 * timeout was not exceeded.  Enter zero to skip sleep.
+	 * The default sleep between retries is 500 ms.
 	 */
 	public int sleepBetweenRetries = 500;
 }
