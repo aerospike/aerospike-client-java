@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -76,7 +77,7 @@ import com.aerospike.client.util.Util;
  * configured as "single-bin". In "multi-bin" mode, partial records may be
  * written or read by specifying the relevant subset of bins.
  */
-public class AerospikeClient {
+public class AerospikeClient implements Closeable {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.cluster;
 
+import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -31,7 +32,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
-public class Cluster implements Runnable {
+public class Cluster implements Runnable, Closeable {
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
 	

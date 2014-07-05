@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.cluster;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -31,7 +32,7 @@ import com.aerospike.client.Log;
 /**
  * Server node representation.  This class manages server node connections and health status.
  */
-public class Node {
+public class Node implements Closeable {
 	/**
 	 * Number of partitions for each namespace.
 	 */

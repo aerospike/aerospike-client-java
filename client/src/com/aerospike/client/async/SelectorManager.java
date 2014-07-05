@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
@@ -32,7 +33,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.util.Util;
 
-public final class SelectorManager extends Thread {
+public final class SelectorManager extends Thread implements Closeable {
     private final ConcurrentLinkedQueue<AsyncCommand> commandQueue = new ConcurrentLinkedQueue<AsyncCommand>();
     private final ArrayDeque<AsyncCommand> timeoutQueue;
     private final Selector selector;
