@@ -48,11 +48,14 @@ public class LargeList extends Example {
 		
 		// Initialize large set operator.
 		com.aerospike.client.large.LargeList llist = client.getLargeList(params.policy, key, binName, null);
+		String orig1 = "llistValue1";
+		String orig2 = "llistValue2";
+		String orig3 = "llistValue3";
 						
 		// Write values.
-		llist.add(Value.get("llistValue1"));
-		llist.add(Value.get("llistValue2"));
-		llist.add(Value.get("llistValue3"));
+		llist.add(Value.get(orig1));
+		llist.add(Value.get(orig2));
+		llist.add(Value.get(orig3));
 		
 		// Verify large list was created with default configuration.
 		Map<?,?> map = llist.getConfig();
@@ -62,9 +65,22 @@ public class LargeList extends Example {
 		}
 		
 		// Perform a Range Query -- look for "llistValue2" to "llistValue3"
+		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));
+		if ( rangeList.size() != 2 ) {
+			throw new Exception("Range Size mismatch. Expected 2 Received " + rangeList.size());
+		}
+		String v2 = (String) rangeList.get(0);
+		String v3 = (String) rangeList.get(1);
+		
+		if ( v2.equals(orig2) && v3.equals(orig3) ) {
+			console.info("Range Query matched: v2=%s v3=%s", orig2, orig3);
+		} else {
+			throw new Exception("Range Content mismatch. Expected (%s:%s) Received (%s:%s) " 
+					+ orig2 + orig3 + v2 + v3);
+		}
 
 		// Remove last value.
-		llist.remove(Value.get("llistValue3"));
+		llist.remove(Value.get(orig3));
 		
 		int size = llist.size();
 		
@@ -72,8 +88,8 @@ public class LargeList extends Example {
 			throw new Exception("Size mismatch. Expected 2 Received " + size);
 		}
 		
-		List<?> listReceived = llist.find(Value.get("llistValue2"));
-		String expected = "setvalue2";
+		List<?> listReceived = llist.find(Value.get(orig2));
+		String expected = orig2;
 		String stringReceived = (String) listReceived.get(0);
 		
 		if (stringReceived != null && stringReceived.equals(expected)) {

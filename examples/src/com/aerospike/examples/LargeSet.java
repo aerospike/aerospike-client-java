@@ -51,7 +51,7 @@ public class LargeSet extends Example {
 		// Write values.
 		set.add(Value.get("setvalue1"));
 		set.add(Value.get("setvalue2"));
-		//set.insert(Value.get("setvalue3"));
+		set.add(Value.get("setvalue3"));
 		
 		// Verify large set was created with default configuration.
 		Map<?,?> map = set.getConfig();
@@ -60,14 +60,15 @@ public class LargeSet extends Example {
 			console.info(entry.getKey().toString() + ',' + entry.getValue());
 		}
 
-		// Delete last value.
-		// Comment out until delete supported on server.
-		//set.delete(Value.get("setvalue3"));
+		// Remove last value.
+		set.remove(Value.get("setvalue3"));
 		
 		int size = set.size();
 		
 		if (size != 2) {
 			throw new Exception("Size mismatch. Expected 2 Received " + size);
+		} else {
+			console.info("LSET Size matched: Got Expected size 2");
 		}
 		
 		String received = (String)set.get(Value.get("setvalue2"));
