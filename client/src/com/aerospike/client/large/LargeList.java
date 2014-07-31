@@ -102,6 +102,31 @@ public final class LargeList {
 	public final List<?> findThenFilter(Value value, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, userModule, Value.get(filterName), Value.get(filterArgs));
 	}
+	
+
+	/**
+	 * Select a range of values from the large list.
+	 * 
+	 * @param minValue			low value of the range
+	 * @param maxValue			high value of the range
+	 * @return					list of entries selected
+	 */
+	public final List<?> range(Value minValue, Value maxValue) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, minValue, maxValue);
+	}
+
+	/**
+	 * Select a range of values from the large list, then apply a Lua filter.
+	 * 
+	 * @param minValue			low value of the range
+	 * @param maxValue			high value of the range
+	 * @param filterName		Lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to Lua function name
+	 * @return					list of entries selected
+	 */
+	public final List<?> range(Value minValue, Value maxValue, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, minValue, maxValue, userModule, Value.get(filterName), Value.get(filterArgs));
+	}
 
 	/**
 	 * Return all objects in the list.

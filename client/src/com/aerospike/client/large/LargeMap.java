@@ -99,6 +99,16 @@ public final class LargeMap {
 	public final Map<?,?> filter(String filterName, Value... filterArgs) throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "filter", binName, userModule, Value.get(filterName), Value.get(filterArgs));
 	}
+	
+	/**
+	 * Remove entry from map.  
+	 * 
+	 * @param name				entry key
+	 */
+	public final void remove(Value name) throws AerospikeException {
+		client.execute(policy, key, PackageName, "remove", binName, name, userModule);
+	}
+
 
 	/**
 	 * Delete bin containing the map.

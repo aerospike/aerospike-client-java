@@ -26,7 +26,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Create and manage a set within a single bin.
+ * Create and manage a Large Set within a single bin.
  */
 public final class LargeSet {
 	private static final String PackageName = "lset";
