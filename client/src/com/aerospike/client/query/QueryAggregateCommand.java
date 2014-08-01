@@ -95,7 +95,7 @@ public final class QueryAggregateCommand extends QueryCommand {
 				}
 			}
 			
-			LuaValue aggregateValue = instance.getValue(particleType, dataBuffer, 0, particleBytesSize);
+			LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, 0, particleBytesSize);
 									
 			if (! valid) {
 				throw new AerospikeException.QueryTerminated();

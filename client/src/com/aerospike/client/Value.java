@@ -30,6 +30,8 @@ import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.lua.LuaBytes;
+import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.util.Packer;
 
 /**
@@ -162,7 +164,7 @@ public abstract class Value {
 	/**
 	 * Return value as an Object.
 	 */
-	public abstract LuaValue getLuaValue();
+	public abstract LuaValue getLuaValue(LuaInstance instance);
 
 	/**
 	 * Empty value.
@@ -194,7 +196,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaNil.NIL;
 		}
 
@@ -242,8 +244,8 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
-			return LuaString.valueOf(bytes);
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return new LuaBytes(instance, bytes);
 		}
 
 		@Override
@@ -294,7 +296,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(bytes, offset, length);
 		}
 
@@ -352,7 +354,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(value);
 		}
 
@@ -399,7 +401,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaInteger.valueOf(value);
 		}
 
@@ -446,7 +448,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaInteger.valueOf(value);
 		}
 
@@ -504,7 +506,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
+		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(bytes);
 		}
 
@@ -554,8 +556,8 @@ public abstract class Value {
 		}
 
 		@Override
-		public LuaValue getLuaValue() {
-			return null;
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return instance.getLuaList(array);
 		}
 
 		@Override
@@ -604,8 +606,8 @@ public abstract class Value {
 		}
 
 		@Override
-		public LuaValue getLuaValue() {
-			return null;
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return instance.getLuaList(list);
 		}
 		
 		@Override
@@ -654,8 +656,8 @@ public abstract class Value {
 		}
 		
 		@Override
-		public LuaValue getLuaValue() {
-			return null;
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return instance.getLuaMap(map);
 		}
 		
 		@Override

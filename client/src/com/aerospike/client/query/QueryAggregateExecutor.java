@@ -96,7 +96,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			int count = 4;
 			
 			for (Value value : statement.getFunctionArgs()) {
-				args[count++] = value.getLuaValue();
+				args[count++] = value.getLuaValue(lua);
 			}
 			lua.call("apply_stream", args);
 		}

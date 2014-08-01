@@ -16,6 +16,11 @@
  */
 package com.aerospike.client.lua;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaInteger;
@@ -37,6 +42,7 @@ import org.luaj.vm2.lib.jse.JseOsLib;
 import org.luaj.vm2.lib.jse.LuajavaLib;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 
@@ -109,7 +115,7 @@ public final class LuaInstance {
 		return globals.get(functionName);
 	}
 
-	public LuaValue getValue(int type, byte[] buf, int offset, int len) throws AerospikeException {
+	public LuaValue getLuaValue(int type, byte[] buf, int offset, int len) throws AerospikeException {
 		if (len <= 0) {
 			return LuaValue.NIL;
 		}
@@ -152,5 +158,75 @@ public final class LuaInstance {
 		default:
 			return LuaValue.NIL;
 		}
+	}
+	
+	public LuaList getLuaList(List<?> list) {
+		List<LuaValue> luaList = new ArrayList<LuaValue>();
+		
+		for (Object obj : list) {
+			luaList.add(getLuaValue(obj));
+		}
+		return new LuaList(this, luaList);		
+	}
+	
+	public LuaList getLuaList(Value[] array) {
+		List<LuaValue> luaList = new ArrayList<LuaValue>();
+		
+		for (Value value : array) {
+			luaList.add(value.getLuaValue(this));
+		}
+		return new LuaList(this, luaList);		
+	}
+
+	public LuaMap getLuaMap(Map<?,?> map) {
+		Map<LuaValue,LuaValue> luaMap = new HashMap<LuaValue,LuaValue>(map.size());
+		
+		for (Map.Entry<?,?> entry : map.entrySet()) {
+			LuaValue key = getLuaValue(entry.getKey());
+			LuaValue value = getLuaValue(entry.getValue());
+			luaMap.put(key, value);
+		}
+		return new LuaMap(this, luaMap);		
+	}
+
+	public LuaValue getLuaValue(Object obj) {
+		if (obj == null) {
+			return LuaValue.NIL;
+		}
+		
+		if (obj instanceof LuaValue) {
+			return (LuaValue) obj;
+		}
+
+		if (obj instanceof Value) {
+			Value value = (Value) obj;
+			return value.getLuaValue(this);
+		}
+
+		if (obj instanceof byte[]) {
+			return new LuaBytes(this, (byte[]) obj);
+		}
+		
+		if (obj instanceof String) {
+			return LuaString.valueOf((String) obj);
+		}
+		
+		if (obj instanceof Integer) {
+			return LuaInteger.valueOf((Integer) obj);
+		}
+		
+		if (obj instanceof Long) {
+			return LuaInteger.valueOf((Long) obj);
+		}
+
+		if (obj instanceof List<?>) {
+			return getLuaList((List<?>) obj);
+		}
+		
+		if (obj instanceof Map<?,?>) {
+			return getLuaMap((Map<?,?>) obj);
+		}
+		
+		return LuaValue.NIL;
 	}
 }
