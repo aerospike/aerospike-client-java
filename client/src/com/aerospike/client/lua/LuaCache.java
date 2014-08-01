@@ -65,7 +65,7 @@ public final class LuaCache {
 		String path = "udf/" + packageName + ".lua";
 		
 		try {
-			InputStream is = ClassLoader.getSystemResourceAsStream(path);
+			InputStream is = LuaCache.class.getClassLoader().getResourceAsStream(path);
 			
 			if (is == null) {
 				throw new Exception();
