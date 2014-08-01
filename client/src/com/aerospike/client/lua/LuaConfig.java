@@ -24,7 +24,7 @@ public final class LuaConfig {
 	/**
 	 * Directory location which contains user defined Lua source files.
 	 */
-	public static String SourceDirectory = "udf";
+	public static String SourceDirectory = System.getProperty("lua.dir", "udf");
 	
 	/**
 	 * Maximum number of Lua runtime instances to cache at any point in time.
