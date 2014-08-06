@@ -48,12 +48,23 @@ public abstract class Task {
 	public final void waitTillComplete(int sleepInterval) throws AerospikeException {
 		while (! done) {
 			Util.sleep(sleepInterval);
-			done = isDone();
+			done = queryIfDone();
 		}
 	}
 
 	/**
+	 * Has task completed.
+	 */
+	public final boolean isDone() throws AerospikeException {
+		if (done) {
+			return true;
+		}
+		done = queryIfDone();
+		return done;
+	}
+	
+	/**
 	 * Query all nodes for task completion status.
 	 */
-	public abstract boolean isDone() throws AerospikeException;
+	protected abstract boolean queryIfDone() throws AerospikeException;
 }

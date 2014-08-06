@@ -42,7 +42,7 @@ public final class ExecuteTask extends Task {
 	 * Query all nodes for task completion status.
 	 */
 	@Override
-	public boolean isDone() throws AerospikeException {
+	protected boolean queryIfDone() throws AerospikeException {
 		String command = (scan) ? "scan-list" : "query-list";
 		Node[] nodes = cluster.getNodes();
 		boolean done = false;

@@ -50,7 +50,7 @@ public final class IndexTask extends Task {
 	 * Query all nodes for task completion status.
 	 */
 	@Override
-	public boolean isDone() throws AerospikeException {
+	protected boolean queryIfDone() throws AerospikeException {
 		String command = "sindex/" + namespace + '/' + indexName;
 		Node[] nodes = cluster.getNodes();
 		boolean complete = false;

@@ -38,7 +38,7 @@ public final class RegisterTask extends Task {
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	public boolean isDone() throws AerospikeException {
+	protected boolean queryIfDone() throws AerospikeException {
 		String command = "udf-list";
 		Node[] nodes = cluster.getNodes();
 		boolean done = false;
