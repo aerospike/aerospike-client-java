@@ -73,6 +73,15 @@ public final class LargeStack {
 	}
 	
 	/**
+	 * Push values onto stack.  If the stack does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to push
+	 */
+	public final void push(List<?> values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "push_all", binName, Value.getAsList(values), userModule);
+	}
+
+	/**
 	 * Select items from top of stack.
 	 * 
 	 * @param peekCount			number of items to select.

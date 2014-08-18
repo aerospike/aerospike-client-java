@@ -73,6 +73,15 @@ public final class LargeList {
 	}
 	
 	/**
+	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to add
+	 */
+	public final void add(List<?> values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), userModule);
+	}
+
+	/**
 	 * Delete value from list.
 	 * 
 	 * @param value				value to delete
