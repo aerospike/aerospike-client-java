@@ -16,11 +16,20 @@
  */
 package com.aerospike.examples;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 
@@ -39,7 +48,16 @@ public class LargeList extends Example {
 			console.info("Large List functions are not supported by the connected Aerospike server.");
 			return;
 		}
+		
+		runSimpleExample(client, params);
+		runWithDistinctBins(client, params);
+		runWithSerializedBin(client, params);
+	}
 
+	/**
+	 * Simple examples of large list functionality.
+	 */
+	public void runSimpleExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "setkey");
 		String binName = params.getBinName("ListBin");
 		
@@ -109,5 +127,207 @@ public class LargeList extends Example {
 		}
 		int size2 = llist2.size();
 		console.info("Done Writing (%d) Items, size(%d)", itemCount, size2 );
-	}	
+	}
+	
+	/**
+	 * Use distinct sub-bins for row in largelist bin. 
+	 */
+	@SuppressWarnings("unchecked")
+	public void runWithDistinctBins(AerospikeClient client, Parameters params) throws AerospikeException {
+		Key key = new Key(params.namespace, params.set, "accountId");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);	
+
+		// Initialize large list operator.
+		com.aerospike.client.large.LargeList list = client.getLargeList(params.policy, key, "trades", null);
+
+		// Write trades
+		Map<String,Value> map = new HashMap<String,Value>();
+
+		Calendar timestamp1 = new GregorianCalendar(2014, 6, 25, 12, 18, 43);	
+		map.put("key", Value.get(timestamp1.getTimeInMillis()));
+		map.put("ticker", Value.get("IBM"));
+		map.put("qty", Value.get(100));
+		map.put("price", Value.get(Double.doubleToLongBits(181.82)));
+		list.add(Value.getAsMap(map));
+
+		Calendar timestamp2 = new GregorianCalendar(2014, 6, 26, 9, 33, 17);
+		map.put("key", Value.get(timestamp2.getTimeInMillis()));
+		map.put("ticker", Value.get("GE"));
+		map.put("qty", Value.get(500));
+		map.put("price", Value.get(Double.doubleToLongBits(26.36)));
+		list.add(Value.getAsMap(map));
+
+		Calendar timestamp3 = new GregorianCalendar(2014, 6, 27, 14, 40, 19);
+		map.put("key", Value.get(timestamp3.getTimeInMillis()));
+		map.put("ticker", Value.get("AAPL"));
+		map.put("qty", Value.get(75));
+		map.put("price", Value.get(Double.doubleToLongBits(91.85)));
+		list.add(Value.getAsMap(map));
+
+		// Verify list size
+		int size = list.size();
+
+		if (size != 3) {
+			throw new AerospikeException("List size mismatch. Expected 3 Received " + size);
+		}
+
+		// Filter on range of timestamps
+		Calendar begin = new GregorianCalendar(2014, 6, 26);
+		Calendar end = new GregorianCalendar(2014, 6, 28);
+		List<Map<String,Object>> results = (List<Map<String,Object>>)list.range(Value.get(begin.getTimeInMillis()), Value.get(end.getTimeInMillis()));
+
+		if (results.size() != 2) {
+			throw new AerospikeException("Query results size mismatch. Expected 2 Received " + results.size());
+		}
+
+		// Verify data.
+		validateWithDistinctBins(results, 0, timestamp2, "GE", 500, 26.36);
+		validateWithDistinctBins(results, 1, timestamp3, "AAPL", 75, 91.85);
+		
+		console.info("Data matched.");
+
+		console.info("Run large list scan.");
+		List<Map<String,Object>> rows = (List<Map<String,Object>>)list.scan();
+		for (Map<String,Object> row : rows) {
+			for (@SuppressWarnings("unused") Map.Entry<String,Object> entry : row.entrySet()) {
+				//console.Info(entry.Key.ToString());
+				//console.Info(entry.Value.ToString());
+			}
+		}
+		console.info("Large list scan complete.");
+	}
+
+	private void validateWithDistinctBins(List<Map<String,Object>> list, int index, Calendar expectedTime, String expectedTicker, int expectedQty, double expectedPrice) 
+		throws AerospikeException {
+		
+		Map<String,Object> map = list.get(index);
+		Calendar receivedTime = new GregorianCalendar();
+		receivedTime.setTimeInMillis((Long)map.get("key"));
+
+		if (! expectedTime.equals(receivedTime)) {
+			throw new AerospikeException("Time mismatch: Expected " + expectedTime + ". Received " + receivedTime);
+		}
+
+		String receivedTicker = (String)map.get("ticker");
+
+		if (! expectedTicker.equals(receivedTicker)) {
+			throw new AerospikeException("Ticker mismatch: Expected " + expectedTicker + ". Received " + receivedTicker);
+		}
+
+		long receivedQty = (Long)map.get("qty");
+
+		if (expectedQty != receivedQty) {
+			throw new AerospikeException("Quantity mismatch: Expected " + expectedQty + ". Received " + receivedQty);
+		}
+
+		double receivedPrice = Double.longBitsToDouble((Long)map.get("price"));
+
+		if (expectedPrice != receivedPrice) {
+			throw new AerospikeException("Price mismatch: Expected " + expectedPrice + ". Received " + receivedPrice);
+		}
+	}
+
+	/**
+	 * Use serialized bin for row in largelist bin.
+	 */
+	@SuppressWarnings("unchecked")
+	public void runWithSerializedBin(AerospikeClient client, Parameters params)
+		throws AerospikeException, IOException {
+		
+		Key key = new Key(params.namespace, params.set, "accountId");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+
+		// Initialize large list operator.
+		com.aerospike.client.large.LargeList list = client.getLargeList(params.policy, key, "trades", null);
+
+		// Write trades
+		Map<String, Value> map = new HashMap<String, Value>();
+		ByteArrayOutputStream byteStream = new ByteArrayOutputStream(500);
+		DataOutputStream writer = new DataOutputStream(byteStream);
+
+		Calendar timestamp1 = new GregorianCalendar(2014, 6, 25, 12, 18, 43);
+		map.put("key", Value.get(timestamp1.getTimeInMillis()));
+		writer.writeUTF("IBM");     // ticker
+		writer.writeInt(100);       // qty
+		writer.writeDouble(181.82); // price
+		map.put("value", Value.get(byteStream.toByteArray()));
+		list.add(Value.getAsMap(map));
+
+		Calendar timestamp2 = new GregorianCalendar(2014, 6, 26, 9, 33, 17);
+		map.put("key", Value.get(timestamp2.getTimeInMillis()));
+		byteStream.reset();
+		writer.writeUTF("GE");     // ticker
+		writer.writeInt(500);      // qty
+		writer.writeDouble(26.36); // price
+		map.put("value", Value.get(byteStream.toByteArray()));
+		list.add(Value.getAsMap(map));
+
+		Calendar timestamp3 = new GregorianCalendar(2014, 6, 27, 14, 40, 19);
+		map.put("key", Value.get(timestamp3.getTimeInMillis()));
+		byteStream.reset();
+		writer.writeUTF("AAPL");   // ticker
+		writer.writeInt(75);       // qty
+		writer.writeDouble(91.85); // price
+		map.put("value", Value.get(byteStream.toByteArray()));
+		list.add(Value.getAsMap(map));
+
+		// Verify list size
+		int size = list.size();
+
+		if (size != 3) {
+			throw new AerospikeException("List size mismatch. Expected 3 Received " + size);
+		}
+
+		// Filter on range of timestamps
+		Calendar begin = new GregorianCalendar(2014, 6, 26);
+		Calendar end = new GregorianCalendar(2014, 6, 28);
+		List<Map<String,Object>> results = (List<Map<String,Object>>)list.range(Value.get(begin.getTimeInMillis()), Value.get(end.getTimeInMillis()));
+
+		if (results.size() != 2) {
+			throw new AerospikeException("Query results size mismatch. Expected 2 Received " + results.size());
+		}
+
+		// Verify data.
+		validateWithSerializedBin(results, 0, timestamp2, "GE", 500, 26.36);
+		validateWithSerializedBin(results, 1, timestamp3, "AAPL", 75, 91.85);
+
+		console.info("Data matched.");
+	}
+
+	private void validateWithSerializedBin(List<Map<String,Object>> list, int index, Calendar expectedTime, String expectedTicker, int expectedQty, double expectedPrice)
+		throws AerospikeException, IOException {
+		
+		Map<String,Object> map = list.get(index);
+		Calendar receivedTime = new GregorianCalendar();
+		receivedTime.setTimeInMillis((Long)map.get("key"));
+
+		if (! expectedTime.equals(receivedTime)) {
+			throw new AerospikeException("Time mismatch: Expected " + expectedTime + ". Received " + receivedTime);
+		}
+
+		byte[] value = (byte[])map.get("value");
+		ByteArrayInputStream ms = new ByteArrayInputStream(value);
+		DataInputStream reader = new DataInputStream(ms);
+		String receivedTicker = reader.readUTF();
+
+		if (! expectedTicker.equals(receivedTicker)) {
+			throw new AerospikeException("Ticker mismatch: Expected " + expectedTicker + ". Received " + receivedTicker);
+		}
+
+		int receivedQty = reader.readInt();
+
+		if (expectedQty != receivedQty) {
+			throw new AerospikeException("Quantity mismatch: Expected " + expectedQty + ". Received " + receivedQty);
+		}
+
+		double receivedPrice = reader.readDouble();
+
+		if (expectedPrice != receivedPrice) {
+			throw new AerospikeException("Price mismatch: Expected " + expectedPrice + ". Received " + receivedPrice);
+		}
+	}
 }
