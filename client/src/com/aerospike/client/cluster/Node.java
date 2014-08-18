@@ -131,6 +131,15 @@ public class Node implements Closeable {
 		for (String friend : friendNames) {
 			String friendInfo[] = friend.split(":");
 			String host = friendInfo[0];
+
+			if (cluster.ipMap != null) {
+				String alternativeHost = cluster.ipMap.get(host);
+				
+				if (alternativeHost != null) {
+					host = alternativeHost;
+				}				
+			}
+			
 			int port = Integer.parseInt(friendInfo[1]);
 			Host alias = new Host(host, port);
 			Node node = cluster.findAlias(alias);

@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -45,6 +46,9 @@ public class Cluster implements Runnable, Closeable {
 	// Hints for best node for a partition
 	private volatile HashMap<String,AtomicReferenceArray<Node>> partitionWriteMap;
 	
+	// IP translations.
+	protected final Map<String,String> ipMap;
+
 	// Random node index.
 	private final AtomicInteger nodeIndex;
 	
@@ -72,6 +76,7 @@ public class Cluster implements Runnable, Closeable {
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
 		maxSocketIdle = policy.maxSocketIdle;
+		ipMap = policy.ipMap;
 		
 		if (policy.threadPool == null) {
 			// Create cached thread pool with daemon threads.

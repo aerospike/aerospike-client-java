@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.policy;
 
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
 /**
@@ -45,6 +46,17 @@ public class ClientPolicy {
 	 */
 	public boolean failIfNotConnected;
 	
+
+	/**
+	 * A IP translation table is used in cases where different clients use different server 
+	 * IP addresses.  This may be necessary when using clients from both inside and outside 
+	 * a local area network.  Default is no translation.
+	 *  
+	 * The key is the IP address returned from friend info requests to other servers.  The 
+	 * value is the real IP address used to connect to the server.
+	 */
+	public Map<String,String> ipMap;
+
 	/**
 	 * Underlying thread pool used in batch, scan, and query commands. These commands are often 
 	 * sent to multiple server nodes in parallel threads.  A thread pool improves performance
