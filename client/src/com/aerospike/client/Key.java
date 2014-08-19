@@ -61,7 +61,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -78,8 +84,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -96,8 +107,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -116,8 +132,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -134,8 +155,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -152,8 +178,13 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The server handles record identifiers by digest only.
-	 * If the user key needs to be stored on the server, the key should be stored in a bin.
+	 * The user key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
