@@ -48,10 +48,15 @@ public final class Key {
 	
 	/**
 	 * Original user key. This key is immediately converted to a hash digest.
-	 * This key is not used or returned by the server.  If the user key needs 
-	 * to persist on the server, the key should be explicitly stored in a bin.
+	 * This key is not used or returned by the server by default. If the user key needs 
+	 * to persist on the server, use one of the following methods: 
+	 * <ul>
+	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
+	 * and retrieved on multi-record scans and queries.</li>
+	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
 	 */
-	public final Object userKey;
+	public final Value userKey;
 	
 	/**
 	 * Initialize key from namespace, optional set name and user key.
@@ -66,8 +71,8 @@ public final class Key {
 	public Key(String namespace, String setName, String key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
-		this.userKey = key;
-		digest = computeDigest(setName, new Value.StringValue(key));
+		this.userKey = new Value.StringValue(key);
+		digest = computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -84,8 +89,8 @@ public final class Key {
 	public Key(String namespace, String setName, byte[] key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
-		this.userKey = key;
-		digest = computeDigest(setName, new Value.BytesValue(key));
+		this.userKey = new Value.BytesValue(key);
+		digest = computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -104,9 +109,8 @@ public final class Key {
 	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
-		Value value = new Value.ByteSegmentValue(key, offset, length);
-		this.userKey = value;
-		digest = computeDigest(setName, value);
+		this.userKey = new Value.ByteSegmentValue(key, offset, length);
+		digest = computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -123,8 +127,8 @@ public final class Key {
 	public Key(String namespace, String setName, int key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
-		this.userKey = key;
-		digest = computeDigest(setName, new Value.LongValue(key));
+		this.userKey = new Value.LongValue(key);
+		digest = computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -141,8 +145,8 @@ public final class Key {
 	public Key(String namespace, String setName, long key) throws AerospikeException {
 		this.namespace = namespace; 
 		this.setName = setName;
-		this.userKey = key;
-		digest = computeDigest(setName, new Value.LongValue(key));
+		this.userKey = new Value.LongValue(key);
+		digest = computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -180,17 +184,18 @@ public final class Key {
 	} */
 	
 	/**
-	 * Initialize key from namespace, digest and optional set name.
+	 * Initialize key from namespace, digest, optional set name and optional userKey.
 	 * 
 	 * @param namespace				namespace
 	 * @param digest				unique server hash value
 	 * @param setName				optional set name, enter null when set does not exist
+	 * @param userKey				optional original user key (not hash digest).
 	 */
-	public Key(String namespace, byte[] digest, String setName) {
-		this.namespace = namespace; 
+	public Key(String namespace, byte[] digest, String setName, Value userKey) {
+		this.namespace = namespace;
 		this.digest = digest;
 		this.setName = setName;
-		this.userKey = null;
+		this.userKey = userKey;
 	}
 	
 	/**
@@ -266,6 +271,6 @@ public final class Key {
 	
 	@Override
 	public String toString() {
-		return this.namespace + ":" + this.setName + ":" + this.userKey + ":" + this.digest;
+		return this.namespace + ":" + this.setName + ":" + this.userKey + ":" + Buffer.bytesToHexString(this.digest);
 	}
 }

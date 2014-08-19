@@ -167,6 +167,20 @@ public abstract class Value {
 	public abstract LuaValue getLuaValue(LuaInstance instance);
 
 	/**
+	 * Return value as an integer.
+	 */
+	public int toInteger() {
+		return 0;
+	}
+	
+	/**
+	 * Return value as a long.
+	 */
+	public long toLong() {
+		return 0;
+	}
+
+	/**
 	 * Empty value.
 	 */
 	public static final class NullValue extends Value {
@@ -409,6 +423,16 @@ public abstract class Value {
 		public String toString() {
 			return Integer.toString(value);
 		}
+		
+		@Override
+		public int toInteger() {
+			return value;
+		}
+
+		@Override
+		public long toLong() {
+			return value;
+		}
 	}
 
 	/**
@@ -455,6 +479,16 @@ public abstract class Value {
 		@Override
 		public String toString() {
 			return Long.toString(value);
+		}
+		
+		@Override
+		public int toInteger() {
+			return (int)value;
+		}
+
+		@Override
+		public long toLong() {
+			return value;
 		}
 	}
 

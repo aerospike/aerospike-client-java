@@ -64,6 +64,10 @@ public abstract class Command {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		
+		if (policy.sendKey) {
+			fieldCount++;
+		}
+		
 		for (Bin bin : bins) {
 			estimateOperationSize(bin);
 		}		
@@ -71,6 +75,10 @@ public abstract class Command {
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(key);
 				
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+		
 		for (Bin bin : bins) {
 			writeOperation(bin, operation);
 		}
@@ -541,6 +549,14 @@ public abstract class Command {
         dataBuffer[dataOffset++] = 0;
         dataBuffer[dataOffset++] = 0;
         dataBuffer[dataOffset++] = 0;
+	}
+
+	public final void writeField(Value value, int type) throws AerospikeException {
+		int offset = dataOffset + FIELD_HEADER_SIZE;
+		dataBuffer[offset++] = (byte)value.getType();
+	    int len = value.write(dataBuffer, offset) + 1;
+		writeFieldHeader(len, type);
+		dataOffset += len;
 	}
 
 	public final void writeField(String str, int type) {

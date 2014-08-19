@@ -23,9 +23,28 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Value;
 import com.aerospike.client.util.Unpacker;
 
 public final class Buffer {
+
+	public static Value bytesToKeyValue(int type, byte[] buf, int offset, int len)
+		throws AerospikeException {
+		
+		switch (type) {
+		case ParticleType.STRING:
+			return Value.get(Buffer.utf8ToString(buf, offset, len));
+			
+		case ParticleType.INTEGER:
+			return bytesToLongValue(buf, offset, len);
+		
+		case ParticleType.BLOB:
+			return Value.get(Arrays.copyOfRange(buf, offset, offset+len));
+		
+		default:
+			return null;
+		}
+	}
 
 	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
@@ -291,6 +310,17 @@ public final class Buffer {
 		catch (Exception e) {
     		throw new AerospikeException.Serialize(e);
 		}
+	}
+
+	public static Value bytesToLongValue(byte[] buf, int offset, int len) {		
+		long val = 0;
+		
+		for (int i = 0; i < len; i++) {
+			val <<= 8;
+			val |= buf[offset+i] & 0xFF;
+		}
+		
+		return new Value.LongValue(val);
 	}
 
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {		

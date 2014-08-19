@@ -22,6 +22,7 @@ import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 
@@ -63,10 +64,11 @@ public abstract class MultiCommand extends SyncCommand {
 		}
 	}
 		
-	protected final Key parseKey(int fieldCount) throws IOException {
+	protected final Key parseKey(int fieldCount) throws AerospikeException, IOException {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;
+		Value userKey = null;
 
 		for (int i = 0; i < fieldCount; i++) {
 			readBytes(4);	
@@ -75,18 +77,26 @@ public abstract class MultiCommand extends SyncCommand {
 			int fieldtype = dataBuffer[0];
 			int size = fieldlen - 1;
 			
-			if (fieldtype == FieldType.DIGEST_RIPE) {
+			switch (fieldtype) {
+			case FieldType.DIGEST_RIPE:
 				digest = new byte[size];
 				System.arraycopy(dataBuffer, 1, digest, 0, size);
-			}
-			else if (fieldtype == FieldType.NAMESPACE) {
+				break;
+			
+			case FieldType.NAMESPACE:
 				namespace = Buffer.utf8ToString(dataBuffer, 1, size);
-			}				
-			else if (fieldtype == FieldType.TABLE) {
+				break;
+				
+			case FieldType.TABLE:
 				setName = Buffer.utf8ToString(dataBuffer, 1, size);
-			}				
+				break;
+
+			case FieldType.KEY:
+				userKey = Buffer.bytesToKeyValue(dataBuffer[1], dataBuffer, 2, size-1);
+				break;
+			}
 		}
-		return new Key(namespace, digest, setName);		
+		return new Key(namespace, digest, setName, userKey);
 	}
 
 	protected final void readBytes(int length) throws IOException {

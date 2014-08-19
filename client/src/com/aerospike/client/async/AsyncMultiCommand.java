@@ -26,6 +26,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
@@ -156,10 +157,11 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		return false;
 	}
 
-	protected final Key parseKey() {
+	protected final Key parseKey() throws AerospikeException {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;
+		Value userKey = null;
 		
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(receiveBuffer, receiveOffset);
@@ -168,21 +170,32 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			int fieldtype = receiveBuffer[receiveOffset++];
 			int size = fieldlen - 1;
 			
-			if (fieldtype == FieldType.DIGEST_RIPE) {
+			switch (fieldtype) {
+			case FieldType.DIGEST_RIPE:
 				digest = new byte[size];
 				System.arraycopy(receiveBuffer, receiveOffset, digest, 0, size);
 				receiveOffset += size;
+				break;
+			
+			case FieldType.NAMESPACE:
+				namespace = Buffer.utf8ToString(receiveBuffer, receiveOffset, size);
+				receiveOffset += size;
+				break;
+				
+			case FieldType.TABLE:
+				setName = Buffer.utf8ToString(receiveBuffer, receiveOffset, size);
+				receiveOffset += size;
+				break;
+
+			case FieldType.KEY:
+				int type = receiveBuffer[receiveOffset++];
+				size--;
+				userKey = Buffer.bytesToKeyValue(type, receiveBuffer, receiveOffset, size);
+				receiveOffset += size;
+				break;
 			}
-			else if (fieldtype == FieldType.NAMESPACE) {
-				namespace = new String(receiveBuffer, receiveOffset, size);
-				receiveOffset += size;
-			}				
-			else if (fieldtype == FieldType.TABLE) {
-				setName = new String(receiveBuffer, receiveOffset, size);
-				receiveOffset += size;
-			}				
 		}
-		return new Key(namespace, digest, setName);		
+		return new Key(namespace, digest, setName, userKey);		
 	}
 	
 	protected Record parseRecordWithDuplicates() throws AerospikeException {

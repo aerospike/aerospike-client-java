@@ -51,5 +51,11 @@ public final class WritePolicy extends Policy {
 	 * <li>> 0: Actual expiration in seconds.<br></li>
 	 * </ul>
 	 */
-	public int expiration;	
+	public int expiration;
+	
+	/**
+	 * Send user defined key in addition to hash digest on a record put.  
+	 * The default is to not send the user defined key.
+	 */
+	public boolean sendKey;
 }
