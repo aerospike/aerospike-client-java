@@ -162,8 +162,8 @@ public class Main implements Log.Callback {
 		CommandLineParser parser = new PosixParser();
 		CommandLine line = parser.parse(options, commandLineArgs);
 		String[] extra = line.getArgs();
-		
-		if (commandLineArgs.length == 0 || line.hasOption("u")) {
+
+		if ( line.hasOption("u")) {
 			logUsage(options);
 			throw new UsageException();
 		}
