@@ -35,6 +35,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 	public LuaBytes(LuaInstance instance, byte[] bytes) {
 		super(bytes);
 		this.bytes = bytes;
+		this.size = bytes.length;
 		setmetatable(instance.getPackage("Bytes"));
 	}
 
