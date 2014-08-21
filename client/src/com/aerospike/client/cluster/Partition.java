@@ -28,7 +28,7 @@ public final class Partition {
 		
 		// CAN'T USE MOD directly - mod will give negative numbers.
 		// First AND makes positive and negative correctly, then mod.
-		this.partitionId = (Buffer.bytesToIntIntel(key.digest, 0) & 0xFFFF) % Node.PARTITIONS;
+		this.partitionId = (Buffer.littleBytesToInt(key.digest, 0) & 0xFFFF) % Node.PARTITIONS;
 	}
 
 	public Partition(String namespace, int partitionId) {

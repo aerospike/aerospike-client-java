@@ -364,62 +364,146 @@ public final class Buffer {
 	}
 
 	public static void longToBytes(long v, byte[] buf, int offset) {
-		for (int i = 7; i >= 0; i--) {
-			buf[offset+i] = (byte) (v & 0xff);
-			v >>>= 8;
-		}
+		buf[offset++] = (byte)(v >>> 56);
+		buf[offset++] = (byte)(v >>> 48);
+		buf[offset++] = (byte)(v >>> 40);
+		buf[offset++] = (byte)(v >>> 32);
+		buf[offset++] = (byte)(v >>> 24);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset++] = (byte)(v >>>  8);
+		buf[offset]   = (byte)(v >>>  0);
 	}
   	
-    public static long bytesToLong(byte[] buf, int offset) {
-    	long a = 0;
-    	
-    	for (int i = 0; i < 8; i++) {
-    		a <<= 8;
-    		a |= getUnsigned(buf[offset+i]);
-    	}
-    	return a;
-    }
-
-	public static void intToBytes(int v, byte[] buf, int offset) {
-		for (int i = 3; i >= 0; i--) {
-			buf[offset+i] = (byte) (v & 0xff);
-			v >>>= 8;
-		}
+	public static void longToLittleBytes(long v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 0);
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset++] = (byte)(v >>> 24);
+		buf[offset++] = (byte)(v >>> 32);
+		buf[offset++] = (byte)(v >>> 40);
+		buf[offset++] = (byte)(v >>> 48);
+		buf[offset]   = (byte)(v >>> 56);		
 	}
 
-	public static int bytesToInt(byte[] buf, int offset) {
-        return (
-        	((buf[offset] & 0xFF) << 24) | 
-        	((buf[offset+1] & 0xFF) << 16) | 
-        	((buf[offset+2] & 0xFF) << 8) | 
-        	(buf[offset+3] & 0xFF)
-        );
+	public static long bytesToLong(byte[] buf, int offset) {
+       return (
+    		((long)(buf[offset]   & 0xFF) << 56) + 
+   			((long)(buf[offset+1] & 0xFF) << 48) +
+   			((long)(buf[offset+2] & 0xFF) << 40) +
+   			((long)(buf[offset+3] & 0xFF) << 32) +
+   			((long)(buf[offset+4] & 0xFF) << 24) +
+   			((long)(buf[offset+5] & 0xFF) << 16) +
+   			((long)(buf[offset+6] & 0xFF) << 8) +
+   			((long)(buf[offset+7] & 0xFF) << 0)
+   			);
     }
 
-    public static int bytesToIntIntel(byte[] buf, int offset) {
-        return 
-        	((buf[offset+3] & 0xFF) << 24) | 
-        	((buf[offset+2] & 0xFF) << 16) | 
-        	((buf[offset+1] & 0xFF) << 8) | 
-        	(buf[offset] & 0xFF);
+    public static long littleBytesToLong(byte[] buf, int offset) {
+        return (
+			((long)(buf[offset]   & 0xFF) << 0) + 
+			((long)(buf[offset+1] & 0xFF) << 8) +
+			((long)(buf[offset+2] & 0xFF) << 16) +
+			((long)(buf[offset+3] & 0xFF) << 24) +
+			((long)(buf[offset+4] & 0xFF) << 32) +
+			((long)(buf[offset+5] & 0xFF) << 40) +
+			((long)(buf[offset+6] & 0xFF) << 48) +
+			((long)(buf[offset+7] & 0xFF) << 56)
+			);
+    }
+
+    public static void intToBytes(int v, byte[] buf, int offset) {
+        buf[offset++] = (byte)(v >>> 24);
+        buf[offset++] = (byte)(v >>> 16);
+        buf[offset++] = (byte)(v >>> 8);
+        buf[offset]   = (byte)(v >>> 0);
+	}
+
+    public static void intToLittleBytes(int v, byte[] buf, int offset) {
+        buf[offset++] = (byte)(v >>> 0);
+        buf[offset++] = (byte)(v >>> 8);
+        buf[offset++] = (byte)(v >>> 16);
+        buf[offset]   = (byte)(v >>> 24);
+	}
+
+    public static int bytesToInt(byte[] buf, int offset) {
+       return (
+			((int)(buf[offset]   & 0xFF) << 24) +
+			((int)(buf[offset+1] & 0xFF) << 16) + 
+			((int)(buf[offset+2] & 0xFF) << 8) +
+			((int)(buf[offset+3] & 0xFF) << 0)
+			);
+    }
+
+	public static int littleBytesToInt(byte[] buf, int offset) {
+        return (
+			((int)(buf[offset]   & 0xFF) << 0) +
+			((int)(buf[offset+1] & 0xFF) << 8) +
+			((int)(buf[offset+2] & 0xFF) << 16) +
+			((int)(buf[offset+3] & 0xFF) << 24)
+			);
     }
 	
     public static void shortToBytes(int v, byte[] buf, int offset) {
-        buf[offset] = (byte) ((v >>> 8) & 0xff);
-        buf[offset+1] = (byte) (v & 0xff);
+        buf[offset++] = (byte)(v >>> 8);
+        buf[offset]   = (byte)(v >>> 0);
+    }
+
+    public static void shortToLittleBytes(int v, byte[] buf, int offset) {
+        buf[offset++] = (byte)(v >>> 0);
+        buf[offset]   = (byte)(v >>> 8);
     }
 
     public static int bytesToShort(byte[] buf, int offset) {
-        return ((buf[offset] & 0xFF) << 8) + (buf[offset+1] & 0xFF);
+        return (
+			((int)(buf[offset]   & 0xFF) << 8) +
+			((int)(buf[offset+1] & 0xFF) << 0)
+			);
     }
     
-    private static int getUnsigned(byte b) {
-    	int r = b;
+    public static int littleBytesToShort(byte[] buf, int offset) {
+        return (
+			((int)(buf[offset]   & 0xFF) << 0) +
+			((int)(buf[offset+1] & 0xFF) << 8)
+			);
+    }
+
+    /**
+     *	Encode an integer in variable 7-bit format.
+     *	The high bit indicates if more bytes are used.
+     *  Return byte size of integer. 
+     */
+    public static int intToVarBytes(int v, byte[] buf, int offset) {
+    	int i = offset;
     	
-    	if (r < 0) {
-    		r = r & 0x7f;
-    		r = r | 0x80;
+    	while (i < buf.length && v >= 0x80) {
+    		buf[i++] = (byte)(v | 0x80);
+    		v >>>= 7;
     	}
-    	return r;
+    	
+    	if (i < buf.length) {
+    		buf[i++] = (byte)v;
+    		return i - offset;
+    	}
+    	return 0;
+    }
+
+    /**
+     *	Decode an integer in variable 7-bit format.
+     *	The high bit indicates if more bytes are used.
+     *  Return value and byte size in array.
+     */
+    public static int[] varBytesToInt(byte[] buf, int offset) {
+		int i = offset;
+		int val = 0;
+		int shift = 0;
+		byte b;
+		
+		do {
+			b = buf[i++];
+			val |= (b & 0x7F) << shift;
+			shift += 7;
+		} while ((b & 0x80) != 0);
+		
+		return new int[] {val, i - offset};
     }
 }
