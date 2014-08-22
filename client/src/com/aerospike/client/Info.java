@@ -436,6 +436,7 @@ public final class Info {
 			
 			if (b == '\t') {
 				String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+				checkError(name);
 				begin = ++offset;
 				
 				// Parse field value.
@@ -458,6 +459,7 @@ public final class Info {
 			else if (b == '\n') {
 				if (offset > begin) {
 					String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+					checkError(name);
 					responses.put(name, null);
 				}		
 				begin = ++offset;
@@ -469,11 +471,38 @@ public final class Info {
 		
 		if (offset > begin) {
 			String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
+			checkError(name);
 			responses.put(name, null);
 		}
 		return responses;
 	}
 	
+	private void checkError(String str) throws AerospikeException
+	{
+		if (str.startsWith("ERROR:"))
+		{
+			int begin = 6;
+			int end = str.indexOf(':', begin);
+			int code = -1;
+			String message = "";
+
+			if (end >= 0)
+			{
+				code = Integer.parseInt(str.substring(begin, end));
+
+				if (str.charAt(str.length() - 1) == '\n')
+				{
+					message = str.substring(end + 1, str.length() - 1);
+				}
+				else
+				{
+					message = str.substring(end + 1);
+				}
+			}
+			throw new AerospikeException(code, message);
+		}
+	}
+
 	/**
 	 * Parser for responses in name/value pair format:
 	 * <p>
