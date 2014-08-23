@@ -17,6 +17,7 @@
 package com.aerospike.client.query;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -73,6 +74,18 @@ public abstract class QueryCommand extends MultiCommand {
 			}
 			dataOffset += filterSize;
 			fieldCount++;
+			
+			// Query bin names are specified as a field (Scan bin names are specified later as operations)		
+			if (statement.binNames != null) {
+				dataOffset += FIELD_HEADER_SIZE;
+				binNameSize++;  // num bin names
+				
+				for (String binName : statement.binNames) {
+					binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
+				}
+				dataOffset += binNameSize;
+				fieldCount++;
+			}
 		}
 		else {
 			// Calling query with no filters is more efficiently handled by a primary index scan. 
@@ -81,17 +94,6 @@ public abstract class QueryCommand extends MultiCommand {
 			fieldCount++;
 		}
 		
-		if (statement.binNames != null) {
-			dataOffset += FIELD_HEADER_SIZE;
-			binNameSize++;  // num bin names
-			
-			for (String binName : statement.binNames) {
-				binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
-			}
-			dataOffset += binNameSize;
-			fieldCount++;
-		}
-
 		if (statement.taskId > 0) {
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
@@ -112,10 +114,19 @@ public abstract class QueryCommand extends MultiCommand {
 			fieldCount += 4;
 		}
 
+		if (statement.filters == null) {
+			if (statement.binNames != null) {
+				for (String binName : statement.binNames) {
+					estimateOperationSize(binName);
+				}
+			}
+		}
+
 		sizeBuffer();
 		
 		byte readAttr = Command.INFO1_READ;		
-		writeHeader(readAttr, 0, fieldCount, 0);
+		int operationCount = (statement.filters == null && statement.binNames != null)? statement.binNames.length : 0;
+		writeHeader(readAttr, 0, fieldCount, operationCount);
 				
 		if (statement.namespace != null) {
 			writeField(statement.namespace, FieldType.NAMESPACE);
@@ -136,6 +147,18 @@ public abstract class QueryCommand extends MultiCommand {
 			for (Filter filter : statement.filters) {
 				dataOffset = filter.write(dataBuffer, dataOffset);
 			}
+
+			// Query bin names are specified as a field (Scan bin names are specified later as operations)
+			if (statement.binNames != null) {
+				writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+		        dataBuffer[dataOffset++] = (byte)statement.binNames.length;
+
+				for (String binName : statement.binNames) {
+					int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
+					dataBuffer[dataOffset] = (byte)len;
+					dataOffset += len + 1;
+				}
+			}
 		}
 		else {
 			// Calling query with no filters is more efficiently handled by a primary index scan. 
@@ -143,18 +166,7 @@ public abstract class QueryCommand extends MultiCommand {
 			byte priority = (byte)policy.priority.ordinal();
 			priority <<= 4;			
 			dataBuffer[dataOffset++] = priority;
-			dataBuffer[dataOffset++] = (byte)100;
-		}
-		
-		if (statement.binNames != null) {
-			writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-	        dataBuffer[dataOffset++] = (byte)statement.binNames.length;
-
-			for (String binName : statement.binNames) {
-				int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
-				dataBuffer[dataOffset] = (byte)len;
-				dataOffset += len + 1;
-			}
+			dataBuffer[dataOffset++] = (byte)100;			
 		}
 		
 		if (statement.taskId > 0) {
@@ -170,6 +182,16 @@ public abstract class QueryCommand extends MultiCommand {
 			writeField(statement.functionName, FieldType.UDF_FUNCTION);
 			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
 		}
+		
+		// Scan bin names are specified after all fields.
+		if (statement.filters == null) {
+			if (statement.binNames != null) {
+				for (String binName : statement.binNames) {
+					writeOperation(binName, Operation.Type.READ);
+				}
+			}
+		}
+		
 		end();
 	}
 }

@@ -386,7 +386,7 @@ public abstract class Command {
 		dataOffset += operation.binValue.estimateSize();
 	}
 
-	private final void estimateOperationSize(String binName) {
+	protected final void estimateOperationSize(String binName) {
 		dataOffset += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 	}
 
@@ -530,7 +530,7 @@ public abstract class Command {
         dataOffset += nameLength + valueLength;
 	}
 
-	private final void writeOperation(String name, Operation.Type operation) {
+	protected final void writeOperation(String name, Operation.Type operation) {
         int nameLength = Buffer.stringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
          
         Buffer.intToBytes(nameLength + 4, dataBuffer, dataOffset);
