@@ -28,7 +28,7 @@ public final class AsyncOperate extends AsyncRead {
 	
 	public AsyncOperate(AsyncCluster cluster, WritePolicy policy, RecordListener listener, Key key, Operation[] operations) {
 		super(cluster, policy, listener, key, null);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = policy;
 		this.operations = operations;
 	}
 

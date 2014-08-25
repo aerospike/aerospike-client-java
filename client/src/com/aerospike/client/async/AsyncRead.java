@@ -39,7 +39,7 @@ public class AsyncRead extends AsyncSingleCommand {
 	
 	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 		this.binNames = binNames;
 	}

@@ -32,7 +32,7 @@ public class AsyncReadHeader extends AsyncSingleCommand {
 	
 	public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 	}
 

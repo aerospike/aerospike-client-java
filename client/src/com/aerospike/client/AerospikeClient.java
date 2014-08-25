@@ -84,6 +84,11 @@ public class AerospikeClient implements Closeable {
 	
 	protected Cluster cluster;
 	
+	public Policy readPolicyDefault = new Policy();
+	public WritePolicy writePolicyDefault = new WritePolicy();
+	public ScanPolicy scanPolicyDefault = new ScanPolicy();
+	public QueryPolicy queryPolicyDefault = new QueryPolicy();
+	
 	//-------------------------------------------------------
 	// Constructors
 	//-------------------------------------------------------
@@ -155,7 +160,7 @@ public class AerospikeClient implements Closeable {
 	public AerospikeClient(ClientPolicy policy, Host... hosts) throws AerospikeException {
 		if (policy == null) {
 			policy = new ClientPolicy();
-		}
+		}	
 		cluster = new Cluster(policy, hosts);
 		cluster.initTendThread();
 		
@@ -249,6 +254,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if write fails
 	 */
 	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}
@@ -269,6 +277,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if append fails
 	 */
 	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
@@ -285,6 +296,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if prepend fails
 	 */
 	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 		command.execute();
 	}
@@ -305,6 +319,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if add fails
 	 */
 	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 		command.execute();
 	}
@@ -323,6 +340,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if delete fails
 	 */
 	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		DeleteCommand command = new DeleteCommand(cluster, policy, key);
 		command.execute();
 		return command.existed();
@@ -341,6 +361,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if touch fails
 	 */
 	public final void touch(WritePolicy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		TouchCommand command = new TouchCommand(cluster, policy, key);
 		command.execute();
 	}
@@ -359,6 +382,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final boolean exists(Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		ExistsCommand command = new ExistsCommand(cluster, policy, key);
 		command.execute();
 		return command.exists();
@@ -375,6 +401,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		boolean[] existsArray = new boolean[keys.length];
 		new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return existsArray;
@@ -394,6 +423,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		ReadCommand command = new ReadCommand(cluster, policy, key, null);
 		command.execute();
 		return command.getRecord();
@@ -410,6 +442,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
 		command.execute();
 		return command.getRecord();
@@ -425,6 +460,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
@@ -446,6 +484,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		Record[] records = new Record[keys.length];
 		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
@@ -465,6 +506,9 @@ public class AerospikeClient implements Closeable {
 	 */
 	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		Record[] records = new Record[keys.length];
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
@@ -483,6 +527,9 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		Record[] records = new Record[keys.length];
 		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
@@ -508,6 +555,9 @@ public class AerospikeClient implements Closeable {
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations) 
 		throws AerospikeException {		
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		OperateCommand command = new OperateCommand(cluster, policy, key, operations);
 		command.execute();
 		return command.getRecord();
@@ -536,7 +586,7 @@ public class AerospikeClient implements Closeable {
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {	
 		if (policy == null) {
-			policy = new ScanPolicy();
+			policy = scanPolicyDefault;
 		}
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
@@ -597,7 +647,7 @@ public class AerospikeClient implements Closeable {
 	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
 		throws AerospikeException {
 		if (policy == null) {
-			policy = new ScanPolicy();
+			policy = scanPolicyDefault;
 		}
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
@@ -775,6 +825,9 @@ public class AerospikeClient implements Closeable {
 	 */
 	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 		command.execute();
 		
@@ -833,7 +886,7 @@ public class AerospikeClient implements Closeable {
 		Value... functionArgs
 	) throws AerospikeException {
 		if (policy == null) {
-			policy = new Policy();
+			policy = readPolicyDefault;
 		}
 		new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 		return new ExecuteTask(cluster, statement);
@@ -857,7 +910,7 @@ public class AerospikeClient implements Closeable {
 	 */
 	public final RecordSet query(QueryPolicy policy, Statement statement) throws AerospikeException {
 		if (policy == null) {
-			policy = new QueryPolicy();
+			policy = queryPolicyDefault;
 		}
 		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
 		executor.execute();
@@ -893,7 +946,7 @@ public class AerospikeClient implements Closeable {
 		Value... functionArgs
 	) throws AerospikeException {
 		if (policy == null) {
-			policy = new QueryPolicy();
+			policy = queryPolicyDefault;
 		}
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
 		executor.execute();

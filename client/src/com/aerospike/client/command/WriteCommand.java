@@ -34,7 +34,7 @@ public final class WriteCommand extends SingleCommand {
 
 	public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = policy;
 		this.bins = bins;
 		this.operation = operation;
 	}

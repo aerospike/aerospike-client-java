@@ -38,10 +38,6 @@ public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 	) throws AerospikeException {
 		super(cluster, keys);
 		this.listener = listener;
-		
-		if (policy == null) {
-			policy = new Policy();
-		}
 
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			

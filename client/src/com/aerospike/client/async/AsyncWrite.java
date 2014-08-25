@@ -34,7 +34,7 @@ public final class AsyncWrite extends AsyncSingleCommand {
 		
 	public AsyncWrite(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) {
 		super(cluster, key);
-		this.policy = (policy == null)? new WritePolicy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 		this.bins = bins;
 		this.operation = operation;

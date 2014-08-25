@@ -30,7 +30,7 @@ public final class AsyncTouch extends AsyncSingleCommand {
 		
 	public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null)? new WritePolicy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 	}
 

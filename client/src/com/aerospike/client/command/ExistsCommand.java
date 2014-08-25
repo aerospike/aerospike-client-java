@@ -31,7 +31,7 @@ public final class ExistsCommand extends SingleCommand {
 
 	public ExistsCommand(Cluster cluster, Policy policy, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 	}
 	
 	@Override

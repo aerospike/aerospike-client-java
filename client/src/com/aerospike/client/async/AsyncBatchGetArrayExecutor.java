@@ -44,10 +44,6 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		this.recordArray = new Record[keys.length];
 		this.listener = listener;
 		
-		if (policy == null) {
-			policy = new Policy();
-		}
-
 		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
 		
 		// Dispatch asynchronous commands to nodes.

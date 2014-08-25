@@ -28,7 +28,7 @@ public final class OperateCommand extends ReadCommand {
 
 	public OperateCommand(Cluster cluster, WritePolicy policy, Key key, Operation[] operations) {
 		super(cluster, policy, key, null);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = policy;
 		this.operations = operations;
 	}
 

@@ -159,6 +159,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {		
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}
@@ -183,6 +186,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
@@ -203,6 +209,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
 		command.execute();
 	}
@@ -227,6 +236,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
 		command.execute();
 	}
@@ -248,6 +260,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void delete(WritePolicy policy, DeleteListener listener, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncDelete command = new AsyncDelete(cluster, policy, listener, key);
 		command.execute();
 	}
@@ -269,6 +284,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException {		
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncTouch command = new AsyncTouch(cluster, policy, listener, key);
 		command.execute();
 	}
@@ -290,6 +308,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(Policy policy, ExistsListener listener, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		AsyncExists command = new AsyncExists(cluster, policy, listener, key);
 		command.execute();
 	}
@@ -307,6 +328,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(Policy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);		
 	}
 
@@ -323,6 +347,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(Policy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);		
 	}
 
@@ -343,6 +370,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */	
 	public final void get(Policy policy, RecordListener listener, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		AsyncRead command = new AsyncRead(cluster, policy, listener, key, null);
 		command.execute();
 	}
@@ -361,6 +391,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(Policy policy, RecordListener listener, Key key, String... binNames) throws AerospikeException {	
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		AsyncRead command = new AsyncRead(cluster, policy, listener, key, binNames);
 		command.execute();
 	}
@@ -378,6 +411,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(Policy policy, RecordListener listener, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		AsyncReadHeader command = new AsyncReadHeader(cluster, policy, listener, key);
 		command.execute();
 	}
@@ -400,6 +436,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 	}
 
@@ -417,6 +456,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);		
 	}
 	
@@ -436,6 +478,9 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
 	}
@@ -456,6 +501,9 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
 	}
@@ -474,6 +522,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
@@ -491,6 +542,9 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
@@ -514,6 +568,9 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations) 
 		throws AerospikeException {		
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		AsyncOperate command = new AsyncOperate(cluster, policy, listener, key, operations);
 		command.execute();
 	}
@@ -541,7 +598,7 @@ public class AsyncClient extends AerospikeClient {
 	public final void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
 		throws AerospikeException {
 		if (policy == null) {
-			policy = new ScanPolicy();
+			policy = scanPolicyDefault;
 		}
 		
 		// Retry policy must be one-shot for scans.

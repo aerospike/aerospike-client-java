@@ -32,7 +32,7 @@ public final class DeleteCommand extends SingleCommand {
 
 	public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = policy;
 	}
 	
 	@Override

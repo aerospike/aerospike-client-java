@@ -32,7 +32,7 @@ public final class AsyncDelete extends AsyncSingleCommand {
 		
 	public AsyncDelete(AsyncCluster cluster, WritePolicy policy, DeleteListener listener, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new WritePolicy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 	}
 	

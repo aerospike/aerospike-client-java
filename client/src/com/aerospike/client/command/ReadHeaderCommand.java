@@ -32,7 +32,7 @@ public class ReadHeaderCommand extends SingleCommand {
 
 	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 	}
 	
 	@Override

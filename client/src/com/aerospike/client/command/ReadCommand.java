@@ -36,7 +36,7 @@ public class ReadCommand extends SingleCommand {
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 		this.binNames = binNames;
 	}
 	

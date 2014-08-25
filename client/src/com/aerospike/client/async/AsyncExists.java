@@ -31,7 +31,7 @@ public final class AsyncExists extends AsyncSingleCommand {
 	
 	public AsyncExists(AsyncCluster cluster, Policy policy, ExistsListener listener, Key key) {
 		super(cluster, key);
-		this.policy = (policy == null) ? new Policy() : policy;
+		this.policy = policy;
 		this.listener = listener;
 	}
 		
