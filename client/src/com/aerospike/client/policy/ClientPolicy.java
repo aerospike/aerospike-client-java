@@ -46,6 +46,25 @@ public class ClientPolicy {
 	 */
 	public boolean failIfNotConnected;
 	
+	/**
+	 * Default read policy that is used when read command's policy is null.
+	 */
+	public Policy readPolicyDefault = new Policy();
+	
+	/**
+	 * Default write policy that is used when write command's policy is null.
+	 */
+	public WritePolicy writePolicyDefault = new WritePolicy();
+	
+	/**
+	 * Default scan policy that is used when scan command's policy is null.
+	 */
+	public ScanPolicy scanPolicyDefault = new ScanPolicy();
+	
+	/**
+	 * Default query policy that is used when query command's policy is null.
+	 */
+	public QueryPolicy queryPolicyDefault = new QueryPolicy();
 
 	/**
 	 * A IP translation table is used in cases where different clients use different server 

@@ -84,10 +84,25 @@ public class AerospikeClient implements Closeable {
 	
 	protected Cluster cluster;
 	
-	public Policy readPolicyDefault = new Policy();
-	public WritePolicy writePolicyDefault = new WritePolicy();
-	public ScanPolicy scanPolicyDefault = new ScanPolicy();
-	public QueryPolicy queryPolicyDefault = new QueryPolicy();
+	/**
+	 * Default read policy that is used when read command policy is null.
+	 */
+	public final Policy readPolicyDefault;
+	
+	/**
+	 * Default write policy that is used when write command policy is null.
+	 */
+	public final WritePolicy writePolicyDefault;
+	
+	/**
+	 * Default scan policy that is used when scan command policy is null.
+	 */
+	public final ScanPolicy scanPolicyDefault;
+	
+	/**
+	 * Default query policy that is used when query command policy is null.
+	 */
+	public final QueryPolicy queryPolicyDefault;
 	
 	//-------------------------------------------------------
 	// Constructors
@@ -160,7 +175,12 @@ public class AerospikeClient implements Closeable {
 	public AerospikeClient(ClientPolicy policy, Host... hosts) throws AerospikeException {
 		if (policy == null) {
 			policy = new ClientPolicy();
-		}	
+		}
+		this.readPolicyDefault = policy.readPolicyDefault;
+		this.writePolicyDefault = policy.writePolicyDefault;
+		this.scanPolicyDefault = policy.scanPolicyDefault;
+		this.queryPolicyDefault = policy.queryPolicyDefault;
+		
 		cluster = new Cluster(policy, hosts);
 		cluster.initTendThread();
 		
@@ -170,28 +190,25 @@ public class AerospikeClient implements Closeable {
 	}
 
 	//-------------------------------------------------------
-	// Compatibility Layer Initialization
+	// Protected Initialization
 	//-------------------------------------------------------
 
 	/**
-	 * Compatibility layer constructor.  Do not use.
+	 * Asynchronous default constructor. Do not use directly.
 	 */
-	protected AerospikeClient() {
-	}
-	
-	/**
-	 * Compatibility layer host initialization. Do not use.
-	 */
-	protected final void addServer(String hostname, int port) throws AerospikeException {
-		Host[] hosts = new Host[] {new Host(hostname, port)};
-		
-		// If cluster has already been initialized, add hosts to existing cluster.
-		if (cluster != null) {
-			cluster.addSeeds(hosts);
-			return;
-		}	
-		cluster = new Cluster(new ClientPolicy(), hosts);
-		cluster.initTendThread();
+	protected AerospikeClient(ClientPolicy policy) {
+		if (policy != null) {
+			this.readPolicyDefault = policy.readPolicyDefault;
+			this.writePolicyDefault = policy.writePolicyDefault;
+			this.scanPolicyDefault = policy.scanPolicyDefault;
+			this.queryPolicyDefault = policy.queryPolicyDefault;
+		}
+		else {
+			this.readPolicyDefault = new Policy();
+			this.writePolicyDefault = new WritePolicy();
+			this.scanPolicyDefault = new ScanPolicy();
+			this.queryPolicyDefault = new QueryPolicy();
+		}
 	}
 
 	//-------------------------------------------------------

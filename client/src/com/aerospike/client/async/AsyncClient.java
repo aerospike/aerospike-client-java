@@ -129,6 +129,8 @@ public class AsyncClient extends AerospikeClient {
 	 * @throws AerospikeException	if all host connections fail
 	 */
 	public AsyncClient(AsyncClientPolicy policy, Host... hosts) throws AerospikeException {
+		super(policy);
+		
 		if (policy == null) {
 			policy = new AsyncClientPolicy();
 		}
