@@ -31,6 +31,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
@@ -104,9 +105,9 @@ public class Cluster implements Runnable, Closeable {
 		nodeIndex = new AtomicInteger();
 	}
 	
-	public void initTendThread() {		
+	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {		
 		// Tend cluster until all nodes identified.
-        waitTillStabilized();
+        waitTillStabilized(failIfNotConnected);
         
         if (Log.debugEnabled()) {
         	for (Host host : seeds) {
@@ -175,12 +176,12 @@ public class Cluster implements Runnable, Closeable {
      * control as well.  Do not return an error since future 
      * database requests may still succeed.
      */
-    private final void waitTillStabilized() {
+    private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
 		long limit = System.currentTimeMillis() + connectionTimeout;
 		int count = -1;
 		
 		do {
-			tend();
+			tend(failIfNotConnected);
 		
 			// Check to see if cluster has changed since the last Tend().
 			// If not, assume cluster has stabilized and return.
@@ -196,7 +197,7 @@ public class Cluster implements Runnable, Closeable {
 		while (tendValid) {			
 			// Tend cluster.
 			try {
-				tend();
+				tend(false);
 			}
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
@@ -211,11 +212,11 @@ public class Cluster implements Runnable, Closeable {
     /**
      * Check health of all nodes in the cluster.
      */
-	private final void tend() {
+	private final void tend(boolean failIfNotConnected) throws AerospikeException {
 		// All node additions/deletions are performed in tend thread.		
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
-			seedNodes();
+			seedNodes(failIfNotConnected);
 		}
 
 		// Clear node reference counts.
@@ -278,14 +279,17 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	private final void seedNodes() {
+	private final void seedNodes(boolean failIfNotConnected) throws AerospikeException {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
+		Exception[] exceptions = null;
 		
 		// Add all nodes at once to avoid copying entire array multiple times.
 		ArrayList<Node> list = new ArrayList<Node>();
 
-		for (Host seed : seedArray) {
+		for (int i = 0; i < seedArray.length; i++) {
+			Host seed = seedArray[i];
+
 			try {
 				NodeValidator seedNodeValidator = new NodeValidator(seed, connectionTimeout);
 				
@@ -308,15 +312,42 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 			catch (Exception e) {
-				// Try next host
 				if (Log.debugEnabled()) {
 					Log.debug("Seed " + seed + " failed: " + Util.getErrorMessage(e));
+				}
+				
+				// Store exception and try next host
+				if (failIfNotConnected) {
+					if (exceptions == null) {
+						exceptions = new Exception[seedArray.length];
+					}
+					exceptions[i] = e;
 				}
 			}
 		}
 
 		if (list.size() > 0) {
 			addNodesCopy(list);
+		}
+		else if (failIfNotConnected) {
+			StringBuilder sb = new StringBuilder(500);
+			sb.append("Failed to connect to host(s): ");
+			sb.append(Environment.Newline);
+
+			for (int i = 0; i < seedArray.length; i++)
+			{
+				sb.append(seedArray[i]);
+				sb.append(' ');
+
+				Exception ex = exceptions[i];
+
+				if (ex != null)
+				{
+					sb.append(ex.getMessage());
+					sb.append(Environment.Newline);
+				}
+			}
+			throw new AerospikeException.Connection(sb.toString());		
 		}
 	}
 	

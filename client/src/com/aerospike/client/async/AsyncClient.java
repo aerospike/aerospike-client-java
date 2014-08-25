@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.Arrays;
 import java.util.HashSet;
 
 import com.aerospike.client.AerospikeClient;
@@ -136,10 +135,6 @@ public class AsyncClient extends AerospikeClient {
 		}
 		this.cluster = new AsyncCluster(policy, hosts);
 		super.cluster = this.cluster;
-		
-		if (policy.failIfNotConnected && ! this.cluster.isConnected()) {
-			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
-		}
 	}
 
 	//-------------------------------------------------------

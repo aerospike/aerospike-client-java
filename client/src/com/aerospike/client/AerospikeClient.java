@@ -18,7 +18,6 @@ package com.aerospike.client;
 
 import java.io.Closeable;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -182,11 +181,7 @@ public class AerospikeClient implements Closeable {
 		this.queryPolicyDefault = policy.queryPolicyDefault;
 		
 		cluster = new Cluster(policy, hosts);
-		cluster.initTendThread();
-		
-		if (policy.failIfNotConnected && ! cluster.isConnected()) {
-			throw new AerospikeException.Connection("Failed to connect to host(s): " + Arrays.toString(hosts));
-		}
+		cluster.initTendThread(policy.failIfNotConnected);
 	}
 
 	//-------------------------------------------------------

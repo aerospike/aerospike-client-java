@@ -19,7 +19,6 @@ package com.aerospike.client.cluster;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
 import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
@@ -34,28 +33,24 @@ public final class NodeValidator {
 	InetSocketAddress address;
 	boolean useNewInfo = true;
 
-	public NodeValidator(Host host, int timeoutMillis) throws AerospikeException {
-		setAliases(host);
-		setAddress(timeoutMillis);
-	}
-	
-	private void setAliases(Host host) throws AerospikeException {	
+	public NodeValidator(Host host, int timeoutMillis) throws Exception {
 		try {
 			InetAddress[] addresses = InetAddress.getAllByName(host.name);
-			int count = 0;
 			aliases = new Host[addresses.length];
 			
-			for (InetAddress address : addresses) {
-				aliases[count++] = new Host(address.getHostAddress(), host.port);
+			for (int i = 0; i < addresses.length; i++) {
+				aliases[i] = new Host(addresses[i].getHostAddress(), host.port);
 			}
 		}
 		catch (UnknownHostException uhe) {
 			throw new AerospikeException.Connection("Invalid host: " + host);
 		}
-	}
 
-	private void setAddress(int timeoutMillis) throws AerospikeException {
-		for (Host alias : aliases) {
+		Exception exception = null;
+		
+		for (int i = 0; i < aliases.length; i++) {
+			Host alias = aliases[i];
+			
 			try {
 				InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
 				Connection conn = new Connection(address, timeoutMillis);
@@ -96,8 +91,18 @@ public final class NodeValidator {
 				if (Log.debugEnabled()) {
 					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
 				}
+
+				if (exception == null)
+				{
+					exception = e;
+				}
 			}	
 		}		
-		throw new AerospikeException.Connection("Failed to connect to host aliases: " + Arrays.toString(aliases));
+
+		if (exception == null)
+		{
+			throw new AerospikeException.Connection("Failed to find addresses for " + host);
+		}
+		throw exception;
 	}
 }
