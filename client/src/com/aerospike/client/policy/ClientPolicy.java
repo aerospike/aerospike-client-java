@@ -42,6 +42,11 @@ public class ClientPolicy {
 	public int maxSocketIdle = 14;
 
 	/**
+	 * Interval in milliseconds between cluster tends by maintenance thread.  Default: 1 second
+	 */
+	public int tendInterval = 1000;
+
+	/**
 	 * Throw exception if host connection fails during addHost().
 	 */
 	public boolean failIfNotConnected;

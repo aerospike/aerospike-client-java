@@ -64,6 +64,9 @@ public class Cluster implements Runnable, Closeable {
 	// Maximum socket idle in seconds.
 	protected final int maxSocketIdle;
 
+	// Interval in milliseconds between cluster tends.
+	private final int tendInterval;
+
 	// Tend thread variables.
 	private Thread tendThread;
 	private volatile boolean tendValid;
@@ -76,6 +79,7 @@ public class Cluster implements Runnable, Closeable {
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
 		maxSocketIdle = policy.maxSocketIdle;
+		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		
 		if (policy.threadPool == null) {
@@ -199,8 +203,8 @@ public class Cluster implements Runnable, Closeable {
 					Log.warn("Cluster tend failed: " + Util.getErrorMessage(e));
 				}
 			}
-			// Sleep for 1 second between polling intervals.
-			Util.sleep(1000);
+			// Sleep between polling intervals.
+			Util.sleep(tendInterval);
 		}
 	}
 	
