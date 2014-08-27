@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,9 @@ import com.aerospike.client.Info.NameValueParser;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.AdminCommand;
 import com.aerospike.client.command.BatchExecutor;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.DeleteCommand;
 import com.aerospike.client.command.ExecuteCommand;
@@ -42,6 +45,7 @@ import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
 import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
+import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -1067,6 +1071,128 @@ public class AerospikeClient implements Closeable {
 		throw new AerospikeException("Drop index failed: " + response);
 	}
 	
+	//-------------------------------------------------------
+	// User administration
+	//-------------------------------------------------------
+
+	/**
+	 * Create user with password and roles.  Clear-text password will be hashed using bcrypt
+	 * before sending to server.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @param password				user password in clear-text format
+	 * @param roles					variable arguments array of role names.  Valid roles are listed in Role.cs
+	 * @throws AerospikeException	if command fails
+	 */
+	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
+		String hash = AdminCommand.hashPassword(password);
+		AdminCommand command = new AdminCommand();
+		command.createUser(cluster, policy, user, hash, roles);
+	}
+	
+	/**
+	 * Remove user from cluster.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @throws AerospikeException	if command fails
+	 */
+	public void dropUser(AdminPolicy policy, String user) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.dropUser(cluster, policy, user);
+	}
+
+	/**
+	 * Change user's password.  Clear-text password will be hashed using bcrypt before sending to server.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @param password				user password in clear-text format
+	 * @throws AerospikeException	if command fails
+	 */
+	public void ChangePassword(AdminPolicy policy, String user, String password) throws AerospikeException {
+		if (cluster.getUser() == null) {
+			throw new AerospikeException("Invalid user");
+		}
+
+		String hash = AdminCommand.hashPassword(password);
+		AdminCommand command = new AdminCommand();
+		byte[] userBytes = Buffer.stringToUtf8(user);
+
+		if (Arrays.equals(userBytes, cluster.getUser())) {
+			// Change own password.
+			command.changePassword(cluster, policy, userBytes, hash);
+		}
+		else {
+			// Change other user's password by user admin.
+			command.setPassword(cluster, policy, userBytes, hash);
+		}
+		cluster.changePassword(userBytes, hash);
+	}
+
+	/**
+	 * Add roles to user's list of roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @throws AerospikeException	if command fails
+	 */
+	public void GrantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.grantRoles(cluster, policy, user, roles);
+	}
+
+	/**
+	 * Remove roles from user's list of roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @throws AerospikeException	if command fails
+	 */
+	public void RevokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.revokeRoles(cluster, policy, user, roles);
+	}
+
+	/**
+	 * Replace user's list of roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name
+	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @throws AerospikeException	if command fails
+	 */
+	public void ReplaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.replaceRoles(cluster, policy, user, roles);
+	}
+
+	/**
+	 * Retrieve roles for a given user.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param user					user name filter
+	 * @throws AerospikeException	if command fails
+	 */
+	public UserRoles QueryUser(AdminPolicy policy, String user) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		return command.queryUser(cluster, policy, user);
+	}
+
+	/**
+	 * Retrieve all users and their roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @throws AerospikeException	if command fails
+	 */
+	public List<UserRoles> QueryUsers(AdminPolicy policy) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		return command.queryUsers(cluster, policy);
+	}
+
 	//-------------------------------------------------------
 	// Internal Methods
 	//-------------------------------------------------------

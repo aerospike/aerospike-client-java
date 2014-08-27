@@ -28,6 +28,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
+import com.aerospike.client.command.AdminCommand;
 
 /**
  * Server node representation.  This class manages server node connections and health status.
@@ -190,7 +191,7 @@ public class Node implements Closeable {
 	 * @return						socket connection
 	 * @throws AerospikeException	if a connection could not be provided 
 	 */
-	public final Connection getConnection(int timeoutMillis) throws AerospikeException.Connection {
+	public final Connection getConnection(int timeoutMillis) throws AerospikeException {
 		Connection conn;
 		
 		while ((conn = connectionQueue.poll()) != null) {		
@@ -208,7 +209,25 @@ public class Node implements Closeable {
 			}
 			conn.close();
 		}
-		return new Connection(address, timeoutMillis, cluster.maxSocketIdle);		
+		conn = new Connection(address, timeoutMillis, cluster.maxSocketIdle);
+		
+		if (cluster.user != null) {
+			try {
+				AdminCommand command = new AdminCommand();
+				command.authenticate(conn, cluster.user, cluster.password);
+			}
+			catch (AerospikeException ae) {
+				// Socket not authenticated.  Do not put back into pool.
+				conn.close();
+				throw ae;
+			}
+			catch (Exception e) {
+				// Socket not authenticated.  Do not put back into pool.
+				conn.close();
+				throw new AerospikeException(e);
+			}
+		}
+		return conn;		
 	}
 	
 	/**
@@ -287,6 +306,10 @@ public class Node implements Closeable {
 		}
 		tmpAliases[count] = aliasToAdd;
 		aliases = tmpAliases;
+	}
+	
+	public InetSocketAddress getAddress() {
+		return address;
 	}
 
 	/**

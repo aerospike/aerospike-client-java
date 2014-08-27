@@ -18,7 +18,6 @@ package com.aerospike.client.async;
 
 import java.util.concurrent.ArrayBlockingQueue;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.NodeValidator;
 
@@ -28,7 +27,6 @@ import com.aerospike.client.cluster.NodeValidator;
 public final class AsyncNode extends Node {
 
 	private final ArrayBlockingQueue<AsyncConnection> asyncConnQueue;
-	private final AsyncCluster cluster;
 
 	/**
 	 * Initialize server node with connection parameters.
@@ -38,14 +36,13 @@ public final class AsyncNode extends Node {
 	 */
 	public AsyncNode(AsyncCluster cluster, NodeValidator nv) {
 		super(cluster, nv);
-		this.cluster = cluster;
 		asyncConnQueue = new ArrayBlockingQueue<AsyncConnection>(cluster.getMaxCommands());
 	}
 	
 	/**
 	 * Get asynchronous socket connection from connection pool for the server node.
 	 */
-	public AsyncConnection getAsyncConnection() throws AerospikeException.Connection {
+	public AsyncConnection getAsyncConnection() {
 		// Try to find connection in pool.
 		AsyncConnection conn;
 
@@ -55,7 +52,7 @@ public final class AsyncNode extends Node {
 			}
 			conn.close();
 		}
-		return new AsyncConnection(address, cluster);
+		return null;
 	}
 	
 	/**

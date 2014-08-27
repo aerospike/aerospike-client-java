@@ -30,10 +30,16 @@ public abstract class Example {
 	 * Connect and run one or more client examples.
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
-		ClientPolicy policy = new ClientPolicy();		
+		ClientPolicy policy = new ClientPolicy();
+		policy.user = params.user;
+		policy.password = params.password;
+		policy.failIfNotConnected = true;
+		
 		AerospikeClient client = new AerospikeClient(policy, params.host, params.port);
 
 		try {
+			params.setServerSpecific(client);
+
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);
 			}

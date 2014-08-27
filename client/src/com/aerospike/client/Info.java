@@ -21,10 +21,12 @@ import gnu.crypto.util.Base64;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.Map;
 
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
@@ -43,7 +45,7 @@ public final class Info {
 	// Static variables.
 	//-------------------------------------------------------
 	
-	private static final int DEFAULT_TIMEOUT = 2000;
+	private static final int DEFAULT_TIMEOUT = 1000;
 	
 	//-------------------------------------------------------
 	// Member variables.
@@ -173,12 +175,122 @@ public final class Info {
 	}
 
 	//-------------------------------------------------------
+	// Get Info via Node
+	//-------------------------------------------------------
+
+	/**
+	 * Get one info value by name from the specified database server node.
+	 * This method supports user authentication.
+	 * 
+	 * @param node		server node
+	 * @param name		name of variable to retrieve
+	 */
+	public static String request(Node node, String name) throws AerospikeException {
+		Connection conn = node.getConnection(DEFAULT_TIMEOUT);
+
+		try	{
+			String response = Info.request(conn, name);
+			node.putConnection(conn);
+			return response;
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw re;
+		}
+	}
+	
+	/**
+	 * Get one info value by name from the specified database server node.
+	 * This method supports user authentication.
+	 * 
+	 * @param policy	info command configuration parameters, pass in null for defaults
+	 * @param node		server node
+	 * @param name		name of variable to retrieve
+	 */
+	public static String request(InfoPolicy policy, Node node, String name) throws AerospikeException {
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		Connection conn = node.getConnection(timeout);
+
+		try {
+			String result = request(conn, name);
+			node.putConnection(conn);
+			return result;
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw re;
+		}
+	}
+
+	/**
+	 * Get many info values by name from the specified database server node.
+	 * This method supports user authentication.
+	 * 
+	 * @param policy	info command configuration parameters, pass in null for defaults
+	 * @param node		server node
+	 * @param names		names of variables to retrieve
+	 */
+	public static Map<String,String> request(InfoPolicy policy, Node node, String... names) throws AerospikeException {
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		Connection conn = node.getConnection(timeout);
+
+		try {
+			Map<String,String> result = request(conn, names);
+			node.putConnection(conn);
+			return result;
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw re;
+		}
+	}
+
+	/**
+	 * Get default info values from the specified database server node.
+	 * This method supports user authentication.
+	 * 
+	 * @param policy	info command configuration parameters, pass in null for defaults
+	 * @param node		server node
+	 */
+	public static Map<String,String> request(InfoPolicy policy, Node node) throws AerospikeException {
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		Connection conn = node.getConnection(timeout);
+
+		try {
+			Map<String,String> result = request(conn);
+			node.putConnection(conn);
+			return result;
+		}
+		catch (AerospikeException ae) {
+			conn.close();
+			throw ae;
+		}
+		catch (RuntimeException re) {
+			conn.close();
+			throw re;
+		}
+	}
+
+	//-------------------------------------------------------
 	// Get Info via Host Name and Port
 	//-------------------------------------------------------
 	
 	/**
 	 * Get one info value by name from the specified database server node, using
 	 * host name and port.
+	 * This method does not support user authentication.
 	 * 
 	 * @param hostname				host name
 	 * @param port					host port
@@ -193,6 +305,7 @@ public final class Info {
 	/**
 	 * Get many info values by name from the specified database server node,
 	 * using host name and port.
+	 * This method does not support user authentication.
 	 * 
 	 * @param hostname				host name
 	 * @param port					host port
@@ -206,6 +319,7 @@ public final class Info {
 
 	/**
 	 * Get default info from the specified database server node, using host name and port.
+	 * This method does not support user authentication.
 	 * 
 	 * @param hostname				host name
 	 * @param port					host port
@@ -222,6 +336,7 @@ public final class Info {
 
 	/**
 	 * Get one info value by name from the specified database server node.
+	 * This method does not support user authentication.
 	 * 
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param name					name of value to retrieve
@@ -241,6 +356,7 @@ public final class Info {
 
 	/**
 	 * Get many info values by name from the specified database server node.
+	 * This method does not support user authentication.
 	 * 
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param names					names of values to retrieve
@@ -260,6 +376,7 @@ public final class Info {
 
 	/**
 	 * Get all the default info from the specified database server node.
+	 * This method does not support user authentication.
 	 *
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @return						info name/value pairs
@@ -274,36 +391,6 @@ public final class Info {
 		finally {
 			conn.close();
 		}		
-	}
-
-	//-------------------------------------------------------
-	// Get Info via Node.
-	//-------------------------------------------------------
-
-	/**
-	 * Get one info value by name from the specified database server node.
-	 * 
-	 * @param node					server node
-	 * @param name					name of value to retrieve
-	 * @return						info value
-	 */
-	public static String request(Node node, String name) 
-		throws AerospikeException {
-		Connection conn = node.getConnection(DEFAULT_TIMEOUT);
-		
-		try {
-			String response = Info.request(conn, name);
-			node.putConnection(conn);
-			return response;
-		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
-		}
-		catch (RuntimeException re) {
-			conn.close();
-			throw re;
-		}
 	}
 
 	//-------------------------------------------------------

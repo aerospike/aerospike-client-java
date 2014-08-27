@@ -154,7 +154,17 @@ public final class Buffer {
 		}
 		return count;
 	}
-	
+
+    public static byte[] stringToUtf8(String s) {
+		if (s == null || s.length() == 0) {
+			return new byte[0];
+		}
+		int size = estimateSizeUtf8(s);
+		byte[] bytes = new byte[size];
+		stringToUtf8(s, bytes, 0);
+		return bytes;
+    }
+
 	/**
 	 * Convert input string to UTF-8, copies into buffer (at given offset).
 	 * Returns number of bytes in the string.

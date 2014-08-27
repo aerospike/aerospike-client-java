@@ -47,6 +47,7 @@ public class AsyncPutGet extends AsyncExample {
 
 		runPutGetInline(client, params, key, bin);
 		waitTillComplete();
+		completed = false;
 		runPutGetWithRetry(client, params, key, bin);
 		waitTillComplete();
 	}

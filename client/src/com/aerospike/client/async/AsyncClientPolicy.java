@@ -62,10 +62,19 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	public int asyncSelectorThreads = 1;
 	
 	/**
-	 * Asynchronous socket read/user callback task thread pool.  The default, null, indicates 
-	 * asynchronous tasks should be run in the same thread as the selector.
+	 * Asynchronous socket read/user callback task thread pool. Example:
+	 * <pre>
+	 * asyncTaskThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+	 *     public final Thread newThread(Runnable runnable) {
+	 *			Thread thread = new Thread(runnable);
+	 *			thread.setDaemon(true);
+	 *			return thread;
+	 *		}
+	 *	});
+	 * </pre>
+	 * Daemon threads automatically terminate when the program terminates.
 	 * <p>
-	 * Example: asyncTaskThreadPool = Executors.newCachedThreadPool();
+	 * The default, null, indicates asynchronous tasks should be run in the same thread as the selector.
 	 */
 	public ExecutorService asyncTaskThreadPool;
 }

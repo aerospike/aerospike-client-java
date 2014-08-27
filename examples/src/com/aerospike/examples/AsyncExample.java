@@ -28,13 +28,18 @@ public abstract class AsyncExample {
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
 		AsyncClientPolicy policy = new AsyncClientPolicy();
+		policy.user = params.user;
+		policy.password = params.password;
 		policy.asyncMaxCommands = 300;
 		policy.asyncSelectorThreads = 1;
 		policy.asyncSelectorTimeout = 10;
+		policy.failIfNotConnected = true;
 		
 		AsyncClient client = new AsyncClient(policy, params.host, params.port);
 
 		try {
+			params.setServerSpecific(client);
+
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);
 			}

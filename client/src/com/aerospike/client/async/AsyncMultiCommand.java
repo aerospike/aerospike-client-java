@@ -96,6 +96,11 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 				return;
 			}
 	
+			if (inAuthenticate) {
+				processAuthenticate();
+				return;
+			}
+
 			// Copy byteBuffer to byte[].
 			byteBuffer.position(0);
 			byteBuffer.get(receiveBuffer, receiveOffset, byteBuffer.limit());

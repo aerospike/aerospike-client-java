@@ -155,6 +155,64 @@ public final class ResultCode {
 	public static final int KEY_MISMATCH = 19;
 	
 	/**
+	 * There are no more records left for query.
+	 */
+	public static final int QUERY_END = 50;
+
+	public static final int SECURITY_NOT_SUPPORTED = 51;
+	public static final int SECURITY_NOT_ENABLED = 52;
+	public static final int SECURITY_SCHEME_NOT_SUPPORTED = 53;
+	
+	/**
+	 * Administration command is invalid.
+	 */
+	public static final int INVALID_COMMAND = 54;
+
+	/**
+	 * Administration field is invalid.
+	 */
+	public static final int INVALID_FIELD = 55;
+
+	public static final int ILLEGAL_STATE = 56;
+
+	/**
+	 * User name is invalid.
+	 */
+	public static final int INVALID_USER = 60;
+	
+	/**
+	 * User was previously created.
+	 */
+	public static final int USER_ALREADY_EXISTS = 61;
+
+	/**
+	 * Password is invalid.
+	 */
+	public static final int INVALID_PASSWORD = 62;
+
+	/**
+	 * Security credential is invalid.
+	 */
+	public static final int INVALID_CREDENTIAL = 63;
+
+	/**
+	 * Role name is invalid.
+	 */
+	public static final int INVALID_ROLE = 70;
+
+	public static final int INVALID_PRIVILEGE = 71;
+	
+	/**
+	 * User must be authentication before performing database operations.
+	 */
+	public static final int NOT_AUTHENTICATED = 80;
+
+	/**
+	 * User does not posses the required role to perform the database operation.
+	 */
+	public static final int ROLE_VIOLATION = 81;
+
+	/**
 	 * A user defined function returned an error code.
 	 */
 	public static final int UDF_BAD_RESPONSE = 100;
@@ -321,6 +379,51 @@ public final class ResultCode {
 
 		case KEY_MISMATCH:
 			return "Key mismatch";
+
+		case QUERY_END:
+			return "Query end";
+
+		case SECURITY_NOT_SUPPORTED:
+			return "Security not supported";
+
+		case SECURITY_NOT_ENABLED:
+			return "Security not enabled";
+
+		case SECURITY_SCHEME_NOT_SUPPORTED:
+			return "Security scheme not supported";
+
+		case INVALID_COMMAND:
+			return "Invalid command";
+
+		case INVALID_FIELD:
+			return "Invalid field";
+
+		case ILLEGAL_STATE:
+			return "Illegal state";
+
+		case INVALID_USER:
+			return "Invalid user";
+
+		case USER_ALREADY_EXISTS:
+			return "User already exists";
+
+		case INVALID_PASSWORD:
+			return "Invalid password";
+
+		case INVALID_CREDENTIAL:
+			return "Invalid credential";
+
+		case INVALID_ROLE:
+			return "Invalid role";
+
+		case INVALID_PRIVILEGE:
+			return "Invalid privilege";
+			
+		case NOT_AUTHENTICATED:
+			return "Not authenticated";
+
+		case ROLE_VIOLATION:
+			return "Role violation";
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";

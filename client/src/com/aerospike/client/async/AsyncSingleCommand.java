@@ -59,6 +59,12 @@ public abstract class AsyncSingleCommand extends AsyncCommand {
 		if (! conn.read(byteBuffer)) {
 			return;
 		}
+		
+		if (inAuthenticate) {
+			processAuthenticate();
+			return;	
+		}
+		
 		parseResult(byteBuffer);
 		finish();
 	}

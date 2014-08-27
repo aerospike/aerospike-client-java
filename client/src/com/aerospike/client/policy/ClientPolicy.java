@@ -24,6 +24,17 @@ import java.util.concurrent.ExecutorService;
  */
 public class ClientPolicy {
 	/**
+	 * User authentication to cluster.  Leave null for clusters running without restricted access.
+	 */
+	public String user;
+
+	/**
+	 * Password authentication to cluster.  The password will be stored by the client and sent to server
+	 * in hashed format.  Leave null for clusters running without restricted access.
+	 */
+	public String password;
+
+	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.
 	 */
@@ -94,7 +105,7 @@ public class ClientPolicy {
 	 *			return thread;
 	 *		}
 	 *	});
-	 *</pre>
+	 * </pre>
 	 * Daemon threads automatically terminate when the program terminates.
 	 */
 	public ExecutorService threadPool;

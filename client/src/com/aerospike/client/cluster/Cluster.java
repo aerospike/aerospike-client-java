@@ -18,6 +18,7 @@ package com.aerospike.client.cluster;
 
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,8 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.command.AdminCommand;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
@@ -49,6 +52,12 @@ public class Cluster implements Runnable, Closeable {
 	
 	// IP translations.
 	protected final Map<String,String> ipMap;
+
+	// User name in UTF-8 encoded bytes.
+	protected final byte[] user;
+
+	// Password in hashed format in bytes.
+	protected byte[] password;
 
 	// Random node index.
 	private final AtomicInteger nodeIndex;
@@ -77,6 +86,27 @@ public class Cluster implements Runnable, Closeable {
 	
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
+		
+		if (policy.user != null && policy.user.length() > 0) {
+			this.user = Buffer.stringToUtf8(policy.user);
+
+			String pass = policy.password;
+
+			if (pass == null)
+			{
+				pass = "";
+			}
+
+			if (! (pass.length() == 60 && pass.startsWith("$2a$")))
+			{
+				pass = AdminCommand.hashPassword(pass);
+			}
+			this.password = Buffer.stringToUtf8(pass);
+		}
+		else {
+			this.user = null;
+		}
+		
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
 		maxSocketIdle = policy.maxSocketIdle;
@@ -291,7 +321,7 @@ public class Cluster implements Runnable, Closeable {
 			Host seed = seedArray[i];
 
 			try {
-				NodeValidator seedNodeValidator = new NodeValidator(seed, connectionTimeout);
+				NodeValidator seedNodeValidator = new NodeValidator(this, seed);
 				
 				// Seed host may have multiple aliases in the case of round-robin dns configurations.
 				for (Host alias : seedNodeValidator.aliases) {
@@ -301,7 +331,7 @@ public class Cluster implements Runnable, Closeable {
 						nv = seedNodeValidator;
 					}
 					else {
-						nv = new NodeValidator(alias, connectionTimeout);
+						nv = new NodeValidator(this, alias);
 					}
 										
 					if (! findNodeName(list, nv.name)) {
@@ -365,7 +395,7 @@ public class Cluster implements Runnable, Closeable {
 		
 		for (Host host : hosts) {
 			try {
-				NodeValidator nv = new NodeValidator(host, connectionTimeout);
+				NodeValidator nv = new NodeValidator(this, host);
 				Node node = findNode(nv.name);
 				
 				if (node != null) {
@@ -639,12 +669,30 @@ public class Cluster implements Runnable, Closeable {
 		return null;
 	}
 
+	public void changePassword(byte[] user, String password) {
+		if (this.user != null && Arrays.equals(user, this.user)) {
+			this.password = Buffer.stringToUtf8(password);
+		}
+	}
+
 	public final ExecutorService getThreadPool() {
 		return threadPool;
 	}
 
+	public final int getConnectionTimeout() {
+		return connectionTimeout;
+	}
+
 	public final int getMaxSocketIdle() {
 		return maxSocketIdle;
+	}
+	
+	public final byte[] getUser() {
+		return user;
+	}
+
+	public final byte[] getPassword() {
+		return password;
 	}
 
 	public void close() {

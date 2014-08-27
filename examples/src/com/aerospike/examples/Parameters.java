@@ -18,7 +18,9 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Info;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -28,6 +30,8 @@ import com.aerospike.client.policy.WritePolicy;
 public class Parameters {
 	String host;
 	int port;
+	String user;
+	String password;
 	String namespace;
 	String set;
 	WritePolicy writePolicy;
@@ -35,9 +39,11 @@ public class Parameters {
 	boolean singleBin;
 	boolean hasUdf;
 	
-	protected Parameters(String host, int port, String namespace, String set) {
+	protected Parameters(String host, int port, String user, String password, String namespace, String set) {
 		this.host = host;
 		this.port = port;
+		this.user = user;
+		this.password = password;
 		this.namespace = namespace;
 		this.set = set;
 		this.writePolicy = new WritePolicy();
@@ -47,10 +53,11 @@ public class Parameters {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
-	protected void setServerSpecific() throws Exception {
+	protected void setServerSpecific(AerospikeClient client) throws Exception {
+		Node node = client.getNodes()[0];
 		String featuresFilter = "features";
 		String namespaceFilter = "namespace/" + namespace;
-		Map<String,String> tokens = Info.request(host, port, featuresFilter, namespaceFilter);
+		Map<String,String> tokens = Info.request(null, node, featuresFilter, namespaceFilter);
 
 		String features = tokens.get(featuresFilter);
 		hasUdf = false;

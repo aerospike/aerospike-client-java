@@ -20,6 +20,7 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Info;
+import com.aerospike.client.cluster.Node;
 
 public class ServerInfo extends Example {
 
@@ -32,17 +33,18 @@ public class ServerInfo extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		GetServerConfig(params);
+		Node node = client.getNodes()[0];
+		GetServerConfig(node, params);
 		console.write("");
-		GetNamespaceConfig(params);
+		GetNamespaceConfig(node, params);
 	}
 
 	/**
 	 * Query server configuration and cluster status.
 	 */
-	private void GetServerConfig(Parameters params) throws Exception {
+	private void GetServerConfig(Node node, Parameters params) throws Exception {
 		console.write("Server Configuration");
-		Map<String,String> map = Info.request(params.host, params.port);
+		Map<String,String> map = Info.request(null, node);
 
 		if (map == null) {
 			throw new Exception(String.format("Failed to get server info: host=%s port=%d",
@@ -64,10 +66,10 @@ public class ServerInfo extends Example {
 	/**
 	 * Query namespace configuration.
 	 */
-	private void GetNamespaceConfig(Parameters params) throws Exception {
+	private void GetNamespaceConfig(Node node, Parameters params) throws Exception {
 		console.write("Namespace Configuration");
 		String filter = "namespace/" + params.namespace;
-		String tokens = Info.request(params.host, params.port, filter);
+		String tokens = Info.request(null, node, filter);
 
 		if (tokens == null) {
 			throw new Exception(String.format(

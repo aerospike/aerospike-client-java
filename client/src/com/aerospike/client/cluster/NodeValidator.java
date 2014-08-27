@@ -25,6 +25,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
+import com.aerospike.client.command.AdminCommand;
 import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
@@ -33,7 +34,7 @@ public final class NodeValidator {
 	InetSocketAddress address;
 	boolean useNewInfo = true;
 
-	public NodeValidator(Host host, int timeoutMillis) throws Exception {
+	public NodeValidator(Cluster cluster, Host host) throws Exception {
 		try {
 			InetAddress[] addresses = InetAddress.getAllByName(host.name);
 			aliases = new Host[addresses.length];
@@ -53,9 +54,13 @@ public final class NodeValidator {
 			
 			try {
 				InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-				Connection conn = new Connection(address, timeoutMillis);
+				Connection conn = new Connection(address, cluster.getConnectionTimeout());
 				
 				try {			
+					if (cluster.user != null) {
+						AdminCommand command = new AdminCommand();
+						command.authenticate(conn, cluster.user, cluster.password);
+					}
 					HashMap<String,String> map = Info.request(conn, "node", "build");
 					String nodeName = map.get("node");
 					

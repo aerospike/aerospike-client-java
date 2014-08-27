@@ -21,8 +21,10 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.command.AdminCommand;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 /**
@@ -38,6 +40,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	private long limit;
 	protected int timeout;
 	private int iteration;
+	protected boolean inAuthenticate;
 	protected boolean inHeader = true;
 	
 	public AsyncCommand(AsyncCluster cluster) {
@@ -63,18 +66,24 @@ public abstract class AsyncCommand extends Command implements Runnable {
 
 		try {
 			node = getNode();
-			conn = node.getAsyncConnection();			
-			writeBuffer();
-				
-			if (dataOffset > byteBuffer.capacity()) {
-				byteBuffer = ByteBuffer.allocateDirect(dataOffset);
-			}
+			conn = node.getAsyncConnection();
 			
-			byteBuffer.clear();
-			byteBuffer.put(dataBuffer, 0, dataOffset);
-			byteBuffer.flip();
-	
-			conn.execute(this);
+			if (conn == null) {
+				conn = new AsyncConnection(node.getAddress(), cluster);
+			
+				if (cluster.getUser() != null) {
+					inAuthenticate = true;
+					dataBuffer = ThreadLocalData.getBuffer();
+					AdminCommand command = new AdminCommand(dataBuffer);
+					dataOffset = command.setAuthenticate(cluster.getUser(), cluster.getPassword());
+					byteBuffer.clear();
+					byteBuffer.put(dataBuffer, 0, dataOffset);
+					byteBuffer.flip();
+					conn.execute(this);
+					return;
+				}
+			}
+			sendCommand();
 		}
 		catch (AerospikeException.InvalidNode ai) {
 			if (!retryOnInit()) {				
@@ -92,6 +101,32 @@ public abstract class AsyncCommand extends Command implements Runnable {
 				throw new AerospikeException(e);
 			}
 		}
+	}
+	
+	protected void sendCommand() throws AerospikeException {	
+		writeBuffer();
+		
+		if (dataOffset > byteBuffer.capacity()) {
+			byteBuffer = ByteBuffer.allocateDirect(dataOffset);
+		}
+		
+		byteBuffer.clear();
+		byteBuffer.put(dataBuffer, 0, dataOffset);
+		byteBuffer.flip();
+
+		conn.execute(this);
+	}
+	
+	protected void processAuthenticate() throws AerospikeException {	
+		inAuthenticate = false;
+		inHeader = true;
+		
+		int resultCode = byteBuffer.get(1) & 0xFF;
+	
+		if (resultCode != 0) {
+			throw new AerospikeException(resultCode);
+		}
+		sendCommand();
 	}
 
 	private boolean retryOnInit() throws AerospikeException {

@@ -77,6 +77,8 @@ public class Main extends JPanel {
 			Options options = new Options();
 			options.addOption("h", "host", true, "Server hostname (default: localhost)");
 			options.addOption("p", "port", true, "Server port (default: 3000)");
+			options.addOption("U", "user", true, "User name");
+			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
@@ -156,7 +158,22 @@ public class Main extends JPanel {
 		if (set.equals("empty")) {
 			set = "";
 		}
-		return new Parameters(host, port, namespace, set);
+		
+		String user = cl.getOptionValue("U");
+		String password = cl.getOptionValue("P");
+		
+		if (user != null && password == null) {
+			java.io.Console console = System.console();
+			
+			if (console != null) {
+				char[] pass = console.readPassword("Enter password:");
+				
+				if (pass != null) {
+					password = new String(pass);
+				}
+			}
+		}
+		return new Parameters(host, port, user, password, namespace, set);
 	}
 	
 	/**
@@ -175,8 +192,6 @@ public class Main extends JPanel {
 			}
 		}
 		
-		params.setServerSpecific();
-
 		if (syncExamples.size() > 0) {
 			Example.runExamples(console, params, syncExamples);
 		}
