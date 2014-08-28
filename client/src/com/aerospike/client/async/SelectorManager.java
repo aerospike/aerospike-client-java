@@ -56,6 +56,10 @@ public final class SelectorManager extends Thread implements Closeable {
             selector.wakeup();
         }
     }
+    
+	public void wakeup() {
+		selector.wakeup();
+	}
 
     public void run() {
     	valid = true;
