@@ -75,6 +75,8 @@ public class Main implements Log.Callback {
 		Options options = new Options();
 		options.addOption("h", "hosts", true, "Set the Aerospike host node.");
 		options.addOption("p", "port", true, "Set the port on which to connect to Aerospike.");
+		options.addOption("U", "user", true, "User name");
+		options.addOption("P", "password", true, "Password");
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace.");
         options.addOption("s", "set", true, "Set the Aerospike set name.");
 		options.addOption("k", "keys", true,
@@ -156,7 +158,7 @@ public class Main implements Log.Callback {
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
 		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
 		options.addOption("R", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
-		options.addOption("U", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
+		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -185,6 +187,21 @@ public class Main implements Log.Callback {
 		} 
 		else {
 			this.port = 3000;
+		}
+
+		clientPolicy.user = line.getOptionValue("user");
+		clientPolicy.password = line.getOptionValue("password");
+		
+		if (clientPolicy.user != null && clientPolicy.password == null) {
+			java.io.Console console = System.console();
+			
+			if (console != null) {
+				char[] pass = console.readPassword("Enter password:");
+				
+				if (pass != null) {
+					clientPolicy.password = new String(pass);
+				}
+			}
 		}
 
 		if (line.hasOption("namespace")) {

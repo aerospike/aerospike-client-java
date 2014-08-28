@@ -44,6 +44,7 @@ import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JPasswordField;
 import javax.swing.JRadioButton;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
@@ -69,6 +70,10 @@ public class GuiDisplay implements ActionListener {
 	private JTextField seedHostTextField;
 	private JLabel lblPort;
 	private JTextField portTextField;
+	private JLabel lblusername;
+	private JTextField usernameTextField;
+	private JLabel lblpassword;
+	private JPasswordField passwordTextField;
 	private JLabel lblnameSpace;
 	private JTextField namespaceTextField;
 	private JLabel lblSet;
@@ -195,6 +200,32 @@ public class GuiDisplay implements ActionListener {
 		connectionPanel.add(portTextField);
 		portTextField.setColumns(4);
 
+		lblusername = new JLabel("User");
+		connectionPanel.add(lblusername);
+
+		usernameTextField = new JTextField();
+		usernameTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.user = usernameTextField.getText();
+			}
+		});
+		connectionPanel.add(usernameTextField);
+		usernameTextField.setColumns(8);
+
+		lblpassword = new JLabel("Password");
+		connectionPanel.add(lblpassword);
+
+		passwordTextField = new JPasswordField();
+		passwordTextField.addKeyListener(new KeyAdapter() {
+			@Override
+			public void keyTyped(KeyEvent e) {
+				params.user = new String(passwordTextField.getPassword());
+			}
+		});
+		connectionPanel.add(passwordTextField);
+		passwordTextField.setColumns(8);
+
 		lblnameSpace = new JLabel("Namespace");
 		connectionPanel.add(lblnameSpace);
 
@@ -206,7 +237,7 @@ public class GuiDisplay implements ActionListener {
 			}
 		});
 		connectionPanel.add(namespaceTextField);
-		namespaceTextField.setColumns(10);
+		namespaceTextField.setColumns(8);
 
 		lblSet = new JLabel("Set");
 		connectionPanel.add(lblSet);
@@ -219,7 +250,7 @@ public class GuiDisplay implements ActionListener {
 			}
 		});
 		connectionPanel.add(txtSetTextfield);
-		txtSetTextfield.setColumns(10);
+		txtSetTextfield.setColumns(8);
 		mainPanel.add(connectionPanel, BorderLayout.NORTH);
 
 		examplePanel = new JPanel();
@@ -350,6 +381,8 @@ public class GuiDisplay implements ActionListener {
 
 			params.host = seedHostTextField.getText().trim();
 			params.port = Integer.parseInt(portTextField.getText().trim());
+			params.user = usernameTextField.getText().trim();
+			params.password = new String(passwordTextField.getPassword()).trim();
 			params.namespace = namespaceTextField.getText().trim();
 			params.set = txtSetTextfield.getText().trim();
 			
@@ -358,13 +391,13 @@ public class GuiDisplay implements ActionListener {
 					try {
 						Main.runExamples(console, params, examples);
 					} catch (Exception ex) {
-						console.error("Exception (" + ex.toString() + ") encountered.");
+						console.error(ex.toString());
 					}
 				}
 			}.start();
 		}
 		catch (Exception ex) {
-			console.error("Exception (" + ex.toString() + ") encountered.");
+			console.error(ex.toString());
 		}
 	}
 	
