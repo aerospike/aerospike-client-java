@@ -32,8 +32,9 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 
 public class AerospikeServlet extends HttpServlet {
@@ -107,7 +108,8 @@ public class AerospikeServlet extends HttpServlet {
 		}
 		
 		try {
-			client = new AerospikeClient(host, port);						
+			ClientPolicy policy = new ClientPolicy();
+			client = new AerospikeClient(policy, host, port);						
 			
 			if (client.isConnected())
 				return true;
@@ -296,7 +298,7 @@ public class AerospikeServlet extends HttpServlet {
                 writePolicy.timeout = timeout;
                 writePolicy.expiration = expiration;
                 if (generation != 0) {
-                	writePolicy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
+                	writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
                     writePolicy.generation = generation;
                 }
                 
@@ -339,7 +341,7 @@ public class AerospikeServlet extends HttpServlet {
                 WritePolicy writePolicy = new WritePolicy();
                 writePolicy.timeout = timeout;
                 if (generation != 0) {
-                	writePolicy.recordExistsAction = RecordExistsAction.EXPECT_GEN_EQUAL;
+                	writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
                     writePolicy.generation = generation;
                 }
 
