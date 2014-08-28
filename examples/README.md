@@ -18,6 +18,8 @@ Usage:
     options:
     -g,--gui              Invoke GUI to selectively run tests
     -h,--host <arg>       Server hostname (default: localhost)
+    -U,--user <arg>       User name. Use for servers that require authentication.
+    -P,--password <arg>   Password. Use for servers that require authentication.
     -n,--namespace <arg>  Namespace (default: test)
     -p,--port <arg>       Server port (default: 3000)
     -s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
