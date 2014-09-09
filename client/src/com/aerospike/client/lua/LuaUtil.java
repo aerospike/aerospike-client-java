@@ -23,6 +23,10 @@ import com.aerospike.client.Log;
 public final class LuaUtil {
 	
 	public static Object luaToObject(LuaValue source) {
+		if (source == null) {
+			return null;
+		}
+		
 		switch (source.type()) {
 		case LuaValue.TNUMBER:
 			return source.tolong();
