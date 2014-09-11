@@ -35,4 +35,5 @@ public class Arguments {
 	public boolean reportNotFound;
 	public boolean validate;
 	public boolean debug;
+	public int pipeline;
 }

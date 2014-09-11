@@ -108,4 +108,34 @@ public class RWTaskSync extends RWTask {
 			validateRead(keyIdx, record);
 		}
 	}
+
+	protected void get(int keyIdx, int size, Key keys[]) throws AerospikeException {
+
+		try {
+			Record[] records = null;
+
+			if (counters.read.latency != null) {
+				long begin = System.currentTimeMillis();
+				records = client.get(args.readPolicy, keys);
+				long elapsed = System.currentTimeMillis() - begin;
+				counters.read.latency.add(elapsed);
+			}
+			else {
+				records = client.get(args.readPolicy, keys);
+			}
+
+			if ( ((records == null) || (records.length != size)) && args.reportNotFound) {
+				counters.readNotFound.getAndIncrement();	
+			} else {
+				for (int i = 0; i < records.length; i++) {
+					if (args.validate) {
+						validateRead(keyIdx + i, records[i]);
+					}
+					counters.read.count.getAndIncrement();		
+				}
+			}
+		} catch (Exception e) {
+			readFailure(e);
+		}
+	}
 }

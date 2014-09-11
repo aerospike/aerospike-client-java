@@ -99,6 +99,11 @@ public class RWTaskAsync extends RWTask {
 			client.get(args.readPolicy, readHandler, key);
 		}
 	}
+
+	protected void get(int keyIdx, int count, Key keys[]) throws AerospikeException {
+		// No Op right now.
+	}
+
 	
 	private final class WriteHandler implements WriteListener {		
 		@Override

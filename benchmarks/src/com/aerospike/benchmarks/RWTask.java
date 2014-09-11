@@ -255,11 +255,35 @@ public abstract class RWTask implements Runnable {
 			writeFailure(e);
 		}
 	}
+
+	protected void doBatchRead(int keyIdx, boolean multiBin) {
+
+		try {
+			Key[] keys = new Key[args.pipeline];
+			for (int i = 0; i < args.pipeline; i++) {
+				String key = Utils.genKey(keyStart + keyIdx + i, args.keySize);
+				keys[i] = new Key(args.namespace, args.setName, key);
+			}
+			get(keyIdx, args.pipeline, keys);
+		}
+		catch (AerospikeException ae) {
+			readFailure(ae);
+		}	
+		catch (Exception e) {
+			readFailure(e);
+		}
+	}
 		
 	/**
 	 * Read the key at the given index.
 	 */
 	protected void doRead(int keyIdx, boolean multiBin) {
+
+		if (args.pipeline > 1) {
+			
+			doBatchRead(keyIdx, multiBin);
+			return;
+		}
 		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
 
 		try {
@@ -332,4 +356,5 @@ public abstract class RWTask implements Runnable {
 	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
 	protected abstract void get(int keyIdx, Key key, String binName) throws AerospikeException;
 	protected abstract void get(int keyIdx, Key key) throws AerospikeException;
+	protected abstract void get(int keyIdx, int count, Key[] keys) throws AerospikeException;
 }
