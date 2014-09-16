@@ -45,6 +45,7 @@ public abstract class RWTask implements Runnable {
 	final double writeMultiBinPct;
 	final int keyStart;
 	final int keyCount;
+	public static String objType;
 	
 	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
 		this.client = client;
@@ -96,6 +97,17 @@ public abstract class RWTask implements Runnable {
 					
 				case READ_MODIFY_DECREMENT:
 					readModifyDecrement(key);		
+					break;
+				case READ_FROM_FILE:
+					if(objType == null || objType.isEmpty()){
+						String value = Main.keyList.get(0);
+						if(Utils.isNumeric(value)){
+							objType = "I";
+						}else{
+							objType = "S";
+						}
+					}
+					readFromFile(key, objType);	
 					break;
 				}
 			} 
@@ -153,6 +165,16 @@ public abstract class RWTask implements Runnable {
 		doRead(key, true);
 		// Decrement one bin.
 		doIncrement(key, -1);
+	}
+	
+	private void readFromFile(int key,String keyType){
+
+		if (keyType.equals("S")){
+		    doReadString(key,true);
+		}    
+		else if(keyType.equals("I")){
+			doReadLong(key, true);
+		}
 	}
 
 	/**
@@ -278,6 +300,55 @@ public abstract class RWTask implements Runnable {
 		catch (Exception e) {
 			readFailure(e);
 		}	
+	}
+	
+	/**
+	 * Read the keys of type Integer from the file supplied.
+	 */
+	protected void doReadLong(int keyIdx,boolean multiBin){
+		long numKey = Long.parseLong(Main.keyList.get(keyStart + keyIdx));
+		
+		try {
+			if (multiBin) {
+				// Read all bins, maybe validate
+				get(keyIdx,new Key(args.namespace, args.setName, numKey));			
+			} 
+			else {
+				// Read one bin, maybe validate
+				get(keyIdx,new Key(args.namespace, args.setName, numKey), Integer.toString(0));			
+			}
+		}
+		catch (AerospikeException ae) {
+			readFailure(ae);
+		}	
+		catch (Exception e) {
+			readFailure(e);
+		}
+	}
+	
+	/**
+	 * Read the keys of type String from the file supplied.
+	 */
+	protected void doReadString(int keyIdx,boolean multiBin){
+		String strKey = Main.keyList.get(keyStart+keyIdx);
+
+		try {
+			if (multiBin) {
+				// Read all bins, maybe validate
+				get(keyIdx,new Key(args.namespace, args.setName, strKey));			
+			} 
+			else {
+				// Read one bin, maybe validate
+				get(keyIdx,new Key(args.namespace, args.setName, strKey), Integer.toString(0));			
+			}
+		}
+		catch (AerospikeException ae) {
+			readFailure(ae);
+		}	
+		catch (Exception e) {
+			readFailure(e);
+		}
+		
 	}
 	
 	protected void validateRead(int keyIdx, Record record) {	

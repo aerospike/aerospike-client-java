@@ -21,6 +21,7 @@ import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -39,6 +40,7 @@ import com.aerospike.client.async.AsyncClientPolicy;
 public class Main implements Log.Callback {
 	
 	private static final SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	public static List<String> keyList = null;
 
 	public static void main(String[] args) {
 		Main program = null;
@@ -67,6 +69,7 @@ public class Main implements Log.Callback {
 	private int asyncTaskThreads;
 	private boolean asyncEnabled;
 	private boolean initialize;
+	private String filepath;
 
 	private AsyncClientPolicy clientPolicy = new AsyncClientPolicy();
 	private CounterStore counters = new CounterStore();
@@ -159,6 +162,7 @@ public class Main implements Log.Callback {
 		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
 		options.addOption("R", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
+		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -227,6 +231,17 @@ public class Main implements Log.Callback {
 		if (line.hasOption("startkey")) {
 			this.startKey = Integer.parseInt(line.getOptionValue("startkey"));
 		}
+		
+		//Variables setting in case of command arguments passed with keys in File
+		if (line.hasOption("keyFile")) {
+			this.filepath = line.getOptionValue("keyFile");
+			// Load file
+			keyList = Utils.readKeyFromFile(filepath);
+			this.nKeys = keyList.size();
+			this.startKey = 0;
+			args.validate = false;
+			
+		}
 
 		if (line.hasOption("keylength")) {
 			args.keySize = Integer.parseInt(line.getOptionValue("keylength"));
@@ -271,7 +286,11 @@ public class Main implements Log.Callback {
 			args.objectSpec[0] = dbobj;
 		}
 
-		args.workload = Workload.READ_UPDATE;
+		if(line.hasOption("keyFile")){
+			args.workload = Workload.READ_FROM_FILE;
+		}else{
+			args.workload = Workload.READ_UPDATE;
+		}
 		args.readPct = 50;
 		args.readMultiBinPct = 100;
 		args.writeMultiBinPct = 100;			
@@ -290,7 +309,7 @@ public class Main implements Log.Callback {
 			}
 			else if (workloadType.equals("RU")) {
 				args.workload = Workload.READ_UPDATE;
-				
+
 				if (workloadOpts.length < 2 || workloadOpts.length > 4) {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 2 to 4.");
 				}
