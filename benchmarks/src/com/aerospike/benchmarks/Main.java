@@ -237,6 +237,9 @@ public class Main implements Log.Callback {
 			this.filepath = line.getOptionValue("keyFile");
 			// Load file
 			keyList = Utils.readKeyFromFile(filepath);
+			if(keyList.isEmpty()){
+				throw new Exception("File : '" + filepath + "' is empty,this file can't be processed.");
+			}
 			this.nKeys = keyList.size();
 			this.startKey = 0;
 			args.validate = false;

@@ -99,12 +99,14 @@ public abstract class RWTask implements Runnable {
 					readModifyDecrement(key);		
 					break;
 				case READ_FROM_FILE:
-					if(objType == null || objType.isEmpty()){
-						String value = Main.keyList.get(0);
-						if(Utils.isNumeric(value)){
-							objType = "I";
-						}else{
-							objType = "S";
+					if(!Main.keyList.isEmpty()){
+						if(objType == null || objType.isEmpty()){
+							String value = Main.keyList.get(0);
+							if(Utils.isNumeric(value)){
+								objType = "I";
+							}else{
+								objType = "S";
+							}
 						}
 					}
 					readFromFile(key, objType);	
