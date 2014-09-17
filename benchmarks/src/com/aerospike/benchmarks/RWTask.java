@@ -45,7 +45,6 @@ public abstract class RWTask implements Runnable {
 	final double writeMultiBinPct;
 	final int keyStart;
 	final int keyCount;
-	public static String objType;
 	
 	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
 		this.client = client;
@@ -99,17 +98,7 @@ public abstract class RWTask implements Runnable {
 					readModifyDecrement(key);		
 					break;
 				case READ_FROM_FILE:
-					if(!Main.keyList.isEmpty()){
-						if(objType == null || objType.isEmpty()){
-							String value = Main.keyList.get(0);
-							if(Utils.isNumeric(value)){
-								objType = "I";
-							}else{
-								objType = "S";
-							}
-						}
-					}
-					readFromFile(key, objType);	
+					readFromFile(key);	
 					break;
 				}
 			} 
@@ -169,12 +158,12 @@ public abstract class RWTask implements Runnable {
 		doIncrement(key, -1);
 	}
 	
-	private void readFromFile(int key,String keyType){
+	private void readFromFile(int key){
 
-		if (keyType.equals("S")){
+		if (args.keyType == KeyType.STRING) {
 		    doReadString(key,true);
 		}    
-		else if(keyType.equals("I")){
+		else if (args.keyType == KeyType.INTEGER) {
 			doReadLong(key, true);
 		}
 	}
@@ -307,7 +296,7 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the keys of type Integer from the file supplied.
 	 */
-	protected void doReadLong(int keyIdx,boolean multiBin){
+	protected void doReadLong(int keyIdx,boolean multiBin) {
 		long numKey = Long.parseLong(Main.keyList.get(keyStart + keyIdx));
 		
 		try {
@@ -331,7 +320,7 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the keys of type String from the file supplied.
 	 */
-	protected void doReadString(int keyIdx,boolean multiBin){
+	protected void doReadString(int keyIdx,boolean multiBin) {
 		String strKey = Main.keyList.get(keyStart+keyIdx);
 
 		try {

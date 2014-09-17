@@ -73,26 +73,19 @@ public class Utils {
 	
 	/**
 	 * Read all the contents from the file and put it in a List.
+	 * @throws IOException 
 	 */
-	protected static List<String> readKeyFromFile(String filepath){
+	protected static List<String> readKeyFromFile(String filepath) throws IOException {
 		List<String> contentsFromFile = readAllLines(filepath);
 		return contentsFromFile;
 	}
 	
-    private static  List<String> readAllLines(String filepath){
+    private static  List<String> readAllLines(String filepath) throws IOException {
     	List<String> list = null;
 		Path file = Paths.get(filepath);
-		try {
-			list= Files.readAllLines(file, Charset.defaultCharset());
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
+		
+		list= Files.readAllLines(file, Charset.defaultCharset());
 		return list;
-	}
-    
-    public static boolean isNumeric(String str)
-	{
-	  return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
 	}
 
 }

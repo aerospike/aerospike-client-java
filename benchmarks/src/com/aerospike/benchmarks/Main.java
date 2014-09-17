@@ -163,6 +163,7 @@ public class Main implements Log.Callback {
 		options.addOption("R", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
+		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -233,17 +234,33 @@ public class Main implements Log.Callback {
 		}
 		
 		//Variables setting in case of command arguments passed with keys in File
+		if (line.hasOption("keyType")) {
+			String keyType = line.getOptionValue("keyType");
+			
+			if (keyType.equals("S")) {
+				args.keyType = KeyType.STRING;
+			}
+			else if (keyType.equals("I")) {
+				args.keyType = KeyType.INTEGER;
+			}
+			else {
+				throw new Exception("Invalid keyType: "+keyType);
+			}	
+		}
+		else {
+			args.keyType = KeyType.STRING;
+		}
+		
 		if (line.hasOption("keyFile")) {
 			this.filepath = line.getOptionValue("keyFile");
-			// Load file
+			// Load the file
 			keyList = Utils.readKeyFromFile(filepath);
-			if(keyList.isEmpty()){
+			if (keyList.isEmpty()) {
 				throw new Exception("File : '" + filepath + "' is empty,this file can't be processed.");
 			}
 			this.nKeys = keyList.size();
 			this.startKey = 0;
 			args.validate = false;
-			
 		}
 
 		if (line.hasOption("keylength")) {
@@ -498,7 +515,7 @@ public class Main implements Log.Callback {
 		
 		for (DBObjectSpec spec : args.objectSpec) {
 			binCount++;
-			System.out.print("bin type " + binCount + ": ");
+			System.out.print("bin count " + binCount + ": ");
 			
 			switch (spec.type) {
 			case 'I':
