@@ -75,6 +75,11 @@ public final class ResultSet implements Closeable {
 	 */
 	public final void close() {
 		valid = false;
+
+		if (row != END) {
+			// Some query threads may still be running. Stop these threads.
+			executor.stopThreads(new AerospikeException.QueryTerminated());
+		}
 	}
 	
 	//-------------------------------------------------------
@@ -98,10 +103,14 @@ public final class ResultSet implements Closeable {
 	public final boolean put(Object object) {
 		if (valid) {
 			try {
+				// This put will block if queue capacity is reached.
 				queue.put(object);
 			}
 			catch (InterruptedException ie) {
-				abort();
+				// Valid may have changed.  Check again.
+				if (valid) {
+					abort();
+				}
 			}
 		}
 		return valid;
