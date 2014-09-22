@@ -812,13 +812,9 @@ public class AerospikeClient implements Closeable {
 			node.putConnection(conn);
 			return new RegisterTask(cluster, serverPath);
 		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
-		}
 		catch (RuntimeException re) {
 			conn.close();
-			throw new AerospikeException(re);
+			throw re;
 		}
 	}
 	
@@ -1217,13 +1213,9 @@ public class AerospikeClient implements Closeable {
 			info = new Info(conn, command);
 			node.putConnection(conn);
 		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
-		}
 		catch (RuntimeException re) {
 			conn.close();
-			throw new AerospikeException(re);
+			throw re;
 		}
 		return info.getValue();
 	}
