@@ -16,11 +16,8 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashMap;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.command.BatchItem;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -40,12 +37,10 @@ public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 		this.existsArray = new boolean[keys.length];
 		this.listener = listener;
 		
-		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
-		
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				AsyncBatchExistsArray async = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keyMap, existsArray);
+				AsyncBatchExistsArray async = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
 				async.execute();
 			}
 		}

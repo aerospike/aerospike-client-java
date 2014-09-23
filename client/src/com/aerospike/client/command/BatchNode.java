@@ -50,10 +50,10 @@ public final class BatchNode {
 			batchNode = findBatchNode(batchNodes, node);
 			
 			if (batchNode == null) {
-				batchNodes.add(new BatchNode(node, keysPerNode, key));
+				batchNodes.add(new BatchNode(node, keysPerNode, key.namespace, i));
 			}
 			else {
-				batchNode.addKey(key);
+				batchNode.addKey(key.namespace, i);
 			}
 		}
 		return batchNodes;
@@ -63,21 +63,21 @@ public final class BatchNode {
 	public final List<BatchNamespace> batchNamespaces;
 	public final int keyCapacity;
 
-	public BatchNode(Node node, int keyCapacity, Key key) {
+	public BatchNode(Node node, int keyCapacity, String namespace, int offset) {
 		this.node = node;
 		this.keyCapacity = keyCapacity;
 		batchNamespaces = new ArrayList<BatchNamespace>(4);
-		batchNamespaces.add(new BatchNamespace(key.namespace, keyCapacity, key));
+		batchNamespaces.add(new BatchNamespace(namespace, keyCapacity, offset));
 	}
 	
-	public void addKey(Key key) {
-		BatchNamespace batchNamespace = findNamespace(key.namespace);
+	public void addKey(String namespace, int offset) {
+		BatchNamespace batchNamespace = findNamespace(namespace);
 		
 		if (batchNamespace == null) {
-			batchNamespaces.add(new BatchNamespace(key.namespace, keyCapacity, key));
+			batchNamespaces.add(new BatchNamespace(namespace, keyCapacity, offset));
 		}
 		else {
-			batchNamespace.keys.add(key);
+			batchNamespace.add(offset);
 		}
 	}
 	
@@ -103,12 +103,23 @@ public final class BatchNode {
 
 	public static final class BatchNamespace {
 		public final String namespace;
-		public final ArrayList<Key> keys;
+		public int[] offsets;
+		public int offsetsSize;
 
-		public BatchNamespace(String namespace, int capacity, Key key) {
+		public BatchNamespace(String namespace, int capacity, int offset) {
 			this.namespace = namespace;
-			keys = new ArrayList<Key>(capacity);
-			keys.add(key);
+			this.offsets = new int[capacity];
+			this.offsets[0] = offset;
+			this.offsetsSize = 1;
+		}
+		
+		public void add(int offset) {
+			if (offsetsSize >= offsets.length) {
+				int[] copy = new int[offsetsSize * 2];	        
+				System.arraycopy(offsets, 0, copy, 0, offsetsSize);
+				offsets = copy;
+			}
+			offsets[offsetsSize++] = offset;
 		}
 	}	
 }

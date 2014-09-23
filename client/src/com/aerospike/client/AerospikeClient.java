@@ -46,6 +46,7 @@ import com.aerospike.client.large.LargeMap;
 import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.AdminPolicy;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -107,6 +108,11 @@ public class AerospikeClient implements Closeable {
 	 */
 	public final QueryPolicy queryPolicyDefault;
 	
+	/**
+	 * Default batch policy that is used when batch command policy is null.
+	 */
+	public final BatchPolicy batchPolicyDefault;
+
 	//-------------------------------------------------------
 	// Constructors
 	//-------------------------------------------------------
@@ -183,6 +189,7 @@ public class AerospikeClient implements Closeable {
 		this.writePolicyDefault = policy.writePolicyDefault;
 		this.scanPolicyDefault = policy.scanPolicyDefault;
 		this.queryPolicyDefault = policy.queryPolicyDefault;
+		this.batchPolicyDefault = policy.batchPolicyDefault;
 		
 		cluster = new Cluster(policy, hosts);
 		cluster.initTendThread(policy.failIfNotConnected);
@@ -201,12 +208,14 @@ public class AerospikeClient implements Closeable {
 			this.writePolicyDefault = policy.writePolicyDefault;
 			this.scanPolicyDefault = policy.scanPolicyDefault;
 			this.queryPolicyDefault = policy.queryPolicyDefault;
+			this.batchPolicyDefault = policy.batchPolicyDefault;
 		}
 		else {
 			this.readPolicyDefault = new Policy();
 			this.writePolicyDefault = new WritePolicy();
 			this.scanPolicyDefault = new ScanPolicy();
 			this.queryPolicyDefault = new QueryPolicy();
+			this.batchPolicyDefault = new BatchPolicy();
 		}
 	}
 
@@ -411,17 +420,34 @@ public class AerospikeClient implements Closeable {
 	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts.
 	 *  
+	 * @deprecated Use {@link #exists(BatchPolicy, Key[])} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array key/existence status pairs
 	 * @throws AerospikeException	if command fails
 	 */
+	@Deprecated
 	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
+		return exists(batchPolicy, keys);
+	}
+
+	/**
+	 * Check if multiple record keys exist in one batch call.
+	 * The returned boolean array is in positional order with the original key array order.
+	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 *  
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @return						array key/existence status pairs
+	 * @throws AerospikeException	if command fails
+	 */
+	public final boolean[] exists(BatchPolicy policy, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = batchPolicyDefault;
 		}
 		boolean[] existsArray = new boolean[keys.length];
-		new BatchExecutor(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		BatchExecutor.execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return existsArray;
 	}
 
@@ -494,17 +520,35 @@ public class AerospikeClient implements Closeable {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy, Key[])} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
+	@Deprecated
 	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
+		return get(batchPolicy, keys);
+	}
+
+	/**
+	 * Read multiple records for specified keys in one batch call.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @return						array of records
+	 * @throws AerospikeException	if read fails
+	 */
+	public final Record[] get(BatchPolicy policy, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = batchPolicyDefault;
 		}
 		Record[] records = new Record[keys.length];
-		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
 	}
 
@@ -514,20 +558,40 @@ public class AerospikeClient implements Closeable {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy, Key[], String...)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
+	@Deprecated
 	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
+		return get(batchPolicy, keys, binNames);
+	}
+
+	/**
+	 * Read multiple record headers and bins for specified keys in one batch call.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @return						array of records
+	 * @throws AerospikeException	if read fails
+	 */
+	public final Record[] get(BatchPolicy policy, Key[] keys, String... binNames) 
+		throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = batchPolicyDefault;
 		}
 		Record[] records = new Record[keys.length];
 		HashSet<String> names = binNamesToHashSet(binNames);
-		new BatchExecutor(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+		BatchExecutor.execute(cluster, policy, keys, null, records, names, Command.INFO1_READ);
 		return records;
 	}
 
@@ -537,17 +601,35 @@ public class AerospikeClient implements Closeable {
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #getHeader(BatchPolicy, Key[])} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
+	@Deprecated
 	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
+		return getHeader(batchPolicy, keys);
+	}
+
+	/**
+	 * Read multiple record header data for specified keys in one batch call.
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @return						array of records
+	 * @throws AerospikeException	if read fails
+	 */
+	public final Record[] getHeader(BatchPolicy policy, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = batchPolicyDefault;
 		}
 		Record[] records = new Record[keys.length];
-		new BatchExecutor(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
 	}
 

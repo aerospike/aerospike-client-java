@@ -49,4 +49,20 @@ public class Policy {
 	 * The default sleep between retries is 500 ms.
 	 */
 	public int sleepBetweenRetries = 500;
+	
+	/**
+	 * Copy policy from another policy.
+	 */
+	public Policy(Policy other) {
+		this.priority = other.priority;
+		this.timeout = other.timeout;
+		this.maxRetries = other.maxRetries;
+		this.sleepBetweenRetries = other.sleepBetweenRetries;
+	}
+	
+	/**
+	 * Default constructor.
+	 */
+	public Policy() {
+	}
 }

@@ -38,7 +38,7 @@ public final class AsyncBatchExistsSequenceExecutor extends AsyncBatchExecutor {
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, listener);
+				AsyncBatchExistsSequence async = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
 				async.execute();
 			}
 		}

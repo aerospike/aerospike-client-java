@@ -16,13 +16,11 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashMap;
 import java.util.HashSet;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.command.BatchItem;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.RecordArrayListener;
@@ -44,12 +42,10 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		this.recordArray = new Record[keys.length];
 		this.listener = listener;
 		
-		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
-		
 		// Dispatch asynchronous commands to nodes.
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {				
-				AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keyMap, binNames, recordArray, readAttr);
+				AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
 				async.execute();
 			}
 		}

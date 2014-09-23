@@ -28,6 +28,7 @@ import com.aerospike.client.policy.Policy;
 public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 	private final BatchNode.BatchNamespace batchNamespace;
 	private final Policy policy;
+	private final Key[] keys;
 	private final RecordSequenceListener listener;
 	private final int readAttr;
 	
@@ -37,6 +38,7 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 		AsyncNode node,
 		BatchNode.BatchNamespace batchNamespace,
 		Policy policy,
+		Key[] keys,
 		HashSet<String> binNames,
 		RecordSequenceListener listener,
 		int readAttr
@@ -44,6 +46,7 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 		super(parent, cluster, node, false, binNames);
 		this.batchNamespace = batchNamespace;
 		this.policy = policy;
+		this.keys = keys;
 		this.listener = listener;
 		this.readAttr = readAttr;
 	}
@@ -55,12 +58,17 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(batchNamespace, binNames, readAttr);
+		setBatchGet(keys, batchNamespace, binNames, readAttr);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {		
-		Record record = parseRecordWithDuplicates();
-		listener.onRecord(key, record);
+	protected void parseRow(Key key) throws AerospikeException {
+		if (resultCode == 0) {
+			Record record = parseRecordWithDuplicates();
+			listener.onRecord(key, record);
+		}
+		else {
+			listener.onRecord(key, null);
+		}
 	}
 }

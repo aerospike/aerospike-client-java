@@ -81,7 +81,7 @@ public class Batch extends Example {
 			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
 		}
 
-		boolean[] existsArray = client.exists(params.policy, keys);
+		boolean[] existsArray = client.exists(null, keys);
 
 		for (int i = 0; i < existsArray.length; i++) {
 			Key key = keys[i];
@@ -107,7 +107,7 @@ public class Batch extends Example {
 			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
 		}
 
-		Record[] records = client.get(params.policy, keys, binName);
+		Record[] records = client.get(null, keys, binName);
 
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
@@ -143,7 +143,7 @@ public class Batch extends Example {
 			keys[i] = new Key(params.namespace, params.set, keyPrefix + (i + 1));
 		}
 
-		Record[] records = client.getHeader(params.policy, keys);
+		Record[] records = client.getHeader(null, keys);
 
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];

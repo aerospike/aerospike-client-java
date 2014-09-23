@@ -25,6 +25,7 @@ import com.aerospike.client.policy.Policy;
 public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 	private final BatchNode.BatchNamespace batchNamespace;
 	private final Policy policy;
+	private final Key[] keys;
 	private final ExistsSequenceListener listener;
 	
 	public AsyncBatchExistsSequence(
@@ -33,11 +34,13 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 		AsyncNode node,
 		BatchNode.BatchNamespace batchNamespace,
 		Policy policy,
+		Key[] keys,
 		ExistsSequenceListener listener
 	) {
 		super(parent, cluster, node, false);
 		this.batchNamespace = batchNamespace;
 		this.policy = policy;
+		this.keys = keys;
 		this.listener = listener;
 	}
 		
@@ -48,7 +51,7 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(batchNamespace);
+		setBatchExists(keys, batchNamespace);
 	}
 
 	@Override

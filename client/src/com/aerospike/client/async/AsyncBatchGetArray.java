@@ -16,40 +16,40 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashMap;
+import java.util.Arrays;
 import java.util.HashSet;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Record;
-import com.aerospike.client.command.BatchItem;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchGetArray extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
-	private final HashMap<Key,BatchItem> keyMap;
+	private final Key[] keys;
 	private final Record[] records;
 	private final int readAttr;
+	private int index;
 	
 	public AsyncBatchGetArray(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
 		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
-		HashMap<Key,BatchItem> keyMap,
+		Key[] keys,
 		HashSet<String> binNames,
 		Record[] records,
 		int readAttr
 	) {
 		super(parent, cluster, node, false, binNames);
-		this.batchNamespace = batchNamespace;
+		this.batch = batch;
 		this.policy = policy;
-		this.keyMap = keyMap;
+		this.keys = keys;
 		this.records = records;
 		this.readAttr = readAttr;
 	}
@@ -61,22 +61,21 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(batchNamespace, binNames, readAttr);
+		setBatchGet(keys, batch, binNames, readAttr);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {		
-		BatchItem item = keyMap.get(key);
-		
-		if (item != null) {				
+	protected void parseRow(Key key) throws AerospikeException {
+		int offset = batch.offsets[index++];
+
+		if (Arrays.equals(key.digest, keys[offset].digest)) {			
 			if (resultCode == 0) {
-				int index = item.getIndex();
-				records[index] = parseRecordWithDuplicates();
+				records[offset] = parseRecordWithDuplicates();
 			}
 		}
 		else {
-			if (Log.debugEnabled()) {
-				Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+			if (Log.warnEnabled()) {
+				Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}

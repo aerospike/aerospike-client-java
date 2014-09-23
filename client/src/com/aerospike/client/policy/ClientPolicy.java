@@ -83,6 +83,11 @@ public class ClientPolicy {
 	public QueryPolicy queryPolicyDefault = new QueryPolicy();
 
 	/**
+	 * Default batch policy that is used when batch command's policy is null.
+	 */
+	public BatchPolicy batchPolicyDefault = new BatchPolicy();
+
+	/**
 	 * A IP translation table is used in cases where different clients use different server 
 	 * IP addresses.  This may be necessary when using clients from both inside and outside 
 	 * a local area network.  Default is no translation.

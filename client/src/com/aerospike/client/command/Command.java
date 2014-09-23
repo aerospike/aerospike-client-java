@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import java.util.HashSet;
-import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -232,22 +231,25 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchExists(BatchNamespace batchNamespace) {
+	public final void setBatchExists(Key[] keys, BatchNamespace batch) {
 		// Estimate buffer size
 		begin();
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 				
 		sizeBuffer();
 
 		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
-		for (Key key : keys) {
+		int[] offsets = batch.offsets;
+		int max = batch.offsetsSize;
+		
+		for (int i = 0; i < max; i++) {
+			Key key = keys[offsets[i]];
 			byte[] digest = key.digest;
 		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 		    dataOffset += digest.length;
@@ -255,13 +257,12 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchGet(BatchNamespace batchNamespace, HashSet<String> binNames, int readAttr) {
+	public final void setBatchGet(Key[] keys, BatchNamespace batch, HashSet<String> binNames, int readAttr) {
 		// Estimate buffer size
 		begin();
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 		
 		if (binNames != null) {
@@ -274,10 +275,14 @@ public abstract class Command {
 
 		int operationCount = (binNames == null)? 0 : binNames.size();
 		writeHeader(readAttr, 0, 2, operationCount);		
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
-		for (Key key : keys) {
+		int[] offsets = batch.offsets;
+		int max = batch.offsetsSize;
+		
+		for (int i = 0; i < max; i++) {
+			Key key = keys[offsets[i]];
 			byte[] digest = key.digest;
 		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 		    dataOffset += digest.length;
