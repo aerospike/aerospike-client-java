@@ -155,6 +155,16 @@ public final class ResultCode {
 	public static final int KEY_MISMATCH = 19;
 	
 	/**
+	 * Invalid namespace.
+	 */
+	public static final int INVALID_NAMESPACE = 20;
+	
+	/**
+	 * Bin name length greater than 14 characters.
+	 */
+	public static final int BIN_NAME_TOO_LONG = 21;
+	
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -217,6 +227,11 @@ public final class ResultCode {
 	 */
 	public static final int UDF_BAD_RESPONSE = 100;
 	
+	/**
+	 * The requested item in a large collection was not found.
+	 */
+	public static final int LARGE_ITEM_NOT_FOUND = 125;
+
 	/**
 	 * Secondary index already exists.
 	 */
@@ -380,6 +395,12 @@ public final class ResultCode {
 		case KEY_MISMATCH:
 			return "Key mismatch";
 
+		case INVALID_NAMESPACE:
+			return "Namespace not found";
+			
+		case BIN_NAME_TOO_LONG:
+			return "Bin name length greater than 14 characters";
+
 		case QUERY_END:
 			return "Query end";
 
@@ -428,6 +449,9 @@ public final class ResultCode {
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
 			
+		case LARGE_ITEM_NOT_FOUND:
+			return "Large collection item not found";
+		
 		case INDEX_FOUND:
 			return "Index already exists";
 			
