@@ -71,7 +71,48 @@ public final class Record {
 	}
 	
 	/**
-	 * Return string representation of record.
+	 * Get bin value as long.
+	 */
+	public long getLong(String name)
+	{
+		return (Long)getValue(name);
+	}
+
+	/**
+	 * Get bin value as int.
+	 */
+	public int getInt(String name)
+	{
+		return (int)(long)(Long)getValue(name);
+	}
+
+	/**
+	 * Get bin value as short.
+	 */
+	public short getShort(String name)
+	{
+		return (short)(long)(Long)getValue(name);
+	}
+
+	/**
+	 * Get bin value as byte.
+	 */
+	public byte getByte(String name)
+	{
+		return (byte)(long)(Long)getValue(name);
+	}
+
+	/**
+	 * Get bin value as boolean.
+	 */
+	public boolean getBool(String name)
+	{
+		long v = (Long)getValue(name);
+		return (v != 0) ? true : false;
+	}
+
+	/**
+	 * Return String representation of record.
 	 */
 	@Override
 	public String toString() {

@@ -74,6 +74,7 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and integer value.
+	 * The server will convert all integers to longs.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
 	 * @param name		bin name, current limit is 14 characters
