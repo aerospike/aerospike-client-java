@@ -234,23 +234,6 @@ public class Main implements Log.Callback {
 		}
 		
 		//Variables setting in case of command arguments passed with keys in File
-		if (line.hasOption("keyType")) {
-			String keyType = line.getOptionValue("keyType");
-			
-			if (keyType.equals("S")) {
-				args.keyType = KeyType.STRING;
-			}
-			else if (keyType.equals("I")) {
-				args.keyType = KeyType.INTEGER;
-			}
-			else {
-				throw new Exception("Invalid keyType: "+keyType);
-			}	
-		}
-		else {
-			args.keyType = KeyType.STRING;
-		}
-		
 		if (line.hasOption("keyFile")) {
 			this.filepath = line.getOptionValue("keyFile");
 			// Load the file
@@ -261,6 +244,28 @@ public class Main implements Log.Callback {
 			this.nKeys = keyList.size();
 			this.startKey = 0;
 			args.validate = false;
+			
+			if (line.hasOption("keyType")) {
+				String keyType = line.getOptionValue("keyType");
+				
+				if (keyType.equals("S")) {
+					args.keyType = KeyType.STRING;
+				}
+				else if (keyType.equals("I")) {
+					if (Utils.isNumeric(keyList.get(0))) {
+						args.keyType = KeyType.INTEGER;
+					} else {
+						throw new Exception("Invalid keyType '"+keyType+"' Key type doesn't match with file content type.");
+					}
+				}
+				else {
+					throw new Exception("Invalid keyType: "+keyType);
+				}	
+			}
+			else {
+				args.keyType = KeyType.STRING;
+			}
+
 		}
 
 		if (line.hasOption("keylength")) {
