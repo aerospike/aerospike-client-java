@@ -41,6 +41,10 @@ public final class BatchExecutor {
 		int readAttr
 	) throws AerospikeException {
 		
+		if (keys.length == 0) {
+			return;
+		}
+		
 		List<BatchNode> batchNodes = BatchNode.generateList(cluster, keys);
 
 		if (policy.maxConcurrentThreads == 1) {
