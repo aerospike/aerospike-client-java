@@ -113,7 +113,7 @@ public class QueryInteger extends Example {
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				int result = (Integer)record.getValue(binName);
+				int result = record.getInt(binName);
 				
 				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
 					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);

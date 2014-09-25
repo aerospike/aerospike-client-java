@@ -83,7 +83,7 @@ public final class Record {
 	 */
 	public int getInt(String name)
 	{
-		return (int)(long)(Long)getValue(name);
+		return (Integer)getValue(name);
 	}
 
 	/**
@@ -91,7 +91,7 @@ public final class Record {
 	 */
 	public short getShort(String name)
 	{
-		return (short)(long)(Long)getValue(name);
+		return (Short)getValue(name);
 	}
 
 	/**
@@ -99,7 +99,7 @@ public final class Record {
 	 */
 	public byte getByte(String name)
 	{
-		return (byte)(long)(Long)getValue(name);
+		return (Byte)getValue(name);
 	}
 
 	/**
