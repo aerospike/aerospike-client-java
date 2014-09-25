@@ -52,6 +52,7 @@ public class LargeList extends Example {
 		runSimpleExample(client, params);
 		runWithDistinctBins(client, params);
 		runWithSerializedBin(client, params);
+		runVolumeInsert(client, params);
 	}
 
 	/**
@@ -84,6 +85,11 @@ public class LargeList extends Example {
 		
 		// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));
+		
+		if (rangeList == null) {			
+			throw new Exception("Range returned null.");
+		}
+		
 		if ( rangeList.size() != 2 ) {
 			throw new Exception("Range Size mismatch. Expected 2 Received " + rangeList.size());
 		}
@@ -108,6 +114,12 @@ public class LargeList extends Example {
 		
 		List<?> listReceived = llist.find(Value.get(orig2));
 		String expected = orig2;
+		
+		if (listReceived == null) {
+			console.error("Data mismatch: Expected %s. Received %s.", expected, null);
+			return;
+		}
+		
 		String stringReceived = (String) listReceived.get(0);
 		
 		if (stringReceived != null && stringReceived.equals(expected)) {
@@ -117,16 +129,6 @@ public class LargeList extends Example {
 		else {
 			console.error("Data mismatch: Expected %s. Received %s.", expected, stringReceived);
 		}
-		
-		// Add a bunch of numbers to show volume insert (add in reverse order)
-		int itemCount = 2000;
-		console.info("Add a bunch of LLIST Items(%d)", itemCount);
-		com.aerospike.client.large.LargeList llist2 = client.getLargeList(params.policy, key, "NumberBin", null);
-		for (int i = itemCount; i > 0; i-- ){
-			llist2.add(Value.get(i));
-		}
-		int size2 = llist2.size();
-		console.info("Done Writing (%d) Items, size(%d)", itemCount, size2 );
 	}
 	
 	/**
@@ -177,6 +179,10 @@ public class LargeList extends Example {
 		Calendar begin = new GregorianCalendar(2014, 6, 26);
 		Calendar end = new GregorianCalendar(2014, 6, 28);
 		List<Map<String,Object>> results = (List<Map<String,Object>>)list.range(Value.get(begin.getTimeInMillis()), Value.get(end.getTimeInMillis()));
+
+		if (results == null) {			
+			throw new AerospikeException("Range returned null.");
+		}
 
 		if (results.size() != 2) {
 			throw new AerospikeException("Query results size mismatch. Expected 2 Received " + results.size());
@@ -287,6 +293,10 @@ public class LargeList extends Example {
 		Calendar end = new GregorianCalendar(2014, 6, 28);
 		List<Map<String,Object>> results = (List<Map<String,Object>>)list.range(Value.get(begin.getTimeInMillis()), Value.get(end.getTimeInMillis()));
 
+		if (results == null) {			
+			throw new AerospikeException("Range returned null.");
+		}
+
 		if (results.size() != 2) {
 			throw new AerospikeException("Query results size mismatch. Expected 2 Received " + results.size());
 		}
@@ -329,5 +339,24 @@ public class LargeList extends Example {
 		if (expectedPrice != receivedPrice) {
 			throw new AerospikeException("Price mismatch: Expected " + expectedPrice + ". Received " + receivedPrice);
 		}
+	}
+	
+	/**
+	 * Add a bunch of numbers to show volume insert (add in reverse order).
+	 */
+	public void runVolumeInsert(AerospikeClient client, Parameters params)
+		throws AerospikeException, IOException {
+		
+		// This key has already been created in runSimpleExample().
+		Key key = new Key(params.namespace, params.set, "setkey");
+		
+		int itemCount = 2000;
+		console.info("Add a bunch of LLIST Items(%d)", itemCount);
+		com.aerospike.client.large.LargeList llist2 = client.getLargeList(params.policy, key, "NumberBin", null);
+		for (int i = itemCount; i > 0; i-- ){
+			llist2.add(Value.get(i));
+		}
+		int size2 = llist2.size();
+		console.info("Done Writing (%d) Items, size(%d)", itemCount, size2 );
 	}
 }

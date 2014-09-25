@@ -97,13 +97,14 @@ public class ReadCommand extends SingleCommand {
         }
         
         if (resultCode != 0) {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND) {
         		return;
         	}
         	
         	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-                record = parseRecord(opCount, fieldCount, generation, expiration);
-                handleUdfError(resultCode);
+				record = parseRecord(opCount, fieldCount, generation, expiration);
+				handleUdfError(resultCode);
+				return;
         	}
         	throw new AerospikeException(resultCode);
         }
@@ -119,23 +120,29 @@ public class ReadCommand extends SingleCommand {
 	private void handleUdfError(int resultCode) throws AerospikeException {	
 		String ret = (String)record.bins.get("FAILURE");
 		
-		if (ret != null) {
-			String[] list;
-			String message;
-			int code;
-			
-			try {
-    			list = ret.split(":");
-    			code = Integer.parseInt(list[2].trim());
-    			message = list[0] + ':' + list[1] + ' ' + list[3];
-			}
-			catch (Exception e) {
-				// Use generic exception if parse error occurs.
-	        	throw new AerospikeException(resultCode, ret);
-			}
-			
-			throw new AerospikeException(code, message);
+		if (ret == null) {
+	    	throw new AerospikeException(resultCode);			
 		}
+		
+		String message;
+		int code;
+		
+		try {
+			String[] list = ret.split(":");
+			code = Integer.parseInt(list[2].trim());
+			
+			if (code == ResultCode.LARGE_ITEM_NOT_FOUND) {
+				record = null;
+				return;
+			}
+			message = list[0] + ':' + list[1] + ' ' + list[3];
+		}
+		catch (Exception e) {
+			// Use generic exception if parse error occurs.
+        	throw new AerospikeException(resultCode, ret);
+		}
+		
+		throw new AerospikeException(code, message);
 	}
 	
 	private final Record parseRecord(

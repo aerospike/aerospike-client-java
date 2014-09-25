@@ -55,7 +55,9 @@ public final class LargeList {
 	}
 	
 	/**
-	 * Add a value to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add value to list. Fail if value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param value				value to add
 	 */
@@ -64,7 +66,9 @@ public final class LargeList {
 	}
 
 	/**
-	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add values to list.  Fail if a value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param values			values to add
 	 */
@@ -73,12 +77,47 @@ public final class LargeList {
 	}
 	
 	/**
-	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add values to the list.  Fail if a value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param values			values to add
 	 */
 	public final void add(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), userModule);
+	}
+
+	/**
+	 * Update value in list if key exists.  Add value to list if key does not exist.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param value				value to update
+	 */
+	public final void update(Value value) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update", binName, value, userModule);
+	}
+
+	/**
+	 * Update/Add each value in array depending if key exists or not.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to update
+	 */
+	public final void update(Value... values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), userModule);
+	}
+	
+	/**
+	 * Update/Add each value in values list depending if key exists or not.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to update
+	 */
+	public final void update(List<?> values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), userModule);
 	}
 
 	/**
