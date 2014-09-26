@@ -89,7 +89,11 @@ public class Main implements Log.Callback {
 			"will read and update randomly across the values between start_value and " + 
 			"start_value + num_keys."
 			);
-		options.addOption("l", "keylength", true, "Set the length of the string to use as a key.");
+		
+		// key type has been changed to integer, so this option is no longer relevant.
+		// Leave in (and ignore) so existing benchmark scripts do not break.
+		options.addOption("l", "keylength", true, "Not used anymore since key is an integer.");
+		
 		options.addOption("b", "bins", true, 
 			"Set the number of Aerospike bins. " +
 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
@@ -266,22 +270,6 @@ public class Main implements Log.Callback {
 				args.keyType = KeyType.STRING;
 			}
 
-		}
-
-		if (line.hasOption("keylength")) {
-			args.keySize = Integer.parseInt(line.getOptionValue("keylength"));
-		}
-		else {
-			args.keySize = (Integer.toString(this.nKeys + this.startKey)).length();
-		}
-
-		if (args.keySize < (Integer.toString(this.nKeys+this.startKey)).length()) {
-			String errStr = "keylength (-l) must be at least "+ (Integer.toString(this.nKeys+this.startKey)).length() +
-				" for " + this.nKeys + " keys";
-			if (this.startKey > 0) {
-				errStr = errStr + ", starting at " + this.startKey;
-			}
-			throw new Exception(errStr);
 		}
 
 		if (line.hasOption("bins")) {
@@ -491,7 +479,6 @@ public class Main implements Log.Callback {
 		
 		System.out.println("keys: " + this.nKeys
 			+ ", start key: " + this.startKey
-			+ ", key length: " + args.keySize
 			+ ", bins: " + args.nBins
 			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
 			+ ", debug: " + args.debug);

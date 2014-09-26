@@ -180,7 +180,7 @@ public abstract class RWTask implements Runnable {
 			int generation = 0;
 			
 			try {
-				Key key = new Key(args.namespace, args.setName, Utils.genKey(keyStart + i, args.keySize));
+				Key key = new Key(args.namespace, args.setName, keyStart + i);
 				Record record = client.get(args.readPolicy, key);
 				
 				if (record != null && record.bins != null) {
@@ -219,7 +219,6 @@ public abstract class RWTask implements Runnable {
 	 * Write the key at the given index
 	 */
 	protected void doWrite(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
 		int binCount = multiBin ? args.nBins : 1;
 		Bin[] bins;
 
@@ -230,7 +229,7 @@ public abstract class RWTask implements Runnable {
 		}
 		
 		try {
-			put(new Key(args.namespace, args.setName, key), bins);
+			put(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
 			
 			if (args.validate) {
 				this.expectedValues[keyIdx].write(bins);
@@ -248,14 +247,11 @@ public abstract class RWTask implements Runnable {
 	 * Increment (or decrement, if incrValue is negative) the key at the given index.
 	 */
 	protected void doIncrement(int keyIdx, int incrValue) {
-		// get key
-		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
-		
 		// set up bin for increment
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
 		
 		try {
-			add(new Key(args.namespace, args.setName, key), bins);
+			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
 			
 			if (args.validate) {
 				this.expectedValues[keyIdx].add(bins, incrValue);
@@ -273,16 +269,14 @@ public abstract class RWTask implements Runnable {
 	 * Read the key at the given index.
 	 */
 	protected void doRead(int keyIdx, boolean multiBin) {
-		String key = Utils.genKey(keyStart + keyIdx, args.keySize);
-
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keyIdx, new Key(args.namespace, args.setName, key));			
+				get(keyIdx, new Key(args.namespace, args.setName, keyStart + keyIdx));			
 			} 
 			else {
 				// Read one bin, maybe validate
-				get(keyIdx, new Key(args.namespace, args.setName, key), Integer.toString(0));			
+				get(keyIdx, new Key(args.namespace, args.setName, keyStart + keyIdx), Integer.toString(0));			
 			}
 		}
 		catch (AerospikeException ae) {

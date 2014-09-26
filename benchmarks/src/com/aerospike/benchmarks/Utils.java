@@ -62,15 +62,6 @@ public class Utils {
 		return Value.getAsNull();
 	}
 	
-	protected static String genKey(int i, int keyLen) {
-		String key = "";
-		for(int j=keyLen-1; j>=0; j--) {
-			key = (i % 10) + key;
-			i /= 10;
-		}
-		return key;
-	}
-	
 	/**
 	 * Read all the contents from the file and put it in a List.
 	 * @throws IOException 

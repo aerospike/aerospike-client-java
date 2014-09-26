@@ -26,7 +26,6 @@ public class Arguments {
 	public DBObjectSpec[] objectSpec;
 	public Policy readPolicy = new Policy();
 	public WritePolicy writePolicy = new WritePolicy();
-	public int keySize;
 	public int nBins;
 	public int readPct;
 	public int readMultiBinPct;
