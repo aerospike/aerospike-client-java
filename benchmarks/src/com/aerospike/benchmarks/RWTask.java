@@ -219,17 +219,11 @@ public abstract class RWTask implements Runnable {
 	 * Write the key at the given index
 	 */
 	protected void doWrite(int keyIdx, boolean multiBin) {
-		int binCount = multiBin ? args.nBins : 1;
-		Bin[] bins;
-
-		if (args.validate) {
-			bins = Utils.genBins(random, binCount, args.objectSpec, this.expectedValues[keyIdx].generation+1);
-		} else {
-			bins = Utils.genBins(random, binCount, args.objectSpec, 0);
-		}
+		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
+		Bin[] bins = args.getBins(random, multiBin);
 		
 		try {
-			put(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
+			put(key, bins);
 			
 			if (args.validate) {
 				this.expectedValues[keyIdx].write(bins);

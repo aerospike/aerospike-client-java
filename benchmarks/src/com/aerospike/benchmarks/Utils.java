@@ -21,47 +21,9 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
-import java.util.Random;
 
-import com.aerospike.client.Bin;
-import com.aerospike.client.Value;
-
-public class Utils {
-	protected static Bin[] genBins(Random r, int binSize, DBObjectSpec[] spec, int generation) {
-		Bin[] bins = new Bin[binSize];
-		for(int i=0; i<binSize; i++) {
-			String name = Integer.toString(i);
-			Value value = genValue(r, spec[i%spec.length].type, spec[i%spec.length].size, generation);
-			bins[i] = new Bin(name, value);
-		}
-		return bins;
-	}
-
-   protected static Value genValue(Random r, char type, int size, int generation) {
-		if(type == 'B') {
-			byte[] ba = new byte[size];
-			r.nextBytes(ba);
-			return Value.get(ba);
-		} else if(type == 'D') {
-			return Value.get(Integer.toString((int) (new Date().getTime()%86400000))+","+Integer.toString(generation));
-		} else {
-			int v = r.nextInt();
-			v = v < 0 ? (-v) : v;
-			if(type == 'I') {
-				return Value.get(v);
-			} else if(type == 'S') {
-				StringBuilder builder = new StringBuilder();
-				while(builder.length() < size) {
-					builder.append(Integer.toString(v));
-				}
-				return Value.get(builder.toString());
-			}
-		}
-		return Value.getAsNull();
-	}
-	
+public class Utils {	
 	/**
 	 * Read all the contents from the file and put it in a List.
 	 * @throws IOException 
