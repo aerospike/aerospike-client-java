@@ -20,6 +20,7 @@ import java.util.Random;
 
 import com.aerospike.client.Bin;
 import com.aerospike.client.Value;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -30,6 +31,8 @@ public class Arguments {
 	public DBObjectSpec[] objectSpec;
 	public Policy readPolicy = new Policy();
 	public WritePolicy writePolicy = new WritePolicy();
+	public BatchPolicy batchPolicy = new BatchPolicy();
+	public int batchSize;
 	public int nBins;
 	public int readPct;
 	public int readMultiBinPct;

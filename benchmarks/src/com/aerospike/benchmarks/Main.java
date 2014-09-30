@@ -163,6 +163,17 @@ public class Main implements Log.Callback {
 		//options.addOption("v", "validate", false, "Validate data.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
+
+		options.addOption("B", "batchSize", true, 
+			"Enable batch mode with number of records to process in each batch get call. " + 
+			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
+			);
+		options.addOption("BT", "batchThreads", true,
+			"Maximum number of concurrent batch sub-threads for each batch command.\n" + 
+			"1   : Run each batch node command sequentially.\n" +
+			"0   : Run all batch node commands in parallel.\n" +
+			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
+			);
 		
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
@@ -381,10 +392,13 @@ public class Main implements Log.Callback {
 			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
 			args.readPolicy.timeout = timeout;
 			args.writePolicy.timeout = timeout;
+			args.batchPolicy.timeout = timeout;
 		}			 
 
 		if (line.hasOption("readTimeout")) {
-			args.readPolicy.timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
+			int timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
+			args.readPolicy.timeout = timeout;
+			args.batchPolicy.timeout = timeout;
 		}			 
 
 		if (line.hasOption("writeTimeout")) {
@@ -395,12 +409,14 @@ public class Main implements Log.Callback {
 			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
 			args.readPolicy.maxRetries = maxRetries;
 			args.writePolicy.maxRetries = maxRetries;
+			args.batchPolicy.maxRetries = maxRetries;
 		}
 		
 		if (line.hasOption("sleepBetweenRetries")) {
 			int sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
 			args.readPolicy.sleepBetweenRetries = sleepBetweenRetries;
 			args.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
+			args.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 		
 		if (line.hasOption("threads")) {
@@ -430,7 +446,15 @@ public class Main implements Log.Callback {
         	this.asyncEnabled = true;
         }
         
-        if (line.hasOption("asyncMaxCommands")) {
+        if (line.hasOption("batchSize")) {
+        	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
+        }
+        
+		if (line.hasOption("batchThreads")) {
+			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
+		}			 
+
+		if (line.hasOption("asyncMaxCommands")) {
         	this.clientPolicy.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
         }
         
@@ -502,6 +526,11 @@ public class Main implements Log.Callback {
 		System.out.println("write policy: timeout: " + args.writePolicy.timeout
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries);
+		
+		if (args.batchSize > 1) {		
+			System.out.println("batch size: " + args.batchSize
+				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
+		}
 		
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();

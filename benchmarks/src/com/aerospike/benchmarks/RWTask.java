@@ -77,28 +77,26 @@ public abstract class RWTask implements Runnable {
 		}
 
 		while (true) {
-			// Get random key
-			int key = random.nextInt(keyCount);
-		
 			try {
 				switch (args.workload) {
 				case READ_UPDATE:
-					readUpdate(key);
+					readUpdate();
 					break;
 					
 				case READ_MODIFY_UPDATE:
-					readModifyUpdate(key);		
+					readModifyUpdate();		
 					break;
 					
 				case READ_MODIFY_INCREMENT:
-					readModifyIncrement(key);		
+					readModifyIncrement();		
 					break;
 					
 				case READ_MODIFY_DECREMENT:
-					readModifyDecrement(key);		
+					readModifyDecrement();		
 					break;
+					
 				case READ_FROM_FILE:
-					readFromFile(key);	
+					readFromFile();	
 					break;
 				}
 			} 
@@ -126,42 +124,68 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 	
-	private void readUpdate(int key) {
+	private void readUpdate() {
 		if (random.nextDouble() < this.readPct) {
 			boolean isMultiBin = random.nextDouble() < readMultiBinPct;
-			doRead(key, isMultiBin);
+			
+			if (args.batchSize <= 1) {
+				int key = random.nextInt(keyCount);
+				doRead(key, isMultiBin);
+			}
+			else {
+				doReadBatch(isMultiBin);
+			}
 		}
 		else {
 			boolean isMultiBin = random.nextDouble() < writeMultiBinPct;
-			doWrite(key, isMultiBin);
+			
+			if (args.batchSize <= 1) {
+				// Single record write.
+				int key = random.nextInt(keyCount);
+				doWrite(key, isMultiBin);
+			}
+			else {
+				// Batch write is not supported, so write batch size one record at a time.
+				for (int i = 0; i < args.batchSize; i++) {
+					int key = random.nextInt(keyCount);
+					doWrite(key, isMultiBin);
+				}
+			}
 		}		
 	}
 	
-	private void readModifyUpdate(int key) {
+	private void readModifyUpdate() {
+		int key = random.nextInt(keyCount);
+				
 		// Read all bins.
 		doRead(key, true);
 		// Write one bin.
 		doWrite(key, false);
 	}
 	
-	private void readModifyIncrement(int key) {
+	private void readModifyIncrement() {
+		int key = random.nextInt(keyCount);
+
 		// Read all bins.
 		doRead(key, true);
 		// Increment one bin.
 		doIncrement(key, 1);
 	}
 
-	private void readModifyDecrement(int key) {
+	private void readModifyDecrement() {
+		int key = random.nextInt(keyCount);
+
 		// Read all bins.
 		doRead(key, true);
 		// Decrement one bin.
 		doIncrement(key, -1);
 	}
 	
-	private void readFromFile(int key){
-
+	private void readFromFile() {
+		int key = random.nextInt(keyCount);
+		
 		if (args.keyType == KeyType.STRING) {
-		    doReadString(key,true);
+		    doReadString(key, true);
 		}    
 		else if (args.keyType == KeyType.INTEGER) {
 			doReadLong(key, true);
@@ -264,13 +288,44 @@ public abstract class RWTask implements Runnable {
 	 */
 	protected void doRead(int keyIdx, boolean multiBin) {
 		try {
+			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
+			
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keyIdx, new Key(args.namespace, args.setName, keyStart + keyIdx));			
+				get(key);			
 			} 
 			else {
 				// Read one bin, maybe validate
-				get(keyIdx, new Key(args.namespace, args.setName, keyStart + keyIdx), Integer.toString(0));			
+				get(key, "0");			
+			}
+		}
+		catch (AerospikeException ae) {
+			readFailure(ae);
+		}
+		catch (Exception e) {
+			readFailure(e);
+		}
+	}
+
+	/**
+	 * Read batch of keys in one call.
+	 */
+	protected void doReadBatch(boolean multiBin) {
+		Key[] keys = new Key[args.batchSize];
+		
+		for (int i = 0; i < keys.length; i++) {
+			int keyIdx = random.nextInt(keyCount);
+			keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
+		}
+		
+		try {
+			if (multiBin) {
+				// Read all bins, maybe validate
+				get(keys);			
+			} 
+			else {
+				// Read one bin, maybe validate
+				get(keys, "0");			
 			}
 		}
 		catch (AerospikeException ae) {
@@ -280,21 +335,21 @@ public abstract class RWTask implements Runnable {
 			readFailure(e);
 		}	
 	}
-	
+
 	/**
 	 * Read the keys of type Integer from the file supplied.
 	 */
-	protected void doReadLong(int keyIdx,boolean multiBin) {
+	protected void doReadLong(int keyIdx, boolean multiBin) {
 		long numKey = Long.parseLong(Main.keyList.get(keyStart + keyIdx));
 		
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keyIdx,new Key(args.namespace, args.setName, numKey));			
+				get(new Key(args.namespace, args.setName, numKey));			
 			} 
 			else {
 				// Read one bin, maybe validate
-				get(keyIdx,new Key(args.namespace, args.setName, numKey), Integer.toString(0));			
+				get(new Key(args.namespace, args.setName, numKey), "0");			
 			}
 		}
 		catch (AerospikeException ae) {
@@ -314,11 +369,11 @@ public abstract class RWTask implements Runnable {
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keyIdx,new Key(args.namespace, args.setName, strKey));			
+				get(new Key(args.namespace, args.setName, strKey));			
 			} 
 			else {
 				// Read one bin, maybe validate
-				get(keyIdx,new Key(args.namespace, args.setName, strKey), Integer.toString(0));			
+				get(new Key(args.namespace, args.setName, strKey), "0");			
 			}
 		}
 		catch (AerospikeException ae) {
@@ -330,10 +385,21 @@ public abstract class RWTask implements Runnable {
 		
 	}
 	
-	protected void validateRead(int keyIdx, Record record) {	
-		if (! this.expectedValues[keyIdx].validate(record)) {
-			this.counters.valueMismatchCnt.incrementAndGet();
+	protected void processRead(Key key, Record record) {
+		if (record == null && args.reportNotFound) {
+			counters.readNotFound.getAndIncrement();	
 		}
+		else {
+			counters.read.count.getAndIncrement();		
+		}
+
+		if (args.validate) {
+			int keyIdx = key.userKey.toInteger() - keyStart;
+			
+			if (! this.expectedValues[keyIdx].validate(record)) {
+				this.counters.valueMismatchCnt.incrementAndGet();
+			}
+		}	
 	}
 
 	protected void writeFailure(AerospikeException ae) {
@@ -380,6 +446,8 @@ public abstract class RWTask implements Runnable {
 
 	protected abstract void put(Key key, Bin[] bins) throws AerospikeException;
 	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
-	protected abstract void get(int keyIdx, Key key, String binName) throws AerospikeException;
-	protected abstract void get(int keyIdx, Key key) throws AerospikeException;
+	protected abstract void get(Key key, String binName) throws AerospikeException;
+	protected abstract void get(Key key) throws AerospikeException;
+	protected abstract void get(Key[] keys) throws AerospikeException;
+	protected abstract void get(Key[] keys, String binName) throws AerospikeException;
 }
