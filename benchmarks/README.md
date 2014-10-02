@@ -21,11 +21,11 @@ Some sample arguments are:
 
     # Connect to localhost:3000 using test namespace.
     # Read 80% and write 20% of the time using 8 concurrent threads.
-    # Use 10000000 integer keys and 1400 character string values using a single bin.
+    # Use 10000000 integer keys and 1400 bytes values using a single bin.
     # Timeout after 50ms for reads and writes.
     # Restrict transactions/second to 2500.
     # Benchmark synchronous methods.
-    ./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 10000000 -b 1 -o S:1400 -w RU,80 -g 2500 -T 50 -z 8
+    ./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 10000000 -b 1 -o B:1400 -w RU,80 -g 2500 -T 50 -z 8
 
     # Benchmark asynchronous methods using a single producer thread and 8 selector threads.
     # Limit the maximum number of concurrent commands to 1000.
