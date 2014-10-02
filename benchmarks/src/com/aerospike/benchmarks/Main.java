@@ -29,6 +29,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
@@ -50,6 +51,10 @@ public class Main implements Log.Callback {
 			program.runBenchmarks();
 		}
 		catch (UsageException ue) {
+		}
+		catch (ParseException pe) {
+			System.out.println(pe.getMessage());
+			System.out.println("Use -u option for program usage");		
 		}
 		catch (Exception e) {		
 			System.out.println("Error: " + e.getMessage());
@@ -185,10 +190,10 @@ public class Main implements Log.Callback {
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
-		CommandLine line = parser.parse(options, commandLineArgs);
+		CommandLine line = parser.parse(options, commandLineArgs);		
 		String[] extra = line.getArgs();
 
-		if ( line.hasOption("u")) {
+		if (line.hasOption("u")) {
 			logUsage(options);
 			throw new UsageException();
 		}
