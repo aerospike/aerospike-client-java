@@ -1163,7 +1163,7 @@ public class AerospikeClient implements Closeable {
 	 * @param roles					variable arguments array of role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
+	public final void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
 		String hash = AdminCommand.hashPassword(password);
 		AdminCommand command = new AdminCommand();
 		command.createUser(cluster, policy, user, hash, roles);
@@ -1176,7 +1176,7 @@ public class AerospikeClient implements Closeable {
 	 * @param user					user name
 	 * @throws AerospikeException	if command fails
 	 */
-	public void dropUser(AdminPolicy policy, String user) throws AerospikeException {
+	public final void dropUser(AdminPolicy policy, String user) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.dropUser(cluster, policy, user);
 	}
@@ -1189,7 +1189,7 @@ public class AerospikeClient implements Closeable {
 	 * @param password				user password in clear-text format
 	 * @throws AerospikeException	if command fails
 	 */
-	public void ChangePassword(AdminPolicy policy, String user, String password) throws AerospikeException {
+	public final void changePassword(AdminPolicy policy, String user, String password) throws AerospikeException {
 		if (cluster.getUser() == null) {
 			throw new AerospikeException("Invalid user");
 		}
@@ -1217,7 +1217,7 @@ public class AerospikeClient implements Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public void GrantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public final void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.grantRoles(cluster, policy, user, roles);
 	}
@@ -1230,7 +1230,7 @@ public class AerospikeClient implements Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public void RevokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public final void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.revokeRoles(cluster, policy, user, roles);
 	}
@@ -1243,7 +1243,7 @@ public class AerospikeClient implements Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public void ReplaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public final void replaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.replaceRoles(cluster, policy, user, roles);
 	}
@@ -1255,7 +1255,7 @@ public class AerospikeClient implements Closeable {
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public UserRoles QueryUser(AdminPolicy policy, String user) throws AerospikeException {
+	public final UserRoles queryUser(AdminPolicy policy, String user) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		return command.queryUser(cluster, policy, user);
 	}
@@ -1266,7 +1266,7 @@ public class AerospikeClient implements Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public List<UserRoles> QueryUsers(AdminPolicy policy) throws AerospikeException {
+	public final List<UserRoles> queryUsers(AdminPolicy policy) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		return command.queryUsers(cluster, policy);
 	}
