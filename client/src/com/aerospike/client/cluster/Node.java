@@ -90,8 +90,10 @@ public class Node implements Closeable {
 			verifyNodeName(infoMap);			
 			restoreHealth();
 			responded = true;
-			addFriends(infoMap, friends);
-			updatePartitions(conn, infoMap);
+			
+			if (addFriends(infoMap, friends)) {
+				updatePartitions(conn, infoMap);
+			}
 			putConnection(conn);
 		}
 		catch (Exception e) {
@@ -119,12 +121,23 @@ public class Node implements Closeable {
 		}
 	}
 	
-	private final void addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
+	private final boolean addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
 		// Parse the service addresses and add the friends to the list.
 		String friendString = infoMap.get("services");
 		
 		if (friendString == null || friendString.length() == 0) {
-			return;
+			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
+			// Unchecked, such a node can dominate the partition map and cause all other
+			// nodes to be dropped.
+			int nodeCount = cluster.getNodes().length;
+			
+			if (nodeCount > 2) {
+				if (Log.warnEnabled()) {
+					Log.warn("Node " + this + " thinks it owns cluster, but client sees " + nodeCount + " nodes.");
+				}
+				return false;
+			}
+			return true;
 		}
 
 		String friendNames[] = friendString.split(";");
@@ -154,6 +167,7 @@ public class Node implements Closeable {
 				}
 			}
 		}
+		return true;
 	}
 		
 	private final static boolean findAlias(List<Host> friends, Host alias) {
