@@ -263,6 +263,15 @@ public class AerospikeClient implements Closeable {
 		}
 		return names;
 	}
+	
+	/**
+	 * Return node given its name.
+	 * 
+	 * @throws AerospikeException.InvalidNode	if node does not exist.
+	 */
+	public final Node getNode(String nodeName) throws AerospikeException.InvalidNode {
+		return cluster.getNode(nodeName);
+	}
 
 	//-------------------------------------------------------
 	// Write Record Operations
@@ -991,9 +1000,9 @@ public class AerospikeClient implements Closeable {
 	//--------------------------------------------------------
 
 	/**
-	 * Execute query and return record iterator.  The query executor puts records on a queue in 
-	 * separate threads.  The calling thread concurrently pops records off the queue through the 
-	 * record iterator.
+	 * Execute query on all server nodes and return record iterator.  The query executor puts 
+	 * records on a queue in separate threads.  The calling thread concurrently pops records off 
+	 * the queue through the record iterator.
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
@@ -1006,11 +1015,32 @@ public class AerospikeClient implements Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement);
+		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, null);
 		executor.execute();
 		return executor.getRecordSet();
 	}
 	
+	/**
+	 * Execute query on a single server node and return record iterator.  The query executor puts
+	 * records on a queue in a separate thread.  The calling thread concurrently pops records off 
+	 * the queue through the record iterator.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @return						record iterator
+	 * @throws AerospikeException	if query fails
+	 */
+	public final RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, node);
+		executor.execute();
+		return executor.getRecordSet();
+	}
+
 	/**
 	 * Execute query, apply statement's aggregation function, and return result iterator. The query 
 	 * executor puts results on a queue in separate threads.  The calling thread concurrently pops 

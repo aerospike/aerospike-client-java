@@ -36,15 +36,21 @@ public abstract class QueryExecutor {
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
 	
-	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement) throws AerospikeException {
+	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
 		this.policy = policy;
 		this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 		this.statement = statement;
 		this.completedCount = new AtomicInteger();
-		this.nodes = cluster.getNodes();
-
-		if (this.nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+		
+		if (node == null) {
+			nodes = cluster.getNodes();
+			
+			if (nodes.length == 0) {
+				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+			}
+		}
+		else {
+			nodes = new Node[] {node};
 		}
 
 		this.threadPool = cluster.getThreadPool();

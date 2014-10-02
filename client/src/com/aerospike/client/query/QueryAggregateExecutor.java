@@ -49,7 +49,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		String functionName, 
 		Value[] functionArgs
 	) throws AerospikeException {
-		super(cluster, policy, statement);
+		super(cluster, policy, statement, null);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 		statement.setAggregateFunction(packageName, functionName, functionArgs, true);

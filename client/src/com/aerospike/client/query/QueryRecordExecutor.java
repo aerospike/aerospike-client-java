@@ -25,9 +25,9 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	
 	private final RecordSet recordSet;
 	
-	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
+	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) 
 		throws AerospikeException {
-		super(cluster, policy, statement);
+		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
 	}
 	
