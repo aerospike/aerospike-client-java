@@ -22,7 +22,6 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -38,7 +37,6 @@ public class Node implements Closeable {
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
-	private static final int FULL_HEALTH = 100;
 
 	protected final Cluster cluster;
 	private final String name;
@@ -46,10 +44,9 @@ public class Node implements Closeable {
 	private Host[] aliases;
 	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
-	private final AtomicInteger health;
 	private int partitionGeneration;
 	protected int referenceCount;
-	protected boolean responded;
+	protected int failures;
 	protected volatile boolean active;
 
 	/**
@@ -69,7 +66,6 @@ public class Node implements Closeable {
 		this.host = aliases[0];
 		
 		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);		
-		health = new AtomicInteger(FULL_HEALTH);
 		partitionGeneration = -1;
 		active = true;
 	}
@@ -86,8 +82,6 @@ public class Node implements Closeable {
 		try {
 			HashMap<String,String> infoMap = Info.request(conn, "node", "partition-generation", "services");
 			verifyNodeName(infoMap);			
-			restoreHealth();
-			responded = true;
 			
 			if (addFriends(infoMap, friends)) {
 				updatePartitions(conn, infoMap);
@@ -96,7 +90,6 @@ public class Node implements Closeable {
 		}
 		catch (Exception e) {
 			conn.close();
-			decreaseHealth();
 			throw e;
 		}
 	}
@@ -108,7 +101,6 @@ public class Node implements Closeable {
 		String infoName = infoMap.get("node");
 		
 		if (infoName == null || infoName.length() == 0) {
-			decreaseHealth();
 			throw new AerospikeException.Parse("Node name is empty");
 		}
 
@@ -250,29 +242,6 @@ public class Node implements Closeable {
 		if (! active || ! connectionQueue.offer(conn)) {
 			conn.close();
 		}
-	}
-
-	/**
-	 * Set node status as healthy after successful database operation.
-	 */
-	public final void restoreHealth() {
-		// There can be cases where health is full, but active is false.
-		// Once a node has been marked inactive, it stays inactive.
-		health.set(FULL_HEALTH);
-	}
-
-	/**
-	 * Decrease server health status after a connection failure.
-	 */
-	public final void decreaseHealth() {
-		health.decrementAndGet();
-	}
-	
-	/**
-	 * Has consecutive node connection errors become critical. 
-	 */
-	public final boolean isUnhealthy() {
-		return health.get() <= 0;
 	}
 	
 	/**

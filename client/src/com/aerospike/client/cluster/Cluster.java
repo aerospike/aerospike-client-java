@@ -252,7 +252,6 @@ public class Cluster implements Runnable, Closeable {
 		// Clear node reference counts.
 		for (Node node : nodes) {
 			node.referenceCount = 0;
-			node.responded = false;
 		}
 		
 		// Refresh all known nodes.
@@ -263,10 +262,12 @@ public class Cluster implements Runnable, Closeable {
 			try {
 				if (node.isActive()) {
 					node.refresh(friendList);
+					node.failures = 0;
 					refreshCount++;
 				}
 			}
 			catch (Exception e) {
+				node.failures++;
 				if (Log.debugEnabled()) {
 					Log.debug("Node " + node + " refresh failed: " + Util.getErrorMessage(e));
 				}
@@ -303,7 +304,7 @@ public class Cluster implements Runnable, Closeable {
 		return generation;
 	}
 
-	private final void seedNodes(boolean failIfNotConnected) throws AerospikeException {
+	private final boolean seedNodes(boolean failIfNotConnected) throws AerospikeException {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		Exception[] exceptions = null;
@@ -313,8 +314,14 @@ public class Cluster implements Runnable, Closeable {
 
 		for (int i = 0; i < seedArray.length; i++) {
 			Host seed = seedArray[i];
+			
+			// Check if seed already exists in cluster.
+			if (aliases.containsKey(seed)) {
+				continue;
+			}
 
 			try {
+				// Try to communicate with seed.
 				NodeValidator seedNodeValidator = new NodeValidator(this, seed);
 				
 				// Seed host may have multiple aliases in the case of round-robin dns configurations.
@@ -352,6 +359,7 @@ public class Cluster implements Runnable, Closeable {
 
 		if (list.size() > 0) {
 			addNodesCopy(list);
+			return true;
 		}
 		else if (failIfNotConnected) {
 			StringBuilder sb = new StringBuilder(500);
@@ -373,6 +381,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 			throw new AerospikeException.Connection(sb.toString());		
 		}
+		return false;
 	}
 	
 	private final static boolean findNodeName(ArrayList<Node> list, String name) {
@@ -430,15 +439,18 @@ public class Cluster implements Runnable, Closeable {
 			
 			switch (nodes.length) {
 			case 1:
-				// Single node clusters rely solely on node health.
-				if (node.isUnhealthy()) {
-					removeList.add(node);						
+				// Single node clusters rely on whether it responded to info requests.
+				if (node.failures >= 5) {
+					// 5 consecutive info requests failed. Try seeds.
+					if (seedNodes(false)) {
+						removeList.add(node);
+					}
 				}
 				break;
 				
 			case 2:
 				// Two node clusters require at least one successful refresh before removing.
-				if (refreshCount == 1 && node.referenceCount == 0 && ! node.responded) {
+				if (refreshCount == 1 && node.referenceCount == 0 && node.failures > 0) {
 					// Node is not referenced nor did it respond.
 					removeList.add(node);
 				}
@@ -449,11 +461,11 @@ public class Cluster implements Runnable, Closeable {
 				if (refreshCount >= 2 && node.referenceCount == 0) {
 					// Node is not referenced by other nodes.
 					// Check if node responded to info request.
-					if (node.responded) {
+					if (node.failures == 0) {
 						// Node is alive, but not referenced by other nodes.  Check if mapped.
 						if (! findNodeInPartitionMap(node)) {
 							// Node doesn't have any partitions mapped to it.
-							// There is not point in keeping it in the cluster.
+							// There is no point in keeping it in the cluster.
 							removeList.add(node);							
 						}
 					}

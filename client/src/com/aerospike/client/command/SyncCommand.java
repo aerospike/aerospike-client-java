@@ -57,7 +57,6 @@ public abstract class SyncCommand extends Command {
 					
 					// Reflect healthy status.
 					conn.updateLastUsed();
-					node.restoreHealth();
 					
 					// Put connection back in pool.
 					node.putConnection(conn);
@@ -69,7 +68,6 @@ public abstract class SyncCommand extends Command {
 					if (ae.keepConnection()) {
 						// Put connection back in pool.
 						conn.updateLastUsed();
-						node.restoreHealth();
 						node.putConnection(conn);						
 					}
 					else {
@@ -92,9 +90,6 @@ public abstract class SyncCommand extends Command {
 					if (Log.debugEnabled()) {
 						Log.debug("Node " + node + ": " + Util.getErrorMessage(ioe));
 					}
-					// IO error means connection to server node is unhealthy.
-					// Reflect this status.
-					node.decreaseHealth();
 				}
 			}
 			catch (AerospikeException.InvalidNode ine) {
@@ -102,9 +97,7 @@ public abstract class SyncCommand extends Command {
 				failedNodes++;
 			}
 			catch (AerospikeException.Connection ce) {
-				// Socket connection error has occurred. Decrease health and retry.
-				node.decreaseHealth();
-				
+				// Socket connection error has occurred. Retry.				
 				if (Log.debugEnabled()) {
 					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));
 				}
