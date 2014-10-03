@@ -50,7 +50,6 @@ public class Node implements Closeable {
 	private int partitionGeneration;
 	protected int referenceCount;
 	protected boolean responded;
-	protected final boolean useNewInfo;
 	protected volatile boolean active;
 
 	/**
@@ -64,7 +63,6 @@ public class Node implements Closeable {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
-		this.useNewInfo = nv.useNewInfo;
 		
 		// Assign host to first IP alias because the server identifies nodes 
 		// by IP address (not hostname). 
@@ -193,8 +191,7 @@ public class Node implements Closeable {
 			if (Log.debugEnabled()) {
 				Log.debug("Node " + this + " partition generation " + generation + " changed.");
 			}
-			cluster.updatePartitions(conn, this);
-			partitionGeneration = generation;
+			partitionGeneration = cluster.updatePartitions(conn, this);
 		}
 	}
 	

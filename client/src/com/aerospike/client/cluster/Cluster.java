@@ -292,21 +292,15 @@ public class Cluster implements Runnable, Closeable {
 		return aliases.get(alias);
 	}
 	
-	protected final void updatePartitions(Connection conn, Node node) throws AerospikeException {
-		HashMap<String,AtomicReferenceArray<Node>> map;
-		
-		if (node.useNewInfo) {
-			PartitionTokenizerNew tokens = new PartitionTokenizerNew(conn);
-			map = tokens.updatePartition(partitionWriteMap, node);
-		}
-		else {
-			PartitionTokenizerOld tokens = new PartitionTokenizerOld(conn);
-			map = tokens.updatePartition(partitionWriteMap, node);
-		}
-		
+	protected final int updatePartitions(Connection conn, Node node) throws AerospikeException {
+		PartitionInfo info = new PartitionInfo(conn, "partition-generation", "replicas-master");
+		int generation = info.parseGeneration();
+		HashMap<String,AtomicReferenceArray<Node>> map = info.parsePartitions(partitionWriteMap, node);
+				
 		if (map != null) {		
 			partitionWriteMap = map;
 		}
+		return generation;
 	}
 
 	private final void seedNodes(boolean failIfNotConnected) throws AerospikeException {

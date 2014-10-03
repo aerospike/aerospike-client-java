@@ -32,7 +32,6 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
-	boolean useNewInfo = true;
 
 	public NodeValidator(Cluster cluster, Host host) throws Exception {
 		try {
@@ -66,24 +65,7 @@ public final class NodeValidator {
 					
 					if (nodeName != null) {
 						this.name = nodeName;
-						this.address = address;
-						
-						// Check new info protocol support for >= 2.6.6 build
-						String buildVersion = map.get("build");
-						
-						if (buildVersion != null) {
-							try {
-								String[] vNumber = buildVersion.split("\\.");
-								int v1 = Integer.parseInt(vNumber[0]);
-								int v2 = Integer.parseInt(vNumber[1]);
-								int v3 = Integer.parseInt(vNumber[2]);
-								
-								this.useNewInfo = v1 > 2 || (v1 == 2 && (v2 > 6 || (v2 == 6 && v3 >= 6)));
-							}
-							catch (Exception e) {
-								// Unexpected exception. Use default info protocol.
-							}
-						}
+						this.address = address;						
 						return;
 					}
 				}
