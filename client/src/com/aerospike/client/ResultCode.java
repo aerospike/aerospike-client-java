@@ -458,6 +458,12 @@ public final class ResultCode {
 		case INVALID_PASSWORD:
 			return "Invalid password";
 
+		case EXPIRED_PASSWORD:
+			return "Password expired";
+
+		case FORBIDDEN_PASSWORD:
+			return "Password can't be reused";
+
 		case INVALID_CREDENTIAL:
 			return "Invalid credential";
 
