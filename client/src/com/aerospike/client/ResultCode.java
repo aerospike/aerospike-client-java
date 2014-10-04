@@ -169,8 +169,19 @@ public final class ResultCode {
 	 */
 	public static final int QUERY_END = 50;
 
+	/**
+	 * Security functionality not supported by connected server.
+	 */
 	public static final int SECURITY_NOT_SUPPORTED = 51;
+	
+	/**
+	 * Security functionality not enabled by connected server.
+	 */
 	public static final int SECURITY_NOT_ENABLED = 52;
+	
+	/**
+	 * Security type not supported by connected server.
+	 */
 	public static final int SECURITY_SCHEME_NOT_SUPPORTED = 53;
 	
 	/**
@@ -183,6 +194,9 @@ public final class ResultCode {
 	 */
 	public static final int INVALID_FIELD = 55;
 
+	/**
+	 * Security protocol not followed.
+	 */
 	public static final int ILLEGAL_STATE = 56;
 
 	/**
@@ -201,15 +215,28 @@ public final class ResultCode {
 	public static final int INVALID_PASSWORD = 62;
 
 	/**
+	 * Password has expired.
+	 */
+	public static final int EXPIRED_PASSWORD = 63;
+
+	/**
+	 * Forbidden password (e.g. recently used)
+	 */
+	public static final int FORBIDDEN_PASSWORD = 64;
+
+	/**
 	 * Security credential is invalid.
 	 */
-	public static final int INVALID_CREDENTIAL = 63;
+	public static final int INVALID_CREDENTIAL = 65;
 
 	/**
 	 * Role name is invalid.
 	 */
 	public static final int INVALID_ROLE = 70;
 
+	/**
+	 * Privilege is invalid.
+	 */
 	public static final int INVALID_PRIVILEGE = 71;
 	
 	/**
@@ -218,7 +245,7 @@ public final class ResultCode {
 	public static final int NOT_AUTHENTICATED = 80;
 
 	/**
-	 * User does not posses the required role to perform the database operation.
+	 * User does not possess the required role to perform the database operation.
 	 */
 	public static final int ROLE_VIOLATION = 81;
 
