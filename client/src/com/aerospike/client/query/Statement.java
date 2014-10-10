@@ -82,7 +82,7 @@ public final class Statement {
 
 	/**
 	 * Set Lua aggregation function parameters.  This function will be called on both the server 
-	 * and client for each selected item.
+	 * and client for each selected item.  For internal use.
 	 * 
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
@@ -94,7 +94,16 @@ public final class Statement {
 		this.functionArgs = functionArgs;
 		this.returnData = returnData;
 	}
-	
+
+	/**
+	 * Prepare statement just prior to execution.  For internal use.
+	 */
+	void prepare() {
+		if (taskId == 0) {
+			taskId = System.nanoTime();
+		}
+	}
+
 	/**
 	 * Return if full namespace/set scan is specified.
 	 */

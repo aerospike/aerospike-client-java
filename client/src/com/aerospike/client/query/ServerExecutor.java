@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.query;
 
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -43,11 +42,7 @@ public final class ServerExecutor {
 		Value[] functionArgs
 	) throws AerospikeException {
 		statement.setAggregateFunction(packageName, functionName, functionArgs, false);
-		
-		if (statement.taskId == 0) {
-			Random r = new Random();
-			statement.taskId = Math.abs(r.nextLong());
-		}
+		statement.prepare();
 		
 		completedCount = new AtomicInteger();
 

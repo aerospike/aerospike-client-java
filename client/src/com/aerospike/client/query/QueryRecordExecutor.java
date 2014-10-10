@@ -29,6 +29,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 		throws AerospikeException {
 		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
+		statement.prepare();
 	}
 	
 	public void execute() {		

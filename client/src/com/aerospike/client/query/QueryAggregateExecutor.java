@@ -53,6 +53,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
+		statement.prepare();
 
 		// Work around luaj LuaInteger static initialization bug.
 		// Calling LuaInteger.valueOf(long) is required because LuaValue.valueOf() does not have
