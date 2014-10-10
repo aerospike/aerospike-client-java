@@ -46,7 +46,7 @@ public final class ServerExecutor {
 		
 		if (statement.taskId == 0) {
 			Random r = new Random();
-			statement.taskId = r.nextInt(Integer.MAX_VALUE);
+			statement.taskId = Math.abs(r.nextLong());
 		}
 		
 		completedCount = new AtomicInteger();

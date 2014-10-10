@@ -30,7 +30,7 @@ public final class Statement {
 	String packageName;
 	String functionName;
 	Value[] functionArgs;
-	int taskId;
+	long taskId;
 	boolean returnData;
 	
 	/**
@@ -76,7 +76,7 @@ public final class Statement {
 	/**
 	 * Set optional query task id.
 	 */
-	public void setTaskId(int taskId) {
+	public void setTaskId(long taskId) {
 		this.taskId = taskId;
 	}
 
@@ -133,7 +133,7 @@ public final class Statement {
 	/**
 	 * Return task ID.
 	 */
-	public int getTaskId() {
+	public long getTaskId() {
 		return taskId;
 	}
 }
