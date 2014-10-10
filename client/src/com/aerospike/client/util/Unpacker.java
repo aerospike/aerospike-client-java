@@ -150,7 +150,7 @@ public abstract class Unpacker<T> {
 		return val;
 	}
 
-	private T unpackObject() throws IOException, ClassNotFoundException {
+	public T unpackObject() throws IOException, ClassNotFoundException {
 		int type = buffer[offset++] & 0xff;
 		
 		switch (type) {
@@ -302,7 +302,7 @@ public abstract class Unpacker<T> {
 		return unpacker.unpackMap();
 	}
 
-	private static final class ObjectUnpacker extends Unpacker<Object> {
+	public static final class ObjectUnpacker extends Unpacker<Object> {
 		
 		public ObjectUnpacker(byte[] buffer, int offset, int length) {
 			super(buffer, offset, length);
