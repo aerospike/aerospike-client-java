@@ -94,10 +94,9 @@ public abstract class QueryCommand extends MultiCommand {
 			fieldCount++;
 		}
 		
-		if (statement.taskId > 0) {
-			dataOffset += 8 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
+		// Allocate space for TaskId field.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
+		fieldCount++;
 		
 		if (statement.functionName != null) {
 			dataOffset += FIELD_HEADER_SIZE + 1;  // udf type
@@ -168,12 +167,11 @@ public abstract class QueryCommand extends MultiCommand {
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)100;			
 		}
-		
-		if (statement.taskId > 0) {
-			writeFieldHeader(8, FieldType.TRAN_ID);
-			Buffer.longToBytes(statement.taskId, dataBuffer, dataOffset);
-			dataOffset += 8;
-		}
+
+		// Write taskId field
+		writeFieldHeader(8, FieldType.TRAN_ID);
+		Buffer.longToBytes(statement.taskId, dataBuffer, dataOffset);
+		dataOffset += 8;
 		
 		if (statement.functionName != null) {
 			writeFieldHeader(1, FieldType.UDF_OP);
