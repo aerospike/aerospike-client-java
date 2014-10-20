@@ -297,6 +297,8 @@ public abstract class Command {
 	}
 	
 	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {
+		long taskId = System.nanoTime();
+
 		begin();
 		int fieldCount = 0;
 		
@@ -312,6 +314,10 @@ public abstract class Command {
 		
 		// Estimate scan options size.
 		dataOffset += 2 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
+		// Estimate taskId size.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
 		if (binNames != null) {
@@ -348,6 +354,11 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
+		// Write taskId field
+		writeFieldHeader(8, FieldType.TRAN_ID);
+		Buffer.longToBytes(taskId, dataBuffer, dataOffset);
+		dataOffset += 8;
+
 		if (binNames != null) {
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
