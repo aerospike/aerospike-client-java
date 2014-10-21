@@ -296,9 +296,7 @@ public abstract class Command {
 		end();
 	}
 	
-	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {
-		long taskId = System.nanoTime();
-
+	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames, long taskId) {
 		begin();
 		int fieldCount = 0;
 		

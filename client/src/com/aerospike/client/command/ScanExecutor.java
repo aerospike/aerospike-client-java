@@ -37,12 +37,13 @@ public final class ScanExecutor {
 	public ScanExecutor(Cluster cluster, Node[] nodes, ScanPolicy policy, String namespace, String setName, ScanCallback callback, String[] binNames) {
 		this.completedCount = new AtomicInteger();
 		this.threadPool = cluster.getThreadPool();
+		long taskId = System.nanoTime();
 		
 		// Initialize threads.		
 		threads = new ScanThread[nodes.length];
 		
 		for (int i = 0; i < nodes.length; i++) {
-			ScanCommand command = new ScanCommand(nodes[i], policy, namespace, setName, callback, binNames);
+			ScanCommand command = new ScanCommand(nodes[i], policy, namespace, setName, callback, binNames, taskId);
 			threads[i] = new ScanThread(command);
 		}
 		

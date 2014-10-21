@@ -758,8 +758,9 @@ public class AerospikeClient implements Closeable {
 		}
 		// Retry policy must be one-shot for scans.
 		policy.maxRetries = 0;
+		long taskId = System.nanoTime();
 
-		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames);
+		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
 		command.execute();
 	}
 
