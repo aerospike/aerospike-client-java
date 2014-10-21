@@ -140,7 +140,8 @@ public final class LargeSet {
 	 * Return size of set.
 	 */
 	public final int size() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "size", binName);
+		Object result = client.execute(policy, key, PackageName, "size", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 
 	/**
@@ -163,6 +164,7 @@ public final class LargeSet {
 	 * Return maximum number of entries in the set.
 	 */
 	public final int getCapacity() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "get_capacity", binName);
+		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 }
