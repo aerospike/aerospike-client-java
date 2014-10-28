@@ -76,7 +76,8 @@ public final class ResultSet implements Closeable {
 	public final void close() {
 		valid = false;
 
-		if (row != END) {
+		// Check if more results are available.
+		if (row != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}

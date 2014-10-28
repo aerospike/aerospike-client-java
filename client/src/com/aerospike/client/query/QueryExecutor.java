@@ -17,6 +17,7 @@
 package com.aerospike.client.query;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -33,6 +34,7 @@ public abstract class QueryExecutor {
 	protected final ExecutorService threadPool;
 	private final QueryThread[] threads;
 	private final AtomicInteger completedCount;
+    private final AtomicBoolean done;
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
 	
@@ -41,6 +43,7 @@ public abstract class QueryExecutor {
 		this.policy.maxRetries = 0; // Retry policy must be one-shot for queries.
 		this.statement = statement;
 		this.completedCount = new AtomicInteger();
+		this.done = new AtomicBoolean();
 		
 		if (node == null) {
 			nodes = cluster.getNodes();
@@ -80,33 +83,34 @@ public abstract class QueryExecutor {
 			int nextThread = finished + maxConcurrentNodes - 1;
 
 			// Determine if a new thread needs to be started.
-			if (nextThread < threads.length) {
+			if (nextThread < threads.length && ! done.get()) {
 				// Start new thread.
 				threadPool.execute(threads[nextThread]);
 			}
 		}
 		else {
-			// All threads complete.  Tell RecordSet thread to return complete to user.
-			sendCompleted();
+			// All threads complete.  Tell RecordSet thread to return complete to user
+			// if an exception has not already occurred.
+			if (done.compareAndSet(false, true)) {
+				sendCompleted();
+			}
 		}
 	}
 
 	protected final void stopThreads(Exception cause) {
-    	synchronized (threads) {
-    	   	if (exception != null) {
-    	   		return;
-    	   	}
-	    	exception = cause;  		
-    	}
-    	
-		for (QueryThread thread : threads) {
-			try {
-				thread.stop();
+		// There is no need to stop threads if all threads have already completed.
+		if (done.compareAndSet(false, true)) {
+	    	exception = cause;
+	    	
+			for (QueryThread thread : threads) {
+				try {
+					thread.stop();
+				}
+				catch (Exception e) {
+				}
 			}
-			catch (Exception e) {
-			}
+			sendCancel();
 		}
- 		sendCompleted();
     }
 
 	protected final void checkForException() throws AerospikeException {
@@ -136,15 +140,12 @@ public abstract class QueryExecutor {
 				if (command.isValid()) {
 					command.execute();
 				}
+				threadCompleted();
 			}
 			catch (Exception e) {
 				// Terminate other query threads.
 				stopThreads(e);
 			}			
-			
-		   	if (exception == null) {
-				threadCompleted();
-		   	}
 		}
 
 		public void stop() {
@@ -157,5 +158,6 @@ public abstract class QueryExecutor {
 	}
 	
 	protected abstract QueryCommand createCommand(Node node);
+	protected abstract void sendCancel();
 	protected abstract void sendCompleted();
 }

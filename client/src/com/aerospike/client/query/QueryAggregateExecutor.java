@@ -18,8 +18,6 @@ package com.aerospike.client.query;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
@@ -39,7 +37,6 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;
 	private LuaInstance lua;
-	private Future<?> future;
 	
 	public QueryAggregateExecutor(
 		Cluster cluster,
@@ -65,10 +62,10 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		LuaValue.valueOf(0);		
 	}
 	
-	public void execute() {		
+	public void execute() {
 		// Start Lua thread which reads from a queue, applies aggregate function and 
 		// writes to a result set. 
-		future = threadPool.submit(this);
+		threadPool.execute(this);
 	}
 	
 	public void run() {
@@ -101,7 +98,9 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			}
 			lua.call("apply_stream", args);
 		}
-		finally {			
+		finally {
+			// Send end command to user's result set.
+			resultSet.put(ResultSet.END);
 			LuaCache.putInstance(lua);
 		}
 	}
@@ -112,25 +111,25 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	}
 	
 	@Override
-	protected void sendCompleted() {
-		try {
-			// Send end command to lua thread.
-			inputQueue.put(LuaValue.NIL);
-		}
-		catch (InterruptedException ie) {
-		}
-			
-		if (exception == null) {
-			try {
-				// Ensure lua thread completes before sending end command to result set.
-				future.get(1000, TimeUnit.MILLISECONDS);
-			}
-			catch (Exception e) {
-			}
-		}
+	protected void sendCancel() {
+		// Clear lua input queue to ensure cancel is accepted.
+		inputQueue.clear();
+		sendCompleted();
+	}
 
-		// Send end command to user's result set.
-		resultSet.put(ResultSet.END);
+	@Override
+	protected void sendCompleted() {
+		// Send end command to lua thread.
+		// It's critical that the end put succeeds.
+		// Loop through all interrupts.
+		while (true) {
+			try {
+				inputQueue.put(LuaValue.NIL);
+				break;
+			}
+			catch (InterruptedException ie) {
+			}
+		}
 	}
 
 	public ResultSet getResultSet() {

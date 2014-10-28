@@ -78,7 +78,8 @@ public final class RecordSet implements Closeable {
 	public final void close() {
 		valid = false;
 		
-		if (record != END) {
+		// Check if more records are available.
+		if (record != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}
