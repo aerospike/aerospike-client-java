@@ -33,12 +33,12 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.DeleteCommand;
 import com.aerospike.client.command.ExecuteCommand;
+import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.ScanCommand;
-import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.large.LargeList;
@@ -57,7 +57,7 @@ import com.aerospike.client.query.QueryAggregateExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
-import com.aerospike.client.query.ServerExecutor;
+import com.aerospike.client.query.ServerCommand;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
@@ -704,8 +704,16 @@ public class AerospikeClient implements Closeable {
 		}
 
 		if (policy.concurrentNodes) {
-			ScanExecutor executor = new ScanExecutor(cluster, nodes, policy, namespace, setName, callback, binNames);
-			executor.scanParallel();
+			Executor executor = new Executor(cluster, nodes.length);
+			long taskId = System.nanoTime();
+
+			for (Node node : nodes)
+			{
+				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
+				executor.addCommand(command);
+			}
+
+			executor.execute(policy.maxConcurrentNodes);			
 		}
 		else {
 			for (Node node : nodes) {
@@ -992,7 +1000,22 @@ public class AerospikeClient implements Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		new ServerExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+		statement.setAggregateFunction(packageName, functionName, functionArgs, false);
+		statement.prepare();
+
+		Node[] nodes = cluster.getNodes();
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
+
+		Executor executor = new Executor(cluster, nodes.length);
+
+		for (Node node : nodes)
+		{
+			ServerCommand command = new ServerCommand(node, policy, statement);
+			executor.addCommand(command);
+		}
+		executor.execute(nodes.length);
 		return new ExecuteTask(cluster, statement);
 	}
 

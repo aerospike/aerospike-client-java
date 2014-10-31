@@ -88,7 +88,7 @@ public final class Statement {
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
 	 */
-	void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
+	public void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.functionArgs = functionArgs;
@@ -98,7 +98,7 @@ public final class Statement {
 	/**
 	 * Prepare statement just prior to execution.  For internal use.
 	 */
-	void prepare() {
+	public void prepare() {
 		if (taskId == 0) {
 			taskId = System.nanoTime();
 		}

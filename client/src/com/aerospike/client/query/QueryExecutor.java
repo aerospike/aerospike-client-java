@@ -102,13 +102,19 @@ public abstract class QueryExecutor {
 		if (done.compareAndSet(false, true)) {
 	    	exception = cause;
 	    	
+			// Send stop signal to threads.
 			for (QueryThread thread : threads) {
-				try {
-					thread.stop();
-				}
-				catch (Exception e) {
-				}
+				thread.stop();
 			}
+			
+			// Yield this thread so other threads have a chance to exit on their own.
+			Thread.yield();
+
+			// Interrupt slacker threads.
+			for (QueryThread thread : threads) {
+				thread.interrupt();
+			}
+
 			sendCancel();
 		}
     }
@@ -128,6 +134,7 @@ public abstract class QueryExecutor {
 	private final class QueryThread implements Runnable {
 		private final QueryCommand command;
 		private Thread thread;
+		private volatile boolean end;
 
 		public QueryThread(QueryCommand command) {
 			this.command = command;
@@ -140,19 +147,35 @@ public abstract class QueryExecutor {
 				if (command.isValid()) {
 					command.execute();
 				}
+				end = true;
 				threadCompleted();
 			}
 			catch (Exception e) {
+				end = true;
 				// Terminate other query threads.
 				stopThreads(e);
 			}			
 		}
 
+		/**
+		 * Send stop signal to each thread.
+		 */
 		public void stop() {
 			command.stop();
-			
-			if (thread != null) {
-				thread.interrupt();
+		}
+		
+		/**
+		 * Terminate slacker threads who are stuck in potentially permanent wait states.
+		 */
+		public void interrupt() {
+			// Only interrupt thread when it's stuck in a wait state.  Otherwise, the 
+			// interruption could occur in a different task which happens to reuse this thread.
+			if (thread != null && !end) {
+				Thread.State state = thread.getState();
+				
+				if (state == Thread.State.BLOCKED || state == Thread.State.WAITING) {
+					thread.interrupt();
+				}
 			}
 		}
 	}

@@ -54,20 +54,26 @@ public final class ResultSet implements Closeable {
 	 * @return		whether record exists - if false, no more records are available 
 	 */
 	public final boolean next() throws AerospikeException {
-		if (valid) {
-			try {
-				row = queue.take();
-
-				if (row == END) {
-					executor.checkForException();
-					valid = false;
-				}
-			}
-			catch (InterruptedException ie) {
-				valid = false;
-			}
+		if (! valid) {
+			executor.checkForException();
+			return false;
 		}
-		return valid;
+
+		try {
+			row = queue.take();
+		}
+		catch (InterruptedException ie) {
+			valid = false;
+			return false;
+		}
+
+		if (row == END) {
+			valid = false;
+			executor.checkForException();
+			return false;
+		}
+
+		return true;
 	}
 	
 	/**
@@ -102,19 +108,22 @@ public final class ResultSet implements Closeable {
 	 * Put object on the queue.
 	 */
 	public final boolean put(Object object) {
-		if (valid) {
-			try {
-				// This put will block if queue capacity is reached.
-				queue.put(object);
-			}
-			catch (InterruptedException ie) {
-				// Valid may have changed.  Check again.
-				if (valid) {
-					abort();
-				}
-			}
+		if (! valid) {
+			return false;
 		}
-		return valid;
+
+		try {
+			// This put will block if queue capacity is reached.
+			queue.put(object);
+			return true;
+		}
+		catch (InterruptedException ie) {
+			// Valid may have changed.  Check again.
+			if (valid) {
+				abort();
+			}
+			return false;
+		}
 	}
 	
 	/**
@@ -122,6 +131,7 @@ public final class ResultSet implements Closeable {
 	 */
 	private final void abort() {
 		valid = false;
+		queue.clear();
 		
 		// It's critical that the end put succeeds.
 		// Loop through all interrupts.
