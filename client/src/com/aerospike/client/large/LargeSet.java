@@ -107,8 +107,8 @@ public final class LargeSet {
 	 * @return					true if found, otherwise false
 	 */
 	public final boolean exists(Value value) throws AerospikeException {
-		int ret = (Integer)client.execute(policy, key, PackageName, "exists", binName, value);
-		return ret == 1;
+		Object result = client.execute(policy, key, PackageName, "exists", binName, value);
+		return (result != null)? (Integer)result != 0 : false;
 	}
 
 	/**
