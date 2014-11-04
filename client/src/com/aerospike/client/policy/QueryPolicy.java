@@ -36,4 +36,12 @@ public class QueryPolicy extends Policy {
 	 * If the queue is full, the producer threads will block until records are consumed.
 	 */
 	public int recordQueueSize = 5000;
+	
+	/**
+	 * Default constructor.
+	 */
+	public QueryPolicy() {
+		// Queries should not retry.
+		super.maxRetries = 0;
+	}
 }

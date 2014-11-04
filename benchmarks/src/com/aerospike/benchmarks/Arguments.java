@@ -29,9 +29,9 @@ public class Arguments {
 	public String setName;
 	public Workload workload;
 	public DBObjectSpec[] objectSpec;
-	public Policy readPolicy = new Policy();
-	public WritePolicy writePolicy = new WritePolicy();
-	public BatchPolicy batchPolicy = new BatchPolicy();
+	public Policy readPolicy;
+	public WritePolicy writePolicy;
+	public BatchPolicy batchPolicy;
 	public int batchSize;
 	public int nBins;
 	public int readPct;

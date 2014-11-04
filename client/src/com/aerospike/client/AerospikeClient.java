@@ -695,8 +695,6 @@ public class AerospikeClient implements Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
-		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 0;
 		
 		Node[] nodes = cluster.getNodes();		
 		if (nodes.length == 0) {
@@ -764,8 +762,6 @@ public class AerospikeClient implements Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
-		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 0;
 		long taskId = System.nanoTime();
 
 		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);

@@ -46,8 +46,6 @@ public class Parameters {
 		this.password = password;
 		this.namespace = namespace;
 		this.set = set;
-		this.writePolicy = new WritePolicy();
-		this.policy = new Policy();
 	}
 	
 	/**

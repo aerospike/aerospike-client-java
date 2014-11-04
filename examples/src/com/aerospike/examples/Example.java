@@ -35,6 +35,9 @@ public abstract class Example {
 		policy.password = params.password;
 		policy.failIfNotConnected = true;
 		
+		params.policy = policy.readPolicyDefault;
+		params.writePolicy = policy.writePolicyDefault;
+
 		AerospikeClient client = new AerospikeClient(policy, params.host, params.port);
 
 		try {

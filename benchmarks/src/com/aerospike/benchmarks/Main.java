@@ -202,7 +202,19 @@ public class Main implements Log.Callback {
 			throw new Exception("Unexpected arguments: " + Arrays.toString(extra));
 		}
 		
-		if (line.hasOption("hosts")) {
+        if (line.hasOption("async")) {
+        	this.asyncEnabled = true;
+        	args.readPolicy = clientPolicy.asyncReadPolicyDefault;
+        	args.writePolicy = clientPolicy.asyncWritePolicyDefault;
+        	args.batchPolicy = clientPolicy.batchPolicyDefault;  // async does not need batch policy.
+        }
+        else {
+        	args.readPolicy = clientPolicy.readPolicyDefault;
+        	args.writePolicy = clientPolicy.writePolicyDefault;
+        	args.batchPolicy = clientPolicy.batchPolicyDefault;
+        }
+
+        if (line.hasOption("hosts")) {
 			this.hosts = line.getOptionValue("hosts").split(",");
 		} 
 		else {
@@ -447,10 +459,6 @@ public class Main implements Log.Callback {
 			args.debug = true;
 		}
 
-        if (line.hasOption("async")) {
-        	this.asyncEnabled = true;
-        }
-        
         if (line.hasOption("batchSize")) {
         	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
         }

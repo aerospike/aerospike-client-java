@@ -19,6 +19,9 @@ package com.aerospike.client.async;
 import java.util.concurrent.ExecutorService;
 
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Container object for client policy Command.
@@ -77,4 +80,32 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	 * The default, null, indicates asynchronous tasks should be run in the same thread as the selector.
 	 */
 	public ExecutorService asyncTaskThreadPool;
+	
+	/**
+	 * Default read policy that is used when asynchronous read command's policy is null.
+	 */
+	public Policy asyncReadPolicyDefault = new Policy();
+	
+	/**
+	 * Default write policy that is used when asynchronous write command's policy is null.
+	 */
+	public WritePolicy asyncWritePolicyDefault = new WritePolicy();
+	
+	/**
+	 * Default scan policy that is used when asynchronous scan command's policy is null.
+	 */
+	public ScanPolicy asyncScanPolicyDefault = new ScanPolicy();
+
+	/**
+	 * Default constructor.
+	 */
+	public AsyncClientPolicy() {
+		// Setting sleepBetweenRetries > 0 is a bad idea in asynchronous mode when 
+		// there is no taskThreadPool defined.  Each failed command would sleep in sequence 
+		// (not parallel), thus compounding recovery time.  Reset sleep time to zero because
+		// there is no asyncTaskThreadPool by default.
+		asyncReadPolicyDefault.sleepBetweenRetries = 0;
+		asyncWritePolicyDefault.sleepBetweenRetries = 0;
+		asyncScanPolicyDefault.sleepBetweenRetries = 0;
+	}
 }
