@@ -83,6 +83,17 @@ public final class LargeMap {
 	}
 
 	/**
+	 * Check existence of key in the map.
+	 * 
+	 * @param keyValue			key to check
+	 * @return					true if found, otherwise false
+	 */
+	public final boolean exists(Value keyValue) throws AerospikeException {
+		Object result = client.execute(policy, key, PackageName, "exists", binName, keyValue);
+		return (result != null)? (Integer)result != 0 : false;
+	}
+
+	/**
 	 * Return all objects in the map.
 	 */
 	public final Map<?,?> scan() throws AerospikeException {
