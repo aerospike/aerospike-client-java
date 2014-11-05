@@ -64,7 +64,7 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {
 		if (resultCode == 0) {
-			Record record = parseRecordWithDuplicates();
+			Record record = parseRecordBatch();
 			listener.onRecord(key, record);
 		}
 		else {

@@ -40,7 +40,6 @@ public abstract class Command {
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
-	public static final int INFO2_GENERATION_DUP	= (1 << 4); // Create a duplicate on a generation collision.
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
 	
 	public static final int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
@@ -456,10 +455,6 @@ public abstract class Command {
 		case EXPECT_GEN_GT:
     		generation = policy.generation;    			
     		writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		case DUPLICATE:
-    		generation = policy.generation;			
-    		writeAttr |= Command.INFO2_GENERATION_DUP;
 			break;
 		}
 		

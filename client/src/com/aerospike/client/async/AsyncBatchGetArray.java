@@ -70,7 +70,7 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 
 		if (Arrays.equals(key.digest, keys[offset].digest)) {			
 			if (resultCode == 0) {
-				records[offset] = parseRecordWithDuplicates();
+				records[offset] = parseRecordBatch();
 			}
 		}
 		else {

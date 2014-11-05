@@ -122,7 +122,7 @@ public final class ScanCommand extends MultiCommand {
 			}
 			
 			// Call the callback function.
-			callback.scanCallback(key, new Record(bins, null, generation, expiration));
+			callback.scanCallback(key, new Record(bins, generation, expiration));
 		}
 		return true;
 	}

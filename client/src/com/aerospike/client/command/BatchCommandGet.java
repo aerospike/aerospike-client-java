@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -123,7 +122,6 @@ public final class BatchCommandGet extends MultiCommand {
 		throws AerospikeException, IOException {
 		
 		Map<String,Object> bins = null;
-		ArrayList<Map<String, Object>> duplicates = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
 			if (! valid) {
@@ -133,7 +131,6 @@ public final class BatchCommandGet extends MultiCommand {
     		readBytes(8);	
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
 			byte particleType = dataBuffer[5];
-			byte version = dataBuffer[6];
 			byte nameSize = dataBuffer[7];
 			
 			readBytes(nameSize);
@@ -146,46 +143,13 @@ public final class BatchCommandGet extends MultiCommand {
 			// Currently, the batch command returns all the bins even if a subset of
 			// the bins are requested. We have to filter it on the client side.
 			// TODO: Filter batch bins on server!
-			if (binNames == null || binNames.contains(name)) {
-				Map<String,Object> vmap = null;
-				
-				if (version > 0 || duplicates != null) {
-					if (duplicates == null) {
-						duplicates = new ArrayList<Map<String,Object>>(4);
-						duplicates.add(bins);
-						bins = null;
-						
-						for (int j = 0; j < version; j++) {
-							duplicates.add(null);
-						}
-					} 
-					else {
-						for (int j = duplicates.size(); j < version + 1; j++) 
-							duplicates.add(null);
-					}
-		
-					vmap = duplicates.get(version);
-					if (vmap == null) {
-						vmap = new HashMap<String,Object>();
-						duplicates.set(version, vmap);
-					}
+			if (binNames == null || binNames.contains(name)) {				
+				if (bins == null) {
+					bins = new HashMap<String,Object>();
 				}
-				else {
-					if (bins == null) {
-						bins = new HashMap<String,Object>();
-					}
-					vmap = bins;
-				}
-				vmap.put(name, value);
+				bins.put(name, value);
 			}
-	    }
-	
-	    // Remove null duplicates just in case there were holes in the version number space.
-	    if (duplicates != null) {
-	        while (duplicates.remove(null)) {
-	        	;
-	        }
-	    }
-	    return new Record(bins, duplicates, generation, expiration);	    
+	    }	
+	    return new Record(bins, generation, expiration);	    
 	}
 }

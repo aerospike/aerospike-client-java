@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -111,7 +110,7 @@ public class ReadCommand extends SingleCommand {
                   
         if (opCount == 0) {
         	// Bin data was not returned.
-        	record = new Record(null, null, generation, expiration);
+        	record = new Record(null, generation, expiration);
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);            
@@ -152,12 +151,11 @@ public class ReadCommand extends SingleCommand {
 		int expiration
 	) throws AerospikeException {
 		Map<String,Object> bins = null;
-		ArrayList<Map<String, Object>> duplicates = null;
 	    int receiveOffset = 0;
 	
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
-		if (fieldCount != 0) {
+		if (fieldCount > 0) {
 			// Just skip over all the fields
 			for (int i = 0; i < fieldCount; i++) {
 				int fieldSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
@@ -168,7 +166,6 @@ public class ReadCommand extends SingleCommand {
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
 			byte particleType = dataBuffer[receiveOffset+5];
-			byte version = dataBuffer[receiveOffset+6];
 			byte nameSize = dataBuffer[receiveOffset+7];
 			String name = Buffer.utf8ToString(dataBuffer, receiveOffset+8, nameSize);
 			receiveOffset += 4 + 4 + nameSize;
@@ -177,45 +174,12 @@ public class ReadCommand extends SingleCommand {
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
 	
-			Map<String,Object> vmap = null;
-			
-			if (version > 0 || duplicates != null) {
-				if (duplicates == null) {
-					duplicates = new ArrayList<Map<String,Object>>(4);
-					duplicates.add(bins);
-					bins = null;
-					
-					for (int j = 0; j < version; j++) {
-						duplicates.add(null);
-					}
-				} 
-				else {
-					for (int j = duplicates.size(); j < version + 1; j++) 
-						duplicates.add(null);
-				}
-	
-				vmap = duplicates.get(version);
-				if (vmap == null) {
-					vmap = new HashMap<String,Object>();
-					duplicates.set(version, vmap);
-				}
+			if (bins == null) {
+				bins = new HashMap<String,Object>();
 			}
-			else {
-				if (bins == null) {
-					bins = new HashMap<String,Object>();
-				}
-				vmap = bins;
-			}
-			vmap.put(name, value);
-	    }
-	
-	    // Remove null duplicates just in case there were holes in the version number space.
-	    if (duplicates != null) {
-	        while (duplicates.remove(null)) {
-	        	;
-	        }
-	    }
-	    return new Record(bins, duplicates, generation, expiration);
+			bins.put(name, value);
+	    }	
+	    return new Record(bins, generation, expiration);
 	}
 	
 	public Record getRecord() {
