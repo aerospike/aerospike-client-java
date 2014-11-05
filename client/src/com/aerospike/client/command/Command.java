@@ -168,6 +168,7 @@ public abstract class Command {
 		int readAttr = 0;
 		int writeAttr = 0;
 		boolean readHeader = false;
+		boolean userKeyFieldCalculated = false;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
@@ -190,6 +191,13 @@ public abstract class Command {
 				break;
 				
 			default:
+				// Check if write policy requires saving the user key and calculate the data size.
+				// This should only be done once for the entire request even with multiple write operations.
+				if (policy.sendKey && userKeyFieldCalculated == false) {
+					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE;
+					fieldCount++;
+					userKeyFieldCalculated = true;
+				}
 				writeAttr = Command.INFO2_WRITE;
 				break;				
 			}
@@ -205,6 +213,10 @@ public abstract class Command {
 		}
 		writeKey(key);
 					
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+
 		for (Operation operation : operations) {
 			writeOperation(operation);
 		}
