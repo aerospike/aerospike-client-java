@@ -424,7 +424,6 @@ public abstract class Command {
 	/**
 	 * Header write for write operations.
 	 */
-	@SuppressWarnings("deprecation")
 	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
         // Set flags.
 		int generation = 0;
@@ -443,23 +442,7 @@ public abstract class Command {
 			infoAttr |= Command.INFO3_REPLACE_ONLY;
 			break;
 		case CREATE_ONLY:
-		case FAIL:
     		writeAttr |= Command.INFO2_CREATE_ONLY;
-			break;
-		// The remaining enums are replaced by "policy.generationPolicy".
-		// These enums will eventually be removed.
-		// They are handled here for legacy compatibility only.
-		case EXPECT_GEN_EQUAL:
-    		generation = policy.generation;    			
-    		writeAttr |= Command.INFO2_GENERATION;
-			break;
-		case EXPECT_GEN_GT:
-    		generation = policy.generation;    			
-    		writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		case DUPLICATE:
-    		generation = policy.generation;			
-    		writeAttr |= Command.INFO2_GENERATION_DUP;
 			break;
 		}
 		
