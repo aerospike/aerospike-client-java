@@ -123,9 +123,8 @@ public abstract class QueryCommand extends MultiCommand {
 
 		sizeBuffer();
 		
-		byte readAttr = Command.INFO1_READ;		
 		int operationCount = (statement.filters == null && statement.binNames != null)? statement.binNames.length : 0;
-		writeHeader(readAttr, 0, fieldCount, operationCount);
+		writeQueryHeader(fieldCount, operationCount);
 				
 		if (statement.namespace != null) {
 			writeField(statement.namespace, FieldType.NAMESPACE);
@@ -191,5 +190,9 @@ public abstract class QueryCommand extends MultiCommand {
 		}
 		
 		end();
+	}
+	
+	protected void writeQueryHeader(int fieldCount, int operationCount) {
+		writeHeader(Command.INFO1_READ, 0, fieldCount, operationCount);
 	}
 }

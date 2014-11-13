@@ -46,7 +46,7 @@ public class LargeMap extends Example {
 		client.delete(params.writePolicy, key);
 		
 		// Initialize Large Map operator.
-		com.aerospike.client.large.LargeMap lmap = client.getLargeMap(params.policy, key, binName, null);
+		com.aerospike.client.large.LargeMap lmap = client.getLargeMap(params.writePolicy, key, binName, null);
 						
 		// Write values.
 		lmap.put(Value.get("lmapName1"), Value.get("lmapValue1"));

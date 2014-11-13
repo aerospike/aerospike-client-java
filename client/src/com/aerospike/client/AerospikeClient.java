@@ -778,14 +778,31 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName, String userModule)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
 	public final LargeList getLargeList(Policy policy, Key key, String binName, String userModule) {
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return new LargeList(this, writePolicy, key, binName, userModule);
+	}
+
+	/**
+	 * Initialize large list operator.  This operator can be used to create and manage a list 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule) {
 		return new LargeList(this, policy, key, binName, userModule);
-	}	
+	}
 
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
@@ -793,14 +810,31 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #getLargeMap(WritePolicy policy, Key key, String binName, String userModule)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
 	public final LargeMap getLargeMap(Policy policy, Key key, String binName, String userModule) {
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return new LargeMap(this, writePolicy, key, binName, userModule);
+	}
+
+	/**
+	 * Initialize large map operator.  This operator can be used to create and manage a map 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeMap getLargeMap(WritePolicy policy, Key key, String binName, String userModule) {
 		return new LargeMap(this, policy, key, binName, userModule);
-	}	
+	}
 
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
@@ -808,14 +842,31 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #getLargeSet(WritePolicy policy, Key key, String binName, String userModule)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
 	public final LargeSet getLargeSet(Policy policy, Key key, String binName, String userModule) {
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return new LargeSet(this, writePolicy, key, binName, userModule);
+	}
+
+	/**
+	 * Initialize large set operator.  This operator can be used to create and manage a set 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeSet getLargeSet(WritePolicy policy, Key key, String binName, String userModule) {
 		return new LargeSet(this, policy, key, binName, userModule);
-	}	
+	}
 
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
@@ -823,14 +874,31 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #getLargeStack(WritePolicy policy, Key key, String binName, String userModule)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
 	public final LargeStack getLargeStack(Policy policy, Key key, String binName, String userModule) {
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return new LargeStack(this, writePolicy, key, binName, userModule);
+	}
+
+	/**
+	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 */
+	public final LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule) {
 		return new LargeStack(this, policy, key, binName, userModule);
-	}	
+	}
 
 	//---------------------------------------------------------------
 	// User defined functions (Supported by Aerospike 3 servers only)
@@ -923,6 +991,7 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param packageName			server package name where user defined function resides
@@ -932,9 +1001,33 @@ public class AerospikeClient implements Closeable {
 	 * @throws AerospikeException	if transaction fails
 	 */
 	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
+		throws AerospikeException {	
+		
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return execute(writePolicy, key, packageName, functionName, args);
+	}
+	
+	/**
+	 * Execute user defined function on server and return results.
+	 * The function operates on a single record.
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * udf file = <server udf dir>/<package name>.lua
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param packageName			server package name where user defined function resides
+	 * @param functionName			user defined function
+	 * @param args					arguments passed in to user defined function
+	 * @return						return value of user defined function
+	 * @throws AerospikeException	if transaction fails
+	 */
+	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) 
 		throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = writePolicyDefault;
 		}
 		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
 		command.execute();
@@ -965,7 +1058,7 @@ public class AerospikeClient implements Closeable {
 		}
 		throw new AerospikeException("Invalid UDF return value");
 	}
-	
+
 	//----------------------------------------------------------
 	// Query/Execute UDF (Supported by Aerospike 3 servers only)
 	//----------------------------------------------------------
@@ -979,6 +1072,7 @@ public class AerospikeClient implements Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
+	 * @deprecated Use {@link #execute(WritePolicy policy, Statement statement, String packageName, String functionName, Value... functionArgs)} instead. 
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param statement				record filter
 	 * @param packageName			server package where user defined function resides
@@ -993,8 +1087,35 @@ public class AerospikeClient implements Closeable {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException {
+		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
+		return execute(writePolicy, statement, packageName, functionName, functionArgs);
+	}
+
+	/**
+	 * Apply user defined function on records that match the statement filter.
+	 * Records are not returned to the client.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * ExecuteTask instance.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param statement				record filter
+	 * @param packageName			server package where user defined function resides
+	 * @param functionName			function name
+	 * @param functionArgs			to pass to function name, if any
+	 * @throws AerospikeException	if command fails
+	 */
+	public final ExecuteTask execute(
+		WritePolicy policy,
+		Statement statement,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = writePolicyDefault;
 		}
 		statement.setAggregateFunction(packageName, functionName, functionArgs, false);
 		statement.prepare();

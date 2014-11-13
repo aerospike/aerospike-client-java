@@ -23,7 +23,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Create and manage a list within a single bin.
@@ -32,7 +32,7 @@ public final class LargeList {
 	private static final String PackageName = "llist";
 	
 	private final AerospikeClient client;
-	private final Policy policy;
+	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
 	private final Value userModule;
@@ -46,7 +46,7 @@ public final class LargeList {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default list
 	 */
-	public LargeList(AerospikeClient client, Policy policy, Key key, String binName, String userModule) {
+	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;

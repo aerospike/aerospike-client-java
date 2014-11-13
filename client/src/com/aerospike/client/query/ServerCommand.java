@@ -23,12 +23,19 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public final class ServerCommand extends QueryCommand {
+	private final WritePolicy writePolicy;
 	
-	public ServerCommand(Node node, Policy policy, Statement statement) {
+	public ServerCommand(Node node, WritePolicy policy, Statement statement) {
 		super(node, policy, statement);
+		this.writePolicy = policy;
+	}
+	
+	@Override
+	protected void writeQueryHeader(int fieldCount, int operationCount) {
+		writeHeader(writePolicy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
 	}
 	
 	@Override

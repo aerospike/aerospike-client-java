@@ -46,7 +46,7 @@ public class LargeSet extends Example {
 		client.delete(params.writePolicy, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.large.LargeSet set = client.getLargeSet(params.policy, key, binName, null);
+		com.aerospike.client.large.LargeSet set = client.getLargeSet(params.writePolicy, key, binName, null);
 						
 		// Write values.
 		set.add(Value.get("setvalue1"));

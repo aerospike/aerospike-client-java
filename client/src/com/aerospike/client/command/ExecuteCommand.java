@@ -20,22 +20,24 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public final class ExecuteCommand extends ReadCommand {
+	private final WritePolicy writePolicy;
 	private final String packageName;
 	private final String functionName;
 	private final Value[] args;
 
 	public ExecuteCommand(
 		Cluster cluster, 
-		Policy policy,
+		WritePolicy writePolicy,
 		Key key,
 		String packageName,
 		String functionName,
 		Value[] args
 	) {
-		super(cluster, policy, key, null);
+		super(cluster, writePolicy, key, null);
+		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.args = args;
@@ -43,6 +45,6 @@ public final class ExecuteCommand extends ReadCommand {
 	
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setUdf(key, packageName, functionName, args);
+		setUdf(writePolicy, key, packageName, functionName, args);
 	}
 }

@@ -226,7 +226,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
+	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(key);		
@@ -234,7 +234,7 @@ public abstract class Command {
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		sizeBuffer();
-		writeHeader(0, Command.INFO2_WRITE, fieldCount, 0);
+		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(key);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
