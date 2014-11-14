@@ -16,7 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -28,14 +27,6 @@ public final class Record {
 	 * Map of requested name/value bins.
 	 */
 	public final Map<String,Object> bins;
-	
-	/**
-	 * List of all duplicate records (if any) for a given key.  Duplicates are only created when
-	 * the server configuration option "allow-versions" is true (default is false) and client
-	 * RecordExistsAction.DUPLICATE policy flag is set and there is a generation error.
-	 * Almost always null.
-	 */
-	public final List<Map<String,Object>> duplicates;
 	
 	/**
 	 * Record modification count.
@@ -52,12 +43,10 @@ public final class Record {
 	 */
 	public Record(
 		Map<String,Object> bins,
-		List<Map<String,Object>> duplicates,
 		int generation,
 		int expiration
 	) {
 		this.bins = bins;
-		this.duplicates = duplicates;
 		this.generation = generation;
 		this.expiration = expiration;
 	}
@@ -71,7 +60,48 @@ public final class Record {
 	}
 	
 	/**
-	 * Return string representation of record.
+	 * Get bin value as long.
+	 */
+	public long getLong(String name)
+	{
+		return (Long)getValue(name);
+	}
+
+	/**
+	 * Get bin value as int.
+	 */
+	public int getInt(String name)
+	{
+		return (Integer)getValue(name);
+	}
+
+	/**
+	 * Get bin value as short.
+	 */
+	public short getShort(String name)
+	{
+		return (Short)getValue(name);
+	}
+
+	/**
+	 * Get bin value as byte.
+	 */
+	public byte getByte(String name)
+	{
+		return (Byte)getValue(name);
+	}
+
+	/**
+	 * Get bin value as boolean.
+	 */
+	public boolean getBool(String name)
+	{
+		long v = (Long)getValue(name);
+		return (v != 0) ? true : false;
+	}
+
+	/**
+	 * Return String representation of record.
 	 */
 	@Override
 	public String toString() {

@@ -30,7 +30,7 @@ public final class Statement {
 	String packageName;
 	String functionName;
 	Value[] functionArgs;
-	int taskId;
+	long taskId;
 	boolean returnData;
 	
 	/**
@@ -76,25 +76,34 @@ public final class Statement {
 	/**
 	 * Set optional query task id.
 	 */
-	public void setTaskId(int taskId) {
+	public void setTaskId(long taskId) {
 		this.taskId = taskId;
 	}
 
 	/**
 	 * Set Lua aggregation function parameters.  This function will be called on both the server 
-	 * and client for each selected item.
+	 * and client for each selected item.  For internal use.
 	 * 
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
 	 */
-	void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
+	public void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.functionArgs = functionArgs;
 		this.returnData = returnData;
 	}
-	
+
+	/**
+	 * Prepare statement just prior to execution.  For internal use.
+	 */
+	public void prepare() {
+		if (taskId == 0) {
+			taskId = System.nanoTime();
+		}
+	}
+
 	/**
 	 * Return if full namespace/set scan is specified.
 	 */
@@ -133,7 +142,7 @@ public final class Statement {
 	/**
 	 * Return task ID.
 	 */
-	public int getTaskId() {
+	public long getTaskId() {
 		return taskId;
 	}
 }

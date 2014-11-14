@@ -51,4 +51,12 @@ public final class ScanPolicy extends Policy {
 	 * Terminate scan if cluster in fluctuating state.
 	 */
 	public boolean failOnClusterChange;
+	
+	/**
+	 * Default constructor.
+	 */
+	public ScanPolicy() {
+		// Scans should not retry.
+		super.maxRetries = 0;
+	}
 }

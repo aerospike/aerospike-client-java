@@ -40,17 +40,13 @@ public abstract class InsertTask implements Runnable {
 
 	public void run() {
 		try {			
-			String key;
-			Bin[] bins;			
-			Random r = new Random();
-			int i = 0;
+			Random random = new Random();
 
-			while (i < keyCount) {
-				key	 = Utils.genKey(keyStart + i, args.keySize);
-				bins = Utils.genBins(r, args.nBins, args.objectSpec, 0);
-				
-				try {				
-					put(args.writePolicy, new Key(args.namespace, args.setName, key), bins);
+			for (int i = 0; i < keyCount; i++) {
+				try {
+					Key key = new Key(args.namespace, args.setName, keyStart + i);
+					Bin[] bins = args.getBins(random, true);
+					put(args.writePolicy, key, bins);
 				}
 				catch (AerospikeException ae) {
 					writeFailure(ae);
@@ -58,7 +54,6 @@ public abstract class InsertTask implements Runnable {
 				catch (Exception e) {
 					writeFailure(e);
 				}
-				i++;
 			}
 		}
 		catch (Exception ex) {

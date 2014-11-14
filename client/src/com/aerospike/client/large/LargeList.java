@@ -23,7 +23,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Create and manage a list within a single bin.
@@ -32,7 +32,7 @@ public final class LargeList {
 	private static final String PackageName = "llist";
 	
 	private final AerospikeClient client;
-	private final Policy policy;
+	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
 	private final Value userModule;
@@ -46,7 +46,7 @@ public final class LargeList {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default list
 	 */
-	public LargeList(AerospikeClient client, Policy policy, Key key, String binName, String userModule) {
+	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
@@ -55,7 +55,9 @@ public final class LargeList {
 	}
 	
 	/**
-	 * Add a value to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add value to list. Fail if value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param value				value to add
 	 */
@@ -64,7 +66,9 @@ public final class LargeList {
 	}
 
 	/**
-	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add values to list.  Fail if a value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param values			values to add
 	 */
@@ -73,12 +77,47 @@ public final class LargeList {
 	}
 	
 	/**
-	 * Add values to the list.  If the list does not exist, create it using specified userModule configuration.
+	 * Add values to the list.  Fail if a value's key exists and list is configured for unique keys.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
 	 * 
 	 * @param values			values to add
 	 */
 	public final void add(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), userModule);
+	}
+
+	/**
+	 * Update value in list if key exists.  Add value to list if key does not exist.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param value				value to update
+	 */
+	public final void update(Value value) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update", binName, value, userModule);
+	}
+
+	/**
+	 * Update/Add each value in array depending if key exists or not.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to update
+	 */
+	public final void update(Value... values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), userModule);
+	}
+	
+	/**
+	 * Update/Add each value in values list depending if key exists or not.
+	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
+	 * If large list does not exist, create it using specified userModule configuration.
+	 * 
+	 * @param values			values to update
+	 */
+	public final void update(List<?> values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), userModule);
 	}
 
 	/**
@@ -166,7 +205,8 @@ public final class LargeList {
 	 * Return size of list.
 	 */
 	public final int size() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "size", binName);
+		Object result = client.execute(policy, key, PackageName, "size", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 
 	/**
@@ -189,6 +229,7 @@ public final class LargeList {
 	 * Return maximum number of entries in the list.
 	 */
 	public final int getCapacity() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "get_capacity", binName);
+		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 }

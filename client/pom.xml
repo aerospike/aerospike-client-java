@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client</artifactId>
-  <version>3.0.28</version>
+  <version>3.0.31</version>
   <packaging>jar</packaging>
 
   <name>aerospike-client</name>
@@ -102,5 +102,24 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
   </properties>
+
+  <profiles>
+    <profile>
+      <id>jdk18</id>
+	      <activation>
+          <jdk>1.8</jdk>
+	      </activation>
+	    <build>
+        <plugins>   
+          <plugin> 
+            <artifactId>maven-javadoc-plugin</artifactId>
+            <configuration>
+              <additionalparam>-Xdoclint:none</additionalparam>
+            </configuration>
+          </plugin>
+       </plugins>      
+      </build>
+    </profile>
+  </profiles>
 
 </project>

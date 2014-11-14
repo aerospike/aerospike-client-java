@@ -19,7 +19,7 @@ package com.aerospike.client;
 /**
  * Aerospike exceptions that can be thrown from the client.
  */
-public class AerospikeException extends Exception {
+public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
 	private int resultCode;

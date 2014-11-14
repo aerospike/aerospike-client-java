@@ -25,10 +25,11 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	
 	private final RecordSet recordSet;
 	
-	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement) 
+	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) 
 		throws AerospikeException {
-		super(cluster, policy, statement);
+		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
+		statement.prepare();
 	}
 	
 	public void execute() {		
@@ -40,6 +41,11 @@ public final class QueryRecordExecutor extends QueryExecutor {
 		return new QueryRecordCommand(node, policy, statement, recordSet);
 	}
 	
+	@Override
+	protected void sendCancel() {
+		recordSet.put(RecordSet.END);
+	}
+
 	@Override
 	protected void sendCompleted() {		
 		recordSet.put(RecordSet.END);

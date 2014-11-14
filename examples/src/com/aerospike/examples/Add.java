@@ -58,7 +58,7 @@ public class Add extends Example {
 
 		// The value received from the server is an unsigned byte stream.
 		// Convert to an integer before comparing with expected.
-		int received = (Integer)record.getValue(bin.name);
+		int received = record.getInt(bin.name);
 		int expected = 15;
 
 		if (received == expected) {

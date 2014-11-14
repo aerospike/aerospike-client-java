@@ -29,6 +29,7 @@ import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
@@ -50,6 +51,10 @@ public class Main implements Log.Callback {
 			program.runBenchmarks();
 		}
 		catch (UsageException ue) {
+		}
+		catch (ParseException pe) {
+			System.out.println(pe.getMessage());
+			System.out.println("Use -u option for program usage");		
 		}
 		catch (Exception e) {		
 			System.out.println("Error: " + e.getMessage());
@@ -89,7 +94,11 @@ public class Main implements Log.Callback {
 			"will read and update randomly across the values between start_value and " + 
 			"start_value + num_keys."
 			);
-		options.addOption("l", "keylength", true, "Set the length of the string to use as a key.");
+		
+		// key type has been changed to integer, so this option is no longer relevant.
+		// Leave in (and ignore) so existing benchmark scripts do not break.
+		options.addOption("l", "keylength", true, "Not used anymore since key is an integer.");
+		
 		options.addOption("b", "bins", true, 
 			"Set the number of Aerospike bins. " +
 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
@@ -101,6 +110,9 @@ public class Main implements Log.Callback {
 			"do not set a size (integers are always 8 bytes). If object_type is 'S' " + 
 			"(string), this value represents the length of the string."
 			);
+		options.addOption("R", "random", false, 
+			"Use dynamically generated random bin values instead of default static fixed bin values."
+			);	
 		options.addOption("S", "startkey", true, 
 			"Set the starting value of the working set of keys. " + 
 			"If using an 'insert' workload, the start_value indicates the first value to write. " + 
@@ -157,21 +169,32 @@ public class Main implements Log.Callback {
 		//options.addOption("v", "validate", false, "Validate data.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
+
+		options.addOption("B", "batchSize", true, 
+			"Enable batch mode with number of records to process in each batch get call. " + 
+			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
+			);
+		options.addOption("BT", "batchThreads", true,
+			"Maximum number of concurrent batch sub-threads for each batch command.\n" + 
+			"1   : Run each batch node command sequentially.\n" +
+			"0   : Run all batch node commands in parallel.\n" +
+			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
+			);
 		
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
 		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
-		options.addOption("R", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
+		options.addOption("W", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
-		CommandLine line = parser.parse(options, commandLineArgs);
+		CommandLine line = parser.parse(options, commandLineArgs);		
 		String[] extra = line.getArgs();
 
-		if ( line.hasOption("u")) {
+		if (line.hasOption("u")) {
 			logUsage(options);
 			throw new UsageException();
 		}
@@ -180,7 +203,19 @@ public class Main implements Log.Callback {
 			throw new Exception("Unexpected arguments: " + Arrays.toString(extra));
 		}
 		
-		if (line.hasOption("hosts")) {
+        if (line.hasOption("async")) {
+        	this.asyncEnabled = true;
+        	args.readPolicy = clientPolicy.asyncReadPolicyDefault;
+        	args.writePolicy = clientPolicy.asyncWritePolicyDefault;
+        	args.batchPolicy = clientPolicy.batchPolicyDefault;  // async does not need batch policy.
+        }
+        else {
+        	args.readPolicy = clientPolicy.readPolicyDefault;
+        	args.writePolicy = clientPolicy.writePolicyDefault;
+        	args.batchPolicy = clientPolicy.batchPolicyDefault;
+        }
+
+        if (line.hasOption("hosts")) {
 			this.hosts = line.getOptionValue("hosts").split(",");
 		} 
 		else {
@@ -235,23 +270,6 @@ public class Main implements Log.Callback {
 		}
 		
 		//Variables setting in case of command arguments passed with keys in File
-		if (line.hasOption("keyType")) {
-			String keyType = line.getOptionValue("keyType");
-			
-			if (keyType.equals("S")) {
-				args.keyType = KeyType.STRING;
-			}
-			else if (keyType.equals("I")) {
-				args.keyType = KeyType.INTEGER;
-			}
-			else {
-				throw new Exception("Invalid keyType: "+keyType);
-			}	
-		}
-		else {
-			args.keyType = KeyType.STRING;
-		}
-		
 		if (line.hasOption("keyFile")) {
 			this.filepath = line.getOptionValue("keyFile");
 			// Load the file
@@ -262,22 +280,28 @@ public class Main implements Log.Callback {
 			this.nKeys = keyList.size();
 			this.startKey = 0;
 			args.validate = false;
-		}
-
-		if (line.hasOption("keylength")) {
-			args.keySize = Integer.parseInt(line.getOptionValue("keylength"));
-		}
-		else {
-			args.keySize = (Integer.toString(this.nKeys + this.startKey)).length();
-		}
-
-		if (args.keySize < (Integer.toString(this.nKeys+this.startKey)).length()) {
-			String errStr = "keylength (-l) must be at least "+ (Integer.toString(this.nKeys+this.startKey)).length() +
-				" for " + this.nKeys + " keys";
-			if (this.startKey > 0) {
-				errStr = errStr + ", starting at " + this.startKey;
+			
+			if (line.hasOption("keyType")) {
+				String keyType = line.getOptionValue("keyType");
+				
+				if (keyType.equals("S")) {
+					args.keyType = KeyType.STRING;
+				}
+				else if (keyType.equals("I")) {
+					if (Utils.isNumeric(keyList.get(0))) {
+						args.keyType = KeyType.INTEGER;
+					} else {
+						throw new Exception("Invalid keyType '"+keyType+"' Key type doesn't match with file content type.");
+					}
+				}
+				else {
+					throw new Exception("Invalid keyType: "+keyType);
+				}	
 			}
-			throw new Exception(errStr);
+			else {
+				args.keyType = KeyType.STRING;
+			}
+
 		}
 
 		if (line.hasOption("bins")) {
@@ -306,10 +330,11 @@ public class Main implements Log.Callback {
 			dbobj.type = 'I';	// If the object is not specified, it has one bin of integer type
 			args.objectSpec[0] = dbobj;
 		}
-
-		if(line.hasOption("keyFile")){
+		
+		if (line.hasOption("keyFile")) {
 			args.workload = Workload.READ_FROM_FILE;
-		}else{
+		} 
+		else {
 			args.workload = Workload.READ_UPDATE;
 		}
 		args.readPct = 50;
@@ -385,6 +410,7 @@ public class Main implements Log.Callback {
 			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
 			args.readPolicy.timeout = timeout;
 			args.writePolicy.timeout = timeout;
+			args.batchPolicy.timeout = timeout;
 		}			 
 
 		if (line.hasOption("pipeline")) {
@@ -392,7 +418,9 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("readTimeout")) {
-			args.readPolicy.timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
+			int timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
+			args.readPolicy.timeout = timeout;
+			args.batchPolicy.timeout = timeout;
 		}			 
 
 		if (line.hasOption("writeTimeout")) {
@@ -403,12 +431,14 @@ public class Main implements Log.Callback {
 			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
 			args.readPolicy.maxRetries = maxRetries;
 			args.writePolicy.maxRetries = maxRetries;
+			args.batchPolicy.maxRetries = maxRetries;
 		}
 		
 		if (line.hasOption("sleepBetweenRetries")) {
 			int sleepBetweenRetries = Integer.parseInt(line.getOptionValue("sleepBetweenRetries"));
 			args.readPolicy.sleepBetweenRetries = sleepBetweenRetries;
 			args.writePolicy.sleepBetweenRetries = sleepBetweenRetries;
+			args.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 		
 		if (line.hasOption("threads")) {
@@ -434,11 +464,15 @@ public class Main implements Log.Callback {
 			args.debug = true;
 		}
 
-        if (line.hasOption("async")) {
-        	this.asyncEnabled = true;
+        if (line.hasOption("batchSize")) {
+        	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
         }
         
-        if (line.hasOption("asyncMaxCommands")) {
+		if (line.hasOption("batchThreads")) {
+			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
+		}			 
+
+		if (line.hasOption("asyncMaxCommands")) {
         	this.clientPolicy.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
         }
         
@@ -472,7 +506,11 @@ public class Main implements Log.Callback {
 			counters.read.latency = new LatencyManager(columns, bitShift);
 			counters.write.latency = new LatencyManager(columns, bitShift);      	
         }
-        
+
+		if (! line.hasOption("random")) {
+			args.setFixedBins();
+		}
+
 		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
 			+ ", namespace: " + args.namespace 
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
@@ -491,8 +529,8 @@ public class Main implements Log.Callback {
 		
 		System.out.println("keys: " + this.nKeys
 			+ ", start key: " + this.startKey
-			+ ", key length: " + args.keySize
 			+ ", bins: " + args.nBins
+			+ ", random values: " + (args.fixedBins == null)
 			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
 			+ ", debug: " + args.debug);
 	
@@ -507,6 +545,11 @@ public class Main implements Log.Callback {
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries);
 		
+		if (args.batchSize > 1) {		
+			System.out.println("batch size: " + args.batchSize
+				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
+		}
+		
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
 			System.out.println("Async: MaxConnTotal " +  clientPolicy.asyncMaxCommands
@@ -519,8 +562,7 @@ public class Main implements Log.Callback {
 		int binCount = 0;
 		
 		for (DBObjectSpec spec : args.objectSpec) {
-			binCount++;
-			System.out.print("bin count " + binCount + ": ");
+			System.out.print("bin[" + binCount + "]: ");
 			
 			switch (spec.type) {
 			case 'I':
@@ -535,6 +577,7 @@ public class Main implements Log.Callback {
 				System.out.println("byte[" + spec.size + "]");
 				break;
 			}
+			binCount++;
 		}
 
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;

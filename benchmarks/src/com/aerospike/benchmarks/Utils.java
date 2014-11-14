@@ -16,61 +16,14 @@
  */
 package com.aerospike.benchmarks;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
-import java.nio.charset.Charset;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Date;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
-import com.aerospike.client.Bin;
-import com.aerospike.client.Value;
-
-public class Utils {
-	protected static Bin[] genBins(Random r, int binSize, DBObjectSpec[] spec, int generation) {
-		Bin[] bins = new Bin[binSize];
-		for(int i=0; i<binSize; i++) {
-			String name = Integer.toString(i);
-			Value value = genValue(r, spec[i%spec.length].type, spec[i%spec.length].size, generation);
-			bins[i] = new Bin(name, value);
-		}
-		return bins;
-	}
-
-   protected static Value genValue(Random r, char type, int size, int generation) {
-		if(type == 'B') {
-			byte[] ba = new byte[size];
-			r.nextBytes(ba);
-			return Value.get(ba);
-		} else if(type == 'D') {
-			return Value.get(Integer.toString((int) (new Date().getTime()%86400000))+","+Integer.toString(generation));
-		} else {
-			int v = r.nextInt();
-			v = v < 0 ? (-v) : v;
-			if(type == 'I') {
-				return Value.get(v);
-			} else if(type == 'S') {
-				StringBuilder builder = new StringBuilder();
-				while(builder.length() < size) {
-					builder.append(Integer.toString(v));
-				}
-				return Value.get(builder.toString());
-			}
-		}
-		return Value.getAsNull();
-	}
-	
-	protected static String genKey(int i, int keyLen) {
-		String key = "";
-		for(int j=keyLen-1; j>=0; j--) {
-			key = (i % 10) + key;
-			i /= 10;
-		}
-		return key;
-	}
-	
+public class Utils {	
 	/**
 	 * Read all the contents from the file and put it in a List.
 	 * @throws IOException 
@@ -79,13 +32,28 @@ public class Utils {
 		List<String> contentsFromFile = readAllLines(filepath);
 		return contentsFromFile;
 	}
-	
-    private static  List<String> readAllLines(String filepath) throws IOException {
-    	List<String> list = null;
-		Path file = Paths.get(filepath);
-		
-		list= Files.readAllLines(file, Charset.defaultCharset());
-		return list;
+
+    private static List<String> readAllLines(String filepath) throws IOException {
+    	List<String> fileContent = new ArrayList<String>();
+        File file = new File(filepath);
+        
+        BufferedReader input =  new BufferedReader(new FileReader(file));
+        try {
+        	String line = null; 
+        	while (( line = input.readLine()) != null) {
+            	  fileContent.add(line);
+            }
+        }
+        finally {
+        	if (input != null)
+        		input.close();
+        }
+        
+        return fileContent;
+    }
+    
+    public static boolean isNumeric(String str) {
+	  return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
 	}
 
 }

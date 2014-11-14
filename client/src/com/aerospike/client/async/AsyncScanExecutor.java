@@ -41,9 +41,10 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 		}
 
 		completedSize = nodes.length;
+		long taskId = System.nanoTime();
 
 		for (Node node : nodes) {			
-			AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, namespace, setName, binNames);
+			AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, namespace, setName, binNames, taskId);
 			async.execute();
 		}
 	}

@@ -90,7 +90,7 @@ public final class QueryRecordCommand extends QueryCommand {
 				bins.put(name, value);
 		    }
 			
-			Record record = new Record(bins, null, generation, expiration);
+			Record record = new Record(bins, generation, expiration);
 			
 			if (! valid) {
 				throw new AerospikeException.QueryTerminated();

@@ -16,21 +16,21 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashMap;
+import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
-import com.aerospike.client.command.BatchItem;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchExistsArray extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
-	private final HashMap<Key,BatchItem> keyMap;
+	private final Key[] keys;
 	private final boolean[] existsArray;
+	private int index;
 	
 	public AsyncBatchExistsArray(
 		AsyncMultiExecutor parent,
@@ -38,13 +38,13 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 		AsyncNode node,
 		BatchNode.BatchNamespace batchNamespace,
 		Policy policy,
-		HashMap<Key,BatchItem> keyMap,
+		Key[] keys,
 		boolean[] existsArray
 	) {
 		super(parent, cluster, node, false);
-		this.batchNamespace = batchNamespace;
+		this.batch = batchNamespace;
 		this.policy = policy;
-		this.keyMap = keyMap;
+		this.keys = keys;
 		this.existsArray = existsArray;
 	}
 		
@@ -55,24 +55,23 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(batchNamespace);
+		setBatchExists(keys, batch);
 	}
 
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {		
 		if (opCount > 0) {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
-		}			
-
-		BatchItem item = keyMap.get(key);
+		}
 		
-		if (item != null) {
-			int index = item.getIndex();
-			existsArray[index] = resultCode == 0;
+		int offset = batch.offsets[index++];
+		
+		if (Arrays.equals(key.digest, keys[offset].digest)) {
+			existsArray[offset] = resultCode == 0;			
 		}
 		else {
-			if (Log.debugEnabled()) {
-				Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+			if (Log.warnEnabled()) {
+				Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}

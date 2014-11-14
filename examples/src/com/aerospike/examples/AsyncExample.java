@@ -35,6 +35,9 @@ public abstract class AsyncExample {
 		policy.asyncSelectorTimeout = 10;
 		policy.failIfNotConnected = true;
 		
+		params.policy = policy.asyncReadPolicyDefault;
+		params.writePolicy = policy.asyncWritePolicyDefault;
+		
 		AsyncClient client = new AsyncClient(policy, params.host, params.port);
 
 		try {

@@ -22,7 +22,6 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -38,7 +37,6 @@ public class Node implements Closeable {
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
-	private static final int FULL_HEALTH = 100;
 
 	protected final Cluster cluster;
 	private final String name;
@@ -46,11 +44,9 @@ public class Node implements Closeable {
 	private Host[] aliases;
 	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
-	private final AtomicInteger health;
 	private int partitionGeneration;
 	protected int referenceCount;
-	protected boolean responded;
-	protected final boolean useNewInfo;
+	protected int failures;
 	protected volatile boolean active;
 
 	/**
@@ -64,14 +60,12 @@ public class Node implements Closeable {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
-		this.useNewInfo = nv.useNewInfo;
 		
 		// Assign host to first IP alias because the server identifies nodes 
 		// by IP address (not hostname). 
 		this.host = aliases[0];
 		
 		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);		
-		health = new AtomicInteger(FULL_HEALTH);
 		partitionGeneration = -1;
 		active = true;
 	}
@@ -88,15 +82,14 @@ public class Node implements Closeable {
 		try {
 			HashMap<String,String> infoMap = Info.request(conn, "node", "partition-generation", "services");
 			verifyNodeName(infoMap);			
-			restoreHealth();
-			responded = true;
-			addFriends(infoMap, friends);
-			updatePartitions(conn, infoMap);
+			
+			if (addFriends(infoMap, friends)) {
+				updatePartitions(conn, infoMap);
+			}
 			putConnection(conn);
 		}
 		catch (Exception e) {
 			conn.close();
-			decreaseHealth();
 			throw e;
 		}
 	}
@@ -108,7 +101,6 @@ public class Node implements Closeable {
 		String infoName = infoMap.get("node");
 		
 		if (infoName == null || infoName.length() == 0) {
-			decreaseHealth();
 			throw new AerospikeException.Parse("Node name is empty");
 		}
 
@@ -119,12 +111,23 @@ public class Node implements Closeable {
 		}
 	}
 	
-	private final void addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
+	private final boolean addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
 		// Parse the service addresses and add the friends to the list.
 		String friendString = infoMap.get("services");
 		
 		if (friendString == null || friendString.length() == 0) {
-			return;
+			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
+			// Unchecked, such a node can dominate the partition map and cause all other
+			// nodes to be dropped.
+			int nodeCount = cluster.getNodes().length;
+			
+			if (nodeCount > 2) {
+				if (Log.warnEnabled()) {
+					Log.warn("Node " + this + " thinks it owns cluster, but client sees " + nodeCount + " nodes.");
+				}
+				return false;
+			}
+			return true;
 		}
 
 		String friendNames[] = friendString.split(";");
@@ -154,6 +157,7 @@ public class Node implements Closeable {
 				}
 			}
 		}
+		return true;
 	}
 		
 	private final static boolean findAlias(List<Host> friends, Host alias) {
@@ -179,8 +183,7 @@ public class Node implements Closeable {
 			if (Log.debugEnabled()) {
 				Log.debug("Node " + this + " partition generation " + generation + " changed.");
 			}
-			cluster.updatePartitions(conn, this);
-			partitionGeneration = generation;
+			partitionGeneration = cluster.updatePartitions(conn, this);
 		}
 	}
 	
@@ -239,29 +242,6 @@ public class Node implements Closeable {
 		if (! active || ! connectionQueue.offer(conn)) {
 			conn.close();
 		}
-	}
-
-	/**
-	 * Set node status as healthy after successful database operation.
-	 */
-	public final void restoreHealth() {
-		// There can be cases where health is full, but active is false.
-		// Once a node has been marked inactive, it stays inactive.
-		health.set(FULL_HEALTH);
-	}
-
-	/**
-	 * Decrease server health status after a connection failure.
-	 */
-	public final void decreaseHealth() {
-		health.decrementAndGet();
-	}
-	
-	/**
-	 * Has consecutive node connection errors become critical. 
-	 */
-	public final boolean isUnhealthy() {
-		return health.get() <= 0;
 	}
 	
 	/**

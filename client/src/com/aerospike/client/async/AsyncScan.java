@@ -29,6 +29,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 	private final String namespace;
 	private final String setName;
 	private final String[] binNames;
+	private final long taskId;
 	
 	public AsyncScan(
 		AsyncMultiExecutor parent,
@@ -38,7 +39,8 @@ public final class AsyncScan extends AsyncMultiCommand {
 		RecordSequenceListener listener,
 		String namespace,
 		String setName,
-		String[] binNames
+		String[] binNames,
+		long taskId
 	) {
 		super(parent, cluster, node, true);
 		this.policy = policy;
@@ -46,6 +48,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 		this.namespace = namespace;
 		this.setName = setName;
 		this.binNames = binNames;
+		this.taskId = taskId;
 	}
 		
 	@Override
@@ -55,7 +58,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setScan(policy, namespace, setName, binNames);
+		setScan(policy, namespace, setName, binNames, taskId);
 	}
 
 	@Override

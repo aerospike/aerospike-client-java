@@ -59,7 +59,7 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 
-	protected void get(int keyIdx, Key key, String binName) throws AerospikeException {
+	protected void get(Key key, String binName) throws AerospikeException {
 		Record record;
 		
 		if (counters.read.latency != null) {
@@ -70,21 +70,11 @@ public class RWTaskSync extends RWTask {
 		}
 		else {
 			record = client.get(args.readPolicy, key, binName);
-		}
-		
-		if (record == null && args.reportNotFound) {
-			counters.readNotFound.getAndIncrement();	
-		}
-		else {
-			counters.read.count.getAndIncrement();		
-		}
-
-		if (args.validate) {
-			validateRead(keyIdx, record);
-		}
+		}		
+		processRead(key, record);
 	}
 	
-	protected void get(int keyIdx, Key key) throws AerospikeException {
+	protected void get(Key key) throws AerospikeException {
 		Record record;
 		
 		if (counters.read.latency != null) {
@@ -95,47 +85,44 @@ public class RWTaskSync extends RWTask {
 		}
 		else {
 			record = client.get(args.readPolicy, key);
-		}
+		}	
+		processRead(key, record);
+	}
 	
-		if (record == null && args.reportNotFound) {
-			counters.readNotFound.getAndIncrement();	
+	protected void get(Key[] keys, String binName) throws AerospikeException {
+		Record[] records;
+		
+		if (counters.read.latency != null) {
+			long begin = System.currentTimeMillis();
+			records = client.get(args.batchPolicy, keys, binName);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.read.latency.add(elapsed);
 		}
 		else {
-			counters.read.count.getAndIncrement();		
+			records = client.get(args.batchPolicy, keys, binName);
 		}
+	
+		for (int i = 0; i < keys.length; i++) {
+			processRead(keys[i], records[i]);
+		}
+	}
 
-		if (args.validate) {
-			validateRead(keyIdx, record);
+	protected void get(Key[] keys) throws AerospikeException {
+		Record[] records;
+		
+		if (counters.read.latency != null) {
+			long begin = System.currentTimeMillis();
+			records = client.get(args.batchPolicy, keys);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.read.latency.add(elapsed);
+		}
+		else {
+			records = client.get(args.batchPolicy, keys);
+		}
+	
+		for (int i = 0; i < keys.length; i++) {
+			processRead(keys[i], records[i]);
 		}
 	}
 
-	protected void get(int keyIdx, int size, Key keys[]) throws AerospikeException {
-
-		try {
-			Record[] records = null;
-
-			if (counters.read.latency != null) {
-				long begin = System.currentTimeMillis();
-				records = client.get(args.readPolicy, keys);
-				long elapsed = System.currentTimeMillis() - begin;
-				counters.read.latency.add(elapsed);
-			}
-			else {
-				records = client.get(args.readPolicy, keys);
-			}
-
-			if ( ((records == null) || (records.length != size)) && args.reportNotFound) {
-				counters.readNotFound.getAndIncrement();	
-			} else {
-				for (int i = 0; i < records.length; i++) {
-					if (args.validate) {
-						validateRead(keyIdx + i, records[i]);
-					}
-					counters.read.count.getAndIncrement();		
-				}
-			}
-		} catch (Exception e) {
-			readFailure(e);
-		}
-	}
 }

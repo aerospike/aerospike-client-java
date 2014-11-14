@@ -22,7 +22,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Create and manage a map within a single bin.
@@ -31,7 +31,7 @@ public final class LargeMap {
 	private static final String PackageName = "lmap";
 	
 	private final AerospikeClient client;
-	private final Policy policy;
+	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
 	private final Value userModule;
@@ -45,7 +45,7 @@ public final class LargeMap {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default set
 	 */
-	public LargeMap(AerospikeClient client, Policy policy, Key key, String binName, String userModule) {
+	public LargeMap(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
@@ -80,6 +80,17 @@ public final class LargeMap {
 	 */
 	public final Map<?,?> get(Value name) throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "get", binName, name);
+	}
+
+	/**
+	 * Check existence of key in the map.
+	 * 
+	 * @param keyValue			key to check
+	 * @return					true if found, otherwise false
+	 */
+	public final boolean exists(Value keyValue) throws AerospikeException {
+		Object result = client.execute(policy, key, PackageName, "exists", binName, keyValue);
+		return (result != null)? (Integer)result != 0 : false;
 	}
 
 	/**
@@ -121,7 +132,8 @@ public final class LargeMap {
 	 * Return size of map.
 	 */
 	public final int size() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "size", binName);
+		Object result = client.execute(policy, key, PackageName, "size", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 
 	/**
@@ -144,6 +156,7 @@ public final class LargeMap {
 	 * Return maximum number of entries for the map.
 	 */
 	public final int getCapacity() throws AerospikeException {
-		return (Integer)client.execute(policy, key, PackageName, "get_capacity", binName);
+		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
+		return (result != null)? (Integer)result : 0;
 	}
 }

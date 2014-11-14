@@ -29,31 +29,46 @@ import com.aerospike.client.command.Buffer;
  * Parse node partitions using new protocol. This is more code than a String.split() implementation, 
  * but it's faster because there are much fewer interim strings.
  */
-public final class PartitionTokenizerNew {
-	private static final String ReplicasName = "replicas-master";
-	
+public final class PartitionInfo {
 	// Create reusable StringBuilder for performance.	
-	protected final StringBuilder sb;
-	protected final byte[] buffer;
-	protected int length;
-	protected int offset;
+	private final StringBuilder sb;
+	private final byte[] buffer;
+	private int length;
+	private int offset;
 	
-	public PartitionTokenizerNew(Connection conn) throws AerospikeException {
+	public PartitionInfo(Connection conn, String... names) throws AerospikeException {
 		// Use low-level info methods and parse byte array directly for maximum performance.
-		// Send format:	   replicas-master\n
-		// Receive format: replicas-master\t<ns1>:<base 64 encoded bitmap>;<ns2>:<base 64 encoded bitmap>... \n
-		Info info = new Info(conn, ReplicasName);
+		// Send format:	   partition-generation\nreplicas-master\n
+		// Receive format: partition-generation\t<gen>\nreplicas-master\t<ns1>:<base 64 encoded bitmap>;<ns2>:<base 64 encoded bitmap>... \n
+		Info info = new Info(conn, names);
 		this.length = info.getLength();
 
 		if (length == 0) {
-			throw new AerospikeException.Parse(ReplicasName + " is empty");
+			throw new AerospikeException.Parse("Partition info is empty");
 		}
 		this.buffer = info.getBuffer();
-		this.offset = ReplicasName.length() + 1;  // Skip past name and tab
 		this.sb = new StringBuilder(32);  // Max namespace length
 	}
 	
-	public HashMap<String,AtomicReferenceArray<Node>> updatePartition(HashMap<String,AtomicReferenceArray<Node>> map, Node node) throws AerospikeException {
+	public int parseGeneration() throws AerospikeException {
+		expectName("partition-generation");
+		
+		int begin = offset;
+		
+		while (offset < length) {
+			if (buffer[offset] == '\n') {
+				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
+				offset++;
+				return Integer.parseInt(s);
+			}
+			offset++;
+		}
+		throw new AerospikeException.Parse("Failed to find partition-generation value");
+	}
+
+	public HashMap<String,AtomicReferenceArray<Node>> parsePartitions(HashMap<String,AtomicReferenceArray<Node>> map, Node node) throws AerospikeException {
+		expectName("replicas-master");
+		
 		int begin = offset;
 		boolean copied = false;
 		
@@ -117,6 +132,24 @@ public final class PartitionTokenizerNew {
 			}
 		}
 		return (copied)? map : null;
+	}
+	
+	private void expectName(String name) throws AerospikeException {
+		int begin = offset;
+		
+		while (offset < length) {
+			if (buffer[offset] == '\t') {
+				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
+				
+				if (name.equals(s)) {
+					offset++;
+					return;
+				}
+				break;
+			}
+			offset++;
+		}
+		throw new AerospikeException.Parse("Failed to find " + name);
 	}
 	
 	private String getTruncatedResponse() {

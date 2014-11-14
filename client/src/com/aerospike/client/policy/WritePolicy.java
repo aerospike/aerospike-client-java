@@ -58,4 +58,29 @@ public final class WritePolicy extends Policy {
 	 * The default is to not send the user defined key.
 	 */
 	public boolean sendKey;
+	
+	/**
+	 * Copy write policy from another write policy.
+	 */
+	public WritePolicy(WritePolicy other) {
+		super(other);
+		this.recordExistsAction = other.recordExistsAction;
+		this.generationPolicy = other.generationPolicy;
+		this.generation = other.generation;
+		this.expiration = other.expiration;
+		this.sendKey = other.sendKey;
+	}
+
+	/**
+	 * Copy write policy from another policy.
+	 */
+	public WritePolicy(Policy other) {
+		super(other);
+	}
+	
+	/**
+	 * Default constructor.
+	 */
+	public WritePolicy() {
+	}
 }

@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import java.util.HashSet;
-import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -41,7 +40,6 @@ public abstract class Command {
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
-	public static final int INFO2_GENERATION_DUP	= (1 << 4); // Create a duplicate on a generation collision.
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
 	
 	public static final int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
@@ -169,6 +167,7 @@ public abstract class Command {
 		int readAttr = 0;
 		int writeAttr = 0;
 		boolean readHeader = false;
+		boolean userKeyFieldCalculated = false;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
@@ -191,6 +190,13 @@ public abstract class Command {
 				break;
 				
 			default:
+				// Check if write policy requires saving the user key and calculate the data size.
+				// This should only be done once for the entire request even with multiple write operations.
+				if (policy.sendKey && userKeyFieldCalculated == false) {
+					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE;
+					fieldCount++;
+					userKeyFieldCalculated = true;
+				}
 				writeAttr = Command.INFO2_WRITE;
 				break;				
 			}
@@ -206,6 +212,10 @@ public abstract class Command {
 		}
 		writeKey(key);
 					
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+
 		for (Operation operation : operations) {
 			writeOperation(operation);
 		}
@@ -216,7 +226,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setUdf(Key key, String packageName, String functionName, Value[] args) 
+	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(key);		
@@ -224,7 +234,7 @@ public abstract class Command {
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		sizeBuffer();
-		writeHeader(0, Command.INFO2_WRITE, fieldCount, 0);
+		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(key);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
@@ -232,22 +242,25 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchExists(BatchNamespace batchNamespace) {
+	public final void setBatchExists(Key[] keys, BatchNamespace batch) {
 		// Estimate buffer size
 		begin();
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 				
 		sizeBuffer();
 
 		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
-		for (Key key : keys) {
+		int[] offsets = batch.offsets;
+		int max = batch.offsetsSize;
+		
+		for (int i = 0; i < max; i++) {
+			Key key = keys[offsets[i]];
 			byte[] digest = key.digest;
 		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 		    dataOffset += digest.length;
@@ -255,13 +268,12 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchGet(BatchNamespace batchNamespace, HashSet<String> binNames, int readAttr) {
+	public final void setBatchGet(Key[] keys, BatchNamespace batch, HashSet<String> binNames, int readAttr) {
 		// Estimate buffer size
 		begin();
-		List<Key> keys = batchNamespace.keys;
-		int byteSize = keys.size() * SyncCommand.DIGEST_SIZE;
+		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 
-		dataOffset += Buffer.estimateSizeUtf8(batchNamespace.namespace) + 
+		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
 				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 		
 		if (binNames != null) {
@@ -274,10 +286,14 @@ public abstract class Command {
 
 		int operationCount = (binNames == null)? 0 : binNames.size();
 		writeHeader(readAttr, 0, 2, operationCount);		
-		writeField(batchNamespace.namespace, FieldType.NAMESPACE);
+		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
-		for (Key key : keys) {
+		int[] offsets = batch.offsets;
+		int max = batch.offsetsSize;
+		
+		for (int i = 0; i < max; i++) {
+			Key key = keys[offsets[i]];
 			byte[] digest = key.digest;
 		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 		    dataOffset += digest.length;
@@ -291,7 +307,7 @@ public abstract class Command {
 		end();
 	}
 	
-	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames) {
+	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames, long taskId) {
 		begin();
 		int fieldCount = 0;
 		
@@ -307,6 +323,10 @@ public abstract class Command {
 		
 		// Estimate scan options size.
 		dataOffset += 2 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
+		// Estimate taskId size.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
 		if (binNames != null) {
@@ -343,6 +363,11 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
+		// Write taskId field
+		writeFieldHeader(8, FieldType.TRAN_ID);
+		Buffer.longToBytes(taskId, dataBuffer, dataOffset);
+		dataOffset += 8;
+
 		if (binNames != null) {
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
@@ -398,7 +423,6 @@ public abstract class Command {
 	/**
 	 * Header write for write operations.
 	 */
-	@SuppressWarnings("deprecation")
 	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		   			
         // Set flags.
 		int generation = 0;
@@ -417,23 +441,7 @@ public abstract class Command {
 			infoAttr |= Command.INFO3_REPLACE_ONLY;
 			break;
 		case CREATE_ONLY:
-		case FAIL:
     		writeAttr |= Command.INFO2_CREATE_ONLY;
-			break;
-		// The remaining enums are replaced by "policy.generationPolicy".
-		// These enums will eventually be removed.
-		// They are handled here for legacy compatibility only.
-		case EXPECT_GEN_EQUAL:
-    		generation = policy.generation;    			
-    		writeAttr |= Command.INFO2_GENERATION;
-			break;
-		case EXPECT_GEN_GT:
-    		generation = policy.generation;    			
-    		writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		case DUPLICATE:
-    		generation = policy.generation;			
-    		writeAttr |= Command.INFO2_GENERATION_DUP;
 			break;
 		}
 		
@@ -447,10 +455,6 @@ public abstract class Command {
 		case EXPECT_GEN_GT:
     		generation = policy.generation;    			
     		writeAttr |= Command.INFO2_GENERATION_GT;
-			break;
-		case DUPLICATE:
-    		generation = policy.generation;			
-    		writeAttr |= Command.INFO2_GENERATION_DUP;
 			break;
 		}
 		

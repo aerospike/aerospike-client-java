@@ -56,20 +56,26 @@ public final class RecordSet implements Closeable {
 	 * @return		whether record exists - if false, no more records are available 
 	 */
 	public final boolean next() throws AerospikeException {
-		if (valid) {
-			try {
-				record = queue.take();
-
-				if (record == END) {
-					executor.checkForException();
-					valid = false;
-				}
-			}
-			catch (InterruptedException ie) {
-				valid = false;
-			}
+		if (! valid) {
+			executor.checkForException();
+			return false;
 		}
-		return valid;
+
+		try {
+			record = queue.take();
+		}
+		catch (InterruptedException ie) {
+			valid = false;
+			return false;
+		}
+
+		if (record == END) {
+			valid = false;
+			executor.checkForException();
+			return false;
+		}
+
+		return true;
 	}
 	
 	/**
@@ -77,6 +83,12 @@ public final class RecordSet implements Closeable {
 	 */
 	public final void close() {
 		valid = false;
+		
+		// Check if more records are available.
+		if (record != END && queue.poll() != END) {
+			// Some query threads may still be running. Stop these threads.
+			executor.stopThreads(new AerospikeException.QueryTerminated());
+		}
 	}
 	
 	//-------------------------------------------------------
@@ -105,15 +117,22 @@ public final class RecordSet implements Closeable {
 	 * Put a record on the queue.
 	 */
 	protected final boolean put(KeyRecord record) {
-		if (valid) {
-			try {
-				queue.put(record);
-			}
-			catch (InterruptedException ie) {
+		if (! valid) {
+			return false;
+		}
+
+		try {
+			// This put will block if queue capacity is reached.
+			queue.put(record);
+			return true;
+		}
+		catch (InterruptedException ie) {
+			// Valid may have changed.  Check again.
+			if (valid) {
 				abort();
 			}
+			return false;
 		}
-		return valid;
 	}
 	
 	/**
@@ -121,6 +140,7 @@ public final class RecordSet implements Closeable {
 	 */
 	private final void abort() {
 		valid = false;
+		queue.clear();
 		
 		// It's critical that the end put succeeds.
 		// Loop through all interrupts.

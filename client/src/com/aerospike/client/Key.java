@@ -236,7 +236,7 @@ public final class Key {
 	 * 
 	 * @param namespace				namespace
 	 * @param digest				unique server hash value
-	 * @deprecated Use {@link Key#Key(String namespace, byte[] digest, String setName)}
+	 * @deprecated Use {@link Key#Key(String namespace, byte[] digest, String setName, Value userKey)}
 	 */
 	public Key(String namespace, byte[] digest) {
 		this.namespace = namespace; 

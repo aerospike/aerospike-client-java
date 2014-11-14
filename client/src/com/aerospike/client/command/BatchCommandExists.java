@@ -17,7 +17,7 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -27,22 +27,23 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandExists extends MultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
-	private final HashMap<Key,BatchItem> keyMap;
+	private final Key[] keys;
 	private final boolean[] existsArray;
+	private int index;
 
 	public BatchCommandExists(
 		Node node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
-		HashMap<Key,BatchItem> keyMap,
+		Key[] keys,
 		boolean[] existsArray
 	) {
 		super(node);
-		this.batchNamespace = batchNamespace;
+		this.batch = batch;
 		this.policy = policy;
-		this.keyMap = keyMap;
+		this.keys = keys;
 		this.existsArray = existsArray;
 	}
 	
@@ -53,7 +54,7 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(batchNamespace);
+		setBatchExists(keys, batch);
 	}
 
 	/**
@@ -93,15 +94,14 @@ public final class BatchCommandExists extends MultiCommand {
 			}
 						
 			Key key = parseKey(fieldCount);
-			BatchItem item = keyMap.get(key);
+			int offset = batch.offsets[index++];
 			
-			if (item != null) {
-				int index = item.getIndex();
-				existsArray[index] = resultCode == 0;
+			if (Arrays.equals(key.digest, keys[offset].digest)) {
+				existsArray[offset] = resultCode == 0;
 			}
 			else {
-				if (Log.debugEnabled()) {
-					Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+				if (Log.warnEnabled()) {
+					Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 				}
 			}
 		}

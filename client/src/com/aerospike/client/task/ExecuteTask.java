@@ -26,7 +26,7 @@ import com.aerospike.client.query.Statement;
  * Task used to poll for long running server execute job completion.
  */
 public final class ExecuteTask extends Task {
-	private final int taskId;
+	private final long taskId;
 	private final boolean scan;
 
 	/**

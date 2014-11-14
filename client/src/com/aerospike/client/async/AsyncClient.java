@@ -59,6 +59,21 @@ public class AsyncClient extends AerospikeClient {
 	
 	private final AsyncCluster cluster;
 	
+	/**
+	 * Default read policy that is used when asynchronous read command policy is null.
+	 */
+	public final Policy asyncReadPolicyDefault;
+	
+	/**
+	 * Default write policy that is used when asynchronous write command policy is null.
+	 */
+	public final WritePolicy asyncWritePolicyDefault;
+	
+	/**
+	 * Default scan policy that is used when asynchronous scan command policy is null.
+	 */
+	public final ScanPolicy asyncScanPolicyDefault;
+
 	//-------------------------------------------------------
 	// Constructors
 	//-------------------------------------------------------
@@ -133,6 +148,11 @@ public class AsyncClient extends AerospikeClient {
 		if (policy == null) {
 			policy = new AsyncClientPolicy();
 		}
+		
+		this.asyncReadPolicyDefault = policy.asyncReadPolicyDefault;
+		this.asyncWritePolicyDefault = policy.asyncWritePolicyDefault;
+		this.asyncScanPolicyDefault = policy.asyncScanPolicyDefault;
+		
 		this.cluster = new AsyncCluster(policy, hosts);
 		super.cluster = this.cluster;
 	}
@@ -157,7 +177,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {		
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
 		command.execute();
@@ -184,7 +204,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
 		command.execute();
@@ -207,7 +227,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
 		command.execute();
@@ -234,7 +254,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
 		command.execute();
@@ -258,7 +278,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void delete(WritePolicy policy, DeleteListener listener, Key key) throws AerospikeException {
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncDelete command = new AsyncDelete(cluster, policy, listener, key);
 		command.execute();
@@ -282,7 +302,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException {		
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncTouch command = new AsyncTouch(cluster, policy, listener, key);
 		command.execute();
@@ -306,7 +326,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void exists(Policy policy, ExistsListener listener, Key key) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		AsyncExists command = new AsyncExists(cluster, policy, listener, key);
 		command.execute();
@@ -345,7 +365,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void exists(Policy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);		
 	}
@@ -389,7 +409,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void get(Policy policy, RecordListener listener, Key key, String... binNames) throws AerospikeException {	
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		AsyncRead command = new AsyncRead(cluster, policy, listener, key, binNames);
 		command.execute();
@@ -434,7 +454,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 	}
@@ -476,7 +496,7 @@ public class AsyncClient extends AerospikeClient {
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
@@ -520,7 +540,7 @@ public class AsyncClient extends AerospikeClient {
 	 */
 	public final void getHeader(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
@@ -566,7 +586,7 @@ public class AsyncClient extends AerospikeClient {
 	public final void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations) 
 		throws AerospikeException {		
 		if (policy == null) {
-			policy = writePolicyDefault;
+			policy = asyncWritePolicyDefault;
 		}
 		AsyncOperate command = new AsyncOperate(cluster, policy, listener, key, operations);
 		command.execute();
@@ -595,11 +615,9 @@ public class AsyncClient extends AerospikeClient {
 	public final void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
 		throws AerospikeException {
 		if (policy == null) {
-			policy = scanPolicyDefault;
+			policy = asyncScanPolicyDefault;
 		}
 		
-		// Retry policy must be one-shot for scans.
-		policy.maxRetries = 0;
 		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
 	}
 }

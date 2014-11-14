@@ -16,150 +16,69 @@
  */
 package com.aerospike.client.command;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.BatchPolicy;
 
 public final class BatchExecutor {
 	
-	private final ArrayList<BatchThread> threads;
-	private final AtomicInteger completedCount;
-	private volatile Exception exception;
-	private boolean completed;
-	
-	public BatchExecutor(
+	public static void execute(
 		Cluster cluster,
-		Policy policy, 
+		BatchPolicy policy,
 		Key[] keys,
-		boolean[] existsArray, 
-		Record[] records, 
+		boolean[] existsArray,
+		Record[] records,
 		HashSet<String> binNames,
 		int readAttr
 	) throws AerospikeException {
 		
-		completedCount = new AtomicInteger();
+		if (keys.length == 0) {
+			return;
+		}
+		
 		List<BatchNode> batchNodes = BatchNode.generateList(cluster, keys);
-		HashMap<Key,BatchItem> keyMap = BatchItem.generateMap(keys);
-		
-		// Initialize threads.  There may be multiple threads for a single node because the
-		// wire protocol only allows one namespace per command.  Multiple namespaces 
-		// require multiple threads per node.
-		threads = new ArrayList<BatchThread>(batchNodes.size() * 2);
-		MultiCommand command = null;
 
-		for (BatchNode batchNode : batchNodes) {
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				if (records != null) {
-					command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keyMap, binNames, records, readAttr);
+		if (policy.maxConcurrentThreads == 1) {
+			// Run batch requests sequentially in same thread.
+			for (BatchNode batchNode : batchNodes) {
+				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+					if (records != null) {
+						BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+						command.execute();
+					}
+					else {
+						BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+						command.execute();
+					}
 				}
-				else {
-					command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keyMap, existsArray);
-				}
-				threads.add(new BatchThread(command));
 			}
 		}
-		
-		ExecutorService threadPool = cluster.getThreadPool();
-		
-		for (BatchThread thread : threads) {
-			threadPool.execute(thread);
-		}
-		
-		waitTillComplete();
-		
-		// Throw an exception if an error occurred.
-		if (exception != null) {
-			if (exception instanceof AerospikeException) {
-				throw (AerospikeException)exception;		
+		else {
+			// Run batch requests in parallel in separate threads.
+			Executor executor = new Executor(cluster, batchNodes.size() * 2);
+
+			// Initialize threads.  There may be multiple threads for a single node because the
+			// wire protocol only allows one namespace per command.  Multiple namespaces 
+			// require multiple threads per node.
+			for (BatchNode batchNode : batchNodes) {
+				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+					if (records != null) {
+						MultiCommand command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+						executor.addCommand(command);
+					}
+					else {
+						MultiCommand command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+						executor.addCommand(command);
+					}
+				}
 			}
-			else {
-				throw new AerospikeException(exception);
-			}		
+			executor.execute(policy.maxConcurrentThreads);
 		}		
-	}
-	
-	private void threadCompleted() {
-		// Check if all threads completed.
-		if (completedCount.incrementAndGet() >= threads.size()) {
-			notifyCompleted();
-		}
-	}
-
-	private void stopThreads(Exception cause) {
-    	synchronized (threads) {
-    	   	if (exception != null) {
-    	   		return;
-    	   	}
-	    	exception = cause;  		
-    	}
-    	
-		for (BatchThread thread : threads) {
-			try {
-				thread.stop();
-			}
-			catch (Exception e) {
-			}
-		}
-		notifyCompleted();
-    }
-
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-	
-	private synchronized void notifyCompleted() {
-		completed = true;
-		super.notify();
-	}
-
-	private final class BatchThread implements Runnable {
-		private MultiCommand command;
-		private Thread thread;
-
-		public BatchThread(MultiCommand command) {
-			this.command = command;
-		}
-		
-		public void run() {
-			thread = Thread.currentThread();
-
-			try {
-				if (command.isValid()) {
-					command.execute();
-				}
-			}
-			catch (Exception e) {
-				// Terminate other threads.
-				stopThreads(e);
-			}
-			
-		   	if (exception == null) {
-				threadCompleted();
-		   	}
-		}
-		
-		public void stop() {
-			command.stop();
-			
-			if (thread != null) {
-				thread.interrupt();
-			}
-		}
 	}
 }

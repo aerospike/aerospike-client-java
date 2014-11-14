@@ -51,33 +51,5 @@ public enum RecordExistsAction {
 	/**
 	 * Create only.  Fail if record exists. 
 	 */
-	CREATE_ONLY,
-
-	/**
-	 * @deprecated Use {@link com.aerospike.client.policy.RecordExistsAction#CREATE_ONLY}
-	 * instead. 
-	 */
-	@Deprecated
-	FAIL,
-
-	/**
-	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#EXPECT_GEN_EQUAL}
-	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
-	 */
-	@Deprecated
-	EXPECT_GEN_EQUAL,
-
-	/**
-	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#EXPECT_GEN_GT}
-	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
-	 */
-	@Deprecated
-	EXPECT_GEN_GT,
-	
-	/**
-	 * @deprecated Use {@link com.aerospike.client.policy.GenerationPolicy#DUPLICATE}
-	 * in {@link com.aerospike.client.policy.WritePolicy#generationPolicy} instead. 
-	 */
-	@Deprecated
-	DUPLICATE
+	CREATE_ONLY
 }

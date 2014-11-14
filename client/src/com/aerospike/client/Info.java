@@ -193,10 +193,6 @@ public final class Info {
 			node.putConnection(conn);
 			return response;
 		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
-		}
 		catch (RuntimeException re) {
 			conn.close();
 			throw re;
@@ -219,10 +215,6 @@ public final class Info {
 			String result = request(conn, name);
 			node.putConnection(conn);
 			return result;
-		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
 		}
 		catch (RuntimeException re) {
 			conn.close();
@@ -247,10 +239,6 @@ public final class Info {
 			node.putConnection(conn);
 			return result;
 		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
-		}
 		catch (RuntimeException re) {
 			conn.close();
 			throw re;
@@ -272,10 +260,6 @@ public final class Info {
 			Map<String,String> result = request(conn);
 			node.putConnection(conn);
 			return result;
-		}
-		catch (AerospikeException ae) {
-			conn.close();
-			throw ae;
 		}
 		catch (RuntimeException re) {
 			conn.close();

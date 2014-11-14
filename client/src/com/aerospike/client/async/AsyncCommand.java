@@ -200,10 +200,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	}
 
 	private void resetConnection() {
-		if (node != null) {
-			node.decreaseHealth();
-		}
-
 		if (limit > 0) {
 			// A lock on reset is required when a client timeout is specified.
 			synchronized (this) {
@@ -275,7 +271,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			conn.unregister();
 			conn.updateLastUsed();
 			node.putAsyncConnection(conn);
-			node.restoreHealth();
 			cluster.putByteBuffer(byteBuffer);
 			onSuccess();
 		} 
@@ -319,7 +314,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 				conn.unregister();
 				conn.updateLastUsed();
 				node.putAsyncConnection(conn);
-				node.restoreHealth();
 				cluster.putByteBuffer(byteBuffer);
 			}
 			else {
@@ -337,9 +331,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	}
 
 	private void closeOnNetworkError() {
-		if (node != null) {
-			node.decreaseHealth();
-		}
 		close();
 	}
 

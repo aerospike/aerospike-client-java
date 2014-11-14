@@ -56,7 +56,6 @@ public class AsyncPutGet extends AsyncExample {
 	private void runPutGetInline(final AsyncClient client, final Parameters params, final Key key, final Bin bin) throws AerospikeException {
 		
 		console.info("Put: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
-		params.writePolicy.timeout = 50;
 		
 		client.put(params.writePolicy, new WriteListener() {
 			public void onSuccess(final Key key) {

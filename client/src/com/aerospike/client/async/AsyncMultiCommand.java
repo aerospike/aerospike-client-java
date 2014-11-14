@@ -17,7 +17,6 @@
 package com.aerospike.client.async;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -203,15 +202,12 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		return new Key(namespace, digest, setName, userKey);		
 	}
 	
-	protected Record parseRecordWithDuplicates() throws AerospikeException {
-		
+	protected Record parseRecordBatch() throws AerospikeException {		
 		Map<String,Object> bins = null;
-		ArrayList<Map<String, Object>> duplicates = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
 			byte particleType = receiveBuffer[receiveOffset+5];
-			byte version = receiveBuffer[receiveOffset+6];
 			byte nameSize = receiveBuffer[receiveOffset+7];
 			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
 			receiveOffset += 4 + 4 + nameSize;
@@ -219,53 +215,20 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
-	
+
 			// Currently, the batch command returns all the bins even if a subset of
 			// the bins are requested. We have to filter it on the client side.
 			// TODO: Filter batch bins on server!
-			if (binNames == null || binNames.contains(name)) {
-				Map<String,Object> vmap = null;
-				
-				if (version > 0 || duplicates != null) {
-					if (duplicates == null) {
-						duplicates = new ArrayList<Map<String,Object>>(4);
-						duplicates.add(bins);
-						bins = null;
-						
-						for (int j = 0; j < version; j++) {
-							duplicates.add(null);
-						}
-					} 
-					else {
-						for (int j = duplicates.size(); j < version + 1; j++) 
-							duplicates.add(null);
-					}
-		
-					vmap = duplicates.get(version);
-					if (vmap == null) {
-						vmap = new HashMap<String,Object>();
-						duplicates.set(version, vmap);
-					}
+			if (binNames == null || binNames.contains(name)) {				
+				if (bins == null) {
+					bins = new HashMap<String,Object>();
 				}
-				else {
-					if (bins == null) {
-						bins = new HashMap<String,Object>();
-					}
-					vmap = bins;
-				}
-				vmap.put(name, value);
+				bins.put(name, value);
 			}
 	    }
-	
-	    // Remove null duplicates just in case there were holes in the version number space.
-	    if (duplicates != null) {
-	        while (duplicates.remove(null)) {
-	        	;
-	        }
-	    }
-	    return new Record(bins, duplicates, generation, expiration);	    
+	    return new Record(bins, generation, expiration);	    
 	}
-
+	
 	protected Record parseRecord() throws AerospikeException {		
 		Map<String,Object> bins = null;
 		
@@ -285,9 +248,9 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 			bins.put(name, value);
 	    }
-	    return new Record(bins, null, generation, expiration);	    
+	    return new Record(bins, generation, expiration);	    
 	}
-	
+
 	@Override
 	protected void onSuccess() {
 		parent.childSuccess();

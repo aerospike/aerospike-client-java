@@ -86,7 +86,7 @@ public class UserDefinedFunction extends Example {
 		client.put(params.writePolicy, key, bin);
 		
 		// Get record generation.
-		int gen = (Integer)client.execute(params.policy, key, "record_example", "getGeneration");
+		int gen = (Integer)client.execute(params.writePolicy, key, "record_example", "getGeneration");
 
 		// Write record if generation has not changed.
 		client.execute(params.writePolicy, key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));		
@@ -174,9 +174,9 @@ public class UserDefinedFunction extends Example {
 
 		String binName = params.getBinName("udfbin5");
 
-		client.execute(params.policy, key, "record_example", "writeBin", Value.get(binName), Value.getAsList(list));
+		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.getAsList(list));
 		
-		Object received = client.execute(params.policy, key, "record_example", "readBin", Value.get(binName));
+		Object received = client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
 
 		if (received != null && received.equals(list)) {
 			console.info("UDF data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
@@ -200,8 +200,8 @@ public class UserDefinedFunction extends Example {
 		dos.writeUTF("Hello world.");
 		byte[] blob = baos.toByteArray();
 		
-		client.execute(params.policy, key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
-		byte[] received = (byte[])client.execute(params.policy, key, "record_example", "readBin", Value.get(binName));
+		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
+		byte[] received = (byte[])client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
 
 		if (Arrays.equals(blob, received)) {
 			console.info("Blob data matched: namespace=%s set=%s key=%s bin=%s value=%s", 

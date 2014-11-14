@@ -17,7 +17,7 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -31,26 +31,27 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends MultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
-	private final HashMap<Key,BatchItem> keyMap;
+	private final Key[] keys;
 	private final HashSet<String> binNames;
 	private final Record[] records;
 	private final int readAttr;
+	private int index;
 
 	public BatchCommandGet(
 		Node node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode.BatchNamespace batch,
 		Policy policy,		
-		HashMap<Key,BatchItem> keyMap,
+		Key[] keys,
 		HashSet<String> binNames,
 		Record[] records,
 		int readAttr
 	) {
 		super(node);
-		this.batchNamespace = batchNamespace;
+		this.batch = batch;
 		this.policy = policy;
-		this.keyMap = keyMap;
+		this.keys = keys;
 		this.binNames = binNames;
 		this.records = records;
 		this.readAttr = readAttr;
@@ -63,7 +64,7 @@ public final class BatchCommandGet extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(batchNamespace, binNames, readAttr);
+		setBatchGet(keys, batch, binNames, readAttr);
 	}
 
 	/**
@@ -95,18 +96,18 @@ public final class BatchCommandGet extends MultiCommand {
 			int expiration = Buffer.bytesToInt(dataBuffer, 10);
 			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
 			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-			Key key = parseKey(fieldCount);
-			BatchItem item = keyMap.get(key);
 			
-			if (item != null) {				
+			Key key = parseKey(fieldCount);
+			int offset = batch.offsets[index++];
+			
+			if (Arrays.equals(key.digest, keys[offset].digest)) {			
 				if (resultCode == 0) {
-					int index = item.getIndex();
-					records[index] = parseRecord(opCount, generation, expiration);
+					records[offset] = parseRecord(opCount, generation, expiration);
 				}
 			}
 			else {
-				if (Log.debugEnabled()) {
-					Log.debug("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest));
+				if (Log.warnEnabled()) {
+					Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 				}
 			}
 		}
@@ -121,7 +122,6 @@ public final class BatchCommandGet extends MultiCommand {
 		throws AerospikeException, IOException {
 		
 		Map<String,Object> bins = null;
-		ArrayList<Map<String, Object>> duplicates = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
 			if (! valid) {
@@ -131,7 +131,6 @@ public final class BatchCommandGet extends MultiCommand {
     		readBytes(8);	
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
 			byte particleType = dataBuffer[5];
-			byte version = dataBuffer[6];
 			byte nameSize = dataBuffer[7];
 			
 			readBytes(nameSize);
@@ -144,46 +143,13 @@ public final class BatchCommandGet extends MultiCommand {
 			// Currently, the batch command returns all the bins even if a subset of
 			// the bins are requested. We have to filter it on the client side.
 			// TODO: Filter batch bins on server!
-			if (binNames == null || binNames.contains(name)) {
-				Map<String,Object> vmap = null;
-				
-				if (version > 0 || duplicates != null) {
-					if (duplicates == null) {
-						duplicates = new ArrayList<Map<String,Object>>(4);
-						duplicates.add(bins);
-						bins = null;
-						
-						for (int j = 0; j < version; j++) {
-							duplicates.add(null);
-						}
-					} 
-					else {
-						for (int j = duplicates.size(); j < version + 1; j++) 
-							duplicates.add(null);
-					}
-		
-					vmap = duplicates.get(version);
-					if (vmap == null) {
-						vmap = new HashMap<String,Object>();
-						duplicates.set(version, vmap);
-					}
+			if (binNames == null || binNames.contains(name)) {				
+				if (bins == null) {
+					bins = new HashMap<String,Object>();
 				}
-				else {
-					if (bins == null) {
-						bins = new HashMap<String,Object>();
-					}
-					vmap = bins;
-				}
-				vmap.put(name, value);
+				bins.put(name, value);
 			}
-	    }
-	
-	    // Remove null duplicates just in case there were holes in the version number space.
-	    if (duplicates != null) {
-	        while (duplicates.remove(null)) {
-	        	;
-	        }
-	    }
-	    return new Record(bins, duplicates, generation, expiration);	    
+	    }	
+	    return new Record(bins, generation, expiration);	    
 	}
 }

@@ -35,6 +35,7 @@ public final class ScanCommand extends MultiCommand {
 	private final String setName;
 	private final ScanCallback callback;
 	private final String[] binNames;
+	private final long taskId;
 
 	public ScanCommand(
 		Node node,
@@ -42,7 +43,8 @@ public final class ScanCommand extends MultiCommand {
 		String namespace,
 		String setName,
 		ScanCallback callback,
-		String[] binNames
+		String[] binNames,
+		long taskId
 	) {
 		super(node);
 		this.policy = policy;
@@ -50,6 +52,7 @@ public final class ScanCommand extends MultiCommand {
 		this.setName = setName;
 		this.callback = callback;
 		this.binNames = binNames;
+		this.taskId = taskId;
 	}
 
 	@Override
@@ -59,7 +62,7 @@ public final class ScanCommand extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setScan(policy, namespace, setName, binNames);
+		setScan(policy, namespace, setName, binNames, taskId);
 	}
 
 	protected boolean parseRecordResults(int receiveSize) 
@@ -119,7 +122,7 @@ public final class ScanCommand extends MultiCommand {
 			}
 			
 			// Call the callback function.
-			callback.scanCallback(key, new Record(bins, null, generation, expiration));
+			callback.scanCallback(key, new Record(bins, generation, expiration));
 		}
 		return true;
 	}

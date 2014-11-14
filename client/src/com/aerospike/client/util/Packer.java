@@ -154,7 +154,7 @@ public final class Packer {
         }
     }
 
-	private void packObject(Object obj) throws IOException {
+	public void packObject(Object obj) throws IOException {
 		if (obj == null) {
 			packNil();
 			return;
