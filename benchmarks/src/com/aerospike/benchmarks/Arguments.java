@@ -41,7 +41,6 @@ public class Arguments {
 	public boolean reportNotFound;
 	public boolean validate;
 	public boolean debug;
-	public int pipeline;
 	public KeyType keyType;
 	public Bin[] fixedBins;
 	public Bin[] fixedBin;

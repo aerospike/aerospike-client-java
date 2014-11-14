@@ -102,11 +102,6 @@ public class RWTaskAsync extends RWTask {
 			client.get(args.readPolicy, readHandler, key);
 		}
 	}
-
-	protected void get(int keyIdx, int count, Key keys[]) throws AerospikeException {
-		// No Op right now.
-	}
-
 	
 	protected void get(Key[] keys, String binName) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.

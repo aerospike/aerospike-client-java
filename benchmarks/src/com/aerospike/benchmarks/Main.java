@@ -138,7 +138,6 @@ public class Main implements Log.Callback {
 			);
 		
 		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
-		options.addOption("B", "pipeline", true, "Read Pipeline size. Only valid for reads ignored for writes");
 		options.addOption("readTimeout", true, "Set read transaction timeout in milliseconds.");
 		options.addOption("writeTimeout", true, "Set write transaction timeout in milliseconds.");
 	
@@ -412,10 +411,6 @@ public class Main implements Log.Callback {
 			args.writePolicy.timeout = timeout;
 			args.batchPolicy.timeout = timeout;
 		}			 
-
-		if (line.hasOption("pipeline")) {
-			args.pipeline = Integer.parseInt(line.getOptionValue("pipeline"));
-		}
 
 		if (line.hasOption("readTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("readTimeout"));

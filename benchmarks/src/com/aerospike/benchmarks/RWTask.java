@@ -450,5 +450,4 @@ public abstract class RWTask implements Runnable {
 	protected abstract void get(Key key) throws AerospikeException;
 	protected abstract void get(Key[] keys) throws AerospikeException;
 	protected abstract void get(Key[] keys, String binName) throws AerospikeException;
-
 }
