@@ -16,25 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.WritePolicy;
-
-public class Arguments {
-	public String namespace;
-	public String setName;
-	public Workload workload;
-	public DBObjectSpec[] objectSpec;
-	public Policy readPolicy = new Policy();
-	public WritePolicy writePolicy = new WritePolicy();
-	public int keySize;
-	public int nBins;
-	public int readPct;
-	public int readMultiBinPct;
-	public int writeMultiBinPct;
-	public int throughput;
-	public boolean reportNotFound;
-	public boolean validate;
-	public boolean debug;
-	public int pipeline;
-	public KeyType keyType;
+public enum KeyType {
+	STRING, INTEGER;
 }

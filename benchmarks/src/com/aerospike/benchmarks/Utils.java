@@ -16,7 +16,13 @@
  */
 package com.aerospike.benchmarks;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
+import java.util.List;
 import java.util.Random;
 
 import com.aerospike.client.Bin;
@@ -63,5 +69,23 @@ public class Utils {
 			i /= 10;
 		}
 		return key;
-	}	
+	}
+	
+	/**
+	 * Read all the contents from the file and put it in a List.
+	 * @throws IOException 
+	 */
+	protected static List<String> readKeyFromFile(String filepath) throws IOException {
+		List<String> contentsFromFile = readAllLines(filepath);
+		return contentsFromFile;
+	}
+	
+    private static  List<String> readAllLines(String filepath) throws IOException {
+    	List<String> list = null;
+		Path file = Paths.get(filepath);
+		
+		list= Files.readAllLines(file, Charset.defaultCharset());
+		return list;
+	}
+
 }
