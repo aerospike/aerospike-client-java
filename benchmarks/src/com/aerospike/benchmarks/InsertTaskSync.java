@@ -21,6 +21,12 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.Value;
+
+import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+
 
 public final class InsertTaskSync extends InsertTask {
 
@@ -41,6 +47,54 @@ public final class InsertTaskSync extends InsertTask {
 		}
 		else {
 			client.put(policy, key, bins);
+			counters.write.count.getAndIncrement();			
+		}
+	}
+
+	private void addLog(AerospikeClient client, Key key, long timestamp, Value logValue) throws AerospikeException {
+
+		com.aerospike.client.large.LargeList list    = client.getLargeList(null, key, "listltracker", null);
+		com.aerospike.client.large.LargeStack lstack = client.getLargeStack(null, key, "stackltracker", null);
+
+		// Create a Entry
+		Map<String,Value> log_entry = new HashMap<String,Value>();
+		log_entry.put("key", Value.get(timestamp));
+		log_entry.put("log", logValue);
+
+		if (args.storeType == Storetype.LLIST) {
+			list.add(Value.getAsMap(log_entry));
+		} else if (args.storeType == Storetype.LSTACK) {
+			lstack.push(Value.getAsMap(log_entry));
+		} else {
+			System.out.println("Unknown type");
+		}
+		return;
+	}
+
+	protected void list_add(Key key, Value value) throws AerospikeException {
+		long begin = System.currentTimeMillis();
+		if (counters.write.latency != null) {
+			addLog(client, key, begin, value);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+		else {
+			addLog(client, key, begin, value);
+			counters.write.count.getAndIncrement();			
+		}
+	}
+
+	protected void lstack_push(Key key, Value value) throws AerospikeException {
+		long begin = System.currentTimeMillis();
+		if (counters.write.latency != null) {
+			addLog(client, key, begin, value);
+			long elapsed = System.currentTimeMillis() - begin;
+			counters.write.count.getAndIncrement();			
+			counters.write.latency.add(elapsed);
+		}
+		else {
+			addLog(client, key, begin, value);
 			counters.write.count.getAndIncrement();			
 		}
 	}

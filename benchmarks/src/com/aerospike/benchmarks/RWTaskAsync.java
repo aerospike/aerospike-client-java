@@ -19,6 +19,7 @@ package com.aerospike.benchmarks;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordArrayListener;
@@ -253,6 +254,21 @@ public class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
 		}		
+	}
+	protected void list_add(Key key, Value value) throws AerospikeException {
+		return;
+	}
+
+	protected void list_get(Key key) throws AerospikeException {
+		return;
+	}
+
+	protected void lstack_push(Key key, Value value) throws AerospikeException {
+		return;
+	}
+
+	protected void lstack_peek(Key key) throws AerospikeException {
+		return;
 	}
 
 	/*
