@@ -255,20 +255,17 @@ public class RWTaskAsync extends RWTask {
 			readFailure(ae);
 		}		
 	}
-	protected void list_add(Key key, Value value) throws AerospikeException {
-		return;
+	
+	protected void largeListAdd(Key key, Value value) throws AerospikeException {
 	}
 
-	protected void list_get(Key key) throws AerospikeException {
-		return;
+	protected void largeListGet(Key key) throws AerospikeException {
 	}
 
-	protected void lstack_push(Key key, Value value) throws AerospikeException {
-		return;
+	protected void largeStackPush(Key key, Value value) throws AerospikeException {
 	}
 
-	protected void lstack_peek(Key key) throws AerospikeException {
-		return;
+	protected void largeStackPeek(Key key) throws AerospikeException {
 	}
 
 	/*

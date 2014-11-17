@@ -175,8 +175,8 @@ public class Main implements Log.Callback {
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
 
-		options.addOption("t", "storetype", true, 
-			"Defines data store type to run KVS / LLIST / LSTACK" 
+		options.addOption("t", "storeType", true, 
+			"Defines data store type to run. Values:  KVS | LLIST | LSTACK" 
 			);
 
 		options.addOption("BT", "batchThreads", true,
@@ -358,8 +358,7 @@ public class Main implements Log.Callback {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
 			}
-			else if (workloadType.equals("RU")
-						|| workloadType.equals("RR")) {
+			else if (workloadType.equals("RU") || workloadType.equals("RR")) {
 
 				args.workload = Workload.READ_UPDATE;
 				if (workloadType.equals("RR")) {
@@ -474,13 +473,13 @@ public class Main implements Log.Callback {
         	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
         }
 
-		args.storeType = Storetype.KVS;
-        if (line.hasOption("storetype")) {
-        	String storetype = line.getOptionValue("storetype");
+		args.storeType = StoreType.KVS;
+        if (line.hasOption("storeType")) {
+        	String storetype = line.getOptionValue("storeType");
 			if (storetype.equals("LLIST")) {
-				args.storeType = Storetype.LLIST;
+				args.storeType = StoreType.LLIST;
 			} else if (storetype.equals("LSTACK")) {
-				args.storeType = Storetype.LSTACK;
+				args.storeType = StoreType.LSTACK;
 			}
         }
         

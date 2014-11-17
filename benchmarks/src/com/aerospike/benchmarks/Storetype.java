@@ -19,19 +19,19 @@ package com.aerospike.benchmarks;
 /**
  * Benchmark store type.
  */
-public enum Storetype {
+public enum StoreType {
 	/**
 	 * Simple KVS
 	 */
 	KVS,
 	
 	/**
-	 * LSTACK operation are push and pop
-	 */
-	LSTACK,
-	
-	/**
 	 * LLIST operations are add and get
 	 */
-	LLIST
+	LLIST,
+	
+	/**
+	 * LSTACK operation are push and pop
+	 */
+	LSTACK
 }

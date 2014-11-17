@@ -16,16 +16,16 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.Value;
-
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import com.aerospike.client.large.LargeList;
+import com.aerospike.client.large.LargeStack;
 
 
 public final class InsertTaskSync extends InsertTask {
@@ -37,65 +37,67 @@ public final class InsertTaskSync extends InsertTask {
 		this.client = client;
 	}
 	
-	protected void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException {
+	protected void put(Key key, Bin[] bins) throws AerospikeException {
 		if (counters.write.latency != null) {
 			long begin = System.currentTimeMillis();
-			client.put(policy, key, bins);
+			client.put(args.writePolicy, key, bins);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			client.put(policy, key, bins);
+			client.put(args.writePolicy, key, bins);
 			counters.write.count.getAndIncrement();			
 		}
 	}
 
-	private void addLog(AerospikeClient client, Key key, long timestamp, Value logValue) throws AerospikeException {
-
-		com.aerospike.client.large.LargeList list    = client.getLargeList(null, key, "listltracker", null);
-		com.aerospike.client.large.LargeStack lstack = client.getLargeStack(null, key, "stackltracker", null);
-
-		// Create a Entry
-		Map<String,Value> log_entry = new HashMap<String,Value>();
-		log_entry.put("key", Value.get(timestamp));
-		log_entry.put("log", logValue);
-
-		if (args.storeType == Storetype.LLIST) {
-			list.add(Value.getAsMap(log_entry));
-		} else if (args.storeType == Storetype.LSTACK) {
-			lstack.push(Value.getAsMap(log_entry));
-		} else {
-			System.out.println("Unknown type");
-		}
-		return;
-	}
-
-	protected void list_add(Key key, Value value) throws AerospikeException {
+	protected void largeListAdd(Key key, Value value) throws AerospikeException {
 		long begin = System.currentTimeMillis();
 		if (counters.write.latency != null) {
-			addLog(client, key, begin, value);
+			largeListAdd(key, value, begin);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			addLog(client, key, begin, value);
+			largeListAdd(key, value, begin);
 			counters.write.count.getAndIncrement();			
 		}
 	}
 
-	protected void lstack_push(Key key, Value value) throws AerospikeException {
+	private void largeListAdd(Key key, Value value, long timestamp) throws AerospikeException {
+		// Create entry
+		Map<String,Value> entry = new HashMap<String,Value>();
+		entry.put("key", Value.get(timestamp));
+		entry.put("log", value);
+
+		// Add entry
+		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
+		list.add(Value.getAsMap(entry));
+	}
+		
+	protected void largeStackPush(Key key, Value value) throws AerospikeException {
 		long begin = System.currentTimeMillis();
 		if (counters.write.latency != null) {
-			addLog(client, key, begin, value);
+			largeStackPush(key, value, begin);
 			long elapsed = System.currentTimeMillis() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			addLog(client, key, begin, value);
+			largeStackPush(key, value, begin);
 			counters.write.count.getAndIncrement();			
 		}
+	}
+	
+	private void largeStackPush(Key key, Value value, long timestamp) throws AerospikeException {
+		// Create entry
+		Map<String,Value> entry = new HashMap<String,Value>();
+		entry.put("key", Value.get(timestamp));
+		entry.put("log", value);
+
+		// Push entry
+		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
+		lstack.push(Value.getAsMap(entry));
 	}
 }

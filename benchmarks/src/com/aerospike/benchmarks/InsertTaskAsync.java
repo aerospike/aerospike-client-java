@@ -19,10 +19,9 @@ package com.aerospike.benchmarks;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.Value;
 
 public final class InsertTaskAsync extends InsertTask implements WriteListener {
 	
@@ -33,7 +32,7 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		this.client = client;
 	}
 	
-	protected void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException {
+	protected void put(Key key, Bin[] bins) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
 		if (counters.write.timeouts.get() > 0) {
@@ -41,10 +40,10 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		}
 		
 		if (counters.write.latency != null) {		
-			client.put(policy, new LatencyWriteHandler(), key, bins);
+			client.put(args.writePolicy, new LatencyWriteHandler(), key, bins);
 		}
 		else {
-			client.put(policy, this, key, bins);
+			client.put(args.writePolicy, this, key, bins);
 		}
 	}
 
@@ -78,9 +77,9 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		}		
 	}
 
-	protected void lstack_push(Key key, Value value) throws AerospikeException {
+	protected void largeListAdd(Key key, Value value) throws AerospikeException {
 	}
 
-	protected void list_add(Key key, Value value) throws AerospikeException {
+	protected void largeStackPush(Key key, Value value) throws AerospikeException {
 	}
 }

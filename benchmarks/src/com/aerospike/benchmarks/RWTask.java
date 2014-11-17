@@ -16,6 +16,7 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -248,12 +249,18 @@ public abstract class RWTask implements Runnable {
 		Bin[] bins = args.getBins(random, multiBin);
 		
 		try {
-			if (args.storeType == Storetype.LSTACK) {
-				lstack_push(key, args.getValue(random));
-			} else if (args.storeType == Storetype.LLIST) {
-				list_add(key, args.getValue(random));
-			} else {
+			switch (args.storeType) {
+			case KVS:
 				put(key, bins);
+				break;
+	
+			case LLIST:
+				largeListAdd(key, bins[0].value);
+				break;
+
+			case LSTACK:
+				largeStackPush(key, bins[0].value);
+				break;
 			}
 			
 			if (args.validate) {
@@ -298,23 +305,35 @@ public abstract class RWTask implements Runnable {
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 			
 			if (multiBin) {
-				if (args.storeType == Storetype.LSTACK) {
-					lstack_peek(key);
-				} else if (args.storeType == Storetype.LLIST) {
-					list_get(key);
-				} else {
+				switch (args.storeType) {
+				case KVS:
 					// Read all bins, maybe validate
 					get(key);			
+					break;
+					
+				case LLIST:
+					largeListGet(key);
+					break;
+
+				case LSTACK:
+					largeStackPeek(key);
+					break;
 				}
 			} 
 			else {
-				if (args.storeType == Storetype.LSTACK) {
-					lstack_peek(key);
-				} else if (args.storeType == Storetype.LLIST) {
-					list_get(key);
-				} else {
+				switch (args.storeType) {
+				case KVS:
 					// Read one bin, maybe validate
-					get(key, "0");			
+					get(key, "0");
+					break;
+					
+				case LLIST:
+					largeListGet(key);
+					break;
+
+				case LSTACK:
+					largeStackPeek(key);
+					break;
 				}
 			}
 		}
@@ -421,6 +440,15 @@ public abstract class RWTask implements Runnable {
 		}	
 	}
 
+	protected void processLargeRead(Key key, List<?> list) {
+		if ((list == null || list.size() == 0) && args.reportNotFound) {
+			counters.readNotFound.getAndIncrement();	
+		}
+		else {
+			counters.read.count.getAndIncrement();		
+		}
+	}
+
 	protected void writeFailure(AerospikeException ae) {
 		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
 			counters.write.timeouts.getAndIncrement();
@@ -470,10 +498,9 @@ public abstract class RWTask implements Runnable {
 	protected abstract void get(Key[] keys) throws AerospikeException;
 	protected abstract void get(Key[] keys, String binName) throws AerospikeException;
 
-	protected abstract void list_add(Key key, Value value) throws AerospikeException;
-	protected abstract void list_get(Key key) throws AerospikeException;
+	protected abstract void largeListAdd(Key key, Value value) throws AerospikeException;
+	protected abstract void largeListGet(Key key) throws AerospikeException;
 
-	protected abstract void lstack_push(Key key, Value value) throws AerospikeException;
-	protected abstract void lstack_peek(Key key) throws AerospikeException;
-
+	protected abstract void largeStackPush(Key key, Value value) throws AerospikeException;
+	protected abstract void largeStackPeek(Key key) throws AerospikeException;
 }
