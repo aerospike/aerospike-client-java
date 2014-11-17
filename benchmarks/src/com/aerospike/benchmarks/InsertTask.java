@@ -23,6 +23,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.Value;
 
 public abstract class InsertTask implements Runnable {
 
@@ -46,7 +47,13 @@ public abstract class InsertTask implements Runnable {
 				try {
 					Key key = new Key(args.namespace, args.setName, keyStart + i);
 					Bin[] bins = args.getBins(random, true);
-					put(args.writePolicy, key, bins);
+					if (args.storeType == Storetype.LSTACK) {
+						lstack_push(key, args.getValue(random));
+					} else if (args.storeType == Storetype.LLIST) {
+						list_add(key, args.getValue(random));
+					} else {
+						put(args.writePolicy, key, bins);
+					}
 				}
 				catch (AerospikeException ae) {
 					writeFailure(ae);
@@ -84,4 +91,8 @@ public abstract class InsertTask implements Runnable {
 	}
 	
 	protected abstract void put(WritePolicy policy, Key key, Bin[] bins) throws AerospikeException;
+
+	protected abstract void list_add(Key key, Value value) throws AerospikeException;
+	protected abstract void lstack_push(Key key, Value value) throws AerospikeException;
+
 }

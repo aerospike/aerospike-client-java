@@ -22,6 +22,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.Value;
 
 public final class InsertTaskAsync extends InsertTask implements WriteListener {
 	
@@ -75,5 +76,11 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
 		}		
+	}
+
+	protected void lstack_push(Key key, Value value) throws AerospikeException {
+	}
+
+	protected void list_add(Key key, Value value) throws AerospikeException {
 	}
 }

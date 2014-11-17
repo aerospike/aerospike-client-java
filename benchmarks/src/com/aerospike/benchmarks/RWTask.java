@@ -23,6 +23,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.GenerationPolicy;
@@ -247,7 +248,13 @@ public abstract class RWTask implements Runnable {
 		Bin[] bins = args.getBins(random, multiBin);
 		
 		try {
-			put(key, bins);
+			if (args.storeType == Storetype.LSTACK) {
+				lstack_push(key, args.getValue(random));
+			} else if (args.storeType == Storetype.LLIST) {
+				list_add(key, args.getValue(random));
+			} else {
+				put(key, bins);
+			}
 			
 			if (args.validate) {
 				this.expectedValues[keyIdx].write(bins);
@@ -291,12 +298,24 @@ public abstract class RWTask implements Runnable {
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 			
 			if (multiBin) {
-				// Read all bins, maybe validate
-				get(key);			
+				if (args.storeType == Storetype.LSTACK) {
+					lstack_peek(key);
+				} else if (args.storeType == Storetype.LLIST) {
+					list_get(key);
+				} else {
+					// Read all bins, maybe validate
+					get(key);			
+				}
 			} 
 			else {
-				// Read one bin, maybe validate
-				get(key, "0");			
+				if (args.storeType == Storetype.LSTACK) {
+					lstack_peek(key);
+				} else if (args.storeType == Storetype.LLIST) {
+					list_get(key);
+				} else {
+					// Read one bin, maybe validate
+					get(key, "0");			
+				}
 			}
 		}
 		catch (AerospikeException ae) {
@@ -450,4 +469,11 @@ public abstract class RWTask implements Runnable {
 	protected abstract void get(Key key) throws AerospikeException;
 	protected abstract void get(Key[] keys) throws AerospikeException;
 	protected abstract void get(Key[] keys, String binName) throws AerospikeException;
+
+	protected abstract void list_add(Key key, Value value) throws AerospikeException;
+	protected abstract void list_get(Key key) throws AerospikeException;
+
+	protected abstract void lstack_push(Key key, Value value) throws AerospikeException;
+	protected abstract void lstack_peek(Key key) throws AerospikeException;
+
 }

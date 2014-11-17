@@ -28,6 +28,7 @@ public class Arguments {
 	public String namespace;
 	public String setName;
 	public Workload workload;
+	public Storetype storeType;
 	public DBObjectSpec[] objectSpec;
 	public Policy readPolicy;
 	public WritePolicy writePolicy;
@@ -95,4 +96,8 @@ public class Arguments {
 			return Value.getAsNull();
 		}
 	}	
+
+	public Value getValue(Random random) {
+		return genValue(random, objectSpec[0]);
+	}
 }

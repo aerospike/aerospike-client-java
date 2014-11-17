@@ -33,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
@@ -173,6 +174,11 @@ public class Main implements Log.Callback {
 			"Enable batch mode with number of records to process in each batch get call. " + 
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
+
+		options.addOption("t", "storetype", true, 
+			"Defines data store type to run KVS / LLIST / LSTACK" 
+			);
+
 		options.addOption("BT", "batchThreads", true,
 			"Maximum number of concurrent batch sub-threads for each batch command.\n" + 
 			"1   : Run each batch node command sequentially.\n" +
@@ -352,8 +358,13 @@ public class Main implements Log.Callback {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
 			}
-			else if (workloadType.equals("RU")) {
+			else if (workloadType.equals("RU")
+						|| workloadType.equals("RR")) {
+
 				args.workload = Workload.READ_UPDATE;
+				if (workloadType.equals("RR")) {
+					args.writePolicy.recordExistsAction = RecordExistsAction.REPLACE;
+				}
 
 				if (workloadOpts.length < 2 || workloadOpts.length > 4) {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 2 to 4.");
@@ -461,6 +472,16 @@ public class Main implements Log.Callback {
 
         if (line.hasOption("batchSize")) {
         	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
+        }
+
+		args.storeType = Storetype.KVS;
+        if (line.hasOption("storetype")) {
+        	String storetype = line.getOptionValue("storetype");
+			if (storetype.equals("LLIST")) {
+				args.storeType = Storetype.LLIST;
+			} else if (storetype.equals("LSTACK")) {
+				args.storeType = Storetype.LSTACK;
+			}
         }
         
 		if (line.hasOption("batchThreads")) {
