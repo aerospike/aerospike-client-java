@@ -33,6 +33,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
@@ -357,8 +358,13 @@ public class Main implements Log.Callback {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
 			}
-			else if (workloadType.equals("RU")) {
+			else if (workloadType.equals("RU")
+						|| workloadType.equals("RR")) {
+
 				args.workload = Workload.READ_UPDATE;
+				if (workloadType.equals("RR")) {
+					args.writePolicy.recordExistsAction = RecordExistsAction.REPLACE;
+				}
 
 				if (workloadOpts.length < 2 || workloadOpts.length > 4) {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 2 to 4.");
