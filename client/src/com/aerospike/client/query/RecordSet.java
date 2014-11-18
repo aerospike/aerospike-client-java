@@ -22,6 +22,7 @@ import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 
 /**
@@ -66,6 +67,10 @@ public final class RecordSet implements Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
+			
+			if (Log.debugEnabled()) {
+				Log.debug("RecordSet " + executor.statement.taskId + " take interrupted");
+			}
 			return false;
 		}
 
@@ -74,12 +79,11 @@ public final class RecordSet implements Closeable {
 			executor.checkForException();
 			return false;
 		}
-
 		return true;
 	}
 	
 	/**
-	 * Cancel query.
+	 * Close query.
 	 */
 	public final void close() {
 		valid = false;
@@ -127,6 +131,10 @@ public final class RecordSet implements Closeable {
 			return true;
 		}
 		catch (InterruptedException ie) {
+			if (Log.debugEnabled()) {
+				Log.debug("RecordSet " + executor.statement.taskId + " put interrupted");
+			}
+
 			// Valid may have changed.  Check again.
 			if (valid) {
 				abort();
@@ -138,19 +146,21 @@ public final class RecordSet implements Closeable {
 	/**
 	 * Abort retrieval with end token.
 	 */
-	private final void abort() {
+	protected final void abort() {
 		valid = false;
 		queue.clear();
 		
-		// It's critical that the end put succeeds.
-		// Loop through all interrupts.
-		while (true) {
-			try {
-				queue.put(END);
-				return;
-			}
-			catch (InterruptedException ie) {
+		// Send end command to transaction thread.
+		// It's critical that the end offer succeeds.
+		while (! queue.offer(END)) {
+			// Queue must be full. Remove one item to make room.
+			if (queue.poll() == null) {
+				// Can't offer or poll.  Nothing further can be done.
+				if (Log.debugEnabled()) {
+					Log.debug("RecordSet " + executor.statement.taskId + " both offer and poll failed on abort");
+				}
+				break;				
 			}
 		}
-	}
+	}	
 }

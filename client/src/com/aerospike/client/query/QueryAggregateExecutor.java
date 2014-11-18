@@ -23,6 +23,7 @@ import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -100,6 +101,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		}
 		finally {
 			// Send end command to user's result set.
+			// If query was already cancelled, this put will be ignored.
 			resultSet.put(ResultSet.END);
 			LuaCache.putInstance(lua);
 		}
@@ -114,7 +116,20 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	protected void sendCancel() {
 		// Clear lua input queue to ensure cancel is accepted.
 		inputQueue.clear();
-		sendCompleted();
+		resultSet.abort();
+		
+		// Send end command to lua input queue.
+		// It's critical that the end offer succeeds.
+		while (! inputQueue.offer(LuaValue.NIL)) {
+			// Queue must be full. Remove one item to make room.
+			if (inputQueue.poll() == null) {
+				// Can't offer or poll.  Nothing further can be done.
+				if (Log.debugEnabled()) {
+					Log.debug("Lua input queue " + statement.taskId + " both offer and poll failed on abort");
+				}
+				break;				
+			}
+		}
 	}
 
 	@Override
@@ -128,6 +143,9 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 				break;
 			}
 			catch (InterruptedException ie) {
+				if (Log.debugEnabled()) {
+					Log.debug("Lua input queue " + statement.taskId + " put interrupted");
+				}
 			}
 		}
 	}

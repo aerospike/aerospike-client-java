@@ -21,11 +21,12 @@ import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 
 /**
- * This class manages record retrieval from queries.
- * Multiple threads will retrieve records from the server nodes and put these records on the queue.
- * The single user thread consumes these records from the queue.
+ * This class manages result retrieval from queries.
+ * Multiple threads will retrieve results from the server nodes and put these results on the queue.
+ * The single user thread consumes these results from the queue.
  */
 public final class ResultSet implements Closeable {
 	public static final Integer END = new Integer(-1);
@@ -36,7 +37,7 @@ public final class ResultSet implements Closeable {
 	private volatile boolean valid = true;
 
 	/**
-	 * Initialize record set with underlying producer/consumer queue.
+	 * Initialize result set with underlying producer/consumer queue.
 	 */
 	protected ResultSet(QueryAggregateExecutor executor, int capacity) {
 		this.executor = executor;
@@ -44,14 +45,14 @@ public final class ResultSet implements Closeable {
 	}
 	
 	//-------------------------------------------------------
-	// Record traversal methods
+	// Result traversal methods
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next record.  This method will block until a record is retrieved 
+	 * Retrieve next result.  This method will block until a result is retrieved 
 	 * or the query is cancelled.
 	 * 
-	 * @return		whether record exists - if false, no more records are available 
+	 * @return	whether result exists - if false, no more results are available 
 	 */
 	public final boolean next() throws AerospikeException {
 		if (! valid) {
@@ -64,6 +65,10 @@ public final class ResultSet implements Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
+			
+			if (Log.debugEnabled()) {
+				Log.debug("ResultSet " + executor.statement.taskId + " take interrupted");
+			}
 			return false;
 		}
 
@@ -72,12 +77,11 @@ public final class ResultSet implements Closeable {
 			executor.checkForException();
 			return false;
 		}
-
 		return true;
 	}
 	
 	/**
-	 * Cancel query.
+	 * Close query.
 	 */
 	public final void close() {
 		valid = false;
@@ -94,7 +98,7 @@ public final class ResultSet implements Closeable {
 	//-------------------------------------------------------
 		
 	/**
-	 * Get record's header and bin data.
+	 * Get result.
 	 */
 	public final Object getObject() {
 		return row;
@@ -118,6 +122,10 @@ public final class ResultSet implements Closeable {
 			return true;
 		}
 		catch (InterruptedException ie) {
+			if (Log.debugEnabled()) {
+				Log.debug("ResultSet " + executor.statement.taskId + " put interrupted");
+			}
+
 			// Valid may have changed.  Check again.
 			if (valid) {
 				abort();
@@ -129,18 +137,20 @@ public final class ResultSet implements Closeable {
 	/**
 	 * Abort retrieval with end token.
 	 */
-	private final void abort() {
+	protected final void abort() {
 		valid = false;
 		queue.clear();
 		
-		// It's critical that the end put succeeds.
-		// Loop through all interrupts.
-		while (true) {
-			try {
-				queue.put(END);
-				return;
-			}
-			catch (InterruptedException ie) {
+		// Send end command to transaction thread.
+		// It's critical that the end offer succeeds.
+		while (! queue.offer(END)) {
+			// Queue must be full. Remove one item to make room.
+			if (queue.poll() == null) {
+				// Can't offer or poll.  Nothing further can be done.
+				if (Log.debugEnabled()) {
+					Log.debug("ResultSet " + executor.statement.taskId + " both offer and poll failed on abort");
+				}
+				break;				
 			}
 		}
 	}

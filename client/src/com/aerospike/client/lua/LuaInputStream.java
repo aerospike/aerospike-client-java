@@ -22,6 +22,8 @@ import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
 
+import com.aerospike.client.Log;
+
 public final class LuaInputStream extends LuaUserdata implements LuaStream {
 	
 	private final BlockingQueue<LuaValue> queue;
@@ -36,6 +38,9 @@ public final class LuaInputStream extends LuaUserdata implements LuaStream {
 			return queue.take();
 		}
 		catch (InterruptedException ie) {
+			if (Log.debugEnabled()) {
+				Log.debug("LuaInputStream take interrupted");
+			}
 			return LuaValue.NIL;
 		}
 	}

@@ -62,7 +62,7 @@ public abstract class QueryExecutor {
 		this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length) ? threads.length : policy.maxConcurrentNodes;
 	}
 	
-	protected final void startThreads() {		
+	protected final void startThreads() {
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
 			QueryCommand command = createCommand(nodes[i]);
@@ -105,15 +105,6 @@ public abstract class QueryExecutor {
 			for (QueryThread thread : threads) {
 				thread.stop();
 			}
-			
-			// Yield this thread so other threads have a chance to exit on their own.
-			Thread.yield();
-
-			// Interrupt slacker threads.
-			for (QueryThread thread : threads) {
-				thread.interrupt();
-			}
-
 			sendCancel();
 		}
     }
@@ -132,28 +123,22 @@ public abstract class QueryExecutor {
 
 	private final class QueryThread implements Runnable {
 		private final QueryCommand command;
-		private Thread thread;
-		private volatile boolean end;
 
 		public QueryThread(QueryCommand command) {
 			this.command = command;
 		}
 
 		public void run() {
-			thread = Thread.currentThread();		
-
 			try {
 				if (command.isValid()) {
 					command.execute();
 				}
-				end = true;
 				threadCompleted();
 			}
 			catch (Exception e) {
-				end = true;
 				// Terminate other query threads.
 				stopThreads(e);
-			}			
+			}
 		}
 
 		/**
@@ -161,22 +146,7 @@ public abstract class QueryExecutor {
 		 */
 		public void stop() {
 			command.stop();
-		}
-		
-		/**
-		 * Terminate slacker threads who are stuck in potentially permanent wait states.
-		 */
-		public void interrupt() {
-			// Only interrupt thread when it's stuck in a wait state.  Otherwise, the 
-			// interruption could occur in a different task which happens to reuse this thread.
-			if (thread != null && !end) {
-				Thread.State state = thread.getState();
-				
-				if (state == Thread.State.BLOCKED || state == Thread.State.WAITING) {
-					thread.interrupt();
-				}
-			}
-		}
+		}		
 	}
 	
 	protected abstract QueryCommand createCommand(Node node);

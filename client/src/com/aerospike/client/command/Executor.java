@@ -94,16 +94,7 @@ public final class Executor {
 			// Send stop signal to threads.
 			for (ExecutorThread thread : threads) {
 				thread.stop();
-			}
-			
-			// Yield this thread so other threads have a chance to exit on their own.
-			Thread.yield();
-
-			// Interrupt slacker threads.
-			for (ExecutorThread thread : threads) {
-				thread.interrupt();
-			}
-			
+			}					
 			notifyCompleted();
 		}
     }
@@ -125,25 +116,19 @@ public final class Executor {
 	
     private final class ExecutorThread implements Runnable {
 		private final MultiCommand command;
-		private Thread thread;
-		private volatile boolean end;
 
 		public ExecutorThread(MultiCommand command) {
 			this.command = command;
 		}
 		
 		public void run() {
-			thread = Thread.currentThread();
-			
 			try {
 				if (command.isValid()) {
 					command.execute();
 				}
-				end = true;
 				threadCompleted();
 			}
 			catch (Exception e) {
-				end = true;
 				// Terminate other scan threads.
 				stopThreads(e);
 			}
@@ -154,21 +139,6 @@ public final class Executor {
 		 */
 		public void stop() {
 			command.stop();
-		}
-		
-		/**
-		 * Terminate slacker threads who are stuck in potentially permanent wait states.
-		 */
-		public void interrupt() {
-			// Only interrupt thread when it's stuck in a wait state.  Otherwise, the 
-			// interruption could occur in a different task which happens to reuse this thread.
-			if (thread != null && !end) {
-				Thread.State state = thread.getState();
-				
-				if (state == Thread.State.BLOCKED || state == Thread.State.WAITING) {
-					thread.interrupt();
-				}
-			}
-		}
+		}		
 	}
 }

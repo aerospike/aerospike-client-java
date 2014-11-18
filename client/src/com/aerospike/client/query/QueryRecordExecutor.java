@@ -43,7 +43,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	
 	@Override
 	protected void sendCancel() {
-		recordSet.put(RecordSet.END);
+		recordSet.abort();
 	}
 
 	@Override
