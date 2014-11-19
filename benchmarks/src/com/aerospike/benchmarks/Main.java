@@ -473,13 +473,13 @@ public class Main implements Log.Callback {
         	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
         }
 
-		args.storeType = StoreType.KVS;
+		args.storeType = StorageType.KVS;
         if (line.hasOption("storeType")) {
         	String storetype = line.getOptionValue("storeType");
 			if (storetype.equals("LLIST")) {
-				args.storeType = StoreType.LLIST;
+				args.storeType = StorageType.LLIST;
 			} else if (storetype.equals("LSTACK")) {
-				args.storeType = StoreType.LSTACK;
+				args.storeType = StorageType.LSTACK;
 			}
         }
         

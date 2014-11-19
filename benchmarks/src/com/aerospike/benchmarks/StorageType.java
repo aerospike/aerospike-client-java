@@ -17,9 +17,9 @@
 package com.aerospike.benchmarks;
 
 /**
- * Benchmark store type.
+ * Benchmark storage type.
  */
-public enum StoreType {
+public enum StorageType {
 	/**
 	 * Simple KVS
 	 */
