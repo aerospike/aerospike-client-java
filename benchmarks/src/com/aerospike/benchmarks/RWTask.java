@@ -18,15 +18,14 @@ package com.aerospike.benchmarks;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
@@ -39,12 +38,9 @@ public abstract class RWTask implements Runnable {
 	final AerospikeClient client;
 	final Arguments args;
 	final CounterStore counters;
-	final Random random;
+	final RandomShift random;
 	final WritePolicy writePolicyGeneration;
 	ExpectedValue[] expectedValues;
-	final double readPct;
-	final double readMultiBinPct;
-	final double writeMultiBinPct;
 	final int keyStart;
 	final int keyCount;
 	
@@ -55,21 +51,14 @@ public abstract class RWTask implements Runnable {
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		
-		// Use default constructor which uses a different seed for each invocation.
-		// Do not use System.currentTimeMillis() for a seed because it is often
-		// the same across concurrent threads, thus causing hot keys.
-		random = new Random();
+		random = new RandomShift();
 				
 		writePolicyGeneration = new WritePolicy();
 		writePolicyGeneration.timeout = args.writePolicy.timeout;
 		writePolicyGeneration.maxRetries = args.writePolicy.maxRetries;
 		writePolicyGeneration.sleepBetweenRetries = args.writePolicy.sleepBetweenRetries;
 		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-		writePolicyGeneration.generation = 0;
-		
-		readPct = (double)args.readPct / 100.0;
-		readMultiBinPct = (double)args.readMultiBinPct / 100.0;
-		writeMultiBinPct = (double)args.writeMultiBinPct / 100.0;
+		writePolicyGeneration.generation = 0;		
 	}	
 	
 	public void run() {
@@ -127,8 +116,8 @@ public abstract class RWTask implements Runnable {
 	}
 	
 	private void readUpdate() {
-		if (random.nextDouble() < this.readPct) {
-			boolean isMultiBin = random.nextDouble() < readMultiBinPct;
+		if (random.nextInt(100) < args.readPct) {
+			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
 			
 			if (args.batchSize <= 1) {
 				int key = random.nextInt(keyCount);
@@ -139,7 +128,7 @@ public abstract class RWTask implements Runnable {
 			}
 		}
 		else {
-			boolean isMultiBin = random.nextDouble() < writeMultiBinPct;
+			boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
 			
 			if (args.batchSize <= 1) {
 				// Single record write.

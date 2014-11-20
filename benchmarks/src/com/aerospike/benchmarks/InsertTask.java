@@ -16,8 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.Random;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -40,7 +38,7 @@ public abstract class InsertTask implements Runnable {
 
 	public void run() {
 		try {			
-			Random random = new Random();
+			RandomShift random = new RandomShift();
 
 			for (int i = 0; i < keyCount; i++) {
 				try {

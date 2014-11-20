@@ -16,8 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.Random;
-
 import com.aerospike.client.Bin;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.BatchPolicy;
@@ -49,12 +47,12 @@ public class Arguments {
 	public void setFixedBins() {
 		// Fixed values are used when the extra random call overhead is not wanted
 		// in the benchmark measurement.
-		Random random = new Random();
+		RandomShift random = new RandomShift();
 		fixedBins = getBins(random, true);
 		fixedBin = new Bin[] {fixedBins[0]};
 	}
 
-	public Bin[] getBins(Random random, boolean multiBin) {
+	public Bin[] getBins(RandomShift random, boolean multiBin) {
 		if (fixedBins != null) {
 		    return (multiBin)? fixedBins : fixedBin;
 		}
@@ -71,7 +69,7 @@ public class Arguments {
 		return bins;
 	}
     
-	private static Value genValue(Random random, DBObjectSpec spec) {
+	private static Value genValue(RandomShift random, DBObjectSpec spec) {
 		switch (spec.type) {
 		case 'I':
 			return Value.get(random.nextInt());
