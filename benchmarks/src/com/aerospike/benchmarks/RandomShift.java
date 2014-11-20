@@ -22,7 +22,7 @@ import java.util.Random;
  * Generate random numbers using xorshift128plus algorithm.
  * This class is not thread-safe and should be instantiated once per thread.
  */
-public class RandomShift {
+public final class RandomShift {
 	private long seed0;
 	private long seed1;
 	
