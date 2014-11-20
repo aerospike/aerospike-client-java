@@ -21,7 +21,6 @@ import gnu.crypto.hash.RipeMD160;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
@@ -195,6 +194,10 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = key;
+		
+		// Some value types can't be used as keys (jblob, list, map, null).  Verify key type.
+		key.validateKeyType();
+		
 		digest = computeDigest(setName, key);
 	}
 
@@ -278,18 +281,12 @@ public final class Key {
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
-		int keyType = key.getType();
-		
-		if (keyType == ParticleType.NULL) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key: null");
-		}
-		
 		// This method runs 14% faster using thread local byte array 
 		// versus creating the buffer each time.
 		byte[] buffer = ThreadLocalData.getBuffer();
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
-		buffer[setLength] = (byte)keyType;		
+		buffer[setLength] = (byte)key.getType();		
 		int keyLength = key.write(buffer, setLength + 1);
 
 		// Run additional 16% faster using direct class versus 

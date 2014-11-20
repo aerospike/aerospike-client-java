@@ -152,6 +152,13 @@ public abstract class Value {
 	public abstract void pack(Packer packer) throws IOException;
 
 	/**
+	 * Validate if value type can be used as a key.
+	 * @throws AerospikeException	if type can't be used as a key.
+	 */
+	public void validateKeyType() throws AerospikeException {	
+	}
+	
+	/**
 	 * Get wire protocol value type.
 	 */
 	public abstract int getType();
@@ -198,6 +205,11 @@ public abstract class Value {
 		public void pack(Packer packer) throws IOException {
 			packer.packNil();
 		}
+		
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: null");
+		}		
 
 		@Override
 		public int getType() {
@@ -530,6 +542,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: jblob");
+		}		
+
+		@Override
 		public int getType() {
 			return ParticleType.JBLOB;
 		}
@@ -578,6 +595,11 @@ public abstract class Value {
 		public void pack(Packer packer) throws IOException {
 			packer.packValueArray(array);
 		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
+		}		
 
 		@Override
 		public int getType() {
@@ -630,6 +652,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
+		}		
+
+		@Override
 		public int getType() {
 			return ParticleType.LIST;
 		}
@@ -678,6 +705,11 @@ public abstract class Value {
 		public void pack(Packer packer) throws IOException {
 			packer.packMap(map);
 		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
+		}		
 
 		@Override
 		public int getType() {
