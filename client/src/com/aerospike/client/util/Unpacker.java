@@ -32,7 +32,7 @@ import com.aerospike.client.command.ParticleType;
 /**
  * De-serialize collection objects using MessagePack format specification:
  * 
- * http://wiki.msgpack.org/display/MSGPACK/Format+specification#Formatspecification-int32
+ * https://github.com/msgpack/msgpack/blob/master/spec.md
  */
 public abstract class Unpacker<T> {
 

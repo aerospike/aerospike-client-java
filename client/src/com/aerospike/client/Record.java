@@ -60,42 +60,51 @@ public final class Record {
 	}
 	
 	/**
+	 * Get bin value as double.
+	 */
+	public double getDouble(String name) {
+		return Double.longBitsToDouble((Long)getValue(name));
+	}
+
+	/**
+	 * Get bin value as float.
+	 */
+	public float getFloat(String name) {
+		return (float)Double.longBitsToDouble((Long)getValue(name));
+	}
+
+	/**
 	 * Get bin value as long.
 	 */
-	public long getLong(String name)
-	{
+	public long getLong(String name) {
 		return (Long)getValue(name);
 	}
 
 	/**
 	 * Get bin value as int.
 	 */
-	public int getInt(String name)
-	{
+	public int getInt(String name) {
 		return (Integer)getValue(name);
 	}
 
 	/**
 	 * Get bin value as short.
 	 */
-	public short getShort(String name)
-	{
+	public short getShort(String name) {
 		return (Short)getValue(name);
 	}
 
 	/**
 	 * Get bin value as byte.
 	 */
-	public byte getByte(String name)
-	{
+	public byte getByte(String name) {
 		return (Byte)getValue(name);
 	}
 
 	/**
 	 * Get bin value as boolean.
 	 */
-	public boolean getBool(String name)
-	{
+	public boolean getBool(String name) {
 		long v = (Long)getValue(name);
 		return (v != 0) ? true : false;
 	}

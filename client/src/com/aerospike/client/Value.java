@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.luaj.vm2.LuaDouble;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaNil;
 import org.luaj.vm2.LuaString;
@@ -71,6 +72,20 @@ public abstract class Value {
 	 */
 	public static Value get(long value) {
 		return new LongValue(value);
+	}
+
+	/**
+	 * Get double value instance.
+	 */
+	public static Value get(double value) {
+		return new DoubleValue(value);
+	}
+
+	/**
+	 * Get float value instance.
+	 */
+	public static Value get(float value) {
+		return new FloatValue(value);
 	}
 
 	/**
@@ -501,6 +516,122 @@ public abstract class Value {
 		@Override
 		public long toLong() {
 			return value;
+		}
+	}
+
+	/**
+	 * Double value.
+	 */
+	public static final class DoubleValue extends Value {		
+		private final double value;
+
+		public DoubleValue(double value) {
+			this.value = value;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return 8;
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			Buffer.longToBytes(Double.doubleToLongBits(value), buffer, offset);
+			return 8;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.packDouble(value);
+		}
+
+		@Override
+		public int getType() {
+			// The server does not natively handle doubles, so store as long (8 byte integer).
+			return ParticleType.INTEGER;
+		}
+		
+		@Override
+		public Object getObject() {
+			return value;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaDouble.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Double.toString(value);
+		}
+		
+		@Override
+		public int toInteger() {
+			return (int)value;
+		}
+
+		@Override
+		public long toLong() {
+			return (long)value;
+		}
+	}
+
+	/**
+	 * Float value.
+	 */
+	public static final class FloatValue extends Value {		
+		private final float value;
+
+		public FloatValue(float value) {
+			this.value = value;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return 8;
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			Buffer.longToBytes(Double.doubleToLongBits(value), buffer, offset);
+			return 8;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.packFloat(value);
+		}
+
+		@Override
+		public int getType() {
+			// The server does not natively handle floats, so store as long (8 byte integer).
+			return ParticleType.INTEGER;
+		}
+		
+		@Override
+		public Object getObject() {
+			return value;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaDouble.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Float.toString(value);
+		}
+		
+		@Override
+		public int toInteger() {
+			return (int)value;
+		}
+
+		@Override
+		public long toLong() {
+			return (long)value;
 		}
 	}
 

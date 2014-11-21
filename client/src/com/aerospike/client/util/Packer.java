@@ -32,7 +32,7 @@ import com.aerospike.client.command.ParticleType;
 /**
  * Serialize collection objects using MessagePack format specification:
  * 
- * http://wiki.msgpack.org/display/MSGPACK/Format+specification#Formatspecification-int32
+ * https://github.com/msgpack/msgpack/blob/master/spec.md
  */
 public final class Packer {
 	
@@ -300,6 +300,24 @@ public final class Packer {
     	}
  		System.arraycopy(src, srcOffset, buffer, offset, srcLength);
 		offset += srcLength;
+    }
+
+    public void packDouble(double val) {
+    	if (offset + 9 > buffer.length) {
+    		resize(9);
+    	}
+    	buffer[offset++] = (byte)0xcb;
+    	Buffer.longToBytes(Double.doubleToLongBits(val), buffer, offset);
+    	offset += 8;
+    }
+    
+    public void packFloat(float val) {
+    	if (offset + 5 > buffer.length) {
+    		resize(5);
+    	}
+    	buffer[offset++] = (byte)0xca;
+    	Buffer.intToBytes(Float.floatToIntBits(val), buffer, offset);
+    	offset += 4;
     }
 
     private void packLong(int type, long val) {
