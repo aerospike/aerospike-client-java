@@ -186,6 +186,16 @@ public final class Packer {
 			return;
 		}
 
+		if (obj instanceof Double) {
+			packDouble((Double) obj);
+			return;
+		}
+		
+		if (obj instanceof Float) {
+			packFloat((Float) obj);
+			return;
+		}
+		
 		if (obj instanceof List<?>) {
 			packList((List<?>) obj);
 			return;

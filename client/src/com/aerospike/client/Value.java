@@ -145,6 +145,12 @@ public abstract class Value {
 		if (value instanceof Long)
         	return new LongValue((Long)value);
 		
+		if (value instanceof Double)
+        	return new DoubleValue((Double)value);
+		
+		if (value instanceof Float)
+        	return new FloatValue((Float)value);
+
 		if (value instanceof Value) {
 			return (Value)value;
 		}	    	

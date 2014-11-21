@@ -23,6 +23,7 @@ import java.util.Map;
 
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LuaClosure;
+import org.luaj.vm2.LuaDouble;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaTable;
@@ -217,6 +218,14 @@ public final class LuaInstance {
 		
 		if (obj instanceof Long) {
 			return LuaInteger.valueOf((Long) obj);
+		}
+
+		if (obj instanceof Double) {
+			return LuaDouble.valueOf((Double) obj);
+		}
+
+		if (obj instanceof Float) {
+			return LuaDouble.valueOf((Float) obj);
 		}
 
 		if (obj instanceof List<?>) {
