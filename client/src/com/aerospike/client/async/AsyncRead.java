@@ -50,7 +50,7 @@ public class AsyncRead extends AsyncSingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setRead(key, binNames);
+		setRead(policy, key, binNames);
 	}
 
 	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {

@@ -43,7 +43,7 @@ public class AsyncReadHeader extends AsyncSingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setReadHeader(key);
+		setReadHeader(policy, key);
 	}
 
 	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {

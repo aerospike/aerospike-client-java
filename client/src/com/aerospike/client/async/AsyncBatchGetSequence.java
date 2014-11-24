@@ -58,7 +58,7 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(keys, batchNamespace, binNames, readAttr);
+		setBatchGet(policy, keys, batchNamespace, binNames, readAttr);
 	}
 
 	@Override

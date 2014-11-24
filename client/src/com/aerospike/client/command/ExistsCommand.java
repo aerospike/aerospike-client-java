@@ -41,7 +41,7 @@ public final class ExistsCommand extends SingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setExists(key);
+		setExists(policy, key);
 	}
 
 	protected void parseResult(Connection conn) throws AerospikeException, IOException {

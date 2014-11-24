@@ -25,6 +25,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.CommitLevel;
+import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -35,7 +36,8 @@ public abstract class Command {
 	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
-	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins
+	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
+	public static final int INFO1_CONSISTENCY_ALL	= (1 << 6); // Involve all replicas in read operation.
 
 	public static final int INFO2_WRITE				= (1 << 0); // Create or update record
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
@@ -106,25 +108,25 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setExists(Key key) {
+	public final void setExists(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		sizeBuffer();
-		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 		writeKey(key);
 		end();
 	}
 
-	public final void setRead(Key key) {
+	public final void setRead(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		sizeBuffer();
-		writeHeader(Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+		writeHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 		writeKey(key);
 		end();
 	}
 
-	public final void setRead(Key key, String[] binNames) {
+	public final void setRead(Policy policy, Key key, String[] binNames) {
 		if (binNames != null) {
 			begin();
 			int fieldCount = estimateKeySize(key);
@@ -133,7 +135,7 @@ public abstract class Command {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
-			writeHeader(Command.INFO1_READ, 0, fieldCount, binNames.length);
+			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.length);
 			writeKey(key);
 			
 			for (String binName : binNames) {
@@ -142,11 +144,11 @@ public abstract class Command {
 			end();
 		}
 		else {
-			setRead(key);
+			setRead(policy, key);
 		}
 	}
 
-	public final void setReadHeader(Key key) {
+	public final void setReadHeader(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		estimateOperationSize((String)null);
@@ -156,7 +158,7 @@ public abstract class Command {
 		// The workaround is to request a non-existent bin.
 		// TODO: Fix this on server.
 		//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		writeHeader(Command.INFO1_READ, 0, fieldCount, 1);
+		writeHeader(policy, Command.INFO1_READ, 0, fieldCount, 1);
 		
 		writeKey(key);
 		writeOperation((String)null, Operation.Type.READ);
@@ -206,12 +208,7 @@ public abstract class Command {
 		}
 		sizeBuffer();
 		
-		if (writeAttr != 0) {
-			writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
-		}
-		else {
-			writeHeader(readAttr, writeAttr, fieldCount, operations.length);			
-		}
+		writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
 		writeKey(key);
 					
 		if (policy.sendKey) {
@@ -244,7 +241,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchExists(Key[] keys, BatchNamespace batch) {
+	public final void setBatchExists(Policy policy, Key[] keys, BatchNamespace batch) {
 		// Estimate buffer size
 		begin();
 		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
@@ -254,7 +251,7 @@ public abstract class Command {
 				
 		sizeBuffer();
 
-		writeHeader(Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
 		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
@@ -270,7 +267,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchGet(Key[] keys, BatchNamespace batch, HashSet<String> binNames, int readAttr) {
+	public final void setBatchGet(Policy policy, Key[] keys, BatchNamespace batch, HashSet<String> binNames, int readAttr) {
 		// Estimate buffer size
 		begin();
 		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
@@ -287,7 +284,7 @@ public abstract class Command {
 		sizeBuffer();
 
 		int operationCount = (binNames == null)? 0 : binNames.size();
-		writeHeader(readAttr, 0, 2, operationCount);		
+		writeHeader(policy, readAttr, 0, 2, operationCount);		
 		writeField(batch.namespace, FieldType.NAMESPACE);
 		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 	
@@ -345,7 +342,7 @@ public abstract class Command {
 		}
 		
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeader(readAttr, 0, fieldCount, operationCount);
+		writeHeader(policy, readAttr, 0, fieldCount, operationCount);
 				
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -464,6 +461,10 @@ public abstract class Command {
     		infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
 		
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
+				
     	// Write all header data except total size which must be written last. 
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
@@ -488,7 +489,11 @@ public abstract class Command {
 	/**
 	 * Generic header write.
 	 */
-	protected final void writeHeader(int readAttr, int writeAttr, int fieldCount, int operationCount) {		
+	protected final void writeHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
+
 		// Write all header data except total size which must be written last. 
 		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9] = (byte)readAttr;

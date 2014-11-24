@@ -42,7 +42,7 @@ public class ReadHeaderCommand extends SingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setReadHeader(key);
+		setReadHeader(policy, key);
 	}
 
 	protected void parseResult(Connection conn) throws AerospikeException, IOException {

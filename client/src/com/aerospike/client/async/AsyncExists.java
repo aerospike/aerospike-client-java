@@ -42,7 +42,7 @@ public final class AsyncExists extends AsyncSingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setExists(key);
+		setExists(policy, key);
 	}
 
 	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {

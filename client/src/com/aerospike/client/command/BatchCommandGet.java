@@ -64,7 +64,7 @@ public final class BatchCommandGet extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(keys, batch, binNames, readAttr);
+		setBatchGet(policy, keys, batch, binNames, readAttr);
 	}
 
 	/**

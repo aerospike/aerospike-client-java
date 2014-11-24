@@ -54,7 +54,7 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(keys, batch);
+		setBatchExists(policy, keys, batch);
 	}
 
 	/**

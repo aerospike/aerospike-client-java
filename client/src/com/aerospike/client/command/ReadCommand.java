@@ -46,7 +46,7 @@ public class ReadCommand extends SingleCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setRead(key, binNames);
+		setRead(policy, key, binNames);
 	}
 
 	protected void parseResult(Connection conn) throws AerospikeException, IOException {

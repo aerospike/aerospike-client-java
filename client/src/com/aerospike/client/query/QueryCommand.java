@@ -193,6 +193,6 @@ public abstract class QueryCommand extends MultiCommand {
 	}
 	
 	protected void writeQueryHeader(int fieldCount, int operationCount) {
-		writeHeader(Command.INFO1_READ, 0, fieldCount, operationCount);
+		writeHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);
 	}
 }
