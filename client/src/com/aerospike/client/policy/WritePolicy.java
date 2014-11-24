@@ -33,6 +33,13 @@ public final class WritePolicy extends Policy {
 	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
 
 	/**
+	 * Desired consistency guarantee when committing a transaction on the server. The default 
+	 * (COMMIT_ALL) indicates that the server should wait for master and all replica commits to 
+	 * be successful before returning success to the client.
+	 */
+	public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
+
+	/**
 	 * Expected generation. Generation is the number of times a record has been modified
 	 * (including creation) on the server. If a write operation is creating a record, 
 	 * the expected generation would be <code>0</code>.  
@@ -66,6 +73,7 @@ public final class WritePolicy extends Policy {
 		super(other);
 		this.recordExistsAction = other.recordExistsAction;
 		this.generationPolicy = other.generationPolicy;
+		this.commitLevel = other.commitLevel;
 		this.generation = other.generation;
 		this.expiration = other.expiration;
 		this.sendKey = other.sendKey;
