@@ -130,6 +130,27 @@ public final class LargeList {
 	}
 
 	/**
+	 * Delete values from list.
+	 * 
+	 * @param values			values to delete
+	 */
+	public final void remove(List<?> values) throws AerospikeException {
+		client.execute(policy, key, PackageName, "remove_all", binName, Value.getAsList(values));
+	}
+
+	/**
+	 * Delete values from list between range.
+	 * 
+	 * @param begin				low value of the range (inclusive)
+	 * @param end				high value of the range (inclusive)
+	 * @return					count of entries removed
+	 */
+	public final int remove(Value begin, Value end) throws AerospikeException {
+		Object result = client.execute(policy, key, PackageName, "remove_range", binName, begin, end);
+		return (result != null)? (Integer)result : 0;
+	}
+
+	/**
 	 * Select values from list.
 	 * 
 	 * @param value				value to select
@@ -155,25 +176,25 @@ public final class LargeList {
 	/**
 	 * Select a range of values from the large list.
 	 * 
-	 * @param minValue			low value of the range
-	 * @param maxValue			high value of the range
+	 * @param begin				low value of the range (inclusive)
+	 * @param end				high value of the range (inclusive)
 	 * @return					list of entries selected
 	 */
-	public final List<?> range(Value minValue, Value maxValue) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "range", binName, minValue, maxValue);
+	public final List<?> range(Value begin, Value end) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end);
 	}
 
 	/**
 	 * Select a range of values from the large list, then apply a Lua filter.
 	 * 
-	 * @param minValue			low value of the range
-	 * @param maxValue			high value of the range
+	 * @param begin				low value of the range (inclusive)
+	 * @param end				high value of the range (inclusive)
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> range(Value minValue, Value maxValue, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "range", binName, minValue, maxValue, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final List<?> range(Value begin, Value end, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, userModule, Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
