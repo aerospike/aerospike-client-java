@@ -33,6 +33,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.policy.CommitLevel;
+import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -137,6 +139,10 @@ public class Main implements Log.Callback {
 			"Set a target transactions per second for the client. The client should not exceed this " + 
 			"average throughput."
 			);
+		options.addOption("t", "transactions", true, 
+			"Number of transactions to perform in read/write mode before shutting down. " +
+			"The default is to run indefinitely."
+			);
 		
 		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
 		options.addOption("readTimeout", true, "Set read transaction timeout in milliseconds.");
@@ -147,6 +153,15 @@ public class Main implements Log.Callback {
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
 			"Enter zero to skip sleep."	
 			);
+		options.addOption("consistencyLevel", true, 
+				"How replicas should be consulted in a read operation to provide the desired consistency guarantee. " +
+				"Values:  one | all.  Default: one"	
+				);
+		options.addOption("commitLevel", true, 
+				"Desired replica consistency guarantee when committing a transaction on the server. " +
+				"Values:  all | master.  Default: all"	
+				);
+
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. " + 
 			"It is not recommended to use a value greater than 125."
@@ -175,7 +190,7 @@ public class Main implements Log.Callback {
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
 
-		options.addOption("t", "storeType", true, 
+		options.addOption("ST", "storeType", true, 
 			"Defines data store type to run. Values:  KVS | LLIST | LSTACK" 
 			);
 
@@ -415,6 +430,10 @@ public class Main implements Log.Callback {
 			args.throughput = Integer.parseInt(line.getOptionValue("throughput"));
 		}
 		
+		if (line.hasOption("transactions")) {
+			args.transactionLimit = Long.parseLong(line.getOptionValue("transactions"));
+		}
+
 		if (line.hasOption("timeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
 			args.readPolicy.timeout = timeout;
@@ -446,11 +465,35 @@ public class Main implements Log.Callback {
 			args.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 		
+		if (line.hasOption("consistencyLevel")) {
+			String level = line.getOptionValue("consistencyLevel");
+			
+			if (level.equals("all")) {
+				args.readPolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;
+				args.writePolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;
+				args.batchPolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;				
+			}
+			else if (! level.equals("one")) {
+				throw new Exception("Invalid consistencyLevel: " + level);
+			}
+		}
+
+		if (line.hasOption("commitLevel")) {
+			String level = line.getOptionValue("commitLevel");
+			
+			if (level.equals("master")) {
+				args.writePolicy.commitLevel = CommitLevel.COMMIT_MASTER;
+			}
+			else if (! level.equals("all")) {
+				throw new Exception("Invalid commitLevel: " + level);
+			}
+		}
+
 		if (line.hasOption("threads")) {
 			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
 			
 			if (this.nThreads < 1) {
-				throw new Exception("number of client threads (-z) must be > 0");
+				throw new Exception("Client threads (-z) must be > 0");
 			}
 		}
 		else {
@@ -544,21 +587,23 @@ public class Main implements Log.Callback {
 		
 		System.out.println("keys: " + this.nKeys
 			+ ", start key: " + this.startKey
+			+ ", transactions: " + args.transactionLimit
 			+ ", bins: " + args.nBins
 			+ ", random values: " + (args.fixedBins == null)
-			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
-			+ ", debug: " + args.debug);
+			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps")));
 	
 		if (args.workload != Workload.INITIALIZE) {
 			System.out.println("read policy: timeout: " + args.readPolicy.timeout
 				+ ", maxRetries: " + args.readPolicy.maxRetries 
 				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
+				+ ", consistencyLevel: " + args.readPolicy.consistencyLevel
 				+ ", reportNotFound: " + args.reportNotFound);
 		}
 
 		System.out.println("write policy: timeout: " + args.writePolicy.timeout
 			+ ", maxRetries: " + args.writePolicy.maxRetries
-			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries);
+			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
+			+ ", commitLevel: " + args.writePolicy.commitLevel);
 		
 		if (args.batchSize > 1) {		
 			System.out.println("batch size: " + args.batchSize
@@ -595,6 +640,8 @@ public class Main implements Log.Callback {
 			binCount++;
 		}
 
+		System.out.println("debug: " + args.debug);
+		
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
 		Log.setCallback(this);		
@@ -703,8 +750,9 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void doRWTest(AerospikeClient client) throws Exception {		
+	private void doRWTest(AerospikeClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		RWTask[] tasks = new RWTask[this.nThreads];
 		
 		for (int i = 0 ; i < this.nThreads; i++) {
 			RWTask rt;
@@ -715,13 +763,16 @@ public class Main implements Log.Callback {
 			} else {
 				rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			}
+			tasks[i] = rt;
 			es.execute(rt);
 		}
-		collectRWStats(null);
+		collectRWStats(tasks, null);
+		es.shutdown();
 	}
 
 	private void doAsyncRWTest(AsyncClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		RWTask[] tasks = new RWTask[this.nThreads];
 		
 		for (int i = 0 ; i < this.nThreads; i++) {
 			RWTask rt;
@@ -732,12 +783,14 @@ public class Main implements Log.Callback {
 			} else {
 				rt = new RWTaskAsync(client, args, counters, this.startKey, this.nKeys);
 			}
+			tasks[i] = rt;
 			es.execute(rt);
 		}
-		collectRWStats(client);
+		collectRWStats(tasks, client);
+		es.shutdown();
 	}
 	
-	private void collectRWStats(AsyncClient client) throws Exception {		
+	private void collectRWStats(RWTask[] tasks, AsyncClient client) throws Exception {		
 		// wait for all the tasks to finish setting up for validation
 		if (args.validate) {
 			while(counters.loadValuesFinishedTasks.get() < this.nThreads) {
@@ -747,6 +800,8 @@ public class Main implements Log.Callback {
 			// set flag that everyone is ready - this will allow the individual tasks to go
 			counters.loadValuesFinished.set(true);
 		}
+		
+		long transactionTotal = 0;
 
 		while (true) {
 			long time = System.currentTimeMillis();
@@ -790,7 +845,19 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
 			}
-
+			
+			if (args.transactionLimit > 0 ) {
+				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;
+				
+				if (transactionTotal >= args.transactionLimit) {
+					for (RWTask task : tasks) {
+						task.stop();
+					}
+					System.out.println("Transaction limit reached: " + args.transactionLimit + ". Exiting.");
+					break;
+				}
+			}
+			
 			Thread.sleep(1000);
 		}
 	}

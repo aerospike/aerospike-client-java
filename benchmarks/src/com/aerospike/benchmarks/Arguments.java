@@ -37,6 +37,7 @@ public class Arguments {
 	public int readMultiBinPct;
 	public int writeMultiBinPct;
 	public int throughput;
+	public long transactionLimit;
 	public boolean reportNotFound;
 	public boolean validate;
 	public boolean debug;

@@ -43,6 +43,7 @@ public abstract class RWTask implements Runnable {
 	ExpectedValue[] expectedValues;
 	final int keyStart;
 	final int keyCount;
+	volatile boolean valid;
 	
 	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
 		this.client = client;
@@ -50,6 +51,7 @@ public abstract class RWTask implements Runnable {
 		this.counters = counters;
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
+		this.valid = true;
 		
 		random = new RandomShift();
 				
@@ -67,7 +69,7 @@ public abstract class RWTask implements Runnable {
 			setupValidation();
 		}
 
-		while (true) {
+		while (valid) {
 			try {
 				switch (args.workload) {
 				case READ_UPDATE:
@@ -113,6 +115,10 @@ public abstract class RWTask implements Runnable {
 				}
 			}
 		}
+	}
+	
+	public void stop() {
+		valid = false;
 	}
 	
 	private void readUpdate() {
