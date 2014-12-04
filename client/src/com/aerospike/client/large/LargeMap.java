@@ -34,7 +34,7 @@ public final class LargeMap {
 	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
-	private final Value userModule;
+	private final Value createModule;
 	
 	/**
 	 * Initialize large map operator.
@@ -43,14 +43,14 @@ public final class LargeMap {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default set
+	 * @param createModule			Lua function name that initializes list configuration parameters, pass null for default set
 	 */
-	public LargeMap(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
+	public LargeMap(AerospikeClient client, WritePolicy policy, Key key, String binName, String createModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
 		this.binName = Value.get(binName);
-		this.userModule = Value.get(userModule);
+		this.createModule = Value.get(createModule);
 	}
 	
 	/**
@@ -60,7 +60,7 @@ public final class LargeMap {
 	 * @param value				entry value
 	 */
 	public final void put(Value name, Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "put", binName, name, value, userModule);
+		client.execute(policy, key, PackageName, "put", binName, name, value, createModule);
 	}
 
 	/**
@@ -69,7 +69,7 @@ public final class LargeMap {
 	 * @param map				map values to push
 	 */
 	public final void put(Map<?,?> map) throws AerospikeException {
-		client.execute(policy, key, PackageName, "put_all", binName, Value.getAsMap(map), userModule);
+		client.execute(policy, key, PackageName, "put_all", binName, Value.getAsMap(map), createModule);
 	}
 	
 	/**
@@ -103,12 +103,13 @@ public final class LargeMap {
 	/**
 	 * Select items from map.
 	 * 
+	 * @param filterModule		Lua module name which contains filter function
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of items selected
 	 */
-	public final Map<?,?> filter(String filterName, Value... filterArgs) throws AerospikeException {
-		return (Map<?,?>)client.execute(policy, key, PackageName, "filter", binName, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final Map<?,?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (Map<?,?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
 	/**
@@ -117,7 +118,7 @@ public final class LargeMap {
 	 * @param name				entry key
 	 */
 	public final void remove(Value name) throws AerospikeException {
-		client.execute(policy, key, PackageName, "remove", binName, name, userModule);
+		client.execute(policy, key, PackageName, "remove", binName, name, createModule);
 	}
 
 

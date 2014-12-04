@@ -35,7 +35,7 @@ public final class LargeList {
 	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
-	private final Value userModule;
+	private final Value createModule;
 	
 	/**
 	 * Initialize large list operator.
@@ -44,14 +44,14 @@ public final class LargeList {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default list
+	 * @param createModule			Lua function name that initializes list configuration parameters, pass null for default list
 	 */
-	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
+	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName, String createModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
 		this.binName = Value.get(binName);
-		this.userModule = Value.get(userModule);
+		this.createModule = Value.get(createModule);
 	}
 	
 	/**
@@ -62,7 +62,7 @@ public final class LargeList {
 	 * @param value				value to add
 	 */
 	public final void add(Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add", binName, value, userModule);
+		client.execute(policy, key, PackageName, "add", binName, value, createModule);
 	}
 
 	/**
@@ -73,7 +73,7 @@ public final class LargeList {
 	 * @param values			values to add
 	 */
 	public final void add(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), userModule);
+		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
 	}
 	
 	/**
@@ -84,7 +84,7 @@ public final class LargeList {
 	 * @param values			values to add
 	 */
 	public final void add(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), userModule);
+		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), createModule);
 	}
 
 	/**
@@ -95,7 +95,7 @@ public final class LargeList {
 	 * @param value				value to update
 	 */
 	public final void update(Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update", binName, value, userModule);
+		client.execute(policy, key, PackageName, "update", binName, value, createModule);
 	}
 
 	/**
@@ -106,7 +106,7 @@ public final class LargeList {
 	 * @param values			values to update
 	 */
 	public final void update(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), userModule);
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), createModule);
 	}
 	
 	/**
@@ -117,7 +117,7 @@ public final class LargeList {
 	 * @param values			values to update
 	 */
 	public final void update(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), userModule);
+		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), createModule);
 	}
 
 	/**
@@ -164,12 +164,13 @@ public final class LargeList {
 	 * Select values from list and apply specified Lua filter.
 	 * 
 	 * @param value				value to select
+	 * @param filterModule		Lua module name which contains filter function
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> findThenFilter(Value value, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final List<?> findThenFilter(Value value, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
 
@@ -189,12 +190,13 @@ public final class LargeList {
 	 * 
 	 * @param begin				low value of the range (inclusive)
 	 * @param end				high value of the range (inclusive)
+	 * @param filterModule		Lua module name which contains filter function
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> range(Value begin, Value end, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final List<?> range(Value begin, Value end, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
@@ -207,12 +209,13 @@ public final class LargeList {
 	/**
 	 * Select values from list and apply specified Lua filter.
 	 * 
+	 * @param filterModule		Lua module name which contains filter function
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> filter(String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**

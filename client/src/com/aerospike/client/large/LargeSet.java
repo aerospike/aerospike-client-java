@@ -35,7 +35,7 @@ public final class LargeSet {
 	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
-	private final Value userModule;
+	private final Value createModule;
 	
 	/**
 	 * Initialize large set operator.
@@ -44,14 +44,14 @@ public final class LargeSet {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default set
+	 * @param createModule			Lua function name that initializes list configuration parameters, pass null for default set
 	 */
-	public LargeSet(AerospikeClient client, WritePolicy policy, Key key, String binName, String userModule) {
+	public LargeSet(AerospikeClient client, WritePolicy policy, Key key, String binName, String createModule) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
 		this.binName = Value.get(binName);
-		this.userModule = Value.get(userModule);
+		this.createModule = Value.get(createModule);
 	}
 	
 	/**
@@ -60,7 +60,7 @@ public final class LargeSet {
 	 * @param value				value to add
 	 */
 	public final void add(Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add", binName, value, userModule);
+		client.execute(policy, key, PackageName, "add", binName, value, createModule);
 	}
 
 	/**
@@ -69,7 +69,7 @@ public final class LargeSet {
 	 * @param values			values to add
 	 */
 	public final void add(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), userModule);
+		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
 	}
 	
 	/**
@@ -78,7 +78,7 @@ public final class LargeSet {
 	 * @param values			values to add
 	 */
 	public final void add(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), userModule);
+		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), createModule);
 	}
 
 	/**
@@ -121,12 +121,13 @@ public final class LargeSet {
 	/**
 	 * Select values from set and apply specified Lua filter.
 	 * 
+	 * @param filterModule		Lua module name which contains filter function
 	 * @param filterName		Lua function name which applies filter to returned list
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> filter(String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, userModule, Value.get(filterName), Value.get(filterArgs));
+	public final List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
