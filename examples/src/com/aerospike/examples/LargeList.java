@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -31,7 +32,9 @@ import java.util.Map.Entry;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Language;
 import com.aerospike.client.Value;
+import com.aerospike.client.task.RegisterTask;
 
 public class LargeList extends Example {
 
@@ -50,6 +53,7 @@ public class LargeList extends Example {
 		}
 		
 		runSimpleExample(client, params);
+		//runFilterExample(client, params);
 		runWithDistinctBins(client, params);
 		runWithSerializedBin(client, params);
 		runVolumeInsert(client, params);
@@ -87,20 +91,22 @@ public class LargeList extends Example {
 		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));
 		
 		if (rangeList == null) {			
-			throw new Exception("Range returned null.");
+			console.error("Range returned null.");
+			return;
 		}
 		
-		if ( rangeList.size() != 2 ) {
-			throw new Exception("Range Size mismatch. Expected 2 Received " + rangeList.size());
+		if (rangeList.size() != 2) {
+			console.error("Range size mismatch. Expected 2 Received " + rangeList.size());
+			return;
 		}
 		String v2 = (String) rangeList.get(0);
 		String v3 = (String) rangeList.get(1);
 		
 		if ( v2.equals(orig2) && v3.equals(orig3) ) {
-			console.info("Range Query matched: v2=%s v3=%s", orig2, orig3);
+			console.info("Range query matched: v2=" + orig2 + " v3=" + orig3);
 		} else {
-			throw new Exception("Range Content mismatch. Expected (%s:%s) Received (%s:%s) " 
-					+ orig2 + orig3 + v2 + v3);
+			console.error("Range content mismatch. Expected (" + orig2 + ":" + orig3 + ") Received (" + v2 + ":" + v3 + ")"); 
+			return;
 		}
 
 		// Remove last value.
@@ -109,14 +115,15 @@ public class LargeList extends Example {
 		int size = llist.size();
 		
 		if (size != 2) {
-			throw new Exception("Size mismatch. Expected 2 Received " + size);
+			console.error("Size mismatch. Expected 2 Received " + size);
+			return;
 		}
 		
 		List<?> listReceived = llist.find(Value.get(orig2));
 		String expected = orig2;
 		
 		if (listReceived == null) {
-			console.error("Data mismatch: Expected %s. Received %s.", expected, null);
+			console.error("Data mismatch: Expected " + expected + ". Received null");
 			return;
 		}
 		
@@ -127,10 +134,56 @@ public class LargeList extends Example {
 				key.namespace, key.setName, key.userKey, stringReceived);
 		}
 		else {
-			console.error("Data mismatch: Expected %s. Received %s.", expected, stringReceived);
+			console.error("Data mismatch: Expected " + expected + ". Received " + stringReceived);
 		}
 	}
 	
+	/**
+	 * Large list filter example.
+	 */
+	public void runFilterExample(AerospikeClient client, Parameters params) throws Exception {
+		RegisterTask task = client.register(params.policy, "udf/largelist_example.lua", "largelist_example.lua", Language.LUA);
+		task.waitTillComplete();
+
+		Key key = new Key(params.namespace, params.set, "setkey");
+		String binName = params.getBinName("ListBin");
+		
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+		
+		// Initialize large set operator.
+		com.aerospike.client.large.LargeList llist = client.getLargeList(params.writePolicy, key, binName, null);
+		int orig1 = 1;
+		int orig2 = 2;
+		int orig3 = 3;
+		int orig4 = 4;
+						
+		// Write values.
+		llist.add(Value.get(orig1), Value.get(orig2), Value.get(orig3), Value.get(orig4));
+		
+		// Filter on values
+		List<?> filterList = llist.filter("largelist_example", "my_filter_func");
+		
+		if (filterList == null) {			
+			console.error("Filter returned null.");
+			return;
+		}		
+		
+		if (filterList.size() != 1) {
+			console.error("Filter Size mismatch. Expected 1 Received " + filterList.size());
+			return;
+		}
+		
+		String v = (String) filterList.get(0);
+		
+		if (v.equals(orig3)) {
+			console.info("Filter matched: v=%s", v);
+		} 
+		else {
+			console.error("Filter content mismatch. Expected (" + orig3 + ") Received (" + v + ")");
+		}
+	}
+
 	/**
 	 * Use distinct sub-bins for row in largelist bin. 
 	 */
