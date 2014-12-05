@@ -174,10 +174,10 @@ public class LargeList extends Example {
 			return;
 		}
 		
-		String v = (String) filterList.get(0);
+		Long v = (Long)filterList.get(0);
 		
-		if (v.equals(orig3)) {
-			console.info("Filter matched: v=%s", v);
+		if (v == orig3) {
+			console.info("Filter matched: v=%d", v);
 		} 
 		else {
 			console.error("Filter content mismatch. Expected (" + orig3 + ") Received (" + v + ")");
