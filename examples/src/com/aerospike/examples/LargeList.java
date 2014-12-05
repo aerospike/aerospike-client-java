@@ -162,7 +162,7 @@ public class LargeList extends Example {
 		llist.add(Value.get(orig1), Value.get(orig2), Value.get(orig3), Value.get(orig4));
 		
 		// Filter on values
-		List<?> filterList = llist.filter("largelist_example", "my_filter_func");
+		List<?> filterList = llist.filter("largelist_example", "my_filter_func", Value.get(orig3));
 		
 		if (filterList == null) {			
 			console.error("Filter returned null.");
