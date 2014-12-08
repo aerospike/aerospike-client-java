@@ -152,16 +152,9 @@ public abstract class Command {
 		begin();
 		int fieldCount = estimateKeySize(key);
 		estimateOperationSize((String)null);
-		sizeBuffer();
-		
-		// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-		// The workaround is to request a non-existent bin.
-		// TODO: Fix this on server.
-		//command.setRead(Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		writeHeader(policy, Command.INFO1_READ, 0, fieldCount, 1);
-		
+		sizeBuffer();		
+		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 		writeKey(key);
-		writeOperation((String)null, Operation.Type.READ);
 		end();
 	}
 
@@ -170,7 +163,6 @@ public abstract class Command {
 		int fieldCount = estimateKeySize(key);
 		int readAttr = 0;
 		int writeAttr = 0;
-		boolean readHeader = false;
 		boolean userKeyFieldCalculated = false;
 					
 		for (Operation operation : operations) {
@@ -188,9 +180,7 @@ public abstract class Command {
 				// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
 				// The workaround is to request a non-existent bin.
 				// TODO: Fix this on server.
-				//readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
-				readAttr |= Command.INFO1_READ;
-				readHeader = true;
+				readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
 				break;
 				
 			default:
@@ -217,10 +207,6 @@ public abstract class Command {
 
 		for (Operation operation : operations) {
 			writeOperation(operation);
-		}
-		
-		if (readHeader) {
-			writeOperation((String)null, Operation.Type.READ);
 		}
 		end();
 	}
