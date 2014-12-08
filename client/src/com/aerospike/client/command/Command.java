@@ -177,9 +177,6 @@ public abstract class Command {
 				break;
 				
 			case READ_HEADER:
-				// The server does not currently return record header data with INFO1_NOBINDATA attribute set.
-				// The workaround is to request a non-existent bin.
-				// TODO: Fix this on server.
 				readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
 				break;
 				
