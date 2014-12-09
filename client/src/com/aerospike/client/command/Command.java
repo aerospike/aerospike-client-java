@@ -163,6 +163,8 @@ public abstract class Command {
 		int fieldCount = estimateKeySize(key);
 		int readAttr = 0;
 		int writeAttr = 0;
+		boolean readBin = false;
+		boolean readHeader = false;
 		boolean userKeyFieldCalculated = false;
 					
 		for (Operation operation : operations) {
@@ -174,10 +176,12 @@ public abstract class Command {
 				if (operation.binName == null) {
 					readAttr |= Command.INFO1_GET_ALL;
 				}
+				readBin = true;
 				break;
 				
 			case READ_HEADER:
-				readAttr |= Command.INFO1_READ | Command.INFO1_NOBINDATA;
+				readAttr |= Command.INFO1_READ;
+				readHeader = true;
 				break;
 				
 			default:
@@ -194,6 +198,10 @@ public abstract class Command {
 			estimateOperationSize(operation);
 		}
 		sizeBuffer();
+		
+		if (readHeader && ! readBin) {
+			readAttr |= Command.INFO1_NOBINDATA;
+		}
 		
 		writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
 		writeKey(key);
