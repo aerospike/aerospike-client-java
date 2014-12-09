@@ -21,7 +21,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -47,7 +46,7 @@ public class LargeList extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
+		if (! params.hasLargeDataTypes) {
 			console.info("Large List functions are not supported by the connected Aerospike server.");
 			return;
 		}

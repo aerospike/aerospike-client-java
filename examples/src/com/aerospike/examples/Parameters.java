@@ -38,6 +38,7 @@ public class Parameters {
 	Policy policy;
 	boolean singleBin;
 	boolean hasUdf;
+	boolean hasLargeDataTypes;
 	
 	protected Parameters(String host, int port, String user, String password, String namespace, String set) {
 		this.host = host;
@@ -79,14 +80,16 @@ public class Parameters {
 				host, port, namespace));
 		}
 
-		String name = "single-bin";
+		singleBin = parseBoolean(namespaceTokens, "single-bin");
+		hasLargeDataTypes = parseBoolean(namespaceTokens, "ldt-enabled");
+	}
+	
+	private static boolean parseBoolean(String namespaceTokens, String name) {
 		String search = name + '=';
 		int begin = namespaceTokens.indexOf(search);
 
 		if (begin < 0) {
-			throw new Exception(String.format(
-				"Failed to find namespace attribute: host=%s port=%d namespace=%s attribute=%s",
-				host, port, namespace, name));
+			return false;
 		}
 
 		begin += search.length();
@@ -97,7 +100,7 @@ public class Parameters {
 		}
 
 		String value = namespaceTokens.substring(begin, end);
-		singleBin = Boolean.parseBoolean(value);
+		return Boolean.parseBoolean(value);
 	}
 
 	@Override

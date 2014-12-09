@@ -34,7 +34,7 @@ public class LargeSet extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
+		if (! params.hasLargeDataTypes) {
 			console.info("Large set functions are not supported by the connected Aerospike server.");
 			return;
 		}
