@@ -14,10 +14,7 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 			AsyncCluster cluster,
 			QueryPolicy policy,
 			Statement statement,
-			RecordSequenceListener listener,
-			String namespace,
-			String setName,
-			String[] binNames
+			RecordSequenceListener listener
 		) {
 			this.listener = listener;
 			
@@ -30,7 +27,7 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 			long taskId = System.nanoTime();
 
 			for (Node node : nodes) {
-				AsyncQuery async = new AsyncQuery(this, cluster, (AsyncNode)node, policy, statement, listener, namespace, setName, binNames, taskId);
+				AsyncQuery async = new AsyncQuery(this, cluster, (AsyncNode)node, policy, statement, listener, taskId);
 				async.execute();
 			}
 			

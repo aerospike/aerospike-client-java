@@ -379,7 +379,7 @@ public abstract class Command {
 		end();
 	}
 	
-	public final void setQuery(QueryPolicy policy, Statement statement, String namespace, String setName, String[] binNames, long taskId) {
+	public final void setQuery(QueryPolicy policy, Statement statement, long taskId) {
 		byte[] functionArgBuffer = null;
 		int fieldCount = 0;
 		int filterSize = 0;

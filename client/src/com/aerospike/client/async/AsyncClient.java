@@ -648,12 +648,12 @@ public class AsyncClient extends AerospikeClient {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void query(QueryPolicy policy, Statement statement, RecordSequenceListener listener, String namespace, String setName, String... binNames)
+	public final void query(QueryPolicy policy, Statement statement, RecordSequenceListener listener)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = asyncQueryPolicyDefault;
 		}
 			
-		new AsyncQueryExecutor(cluster, policy, statement, listener, namespace, setName, binNames);
+		new AsyncQueryExecutor(cluster, policy, statement, listener);
 	}
 }
