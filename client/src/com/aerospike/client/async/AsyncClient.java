@@ -34,8 +34,10 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.Statement;
 
 /**
  * Asynchronous Aerospike client.
@@ -73,6 +75,11 @@ public class AsyncClient extends AerospikeClient {
 	 * Default scan policy that is used when asynchronous scan command policy is null.
 	 */
 	public final ScanPolicy asyncScanPolicyDefault;
+	
+	/**
+	 * Default scan policy that is used when asynchronous scan command policy is null.
+	 */
+	public final QueryPolicy asyncQueryPolicyDefault;
 
 	//-------------------------------------------------------
 	// Constructors
@@ -152,6 +159,7 @@ public class AsyncClient extends AerospikeClient {
 		this.asyncReadPolicyDefault = policy.asyncReadPolicyDefault;
 		this.asyncWritePolicyDefault = policy.asyncWritePolicyDefault;
 		this.asyncScanPolicyDefault = policy.asyncScanPolicyDefault;
+		this.asyncQueryPolicyDefault = policy.asyncQueryPolicyDefault;
 		
 		this.cluster = new AsyncCluster(policy, hosts);
 		super.cluster = this.cluster;
@@ -619,5 +627,18 @@ public class AsyncClient extends AerospikeClient {
 		}
 		
 		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
+	}
+	
+	/**
+	 * async query..???
+	 * 
+	 */
+	public final void asyncQuery(QueryPolicy policy, Statement statement, RecordSequenceListener listener, String namespace, String setName, String... binNames)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = asyncQueryPolicyDefault;
+		}
+			
+		new AsyncQueryExecutor(cluster, policy, statement, listener, namespace, setName, binNames);
 	}
 }
