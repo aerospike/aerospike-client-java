@@ -642,10 +642,6 @@ public class AsyncClient extends AerospikeClient {
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @param listener				where to send results, pass in null for fire and forget
-	 * @param namespace				namespace - equivalent to database name
-	 * @param setName				optional set name - equivalent to database table
-	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void query(QueryPolicy policy, Statement statement, RecordSequenceListener listener)
