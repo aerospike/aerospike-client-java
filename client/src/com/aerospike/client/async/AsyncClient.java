@@ -54,7 +54,7 @@ import com.aerospike.client.query.Statement;
  * configured as "single-bin". In "multi-bin" mode, partial records may be
  * written or read by specifying the relevant subset of bins.
  */
-public class AsyncClient extends AerospikeClient {	
+public class AsyncClient extends AerospikeClient {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
