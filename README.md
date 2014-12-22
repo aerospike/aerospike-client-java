@@ -1,3 +1,7 @@
+NOTE:
+this version is a fork of the official 3.0.32 version of Aerospike Client (please see below), I only add the "query" in the Async Client.
+A pull request is pending on it.
+
 Aerospike Java Client Package
 =============================
 

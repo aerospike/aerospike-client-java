@@ -20,6 +20,7 @@ import java.util.concurrent.ExecutorService;
 
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -97,6 +98,11 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	public ScanPolicy asyncScanPolicyDefault = new ScanPolicy();
 
 	/**
+	 * Default scan policy that is used when asynchronous scan command's policy is null.
+	 */
+	public QueryPolicy asyncQueryPolicyDefault = new QueryPolicy();
+
+	/**
 	 * Default constructor.
 	 */
 	public AsyncClientPolicy() {
@@ -107,5 +113,6 @@ public final class AsyncClientPolicy extends ClientPolicy {
 		asyncReadPolicyDefault.sleepBetweenRetries = 0;
 		asyncWritePolicyDefault.sleepBetweenRetries = 0;
 		asyncScanPolicyDefault.sleepBetweenRetries = 0;
+		asyncQueryPolicyDefault.sleepBetweenRetries = 0;
 	}
 }

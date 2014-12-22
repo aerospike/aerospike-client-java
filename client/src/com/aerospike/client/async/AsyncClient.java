@@ -34,8 +34,10 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.Statement;
 
 /**
  * Asynchronous Aerospike client.
@@ -52,7 +54,7 @@ import com.aerospike.client.policy.WritePolicy;
  * configured as "single-bin". In "multi-bin" mode, partial records may be
  * written or read by specifying the relevant subset of bins.
  */
-public class AsyncClient extends AerospikeClient {	
+public class AsyncClient extends AerospikeClient {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
@@ -73,6 +75,11 @@ public class AsyncClient extends AerospikeClient {
 	 * Default scan policy that is used when asynchronous scan command policy is null.
 	 */
 	public final ScanPolicy asyncScanPolicyDefault;
+	
+	/**
+	 * Default scan policy that is used when asynchronous scan command policy is null.
+	 */
+	public final QueryPolicy asyncQueryPolicyDefault;
 
 	//-------------------------------------------------------
 	// Constructors
@@ -152,6 +159,7 @@ public class AsyncClient extends AerospikeClient {
 		this.asyncReadPolicyDefault = policy.asyncReadPolicyDefault;
 		this.asyncWritePolicyDefault = policy.asyncWritePolicyDefault;
 		this.asyncScanPolicyDefault = policy.asyncScanPolicyDefault;
+		this.asyncQueryPolicyDefault = policy.asyncQueryPolicyDefault;
 		
 		this.cluster = new AsyncCluster(policy, hosts);
 		super.cluster = this.cluster;
@@ -619,5 +627,29 @@ public class AsyncClient extends AerospikeClient {
 		}
 		
 		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
+	}
+	
+	//--------------------------------------------------------
+	// Query functions (Supported by Aerospike 3 servers only)
+	//--------------------------------------------------------
+
+	/**
+	 * Asynchronously query on all server nodes and return record iterator. Server nodes are read in series.
+	 * <p>
+	 * This method schedules the scan command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener.
+	 * 
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void query(QueryPolicy policy, Statement statement, RecordSequenceListener listener)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = asyncQueryPolicyDefault;
+		}
+			
+		new AsyncQueryExecutor(cluster, policy, statement, listener);
 	}
 }

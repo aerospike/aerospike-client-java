@@ -110,7 +110,35 @@ public final class Statement {
 	public boolean isScan() {
 		return filters == null;
 	}
+	
+	/**
+	 * Return namespace.
+	 */
+	public String getNamespace() {
+		return namespace;
+	}
 
+	/**
+	 * Return indexName.
+	 */
+	public String getIndexName() {
+		return indexName;
+	}
+	
+	/**
+	 * Return setName.
+	 */
+	public String getSetName() {
+		return setName;
+	}
+	
+	/**
+	 * Return binNames.
+	 */
+	public String[] getBinNames() {
+		return binNames;
+	}
+	
 	/**
 	 * Return query filters.
 	 */
@@ -144,5 +172,12 @@ public final class Statement {
 	 */
 	public long getTaskId() {
 		return taskId;
+	}
+	
+	/**
+	 * Return task ID.
+	 */
+	public boolean getReturnData() {
+		return returnData;
 	}
 }

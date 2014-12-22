@@ -99,12 +99,12 @@ public final class Filter {
 		this.end = end;
 	}
 
-	protected int estimateSize() throws AerospikeException {
+	public int estimateSize() throws AerospikeException {
 		// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
 		return Buffer.estimateSizeUtf8(name) + begin.estimateSize() + end.estimateSize() + 10;
 	}
 	
-	protected int write(byte[] buf, int offset) throws AerospikeException {
+	public int write(byte[] buf, int offset) throws AerospikeException {
 		// Write name.
 		int len = Buffer.stringToUtf8(name, buf, offset + 1);
 		buf[offset] = (byte)len;
