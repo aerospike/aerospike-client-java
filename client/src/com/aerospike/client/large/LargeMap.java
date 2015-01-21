@@ -23,6 +23,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 
 /**
  * Create and manage a map within a single bin.
@@ -90,7 +91,7 @@ public final class LargeMap {
 	 */
 	public final boolean exists(Value keyValue) throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "exists", binName, keyValue);
-		return (result != null)? (Integer)result != 0 : false;
+		return Util.toBoolean(result);
 	}
 
 	/**
@@ -134,7 +135,7 @@ public final class LargeMap {
 	 */
 	public final int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
-		return (result != null)? (Integer)result : 0;
+		return Util.toInt(result);
 	}
 
 	/**
@@ -158,6 +159,6 @@ public final class LargeMap {
 	 */
 	public final int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
-		return (result != null)? (Integer)result : 0;
+		return Util.toInt(result);
 	}
 }

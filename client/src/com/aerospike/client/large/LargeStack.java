@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 
 /**
  * Create and manage a stack within a single bin. A stack is last in/first out (LIFO).
@@ -123,7 +124,7 @@ public final class LargeStack {
 	 */
 	public final int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
-		return (result != null)? (Integer)result : 0;
+		return Util.toInt(result);
 	}
 
 	/**
@@ -147,6 +148,6 @@ public final class LargeStack {
 	 */
 	public final int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
-		return (result != null)? (Integer)result : 0;
+		return Util.toInt(result);
 	}
 }

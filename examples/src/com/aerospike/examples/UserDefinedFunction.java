@@ -86,7 +86,7 @@ public class UserDefinedFunction extends Example {
 		client.put(params.writePolicy, key, bin);
 		
 		// Get record generation.
-		int gen = (Integer)client.execute(params.writePolicy, key, "record_example", "getGeneration");
+		long gen = (Long)client.execute(params.writePolicy, key, "record_example", "getGeneration");
 
 		// Write record if generation has not changed.
 		client.execute(params.writePolicy, key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));		

@@ -149,16 +149,12 @@ public class QueryExecute extends Example {
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				Integer value1 = (Integer)record.getValue(binName1);
-				Integer value2 = (Integer)record.getValue(binName2);
+				int value1 = record.getInt(binName1);
+				int value2 = record.getInt(binName2);
 				
 				console.info("Record found: ns=%s set=%s bin1=%s value1=%s bin2=%s value2=%s",
 					key.namespace, key.setName, binName1, value1, binName2, value2);
 				
-				if (value1 == null) {
-					console.error("Data mismatch. value1 is null");
-					break;
-				}
 				int val1 = value1;
 				
 				if (val1 == 9) {			
@@ -167,7 +163,7 @@ public class QueryExecute extends Example {
 				}
 				
 				if (val1 == 5) {
-					if (value2 != null) {
+					if (value2 != 0) {
 						console.error("Data mismatch. value2 " + value2 + " should be null");
 						break;					
 					}

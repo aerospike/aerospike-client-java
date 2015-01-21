@@ -75,7 +75,7 @@ public class Add extends Example {
 		record = client.operate(params.writePolicy, key, Operation.add(bin), Operation.get(bin.name));
 
 		expected = 45;
-		received = (Integer)record.getValue(bin.name);
+		received = record.getInt(bin.name);
 
 		if (received == expected) {
 			console.info("Add successful: ns=%s set=%s key=%s bin=%s value=%s", 

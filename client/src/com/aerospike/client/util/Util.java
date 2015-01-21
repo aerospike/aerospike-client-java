@@ -117,4 +117,45 @@ public final class Util {
 		SimpleDateFormat format = new SimpleDateFormat(pattern);
 		return fromTimeStamp(timeStamp, format);
 	}
+	
+	/**
+	 * Convert object returned from server to long.
+	 */
+	public static long toLong(Object obj) {
+		// The server always returns numbers as longs if found.
+		// If not found, the server may return null.  Convert null to zero.
+		return (obj != null)? (Long)obj : 0;
+	}
+	
+	/**
+	 * Convert object returned from server to int.
+	 */
+	public static int toInt(Object obj) {
+		// The server always returns numbers as longs, so get long and cast.
+		return (int)toLong(obj);
+	}
+	
+	/**
+	 * Convert object returned from server to short.
+	 */
+	public static short toShort(Object obj) {
+		// The server always returns numbers as longs, so get long and cast.
+		return (short)toLong(obj);
+	}
+	
+	/**
+	 * Convert object returned from server to byte.
+	 */
+	public static byte toByte(Object obj) {
+		// The server always returns numbers as longs, so get long and cast.
+		return (byte)toLong(obj);
+	}
+	
+	/**
+	 * Convert object returned from server to boolean.
+	 */
+	public static boolean toBoolean(Object obj) {
+		// The server always returns booleans as longs, so get long and convert.
+		return (toLong(obj) != 0) ? true : false;
+	}
 }

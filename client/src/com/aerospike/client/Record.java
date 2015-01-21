@@ -63,50 +63,58 @@ public final class Record {
 	 * Get bin value as double.
 	 */
 	public double getDouble(String name) {
-		return Double.longBitsToDouble((Long)getValue(name));
+		// The server always returns numbers as longs, so get long and convert bits.
+		return Double.longBitsToDouble(getLong(name));
 	}
 
 	/**
 	 * Get bin value as float.
 	 */
 	public float getFloat(String name) {
-		return (float)Double.longBitsToDouble((Long)getValue(name));
+		// The server always returns numbers as longs, so get long and convert bits.
+		return (float)Double.longBitsToDouble(getLong(name));
 	}
 
 	/**
 	 * Get bin value as long.
 	 */
 	public long getLong(String name) {
-		return (Long)getValue(name);
+		// The server always returns numbers as longs if bin found.
+		// If bin not found, the result will be null.  Convert null to zero.
+		Object result = getValue(name);
+		return (result != null)? (Long)result : 0;
 	}
 
 	/**
 	 * Get bin value as int.
 	 */
 	public int getInt(String name) {
-		return (Integer)getValue(name);
+		// The server always returns numbers as longs, so get long and cast.
+		return (int)getLong(name);
 	}
 
 	/**
 	 * Get bin value as short.
 	 */
 	public short getShort(String name) {
-		return (Short)getValue(name);
+		// The server always returns numbers as longs, so get long and cast.
+		return (short)getLong(name);
 	}
 
 	/**
 	 * Get bin value as byte.
 	 */
 	public byte getByte(String name) {
-		return (Byte)getValue(name);
+		// The server always returns numbers as longs, so get long and cast.
+		return (byte)getLong(name);
 	}
 
 	/**
 	 * Get bin value as boolean.
 	 */
-	public boolean getBool(String name) {
-		long v = (Long)getValue(name);
-		return (v != 0) ? true : false;
+	public boolean getBoolean(String name) {
+		// The server always returns booleans as longs, so get long and convert.
+		return (getLong(name) != 0) ? true : false;
 	}
 
 	/**

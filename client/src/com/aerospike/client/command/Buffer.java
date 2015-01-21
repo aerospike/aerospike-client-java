@@ -333,25 +333,32 @@ public final class Buffer {
 		return new Value.LongValue(val);
 	}
 
-	public static Object bytesToNumber(byte[] buf, int offset, int len) {		
-		if (len == 0)
-			return new Integer(0);
+	public static Object bytesToNumber(byte[] buf, int offset, int len) {
+		// Server always returns 8 for integer length.
+		if (len == 8) {
+			return bytesToLong(buf, offset);
+		}
 		
-		if (len > 8)
-			return bytesToBigInteger(buf, offset, len);
-	
-		// This will work for negative integers too which 
-		// will be represented in two's compliment representation.
+		// Handle other lengths just in case server changes.
+		if (len == 0) {
+			return new Long(0);
+		}
+		
+		if (len == 4) {
+			return new Long(bytesToInt(buf, offset));
+		}
+		
+		if (len > 8) {
+			return bytesToBigInteger(buf, offset, len);	
+		}
+				
+		// Handle variable length integer. 
 		long val = 0;
 		
 		for (int i = 0; i < len; i++) {
 			val <<= 8;
 			val |= buf[offset+i] & 0xFF;
 		}
-		
-		if (val <= Integer.MAX_VALUE && val >= Integer.MIN_VALUE)
-			return new Integer((int) val);
-		
 		return new Long(val);
 	}
 
