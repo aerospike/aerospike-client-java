@@ -65,7 +65,20 @@ public abstract class QueryCommand extends MultiCommand {
 			fieldCount++;
 		}
 		
+		// Allocate space for TaskId field.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
+		fieldCount++;
+		
 		if (statement.filters != null) {
+			if (statement.filters.length >= 1) {
+				IndexCollectionType type = statement.filters[0].getCollectionType();
+				
+				if (type != IndexCollectionType.DEFAULT) {
+					dataOffset += FIELD_HEADER_SIZE + 1;
+					fieldCount++;				
+				}
+			}			
+			
 			dataOffset += FIELD_HEADER_SIZE;
 			filterSize++;  // num filters
 			
@@ -93,10 +106,6 @@ public abstract class QueryCommand extends MultiCommand {
 			dataOffset += 2 + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
-		
-		// Allocate space for TaskId field.
-		dataOffset += 8 + FIELD_HEADER_SIZE;
-		fieldCount++;
 		
 		if (statement.functionName != null) {
 			dataOffset += FIELD_HEADER_SIZE + 1;  // udf type
@@ -138,7 +147,21 @@ public abstract class QueryCommand extends MultiCommand {
 			writeField(statement.setName, FieldType.TABLE);
 		}
 		
+		// Write taskId field
+		writeFieldHeader(8, FieldType.TRAN_ID);
+		Buffer.longToBytes(statement.taskId, dataBuffer, dataOffset);
+		dataOffset += 8;
+		
 		if (statement.filters != null) {
+			if (statement.filters.length >= 1) {
+				IndexCollectionType type = statement.filters[0].getCollectionType();
+				
+				if (type != IndexCollectionType.DEFAULT) {
+					writeFieldHeader(1, FieldType.INDEX_TYPE);
+			        dataBuffer[dataOffset++] = (byte)type.ordinal();
+				}
+			}			
+
 			writeFieldHeader(filterSize, FieldType.INDEX_RANGE);
 	        dataBuffer[dataOffset++] = (byte)statement.filters.length;
 			
@@ -167,11 +190,6 @@ public abstract class QueryCommand extends MultiCommand {
 			dataBuffer[dataOffset++] = (byte)100;			
 		}
 
-		// Write taskId field
-		writeFieldHeader(8, FieldType.TRAN_ID);
-		Buffer.longToBytes(statement.taskId, dataBuffer, dataOffset);
-		dataOffset += 8;
-		
 		if (statement.functionName != null) {
 			writeFieldHeader(1, FieldType.UDF_OP);
 			dataBuffer[dataOffset++] = (statement.returnData)? (byte)1 : (byte)2;

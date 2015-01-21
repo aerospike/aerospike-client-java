@@ -33,7 +33,7 @@ public final class Filter {
 	 */
 	public static Filter equal(String name, long value) {
 		Value val = Value.get(value);
-		return new Filter(name, val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val, val);
 	}
 
 	/**
@@ -45,21 +45,48 @@ public final class Filter {
 	 */
 	public static Filter equal(String name, String value) {
 		Value val = Value.get(value);
-		return new Filter(name, val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val, val);
 	}
 
 	/**
 	 * Create equality filter for query.
 	 * This method exists for backward compatibility only.  Do not use.
 	 * 
+	 * @deprecated 
 	 * @param name			bin name
 	 * @param value			filter value
 	 * @return				filter instance
 	 */
 	public static Filter equal(String name, Value value) {
-		return new Filter(name, value, value);
+		return new Filter(name, IndexCollectionType.DEFAULT, value, value);
 	}
 	
+	/**
+	 * Create contains number filter for query on collection index.
+	 * 
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter contains(String name, IndexCollectionType type, long value) {
+		Value val = Value.get(value);
+		return new Filter(name, type, val, val);
+	}
+
+	/**
+	 * Create contains string filter for query on collection index.
+	 * 
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @return				filter instance
+	 */
+	public static Filter contains(String name, IndexCollectionType type, String value) {
+		Value val = Value.get(value);
+		return new Filter(name, type, val, val);
+	}
+
 	/**
 	 * Create range filter for query.  
 	 * Range arguments must be longs or integers which can be cast to longs.
@@ -71,7 +98,22 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, long begin, long end) {
-		return new Filter(name, Value.get(begin), Value.get(end));
+		return new Filter(name, IndexCollectionType.DEFAULT, Value.get(begin), Value.get(end));
+	}
+
+	/**
+	 * Create range filter for query on collection index.  
+	 * Range arguments must be longs or integers which can be cast to longs.
+	 * String ranges are not supported.
+	 * 
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param begin			filter begin value
+	 * @param end			filter end value
+	 * @return				filter instance
+	 */
+	public static Filter range(String name, IndexCollectionType type, long begin, long end) {
+		return new Filter(name, type, Value.get(begin), Value.get(end));
 	}
 
 	/**
@@ -80,21 +122,24 @@ public final class Filter {
 	 * String ranges are not supported.
 	 * This method exists for backward compatibility only.  Do not use.
 	 * 
+	 * @deprecated 
 	 * @param name			bin name
 	 * @param begin			filter begin value
 	 * @param end			filter end value
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, Value begin, Value end) {
-		return new Filter(name, begin, end);
+		return new Filter(name, IndexCollectionType.DEFAULT, begin, end);
 	}
 
 	private final String name;
+	private final IndexCollectionType type;
 	private final Value begin;
 	private final Value end;
 		
-	private Filter(String name, Value begin, Value end) {
+	private Filter(String name, IndexCollectionType type, Value begin, Value end) {
 		this.name = name;
+		this.type = type;
 		this.begin = begin;
 		this.end = end;
 	}
@@ -124,5 +169,9 @@ public final class Filter {
 		offset += len + 4;
 		
 		return offset;
-	}	
+	}
+	
+	protected IndexCollectionType getCollectionType() {
+		return type;
+	}
 }

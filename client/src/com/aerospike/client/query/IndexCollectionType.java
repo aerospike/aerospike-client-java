@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,16 +17,26 @@
 package com.aerospike.client.query;
 
 /**
- * Underlying data type of secondary index.
+ * Secondary index collection type.
  */
-public enum IndexType {
+public enum IndexCollectionType {
 	/**
-	 * Number index.
+	 * Normal scalar index.
 	 */
-	NUMERIC,
+	DEFAULT,
 	
 	/**
-	 * String index.
+	 * Index list elements.
 	 */
-	STRING;
+	LIST,
+	
+	/**
+	 * Index map keys.
+	 */
+	MAPKEYS,
+	
+	/**
+	 * Index map values.
+	 */
+	MAPVALUES;
 }

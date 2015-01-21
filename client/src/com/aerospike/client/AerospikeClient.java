@@ -52,6 +52,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.QueryAggregateExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
@@ -1219,7 +1220,7 @@ public class AerospikeClient implements Closeable {
 	}
 
 	/**
-	 * Create secondary index.
+	 * Create scalar secondary index.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
@@ -1231,7 +1232,7 @@ public class AerospikeClient implements Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param indexName				name of secondary index
 	 * @param binName				bin name that data is indexed on
-	 * @param indexType				type of secondary index
+	 * @param indexType				underlying data type of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final IndexTask createIndex(
@@ -1241,6 +1242,35 @@ public class AerospikeClient implements Closeable {
 		String indexName, 
 		String binName,
 		IndexType indexType
+	) throws AerospikeException {
+		return createIndex(policy, namespace, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
+	}
+
+	/**
+	 * Create complex secondary index to be used on bins containing collections.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				underlying data type of secondary index
+	 * @param indexCollectionType	index collection type
+	 * @throws AerospikeException	if index create fails
+	 */
+	public final IndexTask createIndex(
+		Policy policy, 
+		String namespace, 
+		String setName, 
+		String indexName, 
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType
 	) throws AerospikeException {
 						
 		StringBuilder sb = new StringBuilder(500);
@@ -1255,6 +1285,12 @@ public class AerospikeClient implements Closeable {
 		sb.append(";indexname=");
 		sb.append(indexName);
 		sb.append(";numbins=1");
+		
+		if (indexCollectionType != IndexCollectionType.DEFAULT) {
+			sb.append(";indextype=");
+			sb.append(indexCollectionType);
+		}
+
 		sb.append(";indexdata=");
 		sb.append(binName);
 		sb.append(",");

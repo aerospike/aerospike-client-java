@@ -31,6 +31,7 @@ public final class FieldType {
 	public final static int INDEX_FILTER = 23;
 	public final static int INDEX_LIMIT = 24;
 	public final static int INDEX_ORDER_BY = 25;
+	public final static int INDEX_TYPE = 26;
 	public final static int UDF_PACKAGE_NAME = 30;
 	public final static int UDF_FUNCTION = 31;
 	public final static int UDF_ARGLIST = 32;
