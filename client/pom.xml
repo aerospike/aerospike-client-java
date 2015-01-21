@@ -88,6 +88,7 @@
             <include>com/aerospike/client/cluster/Node.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>
             <include>com/aerospike/client/query/Filter.java</include>
+            <include>com/aerospike/client/query/IndexCollectionType.java</include>
             <include>com/aerospike/client/query/IndexType.java</include>
             <include>com/aerospike/client/query/RecordSet.java</include>
             <include>com/aerospike/client/query/ResultSet.java</include>
