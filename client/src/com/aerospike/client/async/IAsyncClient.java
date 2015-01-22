@@ -16,15 +16,11 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashSet;
-
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
-import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
@@ -38,125 +34,10 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
- * Asynchronous Aerospike client.
- * <p>
- * Your application uses this class to perform asynchronous database operations 
- * such as writing and reading records, and selecting sets of records. Write 
- * operations include specialized functionality such as append/prepend and arithmetic
- * addition.
- * <p>
- * This client is thread-safe. One client instance should be used per cluster.
- * Multiple threads should share this cluster instance.
- * <p>
- * Each record may have multiple bins, unless the Aerospike server nodes are
- * configured as "single-bin". In "multi-bin" mode, partial records may be
- * written or read by specifying the relevant subset of bins.
+ * This interface's sole purpose is to allow mock frameworks to operate on
+ * AsyncClient without being constrained by final methods.
  */
-public class AsyncClient extends AerospikeClient implements IAsyncClient {	
-	//-------------------------------------------------------
-	// Member variables.
-	//-------------------------------------------------------
-	
-	private final AsyncCluster cluster;
-	
-	/**
-	 * Default read policy that is used when asynchronous read command policy is null.
-	 */
-	public final Policy asyncReadPolicyDefault;
-	
-	/**
-	 * Default write policy that is used when asynchronous write command policy is null.
-	 */
-	public final WritePolicy asyncWritePolicyDefault;
-	
-	/**
-	 * Default scan policy that is used when asynchronous scan command policy is null.
-	 */
-	public final ScanPolicy asyncScanPolicyDefault;
-
-	//-------------------------------------------------------
-	// Constructors
-	//-------------------------------------------------------
-
-	/**
-	 * Initialize asynchronous client.
-	 * If the host connection succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param hostname				host name
-	 * @param port					host port
-	 * @throws AerospikeException	if host connection fails
-	 */
-	public AsyncClient(String hostname, int port) throws AerospikeException {
-		this(new AsyncClientPolicy(), new Host(hostname, port));
-	}
-
-	/**
-	 * Initialize asynchronous client.
-	 * The client policy is used to set defaults and size internal data structures.
-	 * If the host connection succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails and the policy's failOnInvalidHosts is true, a connection 
-	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param policy				client configuration parameters, pass in null for defaults
-	 * @param hostname				host name
-	 * @param port					host port
-	 * @throws AerospikeException	if host connection fails
-	 */
-	public AsyncClient(AsyncClientPolicy policy, String hostname, int port) throws AerospikeException {
-		this(policy, new Host(hostname, port));	
-	}
-
-	/**
-	 * Initialize asynchronous client with suitable hosts to seed the cluster map.
-	 * The client policy is used to set defaults and size internal data structures.
-	 * For each host connection that succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts 
-	 * are added as future seeds in case of a complete network failure.
-	 * <p>
-	 * If one connection succeeds, the client is ready to process database requests.
-	 * If all connections fail and the policy's failIfNotConnected is true, a connection 
-	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param policy				client configuration parameters, pass in null for defaults
-	 * @param hosts					array of potential hosts to seed the cluster
-	 * @throws AerospikeException	if all host connections fail
-	 */
-	public AsyncClient(AsyncClientPolicy policy, Host... hosts) throws AerospikeException {
-		super(policy);
-		
-		if (policy == null) {
-			policy = new AsyncClientPolicy();
-		}
-		
-		this.asyncReadPolicyDefault = policy.asyncReadPolicyDefault;
-		this.asyncWritePolicyDefault = policy.asyncWritePolicyDefault;
-		this.asyncScanPolicyDefault = policy.asyncScanPolicyDefault;
-		
-		this.cluster = new AsyncCluster(policy, hosts);
-		super.cluster = this.cluster;
-	}
-
+public interface IAsyncClient extends IAerospikeClient {	
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
@@ -175,13 +56,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {		
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.WRITE);
-		command.execute();
-	}
+	public void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// String Operations
@@ -202,13 +77,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.APPEND);
-		command.execute();
-	}
+	public void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins);
 	
 	/**
 	 * Asynchronously prepend bin string values to existing record bin values.
@@ -225,13 +94,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.PREPEND);
-		command.execute();
-	}
+	public void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins);
 
 	//-------------------------------------------------------
 	// Arithmetic Operations
@@ -252,13 +115,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncWrite command = new AsyncWrite(cluster, policy, listener, key, bins, Operation.Type.ADD);
-		command.execute();
-	}
+	public void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Delete Operations
@@ -276,13 +133,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void delete(WritePolicy policy, DeleteListener listener, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncDelete command = new AsyncDelete(cluster, policy, listener, key);
-		command.execute();
-	}
+	public void delete(WritePolicy policy, DeleteListener listener, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Touch Operations
@@ -300,13 +151,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException {		
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncTouch command = new AsyncTouch(cluster, policy, listener, key);
-		command.execute();
-	}
+	public void touch(WritePolicy policy, WriteListener listener, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Existence-Check Operations
@@ -324,13 +169,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void exists(Policy policy, ExistsListener listener, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		AsyncExists command = new AsyncExists(cluster, policy, listener, key);
-		command.execute();
-	}
+	public void exists(Policy policy, ExistsListener listener, Key key) throws AerospikeException;
 
 	/**
 	 * Asynchronously check if multiple record keys exist in one batch call.
@@ -344,12 +183,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void exists(Policy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);		
-	}
+	public void exists(Policy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException;
 
 	/**
 	 * Asynchronously check if multiple record keys exist in one batch call.
@@ -363,12 +197,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void exists(Policy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);		
-	}
+	public void exists(Policy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Read Record Operations
@@ -386,13 +215,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */	
-	public final void get(Policy policy, RecordListener listener, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		AsyncRead command = new AsyncRead(cluster, policy, listener, key, null);
-		command.execute();
-	}
+	public void get(Policy policy, RecordListener listener, Key key) throws AerospikeException;
 	
 	/**
 	 * Asynchronously read record header and bins for specified key.
@@ -407,13 +230,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param binNames				bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void get(Policy policy, RecordListener listener, Key key, String... binNames) throws AerospikeException {	
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		AsyncRead command = new AsyncRead(cluster, policy, listener, key, binNames);
-		command.execute();
-	}
+	public void get(Policy policy, RecordListener listener, Key key, String... binNames);
 
 	/**
 	 * Asynchronously read record generation and expiration only for specified key.  Bins are not read.
@@ -427,13 +244,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void getHeader(Policy policy, RecordListener listener, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		AsyncReadHeader command = new AsyncReadHeader(cluster, policy, listener, key);
-		command.execute();
-	}
+	public void getHeader(Policy policy, RecordListener listener, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Batch Read Operations
@@ -452,12 +263,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void get(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-	}
+	public void get(Policy policy, RecordArrayListener listener, Key[] keys);
 
 	/**
 	 * Asynchronously read multiple records for specified keys in one batch call.
@@ -472,12 +278,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);		
-	}
+	public void get(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException;
 	
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
@@ -493,14 +294,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void get(Policy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
-		throws AerospikeException {
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		HashSet<String> names = binNamesToHashSet(binNames);
-		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
-	}
+	public void get(Policy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
@@ -516,14 +311,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
-		throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		HashSet<String> names = binNamesToHashSet(binNames);
-		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
-	}
+	public void get(Policy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
+		throws AerospikeException;
 	
 	/**
 	 * Asynchronously read multiple record header data for specified keys in one batch call.
@@ -538,12 +327,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void getHeader(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = asyncReadPolicyDefault;
-		}
-		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-	}
+	public void getHeader(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record header data for specified keys in one batch call.
@@ -558,12 +342,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void getHeader(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-	}
+	public void getHeader(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Generic Database Operations
@@ -583,14 +362,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @param operations			database operations to perform
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations) 
-		throws AerospikeException {		
-		if (policy == null) {
-			policy = asyncWritePolicyDefault;
-		}
-		AsyncOperate command = new AsyncOperate(cluster, policy, listener, key, operations);
-		command.execute();
-	}
+	public void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations);
 
 	//-------------------------------------------------------
 	// Scan Operations
@@ -612,12 +384,6 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
-		throws AerospikeException {
-		if (policy == null) {
-			policy = asyncScanPolicyDefault;
-		}
-		
-		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
-	}
+	public void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
+		throws AerospikeException;
 }

@@ -60,7 +60,7 @@ public final class LargeStack {
 	 * 
 	 * @param value				value to push
 	 */
-	public final void push(Value value) throws AerospikeException {
+	public void push(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "push", binName, value, createModule);
 	}
 
@@ -69,7 +69,7 @@ public final class LargeStack {
 	 * 
 	 * @param values			values to push
 	 */
-	public final void push(Value... values) throws AerospikeException {
+	public void push(Value... values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "push_all", binName, Value.get(values), createModule);
 	}
 	
@@ -78,7 +78,7 @@ public final class LargeStack {
 	 * 
 	 * @param values			values to push
 	 */
-	public final void push(List<?> values) throws AerospikeException {
+	public void push(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "push_all", binName, Value.getAsList(values), createModule);
 	}
 
@@ -88,14 +88,14 @@ public final class LargeStack {
 	 * @param peekCount			number of items to select.
 	 * @return					list of items selected
 	 */
-	public final List<?> peek(int peekCount) throws AerospikeException {
+	public List<?> peek(int peekCount) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "peek", binName, Value.get(peekCount));
 	}
 
 	/**
 	 * Return list of all objects on the stack.
 	 */
-	public final List<?> scan() throws AerospikeException {
+	public List<?> scan() throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "scan", binName);
 	}
 
@@ -108,21 +108,21 @@ public final class LargeStack {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of items selected
 	 */
-	public final List<?> filter(int peekCount, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public List<?> filter(int peekCount, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(peekCount), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
 	 * Delete bin containing the stack.
 	 */
-	public final void destroy() throws AerospikeException {
+	public void destroy() throws AerospikeException {
 		client.execute(policy, key, PackageName, "destroy", binName);
 	}
 
 	/**
 	 * Return size of stack.
 	 */
-	public final int size() throws AerospikeException {
+	public int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
 		return Util.toInt(result);
 	}
@@ -130,7 +130,7 @@ public final class LargeStack {
 	/**
 	 * Return map of stack configuration parameters.
 	 */
-	public final Map<?,?> getConfig() throws AerospikeException {
+	public Map<?,?> getConfig() throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "get_config", binName);
 	}
 	
@@ -139,14 +139,14 @@ public final class LargeStack {
 	 *  
 	 * @param capacity			max entries in set
 	 */
-	public final void setCapacity(int capacity) throws AerospikeException {
+	public void setCapacity(int capacity) throws AerospikeException {
 		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
 	}
 
 	/**
 	 * Return maximum number of entries for the stack.
 	 */
-	public final int getCapacity() throws AerospikeException {
+	public int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
 		return Util.toInt(result);
 	}

@@ -60,7 +60,7 @@ public final class LargeMap {
 	 * @param name				entry key
 	 * @param value				entry value
 	 */
-	public final void put(Value name, Value value) throws AerospikeException {
+	public void put(Value name, Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "put", binName, name, value, createModule);
 	}
 
@@ -69,7 +69,7 @@ public final class LargeMap {
 	 * 
 	 * @param map				map values to push
 	 */
-	public final void put(Map<?,?> map) throws AerospikeException {
+	public void put(Map<?,?> map) throws AerospikeException {
 		client.execute(policy, key, PackageName, "put_all", binName, Value.getAsMap(map), createModule);
 	}
 	
@@ -79,7 +79,7 @@ public final class LargeMap {
 	 * @param name				key.
 	 * @return					map of items selected
 	 */
-	public final Map<?,?> get(Value name) throws AerospikeException {
+	public Map<?,?> get(Value name) throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "get", binName, name);
 	}
 
@@ -89,7 +89,7 @@ public final class LargeMap {
 	 * @param keyValue			key to check
 	 * @return					true if found, otherwise false
 	 */
-	public final boolean exists(Value keyValue) throws AerospikeException {
+	public boolean exists(Value keyValue) throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "exists", binName, keyValue);
 		return Util.toBoolean(result);
 	}
@@ -97,7 +97,7 @@ public final class LargeMap {
 	/**
 	 * Return all objects in the map.
 	 */
-	public final Map<?,?> scan() throws AerospikeException {
+	public Map<?,?> scan() throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "scan", binName);
 	}
 
@@ -109,7 +109,7 @@ public final class LargeMap {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of items selected
 	 */
-	public final Map<?,?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public Map<?,?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
@@ -118,7 +118,7 @@ public final class LargeMap {
 	 * 
 	 * @param name				entry key
 	 */
-	public final void remove(Value name) throws AerospikeException {
+	public void remove(Value name) throws AerospikeException {
 		client.execute(policy, key, PackageName, "remove", binName, name, createModule);
 	}
 
@@ -126,14 +126,14 @@ public final class LargeMap {
 	/**
 	 * Delete bin containing the map.
 	 */
-	public final void destroy() throws AerospikeException {
+	public void destroy() throws AerospikeException {
 		client.execute(policy, key, PackageName, "destroy", binName);
 	}
 
 	/**
 	 * Return size of map.
 	 */
-	public final int size() throws AerospikeException {
+	public int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
 		return Util.toInt(result);
 	}
@@ -141,7 +141,7 @@ public final class LargeMap {
 	/**
 	 * Return map configuration parameters.
 	 */
-	public final Map<?,?> getConfig() throws AerospikeException {
+	public Map<?,?> getConfig() throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "config", binName);
 	}
 	
@@ -150,14 +150,14 @@ public final class LargeMap {
 	 *  
 	 * @param capacity			max entries in set
 	 */
-	public final void setCapacity(int capacity) throws AerospikeException {
+	public void setCapacity(int capacity) throws AerospikeException {
 		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
 	}
 
 	/**
 	 * Return maximum number of entries for the map.
 	 */
-	public final int getCapacity() throws AerospikeException {
+	public int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
 		return Util.toInt(result);
 	}

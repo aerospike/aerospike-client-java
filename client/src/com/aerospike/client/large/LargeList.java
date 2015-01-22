@@ -62,7 +62,7 @@ public final class LargeList {
 	 * 
 	 * @param value				value to add
 	 */
-	public final void add(Value value) throws AerospikeException {
+	public void add(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add", binName, value, createModule);
 	}
 
@@ -73,7 +73,7 @@ public final class LargeList {
 	 * 
 	 * @param values			values to add
 	 */
-	public final void add(Value... values) throws AerospikeException {
+	public void add(Value... values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
 	}
 	
@@ -84,7 +84,7 @@ public final class LargeList {
 	 * 
 	 * @param values			values to add
 	 */
-	public final void add(List<?> values) throws AerospikeException {
+	public void add(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), createModule);
 	}
 
@@ -95,7 +95,7 @@ public final class LargeList {
 	 * 
 	 * @param value				value to update
 	 */
-	public final void update(Value value) throws AerospikeException {
+	public void update(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "update", binName, value, createModule);
 	}
 
@@ -106,7 +106,7 @@ public final class LargeList {
 	 * 
 	 * @param values			values to update
 	 */
-	public final void update(Value... values) throws AerospikeException {
+	public void update(Value... values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), createModule);
 	}
 	
@@ -117,7 +117,7 @@ public final class LargeList {
 	 * 
 	 * @param values			values to update
 	 */
-	public final void update(List<?> values) throws AerospikeException {
+	public void update(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), createModule);
 	}
 
@@ -126,7 +126,7 @@ public final class LargeList {
 	 * 
 	 * @param value				value to delete
 	 */
-	public final void remove(Value value) throws AerospikeException {
+	public void remove(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "remove", binName, value);
 	}
 
@@ -135,7 +135,7 @@ public final class LargeList {
 	 * 
 	 * @param values			values to delete
 	 */
-	public final void remove(List<?> values) throws AerospikeException {
+	public void remove(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "remove_all", binName, Value.getAsList(values));
 	}
 
@@ -146,7 +146,7 @@ public final class LargeList {
 	 * @param end				high value of the range (inclusive)
 	 * @return					count of entries removed
 	 */
-	public final int remove(Value begin, Value end) throws AerospikeException {
+	public int remove(Value begin, Value end) throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "remove_range", binName, begin, end);
 		return Util.toInt(result);
 	}
@@ -157,7 +157,7 @@ public final class LargeList {
 	 * @param value				value to select
 	 * @return					list of entries selected
 	 */
-	public final List<?> find(Value value) throws AerospikeException {
+	public List<?> find(Value value) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "find", binName, value);
 	}
 
@@ -170,7 +170,7 @@ public final class LargeList {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> findThenFilter(Value value, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public List<?> findThenFilter(Value value, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
@@ -182,7 +182,7 @@ public final class LargeList {
 	 * @param end				high value of the range (inclusive)
 	 * @return					list of entries selected
 	 */
-	public final List<?> range(Value begin, Value end) throws AerospikeException {
+	public List<?> range(Value begin, Value end) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end);
 	}
 
@@ -196,14 +196,14 @@ public final class LargeList {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> range(Value begin, Value end, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public List<?> range(Value begin, Value end, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
 	 * Return all objects in the list.
 	 */
-	public final List<?> scan() throws AerospikeException {
+	public List<?> scan() throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "scan", binName);
 	}
 
@@ -215,21 +215,21 @@ public final class LargeList {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
 	 * Delete bin containing the list.
 	 */
-	public final void destroy() throws AerospikeException {
+	public void destroy() throws AerospikeException {
 		client.execute(policy, key, PackageName, "destroy", binName);
 	}
 
 	/**
 	 * Return size of list.
 	 */
-	public final int size() throws AerospikeException {
+	public int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
 		return Util.toInt(result);
 	}
@@ -237,7 +237,7 @@ public final class LargeList {
 	/**
 	 * Return map of list configuration parameters.
 	 */
-	public final Map<?,?> getConfig() throws AerospikeException {
+	public Map<?,?> getConfig() throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "config", binName);
 	}
 	
@@ -246,14 +246,14 @@ public final class LargeList {
 	 *  
 	 * @param capacity			max entries in list
 	 */
-	public final void setCapacity(int capacity) throws AerospikeException {
+	public void setCapacity(int capacity) throws AerospikeException {
 		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
 	}
 
 	/**
 	 * Return maximum number of entries in the list.
 	 */
-	public final int getCapacity() throws AerospikeException {
+	public int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
 		return Util.toInt(result);
 	}

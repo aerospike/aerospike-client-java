@@ -60,7 +60,7 @@ public final class LargeSet {
 	 * 
 	 * @param value				value to add
 	 */
-	public final void add(Value value) throws AerospikeException {
+	public void add(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add", binName, value, createModule);
 	}
 
@@ -69,7 +69,7 @@ public final class LargeSet {
 	 * 
 	 * @param values			values to add
 	 */
-	public final void add(Value... values) throws AerospikeException {
+	public void add(Value... values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
 	}
 	
@@ -78,7 +78,7 @@ public final class LargeSet {
 	 * 
 	 * @param values			values to add
 	 */
-	public final void add(List<?> values) throws AerospikeException {
+	public void add(List<?> values) throws AerospikeException {
 		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), createModule);
 	}
 
@@ -87,7 +87,7 @@ public final class LargeSet {
 	 * 
 	 * @param value				value to delete
 	 */
-	public final void remove(Value value) throws AerospikeException {
+	public void remove(Value value) throws AerospikeException {
 		client.execute(policy, key, PackageName, "remove", binName, value);
 	}
 
@@ -97,7 +97,7 @@ public final class LargeSet {
 	 * @param value				value to select
 	 * @return					found value
 	 */
-	public final Object get(Value value) throws AerospikeException {
+	public Object get(Value value) throws AerospikeException {
 		return client.execute(policy, key, PackageName, "get", binName, value);
 	}
 
@@ -107,7 +107,7 @@ public final class LargeSet {
 	 * @param value				value to check
 	 * @return					true if found, otherwise false
 	 */
-	public final boolean exists(Value value) throws AerospikeException {
+	public boolean exists(Value value) throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "exists", binName, value);
 		return Util.toBoolean(result);
 	}
@@ -115,7 +115,7 @@ public final class LargeSet {
 	/**
 	 * Return list of all objects in the set.
 	 */
-	public final List<?> scan() throws AerospikeException {
+	public List<?> scan() throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "scan", binName);
 	}
 
@@ -127,21 +127,21 @@ public final class LargeSet {
 	 * @param filterArgs		arguments to Lua function name
 	 * @return					list of entries selected
 	 */
-	public final List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+	public List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
 		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
 	 * Delete bin containing the set.
 	 */
-	public final void destroy() throws AerospikeException {
+	public void destroy() throws AerospikeException {
 		client.execute(policy, key, PackageName, "destroy", binName);
 	}
 
 	/**
 	 * Return size of set.
 	 */
-	public final int size() throws AerospikeException {
+	public int size() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "size", binName);
 		return Util.toInt(result);
 	}
@@ -149,7 +149,7 @@ public final class LargeSet {
 	/**
 	 * Return map of set configuration parameters.
 	 */
-	public final Map<?,?> getConfig() throws AerospikeException {
+	public Map<?,?> getConfig() throws AerospikeException {
 		return (Map<?,?>)client.execute(policy, key, PackageName, "get_config", binName);
 	}
 	
@@ -158,14 +158,14 @@ public final class LargeSet {
 	 *  
 	 * @param capacity			max entries in set
 	 */
-	public final void setCapacity(int capacity) throws AerospikeException {
+	public void setCapacity(int capacity) throws AerospikeException {
 		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
 	}
 
 	/**
 	 * Return maximum number of entries in the set.
 	 */
-	public final int getCapacity() throws AerospikeException {
+	public int getCapacity() throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
 		return Util.toInt(result);
 	}

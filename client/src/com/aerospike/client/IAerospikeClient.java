@@ -16,210 +16,33 @@
  */
 package com.aerospike.client;
 
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
-import com.aerospike.client.Info.NameValueParser;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.AdminCommand;
-import com.aerospike.client.command.BatchExecutor;
-import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
-import com.aerospike.client.command.DeleteCommand;
-import com.aerospike.client.command.ExecuteCommand;
-import com.aerospike.client.command.Executor;
-import com.aerospike.client.command.ExistsCommand;
-import com.aerospike.client.command.OperateCommand;
-import com.aerospike.client.command.ReadCommand;
-import com.aerospike.client.command.ReadHeaderCommand;
-import com.aerospike.client.command.ScanCommand;
-import com.aerospike.client.command.TouchCommand;
-import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
 import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
-import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.QueryAggregateExecutor;
-import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
-import com.aerospike.client.query.ServerCommand;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.util.Environment;
-import com.aerospike.client.util.Util;
 
 /**
- * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
- * database cluster and perform database operations.
- * <p>
- * This client is thread-safe. One client instance should be used per cluster.
- * Multiple threads should share this cluster instance.
- * <p>
- * Your application uses this class API to perform database operations such as
- * writing and reading records, and selecting sets of records. Write operations
- * include specialized functionality such as append/prepend and arithmetic
- * addition.
- * <p>
- * Each record may have multiple bins, unless the Aerospike server nodes are
- * configured as "single-bin". In "multi-bin" mode, partial records may be
- * written or read by specifying the relevant subset of bins.
+ * This interface's sole purpose is to allow mock frameworks to operate on
+ * AerospikeClient without being constrained by final methods.
  */
-public class AerospikeClient implements IAerospikeClient, Closeable {
-	//-------------------------------------------------------
-	// Member variables.
-	//-------------------------------------------------------
-	
-	protected Cluster cluster;
-	
-	/**
-	 * Default read policy that is used when read command policy is null.
-	 */
-	public final Policy readPolicyDefault;
-	
-	/**
-	 * Default write policy that is used when write command policy is null.
-	 */
-	public final WritePolicy writePolicyDefault;
-	
-	/**
-	 * Default scan policy that is used when scan command policy is null.
-	 */
-	public final ScanPolicy scanPolicyDefault;
-	
-	/**
-	 * Default query policy that is used when query command policy is null.
-	 */
-	public final QueryPolicy queryPolicyDefault;
-	
-	/**
-	 * Default batch policy that is used when batch command policy is null.
-	 */
-	public final BatchPolicy batchPolicyDefault;
-
-	//-------------------------------------------------------
-	// Constructors
-	//-------------------------------------------------------
-
-	/**
-	 * Initialize Aerospike client.
-	 * If the host connection succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param hostname				host name
-	 * @param port					host port
-	 * @throws AerospikeException	if host connection fails
-	 */
-	public AerospikeClient(String hostname, int port) throws AerospikeException {
-		this(new ClientPolicy(), new Host(hostname, port));
-	}
-
-	/**
-	 * Initialize Aerospike client.
-	 * The client policy is used to set defaults and size internal data structures.
-	 * If the host connection succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails and the policy's failOnInvalidHosts is true, a connection 
-	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param policy				client configuration parameters, pass in null for defaults
-	 * @param hostname				host name
-	 * @param port					host port
-	 * @throws AerospikeException	if host connection fails
-	 */
-	public AerospikeClient(ClientPolicy policy, String hostname, int port) throws AerospikeException {
-		this(policy, new Host(hostname, port));
-	}
-
-	/**
-	 * Initialize Aerospike client with suitable hosts to seed the cluster map.
-	 * The client policy is used to set defaults and size internal data structures.
-	 * For each host connection that succeeds, the client will:
-	 * <p>
-	 * - Add host to the cluster map <br>
-	 * - Request host's list of other nodes in cluster <br>
-	 * - Add these nodes to cluster map <br>
-	 * <p>
-	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts 
-	 * are added as future seeds in case of a complete network failure.
-	 * <p>
-	 * If one connection succeeds, the client is ready to process database requests.
-	 * If all connections fail and the policy's failIfNotConnected is true, a connection 
-	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
-	 * until the server is activated.
-	 * 
-	 * @param policy				client configuration parameters, pass in null for defaults
-	 * @param hosts					array of potential hosts to seed the cluster
-	 * @throws AerospikeException	if all host connections fail
-	 */
-	public AerospikeClient(ClientPolicy policy, Host... hosts) throws AerospikeException {
-		if (policy == null) {
-			policy = new ClientPolicy();
-		}
-		this.readPolicyDefault = policy.readPolicyDefault;
-		this.writePolicyDefault = policy.writePolicyDefault;
-		this.scanPolicyDefault = policy.scanPolicyDefault;
-		this.queryPolicyDefault = policy.queryPolicyDefault;
-		this.batchPolicyDefault = policy.batchPolicyDefault;
-		
-		cluster = new Cluster(policy, hosts);
-		cluster.initTendThread(policy.failIfNotConnected);
-	}
-
-	//-------------------------------------------------------
-	// Protected Initialization
-	//-------------------------------------------------------
-
-	/**
-	 * Asynchronous default constructor. Do not use directly.
-	 */
-	protected AerospikeClient(ClientPolicy policy) {
-		if (policy != null) {
-			this.readPolicyDefault = policy.readPolicyDefault;
-			this.writePolicyDefault = policy.writePolicyDefault;
-			this.scanPolicyDefault = policy.scanPolicyDefault;
-			this.queryPolicyDefault = policy.queryPolicyDefault;
-			this.batchPolicyDefault = policy.batchPolicyDefault;
-		}
-		else {
-			this.readPolicyDefault = new Policy();
-			this.writePolicyDefault = new WritePolicy();
-			this.scanPolicyDefault = new ScanPolicy();
-			this.queryPolicyDefault = new QueryPolicy();
-			this.batchPolicyDefault = new BatchPolicy();
-		}
-	}
-
+public interface IAerospikeClient {
 	//-------------------------------------------------------
 	// Cluster Connection Management
 	//-------------------------------------------------------
@@ -227,9 +50,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Close all client connections to database server nodes.
 	 */
-	public final void close() {
-		cluster.close();
-	}
+	public void close();
 
 	/**
 	 * Determine if we are ready to talk to the database server cluster.
@@ -237,42 +58,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return	<code>true</code> if cluster is ready,
 	 * 			<code>false</code> if cluster is not ready
 	 */
-	public final boolean isConnected() {
-		return cluster.isConnected();
-	}
+	public boolean isConnected();
 
 	/**
 	 * Return array of active server nodes in the cluster.
 	 * 
 	 * @return	array of active nodes
 	 */
-	public final Node[] getNodes() {
-		return cluster.getNodes();
-	}
+	public Node[] getNodes();
 
 	/**
 	 * Return list of active server node names in the cluster.
 	 * 
 	 * @return	list of active node names
 	 */
-	public final List<String> getNodeNames() {
-		Node[] nodes = cluster.getNodes();		
-		ArrayList<String> names = new ArrayList<String>(nodes.length);
-		
-		for (Node node : nodes) {
-			names.add(node.getName());
-		}
-		return names;
-	}
+	public List<String> getNodeNames();
 	
 	/**
 	 * Return node given its name.
 	 * 
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
 	 */
-	public final Node getNode(String nodeName) throws AerospikeException.InvalidNode {
-		return cluster.getNode(nodeName);
-	}
+	public Node getNode(String nodeName) throws AerospikeException.InvalidNode;
 
 	//-------------------------------------------------------
 	// Write Record Operations
@@ -288,13 +95,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if write fails
 	 */
-	public final void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
-		command.execute();
-	}
+	public void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// String Operations
@@ -311,13 +112,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if append fails
 	 */
-	public final void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
-		command.execute();
-	}
+	public void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
 	
 	/**
 	 * Prepend bin string values to existing record bin values.
@@ -330,13 +125,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if prepend fails
 	 */
-	public final void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
-		command.execute();
-	}
+	public void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Arithmetic Operations
@@ -353,13 +142,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if add fails
 	 */
-	public final void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
-		command.execute();
-	}
+	public void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Delete Operations
@@ -374,14 +157,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						whether record existed on server before deletion 
 	 * @throws AerospikeException	if delete fails
 	 */
-	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		DeleteCommand command = new DeleteCommand(cluster, policy, key);
-		command.execute();
-		return command.existed();
-	}
+	public boolean delete(WritePolicy policy, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Touch Operations
@@ -395,13 +171,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if touch fails
 	 */
-	public final void touch(WritePolicy policy, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		TouchCommand command = new TouchCommand(cluster, policy, key);
-		command.execute();
-	}
+	public void touch(WritePolicy policy, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Existence-Check Operations
@@ -416,14 +186,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						whether record exists or not 
 	 * @throws AerospikeException	if command fails
 	 */
-	public final boolean exists(Policy policy, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		ExistsCommand command = new ExistsCommand(cluster, policy, key);
-		command.execute();
-		return command.exists();
-	}
+	public boolean exists(Policy policy, Key key) throws AerospikeException;
 
 	/**
 	 * Check if multiple record keys exist in one batch call.
@@ -437,10 +200,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	@Deprecated
-	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return exists(batchPolicy, keys);
-	}
+	public boolean[] exists(Policy policy, Key[] keys) throws AerospikeException;
 
 	/**
 	 * Check if multiple record keys exist in one batch call.
@@ -452,14 +212,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						array key/existence status pairs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final boolean[] exists(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = batchPolicyDefault;
-		}
-		boolean[] existsArray = new boolean[keys.length];
-		BatchExecutor.execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		return existsArray;
-	}
+	public boolean[] exists(BatchPolicy policy, Key[] keys) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Read Record Operations
@@ -474,14 +227,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record get(Policy policy, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		ReadCommand command = new ReadCommand(cluster, policy, key, null);
-		command.execute();
-		return command.getRecord();
-	}
+	public Record get(Policy policy, Key key) throws AerospikeException;
 
 	/**
 	 * Read record header and bins for specified key.
@@ -493,14 +239,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
-		command.execute();
-		return command.getRecord();
-	}
+	public Record get(Policy policy, Key key, String... binNames) throws AerospikeException;
 
 	/**
 	 * Read record generation and expiration only for specified key.  Bins are not read.
@@ -511,14 +250,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record getHeader(Policy policy, Key key) throws AerospikeException {
-		if (policy == null) {
-			policy = readPolicyDefault;
-		}
-		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
-		command.execute();
-		return command.getRecord();
-	}
+	public Record getHeader(Policy policy, Key key) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Batch Read Operations
@@ -537,10 +269,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	@Deprecated
-	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return get(batchPolicy, keys);
-	}
+	public Record[] get(Policy policy, Key[] keys) throws AerospikeException;
 
 	/**
 	 * Read multiple records for specified keys in one batch call.
@@ -553,14 +282,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record[] get(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = batchPolicyDefault;
-		}
-		Record[] records = new Record[keys.length];
-		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
-		return records;
-	}
+	public Record[] get(BatchPolicy policy, Key[] keys) throws AerospikeException;
 
 	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
@@ -576,11 +298,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	@Deprecated
-	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
-		throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return get(batchPolicy, keys, binNames);
-	}
+	public Record[] get(Policy policy, Key[] keys, String... binNames) 
+		throws AerospikeException;
 
 	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
@@ -594,16 +313,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record[] get(BatchPolicy policy, Key[] keys, String... binNames) 
-		throws AerospikeException {
-		if (policy == null) {
-			policy = batchPolicyDefault;
-		}
-		Record[] records = new Record[keys.length];
-		HashSet<String> names = binNamesToHashSet(binNames);
-		BatchExecutor.execute(cluster, policy, keys, null, records, names, Command.INFO1_READ);
-		return records;
-	}
+	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException;
 
 	/**
 	 * Read multiple record header data for specified keys in one batch call.
@@ -618,11 +328,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if read fails
 	 */
 	@Deprecated
-	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return getHeader(batchPolicy, keys);
-	}
-
+	public Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException;
+	
 	/**
 	 * Read multiple record header data for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
@@ -634,14 +341,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record[] getHeader(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		if (policy == null) {
-			policy = batchPolicyDefault;
-		}
-		Record[] records = new Record[keys.length];
-		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		return records;
-	}
+	public Record[] getHeader(BatchPolicy policy, Key[] keys) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Generic Database Operations
@@ -661,15 +361,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						record if there is a read in the operations list
 	 * @throws AerospikeException	if command fails
 	 */
-	public final Record operate(WritePolicy policy, Key key, Operation... operations) 
-		throws AerospikeException {		
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		OperateCommand command = new OperateCommand(cluster, policy, key, operations);
-		command.execute();
-		return command.getRecord();
-	}
+	public Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Scan Operations
@@ -691,35 +383,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
-	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
-		throws AerospikeException {	
-		if (policy == null) {
-			policy = scanPolicyDefault;
-		}
-		
-		Node[] nodes = cluster.getNodes();		
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
-		}
-
-		if (policy.concurrentNodes) {
-			Executor executor = new Executor(cluster, nodes.length);
-			long taskId = System.nanoTime();
-
-			for (Node node : nodes)
-			{
-				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
-				executor.addCommand(command);
-			}
-
-			executor.execute(policy.maxConcurrentNodes);			
-		}
-		else {
-			for (Node node : nodes) {
-				scanNode(policy, node, namespace, setName, callback, binNames);
-			}
-		}
-	}
+	public void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Read all records in specified namespace and set for one node only.
@@ -737,11 +402,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
-	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames) 
-		throws AerospikeException {		
-		Node node = cluster.getNode(nodeName);
-		scanNode(policy, node, namespace, setName, callback, binNames);
-	}
+	public void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames) 
+		throws AerospikeException;
 
 	/**
 	 * Read all records in specified namespace and set for one node only.
@@ -758,16 +420,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
-		throws AerospikeException {
-		if (policy == null) {
-			policy = scanPolicyDefault;
-		}
-		long taskId = System.nanoTime();
-
-		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
-		command.execute();
-	}
+	public void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
+		throws AerospikeException;
 
 	//-------------------------------------------------------------------
 	// Large collection functions (Supported by Aerospike 3 servers only)
@@ -785,10 +439,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeList getLargeList(Policy policy, Key key, String binName, String userModule) {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return new LargeList(this, writePolicy, key, binName, userModule);
-	}
+	public LargeList getLargeList(Policy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
@@ -801,9 +452,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeList(this, policy, key, binName, userModule);
-	}
+	public LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
@@ -817,10 +466,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeMap getLargeMap(Policy policy, Key key, String binName, String userModule) {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return new LargeMap(this, writePolicy, key, binName, userModule);
-	}
+	public LargeMap getLargeMap(Policy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
@@ -833,9 +479,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeMap getLargeMap(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeMap(this, policy, key, binName, userModule);
-	}
+	public LargeMap getLargeMap(WritePolicy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
@@ -849,10 +493,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeSet getLargeSet(Policy policy, Key key, String binName, String userModule) {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return new LargeSet(this, writePolicy, key, binName, userModule);
-	}
+	public LargeSet getLargeSet(Policy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
@@ -865,9 +506,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeSet getLargeSet(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeSet(this, policy, key, binName, userModule);
-	}
+	public LargeSet getLargeSet(WritePolicy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
@@ -881,10 +520,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeStack getLargeStack(Policy policy, Key key, String binName, String userModule) {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return new LargeStack(this, writePolicy, key, binName, userModule);
-	}
+	public LargeStack getLargeStack(Policy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
@@ -897,9 +533,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name
 	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeStack(this, policy, key, binName, userModule);
-	}
+	public LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule);
 
 	//---------------------------------------------------------------
 	// User defined functions (Supported by Aerospike 3 servers only)
@@ -919,69 +553,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
-	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
-		throws AerospikeException {
-		
-		String content = Util.readFileEncodeBase64(clientPath);
-		
-		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
-		sb.append("udf-put:filename=");
-		sb.append(serverPath);
-		sb.append(";content=");
-		sb.append(content);
-		sb.append(";content-len=");
-		sb.append(content.length());
-		sb.append(";udf-type=");
-		sb.append(language);
-		sb.append(";");
-		
-		// Send UDF to one node. That node will distribute the UDF to other nodes.
-		String command = sb.toString();
-		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		Connection conn = node.getConnection(timeout);
-		
-		try {			
-			Info info = new Info(conn, command);
-			NameValueParser parser = info.getNameValueParser();
-			String error = null;
-			String file = null;
-			String line = null;
-			String message = null;
-			
-			while (parser.next()) {
-				String name = parser.getName();
-
-				if (name.equals("error")) {
-					error = parser.getValue();
-				}
-				else if (name.equals("file")) {
-					file = parser.getValue();				
-				}
-				else if (name.equals("line")) {
-					line = parser.getValue();				
-				}
-				else if (name.equals("message")) {
-					message = parser.getStringBase64();					
-				}
-			}
-			
-			if (error != null) {			
-				throw new AerospikeException("Registration failed: " + error + Environment.Newline +
-					"File: " + file + Environment.Newline + 
-					"Line: " + line + Environment.Newline +
-					"Message: " + message
-					);
-			}
-			
-			node.putConnection(conn);
-			return new RegisterTask(cluster, serverPath);
-		}
-		catch (RuntimeException re) {
-			conn.close();
-			throw re;
-		}
-	}
+	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
+		throws AerospikeException;
 	
 	/**
 	 * Execute user defined function on server and return results.
@@ -1001,12 +574,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
-		throws AerospikeException {	
-		
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return execute(writePolicy, key, packageName, functionName, args);
-	}
+	public Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
+		throws AerospikeException;
 	
 	/**
 	 * Execute user defined function on server and return results.
@@ -1025,40 +594,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) 
-		throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
-		command.execute();
-		
-		Record record = command.getRecord();
-		
-		if (record == null || record.bins == null) {
-			return null;
-		}
-		
-		Map<String,Object> map = record.bins;
-
-		Object obj = map.get("SUCCESS");
-		
-		if (obj != null) {
-			return obj;
-		}
-		
-		// User defined functions don't have to return a value.
-		if (map.containsKey("SUCCESS")) {
-			return null;
-		}
-		
-		obj = map.get("FAILURE");
-		
-		if (obj != null) {
-			throw new AerospikeException(obj.toString());
-		}
-		throw new AerospikeException("Invalid UDF return value");
-	}
+	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) 
+		throws AerospikeException;
 
 	//----------------------------------------------------------
 	// Query/Execute UDF (Supported by Aerospike 3 servers only)
@@ -1081,16 +618,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param functionArgs			to pass to function name, if any
 	 * @throws AerospikeException	if command fails
 	 */
-	public final ExecuteTask execute(
+	public ExecuteTask execute(
 		Policy policy,
 		Statement statement,
 		String packageName,
 		String functionName,
 		Value... functionArgs
-	) throws AerospikeException {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return execute(writePolicy, statement, packageName, functionName, functionArgs);
-	}
+	) throws AerospikeException;
 
 	/**
 	 * Apply user defined function on records that match the statement filter.
@@ -1108,34 +642,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param functionArgs			to pass to function name, if any
 	 * @throws AerospikeException	if command fails
 	 */
-	public final ExecuteTask execute(
+	public ExecuteTask execute(
 		WritePolicy policy,
 		Statement statement,
 		String packageName,
 		String functionName,
 		Value... functionArgs
-	) throws AerospikeException {
-		if (policy == null) {
-			policy = writePolicyDefault;
-		}
-		statement.setAggregateFunction(packageName, functionName, functionArgs, false);
-		statement.prepare();
-
-		Node[] nodes = cluster.getNodes();
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
-
-		Executor executor = new Executor(cluster, nodes.length);
-
-		for (Node node : nodes)
-		{
-			ServerCommand command = new ServerCommand(node, policy, statement);
-			executor.addCommand(command);
-		}
-		executor.execute(nodes.length);
-		return new ExecuteTask(cluster, statement);
-	}
+	) throws AerospikeException;
 
 	//--------------------------------------------------------
 	// Query functions (Supported by Aerospike 3 servers only)
@@ -1153,14 +666,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public final RecordSet query(QueryPolicy policy, Statement statement) throws AerospikeException {
-		if (policy == null) {
-			policy = queryPolicyDefault;
-		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, null);
-		executor.execute();
-		return executor.getRecordSet();
-	}
+	public RecordSet query(QueryPolicy policy, Statement statement) throws AerospikeException;
 	
 	/**
 	 * Execute query on a single server node and return record iterator.  The query executor puts
@@ -1174,14 +680,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public final RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
-		if (policy == null) {
-			policy = queryPolicyDefault;
-		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, node);
-		executor.execute();
-		return executor.getRecordSet();
-	}
+	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException;
 
 	/**
 	 * Execute query, apply statement's aggregation function, and return result iterator. The query 
@@ -1204,20 +703,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						result iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public final ResultSet queryAggregate(
+	public ResultSet queryAggregate(
 		QueryPolicy policy,
 		Statement statement,
 		String packageName,
 		String functionName,
 		Value... functionArgs
-	) throws AerospikeException {
-		if (policy == null) {
-			policy = queryPolicyDefault;
-		}
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
-		executor.execute();
-		return executor.getResultSet();
-	}
+	) throws AerospikeException;
 
 	/**
 	 * Create scalar secondary index.
@@ -1235,16 +727,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param indexType				underlying data type of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
-	public final IndexTask createIndex(
+	public IndexTask createIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 
 		String indexName, 
 		String binName,
 		IndexType indexType
-	) throws AerospikeException {
-		return createIndex(policy, namespace, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
-	}
+	) throws AerospikeException;
 
 	/**
 	 * Create complex secondary index to be used on bins containing collections.
@@ -1263,7 +753,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param indexCollectionType	index collection type
 	 * @throws AerospikeException	if index create fails
 	 */
-	public final IndexTask createIndex(
+	public IndexTask createIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 
@@ -1271,47 +761,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String binName,
 		IndexType indexType,
 		IndexCollectionType indexCollectionType
-	) throws AerospikeException {
-						
-		StringBuilder sb = new StringBuilder(500);
-		sb.append("sindex-create:ns=");
-		sb.append(namespace);
-		
-		if (setName != null && setName.length() > 0) {
-			sb.append(";set=");
-			sb.append(setName);
-		}
-		
-		sb.append(";indexname=");
-		sb.append(indexName);
-		sb.append(";numbins=1");
-		
-		if (indexCollectionType != IndexCollectionType.DEFAULT) {
-			sb.append(";indextype=");
-			sb.append(indexCollectionType);
-		}
-
-		sb.append(";indexdata=");
-		sb.append(binName);
-		sb.append(",");
-		sb.append(indexType);
-		sb.append(";priority=normal");
-
-		// Send index command to one node. That node will distribute the command to other nodes.
-		String response = sendInfoCommand(policy, sb.toString());
-		
-		if (response.equalsIgnoreCase("OK")) {
-			// Return task that could optionally be polled for completion.
-			return new IndexTask(cluster, namespace, indexName);
-		}
-		
-		if (response.startsWith("FAIL:200")) {
-			// Index has already been created.  Do not need to poll for completion.
-			return new IndexTask();
-		}
-			
-		throw new AerospikeException("Create index failed: " + response);
-	}
+	) throws AerospikeException;
 
 	/**
 	 * Delete secondary index.
@@ -1323,38 +773,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param indexName				name of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
-	public final void dropIndex(
+	public void dropIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 
 		String indexName
-	) throws AerospikeException {
-						
-		StringBuilder sb = new StringBuilder(500);
-		sb.append("sindex-delete:ns=");
-		sb.append(namespace);
-		
-		if (setName != null && setName.length() > 0) {
-			sb.append(";set=");
-			sb.append(setName);
-		}		
-		sb.append(";indexname=");
-		sb.append(indexName);
-		
-		// Send index command to one node. That node will distribute the command to other nodes.
-		String response = sendInfoCommand(policy, sb.toString());
-
-		if (response.equalsIgnoreCase("OK")) {
-			return;
-		}
-		
-		if (response.startsWith("FAIL:201")) {
-			// Index did not previously exist. Return without error.
-			return;
-		}
-			
-		throw new AerospikeException("Drop index failed: " + response);
-	}
+	) throws AerospikeException;
 	
 	//-------------------------------------------------------
 	// User administration
@@ -1370,11 +794,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param roles					variable arguments array of role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
-		String hash = AdminCommand.hashPassword(password);
-		AdminCommand command = new AdminCommand();
-		command.createUser(cluster, policy, user, hash, roles);
-	}
+	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException;
 	
 	/**
 	 * Remove user from cluster.
@@ -1383,10 +803,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param user					user name
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void dropUser(AdminPolicy policy, String user) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		command.dropUser(cluster, policy, user);
-	}
+	public void dropUser(AdminPolicy policy, String user) throws AerospikeException;
 
 	/**
 	 * Change user's password.  Clear-text password will be hashed using bcrypt before sending to server.
@@ -1396,25 +813,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param password				user password in clear-text format
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void changePassword(AdminPolicy policy, String user, String password) throws AerospikeException {
-		if (cluster.getUser() == null) {
-			throw new AerospikeException("Invalid user");
-		}
-
-		String hash = AdminCommand.hashPassword(password);
-		AdminCommand command = new AdminCommand();
-		byte[] userBytes = Buffer.stringToUtf8(user);
-
-		if (Arrays.equals(userBytes, cluster.getUser())) {
-			// Change own password.
-			command.changePassword(cluster, policy, userBytes, hash);
-		}
-		else {
-			// Change other user's password by user admin.
-			command.setPassword(cluster, policy, userBytes, hash);
-		}
-		cluster.changePassword(userBytes, hash);
-	}
+	public void changePassword(AdminPolicy policy, String user, String password) throws AerospikeException;
 
 	/**
 	 * Add roles to user's list of roles.
@@ -1424,10 +823,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		command.grantRoles(cluster, policy, user, roles);
-	}
+	public void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
 
 	/**
 	 * Remove roles from user's list of roles.
@@ -1437,10 +833,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		command.revokeRoles(cluster, policy, user, roles);
-	}
+	public void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
 
 	/**
 	 * Replace user's list of roles.
@@ -1450,10 +843,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param roles					role names.  Valid roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void replaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		command.replaceRoles(cluster, policy, user, roles);
-	}
+	public void replaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
 
 	/**
 	 * Retrieve roles for a given user.
@@ -1462,10 +852,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public final UserRoles queryUser(AdminPolicy policy, String user) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		return command.queryUser(cluster, policy, user);
-	}
+	public UserRoles queryUser(AdminPolicy policy, String user) throws AerospikeException;
 
 	/**
 	 * Retrieve all users and their roles.
@@ -1473,39 +860,5 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public final List<UserRoles> queryUsers(AdminPolicy policy) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
-		return command.queryUsers(cluster, policy);
-	}
-
-	//-------------------------------------------------------
-	// Internal Methods
-	//-------------------------------------------------------
-
-	protected static HashSet<String> binNamesToHashSet(String[] binNames) {
-		// Create lookup table for bin name filtering.
-		HashSet<String> names = new HashSet<String>(binNames.length);
-		
-		for (String binName : binNames) {
-			names.add(binName);
-		}
-		return names;
-	}
-	
-	private String sendInfoCommand(Policy policy, String command) throws AerospikeException {		
-		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		Connection conn = node.getConnection(timeout);
-		Info info;
-		
-		try {
-			info = new Info(conn, command);
-			node.putConnection(conn);
-		}
-		catch (RuntimeException re) {
-			conn.close();
-			throw re;
-		}
-		return info.getValue();
-	}
+	public List<UserRoles> queryUsers(AdminPolicy policy) throws AerospikeException;
 }
