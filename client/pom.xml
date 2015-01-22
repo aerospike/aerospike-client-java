@@ -84,6 +84,7 @@
             <include>com/aerospike/client/async/AsyncClient.java</include>
             <include>com/aerospike/client/async/AsyncClientPolicy.java</include>
             <include>com/aerospike/client/async/AsyncNode.java</include>
+            <include>com/aerospike/client/async/IAsyncClient.java</include>
             <include>com/aerospike/client/async/MaxCommandAction.java</include>
             <include>com/aerospike/client/cluster/Node.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>
