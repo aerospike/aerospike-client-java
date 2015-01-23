@@ -23,14 +23,14 @@ import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.BatchPolicy;
 
 public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 	private final RecordSequenceListener listener;
 
 	public AsyncBatchGetSequenceExecutor(
 		AsyncCluster cluster,
-		Policy policy, 
+		BatchPolicy policy, 
 		RecordSequenceListener listener,
 		Key[] keys,
 		HashSet<String> binNames,
@@ -39,13 +39,17 @@ public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 		super(cluster, keys);
 		this.listener = listener;
 
-		// Dispatch asynchronous commands to nodes.
+		// Create commands.
+		AsyncBatchGetSequence[] tasks = new AsyncBatchGetSequence[super.taskSize];
+		int count = 0;
+
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				AsyncBatchGetSequence async = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
-				async.execute();
+				tasks[count++] = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
 			}
 		}
+		// Dispatch commands to nodes.
+		execute(tasks, policy.maxConcurrentThreads);
 	}
 	
 	@Override

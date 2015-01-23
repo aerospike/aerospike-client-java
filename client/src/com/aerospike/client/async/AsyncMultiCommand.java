@@ -44,6 +44,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	protected int fieldCount;
 	protected int opCount;
 	private final boolean stopOnNotFound;
+	protected volatile boolean valid = true;
 		
 	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound) {
 		super(cluster);
@@ -155,8 +156,11 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 
 			receiveOffset += Command.MSG_REMAINING_HEADER_SIZE;
 			
-			Key key = parseKey();
-			parseRow(key);
+			if (! valid) {
+				throw new AerospikeException.QueryTerminated();
+			}
+			Key key = parseKey();	
+			parseRow(key);			
 		}
 		return false;
 	}
@@ -249,6 +253,10 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			bins.put(name, value);
 	    }
 	    return new Record(bins, generation, expiration);	    
+	}
+	
+	protected void stop() {
+		valid = false;
 	}
 
 	@Override

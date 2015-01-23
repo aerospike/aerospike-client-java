@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
 public abstract class QueryExecutor {
@@ -65,7 +66,7 @@ public abstract class QueryExecutor {
 	protected final void startThreads() {
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
-			QueryCommand command = createCommand(nodes[i]);
+			MultiCommand command = createCommand(nodes[i]);
 			threads[i] = new QueryThread(command);
 		}
 
@@ -122,9 +123,9 @@ public abstract class QueryExecutor {
 	}
 
 	private final class QueryThread implements Runnable {
-		private final QueryCommand command;
+		private final MultiCommand command;
 
-		public QueryThread(QueryCommand command) {
+		public QueryThread(MultiCommand command) {
 			this.command = command;
 		}
 
@@ -149,7 +150,7 @@ public abstract class QueryExecutor {
 		}		
 	}
 	
-	protected abstract QueryCommand createCommand(Node node);
+	protected abstract MultiCommand createCommand(Node node);
 	protected abstract void sendCancel();
 	protected abstract void sendCompleted();
 }

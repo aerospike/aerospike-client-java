@@ -125,7 +125,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Check existence of records in one batch, receive in one array.
 	 */
 	private void batchExistsArray() throws Exception {
-		client.exists(params.policy, new ExistsArrayListener() {
+		client.exists(null, new ExistsArrayListener() {
 			public void onSuccess(Key[] keys, boolean[] existsArray) {
 				for (int i = 0; i < existsArray.length; i++) {
 					Key key = keys[i];
@@ -147,7 +147,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Check existence of records in one batch, receive one record at a time.
 	 */
 	private void batchExistsSequence() throws Exception {
-		client.exists(params.policy, new ExistsSequenceListener() {
+		client.exists(null, new ExistsSequenceListener() {
 			public void onExists(Key key, boolean exists) {
 		        console.info("Record: ns=%s set=%s digest=%s exists=%s",
 		            	key.namespace, key.setName, Buffer.bytesToHexString(key.digest), exists);
@@ -168,7 +168,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Read records in one batch, receive in array.
 	 */
 	private void batchGetArray() throws Exception {
-		client.get(params.policy, new RecordArrayListener() {
+		client.get(null, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				for (int i = 0; i < records.length; i++) {
 					Key key = keys[i];
@@ -201,7 +201,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Read records in one batch call, receive one record at a time.
 	 */
 	private void batchGetSequence() throws Exception {
-		client.get(params.policy, new RecordSequenceListener() {
+		client.get(null, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) {
 				Level level = Level.ERROR;
 				Object value = null;
@@ -229,7 +229,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Read record headers in one batch, receive in an array.
 	 */
 	private void batchGetHeaders() throws Exception {
-		client.getHeader(params.policy, new RecordArrayListener() {
+		client.getHeader(null, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				for (int i = 0; i < records.length; i++) {
 					Key key = keys[i];

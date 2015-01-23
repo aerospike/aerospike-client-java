@@ -29,6 +29,9 @@ import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.ThreadLocalData;
 
@@ -366,6 +369,183 @@ public abstract class Command {
 		end();
 	}
 
+	public final void setQuery(Policy policy, Statement statement, boolean write) {
+		byte[] functionArgBuffer = null;
+		int fieldCount = 0;
+		int filterSize = 0;
+		int binNameSize = 0;
+		
+		begin();
+		
+		if (statement.getNamespace() != null) {
+			dataOffset += Buffer.estimateSizeUtf8(statement.getNamespace()) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		if (statement.getIndexName() != null) {
+			dataOffset += Buffer.estimateSizeUtf8(statement.getIndexName()) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		if (statement.getSetName() != null) {
+			dataOffset += Buffer.estimateSizeUtf8(statement.getSetName()) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		// Allocate space for TaskId field.
+		dataOffset += 8 + FIELD_HEADER_SIZE;
+		fieldCount++;
+		
+		Filter[] filters = statement.getFilters();
+		String[] binNames = statement.getBinNames();
+		
+		if (filters != null) {
+			if (filters.length >= 1) {
+				IndexCollectionType type = filters[0].getCollectionType();
+				
+				if (type != IndexCollectionType.DEFAULT) {
+					dataOffset += FIELD_HEADER_SIZE + 1;
+					fieldCount++;				
+				}
+			}			
+			
+			dataOffset += FIELD_HEADER_SIZE;
+			filterSize++;  // num filters
+			
+			for (Filter filter : filters) {
+				filterSize += filter.estimateSize();
+			}
+			dataOffset += filterSize;
+			fieldCount++;
+			
+			// Query bin names are specified as a field (Scan bin names are specified later as operations)		
+			if (binNames != null) {
+				dataOffset += FIELD_HEADER_SIZE;
+				binNameSize++;  // num bin names
+				
+				for (String binName : binNames) {
+					binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
+				}
+				dataOffset += binNameSize;
+				fieldCount++;
+			}
+		}
+		else {
+			// Calling query with no filters is more efficiently handled by a primary index scan. 
+			// Estimate scan options size.
+			dataOffset += 2 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+		
+		if (statement.getFunctionName() != null) {
+			dataOffset += FIELD_HEADER_SIZE + 1;  // udf type
+			dataOffset += Buffer.estimateSizeUtf8(statement.getPackageName()) + FIELD_HEADER_SIZE;
+			dataOffset += Buffer.estimateSizeUtf8(statement.getFunctionName()) + FIELD_HEADER_SIZE;
+			
+			if (statement.getFunctionArgs().length > 0) {
+				functionArgBuffer = Packer.pack(statement.getFunctionArgs());
+			}
+			else {
+				functionArgBuffer = new byte[0];
+			}
+			dataOffset += FIELD_HEADER_SIZE + functionArgBuffer.length;			
+			fieldCount += 4;
+		}
+
+		if (filters == null) {
+			if (binNames != null) {
+				for (String binName : binNames) {
+					estimateOperationSize(binName);
+				}
+			}
+		}
+
+		sizeBuffer();
+		
+		int operationCount = (filters == null && binNames != null)? binNames.length : 0;
+		
+		if (write) {
+			writeHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
+		}
+		else {
+			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);			
+		}
+
+		if (statement.getNamespace() != null) {
+			writeField(statement.getNamespace(), FieldType.NAMESPACE);
+		}
+		
+		if (statement.getIndexName() != null) {
+			writeField(statement.getIndexName(), FieldType.INDEX_NAME);
+		}
+
+		if (statement.getSetName() != null) {
+			writeField(statement.getSetName(), FieldType.TABLE);
+		}
+		
+		// Write taskId field
+		writeFieldHeader(8, FieldType.TRAN_ID);
+		Buffer.longToBytes(statement.getTaskId(), dataBuffer, dataOffset);
+		dataOffset += 8;
+		
+		if (filters != null) {
+			if (filters.length >= 1) {
+				IndexCollectionType type = filters[0].getCollectionType();
+				
+				if (type != IndexCollectionType.DEFAULT) {
+					writeFieldHeader(1, FieldType.INDEX_TYPE);
+			        dataBuffer[dataOffset++] = (byte)type.ordinal();
+				}
+			}			
+
+			writeFieldHeader(filterSize, FieldType.INDEX_RANGE);
+	        dataBuffer[dataOffset++] = (byte)filters.length;
+			
+			for (Filter filter : filters) {
+				dataOffset = filter.write(dataBuffer, dataOffset);
+			}
+
+			// Query bin names are specified as a field (Scan bin names are specified later as operations)
+			if (binNames != null) {
+				writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+		        dataBuffer[dataOffset++] = (byte)binNames.length;
+
+				for (String binName : binNames) {
+					int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
+					dataBuffer[dataOffset] = (byte)len;
+					dataOffset += len + 1;
+				}
+			}
+		}
+		else {
+			// Calling query with no filters is more efficiently handled by a primary index scan. 
+			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+			byte priority = (byte)policy.priority.ordinal();
+			priority <<= 4;			
+			dataBuffer[dataOffset++] = priority;
+			dataBuffer[dataOffset++] = (byte)100;			
+		}
+
+		if (statement.getFunctionName() != null) {
+			writeFieldHeader(1, FieldType.UDF_OP);
+			dataBuffer[dataOffset++] = (statement.returnData())? (byte)1 : (byte)2;
+			writeField(statement.getPackageName(), FieldType.UDF_PACKAGE_NAME);
+			writeField(statement.getFunctionName(), FieldType.UDF_FUNCTION);
+			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
+		}
+		
+		// Scan bin names are specified after all fields.
+		if (filters == null) {
+			if (binNames != null) {
+				for (String binName : binNames) {
+					writeOperation(binName, Operation.Type.READ);
+				}
+			}
+		}
+		
+		end();
+	}
+	
 	private final int estimateKeySize(Key key) {
 		int fieldCount = 0;
 		

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -23,21 +24,48 @@ import com.aerospike.client.AerospikeException;
 public abstract class AsyncMultiExecutor {
 
 	private final AtomicInteger completedCount = new AtomicInteger();
-	protected int completedSize;
-	private boolean failed;
+    private final AtomicBoolean done = new AtomicBoolean();
+	private AsyncMultiCommand[] commands;
+	private int maxConcurrent;
+	
+	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {	
+		this.commands = commands;
+		this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.length) ? commands.length : maxConcurrent;
+		
+		for (int i = 0; i < this.maxConcurrent; i++) {
+			commands[i].execute();
+		}
+	}
 	
 	protected final void childSuccess() {
-		int count = completedCount.incrementAndGet();
-		
-		if (!failed && count >= completedSize) {
-			onSuccess();
+		int finished = completedCount.incrementAndGet();
+
+		if (finished < commands.length) {
+			int nextThread = finished + maxConcurrent - 1;
+
+			// Determine if a new command needs to be started.
+			if (nextThread < commands.length && ! done.get()) {
+				// Start new command.
+				commands[nextThread].execute();
+			}
+		}
+		else {
+			// All commands complete. Notify success if an exception has not already occurred.
+			if (done.compareAndSet(false, true)) {
+				onSuccess();
+			}
 		}
 	}
 	
 	protected final void childFailure(AerospikeException ae) {
-		failed = true;
-		completedCount.incrementAndGet();
-		onFailure(ae);
+		// There is no need to stop commands if all commands have already completed.
+		if (done.compareAndSet(false, true)) {    	
+			// Send stop signal to all commands.
+			for (AsyncMultiCommand command : commands) {
+				command.stop();
+			}
+			onFailure(ae);
+		}
 	}
 	
 	protected abstract void onSuccess();

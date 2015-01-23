@@ -144,12 +144,20 @@ public final class Filter {
 		this.end = end;
 	}
 
-	protected int estimateSize() throws AerospikeException {
+	/**
+	 * Estimate filter's byte send when sending command to server.
+	 * For internal use only.
+	 */
+	public int estimateSize() throws AerospikeException {
 		// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
 		return Buffer.estimateSizeUtf8(name) + begin.estimateSize() + end.estimateSize() + 10;
 	}
 	
-	protected int write(byte[] buf, int offset) throws AerospikeException {
+	/**
+	 * Write filter to send command buffer.
+	 * For internal use only.
+	 */
+	public int write(byte[] buf, int offset) throws AerospikeException {
 		// Write name.
 		int len = Buffer.stringToUtf8(name, buf, offset + 1);
 		buf[offset] = (byte)len;
@@ -171,7 +179,11 @@ public final class Filter {
 		return offset;
 	}
 	
-	protected IndexCollectionType getCollectionType() {
+	/**
+	 * Retrieve index collection type.
+	 * For internal use only.
+	 */
+	public IndexCollectionType getCollectionType() {
 		return type;
 	}
 }

@@ -33,9 +33,12 @@ import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.Statement;
 
 /**
  * Asynchronous Aerospike client.
@@ -73,6 +76,16 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * Default scan policy that is used when asynchronous scan command policy is null.
 	 */
 	public final ScanPolicy asyncScanPolicyDefault;
+
+	/**
+	 * Default query policy that is used when asynchronous query command policy is null.
+	 */
+	public final QueryPolicy asyncQueryPolicyDefault;
+	
+	/**
+	 * Default batch policy that is used when asynchronous batch command policy is null.
+	 */
+	public final BatchPolicy asyncBatchPolicyDefault;
 
 	//-------------------------------------------------------
 	// Constructors
@@ -152,6 +165,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 		this.asyncReadPolicyDefault = policy.asyncReadPolicyDefault;
 		this.asyncWritePolicyDefault = policy.asyncWritePolicyDefault;
 		this.asyncScanPolicyDefault = policy.asyncScanPolicyDefault;
+		this.asyncQueryPolicyDefault = policy.asyncQueryPolicyDefault;
+		this.asyncBatchPolicyDefault = policy.asyncBatchPolicyDefault;
 		
 		this.cluster = new AsyncCluster(policy, hosts);
 		super.cluster = this.cluster;
@@ -339,14 +354,33 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *  
+	 * @deprecated Use {@link #exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void exists(Policy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		exists(batchPolicy, listener, keys);
+	}
+
+	/**
+	 * Asynchronously check if multiple record keys exist in one batch call.
+	 * This method schedules the exists command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in a single call.
+	 * <p>
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 *  
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchExistsArrayExecutor(cluster, policy, keys, listener);		
 	}
@@ -358,14 +392,33 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *  
+	 * @deprecated Use {@link #exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void exists(Policy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		exists(batchPolicy, listener, keys);
+	}
+
+	/**
+	 * Asynchronously check if multiple record keys exist in one batch call.
+	 * This method schedules the exists command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in multiple unordered calls.
+	 * <p>
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 *  
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = asyncReadPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchExistsSequenceExecutor(cluster, policy, keys, listener);		
 	}
@@ -388,7 +441,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 */	
 	public final void get(Policy policy, RecordListener listener, Key key) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		AsyncRead command = new AsyncRead(cluster, policy, listener, key, null);
 		command.execute();
@@ -429,7 +482,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 */
 	public final void getHeader(Policy policy, RecordListener listener, Key key) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncReadPolicyDefault;
 		}
 		AsyncReadHeader command = new AsyncReadHeader(cluster, policy, listener, key);
 		command.execute();
@@ -447,14 +500,34 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		get(batchPolicy, listener, keys);
+	}
+
+	/**
+	 * Asynchronously read multiple records for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in a single call.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = asyncReadPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 	}
@@ -467,18 +540,38 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		get(batchPolicy, listener, keys);
+	}
+	
+	/**
+	 * Asynchronously read multiple records for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in multiple unordered calls.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);		
 	}
-	
+
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
 	 * This method schedules the get command with a channel selector and returns.
@@ -487,16 +580,38 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, String... binNames)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void get(Policy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		get(batchPolicy, listener, keys, binNames);
+	}
+
+	/**
+	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in a single call.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
+		throws AerospikeException {
 		if (policy == null) {
-			policy = asyncReadPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
@@ -510,21 +625,43 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, String... binNames)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void get(Policy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		get(batchPolicy, listener, keys, binNames);
+	}
+	
+	/**
+	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in multiple unordered calls.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
+		throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		HashSet<String> names = binNamesToHashSet(binNames);
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
 	}
-	
+
 	/**
 	 * Asynchronously read multiple record header data for specified keys in one batch call.
 	 * This method schedules the get command with a channel selector and returns.
@@ -533,14 +670,34 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #getHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void getHeader(Policy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		getHeader(batchPolicy, listener, keys);
+	}
+
+	/**
+	 * Asynchronously read multiple record header data for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in a single call.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void getHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = asyncReadPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
@@ -553,14 +710,34 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
 	 * 
+	 * @deprecated Use {@link #getHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
+	@Deprecated
 	public final void getHeader(Policy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		BatchPolicy batchPolicy = getAsyncBatchPolicy(policy);
+		getHeader(batchPolicy, listener, keys);
+	}
+
+	/**
+	 * Asynchronously read multiple record header data for specified keys in one batch call.
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in multiple unordered calls.
+	 * <p>
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts and maximum parallel commands.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if queue is full
+	 */
+	public final void getHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
 		if (policy == null) {
-			policy = readPolicyDefault;
+			policy = asyncBatchPolicyDefault;
 		}
 		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
@@ -616,8 +793,48 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = asyncScanPolicyDefault;
-		}
-		
+		}	
 		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
+	}
+	
+	//-------------------------------------------------------
+	// Query Operations
+	//-------------------------------------------------------
+
+	/**
+	 * Asynchronously execute query on all server nodes.  The query policy's 
+	 * <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
+	 * The default is to query all nodes in parallel.
+	 * <p>
+	 * This method schedules the node's query commands with channel selectors and returns.
+	 * Selector threads will process the commands and send the results to the listener.
+	 * 
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param statement				database query command parameters
+	 * @throws AerospikeException	if query fails
+	 */
+	public final void query(QueryPolicy policy, RecordSequenceListener listener, Statement statement) 
+		throws AerospikeException {
+		if (policy == null) {
+			policy = asyncQueryPolicyDefault;
+		}	
+		new AsyncQueryExecutor(cluster, policy, listener, statement);
+	}
+	
+	//-------------------------------------------------------
+	// Internal Methods
+	//-------------------------------------------------------
+	
+	private final BatchPolicy getAsyncBatchPolicy(Policy policy) {		
+		if (policy == null) {
+			return asyncBatchPolicyDefault;
+		}
+		else {
+			BatchPolicy batchPolicy = new BatchPolicy(policy);
+			batchPolicy.sleepBetweenRetries = 0;
+			batchPolicy.maxConcurrentThreads = 0;
+			return batchPolicy;
+		}
 	}
 }

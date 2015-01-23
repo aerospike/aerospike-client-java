@@ -27,6 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.lua.LuaCache;
 import com.aerospike.client.lua.LuaInputStream;
 import com.aerospike.client.lua.LuaInstance;
@@ -108,7 +109,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	}
 	
 	@Override
-	protected QueryCommand createCommand(Node node) {
+	protected MultiCommand createCommand(Node node) {
 		return new QueryAggregateCommand(node, policy, statement, lua, inputQueue);
 	}
 	

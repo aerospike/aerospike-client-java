@@ -26,6 +26,7 @@ import com.aerospike.client.command.BatchNode;
 public abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 	protected final Key[] keys;
 	protected final List<BatchNode> batchNodes;
+	protected final int taskSize;
 
 	public AsyncBatchExecutor(Cluster cluster, Key[] keys) throws AerospikeException {
 		this.keys = keys;	
@@ -36,6 +37,6 @@ public abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 		for (BatchNode batchNode : batchNodes) {
 			size += batchNode.batchNamespaces.size();
 		}
-		completedSize = size;		
+		this.taskSize = size;
 	}	
 }
