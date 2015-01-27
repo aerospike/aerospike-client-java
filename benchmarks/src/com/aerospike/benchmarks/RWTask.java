@@ -64,10 +64,12 @@ public abstract class RWTask implements Runnable {
 	}	
 	
 	public void run() {
-		// Load data if we're going to be validating.
+		// Load data if we're going to be validating.                
+               
 		if (args.validate) {
 			setupValidation();
 		}
+               
 
 		while (valid) {
 			try {
@@ -107,14 +109,17 @@ public abstract class RWTask implements Runnable {
 				int transactions = counters.write.count.get() + counters.read.count.get();
 				
 				if (transactions > args.throughput) {
-					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
-					
+					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
 					if (millis > 0) {
 						Util.sleep(millis);
 					}
 				}
 			}
+                        
 		}
+                
+                
+                
 	}
 	
 	public void stop() {

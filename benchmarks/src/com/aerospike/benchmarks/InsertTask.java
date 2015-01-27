@@ -21,6 +21,8 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.Util;
+
 
 public abstract class InsertTask implements Runnable {
 
@@ -65,6 +67,16 @@ public abstract class InsertTask implements Runnable {
 				catch (Exception e) {
 					writeFailure(e);
 				}
+                                			// Throttle throughput
+                                if (args.throughput > 0) {
+                                        int transactions = counters.write.count.get();
+                                        if (transactions > args.throughput) {
+                                                long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+                                                if (millis > 0) {
+                                                    Util.sleep(millis);
+                                                }
+                                        }
+                                }
 			}
 		}
 		catch (Exception ex) {

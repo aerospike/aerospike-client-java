@@ -731,6 +731,7 @@ public class Main implements Log.Callback {
 		
 		while (total < this.nKeys) {
 			long time = System.currentTimeMillis();
+			this.counters.periodBegin.set(time);
 			
 			int	numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
@@ -762,9 +763,13 @@ public class Main implements Log.Callback {
 				rt = new RWTaskSync(client, args, counters, tstart, tkeys);
 			} else {
 				rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
+                                
 			}
+                
 			tasks[i] = rt;
 			es.execute(rt);
+
+                                               
 		}
 		collectRWStats(tasks, null);
 		es.shutdown();
