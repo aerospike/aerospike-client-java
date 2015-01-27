@@ -55,7 +55,7 @@ public class Operate extends Example {
 				key.namespace, key.setName, key.userKey));
 		}
 
-		validateBin(key, record, bin3.name, 11, record.getValue(bin3.name));
+		validateBin(key, record, bin3.name, 11, record.getInt(bin3.name));
 		validateBin(key, record, bin4.name, bin4.value.toString(), record.getValue(bin4.name));	
 	}
 	

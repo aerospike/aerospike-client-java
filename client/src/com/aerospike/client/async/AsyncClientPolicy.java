@@ -18,8 +18,10 @@ package com.aerospike.client.async;
 
 import java.util.concurrent.ExecutorService;
 
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -97,6 +99,16 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	public ScanPolicy asyncScanPolicyDefault = new ScanPolicy();
 
 	/**
+	 * Default scan policy that is used when asynchronous query command's policy is null.
+	 */
+	public QueryPolicy asyncQueryPolicyDefault = new QueryPolicy();
+
+	/**
+	 * Default batch policy that is used when asynchronous batch command's policy is null.
+	 */
+	public BatchPolicy asyncBatchPolicyDefault = new BatchPolicy();
+
+	/**
 	 * Default constructor.
 	 */
 	public AsyncClientPolicy() {
@@ -107,5 +119,11 @@ public final class AsyncClientPolicy extends ClientPolicy {
 		asyncReadPolicyDefault.sleepBetweenRetries = 0;
 		asyncWritePolicyDefault.sleepBetweenRetries = 0;
 		asyncScanPolicyDefault.sleepBetweenRetries = 0;
+		asyncQueryPolicyDefault.sleepBetweenRetries = 0;
+		asyncBatchPolicyDefault.sleepBetweenRetries = 0;
+		
+		// Running batch commands in sequence is not an advantage in asynchronous mode, so
+		// default to issuing commands to all referenced nodes in parallel.
+		asyncBatchPolicyDefault.maxConcurrentThreads = 0;
 	}
 }

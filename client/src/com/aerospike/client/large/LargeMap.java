@@ -28,7 +28,7 @@ import com.aerospike.client.util.Util;
 /**
  * Create and manage a map within a single bin.
  */
-public final class LargeMap {
+public class LargeMap {
 	private static final String PackageName = "lmap";
 	
 	private final AerospikeClient client;

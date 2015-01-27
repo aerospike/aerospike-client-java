@@ -41,10 +41,24 @@ public final class Statement {
 	}
 	
 	/**
+	 * Get query namespace.
+	 */
+	public String getNamespace() {
+		return namespace;
+	}
+
+	/**
 	 * Set optional query setname.
 	 */
 	public void setSetName(String setName) {
 		this.setName = setName;
+	}
+
+	/**
+	 * Get optional query setname.
+	 */
+	public String getSetName() {
+		return setName;
 	}
 
 	/**
@@ -56,12 +70,26 @@ public final class Statement {
 	}
 
 	/**
+	 * Get optional query index name.
+	 */
+	public String getIndexName() {
+		return indexName;
+	}
+
+	/**
 	 * Set query bin names.
 	 */
 	public void setBinNames(String... binNames) {
 		this.binNames = binNames;
 	}
 	
+	/**
+	 * Get query bin names.
+	 */
+	public String[] getBinNames() {
+		return binNames;
+	}
+
 	/**
 	 * Set optional query filters.
 	 * Currently, only one filter is allowed by the server on a secondary index lookup.
@@ -74,10 +102,24 @@ public final class Statement {
 	}
 
 	/**
+	 * Return query filters.
+	 */
+	public Filter[] getFilters() {
+		return filters;
+	}
+
+	/**
 	 * Set optional query task id.
 	 */
 	public void setTaskId(long taskId) {
 		this.taskId = taskId;
+	}
+
+	/**
+	 * Return task ID.
+	 */
+	public long getTaskId() {
+		return taskId;
 	}
 
 	/**
@@ -93,29 +135,6 @@ public final class Statement {
 		this.functionName = functionName;
 		this.functionArgs = functionArgs;
 		this.returnData = returnData;
-	}
-
-	/**
-	 * Prepare statement just prior to execution.  For internal use.
-	 */
-	public void prepare() {
-		if (taskId == 0) {
-			taskId = System.nanoTime();
-		}
-	}
-
-	/**
-	 * Return if full namespace/set scan is specified.
-	 */
-	public boolean isScan() {
-		return filters == null;
-	}
-
-	/**
-	 * Return query filters.
-	 */
-	public Filter[] getFilters() {
-		return filters;
 	}
 
 	/**
@@ -137,12 +156,28 @@ public final class Statement {
 	 */
 	public Value[] getFunctionArgs() {
 		return functionArgs;
-	}
-	
+	}	
+
 	/**
-	 * Return task ID.
+	 * Does command return data.
 	 */
-	public long getTaskId() {
-		return taskId;
+	public boolean returnData() {
+		return returnData;
+	}
+
+	/**
+	 * Prepare statement just prior to execution.  For internal use.
+	 */
+	public void prepare() {
+		if (taskId == 0) {
+			taskId = System.nanoTime();
+		}
+	}
+
+	/**
+	 * Return if full namespace/set scan is specified.
+	 */
+	public boolean isScan() {
+		return filters == null;
 	}
 }

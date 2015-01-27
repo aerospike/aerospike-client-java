@@ -19,6 +19,7 @@ package com.aerospike.client.query;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryRecordExecutor extends QueryExecutor {
@@ -37,7 +38,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	}
 	
 	@Override
-	protected QueryCommand createCommand(Node node) {
+	protected MultiCommand createCommand(Node node) {
 		return new QueryRecordCommand(node, policy, statement, recordSet);
 	}
 	

@@ -21,7 +21,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.ExistsArrayListener;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.BatchPolicy;
 
 public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 	private final ExistsArrayListener listener;
@@ -29,7 +29,7 @@ public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 
 	public AsyncBatchExistsArrayExecutor(
 		AsyncCluster cluster,
-		Policy policy, 
+		BatchPolicy policy, 
 		Key[] keys,
 		ExistsArrayListener listener
 	) throws AerospikeException {
@@ -37,13 +37,17 @@ public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 		this.existsArray = new boolean[keys.length];
 		this.listener = listener;
 		
-		// Dispatch asynchronous commands to nodes.
+		// Create commands.
+		AsyncBatchExistsArray[] tasks = new AsyncBatchExistsArray[super.taskSize];
+		int count = 0;
+		
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				AsyncBatchExistsArray async = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
-				async.execute();
+				tasks[count++] = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
 			}
 		}
+		// Dispatch commands to nodes.
+		execute(tasks, policy.maxConcurrentThreads);
 	}
 	
 	protected void onSuccess() {

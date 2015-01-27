@@ -39,14 +39,18 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 		}
-
-		completedSize = nodes.length;
+		
 		long taskId = System.nanoTime();
 
+		// Create commands.
+		AsyncScan[] tasks = new AsyncScan[nodes.length];
+		int count = 0;
+
 		for (Node node : nodes) {			
-			AsyncScan async = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, namespace, setName, binNames, taskId);
-			async.execute();
+			tasks[count++] = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, namespace, setName, binNames, taskId);
 		}
+		// Dispatch commands to nodes.
+		execute(tasks, policy.maxConcurrentNodes);
 	}
 	
 	protected void onSuccess() {

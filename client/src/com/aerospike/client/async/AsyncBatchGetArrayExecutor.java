@@ -24,7 +24,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.RecordArrayListener;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.BatchPolicy;
 
 public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 	private final RecordArrayListener listener;
@@ -32,7 +32,7 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 
 	public AsyncBatchGetArrayExecutor(
 		AsyncCluster cluster,
-		Policy policy, 
+		BatchPolicy policy, 
 		RecordArrayListener listener,
 		Key[] keys,
 		HashSet<String> binNames,
@@ -42,13 +42,17 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		this.recordArray = new Record[keys.length];
 		this.listener = listener;
 		
-		// Dispatch asynchronous commands to nodes.
+		// Create commands.
+		AsyncBatchGetArray[] tasks = new AsyncBatchGetArray[super.taskSize];
+		int count = 0;
+
 		for (BatchNode batchNode : batchNodes) {			
 			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {				
-				AsyncBatchGetArray async = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
-				async.execute();
+				tasks[count++] = new AsyncBatchGetArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
 			}
 		}
+		// Dispatch commands to nodes.
+		execute(tasks, policy.maxConcurrentThreads);
 	}
 	
 	protected void onSuccess() {

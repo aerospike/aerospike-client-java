@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 /**
  * Create and manage a Large Set within a single bin.
  */
-public final class LargeSet {
+public class LargeSet {
 	private static final String PackageName = "lset";
 	
 	private final AerospikeClient client;

@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 /**
  * Create and manage a stack within a single bin. A stack is last in/first out (LIFO).
  */
-public final class LargeStack {
+public class LargeStack {
 	private static final String PackageName = "lstack";
 	
 	private final AerospikeClient client;

@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 /**
  * Create and manage a list within a single bin.
  */
-public final class LargeList {
+public class LargeList {
 	private static final String PackageName = "llist";
 	
 	private final AerospikeClient client;

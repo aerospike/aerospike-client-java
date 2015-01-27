@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,35 +17,38 @@
 package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.command.BatchNode;
-import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.listener.ExistsSequenceListener;
-import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.query.Statement;
 
-public final class AsyncBatchExistsSequenceExecutor extends AsyncBatchExecutor {
-	private final ExistsSequenceListener listener;
+public final class AsyncQueryExecutor extends AsyncMultiExecutor {
+	private final RecordSequenceListener listener;
 
-	public AsyncBatchExistsSequenceExecutor(
+	public AsyncQueryExecutor(
 		AsyncCluster cluster,
-		BatchPolicy policy, 
-		Key[] keys,
-		ExistsSequenceListener listener
+		QueryPolicy policy,
+		RecordSequenceListener listener,
+		Statement statement
 	) throws AerospikeException {
-		super(cluster, keys);
 		this.listener = listener;
-		
+		statement.prepare();
+
+		Node[] nodes = cluster.getNodes();
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
+		}
+	
 		// Create commands.
-		AsyncBatchExistsSequence[] tasks = new AsyncBatchExistsSequence[super.taskSize];
+		AsyncQuery[] tasks = new AsyncQuery[nodes.length];
 		int count = 0;
 
-		for (BatchNode batchNode : batchNodes) {			
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				tasks[count++] = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
-			}
+		for (Node node : nodes) {			
+			tasks[count++] = new AsyncQuery(this, cluster, (AsyncNode)node, policy, listener, statement);
 		}
 		// Dispatch commands to nodes.
-		execute(tasks, policy.maxConcurrentThreads);
+		execute(tasks, policy.maxConcurrentNodes);
 	}
 	
 	protected void onSuccess() {
