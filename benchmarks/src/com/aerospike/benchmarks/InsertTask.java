@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,7 +22,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.Util;
-
 
 public abstract class InsertTask implements Runnable {
 
@@ -67,16 +66,19 @@ public abstract class InsertTask implements Runnable {
 				catch (Exception e) {
 					writeFailure(e);
 				}
-                                			// Throttle throughput
-                                if (args.throughput > 0) {
-                                        int transactions = counters.write.count.get();
-                                        if (transactions > args.throughput) {
-                                                long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
-                                                if (millis > 0) {
-                                                    Util.sleep(millis);
-                                                }
-                                        }
-                                }
+				
+				// Throttle throughput
+				if (args.throughput > 0) {
+					int transactions = counters.write.count.get();
+					
+					if (transactions > args.throughput) {
+						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+
+						if (millis > 0) {
+							Util.sleep(millis);
+						}
+					}
+				}
 			}
 		}
 		catch (Exception ex) {
