@@ -165,6 +165,11 @@ public final class ResultCode {
 	public static final int BIN_NAME_TOO_LONG = 21;
 	
 	/**
+	 *	Operation not allowed at this time.
+	 */
+	public static final int FAIL_FORBIDDEN = 22;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -427,6 +432,9 @@ public final class ResultCode {
 			
 		case BIN_NAME_TOO_LONG:
 			return "Bin name length greater than 14 characters";
+
+		case FAIL_FORBIDDEN:
+			return "Operation not allowed at this time";
 
 		case QUERY_END:
 			return "Query end";
