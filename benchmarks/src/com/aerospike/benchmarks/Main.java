@@ -88,8 +88,8 @@ public class Main implements Log.Callback {
 		options.addOption("p", "port", true, "Set the port on which to connect to Aerospike.");
 		options.addOption("U", "user", true, "User name");
 		options.addOption("P", "password", true, "Password");
-		options.addOption("n", "namespace", true, "Set the Aerospike namespace.");
-        options.addOption("s", "set", true, "Set the Aerospike set name.");
+		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
+        options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " + 
 			"If using an 'insert' workload (detailed below), the client will write this " + 
@@ -276,7 +276,7 @@ public class Main implements Log.Callback {
 			args.setName = line.getOptionValue("set");
 		}
 		else {
-			args.setName = "";
+			args.setName = "testset";
 		}
 
 		if (line.hasOption("keys")) {
