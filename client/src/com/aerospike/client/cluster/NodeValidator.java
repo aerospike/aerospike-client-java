@@ -25,7 +25,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
-import com.aerospike.client.command.AdminCommand;
+import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.util.Util;
 
 public final class NodeValidator {

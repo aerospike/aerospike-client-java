@@ -18,6 +18,9 @@ package com.aerospike.client;
 
 import java.util.List;
 
+import com.aerospike.client.admin.Privilege;
+import com.aerospike.client.admin.Role;
+import com.aerospike.client.admin.User;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
@@ -836,14 +839,43 @@ public interface IAerospikeClient {
 	public void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
 
 	/**
-	 * Replace user's list of roles.
+	 * Create user defined role.
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @param user					user name
-	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
 	 * @throws AerospikeException	if command fails
 	 */
-	public void replaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
+	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
+
+	/**
+	 * Drop user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @throws AerospikeException	if command fails
+	 */
+	public void dropRole(AdminPolicy policy, String roleName) throws AerospikeException;
+
+	/**
+	 * Grant privileges to an user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
+	 * @throws AerospikeException	if command fails
+	 */
+	public void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
+
+	/**
+	 * Revoke privileges from an user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
+	 * @throws AerospikeException	if command fails
+	 */
+	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
 
 	/**
 	 * Retrieve roles for a given user.
@@ -852,7 +884,7 @@ public interface IAerospikeClient {
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public UserRoles queryUser(AdminPolicy policy, String user) throws AerospikeException;
+	public User queryUser(AdminPolicy policy, String user) throws AerospikeException;
 
 	/**
 	 * Retrieve all users and their roles.
@@ -860,5 +892,22 @@ public interface IAerospikeClient {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public List<UserRoles> queryUsers(AdminPolicy policy) throws AerospikeException;
+	public List<User> queryUsers(AdminPolicy policy) throws AerospikeException;
+
+	/**
+	 * Retrieve role definition.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name filter
+	 * @throws AerospikeException	if command fails
+	 */
+	public Role queryRole(AdminPolicy policy, String roleName) throws AerospikeException;
+
+	/**
+	 * Retrieve all roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @throws AerospikeException	if command fails
+	 */
+	public List<Role> queryRoles(AdminPolicy policy) throws AerospikeException;
 }

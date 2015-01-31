@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
+package com.aerospike.client.admin;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -24,14 +24,15 @@ import java.util.List;
 import org.mindrot.jbcrypt.BCrypt;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.UserRoles;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 
-public final class AdminCommand {
+public class AdminCommand {
 	// Commands
 	private static final byte AUTHENTICATE = 0;
 	private static final byte CREATE_USER = 1;
@@ -40,10 +41,12 @@ public final class AdminCommand {
 	private static final byte CHANGE_PASSWORD = 4;
 	private static final byte GRANT_ROLES = 5;
 	private static final byte REVOKE_ROLES = 6;
-	private static final byte REPLACE_ROLES = 7;
-	//private static final byte CREATE_ROLE = 8;
 	private static final byte QUERY_USERS = 9;
-	//private static final byte QUERY_ROLES = 10;
+	private static final byte CREATE_ROLE = 10;
+	private static final byte DROP_ROLE = 11;
+	private static final byte GRANT_PRIVILEGES = 12;
+	private static final byte REVOKE_PRIVILEGES = 13;
+	private static final byte QUERY_ROLES = 16;
 
 	// Field IDs
 	private static final byte USER = 0;
@@ -51,7 +54,8 @@ public final class AdminCommand {
 	private static final byte OLD_PASSWORD = 2;
 	private static final byte CREDENTIAL = 3;
 	private static final byte ROLES = 10;
-	//private static final byte PRIVILEGES = 11;
+	private static final byte ROLE = 11;
+	private static final byte PRIVILEGES = 12;
 
 	// Misc
 	private static final long MSG_VERSION = 0L;
@@ -140,26 +144,31 @@ public final class AdminCommand {
 		executeCommand(cluster, policy);
 	}
 
-	public void replaceRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
-		writeHeader(REPLACE_ROLES, 2);
-		writeField(USER, user);
-		writeRoles(roles);
+	public void createRole(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+		writeHeader(CREATE_ROLE, 2);
+		writeField(ROLE, roleName);
+		writePrivileges(privileges);
 		executeCommand(cluster, policy);
 	}
 
-	public UserRoles queryUser(Cluster cluster, AdminPolicy policy, String user) throws AerospikeException {
-		List<UserRoles> list = new ArrayList<UserRoles>(1);
-		writeHeader(QUERY_USERS, 1);
-		writeField(USER, user);
-		readUsers(cluster, policy, list);
-		return (list.size() > 0) ? list.get(0) : null;
+	public void dropRole(Cluster cluster, AdminPolicy policy, String roleName) throws AerospikeException {
+		writeHeader(DROP_ROLE, 1);
+		writeField(ROLE, roleName);
+		executeCommand(cluster, policy);
 	}
 
-	public List<UserRoles> queryUsers(Cluster cluster, AdminPolicy policy) throws AerospikeException {
-		List<UserRoles> list = new ArrayList<UserRoles>(100);
-		writeHeader(QUERY_USERS, 0);
-		readUsers(cluster, policy, list);
-		return list;
+	public void grantPrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+		writeHeader(GRANT_PRIVILEGES, 2);
+		writeField(ROLE, roleName);
+		writePrivileges(privileges);
+		executeCommand(cluster, policy);
+	}
+
+	public void revokePrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+		writeHeader(REVOKE_PRIVILEGES, 2);
+		writeField(ROLE, roleName);
+		writePrivileges(privileges);
+		executeCommand(cluster, policy);
 	}
 
 	private void writeRoles(List<String> roles) {
@@ -174,6 +183,34 @@ public final class AdminCommand {
 
 		int size = offset - dataOffset - FIELD_HEADER_SIZE;
 		writeFieldHeader(ROLES, size);
+		dataOffset = offset;
+	}
+
+	private void writePrivileges(List<Privilege> privileges) {
+		int offset = dataOffset + FIELD_HEADER_SIZE;
+		dataBuffer[offset++] = (byte)privileges.size();
+
+		for (Privilege privilege : privileges) {
+			dataBuffer[offset++] = (byte)privilege.code.id;
+			
+			if (privilege.code.canScope()) {
+				int len = Buffer.stringToUtf8(privilege.namespace, dataBuffer, offset + 1);
+				dataBuffer[offset] = (byte)len;
+				offset += len + 1;
+				
+				len = Buffer.stringToUtf8(privilege.setName, dataBuffer, offset + 1);
+				dataBuffer[offset] = (byte)len;
+				offset += len + 1;
+			}
+			else {
+				if (privilege.namespace != null || privilege.setName != null) {
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Admin privilege has namespace/set scope which is invalid.");
+				}
+			}
+		}
+
+		int size = offset - dataOffset - FIELD_HEADER_SIZE;
+		writeFieldHeader(PRIVILEGES, size);
 		dataOffset = offset;
 	}
 
@@ -235,7 +272,7 @@ public final class AdminCommand {
 		}
 	}
 
-	public void readUsers(Cluster cluster, AdminPolicy policy, List<UserRoles> list) throws AerospikeException {
+	private void executeQuery(Cluster cluster, AdminPolicy policy) throws AerospikeException {
 		writeSize();
 		Node node = cluster.getRandomNode();
 		int timeout = (policy == null) ? 1000 : policy.timeout;
@@ -244,7 +281,7 @@ public final class AdminCommand {
 
 		try {
 			conn.write(dataBuffer, dataOffset);
-			status = readUserBlocks(conn, list);
+			status = readBlocks(conn);
 			node.putConnection(conn);
 		}
 		catch (Exception e) {
@@ -253,12 +290,12 @@ public final class AdminCommand {
 			throw new AerospikeException(e);
 		}
 
-		if (status > 0) {
-			throw new AerospikeException(status, "Query users failed.");
+		if (status != QUERY_END && status > 0) {
+			throw new AerospikeException(status, "Query failed.");
 		}
 	}
 
-	private int readUserBlocks(Connection conn, List<UserRoles> list) throws IOException {
+	private int readBlocks(Connection conn) throws IOException {
 		int status = 0;
 
 		while (status == 0)	{
@@ -271,7 +308,7 @@ public final class AdminCommand {
 					dataBuffer = ThreadLocalData.resizeBuffer(receiveSize);
 				}
 				conn.readFully(dataBuffer, receiveSize);
-				status = parseUsers(list, receiveSize);
+				status = parseBlock(receiveSize);
 			}
 			else {
 				break;
@@ -280,67 +317,178 @@ public final class AdminCommand {
 		return status;
 	}
 
-	private int parseUsers(List<UserRoles> list, int receiveSize)
-	{
-		dataOffset = 0;
-
-		while (dataOffset < receiveSize) {
-			int resultCode = dataBuffer[dataOffset + 1];
-
-			if (resultCode != 0) {
-				if (resultCode == QUERY_END) {
-					return -1;
-				}
-				return resultCode;
-			}
-
-			UserRoles userRoles = new UserRoles();
-			int fieldCount = dataBuffer[dataOffset + 3];
-			dataOffset += HEADER_REMAINING;
-
-			for (int i = 0; i < fieldCount; i++) {
-				int len = Buffer.bytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4;
-				int id = dataBuffer[dataOffset++];
-				len--;
-
-				if (id == USER) {
-					userRoles.user = Buffer.utf8ToString(dataBuffer, dataOffset, len);
-					dataOffset += len;
-				}
-				else if (id == ROLES) {
-					parseRoles(userRoles);
-				}
-				else {
-					dataOffset += len;
-				}
-			}
-
-			if (userRoles.user == null && userRoles.roles == null) {
-				continue;
-			}
-
-			if (userRoles.roles == null) {
-				userRoles.roles = new ArrayList<String>(0);
-			}
-			list.add(userRoles);
-		}
-		return 0;
-	}
-
-	private void parseRoles(UserRoles userRoles) {
-		int size = dataBuffer[dataOffset++];
-		userRoles.roles = new ArrayList<String>(size);
-
-		for (int i = 0; i < size; i++) {
-			int len = dataBuffer[dataOffset++];
-			String role = Buffer.utf8ToString(dataBuffer, dataOffset, len);
-			dataOffset += len;
-			userRoles.roles.add(role);
-		}
-	}
-
 	public static String hashPassword(String password) {
 		return BCrypt.hashpw(password, "$2a$10$7EqJtq98hPqEX7fNZaFWoO");
+	}
+	
+	int parseBlock(int receiveSize) {
+		return QUERY_END;
+	}
+	
+	public static final class UserCommand extends AdminCommand {
+		private final List<User> list;
+		
+		public UserCommand(int capacity) {
+			list = new ArrayList<User>(capacity);
+		}
+				
+		public User queryUser(Cluster cluster, AdminPolicy policy, String user) throws AerospikeException {
+			super.writeHeader(QUERY_USERS, 1);
+			super.writeField(USER, user);
+			super.executeQuery(cluster, policy);
+			return (list.size() > 0) ? list.get(0) : null;
+		}
+
+		public List<User> queryUsers(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+			super.writeHeader(QUERY_USERS, 0);
+			super.executeQuery(cluster, policy);
+			return list;
+		}
+
+		@Override
+		int parseBlock(int receiveSize)
+		{
+			super.dataOffset = 0;
+
+			while (super.dataOffset < receiveSize) {
+				int resultCode = super.dataBuffer[super.dataOffset + 1];
+
+				if (resultCode != 0) {
+					return resultCode;
+				}
+
+				User user = new User();
+				int fieldCount = super.dataBuffer[super.dataOffset + 3];
+				super.dataOffset += HEADER_REMAINING;
+
+				for (int i = 0; i < fieldCount; i++) {
+					int len = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+					super.dataOffset += 4;
+					int id = super.dataBuffer[super.dataOffset++];
+					len--;
+
+					if (id == USER) {
+						user.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+						super.dataOffset += len;
+					}
+					else if (id == ROLES) {
+						parseRoles(user);
+					}
+					else {
+						super.dataOffset += len;
+					}
+				}
+
+				if (user.name == null && user.roles == null) {
+					continue;
+				}
+
+				if (user.roles == null) {
+					user.roles = new ArrayList<String>(0);
+				}
+				list.add(user);
+			}
+			return 0;
+		}
+
+		private void parseRoles(User user) {
+			int size = super.dataBuffer[super.dataOffset++];
+			user.roles = new ArrayList<String>(size);
+
+			for (int i = 0; i < size; i++) {
+				int len = super.dataBuffer[super.dataOffset++];
+				String role = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+				super.dataOffset += len;
+				user.roles.add(role);
+			}
+		}		
+	}
+	
+	public static final class RoleCommand extends AdminCommand {
+		private final List<Role> list;
+		
+		public RoleCommand(int capacity) {
+			list = new ArrayList<Role>(capacity);
+		}
+				
+		public Role queryRole(Cluster cluster, AdminPolicy policy, String roleName) throws AerospikeException {
+			super.writeHeader(QUERY_ROLES, 1);
+			super.writeField(ROLE, roleName);
+			super.executeQuery(cluster, policy);
+			return (list.size() > 0) ? list.get(0) : null;
+		}
+
+		public List<Role> queryRoles(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+			super.writeHeader(QUERY_ROLES, 0);
+			super.executeQuery(cluster, policy);
+			return list;
+		}
+
+		@Override
+		int parseBlock(int receiveSize)
+		{
+			super.dataOffset = 0;
+
+			while (super.dataOffset < receiveSize) {
+				int resultCode = super.dataBuffer[super.dataOffset + 1];
+
+				if (resultCode != 0) {
+					return resultCode;
+				}
+
+				Role role = new Role();
+				int fieldCount = super.dataBuffer[super.dataOffset + 3];
+				super.dataOffset += HEADER_REMAINING;
+
+				for (int i = 0; i < fieldCount; i++) {
+					int len = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+					super.dataOffset += 4;
+					int id = super.dataBuffer[super.dataOffset++];
+					len--;
+
+					if (id == ROLE) {
+						role.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+						super.dataOffset += len;
+					}
+					else if (id == PRIVILEGES) {
+						parsePrivileges(role);
+					}
+					else {
+						super.dataOffset += len;
+					}
+				}
+
+				if (role.name == null && role.privileges == null) {
+					continue;
+				}
+
+				if (role.privileges == null) {
+					role.privileges = new ArrayList<Privilege>(0);
+				}
+				list.add(role);
+			}
+			return 0;
+		}
+
+		private void parsePrivileges(Role role) {
+			int size = super.dataBuffer[super.dataOffset++];
+			role.privileges = new ArrayList<Privilege>(size);
+
+			for (int i = 0; i < size; i++) {
+				Privilege priv = new Privilege();
+				priv.code = PrivilegeCode.fromId(super.dataBuffer[super.dataOffset++]);
+				
+				if (priv.code.canScope()) {				
+					int len = super.dataBuffer[super.dataOffset++];
+					priv.namespace = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+					super.dataOffset += len;
+					
+					len = super.dataBuffer[super.dataOffset++];
+					priv.setName = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+					super.dataOffset += len;
+				}
+				role.privileges.add(priv);
+			}
+		}
 	}
 }

@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.command.AdminCommand;
+import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;

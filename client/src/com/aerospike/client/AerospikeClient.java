@@ -24,10 +24,13 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.Info.NameValueParser;
+import com.aerospike.client.admin.AdminCommand;
+import com.aerospike.client.admin.Privilege;
+import com.aerospike.client.admin.Role;
+import com.aerospike.client.admin.User;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.AdminCommand;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -1367,7 +1370,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param password				user password in clear-text format
-	 * @param roles					variable arguments array of role names.  Valid roles are listed in Role.cs
+	 * @param roles					variable arguments array of role names.  Predefined roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
@@ -1421,7 +1424,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
-	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @param roles					role names.  Predefined roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
@@ -1434,7 +1437,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
-	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @param roles					role names.  Predefined roles are listed in Role.cs
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
@@ -1443,16 +1446,54 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Replace user's list of roles.
+	 * Create user defined role.
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @param user					user name
-	 * @param roles					role names.  Valid roles are listed in Role.cs
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
 	 * @throws AerospikeException	if command fails
 	 */
-	public final void replaceRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public final void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
-		command.replaceRoles(cluster, policy, user, roles);
+		command.createRole(cluster, policy, roleName, privileges);
+	}
+
+	/**
+	 * Drop user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void dropRole(AdminPolicy policy, String roleName) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.dropRole(cluster, policy, roleName);
+	}
+
+	/**
+	 * Grant privileges to an user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.grantPrivileges(cluster, policy, roleName, privileges);
+	}
+
+	/**
+	 * Revoke privileges from an user defined role.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			privileges assigned to the role.
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.revokePrivileges(cluster, policy, roleName, privileges);
 	}
 
 	/**
@@ -1462,8 +1503,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public final UserRoles queryUser(AdminPolicy policy, String user) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
+	public final User queryUser(AdminPolicy policy, String user) throws AerospikeException {
+		AdminCommand.UserCommand command = new AdminCommand.UserCommand(1);
 		return command.queryUser(cluster, policy, user);
 	}
 
@@ -1473,9 +1514,32 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public final List<UserRoles> queryUsers(AdminPolicy policy) throws AerospikeException {
-		AdminCommand command = new AdminCommand();
+	public final List<User> queryUsers(AdminPolicy policy) throws AerospikeException {
+		AdminCommand.UserCommand command = new AdminCommand.UserCommand(100);
 		return command.queryUsers(cluster, policy);
+	}
+
+	/**
+	 * Retrieve role definition.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name filter
+	 * @throws AerospikeException	if command fails
+	 */
+	public final Role queryRole(AdminPolicy policy, String roleName) throws AerospikeException {
+		AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(1);
+		return command.queryRole(cluster, policy, roleName);
+	}
+
+	/**
+	 * Retrieve all roles.
+	 * 
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @throws AerospikeException	if command fails
+	 */
+	public final List<Role> queryRoles(AdminPolicy policy) throws AerospikeException {
+		AdminCommand.RoleCommand command = new AdminCommand.RoleCommand(100);
+		return command.queryRoles(cluster, policy);
 	}
 
 	//-------------------------------------------------------

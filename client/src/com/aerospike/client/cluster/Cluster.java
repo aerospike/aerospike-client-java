@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.command.AdminCommand;
+import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Environment;

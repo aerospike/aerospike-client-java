@@ -27,7 +27,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
-import com.aerospike.client.command.AdminCommand;
+import com.aerospike.client.admin.AdminCommand;
 
 /**
  * Server node representation.  This class manages server node connections and health status.

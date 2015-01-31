@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -14,21 +14,26 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client;
-
-import java.util.List;
+package com.aerospike.client.admin;
 
 /**
- * User and assigned roles.
+ * User privilege.
  */
-public final class UserRoles {
+public final class Privilege {
 	/**
-	 * User name.
+	 * Privilege code.
 	 */
-	public String user;
+	public PrivilegeCode code;
+	
+	/**
+	 *	Namespace scope. Apply permission to this namespace only.
+	 *	If namespace is null, the privilege applies to all namespaces.
+	 */
+	public String namespace;
 
 	/**
-	 * List of assigned roles.
+	 *	Set name scope. Apply permission to this set within namespace only.
+	 *	If set is null, the privilege applies to all sets within namespace.
 	 */
-	public List<String> roles;
+	public String setName;
 }
