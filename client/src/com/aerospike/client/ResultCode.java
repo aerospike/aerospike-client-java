@@ -240,10 +240,15 @@ public final class ResultCode {
 	public static final int INVALID_ROLE = 70;
 
 	/**
+	 * Role already exists.
+	 */
+	public static final int ROLE_ALREADY_EXISTS = 71;
+	
+	/**
 	 * Privilege is invalid.
 	 */
-	public static final int INVALID_PRIVILEGE = 71;
-	
+	public static final int INVALID_PRIVILEGE = 72;
+
 	/**
 	 * User must be authentication before performing database operations.
 	 */
@@ -478,6 +483,9 @@ public final class ResultCode {
 		case INVALID_ROLE:
 			return "Invalid role";
 
+		case ROLE_ALREADY_EXISTS:
+			return "Role already exists";
+					
 		case INVALID_PRIVILEGE:
 			return "Invalid privilege";
 			
