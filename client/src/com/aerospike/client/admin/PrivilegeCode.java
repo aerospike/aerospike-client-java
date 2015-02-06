@@ -25,36 +25,38 @@ public enum PrivilegeCode {
 	/**
 	 * User can edit/remove other users.  Global scope only.
 	 */
-	USER_ADMIN(0),
+	USER_ADMIN(0, Role.UserAdmin),
 	
 	/**
 	 * User can perform systems administration functions on a database that do not involve user
 	 * administration.  Global scope only.
 	 */
-	SYS_ADMIN(1),
+	SYS_ADMIN(1, Role.SysAdmin),
 	
 	/**
 	 * User can read data only.
 	 */
-	READ(10),
+	READ(10, Role.Read),
 	
 	/**
 	 * User can read and write data.
 	 */
-	READ_WRITE(11),
+	READ_WRITE(11, Role.ReadWrite),
 	
 	/**
 	 * User can read and write data through user defined functions.
 	 */
-	READ_WRITE_UDF(12);
+	READ_WRITE_UDF(12, Role.ReadWriteUdf);
 	
 	/**
 	 * Privilege code ID used in wire protocol.
 	 */
 	public final int id;
+	private final String value;
 	
-	private PrivilegeCode(int id) {
+	private PrivilegeCode(int id, String value) {
 		this.id = id;
+		this.value = value;
 	}
 	
 	/**
@@ -87,5 +89,13 @@ public enum PrivilegeCode {
 		default:
 			throw new AerospikeException("Invalid privilege code: " + id);
 		}
+	}
+	
+	/**
+	 * Convert code to string.
+	 */
+	@Override
+	public String toString() {
+		return value;
 	}
 }

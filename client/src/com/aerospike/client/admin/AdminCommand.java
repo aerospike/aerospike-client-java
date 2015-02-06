@@ -194,6 +194,13 @@ public class AdminCommand {
 			dataBuffer[offset++] = (byte)privilege.code.id;
 			
 			if (privilege.code.canScope()) {
+				
+				if (! (privilege.setName == null || privilege.setName.length() == 0) &&
+					(privilege.namespace == null || privilege.namespace.length() == 0)) {
+					throw new AerospikeException(ResultCode.INVALID_PRIVILEGE, "Admin privilege '" + 
+						privilege.code + "' has a set scope with an empty namespace.");
+				}
+		
 				int len = Buffer.stringToUtf8(privilege.namespace, dataBuffer, offset + 1);
 				dataBuffer[offset] = (byte)len;
 				offset += len + 1;
@@ -203,8 +210,10 @@ public class AdminCommand {
 				offset += len + 1;
 			}
 			else {
-				if (privilege.namespace != null || privilege.setName != null) {
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Admin privilege has namespace/set scope which is invalid.");
+				if (! (privilege.namespace == null || privilege.namespace.length() == 0) ||
+					! (privilege.setName == null || privilege.setName.length() == 0)) {
+					throw new AerospikeException(ResultCode.INVALID_PRIVILEGE, "Admin global privilege '" +
+						privilege.code + "' has namespace/set scope which is invalid.");
 				}
 			}
 		}
