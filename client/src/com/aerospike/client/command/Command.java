@@ -67,7 +67,7 @@ public abstract class Command {
 		int fieldCount = estimateKeySize(key);
 		
 		if (policy.sendKey) {
-			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE;
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE +1;
 			fieldCount++;
 		}
 		
