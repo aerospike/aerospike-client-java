@@ -81,6 +81,10 @@
             <include>com/aerospike/client/listener/*</include>
             <include>com/aerospike/client/policy/*</include>
             <include>com/aerospike/client/task/*</include>
+            <include>com/aerospike/client/admin/Privilege.java</include>
+            <include>com/aerospike/client/admin/PrivilegeCode.java</include>
+            <include>com/aerospike/client/admin/Role.java</include>
+            <include>com/aerospike/client/admin/User.java</include>
             <include>com/aerospike/client/async/AsyncClient.java</include>
             <include>com/aerospike/client/async/AsyncClientPolicy.java</include>
             <include>com/aerospike/client/async/AsyncNode.java</include>
