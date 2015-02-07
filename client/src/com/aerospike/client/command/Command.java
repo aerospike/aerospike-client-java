@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -67,23 +67,14 @@ public abstract class Command {
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
-		int fieldCount = estimateKeySize(key);
-		
-		if (policy.sendKey) {
-			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
-			fieldCount++;
-		}
-		
+		int fieldCount = estimateKeySize(policy, key);
+				
 		for (Bin bin : bins) {
 			estimateOperationSize(bin);
 		}		
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
-		writeKey(key);
-				
-		if (policy.sendKey) {
-			writeField(key.userKey, FieldType.KEY);
-		}
+		writeKey(policy, key);
 		
 		for (Bin bin : bins) {
 			writeOperation(bin, operation);
@@ -93,53 +84,53 @@ public abstract class Command {
 
 	public void setDelete(WritePolicy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
-		writeKey(key);
+		writeKey(policy, key);
 		end();
 	}
 
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		estimateOperationSize();
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
-		writeKey(key);
+		writeKey(policy, key);
 		writeOperation(Operation.Type.TOUCH);
 		end();
 	}
 
 	public final void setExists(Policy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		sizeBuffer();
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
-		writeKey(key);
+		writeKey(policy, key);
 		end();
 	}
 
 	public final void setRead(Policy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		sizeBuffer();
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
-		writeKey(key);
+		writeKey(policy, key);
 		end();
 	}
 
 	public final void setRead(Policy policy, Key key, String[] binNames) {
 		if (binNames != null) {
 			begin();
-			int fieldCount = estimateKeySize(key);
+			int fieldCount = estimateKeySize(policy, key);
 			
 			for (String binName : binNames) {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
 			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.length);
-			writeKey(key);
+			writeKey(policy, key);
 			
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
@@ -153,22 +144,21 @@ public abstract class Command {
 
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		estimateOperationSize((String)null);
 		sizeBuffer();		
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
-		writeKey(key);
+		writeKey(policy, key);
 		end();
 	}
 
 	public final void setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
 		begin();
-		int fieldCount = estimateKeySize(key);
+		int fieldCount = estimateKeySize(policy, key);
 		int readAttr = 0;
 		int writeAttr = 0;
 		boolean readBin = false;
 		boolean readHeader = false;
-		boolean userKeyFieldCalculated = false;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
@@ -188,13 +178,6 @@ public abstract class Command {
 				break;
 				
 			default:
-				// Check if write policy requires saving the user key and calculate the data size.
-				// This should only be done once for the entire request even with multiple write operations.
-				if (policy.sendKey && userKeyFieldCalculated == false) {
-					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE;
-					fieldCount++;
-					userKeyFieldCalculated = true;
-				}
 				writeAttr = Command.INFO2_WRITE;
 				break;				
 			}
@@ -207,11 +190,7 @@ public abstract class Command {
 		}
 		
 		writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
-		writeKey(key);
-					
-		if (policy.sendKey) {
-			writeField(key.userKey, FieldType.KEY);
-		}
+		writeKey(policy, key);
 
 		for (Operation operation : operations) {
 			writeOperation(operation);
@@ -222,13 +201,13 @@ public abstract class Command {
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 
 		throws AerospikeException {
 		begin();
-		int fieldCount = estimateKeySize(key);		
+		int fieldCount = estimateKeySize(policy, key);		
 		byte[] argBytes = Packer.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 		
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
-		writeKey(key);
+		writeKey(policy, key);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -546,7 +525,7 @@ public abstract class Command {
 		end();
 	}
 	
-	private final int estimateKeySize(Key key) {
+	private final int estimateKeySize(Policy policy, Key key) {
 		int fieldCount = 0;
 		
 		if (key.namespace != null) {
@@ -562,6 +541,10 @@ public abstract class Command {
 		dataOffset += key.digest.length + FIELD_HEADER_SIZE;
 		fieldCount++;
 		
+		if (policy.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
 		return fieldCount;
 	}
 
@@ -678,7 +661,7 @@ public abstract class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private final void writeKey(Key key) {
+	private final void writeKey(Policy policy, Key key) {
 		// Write key into buffer.
 		if (key.namespace != null) {
 			writeField(key.namespace, FieldType.NAMESPACE);
@@ -689,6 +672,10 @@ public abstract class Command {
 		}
 	
 		writeField(key.digest, FieldType.DIGEST_RIPE);
+
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
 	}	
 
 	private final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {

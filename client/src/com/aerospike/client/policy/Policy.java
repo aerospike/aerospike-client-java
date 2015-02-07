@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -58,6 +58,12 @@ public class Policy {
 	public int sleepBetweenRetries = 500;
 	
 	/**
+	 * Send user defined key in addition to hash digest on both reads and writes.  
+	 * The default is to not send the user defined key.
+	 */
+	public boolean sendKey;
+	
+	/**
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
@@ -66,6 +72,7 @@ public class Policy {
 		this.timeout = other.timeout;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
+		this.sendKey = other.sendKey;
 	}
 	
 	/**

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -61,12 +61,6 @@ public final class WritePolicy extends Policy {
 	public int expiration;
 	
 	/**
-	 * Send user defined key in addition to hash digest on a record put.  
-	 * The default is to not send the user defined key.
-	 */
-	public boolean sendKey;
-	
-	/**
 	 * Copy write policy from another write policy.
 	 */
 	public WritePolicy(WritePolicy other) {
@@ -76,7 +70,6 @@ public final class WritePolicy extends Policy {
 		this.commitLevel = other.commitLevel;
 		this.generation = other.generation;
 		this.expiration = other.expiration;
-		this.sendKey = other.sendKey;
 	}
 
 	/**
