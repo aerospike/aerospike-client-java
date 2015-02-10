@@ -404,26 +404,26 @@ public final class Buffer {
 
 	public static long bytesToLong(byte[] buf, int offset) {
        return (
-    		((long)(buf[offset]   & 0xFF) << 56) + 
-   			((long)(buf[offset+1] & 0xFF) << 48) +
-   			((long)(buf[offset+2] & 0xFF) << 40) +
-   			((long)(buf[offset+3] & 0xFF) << 32) +
-   			((long)(buf[offset+4] & 0xFF) << 24) +
-   			((long)(buf[offset+5] & 0xFF) << 16) +
-   			((long)(buf[offset+6] & 0xFF) << 8) +
+    		((long)(buf[offset]   & 0xFF) << 56) |
+   			((long)(buf[offset+1] & 0xFF) << 48) |
+   			((long)(buf[offset+2] & 0xFF) << 40) |
+   			((long)(buf[offset+3] & 0xFF) << 32) |
+   			((long)(buf[offset+4] & 0xFF) << 24) |
+   			((long)(buf[offset+5] & 0xFF) << 16) |
+   			((long)(buf[offset+6] & 0xFF) << 8) |
    			((long)(buf[offset+7] & 0xFF) << 0)
    			);
     }
 
     public static long littleBytesToLong(byte[] buf, int offset) {
         return (
-			((long)(buf[offset]   & 0xFF) << 0) + 
-			((long)(buf[offset+1] & 0xFF) << 8) +
-			((long)(buf[offset+2] & 0xFF) << 16) +
-			((long)(buf[offset+3] & 0xFF) << 24) +
-			((long)(buf[offset+4] & 0xFF) << 32) +
-			((long)(buf[offset+5] & 0xFF) << 40) +
-			((long)(buf[offset+6] & 0xFF) << 48) +
+			((long)(buf[offset]   & 0xFF) << 0) |
+			((long)(buf[offset+1] & 0xFF) << 8) |
+			((long)(buf[offset+2] & 0xFF) << 16) |
+			((long)(buf[offset+3] & 0xFF) << 24) |
+			((long)(buf[offset+4] & 0xFF) << 32) |
+			((long)(buf[offset+5] & 0xFF) << 40) |
+			((long)(buf[offset+6] & 0xFF) << 48) |
 			((long)(buf[offset+7] & 0xFF) << 56)
 			);
     }
@@ -444,19 +444,19 @@ public final class Buffer {
 
     public static int bytesToInt(byte[] buf, int offset) {
        return (
-			((int)(buf[offset]   & 0xFF) << 24) +
-			((int)(buf[offset+1] & 0xFF) << 16) + 
-			((int)(buf[offset+2] & 0xFF) << 8) +
-			((int)(buf[offset+3] & 0xFF) << 0)
+			((buf[offset]   & 0xFF) << 24) |
+			((buf[offset+1] & 0xFF) << 16) |
+			((buf[offset+2] & 0xFF) << 8) |
+			((buf[offset+3] & 0xFF) << 0)
 			);
     }
 
 	public static int littleBytesToInt(byte[] buf, int offset) {
         return (
-			((int)(buf[offset]   & 0xFF) << 0) +
-			((int)(buf[offset+1] & 0xFF) << 8) +
-			((int)(buf[offset+2] & 0xFF) << 16) +
-			((int)(buf[offset+3] & 0xFF) << 24)
+			((buf[offset]   & 0xFF) << 0) |
+			((buf[offset+1] & 0xFF) << 8) |
+			((buf[offset+2] & 0xFF) << 16) |
+			((buf[offset+3] & 0xFF) << 24)
 			);
     }
 	
@@ -471,16 +471,16 @@ public final class Buffer {
     }
 
     public static int bytesToShort(byte[] buf, int offset) {
-        return (
-			((int)(buf[offset]   & 0xFF) << 8) +
-			((int)(buf[offset+1] & 0xFF) << 0)
+        return (short)(
+			((buf[offset]   & 0xFF) << 8) |
+			((buf[offset+1] & 0xFF) << 0)
 			);
     }
     
     public static int littleBytesToShort(byte[] buf, int offset) {
-        return (
-			((int)(buf[offset]   & 0xFF) << 0) +
-			((int)(buf[offset+1] & 0xFF) << 8)
+        return (short)(
+			((buf[offset]   & 0xFF) << 0) |
+			((buf[offset+1] & 0xFF) << 8)
 			);
     }
 
