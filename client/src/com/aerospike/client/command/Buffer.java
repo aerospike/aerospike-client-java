@@ -380,6 +380,14 @@ public final class Buffer {
 		return big;
 	}
 
+	//-------------------------------------------------------
+	// 64 bit number conversions.
+	//-------------------------------------------------------
+
+    /**
+     * Convert long to big endian signed or unsigned 64 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
 	public static void longToBytes(long v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 56);
 		buf[offset++] = (byte)(v >>> 48);
@@ -391,6 +399,10 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>>  0);
 	}
   	
+    /**
+     * Convert long to little endian signed or unsigned 64 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
 	public static void longToLittleBytes(long v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 0);
 		buf[offset++] = (byte)(v >>> 8);
@@ -402,6 +414,9 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>> 56);		
 	}
 
+    /**
+     * Convert big endian signed 64 bits to long.
+     */
 	public static long bytesToLong(byte[] buf, int offset) {
        return (
     		((long)(buf[offset]   & 0xFF) << 56) |
@@ -415,6 +430,9 @@ public final class Buffer {
    			);
     }
 
+    /**
+     * Convert little endian signed 64 bits to long.
+     */
     public static long littleBytesToLong(byte[] buf, int offset) {
         return (
 			((long)(buf[offset]   & 0xFF) << 0) |
@@ -428,61 +446,123 @@ public final class Buffer {
 			);
     }
 
-    public static void intToBytes(int v, byte[] buf, int offset) {
-        buf[offset++] = (byte)(v >>> 24);
-        buf[offset++] = (byte)(v >>> 16);
-        buf[offset++] = (byte)(v >>> 8);
-        buf[offset]   = (byte)(v >>> 0);
+	//-------------------------------------------------------
+	// 32 bit number conversions.
+	//-------------------------------------------------------
+
+    /**
+     * Convert int to big endian signed or unsigned 32 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
+	public static void intToBytes(int v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 24);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset]   = (byte)(v >>> 0);
 	}
 
-    public static void intToLittleBytes(int v, byte[] buf, int offset) {
-        buf[offset++] = (byte)(v >>> 0);
-        buf[offset++] = (byte)(v >>> 8);
-        buf[offset++] = (byte)(v >>> 16);
-        buf[offset]   = (byte)(v >>> 24);
+    /**
+     * Convert int to little endian signed or unsigned 32 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
+	public static void intToLittleBytes(int v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 0);
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset]   = (byte)(v >>> 24);
 	}
 
-    public static int bytesToInt(byte[] buf, int offset) {
-       return (
+    /**
+     * Convert big endian signed 32 bits to int.
+     */
+	public static int bytesToInt(byte[] buf, int offset) {
+		return (
 			((buf[offset]   & 0xFF) << 24) |
 			((buf[offset+1] & 0xFF) << 16) |
 			((buf[offset+2] & 0xFF) << 8) |
 			((buf[offset+3] & 0xFF) << 0)
 			);
-    }
+	}
 
+    /**
+     * Convert little endian signed 32 bits to int.
+     */
 	public static int littleBytesToInt(byte[] buf, int offset) {
-        return (
+		return (
 			((buf[offset]   & 0xFF) << 0) |
 			((buf[offset+1] & 0xFF) << 8) |
 			((buf[offset+2] & 0xFF) << 16) |
 			((buf[offset+3] & 0xFF) << 24)
 			);
-    }
+	}
+
+    /**
+     * Convert big endian unsigned 32 bits to long.
+     */
+	public static long bigUnsigned32ToLong(byte[] buf, int offset) {
+		return (
+			((long)(buf[offset]   & 0xFF) << 24) |
+			((long)(buf[offset+1] & 0xFF) << 16) |
+			((long)(buf[offset+2] & 0xFF) << 8) |
+			((long)(buf[offset+3] & 0xFF) << 0)
+			);
+	}
 	
+	//-------------------------------------------------------
+	// 16 bit number conversions.
+	//-------------------------------------------------------
+
+    /**
+     * Convert int to big endian signed or unsigned 16 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
     public static void shortToBytes(int v, byte[] buf, int offset) {
         buf[offset++] = (byte)(v >>> 8);
         buf[offset]   = (byte)(v >>> 0);
     }
 
+    /**
+     * Convert int to little endian signed or unsigned 16 bits.
+     * The bit pattern will be the same regardless of sign.
+     */
     public static void shortToLittleBytes(int v, byte[] buf, int offset) {
         buf[offset++] = (byte)(v >>> 0);
         buf[offset]   = (byte)(v >>> 8);
     }
 
+    /**
+     * Convert big endian unsigned 16 bits to int.
+     */
     public static int bytesToShort(byte[] buf, int offset) {
-        return (short)(
+        return (
 			((buf[offset]   & 0xFF) << 8) |
 			((buf[offset+1] & 0xFF) << 0)
-			);
+        	);
     }
-    
+
+    /**
+     * Convert little endian unsigned 16 bits to int.
+     */
     public static int littleBytesToShort(byte[] buf, int offset) {
-        return (short)(
+        return (
 			((buf[offset]   & 0xFF) << 0) |
 			((buf[offset+1] & 0xFF) << 8)
 			);
     }
+
+    /**
+     * Convert big endian signed 16 bits to short.
+     */
+    public static short bigSigned16ToShort(byte[] buf, int offset) {
+        return (short)(
+			((buf[offset]   & 0xFF) << 8) |
+			((buf[offset+1] & 0xFF) << 0)
+        	);
+    }
+
+    //-------------------------------------------------------
+	// Variable byte number conversions.
+	//-------------------------------------------------------
 
     /**
      *	Encode an integer in variable 7-bit format.

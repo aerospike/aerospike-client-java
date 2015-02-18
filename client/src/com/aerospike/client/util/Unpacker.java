@@ -154,128 +154,132 @@ public abstract class Unpacker<T> {
 		int type = buffer[offset++] & 0xff;
 		
 		switch (type) {
-			case 0xc0: {
+			case 0xc0: { // nil
 				return null;
 			}
 	
-			case 0xc3: {
+			case 0xc3: { // boolean true
 				return getBoolean(true);
 			}
 				
-			case 0xc2: {
+			case 0xc2: { // boolean false
 				return getBoolean(false);
 			}
 				
-			case 0xca: {
+			case 0xca: { // float
 				float val = Float.intBitsToFloat(Buffer.bytesToInt(buffer, offset));
 				offset += 4;			
 				return getDouble(val);
 			}
 			
-			case 0xcb: {
+			case 0xcb: { // double
 				double val = Double.longBitsToDouble(Buffer.bytesToLong(buffer, offset));
 				offset += 8;			
 				return getDouble(val);
 			}
 
-			case 0xcc: {
-				return getLong(buffer[offset++] & 0xff);
-			}
-				
-			case 0xcd: {
-				int val = Buffer.bytesToShort(buffer, offset);
-				offset += 2;			
-				return getLong(val);
-			}
-
-			case 0xce: {
-				int val = Buffer.bytesToInt(buffer, offset);
-				offset += 4;			
-				return getLong(val);
-			}
-
-			case 0xcf: {
-				long val = Buffer.bytesToLong(buffer, offset);
-				offset += 8;			
-				return getLong(val);
-			}
-
-			case 0xd0: {
+			case 0xd0: { // signed 8 bit integer
 				return getLong(buffer[offset++]);
 			}
 
-			case 0xd1: {
+			case 0xcc: { // unsigned 8 bit integer
+				return getLong(buffer[offset++] & 0xff);
+			}
+				
+			case 0xd1: { // signed 16 bit integer
+				short val = Buffer.bigSigned16ToShort(buffer, offset);
+				offset += 2;			
+				return getLong(val);
+			}
+
+			case 0xcd: { // unsigned 16 bit integer
 				int val = Buffer.bytesToShort(buffer, offset);
 				offset += 2;			
 				return getLong(val);
 			}
 
-			case 0xd2: {
+			case 0xd2: { // signed 32 bit integer
 				int val = Buffer.bytesToInt(buffer, offset);
 				offset += 4;			
 				return getLong(val);
 			}
 
-			case 0xd3: {
+			case 0xce: { // unsigned 32 bit integer
+				long val = Buffer.bigUnsigned32ToLong(buffer, offset);
+				offset += 4;			
+				return getLong(val);
+			}
+
+			case 0xd3: { // signed 64 bit integer
 				long val = Buffer.bytesToLong(buffer, offset);
 				offset += 8;
 				return getLong(val);
 			}
 
-			case 0xda: {
+			case 0xcf: { // unsigned 64 bit integer
+				// Java is constrained to signed longs, so that is the best we can do here. 
+				long val = Buffer.bytesToLong(buffer, offset);
+				offset += 8;			
+				return getLong(val);
+			}
+
+			case 0xda: { // raw bytes with 16 bit header
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
 				return (T)unpackBlob(count);
 			}
 			
-			case 0xdb: {
+			case 0xdb: { // raw bytes with 32 bit header
+				// Java array length is restricted to positive int values (0 - Integer.MAX_VALUE).
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
 				return (T)unpackBlob(count);
 			}
 
-			case 0xdc: {
+			case 0xdc: { // list with 16 bit header
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
 				return unpackList(count);
 			}
 			
-			case 0xdd: {
+			case 0xdd: { // list with 32 bit header
+				// Java array length is restricted to positive int values (0 - Integer.MAX_VALUE).
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
 				return unpackList(count);
 			}
 				
-			case 0xde: {
+			case 0xde: { // map with 16 bit header
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
 				return unpackMap(count);
 			}
 			
-			case 0xdf: {
+			case 0xdf: { // map with 32 bit header
+				// Java array length is restricted to positive int values (0 - Integer.MAX_VALUE).
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
 				return unpackMap(count);
 			}
 			
 			default: {
-				if ((type & 0xe0) == 0xa0) {
+				if ((type & 0xe0) == 0xa0) { // raw bytes with 8 bit combined header
 					return unpackBlob(type & 0x1f);
 				}
 
-				if ((type & 0xf0) == 0x80) {	
+				if ((type & 0xf0) == 0x80) { // map with 8 bit combined header	
 					return unpackMap(type & 0x0f);
 				}
 				
-				if ((type & 0xf0) == 0x90) {			
+				if ((type & 0xf0) == 0x90) { // list with 8 bit combined header			
 					return unpackList(type & 0x0f);
 				}
 
-				if (type < 0x80) {
+				if (type < 0x80) { // 8 bit combined unsigned integer
 		        	return getLong(type);
 				}
 				
-				if (type >= 0xe0) {
+				if (type >= 0xe0) { // 8 bit combined signed integer
 		        	return getLong(type - 0xe0 - 32);
 				}
 				throw new IOException("Unknown unpack type: " + type);
