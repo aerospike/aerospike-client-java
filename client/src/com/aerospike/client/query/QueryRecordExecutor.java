@@ -31,6 +31,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
 		statement.prepare();
+		initializeThreads();
 	}
 	
 	public void execute() {		

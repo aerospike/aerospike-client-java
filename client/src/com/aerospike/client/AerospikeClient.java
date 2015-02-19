@@ -1218,7 +1218,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
-		executor.execute();
 		return executor.getResultSet();
 	}
 

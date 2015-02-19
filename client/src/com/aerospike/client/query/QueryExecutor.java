@@ -63,13 +63,15 @@ public abstract class QueryExecutor {
 		this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length) ? threads.length : policy.maxConcurrentNodes;
 	}
 	
-	protected final void startThreads() {
+	protected final void initializeThreads() {
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
 			MultiCommand command = createCommand(nodes[i]);
 			threads[i] = new QueryThread(command);
 		}
+	}
 
+	protected final void startThreads() {
 		// Start threads.
 		for (int i = 0; i < maxConcurrentNodes; i++) {
 			threadPool.execute(threads[i]);

@@ -61,13 +61,24 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		//
 		// If LuaValue.valueOf() is called before any luaj calls, then the static initializer in
 		// LuaInteger will be initialized properly.  		
-		LuaValue.valueOf(0);		
-	}
-	
-	public void execute() {
-		// Start Lua thread which reads from a queue, applies aggregate function and 
-		// writes to a result set. 
-		threadPool.execute(this);
+		LuaValue.valueOf(0);
+		
+		// Retrieve lua instance from cache.
+		lua = LuaCache.getInstance();
+		
+		try {
+			// Initialize threads, but do not run yet.
+			initializeThreads();
+			
+			// Start Lua thread which reads from a queue, applies aggregate function and 
+			// writes to a result set. 
+			threadPool.execute(this);
+		}
+		catch (RuntimeException re) {
+			// Put the lua instance back if thread creation fails.
+			LuaCache.putInstance(lua);
+			throw re;
+		}
 	}
 	
 	public void run() {
@@ -77,11 +88,12 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		catch (Exception e) {
 			super.stopThreads(e);
 		}
+		finally {
+			LuaCache.putInstance(lua);			
+		}
 	}
 
-	public void runThreads() throws AerospikeException {		
-		lua = LuaCache.getInstance();
-		
+	public void runThreads() throws AerospikeException {	
 		try {
 			// Start thread queries to each node.
 			startThreads();		
@@ -104,7 +116,6 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			// Send end command to user's result set.
 			// If query was already cancelled, this put will be ignored.
 			resultSet.put(ResultSet.END);
-			LuaCache.putInstance(lua);
 		}
 	}
 	
