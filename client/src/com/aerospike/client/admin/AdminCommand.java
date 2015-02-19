@@ -319,9 +319,6 @@ public class AdminCommand {
 				conn.readFully(dataBuffer, receiveSize);
 				status = parseBlock(receiveSize);
 			}
-			else {
-				break;
-			}
 		}
 		return status;
 	}

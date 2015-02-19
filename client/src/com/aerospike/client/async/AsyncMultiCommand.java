@@ -77,7 +77,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 				receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
 				
 		        if (receiveSize <= 0) {
-		        	throw new AerospikeException.Parse("Received zero sized data packet from server.");
+		        	return;
 		        }
 		        
 		        if (receiveBuffer == null || receiveSize > receiveBuffer.length) {
