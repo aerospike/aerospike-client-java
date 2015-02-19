@@ -58,9 +58,6 @@ public abstract class MultiCommand extends SyncCommand {
 	        if (receiveSize > 0) {
 		    	status = parseRecordResults(receiveSize);
 			}
-	        else {
-	        	throw new AerospikeException.Parse("Received zero sized data packet from server.");
-	        }
 		}
 	}
 		
