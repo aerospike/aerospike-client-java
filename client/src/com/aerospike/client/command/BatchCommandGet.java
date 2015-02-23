@@ -24,7 +24,6 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
@@ -106,9 +105,7 @@ public final class BatchCommandGet extends MultiCommand {
 				}
 			}
 			else {
-				if (Log.warnEnabled()) {
-					Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
-				}
+				throw new AerospikeException("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 		return true;
