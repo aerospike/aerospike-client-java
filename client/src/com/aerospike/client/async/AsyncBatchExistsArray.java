@@ -70,9 +70,7 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 			existsArray[offset] = resultCode == 0;			
 		}
 		else {
-			if (Log.warnEnabled()) {
-				Log.warn("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
-			}
+			throw new AerospikeException("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 		}
 	}
 }
