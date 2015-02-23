@@ -20,7 +20,6 @@ import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;

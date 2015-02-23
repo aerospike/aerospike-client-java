@@ -21,7 +21,6 @@ import java.util.HashSet;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
