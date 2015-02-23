@@ -74,7 +74,7 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 			}
 		}
 		else {
-			throw new AerospikeException("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 		}
 	}
 }
