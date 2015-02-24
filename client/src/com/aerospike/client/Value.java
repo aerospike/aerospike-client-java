@@ -868,4 +868,16 @@ public abstract class Value {
 			return map.toString();
 		}
 	}
+	
+	/**
+	 * checks if to Values are equal
+	 * @param otherValue
+	 * @return
+	 */
+	@Override
+	public boolean equals(Object otherValue) {
+		return (otherValue != null
+				&& otherValue.getClass().isAssignableFrom(Value.class)
+				&& ((Value)otherValue).toString().equals(this.toString()));
+	}
 }
