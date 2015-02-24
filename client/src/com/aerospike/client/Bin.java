@@ -203,4 +203,15 @@ public final class Bin {
 	public String toString() {
 		return name + ':' + value;
 	}
+	
+	/**
+	 * checks if two Bins are equal
+	 */
+	@Override
+	public boolean equals(Object otherBin) {
+		return (otherBin != null 
+				&& otherBin.getClass().isAssignableFrom(Bin.class)
+				&& name.equals(((Bin)otherBin).name)
+				&& value.equals(((Bin)otherBin).value));
+	}
 }
