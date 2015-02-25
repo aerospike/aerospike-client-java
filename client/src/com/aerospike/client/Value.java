@@ -133,12 +133,16 @@ public abstract class Value {
 		if (value == null)
 			return new NullValue();
 		
+		if (value instanceof Value) {
+			return (Value)value;
+		}
+
+		if (value instanceof byte[])
+        	return new BytesValue((byte[])value);
+        
 		if (value instanceof String)
         	return new StringValue((String)value);
 			
-        if (value instanceof byte[])
-        	return new BytesValue((byte[])value);
-        
 		if (value instanceof Integer)
         	return new IntegerValue((Integer)value);
 			
@@ -151,9 +155,6 @@ public abstract class Value {
 		if (value instanceof Float)
         	return new FloatValue((Float)value);
 
-		if (value instanceof Value) {
-			return (Value)value;
-		}	    	
 		return new BlobValue(value);
 	}
 	
