@@ -130,31 +130,38 @@ public abstract class Value {
 	 * This is the slowest of the Value get() methods.
 	 */
 	public static Value get(Object value) {
-		if (value == null)
+		if (value == null) {
 			return new NullValue();
+		}
 		
 		if (value instanceof Value) {
 			return (Value)value;
 		}
 
-		if (value instanceof byte[])
+		if (value instanceof byte[]) {
         	return new BytesValue((byte[])value);
-        
-		if (value instanceof String)
+		}
+		
+		if (value instanceof String) {
         	return new StringValue((String)value);
-			
-		if (value instanceof Integer)
+		}
+		
+		if (value instanceof Integer) {
         	return new IntegerValue((Integer)value);
-			
-		if (value instanceof Long)
+		}
+		
+		if (value instanceof Long) {
         	return new LongValue((Long)value);
+		}
 		
-		if (value instanceof Double)
+		if (value instanceof Double) {
         	return new DoubleValue((Double)value);
+		}
 		
-		if (value instanceof Float)
+		if (value instanceof Float) {
         	return new FloatValue((Float)value);
-
+		}
+		
 		return new BlobValue(value);
 	}
 	
