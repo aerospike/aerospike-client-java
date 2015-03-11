@@ -18,9 +18,11 @@ package com.aerospike.client.util;
 
 import gnu.crypto.util.Base64;
 
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.SocketException;
@@ -59,31 +61,41 @@ public final class Util {
 		return sw.toString();
 	}
 
-	public static String readFileEncodeBase64(String path) throws AerospikeException {
-		try {
-			File file = new File(path);
-			byte[] bytes = new byte[(int)file.length()];
-			FileInputStream in = new FileInputStream(file);
-			
-			try {
-				int pos = 0;
-				int len = 0;
-				
-				while (pos < bytes.length) {
-					len = in.read(bytes, pos, bytes.length - pos);
-					pos += len;
-				}
-			}
-			finally {
-				in.close();
-			}
-			return Base64.encode(bytes, 0, bytes.length, false);
-		}
-		catch (Exception e) {
-			throw new AerospikeException("Failed to read " + path, e);
-		}
-	}
-	
+    public static String readFileEncodeBase64(String path) throws AerospikeException {
+        try {
+            FileInputStream in = new FileInputStream(path);
+            try {
+                return readStreamEncodeBase64(in);
+            }
+            finally {
+                in.close();
+            }
+        }
+        catch (Exception e) {
+            throw new AerospikeException("Failed to read " + path, e);
+        }
+    }
+
+    public static String readStreamEncodeBase64(InputStream in) throws AerospikeException {
+        try {
+
+            ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+            {
+                byte[] bytes = new byte[1024];
+                int len = 0;
+                while ((len = in.read(bytes)) > 0) {
+                    byteStream.write(bytes, 0, len);
+                }
+            }
+
+            byte[] bytes = byteStream.toByteArray();
+            return Base64.encode(bytes, 0, bytes.length, false);
+        }
+        catch (Exception e) {
+            throw new AerospikeException("Failed to load stream", e);
+        }
+    }
+
 	/**
 	 * Convert a string to a time stamp using the same algorithm as the Aerospike loader.
 	 */
