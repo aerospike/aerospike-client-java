@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import java.io.Closeable;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -907,26 +908,66 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//---------------------------------------------------------------
 	// User defined functions (Supported by Aerospike 3 servers only)
 	//---------------------------------------------------------------
-	
-	/**
-	 * Register package containing user defined functions with server.
-	 * This asynchronous server call will return before command is complete.
-	 * The user can optionally wait for command completion by using the returned
-	 * RegisterTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param clientPath			path of client file containing user defined functions, relative to current directory
-	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
-	 * @param language				language of user defined functions
-	 * @throws AerospikeException	if register fails
-	 */
-	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
-		throws AerospikeException {
-		
-		String content = Util.readFileEncodeBase64(clientPath);
-		
+
+    /**
+     * Register package containing user defined functions with server.
+     * This asynchronous server call will return before command is complete.
+     * The user can optionally wait for command completion by using the returned
+     * RegisterTask instance.
+     * <p>
+     * This method is only supported by Aerospike 3 servers.
+     *
+     * @param policy				generic configuration parameters, pass in null for defaults
+     * @param clientStream			client file stream containing user defined functions
+     * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+     * @param language				language of user defined functions
+     * @throws AerospikeException	if register fails
+     */
+    public final RegisterTask register(Policy policy, InputStream clientStream, String serverPath, Language language)
+            throws AerospikeException {
+
+        String content = Util.readStreamEncodeBase64(clientStream);
+        return registerContent(policy, content, serverPath, language);
+    }
+
+    /**
+     * Register package containing user defined functions with server.
+     * This asynchronous server call will return before command is complete.
+     * The user can optionally wait for command completion by using the returned
+     * RegisterTask instance.
+     * <p>
+     * This method is only supported by Aerospike 3 servers.
+     *
+     * @param policy				generic configuration parameters, pass in null for defaults
+     * @param clientPath			path of client file containing user defined functions, relative to current directory
+     * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+     * @param language				language of user defined functions
+     * @throws AerospikeException	if register fails
+     */
+    public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language)
+            throws AerospikeException {
+
+        String content = Util.readFileEncodeBase64(clientPath);
+        return registerContent(policy, content, serverPath, language);
+    }
+
+    /**
+     * Register package containing user defined functions with server.
+     * This asynchronous server call will return before command is complete.
+     * The user can optionally wait for command completion by using the returned
+     * RegisterTask instance.
+     * <p>
+     * This method is only supported by Aerospike 3 servers.
+     *
+     * @param policy				generic configuration parameters, pass in null for defaults
+     * @param content				Base64 encoded file contents containing user defined functions
+     * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+     * @param language				language of user defined functions
+     * @throws AerospikeException	if register fails
+     */
+    private final RegisterTask registerContent(Policy policy, String content, String serverPath, Language language)
+            throws AerospikeException {
+
 		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
 		sb.append("udf-put:filename=");
 		sb.append(serverPath);
