@@ -185,10 +185,10 @@ public abstract class Unpacker<T> {
 			case 0xcc: { // unsigned 8 bit integer
 				return getLong(buffer[offset++] & 0xff);
 			}
-				
-			case 0xd1: { // signed 16 bit integer
-				short val = Buffer.bigSigned16ToShort(buffer, offset);
-				offset += 2;			
+
+			case 0xd1: {
+				int val = Buffer.bytesToShort(buffer, offset);
+				offset += 2;
 				return getLong(val);
 			}
 
