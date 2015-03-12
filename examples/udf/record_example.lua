@@ -69,6 +69,19 @@ function processRecord(r,name1,name2,addValue)
     end
 end
 
+-- Append to end of regular list bin
+function appendListBin(r, binname, value)
+  local l = r[binname]
+
+  if l == nil then
+    l = list()
+  end
+
+  list.append(l, value)
+  r[binname] = l
+  aerospike:update(r)
+end
+
 -- Set expiration of record
 -- function expire(r,ttl)
 --    if record.ttl(r) == gen then

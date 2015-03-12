@@ -21,6 +21,7 @@ import java.io.DataOutputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
@@ -51,6 +52,7 @@ public class UserDefinedFunction extends Example {
 		writeIfNotExists(client, params);
 		writeWithValidation(client, params);
 		writeListMapUsingUdf(client, params);
+		appendListUsingUdf(client, params);
 		writeBlobUsingUdf(client, params);
 	}
 	
@@ -189,6 +191,40 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 	
+	private void appendListUsingUdf(AerospikeClient client, Parameters params) throws Exception {	
+		Key key = new Key(params.namespace, params.set, "udfkey5");
+		String binName = params.getBinName("udfbin5");
+		String value = "appended value";
+
+		client.execute(params.writePolicy, key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
+		
+		Record record = client.get(params.policy, key, binName);
+
+		if (record != null) {
+			Object received = record.getValue(binName);
+			
+			if (received != null && received instanceof List<?>) {
+				List<?> list = (List<?>)received;
+				
+				if (list.size() == 5) {
+					Object obj = list.get(4);
+					
+					if (obj.equals(value)) {
+						console.info("UDF data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
+								key.namespace, key.setName, key.userKey, binName, received);
+						return;
+					}
+				}
+			}
+			console.error("UDF data mismatch");
+			console.error("Expected: " + value);
+			console.error("Received: " + received);
+		}
+		else {
+			console.error("Failed to find record: " + key.userKey);
+		}
+	}
+
 	private void writeBlobUsingUdf(AerospikeClient client, Parameters params) throws Exception {	
 		Key key = new Key(params.namespace, params.set, "udfkey6");
 		String binName = params.getBinName("udfbin6");
