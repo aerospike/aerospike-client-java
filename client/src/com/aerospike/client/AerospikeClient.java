@@ -17,13 +17,13 @@
 package com.aerospike.client;
 
 import java.io.Closeable;
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
-import com.aerospike.client.Info.NameValueParser;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
@@ -41,6 +41,7 @@ import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
+import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
@@ -66,8 +67,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.util.Environment;
-import com.aerospike.client.util.Util;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -909,7 +908,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//---------------------------------------------------------------
 	
 	/**
-	 * Register package containing user defined functions with server.
+	 * Register package located in a file containing user defined functions with server.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
@@ -924,68 +923,31 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
 		throws AerospikeException {
-		
-		String content = Util.readFileEncodeBase64(clientPath);
-		
-		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
-		sb.append("udf-put:filename=");
-		sb.append(serverPath);
-		sb.append(";content=");
-		sb.append(content);
-		sb.append(";content-len=");
-		sb.append(content.length());
-		sb.append(";udf-type=");
-		sb.append(language);
-		sb.append(";");
-		
-		// Send UDF to one node. That node will distribute the UDF to other nodes.
-		String command = sb.toString();
-		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		Connection conn = node.getConnection(timeout);
-		
-		try {			
-			Info info = new Info(conn, command);
-			NameValueParser parser = info.getNameValueParser();
-			String error = null;
-			String file = null;
-			String line = null;
-			String message = null;
-			
-			while (parser.next()) {
-				String name = parser.getName();
-
-				if (name.equals("error")) {
-					error = parser.getValue();
-				}
-				else if (name.equals("file")) {
-					file = parser.getValue();				
-				}
-				else if (name.equals("line")) {
-					line = parser.getValue();				
-				}
-				else if (name.equals("message")) {
-					message = parser.getStringBase64();					
-				}
-			}
-			
-			if (error != null) {			
-				throw new AerospikeException("Registration failed: " + error + Environment.Newline +
-					"File: " + file + Environment.Newline + 
-					"Line: " + line + Environment.Newline +
-					"Message: " + message
-					);
-			}
-			
-			node.putConnection(conn);
-			return new RegisterTask(cluster, serverPath);
-		}
-		catch (RuntimeException re) {
-			conn.close();
-			throw re;
-		}
+		File file = new File(clientPath);
+		return RegisterCommand.register(cluster, policy, file, serverPath, language);
 	}
 	
+	/**
+	 * Register package located in a resource containing user defined functions with server.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * RegisterTask instance.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader()
+	 * @param resourcePath          class path where Lua resource is located
+	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+	 * @param language				language of user defined functions
+	 * @throws AerospikeException	if register fails
+	 */
+	public final RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
+		throws AerospikeException {
+		File file = new File(resourceLoader.getResource(resourcePath).getFile());
+		return RegisterCommand.register(cluster, policy, file, serverPath, language);
+	}
+
 	/**
 	 * Execute user defined function on server and return results.
 	 * The function operates on a single record.
@@ -1121,8 +1083,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		statement.setAggregateFunction(packageName, functionName, functionArgs, false);
-		statement.prepare();
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		statement.prepare(false);
 
 		Node[] nodes = cluster.getNodes();
 		if (nodes.length == 0) {
@@ -1214,10 +1176,32 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException {
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		return queryAggregate(policy, statement);
+	}
+
+	/**
+	 * Execute query, apply statement's aggregation function, and return result iterator.
+	 * The aggregation function should be initialized via the statement's setAggregateFunction()
+	 * and should be located in a resource or a filesystem file.
+	 * <p>
+	 * The query executor puts results on a queue in separate threads.  The calling thread
+	 * concurrently pops results off the queue through the ResultSet iterator.
+	 * The aggregation function is called on both server and client (final reduce).
+	 * Therefore, the Lua script file must also reside on both server and client.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @throws AerospikeException	if query fails
+	 */
+	public final ResultSet queryAggregate(QueryPolicy policy, Statement statement) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
-		}
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, packageName, functionName, functionArgs);
+		}		
+		statement.prepare(true);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
 		return executor.getResultSet();
 	}
 

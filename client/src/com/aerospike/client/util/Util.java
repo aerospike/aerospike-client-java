@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -59,9 +59,8 @@ public final class Util {
 		return sw.toString();
 	}
 
-	public static String readFileEncodeBase64(String path) throws AerospikeException {
+	public static String readFileEncodeBase64(File file) throws AerospikeException {
 		try {
-			File file = new File(path);
 			byte[] bytes = new byte[(int)file.length()];
 			FileInputStream in = new FileInputStream(file);
 			
@@ -80,7 +79,7 @@ public final class Util {
 			return Base64.encode(bytes, 0, bytes.length, false);
 		}
 		catch (Exception e) {
-			throw new AerospikeException("Failed to read " + path, e);
+			throw new AerospikeException("Failed to read " + file.getAbsolutePath(), e);
 		}
 	}
 	

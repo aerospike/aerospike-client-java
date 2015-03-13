@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -108,8 +108,9 @@ public class QueryAverage extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilters(Filter.range(binName, 0, 1000));
+		stmt.setAggregateFunction("average_example", "average");
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "average_example", "average");
+		ResultSet rs = client.queryAggregate(null, stmt);
 		
 		try {
 			if (rs.next()) {

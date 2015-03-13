@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -27,6 +27,8 @@ public final class Statement {
 	String indexName;
 	String[] binNames;
 	Filter[] filters;
+	ClassLoader resourceLoader;
+	String resourcePath;
 	String packageName;
 	String functionName;
 	Value[] functionArgs;
@@ -123,18 +125,49 @@ public final class Statement {
 	}
 
 	/**
-	 * Set Lua aggregation function parameters.  This function will be called on both the server 
-	 * and client for each selected item.  For internal use.
+	 * Set Lua aggregation function parameters for a Lua package located on the filesystem.
+	 * This function will be called on both the server and client for each selected item.
 	 * 
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
 	 */
-	public void setAggregateFunction(String packageName, String functionName, Value[] functionArgs, boolean returnData) {
+	public void setAggregateFunction(String packageName, String functionName, Value... functionArgs) {
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.functionArgs = functionArgs;
-		this.returnData = returnData;
+	}
+
+	/**
+	 * Set Lua aggregation function parameters for a Lua package located in a resource file.
+	 * This function will be called on both the server and client for each selected item.
+	 * 
+	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader()
+	 * @param resourcePath          class path where Lua resource is located
+	 * @param packageName			server package where user defined function resides
+	 * @param functionName			aggregation function name
+	 * @param functionArgs			arguments to pass to function name, if any
+	 */
+	public void setAggregateFunction(ClassLoader resourceLoader, String resourcePath, String packageName, String functionName, Value... functionArgs) {
+		this.resourceLoader = resourceLoader;
+		this.resourcePath = resourcePath;
+		this.packageName = packageName;
+		this.functionName = functionName;
+		this.functionArgs = functionArgs;
+	}
+
+	/**
+	 * Return resource class loader.
+	 */
+	public ClassLoader getResourceLoader() {
+		return resourceLoader;
+	}
+
+	/**
+	 * Return resource path.
+	 */
+	public String getResourcePath() {
+		return resourcePath;
 	}
 
 	/**
@@ -168,7 +201,9 @@ public final class Statement {
 	/**
 	 * Prepare statement just prior to execution.  For internal use.
 	 */
-	public void prepare() {
+	public void prepare(boolean returnData) {
+		this.returnData = returnData;
+		
 		if (taskId == 0) {
 			taskId = System.nanoTime();
 		}

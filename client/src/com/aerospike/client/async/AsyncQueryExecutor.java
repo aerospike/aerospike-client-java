@@ -33,7 +33,7 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 		Statement statement
 	) throws AerospikeException {
 		this.listener = listener;
-		statement.prepare();
+		statement.prepare(true);
 
 		Node[] nodes = cluster.getNodes();
 		if (nodes.length == 0) {

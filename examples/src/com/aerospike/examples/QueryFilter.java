@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -123,9 +123,10 @@ public class QueryFilter extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilters(Filter.equal(binName, nameFilter));
+		stmt.setAggregateFunction("filter_example", "profile_filter", Value.get(passFilter));
 		
 		// passFilter will be applied in filter_example.lua.
-		ResultSet rs = client.queryAggregate(null, stmt, "filter_example", "profile_filter", Value.get(passFilter));
+		ResultSet rs = client.queryAggregate(null, stmt);
 		
 		try {
 			int count = 0;

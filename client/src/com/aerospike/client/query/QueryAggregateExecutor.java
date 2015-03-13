@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -40,19 +40,10 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	private final ResultSet resultSet;
 	private LuaInstance lua;
 	
-	public QueryAggregateExecutor(
-		Cluster cluster,
-		QueryPolicy policy, 
-		Statement statement, 
-		String packageName, 
-		String functionName, 
-		Value[] functionArgs
-	) throws AerospikeException {
+	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement) throws AerospikeException {
 		super(cluster, policy, statement, null);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
-		statement.setAggregateFunction(packageName, functionName, functionArgs, true);
-		statement.prepare();
 
 		// Work around luaj LuaInteger static initialization bug.
 		// Calling LuaInteger.valueOf(long) is required because LuaValue.valueOf() does not have
@@ -96,9 +87,9 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	public void runThreads() throws AerospikeException {	
 		try {
 			// Start thread queries to each node.
-			startThreads();		
+			startThreads();
 
-			lua.load(statement.getPackageName(), false);
+			lua.loadPackage(statement);
 			
 			LuaValue[] args = new LuaValue[4 + statement.getFunctionArgs().length];
 			args[0] = lua.getFunction(statement.getFunctionName());

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -58,6 +58,8 @@ public class QuerySum extends Example {
 	
 	private void register(AerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/sum_example.lua", "sum_example.lua", Language.LUA);
+		// Alternately register from resource.
+		// RegisterTask task = client.register(params.policy, QuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
@@ -112,8 +114,11 @@ public class QuerySum extends Example {
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
 		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setAggregateFunction("sum_example", "sum_single_bin", Value.get(binName));
+		// Alternately load aggregate function from resource
+		// stmt.setAggregateFunction(QuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
 		
-		ResultSet rs = client.queryAggregate(null, stmt, "sum_example", "sum_single_bin", Value.get(binName));
+		ResultSet rs = client.queryAggregate(null, stmt);
 		
 		try {
 			int expected = 22; // 4 + 5 + 6 + 7

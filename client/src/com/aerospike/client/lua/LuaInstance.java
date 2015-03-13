@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -46,6 +46,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.query.Statement;
 
 public final class LuaInstance {
 	
@@ -75,14 +76,15 @@ public final class LuaInstance {
 		
 		LuaC.install(globals);
 
-		load("compat52", true);
-		load("as", true);
-		load("stream_ops", true);
-		load("aerospike", true);
+		ClassLoader resourceLoader = LuaInstance.class.getClassLoader();
+		loadSystemPackage(resourceLoader, "compat52");
+		loadSystemPackage(resourceLoader, "as");
+		loadSystemPackage(resourceLoader, "stream_ops");
+		loadSystemPackage(resourceLoader, "aerospike");
 		
 		globals.load(new LuaAerospikeLib(this));
 	}
-
+	
 	public void registerPackage(String packageName, LuaTable table) {
 		globals.set(packageName, table);		
 		loadedTable.set(packageName, LuaValue.TRUE);
@@ -92,20 +94,34 @@ public final class LuaInstance {
 		return globals.get(packageName);
 	}
 	
-	public void load(LibFunction function) {
-		globals.load(function);
-	}
-	
-	public void load(String packageName, boolean system) throws AerospikeException {
-		if (loadedTable.get(packageName).toboolean()) {
+	public void loadPackage(Statement statement) {
+		if (loadedTable.get(statement.getPackageName()).toboolean()) {
 			return;
 		}
 		
-		Prototype prototype = LuaCache.loadPackage(packageName, system);
+		Prototype prototype;		
+		if (statement.getResourceLoader() == null || statement.getResourcePath() == null) {
+			prototype = LuaCache.loadPackageFromFile(statement.getPackageName());		
+		}
+		else {
+			prototype = LuaCache.loadPackageFromResource(statement.getResourceLoader(), statement.getResourcePath(), statement.getPackageName());
+		}
+		
 		LuaClosure function = new LuaClosure(prototype, globals);
 		function.invoke();
-		
+		loadedTable.set(statement.getPackageName(), LuaValue.TRUE);
+	}
+	
+	private void loadSystemPackage(ClassLoader resourceLoader, String packageName) {
+		String resourcePath = "udf/" + packageName + ".lua";
+		Prototype prototype = LuaCache.loadPackageFromResource(resourceLoader, resourcePath, packageName);
+		LuaClosure function = new LuaClosure(prototype, globals);
+		function.invoke();
 		loadedTable.set(packageName, LuaValue.TRUE);
+	}
+
+	public void load(LibFunction function) {
+		globals.load(function);
 	}
 
 	public void call(String functionName, LuaValue[] args) {

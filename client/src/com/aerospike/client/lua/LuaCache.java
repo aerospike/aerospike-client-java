@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -41,53 +41,44 @@ public final class LuaCache {
 		InstanceQueue.offer(instance);
 	}
 	
-	public static final Prototype loadPackage(String packageName, boolean system) throws AerospikeException {
+	public static final Prototype loadPackageFromFile(String packageName) throws AerospikeException {
 		Prototype prototype = Packages.get(packageName);
 		
 		if (prototype == null) {
-			InputStream is = getInputStream(packageName, system);
-			prototype = compile(packageName, is);
-			Packages.put(packageName, prototype);
+			File source = new File(LuaConfig.SourceDirectory, packageName + ".lua");
+
+			try {
+				InputStream is = new FileInputStream(source);
+				prototype = compile(packageName, is);
+				Packages.put(packageName, prototype);
+			}
+			catch (Exception e) {
+				throw new AerospikeException("Failed to read file: " + source.getAbsolutePath());
+			}
 		}
 		return prototype;
 	}
 	
-	private static InputStream getInputStream(String packageName, boolean system) throws AerospikeException {
-		if (system) {
-			return getSystemStream(packageName);
-		}
-		else {
-			return getUserStream(packageName);
-		}
-	}
-
-	private static InputStream getSystemStream(String packageName) throws AerospikeException {
-		String path = "udf/" + packageName + ".lua";
+	public static final Prototype loadPackageFromResource(ClassLoader resourceLoader, String resourcePath, String packageName) throws AerospikeException {
+		Prototype prototype = Packages.get(packageName);
 		
-		try {
-			InputStream is = LuaCache.class.getClassLoader().getResourceAsStream(path);
-			
-			if (is == null) {
-				throw new Exception();
+		if (prototype == null) {
+			try {
+				InputStream is = resourceLoader.getResourceAsStream(resourcePath);
+				
+				if (is == null) {
+					throw new Exception();
+				}
+				prototype = compile(packageName, is);
+				Packages.put(packageName, prototype);
 			}
-			return is;
+			catch (Exception e) {
+				throw new AerospikeException("Failed to read resource: " + resourcePath);
+			}
 		}
-		catch (Exception e) {
-			throw new AerospikeException("Failed to read resource: " + path);
-		}
+		return prototype;
 	}
-	
-	private static InputStream getUserStream(String packageName) throws AerospikeException {
-		File source = new File(LuaConfig.SourceDirectory, packageName + ".lua");
 		
-		try {
-			return new FileInputStream(source);
-		}
-		catch (Exception e) {
-			throw new AerospikeException("Failed to read file: " + source.getAbsolutePath());
-		}
-	}
-	
 	private static Prototype compile(String packageName, InputStream is) throws AerospikeException {
 		try {
 			BufferedInputStream bis = new BufferedInputStream(is);

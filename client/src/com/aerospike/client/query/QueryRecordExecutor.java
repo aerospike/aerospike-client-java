@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -30,7 +30,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 		throws AerospikeException {
 		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		statement.prepare();
+		statement.prepare(true);
 		initializeThreads();
 	}
 	
