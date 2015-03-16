@@ -543,7 +543,7 @@ public interface IAerospikeClient {
 	//---------------------------------------------------------------
 	
 	/**
-	 * Register package containing user defined functions with server.
+	 * Register package located in a file containing user defined functions with server.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
@@ -559,6 +559,24 @@ public interface IAerospikeClient {
 	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
 		throws AerospikeException;
 	
+	/**
+	 * Register package located in a resource containing user defined functions with server.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * RegisterTask instance.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader()
+	 * @param resourcePath          class path where Lua resource is located
+	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+	 * @param language				language of user defined functions
+	 * @throws AerospikeException	if register fails
+	 */
+	public RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
+		throws AerospikeException;
+
 	/**
 	 * Execute user defined function on server and return results.
 	 * The function operates on a single record.
@@ -713,6 +731,24 @@ public interface IAerospikeClient {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException;
+
+	/**
+	 * Execute query, apply statement's aggregation function, and return result iterator.
+	 * The aggregation function should be initialized via the statement's setAggregateFunction()
+	 * and should be located in a resource or a filesystem file.
+	 * <p>
+	 * The query executor puts results on a queue in separate threads.  The calling thread
+	 * concurrently pops results off the queue through the ResultSet iterator.
+	 * The aggregation function is called on both server and client (final reduce).
+	 * Therefore, the Lua script file must also reside on both server and client.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @throws AerospikeException	if query fails
+	 */
+	public ResultSet queryAggregate(QueryPolicy policy, Statement statement) throws AerospikeException;
 
 	/**
 	 * Create scalar secondary index.
