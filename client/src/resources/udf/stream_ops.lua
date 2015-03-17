@@ -17,8 +17,6 @@
 -- limitations under the License.
 -- ======================================================================
 
-require('as')
-
 local function check_limit(v)
     return type(v) == 'number' and v >= 1000
 end
@@ -252,7 +250,7 @@ function StreamOps_apply(stream, ops, i, n)
     local op = ops[i]
 
     -- apply the operation and get a stream or use provided stream
-    local s = op.func(stream, unpack(op.args)) or stream
+    local s = op.func(stream, table.unpack(op.args)) or stream
 
     -- move to the next operation
     return StreamOps_apply(s, ops, i + 1, n)

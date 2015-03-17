@@ -23,5 +23,3 @@ setfenv = setfenv or function(f, t)
         lua_debug.upvaluejoin(f, up, function() return t end, 1)
     end
 end
-
-unpack = table.unpack

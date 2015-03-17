@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,12 +20,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map.Entry;
 
+import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaTable;
 import org.luaj.vm2.LuaValue;
 import org.luaj.vm2.Varargs;
 import org.luaj.vm2.lib.OneArgFunction;
-import org.luaj.vm2.lib.ThreeArgFunction;
-import org.luaj.vm2.lib.TwoArgFunction;
 import org.luaj.vm2.lib.VarArgFunction;
 
 public final class LuaMapLib extends OneArgFunction {
@@ -41,21 +40,24 @@ public final class LuaMapLib extends OneArgFunction {
 		LuaTable meta = new LuaTable(0,2);
 		meta.set("__call", new create(instance));
 		
-		LuaTable table = new LuaTable(0,8);
+		LuaTable table = new LuaTable(0,11);
 		table.setmetatable(meta);
-		table.set("size", new len());
-		table.set("pairs", new iterator());
-		table.set("keys", new keys());
-		table.set("values", new values());
-		// map.clone and map.merge are defined in as.lua.
-		//table.set("clone", new clone());
-		//table.set("merge", new merge());
+		table.set("create", new create(instance));
 		
+		new mapcode(table, 0, "size");
+		new mapcode(table, 4, "pairs");
+		new mapcode(table, 5, "keys");
+		new mapcode(table, 6, "values");
+		new mapcode(table, 7, "remove");
+		new mapcode(table, 8, "clone");
+		new mapcode(table, 9, "merge");
+		new mapcode(table, 10, "diff");
+
 		instance.registerPackage("map", table);
 		return table;
 	}
 
-	public static final class MetaLib extends OneArgFunction {
+	private static final class MetaLib extends OneArgFunction {
 		private final LuaInstance instance;
 
 		public MetaLib(LuaInstance instance) {
@@ -64,17 +66,16 @@ public final class LuaMapLib extends OneArgFunction {
 
 		public LuaValue call(LuaValue env) {
 			LuaTable meta = new LuaTable(0,5);
-			meta.set("__len", new len());
-			meta.set("__tostring", new tostring());
-			meta.set("__index", new index());
-			meta.set("__newindex", new newindex());
-			
+			new mapcode(meta, 0, "__len");
+			new mapcode(meta, 1, "__tostring");
+			new mapcode(meta, 2, "__index");
+			new mapcode(meta, 3, "__newindex");
 			instance.registerPackage("Map", meta);
 			return meta;
 		}			
 	}
 
-	public static final class create extends VarArgFunction {
+	private static final class create extends VarArgFunction {
 		private final LuaInstance instance;
 		
 		public create(LuaInstance instance) {
@@ -83,7 +84,13 @@ public final class LuaMapLib extends OneArgFunction {
 		
 		@Override
 		public Varargs invoke(Varargs args) {
-			LuaMap map = new LuaMap(instance, new HashMap<LuaValue,LuaValue>());
+			int capacity = 32;
+
+			if (args.isnumber(1)) {
+				capacity = args.toint(1);
+			}
+			
+			LuaMap map = new LuaMap(instance, new HashMap<LuaValue,LuaValue>(capacity));
 			
 			if (args.istable(2)) {
 				LuaTable table = args.checktable(2);
@@ -99,19 +106,64 @@ public final class LuaMapLib extends OneArgFunction {
 					 map.put(k, v);
 				 }
 			}				
-			return LuaValue.varargsOf(new LuaValue[] {map});
+			return map;
 		}
 	}
-
-	public static final class iterator extends OneArgFunction {		
+	
+	private static final class mapcode extends VarArgFunction {
+		public mapcode(LuaTable table, int id, String name) {
+			super.opcode = id;
+			super.name = name;
+			table.set(name, this);
+		}
+		
 		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaMap map = (LuaMap)arg;
-			return new nextLuaValue(map.entrySetIterator());
+		public Varargs invoke(Varargs args) {
+			LuaMap map = (LuaMap)args.arg(1);
+			
+			switch (opcode) {
+			case 0: // __len, size
+				return map.size();		
+				
+			case 1: // __tostring
+				return map.toLuaString();
+				
+			case 2: // __index
+				return map.get(args.arg(2));
+				
+			case 3: // __newindex
+				map.put(args.arg(2), args.arg(3));
+				return NIL;
+				
+			case 4: // pairs
+				return new nextLuaValue(map.entrySetIterator());
+				
+			case 5: // keys
+				return new LuaListLib.nextLuaValue(map.keySetIterator());
+			
+			case 6: // values
+				return new LuaListLib.nextLuaValue(map.valuesIterator());
+			
+			case 7: // remove
+				map.remove(args.arg(2));
+				return NIL;
+				
+			case 8: // clone
+				return map.clone();
+				
+			case 9: // merge
+				return map.merge((LuaMap)args.arg(2), (LuaFunction)args.arg(3));
+				
+			case 10: // diff
+				return map.diff((LuaMap)args.arg(2));
+
+			default:
+				return NIL;
+			}
 		}
 	}
 
-	public static final class nextLuaValue extends VarArgFunction {
+	private static final class nextLuaValue extends VarArgFunction {
 		private final Iterator<Entry<LuaValue,LuaValue>> iter;
 		
 		public nextLuaValue(Iterator<Entry<LuaValue,LuaValue>> iter) {
@@ -125,55 +177,6 @@ public final class LuaMapLib extends OneArgFunction {
 				return LuaValue.varargsOf(new LuaValue[] {entry.getKey(), entry.getValue()});
 			}
 			return NONE;
-		}
-	}
-
-	public static final class keys extends OneArgFunction {
-		@Override
-		public LuaValue call(LuaValue m) {
-			LuaMap map = (LuaMap)m;
-			return new LuaListLib.nextLuaValue(map.keySetIterator());
-		}
-	}
-
-	public static final class values extends OneArgFunction {	
-		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaMap map = (LuaMap)arg;
-			return new LuaListLib.nextLuaValue(map.valuesIterator());
-		}
-	}
-
-	public static final class len extends OneArgFunction {
-		@Override
-		public LuaValue call(LuaValue arg) {
-			LuaMap map = (LuaMap)arg;
-			return map.size();
-		}
-	}
-
-	public static final class tostring extends OneArgFunction {
-		@Override
-		public LuaValue call(LuaValue m) {
-			LuaMap map = (LuaMap)m;
-			return map.toLuaString();
-		}
-	}
-
-	public static final class index extends TwoArgFunction {
-		@Override
-		public LuaValue call(LuaValue m, LuaValue key) {
-			LuaMap map = (LuaMap)m;
-			return map.get(key);
-		}
-	}
-
-	public static final class newindex extends ThreeArgFunction {
-		@Override
-		public LuaValue call(LuaValue m, LuaValue key, LuaValue value) {
-			LuaMap map = (LuaMap)m;
-			map.put(key, value);
-			return NIL;
 		}
 	}
 }

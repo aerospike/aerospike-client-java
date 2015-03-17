@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -37,6 +37,14 @@ public final class LuaList extends LuaUserdata implements LuaData {
 		setmetatable(instance.getPackage("List"));
 	}
 
+	public LuaInteger size() {
+		return LuaInteger.valueOf(list.size());
+	}
+	
+	public LuaString toLuaString() {
+		return LuaString.valueOf(list.toString());
+	}
+
 	public LuaValue get(LuaValue index) {
 		return list.get(index.toint() - 1);
 	}
@@ -47,12 +55,14 @@ public final class LuaList extends LuaUserdata implements LuaData {
 		list.set(i - 1, value);
 	}
 	
-	private void ensureSize(int size) {		
-		if (size > list.size()) {
-			for (int i = list.size(); i < size; i++) {
-				list.add(LuaValue.NIL);
-			}
-		}
+	public Iterator<LuaValue> iterator() {
+		return list.iterator();		
+	}
+	
+	public void insert(LuaValue index, LuaValue value) {
+		int i = index.toint();
+		ensureSize(i);
+		list.add(i - 1, value);
 	}
 
 	public void append(LuaValue value) {
@@ -63,7 +73,7 @@ public final class LuaList extends LuaUserdata implements LuaData {
 		list.add(0, value);
 	}
 
-	public final LuaList take(LuaValue items) {
+	public LuaList take(LuaValue items) {
 		int max = items.toint();
 		
 		if (max > list.size()) {
@@ -72,29 +82,39 @@ public final class LuaList extends LuaUserdata implements LuaData {
 		return subList(0, max);
 	}
 	
-	public final LuaList drop(LuaValue count) {
-		int min = count.toint();
+	public void remove(LuaValue index) {
+		list.remove(index.toint() - 1);
+	}
+
+	public LuaList drop(LuaValue count) {
+		int c = count.toint();
 		
-		if (min > list.size()) {
-			min = list.size();
+		if (c >= list.size()) {
+			return new LuaList(instance, new ArrayList<LuaValue>(0));
+		}		
+		return subList(c, list.size());
+	}
+
+	public void trim(LuaValue count) {
+		int min = count.toint() - 1;
+		
+		for (int i = list.size() - 1; i >= min; i--) {
+			list.remove(i);
 		}
-		return subList(min, list.size());
-	}
-
-	public LuaList subList(int begin, int end) {		
-		return new LuaList(instance, list.subList(begin, end));
 	}
 	
-	public Iterator<LuaValue> iterator() {
-		return list.iterator();		
+	public LuaList clone() {
+		return new LuaList(instance, new ArrayList<LuaValue>(list));
 	}
 	
-	public LuaString toLuaString() {
-		return LuaString.valueOf(list.toString());
+	public void concat(LuaList list2) {
+		this.list.addAll(list2.list);
 	}
-
-	public LuaInteger size() {
-		return LuaInteger.valueOf(list.size());
+	
+	public LuaList merge(LuaList list2) {
+		List<LuaValue> target = new ArrayList<LuaValue>(this.list);
+		target.addAll(list2.list);
+		return new LuaList(instance, target);
 	}
 	
 	public Object luaToObject() {
@@ -105,5 +125,17 @@ public final class LuaList extends LuaUserdata implements LuaData {
 			target.add(obj);
 		}
 		return target;
+	}
+
+	private void ensureSize(int size) {		
+		if (size > list.size()) {
+			for (int i = list.size(); i < size; i++) {
+				list.add(LuaValue.NIL);
+			}
+		}
+	}
+
+	private LuaList subList(int begin, int end) {		
+		return new LuaList(instance, new ArrayList<LuaValue>(list.subList(begin, end)));
 	}
 }

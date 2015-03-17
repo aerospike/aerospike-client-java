@@ -78,7 +78,6 @@ public final class LuaInstance {
 
 		ClassLoader resourceLoader = LuaInstance.class.getClassLoader();
 		loadSystemPackage(resourceLoader, "compat52");
-		loadSystemPackage(resourceLoader, "as");
 		loadSystemPackage(resourceLoader, "stream_ops");
 		loadSystemPackage(resourceLoader, "aerospike");
 		

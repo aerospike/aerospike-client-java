@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,29 +21,42 @@ import java.util.Iterator;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.luaj.vm2.LuaFunction;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaUserdata;
 import org.luaj.vm2.LuaValue;
+import org.luaj.vm2.Varargs;
 
 public final class LuaMap extends LuaUserdata implements LuaData {
 
+	private final LuaInstance instance;
 	private final Map<LuaValue,LuaValue> map;
 
 	public LuaMap(LuaInstance instance, Map<LuaValue,LuaValue> map) {
 		super(map);
+		this.instance = instance;
 		this.map = map;
 		setmetatable(instance.getPackage("Map"));
+	}
+
+	public LuaInteger size() {
+		return LuaInteger.valueOf(map.size());
+	}
+
+	public LuaString toLuaString() {
+		return LuaString.valueOf(map.toString());
+	}
+	
+	public LuaValue get(LuaValue key) {
+		LuaValue val = map.get(key);
+		return val != null ? val : NIL; 
 	}
 
 	public void put(LuaValue key, LuaValue value) {
 		map.put(key, value);
 	}
 	
-	public LuaValue get(LuaValue key) {
-		return map.get(key);
-	}
-
 	public Iterator<Entry<LuaValue,LuaValue>> entrySetIterator() {
 		return map.entrySet().iterator();
 	}
@@ -56,14 +69,52 @@ public final class LuaMap extends LuaUserdata implements LuaData {
 		return map.values().iterator();
 	}
 
-	public LuaInteger size() {
-		return LuaInteger.valueOf(map.size());
+	public void remove(LuaValue key) {
+		map.remove(key);
 	}
 
-	public LuaString toLuaString() {
-		return LuaString.valueOf(map.toString());
+	public LuaMap clone() {
+		return new LuaMap(instance, new HashMap<LuaValue,LuaValue>(map));
 	}
-	
+
+	public LuaMap merge(LuaMap map2, LuaFunction func) {
+		HashMap<LuaValue,LuaValue> target = new HashMap<LuaValue,LuaValue>(map.size() + map2.map.size());
+		target.putAll(map);
+		
+		boolean hasFunc = !(func == null || func.isnil());
+		
+		for (Entry<LuaValue,LuaValue> entry : map2.map.entrySet()) {
+			if (hasFunc) {
+				LuaValue value = map.get(entry.getKey());
+				
+				if (value != null) {
+					Varargs ret = func.invoke(value, entry.getValue());
+					target.put(entry.getKey(), (LuaValue)ret);
+					continue;
+				}
+			}
+			target.put(entry.getKey(), entry.getValue());
+		}
+		return new LuaMap(instance, target);
+	}
+
+	public LuaMap diff(LuaMap map2) {
+		HashMap<LuaValue,LuaValue> target = new HashMap<LuaValue,LuaValue>(map.size() + map2.map.size());
+		
+		for (Entry<LuaValue,LuaValue> entry : map.entrySet()) {
+			if (!map2.map.containsKey(entry.getKey())) {
+				target.put(entry.getKey(), entry.getValue());
+			}
+		}
+		
+		for (Entry<LuaValue,LuaValue> entry : map2.map.entrySet()) {
+			if (!map.containsKey(entry.getKey())) {
+				target.put(entry.getKey(), entry.getValue());
+			}
+		}
+		return new LuaMap(instance, target);
+	}
+
 	public Object luaToObject() {
 		Map<Object,Object> target = new HashMap<Object,Object>(map.size());
 		
