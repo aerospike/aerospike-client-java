@@ -60,6 +60,13 @@ public final class Record {
 	}
 	
 	/**
+	 * Get bin value as String.
+	 */
+	public String getString(String name) {
+		return (String)getString(name);
+	}
+	
+	/**
 	 * Get bin value as double.
 	 */
 	public double getDouble(String name) {

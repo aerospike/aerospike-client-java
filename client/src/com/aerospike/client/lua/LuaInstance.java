@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.luaj.vm2.Globals;
+import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaDouble;
 import org.luaj.vm2.LuaInteger;
@@ -241,6 +242,10 @@ public final class LuaInstance {
 
 		if (obj instanceof Float) {
 			return LuaDouble.valueOf((Float) obj);
+		}
+
+		if (obj instanceof Boolean) {
+			return LuaBoolean.valueOf((Boolean) obj);
 		}
 
 		if (obj instanceof List<?>) {

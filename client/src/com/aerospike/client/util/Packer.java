@@ -196,6 +196,11 @@ public final class Packer {
 			return;
 		}
 		
+		if (obj instanceof Boolean) {
+			packBoolean((Boolean)obj);
+			return;
+		}
+
 		if (obj instanceof List<?>) {
 			packList((List<?>) obj);
 			return;
@@ -365,6 +370,19 @@ public final class Packer {
     	buffer[offset++] = (byte)val;
     }
 
+    public void packBoolean(boolean val) {
+    	if (offset + 1 > buffer.length) {
+    		resize(1);
+    	}
+    	
+    	if (val) {
+    		buffer[offset++] = (byte)0xc3;
+    	}
+    	else {
+    		buffer[offset++] = (byte)0xc2;
+    	}
+    }
+    
     public void packNil() {
     	if (offset >= buffer.length) {
     		resize(1);

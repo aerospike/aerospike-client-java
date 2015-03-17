@@ -122,6 +122,18 @@ public final class Bin {
 	}
 
 	/**
+	 * Constructor, specifying bin name and boolean value.
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 * 
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		bin value
+	 */
+	public Bin(String name, boolean value) {
+		this.name = name;
+		this.value = Value.get(value);
+	}
+
+	/**
 	 * Constructor, specifying bin name and value.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 

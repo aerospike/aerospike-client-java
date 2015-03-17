@@ -153,6 +153,8 @@ public class ListMap extends Example {
 		map.put("key2", 2);
 		map.put("key3", blob);
 		map.put("key4", list);  // map.put("key4", Value.getAsList(list)) works too
+		map.put("key5", true);
+		map.put("key6", false);
 
 		Bin bin = Bin.asMap(params.getBinName("mapbin2"), map);
 		client.put(params.writePolicy, key, bin);
@@ -160,7 +162,7 @@ public class ListMap extends Example {
 		Record record = client.get(params.policy, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
 		
-		validateSize(4, receivedMap.size());
+		validateSize(6, receivedMap.size());
 		validate("string1", receivedMap.get("key1"));
 		// Server convert numbers to long, so must expect long.
 		validate(2L, receivedMap.get("key2"));
@@ -172,6 +174,9 @@ public class ListMap extends Example {
 		validate(12384955L, receivedInner.get(1));
 		validate(3L, receivedInner.get(2));
 		validate(512L, receivedInner.get(3));
+
+		validate(true, receivedMap.get("key5"));
+		validate(false, receivedMap.get("key6"));
 
 		console.info("Read/Write HashMap<Object,Object> successful");
 	}

@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaDouble;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaNil;
@@ -86,6 +87,13 @@ public abstract class Value {
 	 */
 	public static Value get(float value) {
 		return new FloatValue(value);
+	}
+
+	/**
+	 * Get boolean value instance.
+	 */
+	public static Value get(boolean value) {
+		return new BooleanValue(value);
 	}
 
 	/**
@@ -162,6 +170,9 @@ public abstract class Value {
         	return new FloatValue((Float)value);
 		}
 		
+		if (value instanceof Boolean) {
+        	return new BooleanValue((Boolean)value);
+		}
 		return new BlobValue(value);
 	}
 	
@@ -646,6 +657,64 @@ public abstract class Value {
 		@Override
 		public long toLong() {
 			return (long)value;
+		}
+	}
+
+	/**
+	 * Boolean value.  
+	 */
+	public static final class BooleanValue extends Value {		
+		private final boolean value;
+
+		public BooleanValue(boolean value) {
+			this.value = value;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return 8;
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			Buffer.longToBytes(value? 1L : 0L, buffer, offset);
+			return 8;
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			packer.packBoolean(value);
+		}
+
+		@Override
+		public int getType() {
+			// The server does not natively handle boolean, so store as long (8 byte integer).
+			return ParticleType.INTEGER;
+		}
+		
+		@Override
+		public Object getObject() {
+			return value;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaBoolean.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Boolean.toString(value);
+		}
+		
+		@Override
+		public int toInteger() {
+			return value? 1 : 0;
+		}
+
+		@Override
+		public long toLong() {
+			return value? 1L : 0L;
 		}
 	}
 
