@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -87,7 +87,7 @@ public class RWTaskSync extends RWTask {
 
 		// Add entry
 		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
-		list.add(Value.getAsMap(entry));
+		list.add(Value.get(entry));
 	}
 
 	protected void largeStackPush(Key key, Value value) throws AerospikeException {
@@ -112,7 +112,7 @@ public class RWTaskSync extends RWTask {
 
 		// Push entry
 		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
-		lstack.push(Value.getAsMap(entry));
+		lstack.push(Value.get(entry));
 	}
 
 	protected void get(Key key, String binName) throws AerospikeException {

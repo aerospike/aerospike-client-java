@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -73,7 +73,7 @@ public final class InsertTaskSync extends InsertTask {
 
 		// Add entry
 		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
-		list.add(Value.getAsMap(entry));
+		list.add(Value.get(entry));
 	}
 		
 	protected void largeStackPush(Key key, Value value) throws AerospikeException {
@@ -98,6 +98,6 @@ public final class InsertTaskSync extends InsertTask {
 
 		// Push entry
 		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
-		lstack.push(Value.getAsMap(entry));
+		lstack.push(Value.get(entry));
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,7 +42,7 @@ public class Serialize extends Example {
 	}
 	
 	/**
-	 * Write array of integers using serializer.
+	 * Write array of integers using standard java serializer..
 	 */
 	public void testArray(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "serialarraykey");
@@ -100,7 +100,7 @@ public class Serialize extends Example {
 	}
 
 	/**
-	 * Write list object using serializer.
+	 * Write list using standard java serializer.
 	 */
 	public void testList(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "seriallistkey");
@@ -115,7 +115,7 @@ public class Serialize extends Example {
 		list.add("string2");
 		list.add("string3");
 
-		Bin bin = new Bin(params.getBinName("serialbin"), list);
+		Bin bin = new Bin(params.getBinName("serialbin"), (Object)list);
 
 		console.info("Write list using serializer.");
 		client.put(params.writePolicy, key, bin);
@@ -158,7 +158,7 @@ public class Serialize extends Example {
 	}
 	
 	/**
-	 * Write complex object using serializer.
+	 * Write complex object using standard java serializer.
 	 */
 	public void testComplex(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "serialcomplexkey");
@@ -183,7 +183,7 @@ public class Serialize extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("complexbin"), list);
+		Bin bin = new Bin(params.getBinName("complexbin"), (Object)list);
 
 		console.info("Write complex object using serializer.");
 		client.put(params.writePolicy, key, bin);

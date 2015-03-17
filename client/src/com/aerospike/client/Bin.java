@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -134,6 +134,46 @@ public final class Bin {
 	}
 
 	/**
+	 * Create bin with a list value.  The list value will be serialized as a Aerospike 3 server list type.
+	 * Supported by Aerospike 3 servers only. 
+	 * <p>
+	 * If connecting to Aerospike 2 servers, use the following instead:
+	 * <pre>
+	 * {@code
+	 * Bin bin = new Bin(name, (Object)list);
+	 * }
+	 * </pre>
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 * 
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		bin value
+	 */
+	public Bin(String name, List<?> value) {
+		this.name = name;
+		this.value = Value.get(value);
+	}
+
+	/**
+	 * Create bin with a map value.  The map value will be serialized as a Aerospike 3 server map type.
+	 * Supported by Aerospike 3 servers only. 
+	 * <p>
+	 * If connecting to Aerospike 2 servers, use the following instead:
+	 * <pre>
+	 * {@code
+	 * Bin bin = new Bin(name, (Object)map);
+	 * }
+	 * </pre>
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 * 
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		bin value
+	 */
+	public Bin(String name, Map<?,?> value) {
+		this.name = name;
+		this.value = Value.get(value);
+	}
+
+	/**
 	 * Constructor, specifying bin name and value.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
@@ -165,11 +205,13 @@ public final class Bin {
 	 * Supported by Aerospike 3 servers only.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
+	 * @deprecated Use {@link #Bin(String name, List value)} instead.
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
+	@Deprecated
 	public static Bin asList(String name, List<?> value) {
-		return new Bin(name, Value.getAsList(value));
+		return new Bin(name, Value.get(value));
 	}
 
 	/**
@@ -177,11 +219,13 @@ public final class Bin {
 	 * Supported by Aerospike 3 servers only.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
+	 * @deprecated Use {@link #Bin(String name, Map value)} instead.
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
+	@Deprecated
 	public static Bin asMap(String name, Map<?,?> value) {
-		return new Bin(name, Value.getAsMap(value));
+		return new Bin(name, Value.get(value));
 	}
 	
 	/**

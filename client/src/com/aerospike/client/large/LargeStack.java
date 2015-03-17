@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -79,7 +79,7 @@ public class LargeStack {
 	 * @param values			values to push
 	 */
 	public void push(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "push_all", binName, Value.getAsList(values), createModule);
+		client.execute(policy, key, PackageName, "push_all", binName, Value.get(values), createModule);
 	}
 
 	/**

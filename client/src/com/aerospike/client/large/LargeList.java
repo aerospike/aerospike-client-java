@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -85,7 +85,7 @@ public class LargeList {
 	 * @param values			values to add
 	 */
 	public void add(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.getAsList(values), createModule);
+		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
 	}
 
 	/**
@@ -118,7 +118,7 @@ public class LargeList {
 	 * @param values			values to update
 	 */
 	public void update(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update_all", binName, Value.getAsList(values), createModule);
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), createModule);
 	}
 
 	/**
@@ -136,7 +136,7 @@ public class LargeList {
 	 * @param values			values to delete
 	 */
 	public void remove(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "remove_all", binName, Value.getAsList(values));
+		client.execute(policy, key, PackageName, "remove_all", binName, Value.get(values));
 	}
 
 	/**

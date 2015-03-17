@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -97,6 +97,22 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get list or null value instance.
+	 * Supported by Aerospike 3 servers only.
+	 */
+	public static Value get(List<?> value) {
+		return (value == null)? new NullValue() : new ListValue(value);
+	}
+
+	/**
+	 * Get map or null value instance.
+	 * Supported by Aerospike 3 servers only.
+	 */
+	public static Value get(Map<?,?> value) {
+		return (value == null)? new NullValue() : new MapValue(value);
+	}
+
+	/**
 	 * Get value array instance.
 	 */
 	public static Value get(Value[] value) {
@@ -112,16 +128,18 @@ public abstract class Value {
 
 	/**
 	 * Get list or null value instance.
-	 * Supported by Aerospike 3 servers only.
+	 * @deprecated Use {@link #get(List value)} instead. 
 	 */
+	@Deprecated
 	public static Value getAsList(List<?> value) {
 		return (value == null)? new NullValue() : new ListValue(value);
 	}
 	
 	/**
 	 * Get map or null value instance.
-	 * Supported by Aerospike 3 servers only.
+	 * @deprecated Use {@link #get(Map value)} instead. 
 	 */
+	@Deprecated
 	public static Value getAsMap(Map<?,?> value) {
 		return (value == null)? new NullValue() : new MapValue(value);
 	}
@@ -173,6 +191,20 @@ public abstract class Value {
 		if (value instanceof Boolean) {
         	return new BooleanValue((Boolean)value);
 		}
+		
+		/* Do not enable this code because it will break clients that use Aerospike 2 servers.
+		 * Aerospike 2 servers do not support list/map natively, so the default java runtime 
+		 * serialization must be used instead.  If the user chooses the right bin constructor, 
+		 * this code is not necessary anyhow.
+		 * 
+		if (value instanceof List<?>) {
+        	return new ListValue((List<?>)value);
+		}
+		
+		if (value instanceof Map<?,?>) {
+        	return new MapValue((Map<?,?>)value);
+		}
+		*/
 		return new BlobValue(value);
 	}
 	
@@ -949,7 +981,6 @@ public abstract class Value {
 	/**
 	 * checks if to Values are equal
 	 * @param otherValue
-	 * @return
 	 */
 	@Override
 	public boolean equals(Object otherValue) {

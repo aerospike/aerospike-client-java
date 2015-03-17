@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -176,7 +176,7 @@ public class UserDefinedFunction extends Example {
 
 		String binName = params.getBinName("udfbin5");
 
-		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.getAsList(list));
+		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(list));
 		
 		Object received = client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
 

@@ -204,21 +204,21 @@ public class LargeList extends Example {
 		map.put("ticker", Value.get("IBM"));
 		map.put("qty", Value.get(100));
 		map.put("price", Value.get(Double.doubleToLongBits(181.82)));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		Calendar timestamp2 = new GregorianCalendar(2014, 6, 26, 9, 33, 17);
 		map.put("key", Value.get(timestamp2.getTimeInMillis()));
 		map.put("ticker", Value.get("GE"));
 		map.put("qty", Value.get(500));
 		map.put("price", Value.get(Double.doubleToLongBits(26.36)));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		Calendar timestamp3 = new GregorianCalendar(2014, 6, 27, 14, 40, 19);
 		map.put("key", Value.get(timestamp3.getTimeInMillis()));
 		map.put("ticker", Value.get("AAPL"));
 		map.put("qty", Value.get(75));
 		map.put("price", Value.get(Double.doubleToLongBits(91.85)));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		// Verify list size
 		int size = list.size();
@@ -313,7 +313,7 @@ public class LargeList extends Example {
 		writer.writeInt(100);       // qty
 		writer.writeDouble(181.82); // price
 		map.put("value", Value.get(byteStream.toByteArray()));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		Calendar timestamp2 = new GregorianCalendar(2014, 6, 26, 9, 33, 17);
 		map.put("key", Value.get(timestamp2.getTimeInMillis()));
@@ -322,7 +322,7 @@ public class LargeList extends Example {
 		writer.writeInt(500);      // qty
 		writer.writeDouble(26.36); // price
 		map.put("value", Value.get(byteStream.toByteArray()));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		Calendar timestamp3 = new GregorianCalendar(2014, 6, 27, 14, 40, 19);
 		map.put("key", Value.get(timestamp3.getTimeInMillis()));
@@ -331,7 +331,7 @@ public class LargeList extends Example {
 		writer.writeInt(75);       // qty
 		writer.writeDouble(91.85); // price
 		map.put("value", Value.get(byteStream.toByteArray()));
-		list.add(Value.getAsMap(map));
+		list.add(Value.get(map));
 
 		// Verify list size
 		int size = list.size();
