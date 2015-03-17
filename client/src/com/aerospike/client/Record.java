@@ -63,7 +63,7 @@ public final class Record {
 	 * Get bin value as String.
 	 */
 	public String getString(String name) {
-		return (String)getString(name);
+		return (String)getValue(name);
 	}
 	
 	/**
