@@ -117,7 +117,7 @@ public class QueryString extends Example {
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				String result = (String)record.getValue(binName);
+				String result = record.getString(binName);
 				
 				if (result.equals(filter)) {
 					console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",

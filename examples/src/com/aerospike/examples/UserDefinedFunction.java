@@ -69,7 +69,7 @@ public class UserDefinedFunction extends Example {
 		
 		Record record = client.get(params.policy, key, bin.name);
 		String expected = bin.value.toString();	
-		String received = (String)record.getValue(bin.name);
+		String received = record.getString(bin.name);
 
 		if (received != null && received.equals(expected)) {
 			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
@@ -108,7 +108,7 @@ public class UserDefinedFunction extends Example {
 		// Verify record written.
 		Record record = client.get(params.policy, key, binName);
 		String expected = "first";	
-		String received = (String)record.getValue(binName);
+		String received = record.getString(binName);
 
 		if (received != null && received.equals(expected)) {
 			console.info("Record written: namespace=%s set=%s key=%s bin=%s value=%s", 
@@ -124,7 +124,7 @@ public class UserDefinedFunction extends Example {
 		
 		// Verify record not written.
 		record = client.get(params.policy, key, binName);
-		received = (String)record.getValue(binName);
+		received = record.getString(binName);
 
 		if (received != null && received.equals(expected)) {
 			console.info("Success. Record remained unchanged: namespace=%s set=%s key=%s bin=%s value=%s", 
