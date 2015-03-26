@@ -82,8 +82,8 @@ public final class AsyncCluster extends Cluster {
 	
 	@Override
 	public void close() {
-		super.close();		
 		selectorManagers.close();
+		super.close();		
 	}
 	
 	private static interface BufferQueue {
