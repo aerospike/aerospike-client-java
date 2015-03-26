@@ -985,7 +985,7 @@ public abstract class Value {
 	@Override
 	public boolean equals(Object otherValue) {
 		return (otherValue != null
-				&& otherValue.getClass().isAssignableFrom(Value.class)
+				&& this.getClass().equals(otherValue.getClass())
 				&& ((Value)otherValue).toString().equals(this.toString()));
 	}
 }
