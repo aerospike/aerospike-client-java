@@ -936,7 +936,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader()
+	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
 	 * @param resourcePath          class path where Lua resource is located
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
 	 * @param language				language of user defined functions

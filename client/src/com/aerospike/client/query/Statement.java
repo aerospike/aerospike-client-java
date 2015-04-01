@@ -142,7 +142,7 @@ public final class Statement {
 	 * Set Lua aggregation function parameters for a Lua package located in a resource file.
 	 * This function will be called on both the server and client for each selected item.
 	 * 
-	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader()
+	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
 	 * @param resourcePath          class path where Lua resource is located
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
