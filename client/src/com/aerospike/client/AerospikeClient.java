@@ -67,6 +67,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.Util;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -924,7 +925,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
 		throws AerospikeException {
 		File file = new File(clientPath);
-		return RegisterCommand.register(cluster, policy, file, serverPath, language);
+		byte[] bytes = Util.readFile(file);
+		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
 	
 	/**
@@ -944,8 +946,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
 		throws AerospikeException {
-		File file = new File(resourceLoader.getResource(resourcePath).getFile());
-		return RegisterCommand.register(cluster, policy, file, serverPath, language);
+		byte[] bytes = Util.readResource(resourceLoader, resourcePath);
+		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
 
 	/**

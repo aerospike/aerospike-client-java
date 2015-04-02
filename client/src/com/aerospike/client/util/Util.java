@@ -16,15 +16,16 @@
  */
 package com.aerospike.client.util;
 
-import gnu.crypto.util.Base64;
-
+import java.io.ByteArrayOutputStream;
 import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
+import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -59,7 +60,7 @@ public final class Util {
 		return sw.toString();
 	}
 
-	public static String readFileEncodeBase64(File file) throws AerospikeException {
+	public static byte[] readFile(File file) {
 		try {
 			byte[] bytes = new byte[(int)file.length()];
 			FileInputStream in = new FileInputStream(file);
@@ -72,17 +73,41 @@ public final class Util {
 					len = in.read(bytes, pos, bytes.length - pos);
 					pos += len;
 				}
+				return bytes;
 			}
 			finally {
 				in.close();
 			}
-			return Base64.encode(bytes, 0, bytes.length, false);
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Failed to read " + file.getAbsolutePath(), e);
 		}
 	}
 	
+	public static byte[] readResource(ClassLoader resourceLoader, String resourcePath) {	
+		try {
+			URL url = resourceLoader.getResource(resourcePath);
+			InputStream is = url.openStream();
+			
+			try {
+				ByteArrayOutputStream bos = new ByteArrayOutputStream(8192);
+				byte[] bytes = new byte[8192];
+				int length;
+						
+				while ((length = is.read(bytes)) > 0) {
+					bos.write(bytes, 0, length);
+				}
+				return bos.toByteArray();	
+			}
+			finally {
+				is.close();
+			}
+		}
+		catch (Exception e) {
+			throw new AerospikeException("Failed to read resource " + resourcePath, e);
+		}
+	}
+
 	/**
 	 * Convert a string to a time stamp using the same algorithm as the Aerospike loader.
 	 */

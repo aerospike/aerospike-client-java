@@ -16,7 +16,7 @@
  */
 package com.aerospike.client.command;
 
-import java.io.File;
+import gnu.crypto.util.Base64;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
@@ -28,13 +28,12 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Environment;
-import com.aerospike.client.util.Util;
 
 public final class RegisterCommand {
 	
-	public static RegisterTask register(Cluster cluster, Policy policy, File clientFile, String serverPath, Language language) {	
-		String content = Util.readFileEncodeBase64(clientFile);
-
+	public static RegisterTask register(Cluster cluster, Policy policy, byte[] bytes, String serverPath, Language language) {	
+		String content = Base64.encode(bytes, 0, bytes.length, false);
+		
 		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
 		sb.append("udf-put:filename=");
 		sb.append(serverPath);
