@@ -71,7 +71,7 @@ public class LargeList {
 	 * @param values			values to add
 	 */
 	public void add(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values));
 	}
 	
 	/**
@@ -82,7 +82,7 @@ public class LargeList {
 	 * @param values			values to add
 	 */
 	public void add(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values));
 	}
 
 	/**
@@ -104,7 +104,7 @@ public class LargeList {
 	 * @param values			values to update
 	 */
 	public void update(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values));
 	}
 	
 	/**
@@ -115,7 +115,7 @@ public class LargeList {
 	 * @param values			values to update
 	 */
 	public void update(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values));
 	}
 
 	/**
@@ -133,7 +133,7 @@ public class LargeList {
 	 * @param values			values to delete
 	 */
 	public void remove(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "remove", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "remove_all", binName, Value.get(values));
 	}
 
 	/**
@@ -168,11 +168,12 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> findThenFilter(Value value, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "find", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
 	/**
 	 * Select values from the beginning of list up to a maximum count.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param count				maximum number of values to return
 	 * @return					list of entries selected
@@ -183,6 +184,7 @@ public class LargeList {
 
 	/**
 	 * Select values from the beginning of list up to a maximum count after applying lua filter.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param count				maximum number of values to return after applying lua filter
 	 * @param filterModule		Lua module name which contains filter function
@@ -196,6 +198,7 @@ public class LargeList {
 
 	/**
 	 * Select values from the end of list up to a maximum count.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param count				maximum number of values to return
 	 * @return					list of entries selected in reverse order
@@ -206,6 +209,7 @@ public class LargeList {
 
 	/**
 	 * Select values from the end of list up to a maximum count after applying lua filter.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param count				maximum number of values to return after applying lua filter
 	 * @param filterModule		Lua module name which contains filter function
@@ -219,6 +223,7 @@ public class LargeList {
 
 	/**
 	 * Select values from the begin key up to a maximum count.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param begin				start value (inclusive)
 	 * @param count				maximum number of values to return
@@ -230,6 +235,7 @@ public class LargeList {
 
 	/**
 	 * Select values from the begin key up to a maximum count after applying lua filter.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param begin				start value (inclusive)
 	 * @param count				maximum number of values to return after applying lua filter
@@ -250,11 +256,12 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> range(Value begin, Value end) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(0));
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end);
 	}
 
 	/**
 	 * Select a range of values from the large list.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param begin				low value of the range (inclusive)
 	 * @param end				high value of the range (inclusive)
@@ -276,11 +283,12 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> range(Value begin, Value end, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(0), Value.get(filterModule), Value.get(filterModule), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, Value.get(filterModule), Value.get(filterModule), Value.get(filterArgs));
 	}
 
 	/**
 	 * Select a range of values from the large list, then apply a lua filter.
+	 * Supported by server versions >= 3.5.8.
 	 * 
 	 * @param begin				low value of the range (inclusive)
 	 * @param end				high value of the range (inclusive)
@@ -310,7 +318,7 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "scan", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
@@ -337,8 +345,9 @@ public class LargeList {
 	
 	/**
 	 * Set LDT page size. 
+	 * Supported by server versions >= 3.5.8.
 	 *  
-	 * @param pageSize 			page Size in bytes
+	 * @param pageSize 			page size in bytes
 	 */
 	public void setPageSize(int pageSize) throws AerospikeException {
 		client.execute(policy, key, PackageName, "setPageSize", binName, Value.get(pageSize));
