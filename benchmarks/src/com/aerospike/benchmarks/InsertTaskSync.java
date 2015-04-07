@@ -72,7 +72,7 @@ public final class InsertTaskSync extends InsertTask {
 		entry.put("log", value);
 
 		// Add entry
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
+		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
 		list.add(Value.get(entry));
 	}
 		

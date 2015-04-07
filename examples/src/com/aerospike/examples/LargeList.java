@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -69,7 +69,7 @@ public class LargeList extends Example {
 		client.delete(params.writePolicy, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.large.LargeList llist = client.getLargeList(params.writePolicy, key, binName, null);
+		com.aerospike.client.large.LargeList llist = client.getLargeList(params.writePolicy, key, binName);
 		String orig1 = "llistValue1";
 		String orig2 = "llistValue2";
 		String orig3 = "llistValue3";
@@ -151,7 +151,7 @@ public class LargeList extends Example {
 		client.delete(params.writePolicy, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.large.LargeList llist = client.getLargeList(params.writePolicy, key, binName, null);
+		com.aerospike.client.large.LargeList llist = client.getLargeList(params.writePolicy, key, binName);
 		int orig1 = 1;
 		int orig2 = 2;
 		int orig3 = 3;
@@ -194,7 +194,7 @@ public class LargeList extends Example {
 		client.delete(params.writePolicy, key);	
 
 		// Initialize large list operator.
-		com.aerospike.client.large.LargeList list = client.getLargeList(params.writePolicy, key, "trades", null);
+		com.aerospike.client.large.LargeList list = client.getLargeList(params.writePolicy, key, "trades");
 
 		// Write trades
 		Map<String,Value> map = new HashMap<String,Value>();
@@ -300,7 +300,7 @@ public class LargeList extends Example {
 		client.delete(params.writePolicy, key);
 
 		// Initialize large list operator.
-		com.aerospike.client.large.LargeList list = client.getLargeList(params.writePolicy, key, "trades", null);
+		com.aerospike.client.large.LargeList list = client.getLargeList(params.writePolicy, key, "trades");
 
 		// Write trades
 		Map<String, Value> map = new HashMap<String, Value>();
@@ -404,7 +404,7 @@ public class LargeList extends Example {
 		
 		int itemCount = 2000;
 		console.info("Add a bunch of LLIST Items(%d)", itemCount);
-		com.aerospike.client.large.LargeList llist2 = client.getLargeList(params.writePolicy, key, "NumberBin", null);
+		com.aerospike.client.large.LargeList llist2 = client.getLargeList(params.writePolicy, key, "NumberBin");
 		for (int i = itemCount; i > 0; i-- ){
 			llist2.add(Value.get(i));
 		}

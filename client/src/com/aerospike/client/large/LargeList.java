@@ -36,7 +36,6 @@ public class LargeList {
 	private final WritePolicy policy;
 	private final Key key;
 	private final Value binName;
-	private final Value createModule;
 	
 	/**
 	 * Initialize large list operator.
@@ -45,80 +44,78 @@ public class LargeList {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param createModule			Lua function name that initializes list configuration parameters, pass null for default list
 	 */
-	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName, String createModule) {
+	public LargeList(AerospikeClient client, WritePolicy policy, Key key, String binName) {
 		this.client = client;
 		this.policy = policy;
 		this.key = key;
 		this.binName = Value.get(binName);
-		this.createModule = Value.get(createModule);
 	}
-	
+
 	/**
 	 * Add value to list. Fail if value's key exists and list is configured for unique keys.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param value				value to add
 	 */
 	public void add(Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add", binName, value, createModule);
+		client.execute(policy, key, PackageName, "add", binName, value);
 	}
 
 	/**
 	 * Add values to list.  Fail if a value's key exists and list is configured for unique keys.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param values			values to add
 	 */
 	public void add(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
+		client.execute(policy, key, PackageName, "add", binName, Value.get(values));
 	}
 	
 	/**
 	 * Add values to the list.  Fail if a value's key exists and list is configured for unique keys.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param values			values to add
 	 */
 	public void add(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "add_all", binName, Value.get(values), createModule);
+		client.execute(policy, key, PackageName, "add", binName, Value.get(values));
 	}
 
 	/**
 	 * Update value in list if key exists.  Add value to list if key does not exist.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param value				value to update
 	 */
 	public void update(Value value) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update", binName, value, createModule);
+		client.execute(policy, key, PackageName, "update", binName, value);
 	}
 
 	/**
 	 * Update/Add each value in array depending if key exists or not.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param values			values to update
 	 */
 	public void update(Value... values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), createModule);
+		client.execute(policy, key, PackageName, "update", binName, Value.get(values));
 	}
 	
 	/**
 	 * Update/Add each value in values list depending if key exists or not.
 	 * If value is a map, the key is identified by "key" entry.  Otherwise, the value is the key.
-	 * If large list does not exist, create it using specified userModule configuration.
+	 * If large list does not exist, create it.
 	 * 
 	 * @param values			values to update
 	 */
 	public void update(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "update_all", binName, Value.get(values), createModule);
+		client.execute(policy, key, PackageName, "update", binName, Value.get(values));
 	}
 
 	/**
@@ -136,7 +133,7 @@ public class LargeList {
 	 * @param values			values to delete
 	 */
 	public void remove(List<?> values) throws AerospikeException {
-		client.execute(policy, key, PackageName, "remove_all", binName, Value.get(values));
+		client.execute(policy, key, PackageName, "remove", binName, Value.get(values));
 	}
 
 	/**
@@ -171,9 +168,79 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> findThenFilter(Value value, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "find_then_filter", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "find", binName, value, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 	
+	/**
+	 * Select values from the beginning of list up to a maximum count.
+	 * 
+	 * @param count				maximum number of values to return
+	 * @return					list of entries selected
+	 */
+	public List<?> findFirst(int count) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_first", binName, Value.get(count));
+	}
+
+	/**
+	 * Select values from the beginning of list up to a maximum count after applying lua filter.
+	 * 
+	 * @param count				maximum number of values to return after applying lua filter
+	 * @param filterModule		Lua module name which contains filter function
+	 * @param filterName		Lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to Lua function name
+	 * @return					list of entries selected
+	 */
+	public List<?> findFirst(int count, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_first", binName, Value.get(count), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+	}
+
+	/**
+	 * Select values from the end of list up to a maximum count.
+	 * 
+	 * @param count				maximum number of values to return
+	 * @return					list of entries selected in reverse order
+	 */
+	public List<?> findLast(int count) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_last", binName, Value.get(count));
+	}
+
+	/**
+	 * Select values from the end of list up to a maximum count after applying lua filter.
+	 * 
+	 * @param count				maximum number of values to return after applying lua filter
+	 * @param filterModule		Lua module name which contains filter function
+	 * @param filterName		Lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to Lua function name
+	 * @return					list of entries selected in reverse order
+	 */
+	public List<?> findLast(int count, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_last", binName, Value.get(count), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+	}
+
+	/**
+	 * Select values from the begin key up to a maximum count.
+	 * 
+	 * @param begin				start value (inclusive)
+	 * @param count				maximum number of values to return
+	 * @return					list of entries selected
+	 */
+	public List<?> findFrom(Value begin, int count) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_from", binName, begin, Value.get(count));
+	}
+
+	/**
+	 * Select values from the begin key up to a maximum count after applying lua filter.
+	 * 
+	 * @param begin				start value (inclusive)
+	 * @param count				maximum number of values to return after applying lua filter
+	 * @param filterModule		Lua module name which contains filter function
+	 * @param filterName		Lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to Lua function name
+	 * @return					list of entries selected in reverse order
+	 */
+	public List<?> findFrom(Value begin, int count, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_from", binName, begin, Value.get(count), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+	}
 
 	/**
 	 * Select a range of values from the large list.
@@ -183,7 +250,19 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> range(Value begin, Value end) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end);
+		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(0));
+	}
+
+	/**
+	 * Select a range of values from the large list.
+	 * 
+	 * @param begin				low value of the range (inclusive)
+	 * @param end				high value of the range (inclusive)
+	 * @param count				maximum number of values to return, pass in zero to obtain all values within range
+	 * @return					list of entries selected
+	 */
+	public List<?> range(Value begin, Value end, int count) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(count));
 	}
 
 	/**
@@ -197,7 +276,22 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> range(Value begin, Value end, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "range", binName, begin, end, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(0), Value.get(filterModule), Value.get(filterModule), Value.get(filterArgs));
+	}
+
+	/**
+	 * Select a range of values from the large list, then apply a lua filter.
+	 * 
+	 * @param begin				low value of the range (inclusive)
+	 * @param end				high value of the range (inclusive)
+	 * @param count				maximum number of values to return after applying lua filter. Pass in zero to obtain all values within range. 
+	 * @param filterModule		lua module name which contains filter function
+	 * @param filterName		lua function name which applies filter to returned list
+	 * @param filterArgs		arguments to lua function name
+	 * @return					list of entries selected
+	 */
+	public List<?> range(Value begin, Value end, int count, String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
+		return (List<?>)client.execute(policy, key, PackageName, "find_range", binName, begin, end, Value.get(count), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
@@ -216,7 +310,7 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "scan", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**
@@ -242,19 +336,11 @@ public class LargeList {
 	}
 	
 	/**
-	 * Set maximum number of entries in the list.
+	 * Set LDT page size. 
 	 *  
-	 * @param capacity			max entries in list
+	 * @param pageSize 			page Size in bytes
 	 */
-	public void setCapacity(int capacity) throws AerospikeException {
-		client.execute(policy, key, PackageName, "set_capacity", binName, Value.get(capacity));
-	}
-
-	/**
-	 * Return maximum number of entries in the list.
-	 */
-	public int getCapacity() throws AerospikeException {
-		Object result = client.execute(policy, key, PackageName, "get_capacity", binName);
-		return Util.toInt(result);
+	public void setPageSize(int pageSize) throws AerospikeException {
+		client.execute(policy, key, PackageName, "setPageSize", binName, Value.get(pageSize));
 	}
 }

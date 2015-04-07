@@ -436,13 +436,27 @@ public interface IAerospikeClient {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
-	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName, String userModule)} instead. 
+	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 * @param createModule			no longer used, pass in null.
 	 */
 	public LargeList getLargeList(Policy policy, Key key, String binName, String userModule);
+
+	/**
+	 * Initialize large list operator.  This operator can be used to create and manage a list 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param createModule			no longer used, pass in null.
+	 */
+	public LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule);
 
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
@@ -453,9 +467,8 @@ public interface IAerospikeClient {
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule);
+	public LargeList getLargeList(WritePolicy policy, Key key, String binName);
 
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 

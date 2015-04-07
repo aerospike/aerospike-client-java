@@ -782,15 +782,31 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This method is only supported by Aerospike 3 servers.
 	 * 
-	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName, String userModule)} instead. 
+	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
+	 * @param createModule			no longer used, pass in null.
 	 */
 	public final LargeList getLargeList(Policy policy, Key key, String binName, String userModule) {
 		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return new LargeList(this, writePolicy, key, binName, userModule);
+		return new LargeList(this, writePolicy, key, binName);
+	}
+
+	/**
+	 * Initialize large list operator.  This operator can be used to create and manage a list 
+	 * within a single bin.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binName				bin name
+	 * @param createModule			no longer used, pass in null.
+	 */
+	public final LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule) {
+		return new LargeList(this, policy, key, binName);
 	}
 
 	/**
@@ -802,10 +818,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
 	 */
-	public final LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeList(this, policy, key, binName, userModule);
+	public final LargeList getLargeList(WritePolicy policy, Key key, String binName) {
+		return new LargeList(this, policy, key, binName);
 	}
 
 	/**

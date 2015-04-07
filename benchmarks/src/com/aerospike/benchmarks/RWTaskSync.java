@@ -86,7 +86,7 @@ public class RWTaskSync extends RWTask {
 		entry.put("log", value);
 
 		// Add entry
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
+		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
 		list.add(Value.get(entry));
 	}
 
@@ -182,7 +182,7 @@ public class RWTaskSync extends RWTask {
 	}
 	
 	protected void largeListGet(Key key) throws AerospikeException {
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker", null);
+		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
 		List<?> results;
 		long begin = System.currentTimeMillis();
 		if (counters.read.latency != null) {
