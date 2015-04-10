@@ -267,12 +267,26 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	protected final void finish() {
 		// Finish could be called from a separate asyncTaskThreadPool thread.
 		// Make sure SelectorManager thread has not already caused a transaction timeout.
-		if (complete.compareAndSet(false, true)) {			
+		if (complete.compareAndSet(false, true)) {
 			conn.unregister();
 			conn.updateLastUsed();
 			node.putAsyncConnection(conn);
 			cluster.putByteBuffer(byteBuffer);
-			onSuccess();
+			
+			try {
+				onSuccess();
+			}
+			catch (AerospikeException ae) {
+				// The user's onSuccess() may have already been called which in turn generates this
+				// exception.  It's important to call onFailure() anyhow because the user's code 
+				// may be waiting for completion notification which wasn't yet called in
+				// onSuccess().  This is the only case where both onSuccess() and onFailure()
+				// gets called for the same command.
+				onFailure(ae);
+			}
+			catch (Exception e) {
+				onFailure(new AerospikeException(e));
+			}
 		} 
 	}
 
