@@ -131,6 +131,22 @@ public abstract class SyncCommand extends Command {
 		throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
 	}
 		
+	protected final void emptySocket(Connection conn) throws IOException
+	{
+		// There should not be any more bytes.
+		// Empty the socket to be safe.
+		long sz = Buffer.bytesToLong(dataBuffer, 0);
+		int headerLength = dataBuffer[8];
+		int receiveSize = ((int)(sz & 0xFFFFFFFFFFFFL)) - headerLength;
+
+		// Read remaining message bytes.
+		if (receiveSize > 0)
+		{
+			sizeBuffer(receiveSize);
+			conn.readFully(dataBuffer, receiveSize);
+		}
+	}
+
 	protected abstract Node getNode() throws AerospikeException.InvalidNode;
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 }

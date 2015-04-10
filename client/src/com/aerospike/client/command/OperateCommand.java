@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -16,24 +16,29 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateCommand extends ReadCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final Operation[] operations;
 
 	public OperateCommand(Cluster cluster, WritePolicy policy, Key key, Operation[] operations) {
 		super(cluster, policy, key, null);
-		this.policy = policy;
+		this.writePolicy = policy;
 		this.operations = operations;
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setOperate(policy, key, operations);
+	protected void writeBuffer() {
+		setOperate(writePolicy, key, operations);
+	}
+	
+	@Override
+	protected Node getNode() {
+		return cluster.getMasterNode(partition);
 	}
 }

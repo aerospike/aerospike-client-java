@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -33,7 +33,7 @@ public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 		Key[] keys,
 		ExistsArrayListener listener
 	) throws AerospikeException {
-		super(cluster, keys);
+		super(cluster, policy, keys);
 		this.existsArray = new boolean[keys.length];
 		this.listener = listener;
 		

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,15 +22,22 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class TouchCommand extends SingleCommand {
+public final class TouchCommand extends SyncCommand {
+	private final Cluster cluster;
 	private final WritePolicy policy;
+	private final Key key;
+	private final Partition partition;
 
 	public TouchCommand(Cluster cluster, WritePolicy policy, Key key) {
-		super(cluster, key);
+		this.cluster = cluster;
 		this.policy = policy;
+		this.key = key;
+		this.partition = new Partition(key);
 	}
 	
 	@Override
@@ -39,11 +46,17 @@ public final class TouchCommand extends SingleCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setTouch(policy, key);
 	}
 
-	protected void parseResult(Connection conn) throws AerospikeException, IOException {
+	@Override
+	protected Node getNode() {
+		return cluster.getMasterNode(partition);
+	}
+
+	@Override
+	protected void parseResult(Connection conn) throws IOException {
 		// Read header.		
 		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 		

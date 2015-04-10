@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -38,7 +38,7 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		HashSet<String> binNames,
 		int readAttr
 	) throws AerospikeException {
-		super(cluster, keys);
+		super(cluster, policy, keys);
 		this.recordArray = new Record[keys.length];
 		this.listener = listener;
 		

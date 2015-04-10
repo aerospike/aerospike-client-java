@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -32,6 +32,7 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
+	boolean hasReplicasAll;
 
 	public NodeValidator(Cluster cluster, Host host) throws Exception {
 		try {
@@ -65,7 +66,15 @@ public final class NodeValidator {
 					
 					if (nodeName != null) {
 						this.name = nodeName;
-						this.address = address;						
+						this.address = address;
+						
+						try {
+							BuildVersion buildVersion = new BuildVersion(map.get("build"));
+							this.hasReplicasAll = buildVersion.hasReplicasAll();
+						}
+						catch (Exception e) {
+							// Unexpected exception. Use default info protocol.
+						}
 						return;
 					}
 				}
@@ -91,5 +100,55 @@ public final class NodeValidator {
 			throw new AerospikeException.Connection("Failed to find addresses for " + host);
 		}
 		throw exception;
+	}
+	
+	private static final class BuildVersion {
+		private final int major;
+		private final int minor;
+		private final int revision;
+		
+		private BuildVersion(String version) {
+			int begin = 0;			
+			int i = begin;
+			int max = version.length();
+			
+			while (i < max) {
+				if (! Character.isDigit(version.charAt(i))) {
+					break;
+				}
+				i++;
+			}
+			
+			major = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
+			begin = ++i;
+			
+			while (i < max) {
+				if (! Character.isDigit(version.charAt(i))) {
+					break;
+				}
+				i++;
+			}
+
+			minor = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
+			begin = ++i;
+			
+			while (i < max) {
+				if (! Character.isDigit(version.charAt(i))) {
+					break;
+				}
+				i++;
+			}
+			
+			revision = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
+		}
+
+		private boolean hasReplicasAll() {
+			// Check for "replicas-all" info protocol support (version >= 3.5.8).
+			return isGreaterEqual(3, 5, 8);
+		}
+		
+		private boolean isGreaterEqual(int v1, int v2, int v3) {
+			return major > v1 || (major == v1 && (minor > v2 || (minor == v2 && revision >= v3)));
+		}
 	}
 }

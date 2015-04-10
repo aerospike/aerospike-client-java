@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,15 +22,16 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.policy.BatchPolicy;
 
 public abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 	protected final Key[] keys;
 	protected final List<BatchNode> batchNodes;
 	protected final int taskSize;
 
-	public AsyncBatchExecutor(Cluster cluster, Key[] keys) throws AerospikeException {
+	public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys) throws AerospikeException {
 		this.keys = keys;	
-		this.batchNodes = BatchNode.generateList(cluster, keys);
+		this.batchNodes = BatchNode.generateList(cluster, policy, keys);
 		
 		// Count number of asynchronous commands needed.
 		int size = 0;		

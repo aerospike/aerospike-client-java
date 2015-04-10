@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -25,10 +25,11 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.policy.BatchPolicy;
 
 public final class BatchNode {
 	
-	public static List<BatchNode> generateList(Cluster cluster, Key[] keys) throws AerospikeException {
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys) throws AerospikeException {
 		Node[] nodes = cluster.getNodes();
 		
 		if (nodes.length == 0) {
@@ -46,7 +47,7 @@ public final class BatchNode {
 			Partition partition = new Partition(key);			
 			BatchNode batchNode;
 			
-			Node node = cluster.getNode(partition);
+			Node node = cluster.getReadNode(partition, policy.replica);
 			batchNode = findBatchNode(batchNodes, node);
 			
 			if (batchNode == null) {

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
@@ -33,13 +34,17 @@ import com.aerospike.client.util.ThreadLocalData;
 public class AsyncRead extends AsyncSingleCommand {
 	private final Policy policy;
 	private final RecordListener listener;
+	protected final Key key;
+	protected final Partition partition;
 	private final String[] binNames;
 	private Record record;
 	
 	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
-		super(cluster, key);
+		super(cluster);
 		this.policy = policy;
 		this.listener = listener;
+		this.key = key;
+		this.partition = new Partition(key);
 		this.binNames = binNames;
 	}
 
@@ -49,11 +54,17 @@ public class AsyncRead extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setRead(policy, key, binNames);
 	}
 
-	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
+	@Override
+	protected AsyncNode getNode() {
+		return (AsyncNode)cluster.getReadNode(partition, policy.replica);
+	}
+
+	@Override
+	protected final void parseResult(ByteBuffer byteBuffer) {
 		dataBuffer = ThreadLocalData.getBuffer();
 		
 		if (receiveSize > dataBuffer.length) {
@@ -128,12 +139,14 @@ public class AsyncRead extends AsyncSingleCommand {
 	    return new Record(bins, generation, expiration);
 	}
 
+	@Override
 	protected final void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, record);
 		}
 	}
 
+	@Override
 	protected final void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);

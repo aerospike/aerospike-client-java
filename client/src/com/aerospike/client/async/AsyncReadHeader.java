@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,18 +22,23 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
 public class AsyncReadHeader extends AsyncSingleCommand {
 	private final Policy policy;
 	private final RecordListener listener;
+	private final Key key;
+	private final Partition partition;
 	private Record record;
 	
 	public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) {
-		super(cluster, key);
+		super(cluster);
 		this.policy = policy;
 		this.listener = listener;
+		this.key = key;
+		this.partition = new Partition(key);
 	}
 
 	@Override
@@ -42,11 +47,17 @@ public class AsyncReadHeader extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setReadHeader(policy, key);
 	}
 
-	protected final void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
+	@Override
+	protected AsyncNode getNode() {
+		return (AsyncNode)cluster.getReadNode(partition, policy.replica);
+	}
+
+	@Override
+	protected final void parseResult(ByteBuffer byteBuffer) {
 		int resultCode = byteBuffer.get(5) & 0xFF;
 
         if (resultCode == 0) {
@@ -64,12 +75,14 @@ public class AsyncReadHeader extends AsyncSingleCommand {
         }		        
 	}
 
+	@Override
 	protected final void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, record);
 		}
 	}
 
+	@Override
 	protected final void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);

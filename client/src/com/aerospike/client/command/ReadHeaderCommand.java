@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -24,15 +24,22 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
-public class ReadHeaderCommand extends SingleCommand {
+public class ReadHeaderCommand extends SyncCommand {
+	private final Cluster cluster;
 	private final Policy policy;
+	private final Key key;
+	private final Partition partition;
 	private Record record;
 
 	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
-		super(cluster, key);
+		this.cluster = cluster;
 		this.policy = policy;
+		this.key = key;
+		this.partition = new Partition(key);
 	}
 	
 	@Override
@@ -41,11 +48,17 @@ public class ReadHeaderCommand extends SingleCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setReadHeader(policy, key);
 	}
 
-	protected void parseResult(Connection conn) throws AerospikeException, IOException {
+	@Override
+	protected Node getNode() {
+		return cluster.getReadNode(partition, policy.replica);
+	}
+
+	@Override
+	protected void parseResult(Connection conn) throws IOException {
 		// Read header.		
 		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
 

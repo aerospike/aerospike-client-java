@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -34,6 +35,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.Replica;
 import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
@@ -48,7 +50,7 @@ public class Cluster implements Runnable, Closeable {
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	private volatile HashMap<String,AtomicReferenceArray<Node>> partitionWriteMap;
+	private volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
 	
 	// IP translations.
 	protected final Map<String,String> ipMap;
@@ -62,6 +64,9 @@ public class Cluster implements Runnable, Closeable {
 	// Random node index.
 	private final AtomicInteger nodeIndex;
 	
+	// Random partition replica index. 
+	private final AtomicInteger replicaIndex;
+
 	// Thread pool used in batch, scan and query commands.
 	private final ExecutorService threadPool;
 	
@@ -84,6 +89,9 @@ public class Cluster implements Runnable, Closeable {
 	// Is threadPool shared with other client instances?
 	private final boolean sharedThreadPool;
 	
+	// Request prole replicas in addition to master replicas?
+	private boolean requestProleReplicas;
+
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
 		
@@ -128,42 +136,50 @@ public class Cluster implements Runnable, Closeable {
 			threadPool = policy.threadPool;
 		}
 		sharedThreadPool = policy.sharedThreadPool;
+		requestProleReplicas = policy.requestProleReplicas;
 		
 		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	
-		partitionWriteMap = new HashMap<String,AtomicReferenceArray<Node>>();		
+		partitionMap = new HashMap<String,AtomicReferenceArray<Node>[]>();		
 		nodeIndex = new AtomicInteger();
+		replicaIndex = new AtomicInteger();
 	}
 	
 	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {		
 		// Tend cluster until all nodes identified.
-        waitTillStabilized(failIfNotConnected);
-        
-        if (Log.debugEnabled()) {
-        	for (Host host : seeds) {
+		waitTillStabilized(failIfNotConnected);
+		
+		if (Log.debugEnabled()) {
+			for (Host host : seeds) {
 				Log.debug("Add seed " + host);
-        	}
-        }
-        
-        // Add other nodes as seeds, if they don't already exist.
-        ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length);
-        for (Node node : nodes) {
-        	Host host = node.getHost();
-        	if (! findSeed(host)) {
-        		seedsToAdd.add(host);
-        	}
-        }
-        
-        if (seedsToAdd.size() > 0) {
-        	addSeeds(seedsToAdd.toArray(new Host[seedsToAdd.size()]));
-        }
-
+			}
+		}
+		
+		// Add other nodes as seeds, if they don't already exist.
+		ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length);
+		for (Node node : nodes) {
+			Host host = node.getHost();
+			if (! findSeed(host)) {
+				seedsToAdd.add(host);
+			}
+			
+			// Disable prole requests if some nodes don't support it.
+			if (requestProleReplicas && ! node.hasReplicasAll) {
+				Log.warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
+				requestProleReplicas = false;
+			}
+		}
+		
+		if (seedsToAdd.size() > 0) {
+			addSeeds(seedsToAdd.toArray(new Host[seedsToAdd.size()]));
+		}
+		
 		// Run cluster tend thread.
-        tendValid = true;
-        tendThread = new Thread(this);
-        tendThread.setName("tend");
-        tendThread.setDaemon(true);
-        tendThread.start();
+		tendValid = true;
+		tendThread = new Thread(this);
+		tendThread.setName("tend");
+		tendThread.setDaemon(true);
+		tendThread.start();
 	}
 	
 	public final void addSeeds(Host[] hosts) {
@@ -293,15 +309,13 @@ public class Cluster implements Runnable, Closeable {
 		return aliases.get(alias);
 	}
 	
-	protected final int updatePartitions(Connection conn, Node node) throws AerospikeException {
-		PartitionInfo info = new PartitionInfo(conn, "partition-generation", "replicas-master");
-		int generation = info.parseGeneration();
-		HashMap<String,AtomicReferenceArray<Node>> map = info.parsePartitions(partitionWriteMap, node);
-				
-		if (map != null) {		
-			partitionWriteMap = map;
+	protected final int updatePartitions(Connection conn, Node node) throws AerospikeException {		
+		PartitionParser parser = new PartitionParser(conn, node, partitionMap, Node.PARTITIONS, requestProleReplicas);			
+
+		if (parser.isPartitionMapCopied()) {		
+			partitionMap = parser.getPartitionMap();
 		}
-		return generation;
+		return parser.getGeneration();
 	}
 
 	private final boolean seedNodes(boolean failIfNotConnected) throws AerospikeException {
@@ -481,14 +495,16 @@ public class Cluster implements Runnable, Closeable {
 	}
 	
 	private final boolean findNodeInPartitionMap(Node filter) {
-		for (AtomicReferenceArray<Node> nodeArray : partitionWriteMap.values()) {
-			int max = nodeArray.length();
-			
-			for (int i = 0; i < max; i++) {
-				Node node = nodeArray.get(i);
-				// Use reference equality for performance.
-				if (node == filter) {
-					return true;
+		for (AtomicReferenceArray<Node>[] replicasArray : partitionMap.values()) {
+			for (AtomicReferenceArray<Node> nodeArray : replicasArray) {
+				int max = nodeArray.length();
+				
+				for (int i = 0; i < max; i++) {
+					Node node = nodeArray.get(i);
+					// Use reference equality for performance.
+					if (node == filter) {
+						return true;
+					}
 				}
 			}
 		}
@@ -609,16 +625,53 @@ public class Cluster implements Runnable, Closeable {
 		return nodeArray.length > 0 && tendValid;
 	}
 	
-	public final Node getNode(Partition partition) throws AerospikeException.InvalidNode {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,AtomicReferenceArray<Node>> map = partitionWriteMap;
-		AtomicReferenceArray<Node> nodeArray = map.get(partition.namespace);
+	public final Node getReadNode(Partition partition, Replica replica) throws AerospikeException.InvalidNode {
+		switch (replica) {
+		case MASTER:
+			return getMasterNode(partition);
+			
+		case MASTER_PROLES:
+			return getMasterProlesNode(partition);			
 		
-		if (nodeArray != null) {
-			Node node = nodeArray.get(partition.partitionId);
+		default:
+		case RANDOM:
+			return getRandomNode();			
+		}
+	}
+
+	public final Node getMasterNode(Partition partition) throws AerospikeException.InvalidNode {		
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,AtomicReferenceArray<Node>[]> map = partitionMap;
+		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
+		
+		if (replicaArray != null) {
+			Node node = replicaArray[0].get(partition.partitionId);
 			
 			if (node != null && node.isActive()) {
 				return node;
+			}
+		}
+		/*
+		if (Log.debugEnabled()) {
+			Log.debug("Choose random node for " + partition);
+		}
+		*/
+		return getRandomNode();
+	}
+
+	private final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {		
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,AtomicReferenceArray<Node>[]> map = partitionMap;
+		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
+		
+		if (replicaArray != null) {
+			for (int i = 0; i < replicaArray.length; i++) {
+				int index = Math.abs(replicaIndex.getAndIncrement() % replicaArray.length);						
+				Node node = replicaArray[index].get(partition.partitionId);
+				
+				if (node != null && node.isActive()) {
+					return node;
+				}				
 			}
 		}
 		/*
@@ -673,6 +726,26 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return null;
+	}
+
+	public final void printPartitionMap() {
+		for (Entry<String,AtomicReferenceArray<Node>[]> entry : partitionMap.entrySet()) {
+			String namespace = entry.getKey();
+			AtomicReferenceArray<Node>[] replicaArray = entry.getValue();
+			
+			for (int i = 0; i < replicaArray.length; i++) {
+				AtomicReferenceArray<Node> nodeArray = replicaArray[i];
+				int max = nodeArray.length();
+				
+				for (int j = 0; j < max; j++) {
+					Node node = nodeArray.get(j);
+					
+					if (node != null) {
+						Log.info(namespace + ',' + i + ',' + j + ',' + node);
+					}
+				}
+			}
+		}
 	}
 
 	public void changePassword(byte[] user, String password) {

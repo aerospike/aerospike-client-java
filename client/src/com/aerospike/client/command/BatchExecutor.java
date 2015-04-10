@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -42,7 +42,7 @@ public final class BatchExecutor {
 			return;
 		}
 		
-		List<BatchNode> batchNodes = BatchNode.generateList(cluster, keys);
+		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys);
 
 		if (policy.maxConcurrentThreads == 1) {
 			// Run batch requests sequentially in same thread.

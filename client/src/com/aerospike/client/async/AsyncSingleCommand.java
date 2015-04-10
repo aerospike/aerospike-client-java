@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -20,22 +20,12 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.cluster.Partition;
 
 public abstract class AsyncSingleCommand extends AsyncCommand {
-	protected final Key key;
-	private final Partition partition;
 	protected int receiveSize;
 	
-	public AsyncSingleCommand(AsyncCluster cluster, Key key) {
+	public AsyncSingleCommand(AsyncCluster cluster) {
 		super(cluster);
-		this.key = key;
-		this.partition = new Partition(key);
-	}
-	
-	protected final AsyncNode getNode() throws AerospikeException.InvalidNode {	
-		return (AsyncNode)cluster.getNode(partition);
 	}
 	
 	protected final void read() throws AerospikeException, IOException {

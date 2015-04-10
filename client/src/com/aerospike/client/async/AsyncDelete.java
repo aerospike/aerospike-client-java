@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -28,12 +29,16 @@ import com.aerospike.client.policy.WritePolicy;
 public final class AsyncDelete extends AsyncSingleCommand {
 	private final WritePolicy policy;
 	private final DeleteListener listener;
+	private final Key key;
+	private final Partition partition;
 	private boolean existed;
 		
 	public AsyncDelete(AsyncCluster cluster, WritePolicy policy, DeleteListener listener, Key key) {
-		super(cluster, key);
+		super(cluster);
 		this.policy = policy;
 		this.listener = listener;
+		this.key = key;
+		this.partition = new Partition(key);
 	}
 	
 	@Override
@@ -42,11 +47,17 @@ public final class AsyncDelete extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setDelete(policy, key);
 	}
 
-	protected void parseResult(ByteBuffer byteBuffer) throws AerospikeException {
+	@Override
+	protected AsyncNode getNode() {	
+		return (AsyncNode)cluster.getMasterNode(partition);
+	}
+
+	@Override
+	protected void parseResult(ByteBuffer byteBuffer) {
 		int resultCode = byteBuffer.get(5) & 0xFF;
 		        
         if (resultCode == 0) {
@@ -62,12 +73,14 @@ public final class AsyncDelete extends AsyncSingleCommand {
         }
 	}
 
+	@Override
 	protected void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, existed);
 		}
 	}
 
+	@Override
 	protected void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);
