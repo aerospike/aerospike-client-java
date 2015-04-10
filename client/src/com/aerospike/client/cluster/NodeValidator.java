@@ -143,8 +143,8 @@ public final class NodeValidator {
 		}
 
 		private boolean hasReplicasAll() {
-			// Check for "replicas-all" info protocol support (version >= 3.5.8).
-			return isGreaterEqual(3, 5, 8);
+			// Check for "replicas-all" info protocol support (version >= 3.5.9).
+			return isGreaterEqual(3, 5, 9);
 		}
 		
 		private boolean isGreaterEqual(int v1, int v2, int v3) {

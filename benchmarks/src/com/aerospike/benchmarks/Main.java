@@ -36,6 +36,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
+import com.aerospike.client.policy.Replica;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
@@ -201,6 +202,8 @@ public class Main implements Log.Callback {
 			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
 			);
 		
+		options.addOption("prole", false, "Distribute reads across proles in round-robin fashion.");
+
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
 		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
@@ -487,6 +490,11 @@ public class Main implements Log.Callback {
 			else if (! level.equals("all")) {
 				throw new Exception("Invalid commitLevel: " + level);
 			}
+		}
+		
+		if (line.hasOption("prole")) {
+			clientPolicy.requestProleReplicas = true;
+			args.readPolicy.replica = Replica.MASTER_PROLES;
 		}
 
 		if (line.hasOption("threads")) {
