@@ -37,7 +37,7 @@ public class AsyncRead extends AsyncSingleCommand {
 	protected final Key key;
 	protected final Partition partition;
 	private final String[] binNames;
-	private Record record;
+	protected Record record;
 	
 	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
 		super(cluster);
@@ -140,14 +140,14 @@ public class AsyncRead extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected final void onSuccess() {
+	protected void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, record);
 		}
 	}
 
 	@Override
-	protected final void onFailure(AerospikeException e) {
+	protected void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);
 		}

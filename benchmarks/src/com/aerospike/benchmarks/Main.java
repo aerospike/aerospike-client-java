@@ -605,6 +605,7 @@ public class Main implements Log.Callback {
 				+ ", maxRetries: " + args.readPolicy.maxRetries 
 				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
 				+ ", consistencyLevel: " + args.readPolicy.consistencyLevel
+				+ ", replica: " + args.readPolicy.replica
 				+ ", reportNotFound: " + args.reportNotFound);
 		}
 

@@ -24,8 +24,10 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Host;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Value;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.DeleteListener;
+import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
@@ -797,6 +799,43 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 		new AsyncScanExecutor(cluster, policy, listener, namespace, setName, binNames);
 	}
 	
+	//---------------------------------------------------------------
+	// User defined functions
+	//---------------------------------------------------------------
+
+	/**
+	 * Asynchronously execute user defined function on server and return results.
+	 * The function operates on a single record.
+	 * The package name is used to locate the udf file location on the server:
+	 * <p>
+	 * udf file = <server udf dir>/<package name>.lua
+	 * <p>
+	 * This method schedules the execute command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener.
+	 * 
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param key					unique record identifier
+	 * @param packageName			server package name where user defined function resides
+	 * @param functionName			user defined function
+	 * @param functionArgs			arguments passed in to user defined function
+	 * @throws AerospikeException	if transaction fails
+	 */
+	public final void execute(
+		WritePolicy policy,
+		ExecuteListener listener,
+		Key key,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = asyncWritePolicyDefault;
+		}	
+		AsyncExecute command = new AsyncExecute(cluster, policy, listener, key, packageName, functionName, functionArgs);
+		command.execute();
+	}
+
 	//-------------------------------------------------------
 	// Query Operations
 	//-------------------------------------------------------
