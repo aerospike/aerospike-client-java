@@ -61,20 +61,13 @@ public final class NodeValidator {
 						AdminCommand command = new AdminCommand();
 						command.authenticate(conn, cluster.user, cluster.password);
 					}
-					HashMap<String,String> map = Info.request(conn, "node", "build");
+					HashMap<String,String> map = Info.request(conn, "node", "features");
 					String nodeName = map.get("node");
 					
 					if (nodeName != null) {
 						this.name = nodeName;
 						this.address = address;
-						
-						try {
-							BuildVersion buildVersion = new BuildVersion(map.get("build"));
-							this.hasReplicasAll = buildVersion.hasReplicasAll();
-						}
-						catch (Exception e) {
-							// Unexpected exception. Use default info protocol.
-						}
+						setFeatures(map);
 						return;
 					}
 				}
@@ -102,6 +95,35 @@ public final class NodeValidator {
 		throw exception;
 	}
 	
+	private void setFeatures(HashMap<String,String> map) {
+		try {
+			String features = map.get("features");
+			String replicasAll = "replicas-all";
+			int replicasAllLength = replicasAll.length();
+			int begin = 0;
+			
+	        while (true) {
+	        	// Try entry.
+	        	if (features.regionMatches(begin, replicasAll, 0, replicasAllLength)) {
+	    			this.hasReplicasAll = true;
+	    			break;
+	        	}
+	        	
+	        	// Search for next entry.
+	        	begin = features.indexOf(';', begin);
+
+	        	if (begin < 0) {
+	        		break;
+	        	}
+	        	begin++;
+	        }        
+		}
+		catch (Exception e) {
+			// Unexpected exception. Use defaults.
+		}
+	}
+	
+	/*
 	private static final class BuildVersion {
 		private final int major;
 		private final int minor;
@@ -151,4 +173,5 @@ public final class NodeValidator {
 			return major > v1 || (major == v1 && (minor > v2 || (minor == v2 && revision >= v3)));
 		}
 	}
+	*/
 }
