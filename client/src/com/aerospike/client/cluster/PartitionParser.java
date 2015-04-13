@@ -38,9 +38,9 @@ public final class PartitionParser {
 	private final StringBuilder sb;
 	private final byte[] buffer;
 	private final int partitionCount;
+	private final int generation;
 	private int length;
 	private int offset;
-	private int generation;
 	private boolean copied;
 	
 	public PartitionParser(Connection conn, Node node, HashMap<String,AtomicReferenceArray<Node>[]> map, int partitionCount, boolean requestProleReplicas) {
@@ -269,14 +269,28 @@ public final class PartitionParser {
 		byte[] restoreBuffer = Base64.decode(buffer, begin, offset - begin);
 	
 		for (int i = 0; i < partitionCount; i++) {
+			Node nodeOld = nodeArray.get(i);
+			
 			if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
+				// Node owns this partition.
 				// Log.info("Map: " + i);
+				if (node != nodeOld) {
+					// Force previously mapped node to refresh it's partition map on next cluster tend.
+					node.partitionGeneration = -1;
+				}
 				
 				// Use lazy set because there is only one producer thread. In addition,
 				// there is a one second delay due to the cluster tend polling interval.  
 				// An extra millisecond for a node change will not make a difference and 
 				// overall performance is improved.
 				nodeArray.lazySet(i, node);
+			}
+			else {
+				// Node does not own partition.
+				if (node == nodeOld) {
+					// Must erase previous map.
+					nodeArray.lazySet(i, null);
+				}
 			}
 		}
 	}
@@ -287,9 +301,6 @@ public final class PartitionParser {
 			map = new HashMap<String,AtomicReferenceArray<Node>[]>(map);
 			copied = true;
 		}
-		
-		// Force another replicas-all request on next cluster tend.
-		generation = -1;
 	}
 
 	private void expectName(String name) throws AerospikeException {

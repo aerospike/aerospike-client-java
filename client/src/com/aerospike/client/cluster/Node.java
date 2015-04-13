@@ -44,7 +44,7 @@ public class Node implements Closeable {
 	private Host[] aliases;
 	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
-	private int partitionGeneration;
+	protected int partitionGeneration;
 	protected int referenceCount;
 	protected int failures;
 	protected final boolean hasReplicasAll;

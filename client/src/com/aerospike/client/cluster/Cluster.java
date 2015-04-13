@@ -564,7 +564,8 @@ public class Cluster implements Runnable, Closeable {
 			for (Host alias : node.getAliases()) {
 				// Log.debug("Remove alias " + alias);
 				aliases.remove(alias);
-			}
+			}		
+			removeNodeInPartitionMap(node);
 			node.close();
 		}
 
@@ -572,6 +573,23 @@ public class Cluster implements Runnable, Closeable {
 		removeNodesCopy(nodesToRemove);
 	}
 			
+	private final void removeNodeInPartitionMap(Node nodeToRemove) {
+		for (AtomicReferenceArray<Node>[] replicasArray : partitionMap.values()) {
+			for (AtomicReferenceArray<Node> nodeArray : replicasArray) {
+				int max = nodeArray.length();
+				
+				for (int i = 0; i < max; i++) {
+					Node node = nodeArray.get(i);
+					// Use reference equality for performance.
+					if (node == nodeToRemove) {
+						// Remove node from partition map.
+						nodeArray.lazySet(i, null);
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * Remove nodes using copy on write semantics.
 	 */
