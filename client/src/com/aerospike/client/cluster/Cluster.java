@@ -286,8 +286,8 @@ public class Cluster implements Runnable, Closeable {
 			}
 			catch (Exception e) {
 				node.failures++;
-				if (Log.debugEnabled()) {
-					Log.debug("Node " + node + " refresh failed: " + Util.getErrorMessage(e));
+				if (Log.infoEnabled()) {
+					Log.info("Node " + node + " refresh failed: " + Util.getErrorMessage(e));
 				}
 			}
 		}

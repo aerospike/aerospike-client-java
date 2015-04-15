@@ -274,7 +274,7 @@ public final class PartitionParser {
 			if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
 				// Node owns this partition.
 				// Log.info("Map: " + i);
-				if (node != nodeOld) {
+				if (nodeOld != null && nodeOld != node) {
 					// Force previously mapped node to refresh it's partition map on next cluster tend.
 					nodeOld.partitionGeneration = -1;
 				}
