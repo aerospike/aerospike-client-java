@@ -276,7 +276,7 @@ public final class PartitionParser {
 				// Log.info("Map: " + i);
 				if (node != nodeOld) {
 					// Force previously mapped node to refresh it's partition map on next cluster tend.
-					node.partitionGeneration = -1;
+					nodeOld.partitionGeneration = -1;
 				}
 				
 				// Use lazy set because there is only one producer thread. In addition,

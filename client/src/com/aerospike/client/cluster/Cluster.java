@@ -165,7 +165,9 @@ public class Cluster implements Runnable, Closeable {
 			
 			// Disable prole requests if some nodes don't support it.
 			if (requestProleReplicas && ! node.hasReplicasAll) {
-				Log.warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
+				if (Log.warnEnabled()) {
+					Log.warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
+				}
 				requestProleReplicas = false;
 			}
 		}
