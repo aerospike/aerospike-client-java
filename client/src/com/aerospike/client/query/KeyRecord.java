@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -39,5 +39,24 @@ public final class KeyRecord {
 	public KeyRecord(Key key, Record record) {
 		this.key = key;
 		this.record = record;	
+	}
+	
+	/**
+	 * Convert key and record to string.
+	 */
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(1024);
+		
+		if (key != null) {
+			sb.append(key.toString());
+		}
+
+		sb.append(':');
+		
+		if (record != null) {
+			sb.append(record.toString());		
+		}
+		return sb.toString();
 	}
 }

@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -17,6 +17,7 @@
 package com.aerospike.client.query;
 
 import java.io.Closeable;
+import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 
@@ -28,7 +29,7 @@ import com.aerospike.client.Log;
  * Multiple threads will retrieve results from the server nodes and put these results on the queue.
  * The single user thread consumes these results from the queue.
  */
-public final class ResultSet implements Closeable {
+public final class ResultSet implements Iterable<Object>, Closeable {
 	public static final Integer END = new Integer(-1);
 	
 	private final QueryAggregateExecutor executor;
@@ -93,6 +94,14 @@ public final class ResultSet implements Closeable {
 		}
 	}
 	
+	/**
+	 * Provide Iterator for RecordSet.
+	 */
+	@Override
+	public Iterator<Object> iterator() {
+		return new ResultSetIterator(this);
+	}
+
 	//-------------------------------------------------------
 	// Meta-data retrieval methods
 	//-------------------------------------------------------
@@ -152,6 +161,37 @@ public final class ResultSet implements Closeable {
 				}
 				break;				
 			}
+		}
+	}
+	
+	/**
+	 * Support standard iteration interface for RecordSet.
+	 */
+	private class ResultSetIterator implements Iterator<Object>, Closeable {
+		
+		private final ResultSet resultSet;
+
+		ResultSetIterator(ResultSet resultSet){
+			this.resultSet = resultSet;
+		}
+
+		@Override
+		public boolean hasNext() {
+			return this.resultSet.next();
+		}
+
+		@Override
+		public Object next() {
+			return this.resultSet.row;
+		}
+
+		@Override
+		public void remove() {
+		}
+
+		@Override
+		public void close() {
+			this.resultSet.close();
 		}
 	}
 }
