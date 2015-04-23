@@ -28,9 +28,14 @@ public final class Role {
 	public static final String UserAdmin = "user-admin";
 
 	/**
-	 * Manage indicies, user defined functions and server configuration. 
+	 * Manage server configuration. 
 	 */
 	public static final String SysAdmin = "sys-admin";
+
+	/**
+	 * Manage indicies and user defined functions. 
+	 */
+	public static final String DataAdmin = "data-admin";
 
 	/**
 	 * Allow read transactions.

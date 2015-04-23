@@ -29,10 +29,18 @@ public enum PrivilegeCode {
 	
 	/**
 	 * User can perform systems administration functions on a database that do not involve user
-	 * administration.  Global scope only.
+	 * administration.  Examples include server configuration.
+	 * Global scope only.
 	 */
 	SYS_ADMIN(1, Role.SysAdmin),
 	
+	/**
+	 * User can perform data administration functions on a database that do not involve user
+	 * administration.  Examples include index and user defined function management.
+	 * Global scope only.
+	 */
+	DATA_ADMIN(2, Role.DataAdmin),
+
 	/**
 	 * User can read data only.
 	 */
