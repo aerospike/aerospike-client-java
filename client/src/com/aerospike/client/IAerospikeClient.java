@@ -440,7 +440,7 @@ public interface IAerospikeClient {
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param createModule			no longer used, pass in null.
+	 * @param userModule			no longer used, pass in null.
 	 */
 	public LargeList getLargeList(Policy policy, Key key, String binName, String userModule);
 
@@ -454,7 +454,7 @@ public interface IAerospikeClient {
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binName				bin name
-	 * @param createModule			no longer used, pass in null.
+	 * @param userModule			no longer used, pass in null.
 	 */
 	public LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule);
 
