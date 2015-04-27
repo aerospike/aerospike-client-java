@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -15,6 +15,8 @@
  * the License.
  */
 package com.aerospike.client;
+
+import com.aerospike.client.cluster.Node;
 
 /**
  * Aerospike exceptions that can be thrown from the client.
@@ -102,6 +104,7 @@ public class AerospikeException extends RuntimeException {
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 		
+		public Node node;
 		public int timeout;
 		public int iterations;
 		public int failedNodes;
@@ -112,8 +115,9 @@ public class AerospikeException extends RuntimeException {
 			this.timeout = -1;
 		}
 		
-		public Timeout(int timeout, int iterations, int failedNodes, int failedConns) {
+		public Timeout(Node node, int timeout, int iterations, int failedNodes, int failedConns) {
 			super(ResultCode.TIMEOUT);
+			this.node = node;
 			this.timeout = timeout;
 			this.iterations = iterations;
 			this.failedNodes = failedNodes;
@@ -126,7 +130,8 @@ public class AerospikeException extends RuntimeException {
 				return super.getMessage();
 			}
 			return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns;
+				" failedNodes=" + failedNodes + " failedConns=" + failedConns +
+				" lastNode=" + node;
 		}
 	}
 

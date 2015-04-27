@@ -1,5 +1,5 @@
 /* 
- * Copyright 2012-2014 Aerospike, Inc.
+ * Copyright 2012-2015 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements.
@@ -31,13 +31,13 @@ public abstract class SyncCommand extends Command {
 		Policy policy = getPolicy();        
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
+		Node node = null;
         int failedNodes = 0;
         int failedConns = 0;
         int iterations = 0;
 
         // Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
-			Node node = null;
 			try {		
 				node = getNode();
 				Connection conn = node.getConnection(remainingMillis);
@@ -121,14 +121,12 @@ public abstract class SyncCommand extends Command {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
+
+			// Reset node reference and try again.
+			node = null;
 		}
 		
-		/*
-		if (Log.debugEnabled()) {
-			Log.debug("Client timeout: timeout=" + policy.timeout + " iterations=" + iterations + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns);
-		}*/
-		throw new AerospikeException.Timeout(policy.timeout, iterations, failedNodes, failedConns);
+		throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
 	}
 		
 	protected final void emptySocket(Connection conn) throws IOException
