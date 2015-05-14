@@ -4,7 +4,7 @@ Aerospike Java Client License
     Copyright 2012-2015 Aerospike, Inc.
 
     Portions may be licensed to Aerospike, Inc. under one or more contributor
-    license agreements.
+    license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
 
     Licensed under the Apache License, Version 2.0 (the "License"); you may not
     use this file except in compliance with the License. You may obtain a copy of
@@ -20,8 +20,11 @@ Aerospike Java Client License
 Third Party Libraries
 ---------------------
 
-The Aerospike Java client links with third-party libraries.  The licenses for these 
-libraries are listed below:
+The Aerospike Java client links with third-party libraries. These licenses are compatible
+with the Apache License, Version 2.0, creating a client library package which is 
+Apache License, Version 2.0 compatible.
+
+The licenses for these libraries are listed below:
 
 GNU Crypto
 ----------
@@ -44,8 +47,7 @@ GNU Crypto
     is permitted. GPL with that exception is sometimes called the Guile License, because
     the Guile implementation of Scheme (for embedding) uses this license.
 
-
-    http://www.gnu.org/licenses/gpl-3.0.txt
+    http://www.gnu.org/software/gnu-crypto
 
 Luaj
 ----
