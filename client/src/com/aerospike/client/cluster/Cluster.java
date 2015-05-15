@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -122,15 +121,7 @@ public class Cluster implements Runnable, Closeable {
 		ipMap = policy.ipMap;
 		
 		if (policy.threadPool == null) {
-			// Create cached thread pool with daemon threads.
-			// Daemon threads automatically terminate when the program terminates.
-			threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-				public final Thread newThread(Runnable runnable) {
-					Thread thread = new Thread(runnable);
-					thread.setDaemon(true);
-					return thread;
-				}
-			});
+			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
 		}
 		else {
 			threadPool = policy.threadPool;

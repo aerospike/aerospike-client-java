@@ -91,6 +91,7 @@
             <include>com/aerospike/client/async/IAsyncClient.java</include>
             <include>com/aerospike/client/async/MaxCommandAction.java</include>
             <include>com/aerospike/client/cluster/Node.java</include>
+            <include>com/aerospike/client/cluster/ThreadDaemonFactory.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>
             <include>com/aerospike/client/query/Filter.java</include>
             <include>com/aerospike/client/query/IndexCollectionType.java</include>
