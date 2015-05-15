@@ -16,6 +16,8 @@
  */
 package com.aerospike.examples;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -24,7 +26,7 @@ import com.aerospike.client.policy.ScanPolicy;
 
 public class ScanParallel extends Example implements ScanCallback {
 
-	private int recordCount = 0;
+	private AtomicInteger recordCount;
 
 	public ScanParallel(Console console) {
 		super(console);
@@ -36,25 +38,26 @@ public class ScanParallel extends Example implements ScanCallback {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		console.info("Scan parallel: namespace=" + params.namespace + " set=" + params.set);
-		recordCount = 0;
+		recordCount = new AtomicInteger();
 		long begin = System.currentTimeMillis();
 		ScanPolicy policy = new ScanPolicy();
 		client.scanAll(policy, params.namespace, params.set, this);
 
 		long end = System.currentTimeMillis();
 		double seconds =  (double)(end - begin) / 1000.0;
-		console.info("Total records returned: " + recordCount);
+		int count = recordCount.get();
+		console.info("Total records returned: " + count);
 		console.info("Elapsed time: " + seconds + " seconds");
-		double performance = Math.round((double)recordCount / seconds);
+		double performance = Math.round((double)count / seconds);
 		console.info("Records/second: " + performance);
 	}
 
 	@Override
 	public void scanCallback(Key key, Record record) {
-		recordCount++;
+		int count = recordCount.incrementAndGet();
 
-		if ((recordCount % 10000) == 0) {
-			console.info("Records " + recordCount);
+		if ((count % 10000) == 0) {
+			console.info("Records " + count);
 		}
 	}
 }
