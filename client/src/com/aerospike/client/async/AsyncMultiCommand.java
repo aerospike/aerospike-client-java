@@ -18,7 +18,6 @@ package com.aerospike.client.async;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
@@ -33,14 +32,14 @@ import com.aerospike.client.command.FieldType;
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	
 	private final AsyncMultiExecutor parent;
-	private final AsyncNode node;
-	protected final HashSet<String> binNames;
+	protected final AsyncNode node;
 	protected byte[] receiveBuffer;
 	protected int receiveSize;
 	protected int receiveOffset;
 	protected int resultCode;
 	protected int generation;
 	protected int expiration;
+	protected int batchIndex;
 	protected int fieldCount;
 	protected int opCount;
 	private final boolean stopOnNotFound;
@@ -51,15 +50,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		this.parent = parent;
 		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
-		this.binNames = null;
-	}
-
-	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound, HashSet<String> binNames) {
-		super(cluster);
-		this.parent = parent;
-		this.node = node;
-		this.stopOnNotFound = stopOnNotFound;
-		this.binNames = binNames;
 	}
 
 	protected final AsyncNode getNode() {	
@@ -150,6 +140,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}			
 			generation = Buffer.bytesToInt(receiveBuffer, receiveOffset + 6);
 			expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
+			batchIndex = Buffer.bytesToInt(receiveBuffer, receiveOffset + 14);
 			fieldCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 18);
 			opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
 
@@ -203,33 +194,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 		}
 		return new Key(namespace, digest, setName, userKey);		
-	}
-	
-	protected Record parseRecordBatch() throws AerospikeException {		
-		Map<String,Object> bins = null;
-		
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			byte particleType = receiveBuffer[receiveOffset+5];
-			byte nameSize = receiveBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
-			receiveOffset += 4 + 4 + nameSize;
-	
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
-	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
-			receiveOffset += particleBytesSize;
-
-			// Currently, the batch command returns all the bins even if a subset of
-			// the bins are requested. We have to filter it on the client side.
-			// TODO: Filter batch bins on server!
-			if (binNames == null || binNames.contains(name)) {				
-				if (bins == null) {
-					bins = new HashMap<String,Object>();
-				}
-				bins.put(name, value);
-			}
-	    }
-	    return new Record(bins, generation, expiration);	    
 	}
 	
 	protected Record parseRecord() throws AerospikeException {		

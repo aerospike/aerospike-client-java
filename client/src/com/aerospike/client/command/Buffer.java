@@ -288,6 +288,9 @@ public final class Buffer {
     }
     
     public static String bytesToHexString(byte[] buf) {
+    	if (buf == null || buf.length == 0) {
+    		return "";
+    	}
 		StringBuilder sb = new StringBuilder(buf.length * 2);
 		
 		for (int i = 0; i < buf.length; i++) {

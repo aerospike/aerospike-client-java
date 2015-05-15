@@ -51,7 +51,7 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(policy, keys, batchNamespace);
+		setBatchExists(policy, keys, batchNamespace, node.hasBatchIndex);
 	}
 
 	@Override

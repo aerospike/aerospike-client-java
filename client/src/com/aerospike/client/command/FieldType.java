@@ -37,4 +37,5 @@ public final class FieldType {
 	public final static int UDF_ARGLIST = 32;
 	public final static int UDF_OP = 33;
 	public final static int QUERY_BINLIST = 40;
+	public final static int BATCH_INDEX = 41;
 }

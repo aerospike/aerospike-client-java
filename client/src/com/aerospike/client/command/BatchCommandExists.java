@@ -53,7 +53,7 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(policy, keys, batch);
+		setBatchExists(policy, keys, batch, node.hasBatchIndex);
 	}
 
 	/**
@@ -85,6 +85,7 @@ public final class BatchCommandExists extends MultiCommand {
 				return false;
 			}
 			
+			int batchIndex = Buffer.bytesToInt(dataBuffer, 14);
 			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
 			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			
@@ -93,7 +94,7 @@ public final class BatchCommandExists extends MultiCommand {
 			}
 						
 			Key key = parseKey(fieldCount);
-			int offset = batch.offsets[index++];
+			int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
 			
 			if (Arrays.equals(key.digest, keys[offset].digest)) {
 				existsArray[offset] = resultCode == 0;

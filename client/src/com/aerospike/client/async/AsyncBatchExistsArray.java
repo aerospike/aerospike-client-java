@@ -54,7 +54,7 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(policy, keys, batch);
+		setBatchExists(policy, keys, batch, node.hasBatchIndex);
 	}
 
 	@Override
@@ -63,7 +63,7 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
 		}
 		
-		int offset = batch.offsets[index++];
+		int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
 		
 		if (Arrays.equals(key.digest, keys[offset].digest)) {
 			existsArray[offset] = resultCode == 0;			

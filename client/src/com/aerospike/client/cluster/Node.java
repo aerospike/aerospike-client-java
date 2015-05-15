@@ -47,7 +47,8 @@ public class Node implements Closeable {
 	protected int partitionGeneration;
 	protected int referenceCount;
 	protected int failures;
-	protected final boolean hasReplicasAll;
+	public final boolean hasBatchIndex;
+	public final boolean hasReplicasAll;
 	protected volatile boolean active;
 
 	/**
@@ -61,6 +62,7 @@ public class Node implements Closeable {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
+		this.hasBatchIndex = nv.hasBatchIndex;
 		this.hasReplicasAll = nv.hasReplicasAll;
 		
 		// Assign host to first IP alias because the server identifies nodes 

@@ -32,6 +32,7 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
+	boolean hasBatchIndex;
 	boolean hasReplicasAll;
 
 	public NodeValidator(Cluster cluster, Host host) throws Exception {
@@ -98,25 +99,27 @@ public final class NodeValidator {
 	private void setFeatures(HashMap<String,String> map) {
 		try {
 			String features = map.get("features");
-			String replicasAll = "replicas-all";
-			int replicasAllLength = replicasAll.length();
 			int begin = 0;
+			int end = 0;
+			int len;
 			
-	        while (true) {
-	        	// Try entry.
-	        	if (features.regionMatches(begin, replicasAll, 0, replicasAllLength)) {
-	    			this.hasReplicasAll = true;
-	    			break;
-	        	}
-	        	
-	        	// Search for next entry.
-	        	begin = features.indexOf(';', begin);
-
-	        	if (begin < 0) {
-	        		break;
-	        	}
-	        	begin++;
-	        }        
+			while (end < features.length() && !(this.hasBatchIndex && this.hasReplicasAll)) {
+				end = features.indexOf(';', begin);
+				
+				if (end < 0) {
+					end = features.length();
+				}
+				len = end - begin;
+				
+				if (features.regionMatches(begin, "batch-index", 0, len)) {
+					this.hasBatchIndex = true;
+				}
+				
+				if (features.regionMatches(begin, "replicas-all", 0, len)) {
+					this.hasReplicasAll = true;
+				}	        	
+				begin = end + 1;
+			}        
 		}
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.

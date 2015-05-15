@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.util.HashSet;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -34,7 +33,7 @@ public final class BatchExecutor {
 		Key[] keys,
 		boolean[] existsArray,
 		Record[] records,
-		HashSet<String> binNames,
+		String[] binNames,
 		int readAttr
 	) throws AerospikeException {
 		

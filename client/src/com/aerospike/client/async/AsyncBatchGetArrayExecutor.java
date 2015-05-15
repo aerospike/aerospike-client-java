@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashSet;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -35,7 +33,7 @@ public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
 		BatchPolicy policy, 
 		RecordArrayListener listener,
 		Key[] keys,
-		HashSet<String> binNames,
+		String[] binNames,
 		int readAttr
 	) throws AerospikeException {
 		super(cluster, policy, keys);

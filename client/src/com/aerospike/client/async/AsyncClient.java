@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashSet;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -615,8 +613,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
-		HashSet<String> names = binNamesToHashSet(binNames);
-		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
+		new AsyncBatchGetArrayExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 	}
 
 	/**
@@ -660,8 +657,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
-		HashSet<String> names = binNamesToHashSet(binNames);
-		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, names, Command.INFO1_READ);
+		new AsyncBatchGetSequenceExecutor(cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 	}
 
 	/**

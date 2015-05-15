@@ -17,7 +17,6 @@
 package com.aerospike.client.async;
 
 import java.util.Arrays;
-import java.util.HashSet;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -30,6 +29,7 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
+	private final String[] binNames;
 	private final Record[] records;
 	private final int readAttr;
 	private int index;
@@ -41,14 +41,15 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 		BatchNode.BatchNamespace batch,
 		Policy policy,
 		Key[] keys,
-		HashSet<String> binNames,
+		String[] binNames,
 		Record[] records,
 		int readAttr
 	) {
-		super(parent, cluster, node, false, binNames);
+		super(parent, cluster, node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
+		this.binNames = binNames;
 		this.records = records;
 		this.readAttr = readAttr;
 	}
@@ -60,16 +61,16 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(policy, keys, batch, binNames, readAttr);
+		setBatchGet(policy, keys, batch, binNames, readAttr, node.hasBatchIndex);
 	}
 
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {
-		int offset = batch.offsets[index++];
+		int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
 
 		if (Arrays.equals(key.digest, keys[offset].digest)) {			
 			if (resultCode == 0) {
-				records[offset] = parseRecordBatch();
+				records[offset] = parseRecord();
 			}
 		}
 		else {

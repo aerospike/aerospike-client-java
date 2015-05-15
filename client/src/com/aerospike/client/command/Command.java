@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.util.HashSet;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -39,6 +37,7 @@ public abstract class Command {
 	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
+	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
 	public static final int INFO1_CONSISTENCY_ALL	= (1 << 6); // Involve all replicas in read operation.
 
@@ -214,61 +213,124 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchExists(Policy policy, Key[] keys, BatchNamespace batch) {
+	public final void setBatchExists(Policy policy, Key[] keys, BatchNamespace batch, boolean hasBatchIndex) {
 		// Estimate buffer size
 		begin();
-		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
-
-		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
-				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-				
-		sizeBuffer();
-
-		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
-		writeField(batch.namespace, FieldType.NAMESPACE);
-		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-	
-		int[] offsets = batch.offsets;
-		int max = batch.offsetsSize;
 		
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
-		    dataOffset += digest.length;
+		if (hasBatchIndex) {
+			int byteSize = batch.offsetsSize * (SyncCommand.DIGEST_SIZE + 4);
+			
+			dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
+					FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+					
+			sizeBuffer();
+	
+			writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA | Command.INFO1_BATCH, 0, 2, 0);
+			writeField(batch.namespace, FieldType.NAMESPACE);
+			writeFieldHeader(byteSize, FieldType.BATCH_INDEX);
+		
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+			
+			for (int i = 0; i < max; i++) {
+				int index = offsets[i];
+				Buffer.intToBytes(index, dataBuffer, dataOffset);
+				dataOffset += 4;
+				
+				byte[] digest = keys[index].digest;
+			    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			    dataOffset += digest.length;
+			}			
+		}
+		else {
+			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
+	
+			dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
+					FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+					
+			sizeBuffer();
+	
+			writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, 2, 0);
+			writeField(batch.namespace, FieldType.NAMESPACE);
+			writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+		
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+			
+			for (int i = 0; i < max; i++) {
+				Key key = keys[offsets[i]];
+				byte[] digest = key.digest;
+			    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			    dataOffset += digest.length;
+			}
 		}
 		end();
 	}
 
-	public final void setBatchGet(Policy policy, Key[] keys, BatchNamespace batch, HashSet<String> binNames, int readAttr) {
+	public final void setBatchGet(Policy policy, Key[] keys, BatchNamespace batch, String[] binNames, int readAttr, boolean hasBatchIndex) {
 		// Estimate buffer size
 		begin();
-		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
-
-		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
-				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
 		
-		if (binNames != null) {
-			for (String binName : binNames) {
-				estimateOperationSize(binName);
-			}			
+		if (hasBatchIndex) {
+			int byteSize = batch.offsetsSize * (SyncCommand.DIGEST_SIZE + 4);
+			
+			dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
+					FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			
+			if (binNames != null) {
+				for (String binName : binNames) {
+					estimateOperationSize(binName);
+				}			
+			}
+			
+			sizeBuffer();
+			
+			int operationCount = (binNames == null)? 0 : binNames.length;
+			writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 2, operationCount);		
+			writeField(batch.namespace, FieldType.NAMESPACE);
+			writeFieldHeader(byteSize, FieldType.BATCH_INDEX);
+			
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+			
+			for (int i = 0; i < max; i++) {
+				int index = offsets[i];
+				Buffer.intToBytes(index, dataBuffer, dataOffset);
+				dataOffset += 4;
+				
+				byte[] digest = keys[index].digest;
+			    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			    dataOffset += digest.length;
+			}
 		}
-		
-		sizeBuffer();
-
-		int operationCount = (binNames == null)? 0 : binNames.size();
-		writeHeader(policy, readAttr, 0, 2, operationCount);		
-		writeField(batch.namespace, FieldType.NAMESPACE);
-		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
+		else {
+			int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
 	
-		int[] offsets = batch.offsets;
-		int max = batch.offsetsSize;
+			dataOffset += Buffer.estimateSizeUtf8(batch.namespace) + 
+					FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
+			
+			if (binNames != null) {
+				for (String binName : binNames) {
+					estimateOperationSize(binName);
+				}			
+			}
+			
+			sizeBuffer();
+	
+			int operationCount = (binNames == null)? 0 : binNames.length;
+			writeHeader(policy, readAttr, 0, 2, operationCount);		
+			writeField(batch.namespace, FieldType.NAMESPACE);
+			writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
 		
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
-		    dataOffset += digest.length;
+			int[] offsets = batch.offsets;
+			int max = batch.offsetsSize;
+			
+			for (int i = 0; i < max; i++) {
+				Key key = keys[offsets[i]];
+				byte[] digest = key.digest;
+			    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			    dataOffset += digest.length;
+			}
 		}
 		
 		if (binNames != null) {

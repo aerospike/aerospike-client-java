@@ -20,7 +20,6 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 
@@ -603,8 +602,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 		Record[] records = new Record[keys.length];
-		HashSet<String> names = binNamesToHashSet(binNames);
-		BatchExecutor.execute(cluster, policy, keys, null, records, names, Command.INFO1_READ);
+		BatchExecutor.execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
 		return records;
 	}
 
@@ -1545,16 +1543,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Internal Methods
 	//-------------------------------------------------------
-
-	protected static HashSet<String> binNamesToHashSet(String[] binNames) {
-		// Create lookup table for bin name filtering.
-		HashSet<String> names = new HashSet<String>(binNames.length);
-		
-		for (String binName : binNames) {
-			names.add(binName);
-		}
-		return names;
-	}
 	
 	private String sendInfoCommand(Policy policy, String command) throws AerospikeException {		
 		Node node = cluster.getRandomNode();

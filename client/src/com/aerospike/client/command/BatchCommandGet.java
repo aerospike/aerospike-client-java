@@ -19,7 +19,6 @@ package com.aerospike.client.command;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
@@ -33,7 +32,7 @@ public final class BatchCommandGet extends MultiCommand {
 	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
-	private final HashSet<String> binNames;
+	private final String[] binNames;
 	private final Record[] records;
 	private final int readAttr;
 	private int index;
@@ -43,7 +42,7 @@ public final class BatchCommandGet extends MultiCommand {
 		BatchNode.BatchNamespace batch,
 		Policy policy,		
 		Key[] keys,
-		HashSet<String> binNames,
+		String[] binNames,
 		Record[] records,
 		int readAttr
 	) {
@@ -63,7 +62,7 @@ public final class BatchCommandGet extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(policy, keys, batch, binNames, readAttr);
+		setBatchGet(policy, keys, batch, binNames, readAttr, node.hasBatchIndex);
 	}
 
 	/**
@@ -93,12 +92,13 @@ public final class BatchCommandGet extends MultiCommand {
 			
 			int generation = Buffer.bytesToInt(dataBuffer, 6);
 			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+			int batchIndex = Buffer.bytesToInt(dataBuffer, 14);
 			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
 			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 			
 			Key key = parseKey(fieldCount);
-			int offset = batch.offsets[index++];
-			
+			int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
+						
 			if (Arrays.equals(key.digest, keys[offset].digest)) {			
 				if (resultCode == 0) {
 					records[offset] = parseRecord(opCount, generation, expiration);
@@ -125,28 +125,23 @@ public final class BatchCommandGet extends MultiCommand {
 				throw new AerospikeException.QueryTerminated();
 			}
 			
-    		readBytes(8);	
+			readBytes(8);	
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
 			byte particleType = dataBuffer[5];
 			byte nameSize = dataBuffer[7];
 			
 			readBytes(nameSize);
 			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
-	
+			
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
-	
-			// Currently, the batch command returns all the bins even if a subset of
-			// the bins are requested. We have to filter it on the client side.
-			// TODO: Filter batch bins on server!
-			if (binNames == null || binNames.contains(name)) {				
-				if (bins == null) {
-					bins = new HashMap<String,Object>();
-				}
-				bins.put(name, value);
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+			
+			if (bins == null) {
+				bins = new HashMap<String,Object>();
 			}
-	    }	
-	    return new Record(bins, generation, expiration);	    
+			bins.put(name, value);
+		}
+		return new Record(bins, generation, expiration);	    
 	}
 }
