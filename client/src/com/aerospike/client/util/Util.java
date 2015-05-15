@@ -33,6 +33,12 @@ import java.util.Date;
 import com.aerospike.client.AerospikeException;
 
 public final class Util {
+    private static final String AS_THREAD_TAG = "Aerospike Java Client - ";
+
+    public static String getASThreadTag() {
+        return AS_THREAD_TAG;
+    }
+
 	public static void sleep(long millis) {
 		try {
 			Thread.sleep(millis);
