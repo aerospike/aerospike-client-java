@@ -22,6 +22,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Host;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.DeleteListener;
@@ -379,6 +380,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new boolean[0]);
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -417,6 +422,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -526,6 +535,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -566,6 +579,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -610,6 +627,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 */
 	public final void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -654,6 +675,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 */
 	public final void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
 		throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -694,6 +719,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
@@ -734,6 +763,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * @throws AerospikeException	if queue is full
 	 */
 	public final void getHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
 		if (policy == null) {
 			policy = asyncBatchPolicyDefault;
 		}
