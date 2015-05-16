@@ -67,6 +67,7 @@ public class Main extends JPanel {
 		"QuerySum",
 		"QueryAverage",
 		"QueryExecute",
+		//"QueryCollection",
 		"StoreKey"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
