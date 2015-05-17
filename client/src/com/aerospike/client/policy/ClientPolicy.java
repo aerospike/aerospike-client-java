@@ -58,7 +58,7 @@ public class ClientPolicy {
 	public int tendInterval = 1000;
 
 	/**
-	 * Throw exception if host connection fails during addHost().
+	 * Throw exception if all seed connections fail on cluster instantiation.  Default: true
 	 */
 	public boolean failIfNotConnected = true;
 	
