@@ -60,7 +60,7 @@ public class ClientPolicy {
 	/**
 	 * Throw exception if host connection fails during addHost().
 	 */
-	public boolean failIfNotConnected;
+	public boolean failIfNotConnected = true;
 	
 	/**
 	 * Default read policy that is used when read command's policy is null.

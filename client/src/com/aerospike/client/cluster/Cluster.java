@@ -350,8 +350,8 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 			catch (Exception e) {
-				if (Log.debugEnabled()) {
-					Log.debug("Seed " + seed + " failed: " + Util.getErrorMessage(e));
+				if (Log.warnEnabled()) {
+					Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
 				}
 				
 				// Store exception and try next host
