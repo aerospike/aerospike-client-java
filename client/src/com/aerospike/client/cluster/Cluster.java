@@ -124,13 +124,7 @@ public class Cluster implements Runnable, Closeable {
 		if (policy.threadPool == null) {
 			// Create cached thread pool with daemon threads.
 			// Daemon threads automatically terminate when the program terminates.
-			threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-				public final Thread newThread(Runnable runnable) {
-					Thread thread = new Thread(runnable);
-					thread.setDaemon(true);
-					return thread;
-				}
-			});
+			threadPool = Executors.newCachedThreadPool(new ASThreadFactory());
 		}
 		else {
 			threadPool = policy.threadPool;
@@ -179,7 +173,7 @@ public class Cluster implements Runnable, Closeable {
 		// Run cluster tend thread.
 		tendValid = true;
 		tendThread = new Thread(this);
-		tendThread.setName("tend");
+		tendThread.setName("Aerospike-tend");
 		tendThread.setDaemon(true);
 		tendThread.start();
 	}
