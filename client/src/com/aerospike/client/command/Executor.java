@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.util.Util;
 
 public final class Executor {
 	private final List<ExecutorThread> threads;
@@ -123,8 +122,6 @@ public final class Executor {
 		}
 		
 		public void run() {
-            final String orgName = Thread.currentThread().getName();
-            Thread.currentThread().setName(Util.getASThreadTag() + orgName);
 			try {
 				if (command.isValid()) {
 					command.execute();
@@ -135,9 +132,6 @@ public final class Executor {
 				// Terminate other scan threads.
 				stopThreads(e);
 			}
-            finally {
-                Thread.currentThread().setName(orgName);
-            }
 		}
 		
 		/**
