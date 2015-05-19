@@ -128,17 +128,17 @@ public final class AsyncConnection implements Closeable{
     }
 
 	/**
-	 * Is socket connected and used within specified limits.
+	 * Is socket open and used within specified limits.
 	 */
 	public boolean isValid() {
-		return socketChannel.isConnected() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
+		return socketChannel.isOpen() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
 	
 	/**
-	 * Is socket connected.
+	 * Is socket open.
 	 */
-	public boolean isConnected() {
-		return socketChannel.isConnected();
+	public boolean isOpen() {
+		return socketChannel.isOpen();
 	}
 		
 	public void updateLastUsed() {

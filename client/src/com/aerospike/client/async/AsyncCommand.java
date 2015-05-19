@@ -351,7 +351,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	private void close() {
 		// Connection was probably already closed by timeout thread.
 		// Check connected status before closing again.
-		if (conn != null && conn.isConnected()) {
+		if (conn != null && conn.isOpen()) {
 			conn.close();
 		}
 		cluster.putByteBuffer(byteBuffer);
