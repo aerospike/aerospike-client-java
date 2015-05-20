@@ -22,6 +22,8 @@ import com.aerospike.client.command.Buffer;
 
 /**
  * Query filter definition.
+ * 
+ * Currently, only one filter is allowed in a Statement, and must be on bin which has a secondary index defined.
  */
 public final class Filter {
 	/**
