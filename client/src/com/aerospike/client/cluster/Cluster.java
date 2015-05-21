@@ -406,7 +406,7 @@ public class Cluster implements Runnable, Closeable {
 		for (Host host : hosts) {
 			try {
 				NodeValidator nv = new NodeValidator(this, host);
-				Node node = findNode(nv.name);
+				Node node = findNode(nv.name, list);
 				
 				if (node != null) {
 					// Duplicate node name found.  This usually occurs when the server 
@@ -713,6 +713,24 @@ public class Cluster implements Runnable, Closeable {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		
+		for (Node node : nodeArray) {
+			if (node.getName().equals(nodeName)) {
+				return node;
+			}
+		}
+		return null;
+	}
+
+	private final Node findNode(String nodeName, ArrayList<Node> localList) {
+		// Must copy array reference for copy on write semantics to work.
+		Node[] nodeArray = nodes;
+		if(localList != null) {
+			for (Node node : localList) {
+				if (node.getName().equals(nodeName)) {
+					return node;
+				}
+			}
+		}
 		for (Node node : nodeArray) {
 			if (node.getName().equals(nodeName)) {
 				return node;
