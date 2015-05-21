@@ -33,7 +33,7 @@ public final class Connection implements Closeable{
 	private final InputStream in;
 	private final OutputStream out;
 	private final long maxSocketIdleMillis;
-	private long lastUsed;
+	private volatile long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
 		this(address, timeoutMillis, 14);
@@ -95,15 +95,11 @@ public final class Connection implements Closeable{
 		}
 	}
 
-	public boolean isConnected() {
-		return socket.isConnected();
-	}
-
 	/**
 	 * Is socket connected and used within specified limits.
 	 */
 	public boolean isValid() {
-		return socket.isConnected() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
+		return (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
 
 	public void setTimeout(int timeout) throws SocketException {
@@ -122,6 +118,8 @@ public final class Connection implements Closeable{
 	 * Close socket and associated streams.
 	 */
 	public void close() {
+		lastUsed = 0;
+		
 		try {
 			in.close();
 			out.close();			

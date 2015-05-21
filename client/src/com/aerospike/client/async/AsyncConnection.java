@@ -39,7 +39,7 @@ public final class AsyncConnection implements Closeable{
 	private final SelectorManager manager;
 	private SelectionKey key;
 	private final long maxSocketIdleMillis;
-	private long lastUsed;
+	private volatile long lastUsed;
 	
 	public AsyncConnection(InetSocketAddress address, AsyncCluster cluster) throws AerospikeException.Connection {
 		this.manager = cluster.getSelectorManager();
@@ -64,7 +64,9 @@ public final class AsyncConnection implements Closeable{
 			// socket.setReuseAddress(true);
 			// socket.setSoLinger(true, 0);
 			
-			socketChannel.connect(address);
+			if (socketChannel.connect(address)) {
+				lastUsed = System.currentTimeMillis();
+			}
 		}
 		catch (Exception e) {
 			close();
