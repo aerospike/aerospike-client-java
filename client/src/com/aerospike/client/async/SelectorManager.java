@@ -20,7 +20,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
-import java.nio.channels.SocketChannel;
 import java.nio.channels.spi.SelectorProvider;
 import java.util.ArrayDeque;
 import java.util.Iterator;
@@ -37,7 +36,7 @@ public final class SelectorManager extends Thread implements Closeable {
     private final ConcurrentLinkedQueue<AsyncCommand> commandQueue = new ConcurrentLinkedQueue<AsyncCommand>();
     private final ArrayDeque<AsyncCommand> timeoutQueue;
     private final Selector selector;
-    private final ExecutorService taskThreadPool;
+	private final ExecutorService taskThreadPool;
     private final AtomicBoolean awakened = new AtomicBoolean();
     private final long selectorTimeout;
 	private volatile boolean valid;
@@ -168,9 +167,7 @@ public final class SelectorManager extends Thread implements Closeable {
         		command.write();
         	}
         	else if ((ops & SelectionKey.OP_CONNECT) != 0) {
-        		SocketChannel socketChannel = (SocketChannel)key.channel();
-        		socketChannel.finishConnect();
-        		key.interestOps(SelectionKey.OP_WRITE);
+        		command.conn.finishConnect();
         	}
         }
         catch (AerospikeException.Connection ac) {

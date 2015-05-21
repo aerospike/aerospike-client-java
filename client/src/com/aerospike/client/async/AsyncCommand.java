@@ -25,7 +25,6 @@ import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
-import com.aerospike.client.util.Util;
 
 /**
  * Asynchronous command handler.
@@ -140,7 +139,10 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			return failOnNetworkInit();
 		}
 
-		if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+		// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+		// if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+		
+		if (limit > 0 && System.currentTimeMillis() > limit) {
 			// Might as well stop here because the transaction will
 			// timeout after sleep completed.
 			return failOnNetworkInit();
@@ -149,9 +151,10 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		// Prepare for retry.
 		resetConnection();
 
-		if (policy.sleepBetweenRetries > 0) {
-			Util.sleep(policy.sleepBetweenRetries);
-		}
+		// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+		//if (policy.sleepBetweenRetries > 0) {
+		//	Util.sleep(policy.sleepBetweenRetries);
+		//}
 
 		// Retry command recursively.
 		executeCommand();
@@ -174,7 +177,10 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			return;
 		}
 
-		if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+		// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+		// if (limit > 0 && System.currentTimeMillis() + policy.sleepBetweenRetries > limit) {
+
+		if (limit > 0 && System.currentTimeMillis() > limit) {
 			// Might as well stop here because the transaction will
 			// timeout after sleep completed.
 			failOnNetworkError(ae);
@@ -184,9 +190,10 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		// Prepare for retry.
 		resetConnection();
 
-		if (policy.sleepBetweenRetries > 0) {
-			Util.sleep(policy.sleepBetweenRetries);
-		}
+		// Disable sleep between retries.  Sleeping in asynchronous mode makes no sense.
+		//if (policy.sleepBetweenRetries > 0) {
+		//	Util.sleep(policy.sleepBetweenRetries);
+		//}
 
 		try {
 			// Retry command recursively.
@@ -223,19 +230,25 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		}
 		
 		if (limit > 0 && System.currentTimeMillis() > limit) {
-			// Command has timed out in timeout queue thread.
-			// Ensure that command succeeds or fails, but not both.
-			if (complete.compareAndSet(false, true)) {
-				// Timeout thread may contend with retry thread.
-				// Lock before closing.
-				synchronized (this) {
-					if (conn != null) {
-						conn.close();
+			// If command is currently reading data in an offloaded task thread,
+			// the interestOps is set to zero.  Make sure non-zero because we can't 
+			// timeout while data is actively being read because the byteBuffer 
+			// would be put back into the pool before the read is finished.
+			if (conn.interestOps() != 0) {
+				// Command has timed out in timeout queue thread.
+				// Ensure that command succeeds or fails, but not both.
+				if (complete.compareAndSet(false, true)) {
+					// Timeout thread may contend with retry thread.
+					// Lock before closing.
+					synchronized (this) {
+						if (conn != null) {
+							conn.close();
+						}
 					}
+					failOnClientTimeout();
 				}
-				failOnClientTimeout();
+				return false;  // Do not put back on timeout queue.
 			}
-			return false;  // Do not put back on timeout queue.
 		}
 		return true;
 	}
@@ -349,9 +362,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	}
 
 	private void close() {
-		// Connection was probably already closed by timeout thread.
-		// Check connected status before closing again.
-		if (conn != null && conn.isOpen()) {
+		if (conn != null) {
 			conn.close();
 		}
 		cluster.putByteBuffer(byteBuffer);

@@ -39,8 +39,8 @@ public final class Connection implements Closeable{
 		this(address, timeoutMillis, 14);
 	}
 
-	public Connection(InetSocketAddress address, int timeoutMillis, int maxSocketIdleSeconds) throws AerospikeException.Connection {
-		this.maxSocketIdleMillis = (long)maxSocketIdleSeconds * 1000L;
+	public Connection(InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis) throws AerospikeException.Connection {
+		this.maxSocketIdleMillis = maxSocketIdleMillis;
 
 		try {
 			socket = new Socket();

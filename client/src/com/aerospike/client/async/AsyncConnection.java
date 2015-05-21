@@ -43,7 +43,7 @@ public final class AsyncConnection implements Closeable{
 	
 	public AsyncConnection(InetSocketAddress address, AsyncCluster cluster) throws AerospikeException.Connection {
 		this.manager = cluster.getSelectorManager();
-		this.maxSocketIdleMillis = (long)cluster.getMaxSocketIdle() * 1000L;
+		this.maxSocketIdleMillis = cluster.getMaxSocketIdleMillis();
 		
 		try {
 			socketChannel = SocketChannel.open();
@@ -65,7 +65,6 @@ public final class AsyncConnection implements Closeable{
 			// socket.setSoLinger(true, 0);
 			
 			socketChannel.connect(address);
-			lastUsed = System.currentTimeMillis();
 		}
 		catch (Exception e) {
 			close();
@@ -77,14 +76,20 @@ public final class AsyncConnection implements Closeable{
 		manager.execute(command);
 	}
 
-    public void register(AsyncCommand command, Selector selector) throws ClosedChannelException {
-    	if (key != null) {
+	public void finishConnect() throws IOException {		
+		socketChannel.finishConnect();
+		lastUsed = System.currentTimeMillis();
+		key.interestOps(SelectionKey.OP_WRITE);
+	}
+	
+	public void register(AsyncCommand command, Selector selector) throws ClosedChannelException {
+		if (key != null && key.isValid()) {
 			key.attach(command);
 			key.interestOps(SelectionKey.OP_WRITE);
-    	}
-    	else {
-    		key = socketChannel.register(selector, SelectionKey.OP_CONNECT, command);    		
-    	}
+		}
+		else {
+			key = socketChannel.register(selector, SelectionKey.OP_CONNECT, command);    		
+		}
     }
     
     public void unregister() {
@@ -93,6 +98,15 @@ public final class AsyncConnection implements Closeable{
     }
 
     public void write(ByteBuffer byteBuffer) throws IOException {
+    	// Temporary size check for corrupted buffer.
+		long proto = byteBuffer.getLong(0);
+		int protoSize = ((int) (proto & 0xFFFFFFFFFFFFL)) + 8;
+		int bufferSize = byteBuffer.limit();
+		
+		if (bufferSize != protoSize) {
+			Log.warn("Socket buffer size " + bufferSize + " not equal to proto size " + protoSize);
+		}
+
 		socketChannel.write(byteBuffer);
     	
 		if (! byteBuffer.hasRemaining()) {
@@ -131,27 +145,28 @@ public final class AsyncConnection implements Closeable{
 	 * Is socket open and used within specified limits.
 	 */
 	public boolean isValid() {
-		return socketChannel.isOpen() && (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
+		// Since lastUsed == 0 indicates closed connection, there is no need to
+		// check socketChannel.isOpen() or socketChannel.isConnected() (which is unreliable)
+		// because System.currentTimeMillis() will always be greater than maxSocketIdleMillis.
+		return (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
 	
-	/**
-	 * Is socket open.
-	 */
-	public boolean isOpen() {
-		return socketChannel.isOpen();
-	}
-		
 	public void updateLastUsed() {
 		lastUsed = System.currentTimeMillis();
 	}
 
+	public int interestOps() {
+		return key.interestOps();
+	}
+	
 	/**
 	 * Close socket channel.
 	 */
 	public void close() {
+		lastUsed = 0;
+		
 		if (key != null) {
 			key.cancel();
-			key = null;
 		}
 		
 		try {

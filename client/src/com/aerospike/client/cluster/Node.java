@@ -216,7 +216,7 @@ public class Node implements Closeable {
 			}
 			conn.close();
 		}
-		conn = new Connection(address, timeoutMillis, cluster.maxSocketIdle);
+		conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
 		
 		if (cluster.user != null) {
 			try {

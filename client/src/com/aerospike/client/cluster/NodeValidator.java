@@ -111,9 +111,10 @@ public final class NodeValidator {
 				}
 				len = end - begin;
 				
+				/* Disable batch-index for now
 				if (features.regionMatches(begin, "batch-index", 0, len)) {
 					this.hasBatchIndex = true;
-				}
+				}*/
 				
 				if (features.regionMatches(begin, "replicas-all", 0, len)) {
 					this.hasReplicasAll = true;

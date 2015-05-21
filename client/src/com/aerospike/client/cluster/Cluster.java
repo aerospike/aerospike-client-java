@@ -39,6 +39,8 @@ import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
+	private static final int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
+	
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
 	
@@ -76,7 +78,7 @@ public class Cluster implements Runnable, Closeable {
 	private final int connectionTimeout;
 
 	// Maximum socket idle in seconds.
-	protected final int maxSocketIdle;
+	protected final int maxSocketIdleMillis;
 
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
@@ -116,7 +118,8 @@ public class Cluster implements Runnable, Closeable {
 		
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
-		maxSocketIdle = policy.maxSocketIdle;
+		int idleSeconds = (policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit;
+		maxSocketIdleMillis = idleSeconds * 1000;
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		
@@ -755,8 +758,8 @@ public class Cluster implements Runnable, Closeable {
 		return connectionTimeout;
 	}
 
-	public final int getMaxSocketIdle() {
-		return maxSocketIdle;
+	public final int getMaxSocketIdleMillis() {
+		return maxSocketIdleMillis;
 	}
 	
 	public final byte[] getUser() {
