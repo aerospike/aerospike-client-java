@@ -36,7 +36,7 @@ public final class Connection implements Closeable{
 	private volatile long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(address, timeoutMillis, 14);
+		this(address, timeoutMillis, 14000);
 	}
 
 	public Connection(InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis) throws AerospikeException.Connection {

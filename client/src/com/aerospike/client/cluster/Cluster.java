@@ -77,7 +77,7 @@ public class Cluster implements Runnable, Closeable {
 	// Initial connection timeout.
 	private final int connectionTimeout;
 
-	// Maximum socket idle in seconds.
+	// Maximum socket idle in milliseconds.
 	protected final int maxSocketIdleMillis;
 
 	// Interval in milliseconds between cluster tends.
@@ -118,8 +118,7 @@ public class Cluster implements Runnable, Closeable {
 		
 		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
 		connectionTimeout = policy.timeout;
-		int idleSeconds = (policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit;
-		maxSocketIdleMillis = idleSeconds * 1000;
+		maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		
