@@ -21,21 +21,24 @@ import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchCommandExists extends MultiCommand {
-	private final BatchNode batch;
+public final class BatchCommandExistsOld extends MultiCommand {
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final boolean[] existsArray;
+	private int index;
 
-	public BatchCommandExists(
-		BatchNode batch,
+	public BatchCommandExistsOld(
+		Node node,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
 		Key[] keys,
 		boolean[] existsArray
 	) {
-		super(batch.node, false);
+		super(node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
@@ -49,7 +52,7 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		setBatchReadOld(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
 	@Override
@@ -58,11 +61,13 @@ public final class BatchCommandExists extends MultiCommand {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
 		}
 		
-		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-			existsArray[batchIndex] = resultCode == 0;
+		int offset = batch.offsets[index++];
+		
+		if (Arrays.equals(key.digest, keys[offset].digest)) {
+			existsArray[offset] = resultCode == 0;
 		}
 		else {
-			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 		}
 	}
 }

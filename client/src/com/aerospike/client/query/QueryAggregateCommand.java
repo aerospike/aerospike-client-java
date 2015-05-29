@@ -22,10 +22,10 @@ import java.util.concurrent.BlockingQueue;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.policy.Policy;
@@ -38,7 +38,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 	private final BlockingQueue<LuaValue> inputQueue;
 
 	public QueryAggregateCommand(Node node, Policy policy, Statement statement, LuaInstance instance, BlockingQueue<LuaValue> inputQueue) {
-		super(node);
+		super(node, true);
 		this.policy = policy;
 		this.statement = statement;
 		this.instance = instance;
@@ -56,74 +56,45 @@ public final class QueryAggregateCommand extends MultiCommand {
 	}
 
 	@Override
-	protected boolean parseRecordResults(int receiveSize) 
-		throws AerospikeException, IOException {
-		// Read/parse remaining message bytes one record at a time.
-		dataOffset = 0;
+	protected void parseRow(Key key) throws IOException {		
+		if (opCount != 1) {
+			throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
+		}
+
+		// Parse aggregateValue.
+		readBytes(8);	
+		int opSize = Buffer.bytesToInt(dataBuffer, 0);
+		byte particleType = dataBuffer[5];
+		byte nameSize = dataBuffer[7];
 		
-		while (dataOffset < receiveSize) {
-    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = dataBuffer[5] & 0xFF;
-			
-			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-					return false;
-				}
-				throw new AerospikeException(resultCode);
-			}
+		readBytes(nameSize);
+		String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
 
-			byte info3 = dataBuffer[3];
-			
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
-				return false;
+		int particleBytesSize = (int) (opSize - (4 + nameSize));
+		readBytes(particleBytesSize);
+		
+		if (! name.equals("SUCCESS")) {
+			if (name.equals("FAILURE")) {
+				Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+				throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
 			}
-			
-			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-			
-			parseKey(fieldCount);
-			
-			if (opCount != 1) {
-				throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
-			}
-
-			// Parse aggregateValue.
-    		readBytes(8);	
-			int opSize = Buffer.bytesToInt(dataBuffer, 0);
-			byte particleType = dataBuffer[5];
-			byte nameSize = dataBuffer[7];
-    		
-			readBytes(nameSize);
-			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
-	
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
-			readBytes(particleBytesSize);
-			
-			if (! name.equals("SUCCESS")) {
-				if (name.equals("FAILURE")) {
-					Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
-					throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
-				}
-				else {
-					throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
-				}
-			}
-			
-			LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, 0, particleBytesSize);
-									
-			if (! valid) {
-				throw new AerospikeException.QueryTerminated();
-			}
-
-			if (aggregateValue != null) {
-				try {
-					inputQueue.put(aggregateValue);			
-				}
-				catch (InterruptedException ie) {
-				}
+			else {
+				throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
 			}
 		}
-		return true;
+		
+		LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, 0, particleBytesSize);
+								
+		if (! valid) {
+			throw new AerospikeException.QueryTerminated();
+		}
+
+		if (aggregateValue != null) {
+			try {
+				inputQueue.put(aggregateValue);			
+			}
+			catch (InterruptedException ie) {
+			}
+		}
 	}
 }

@@ -19,9 +19,13 @@ package com.aerospike.client.command;
 import java.io.BufferedInputStream;
 import java.io.EOFException;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -31,17 +35,25 @@ public abstract class MultiCommand extends SyncCommand {
 	
 	private BufferedInputStream bis;
 	protected final Node node;
+	protected int resultCode;
+	protected int generation;
+	protected int expiration;
+	protected int batchIndex;
+	protected int fieldCount;
+	protected int opCount;
+	private final boolean stopOnNotFound;
 	protected volatile boolean valid = true;
 	
-	protected MultiCommand(Node node) {
+	protected MultiCommand(Node node, boolean stopOnNotFound) {
 		this.node = node;
+		this.stopOnNotFound = stopOnNotFound;
 	}
 	
 	protected final Node getNode() { 
 		return node;
 	}
 
-	protected final void parseResult(Connection conn) throws AerospikeException, IOException {	
+	protected final void parseResult(Connection conn) throws IOException {	
 		// Read socket into receive buffer one record at a time.  Do not read entire receive size
 		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
 		// further database commands which contend with the receive buffer.
@@ -56,11 +68,54 @@ public abstract class MultiCommand extends SyncCommand {
 			int receiveSize = ((int) (size & 0xFFFFFFFFFFFFL));
 			
 	        if (receiveSize > 0) {
-		    	status = parseRecordResults(receiveSize);
+		    	status = parseGroup(receiveSize);
 			}
 		}
 	}
 		
+	/**
+	 * Parse all records in the group.
+	 */
+	private final boolean parseGroup(int receiveSize) throws IOException {
+		//Parse each message response and add it to the result array
+		dataOffset = 0;
+		
+		while (dataOffset < receiveSize) {
+			readBytes(MSG_REMAINING_HEADER_SIZE);    		
+			resultCode = dataBuffer[5] & 0xFF;
+
+			// The only valid server return codes are "ok" and "not found".
+			// If other return codes are received, then abort the batch.
+			if (resultCode != 0) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+					if (stopOnNotFound) {
+						return false;
+					}
+				}
+				else {
+					throw new AerospikeException(resultCode);
+				}
+			}
+			
+			byte info3 = dataBuffer[3];
+
+			// If this is the end marker of the response, do not proceed further
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
+				return false;
+			}
+			
+			generation = Buffer.bytesToInt(dataBuffer, 6);
+			expiration = Buffer.bytesToInt(dataBuffer, 10);
+			batchIndex = Buffer.bytesToInt(dataBuffer, 14);
+			fieldCount = Buffer.bytesToShort(dataBuffer, 18);
+			opCount = Buffer.bytesToShort(dataBuffer, 20);
+			
+			Key key = parseKey(fieldCount);
+			parseRow(key);						
+		}
+		return true;
+	}
+	
 	protected final Key parseKey(int fieldCount) throws AerospikeException, IOException {
 		byte[] digest = null;
 		String namespace = null;
@@ -96,6 +151,36 @@ public abstract class MultiCommand extends SyncCommand {
 		return new Key(namespace, digest, setName, userKey);
 	}
 
+	/**
+	 * Parses the given byte buffer and populate the result object.
+	 * Returns the number of bytes that were parsed from the given buffer.
+	 */
+	protected final Record parseRecord() 
+		throws AerospikeException, IOException {
+		
+		Map<String,Object> bins = null;
+		
+		for (int i = 0 ; i < opCount; i++) {			
+			readBytes(8);	
+			int opSize = Buffer.bytesToInt(dataBuffer, 0);
+			byte particleType = dataBuffer[5];
+			byte nameSize = dataBuffer[7];
+			
+			readBytes(nameSize);
+			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
+			
+			int particleBytesSize = (int) (opSize - (4 + nameSize));
+			readBytes(particleBytesSize);
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+			
+			if (bins == null) {
+				bins = new HashMap<String,Object>();
+			}
+			bins.put(name, value);
+		}
+		return new Record(bins, generation, expiration);	    
+	}
+
 	protected final void readBytes(int length) throws IOException {
 		if (length > dataBuffer.length) {
 			// Corrupted data streams can result in a huge length.
@@ -119,7 +204,6 @@ public abstract class MultiCommand extends SyncCommand {
 		dataOffset += length;
 	}
 	
-	
 	public void stop() {
 		valid = false;
 	}
@@ -128,5 +212,5 @@ public abstract class MultiCommand extends SyncCommand {
 		return valid;
 	}
 
-	protected abstract boolean parseRecordResults(int receiveSize) throws AerospikeException, IOException;
+	protected abstract void parseRow(Key key) throws IOException;
 }

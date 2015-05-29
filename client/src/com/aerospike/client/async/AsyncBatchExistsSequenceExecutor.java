@@ -31,17 +31,24 @@ public final class AsyncBatchExistsSequenceExecutor extends AsyncBatchExecutor {
 		BatchPolicy policy, 
 		Key[] keys,
 		ExistsSequenceListener listener
-	) throws AerospikeException {
+	) {
 		super(cluster, policy, keys);
 		this.listener = listener;
 		
 		// Create commands.
-		AsyncBatchExistsSequence[] tasks = new AsyncBatchExistsSequence[super.taskSize];
+		AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
 		int count = 0;
 
 		for (BatchNode batchNode : batchNodes) {			
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				tasks[count++] = new AsyncBatchExistsSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
+			if (batchNode.node.hasBatchIndex) {
+				// New batch
+				tasks[count++] = new AsyncBatchExistsSequence(this, cluster, batchNode, policy, keys, listener);
+			}
+			else {
+				// Old batch only allows one namespace per call.
+				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+					tasks[count++] = new AsyncBatchExistsSequenceOld(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
+				}
 			}
 		}
 		// Dispatch commands to nodes.

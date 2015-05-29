@@ -32,18 +32,25 @@ public final class AsyncBatchExistsArrayExecutor extends AsyncBatchExecutor {
 		BatchPolicy policy, 
 		Key[] keys,
 		ExistsArrayListener listener
-	) throws AerospikeException {
+	) {
 		super(cluster, policy, keys);
 		this.existsArray = new boolean[keys.length];
 		this.listener = listener;
 		
 		// Create commands.
-		AsyncBatchExistsArray[] tasks = new AsyncBatchExistsArray[super.taskSize];
+		AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
 		int count = 0;
 		
-		for (BatchNode batchNode : batchNodes) {			
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				tasks[count++] = new AsyncBatchExistsArray(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.node.hasBatchIndex) {
+				// New batch
+				tasks[count++] = new AsyncBatchExistsArray(this, cluster, batchNode, policy, keys, existsArray);
+			}
+			else {
+				// Old batch only allows one namespace per call.
+				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+					tasks[count++] = new AsyncBatchExistsArrayOld(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
+				}
 			}
 		}
 		// Dispatch commands to nodes.

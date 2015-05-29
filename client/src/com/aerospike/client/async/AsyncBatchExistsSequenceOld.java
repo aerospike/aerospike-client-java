@@ -14,34 +14,37 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
-
-import java.io.IOException;
-import java.util.Arrays;
+package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.Command;
+import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchCommandExists extends MultiCommand {
-	private final BatchNode batch;
+public final class AsyncBatchExistsSequenceOld extends AsyncMultiCommand {
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
-	private final boolean[] existsArray;
-
-	public BatchCommandExists(
-		BatchNode batch,
+	private final ExistsSequenceListener listener;
+	
+	public AsyncBatchExistsSequenceOld(
+		AsyncMultiExecutor parent,
+		AsyncCluster cluster,
+		AsyncNode node,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
 		Key[] keys,
-		boolean[] existsArray
+		ExistsSequenceListener listener
 	) {
-		super(batch.node, false);
+		super(parent, cluster, node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
-		this.existsArray = existsArray;
+		this.listener = listener;
 	}
-	
+		
 	@Override
 	protected Policy getPolicy() {
 		return policy;
@@ -49,20 +52,14 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		setBatchReadOld(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws IOException {
+	protected void parseRow(Key key) {		
 		if (opCount > 0) {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
-		}
-		
-		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-			existsArray[batchIndex] = resultCode == 0;
-		}
-		else {
-			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
-		}
+		}			
+		listener.onExists(key, resultCode == 0);
 	}
 }

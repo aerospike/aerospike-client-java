@@ -30,13 +30,16 @@ import com.aerospike.client.admin.User;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.BatchCommandGetVarBins;
 import com.aerospike.client.command.BatchExecutor;
+import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.DeleteCommand;
 import com.aerospike.client.command.ExecuteCommand;
 import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
+import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
@@ -525,6 +528,55 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Batch Read Operations
 	//-------------------------------------------------------
+
+	/**
+	 * Read multiple records for specified batch keys in one batch call.
+	 * This method allows different bins to be requested for each key in the batch.
+	 * The returned records are located in the same list.
+	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * This method requires Aerospike Server version >= 3.5.11.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param records				list of unique record identifiers and the bins to retrieve.
+	 *                              The returned records are located in the same list.
+	 * @throws AerospikeException	if read fails
+	 */
+	public final void get(BatchPolicy policy, List<BatchRecord> records) throws AerospikeException {
+		if (records.size() == 0) {
+			return;
+		}
+		
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		
+		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
+
+		if (policy.maxConcurrentThreads == 1) {
+			// Run batch requests sequentially in same thread.
+			for (BatchNode batchNode : batchNodes) {
+				if (! batchNode.node.hasBatchIndex) {
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
+				}			
+				MultiCommand command = new BatchCommandGetVarBins(batchNode, policy, records);
+				command.execute();
+			}
+		}
+		else {
+			// Run batch requests in parallel in separate threads.
+			Executor executor = new Executor(cluster, batchNodes.size());
+
+			for (BatchNode batchNode : batchNodes) {
+				if (! batchNode.node.hasBatchIndex) {
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
+				}		
+				MultiCommand command = new BatchCommandGetVarBins(batchNode, policy, records);
+				executor.addCommand(command);
+			}
+			executor.execute(policy.maxConcurrentThreads);
+		}		
+	}
 
 	/**
 	 * Read multiple records for specified keys in one batch call.

@@ -21,27 +21,37 @@ import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchCommandExists extends MultiCommand {
-	private final BatchNode batch;
+public final class BatchCommandGetOld extends MultiCommand {
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
-	private final boolean[] existsArray;
+	private final String[] binNames;
+	private final Record[] records;
+	private final int readAttr;
+	private int index;
 
-	public BatchCommandExists(
-		BatchNode batch,
-		Policy policy,
+	public BatchCommandGetOld(
+		Node node,
+		BatchNode.BatchNamespace batch,
+		Policy policy,		
 		Key[] keys,
-		boolean[] existsArray
+		String[] binNames,
+		Record[] records,
+		int readAttr
 	) {
-		super(batch.node, false);
+		super(node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
-		this.existsArray = existsArray;
+		this.binNames = binNames;
+		this.records = records;
+		this.readAttr = readAttr;
 	}
-	
+
 	@Override
 	protected Policy getPolicy() {
 		return policy;
@@ -49,20 +59,20 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		setBatchReadOld(policy, keys, batch, binNames, readAttr);
 	}
 
 	@Override
 	protected void parseRow(Key key) throws IOException {
-		if (opCount > 0) {
-			throw new AerospikeException.Parse("Received bins that were not requested!");
-		}
+		int offset = batch.offsets[index++];
 		
-		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-			existsArray[batchIndex] = resultCode == 0;
+		if (Arrays.equals(key.digest, keys[offset].digest)) {			
+			if (resultCode == 0) {
+				records[offset] = parseRecord();
+			}
 		}
 		else {
-			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 		}
 	}
 }

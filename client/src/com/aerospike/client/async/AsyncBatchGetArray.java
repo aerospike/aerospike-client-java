@@ -26,26 +26,24 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchGetArray extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batch;
+	private final BatchNode batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final String[] binNames;
 	private final Record[] records;
 	private final int readAttr;
-	private int index;
 	
 	public AsyncBatchGetArray(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
-		AsyncNode node,
-		BatchNode.BatchNamespace batch,
+		BatchNode batch,
 		Policy policy,
 		Key[] keys,
 		String[] binNames,
 		Record[] records,
 		int readAttr
 	) {
-		super(parent, cluster, node, false);
+		super(parent, cluster, (AsyncNode)batch.node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
@@ -60,21 +58,19 @@ public final class AsyncBatchGetArray extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(policy, keys, batch, binNames, readAttr, node.hasBatchIndex);
+	protected void writeBuffer() {
+		setBatchRead(policy, keys, batch, binNames, readAttr);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {
-		int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
-
-		if (Arrays.equals(key.digest, keys[offset].digest)) {			
+	protected void parseRow(Key key) {
+		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {			
 			if (resultCode == 0) {
-				records[offset] = parseRecord();
+				records[batchIndex] = parseRecord();
 			}
 		}
 		else {
-			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 		}
 	}
 }

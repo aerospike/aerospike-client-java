@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.command.BatchNode;
@@ -24,7 +23,7 @@ import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchGetSequence extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final String[] binNames;
@@ -34,16 +33,15 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 	public AsyncBatchGetSequence(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
-		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode batch,
 		Policy policy,
 		Key[] keys,
 		String[] binNames,
 		RecordSequenceListener listener,
 		int readAttr
 	) {
-		super(parent, cluster, node, false);
-		this.batchNamespace = batchNamespace;
+		super(parent, cluster, (AsyncNode)batch.node, false);
+		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
 		this.binNames = binNames;
@@ -57,12 +55,12 @@ public final class AsyncBatchGetSequence extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(policy, keys, batchNamespace, binNames, readAttr, node.hasBatchIndex);
+	protected void writeBuffer() {
+		setBatchRead(policy, keys, batch, binNames, readAttr);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {
+	protected void parseRow(Key key) {
 		if (resultCode == 0) {
 			Record record = parseRecord();
 			listener.onRecord(key, record);

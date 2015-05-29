@@ -18,30 +18,25 @@ package com.aerospike.client.command;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.policy.Policy;
 
-public final class BatchCommandExists extends MultiCommand {
+public final class BatchCommandGetVarBins extends MultiCommand {
 	private final BatchNode batch;
 	private final Policy policy;
-	private final Key[] keys;
-	private final boolean[] existsArray;
+	private final List<BatchRecord> records;
 
-	public BatchCommandExists(
-		BatchNode batch,
-		Policy policy,
-		Key[] keys,
-		boolean[] existsArray
-	) {
+	public BatchCommandGetVarBins(BatchNode batch, Policy policy, List<BatchRecord> records) {
 		super(batch.node, false);
 		this.batch = batch;
 		this.policy = policy;
-		this.keys = keys;
-		this.existsArray = existsArray;
+		this.records = records;
 	}
-	
+
 	@Override
 	protected Policy getPolicy() {
 		return policy;
@@ -49,17 +44,17 @@ public final class BatchCommandExists extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		setBatchRead(policy, records, batch);
 	}
 
 	@Override
 	protected void parseRow(Key key) throws IOException {
-		if (opCount > 0) {
-			throw new AerospikeException.Parse("Received bins that were not requested!");
-		}
+		BatchRecord record = records.get(batchIndex);
 		
-		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-			existsArray[batchIndex] = resultCode == 0;
+		if (Arrays.equals(key.digest, record.key.digest)) {
+			if (resultCode == 0) {
+				record.record = parseRecord();
+			}
 		}
 		else {
 			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);

@@ -19,11 +19,12 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final ExistsSequenceListener listener;
@@ -31,14 +32,13 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 	public AsyncBatchExistsSequence(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
-		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode batch,
 		Policy policy,
 		Key[] keys,
 		ExistsSequenceListener listener
 	) {
-		super(parent, cluster, node, false);
-		this.batchNamespace = batchNamespace;
+		super(parent, cluster, (AsyncNode)batch.node, false);
+		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
 		this.listener = listener;
@@ -50,12 +50,12 @@ public final class AsyncBatchExistsSequence extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(policy, keys, batchNamespace, node.hasBatchIndex);
+	protected void writeBuffer() {
+		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {		
+	protected void parseRow(Key key) {		
 		if (opCount > 0) {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
 		}			

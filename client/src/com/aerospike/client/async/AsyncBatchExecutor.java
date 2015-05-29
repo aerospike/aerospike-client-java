@@ -18,7 +18,6 @@ package com.aerospike.client.async;
 
 import java.util.List;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode;
@@ -29,14 +28,22 @@ public abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 	protected final List<BatchNode> batchNodes;
 	protected final int taskSize;
 
-	public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys) throws AerospikeException {
+	public AsyncBatchExecutor(Cluster cluster, BatchPolicy policy, Key[] keys) {
 		this.keys = keys;	
 		this.batchNodes = BatchNode.generateList(cluster, policy, keys);
 		
 		// Count number of asynchronous commands needed.
-		int size = 0;		
+		int size = 0;
 		for (BatchNode batchNode : batchNodes) {
-			size += batchNode.batchNamespaces.size();
+			if (batchNode.node.hasBatchIndex) {
+				// New batch
+				size++;
+			}
+			else {
+				// Old batch only allows one namespace per call.
+				batchNode.splitByNamespace(keys);
+				size += batchNode.batchNamespaces.size();
+			}
 		}
 		this.taskSize = size;
 	}	

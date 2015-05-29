@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
@@ -36,60 +37,66 @@ public final class BatchNode {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 		}
 		
-		int nodeCount = nodes.length;
-		int keysPerNode = keys.length / nodeCount + 10;
+		// Create initial key capacity for each node as average + 25%.
+		int keysPerNode = keys.length / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
+		}
 
 		// Split keys by server node.
-		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodeCount+1);
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
 				
 		for (int i = 0; i < keys.length; i++) {
-			Key key = keys[i];
-			Partition partition = new Partition(key);			
-			BatchNode batchNode;
-			
+			Partition partition = new Partition(keys[i]);						
 			Node node = cluster.getReadNode(partition, policy.replica);
-			batchNode = findBatchNode(batchNodes, node);
+			BatchNode batchNode = findBatchNode(batchNodes, node);
 			
 			if (batchNode == null) {
-				batchNodes.add(new BatchNode(node, keysPerNode, key.namespace, i));
+				batchNodes.add(new BatchNode(node, keysPerNode, i));
 			}
 			else {
-				batchNode.addKey(key.namespace, i);
+				batchNode.addKey(i);
 			}
 		}
 		return batchNodes;
 	}
 
-	public final Node node;
-	public final List<BatchNamespace> batchNamespaces;
-	public final int keyCapacity;
-
-	public BatchNode(Node node, int keyCapacity, String namespace, int offset) {
-		this.node = node;
-		this.keyCapacity = keyCapacity;
-		batchNamespaces = new ArrayList<BatchNamespace>(4);
-		batchNamespaces.add(new BatchNamespace(namespace, keyCapacity, offset));
-	}
-	
-	public void addKey(String namespace, int offset) {
-		BatchNamespace batchNamespace = findNamespace(namespace);
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) throws AerospikeException {
+		Node[] nodes = cluster.getNodes();
 		
-		if (batchNamespace == null) {
-			batchNamespaces.add(new BatchNamespace(namespace, keyCapacity, offset));
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 		}
-		else {
-			batchNamespace.add(offset);
+		
+		// Create initial key capacity for each node as average + 25%.
+		int max = records.size();
+		int keysPerNode = max / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
 		}
-	}
-	
-	private BatchNamespace findNamespace(String ns) {
-		for (BatchNamespace batchNamespace : batchNamespaces) {
-			// Note: use both pointer equality and equals.
-			if (batchNamespace.namespace == ns || batchNamespace.namespace.equals(ns)) {
-				return batchNamespace;
+
+		// Split keys by server node.
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
+				
+		for (int i = 0; i < max; i++) {
+			Partition partition = new Partition(records.get(i).key);						
+			Node node = cluster.getReadNode(partition, policy.replica);
+			BatchNode batchNode = findBatchNode(batchNodes, node);
+			
+			if (batchNode == null) {
+				batchNodes.add(new BatchNode(node, keysPerNode, i));
+			}
+			else {
+				batchNode.addKey(i);
 			}
 		}
-		return null;
+		return batchNodes;
 	}
 
 	private static BatchNode findBatchNode(List<BatchNode> nodes, Node node) {
@@ -97,6 +104,75 @@ public final class BatchNode {
 			// Note: using pointer equality for performance.
 			if (batchNode.node == node) {
 				return batchNode;
+			}
+		}
+		return null;
+	}
+
+	public final Node node;
+	public int[] offsets;
+	public int offsetsSize;
+	public List<BatchNamespace> batchNamespaces;  // used by old batch only
+
+	public BatchNode(Node node, int capacity, int offset) {
+		this.node = node;
+		this.offsets = new int[capacity];
+		this.offsets[0] = offset;
+		this.offsetsSize = 1;
+	}
+	
+	public void addKey(int offset) {
+		if (offsetsSize >= offsets.length) {
+			int[] copy = new int[offsetsSize * 2];	        
+			System.arraycopy(offsets, 0, copy, 0, offsetsSize);
+			offsets = copy;
+		}
+		offsets[offsetsSize++] = offset;
+	}
+	
+	public void splitByNamespace(Key[] keys) {
+		String first = keys[offsets[0]].namespace;
+		
+		// Optimize for single namespace.
+		if (isSingleNamespace(keys, first)) {
+			batchNamespaces = new ArrayList<BatchNamespace>(1);
+			batchNamespaces.add(new BatchNamespace(first, offsets, offsetsSize));
+			return;
+		}		
+		
+		// Process multiple namespaces.
+		batchNamespaces = new ArrayList<BatchNamespace>(4);
+
+		for (int i = 0; i < offsetsSize; i++) {
+			int offset = offsets[i];
+			String ns = keys[offset].namespace;
+			BatchNamespace batchNamespace = findNamespace(batchNamespaces, ns);
+			
+			if (batchNamespace == null) {
+				batchNamespaces.add(new BatchNamespace(ns, offsetsSize, offset));
+			}
+			else {
+				batchNamespace.add(offset);
+			}
+		}
+	}
+
+	private boolean isSingleNamespace(Key[] keys, String first) {	
+		for (int i = 1; i < offsetsSize; i++) {
+			String ns = keys[offsets[i]].namespace;
+			
+			if (!(ns == first || ns.equals(first))) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	private BatchNamespace findNamespace(List<BatchNamespace> batchNamespaces, String ns) {
+		for (BatchNamespace batchNamespace : batchNamespaces) {
+			// Note: use both pointer equality and equals.
+			if (batchNamespace.namespace == ns || batchNamespace.namespace.equals(ns)) {
+				return batchNamespace;
 			}
 		}
 		return null;
@@ -114,13 +190,14 @@ public final class BatchNode {
 			this.offsetsSize = 1;
 		}
 		
+		public BatchNamespace(String namespace, int[] offsets, int offsetsSize) {
+			this.namespace = namespace;
+			this.offsets = offsets;
+			this.offsetsSize = offsetsSize;
+		}
+
 		public void add(int offset) {
-			if (offsetsSize >= offsets.length) {
-				int[] copy = new int[offsetsSize * 2];	        
-				System.arraycopy(offsets, 0, copy, 0, offsetsSize);
-				offsets = copy;
-			}
 			offsets[offsetsSize++] = offset;
 		}
-	}	
+	}	 
 }

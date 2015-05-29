@@ -16,52 +16,45 @@
  */
 package com.aerospike.client.async;
 
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.Record;
+import com.aerospike.client.BatchRecord;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.BatchNode;
-import com.aerospike.client.command.BatchNode.BatchNamespace;
-import com.aerospike.client.listener.RecordArrayListener;
+import com.aerospike.client.listener.BatchRecordListener;
 import com.aerospike.client.policy.BatchPolicy;
 
-public final class AsyncBatchGetArrayExecutor extends AsyncBatchExecutor {
-	private final RecordArrayListener listener;
-	private final Record[] recordArray;
+public final class AsyncBatchGetVarBinsArrayExecutor extends AsyncMultiExecutor {
+	private final BatchRecordListener listener;
+	private final List<BatchRecord> records;
 
-	public AsyncBatchGetArrayExecutor(
+	public AsyncBatchGetVarBinsArrayExecutor(
 		AsyncCluster cluster,
 		BatchPolicy policy, 
-		RecordArrayListener listener,
-		Key[] keys,
-		String[] binNames,
-		int readAttr
+		BatchRecordListener listener,
+		List<BatchRecord> records
 	) {
-		super(cluster, policy, keys);
-		this.recordArray = new Record[keys.length];
 		this.listener = listener;
+		this.records = records;
 		
 		// Create commands.
-		AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
+		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
+		AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 		int count = 0;
 
-		for (BatchNode batchNode : batchNodes) {			
-			if (batchNode.node.hasBatchIndex) {
-				// New batch
-				tasks[count++] = new AsyncBatchGetArray(this, cluster, batchNode, policy, keys, binNames, recordArray, readAttr);
+		for (BatchNode batchNode : batchNodes) {
+			if (! batchNode.node.hasBatchIndex) {
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 			}
-			else {
-				// Old batch only allows one namespace per call.
-				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {				
-					tasks[count++] = new AsyncBatchGetArrayOld(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
-				}
-			}
+			tasks[count++] = new AsyncBatchGetVarBinsArray(this, cluster, batchNode, policy, records);
 		}
 		// Dispatch commands to nodes.
 		execute(tasks, policy.maxConcurrentThreads);
 	}
 	
 	protected void onSuccess() {
-		listener.onSuccess(keys, recordArray);
+		listener.onSuccess(records);
 	}
 	
 	protected void onFailure(AerospikeException ae) {

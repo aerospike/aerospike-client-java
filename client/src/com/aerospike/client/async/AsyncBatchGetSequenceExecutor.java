@@ -33,17 +33,24 @@ public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 		Key[] keys,
 		String[] binNames,
 		int readAttr
-	) throws AerospikeException {
+	) {
 		super(cluster, policy, keys);
 		this.listener = listener;
 
 		// Create commands.
-		AsyncBatchGetSequence[] tasks = new AsyncBatchGetSequence[super.taskSize];
+		AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
 		int count = 0;
 
 		for (BatchNode batchNode : batchNodes) {			
-			for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-				tasks[count++] = new AsyncBatchGetSequence(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
+			if (batchNode.node.hasBatchIndex) {
+				// New batch
+				tasks[count++] = new AsyncBatchGetSequence(this, cluster, batchNode, policy, keys, binNames, listener, readAttr);
+			}
+			else {
+				// Old batch only allows one namespace per call.
+				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+					tasks[count++] = new AsyncBatchGetSequenceOld(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
+				}
 			}
 		}
 		// Dispatch commands to nodes.

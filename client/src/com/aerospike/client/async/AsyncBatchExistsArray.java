@@ -22,26 +22,25 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchExistsArray extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batch;
+	private final BatchNode batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final boolean[] existsArray;
-	private int index;
 	
 	public AsyncBatchExistsArray(
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
-		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode batch,
 		Policy policy,
 		Key[] keys,
 		boolean[] existsArray
 	) {
-		super(parent, cluster, node, false);
-		this.batch = batchNamespace;
+		super(parent, cluster, (AsyncNode)batch.node, false);
+		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
 		this.existsArray = existsArray;
@@ -53,23 +52,21 @@ public final class AsyncBatchExistsArray extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setBatchExists(policy, keys, batch, node.hasBatchIndex);
+	protected void writeBuffer() {
+		setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {		
+	protected void parseRow(Key key) {		
 		if (opCount > 0) {
 			throw new AerospikeException.Parse("Received bins that were not requested!");
 		}
 		
-		int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
-		
-		if (Arrays.equals(key.digest, keys[offset].digest)) {
-			existsArray[offset] = resultCode == 0;			
+		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
+			existsArray[batchIndex] = resultCode == 0;			
 		}
 		else {
-			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 		}
 	}
 }

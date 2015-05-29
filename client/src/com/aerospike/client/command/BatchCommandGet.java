@@ -18,35 +18,29 @@ package com.aerospike.client.command;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchCommandGet extends MultiCommand {
-	private final BatchNode.BatchNamespace batch;
+	private final BatchNode batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final String[] binNames;
 	private final Record[] records;
 	private final int readAttr;
-	private int index;
 
 	public BatchCommandGet(
-		Node node,
-		BatchNode.BatchNamespace batch,
-		Policy policy,		
+		BatchNode batch,
+		Policy policy,
 		Key[] keys,
 		String[] binNames,
 		Record[] records,
 		int readAttr
 	) {
-		super(node);
+		super(batch.node, false);
 		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
@@ -61,87 +55,19 @@ public final class BatchCommandGet extends MultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setBatchGet(policy, keys, batch, binNames, readAttr, node.hasBatchIndex);
+	protected void writeBuffer() {
+		setBatchRead(policy, keys, batch, binNames, readAttr);
 	}
 
-	/**
-	 * Parse all results in the batch.  Add records to shared list.
-	 * If the record was not found, the bins will be null.
-	 */
-	protected boolean parseRecordResults(int receiveSize) throws AerospikeException, IOException {
-		//Parse each message response and add it to the result array
-		dataOffset = 0;
-		
-		while (dataOffset < receiveSize) {
-    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = dataBuffer[5] & 0xFF;
-
-			// The only valid server return codes are "ok" and "not found".
-			// If other return codes are received, then abort the batch.
-			if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
-				throw new AerospikeException(resultCode);								
-			}
-			
-			byte info3 = dataBuffer[3];
-
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
-				return false;
-			}
-			
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
-			int batchIndex = Buffer.bytesToInt(dataBuffer, 14);
-			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-			
-			Key key = parseKey(fieldCount);
-			int offset = (node.hasBatchIndex)? batchIndex : batch.offsets[index++];
-						
-			if (Arrays.equals(key.digest, keys[offset].digest)) {			
-				if (resultCode == 0) {
-					records[offset] = parseRecord(opCount, generation, expiration);
-				}
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
+	@Override
+	protected void parseRow(Key key) throws IOException {
+		if (Arrays.equals(key.digest, keys[batchIndex].digest)) {			
+			if (resultCode == 0) {
+				records[batchIndex] = parseRecord();
 			}
 		}
-		return true;
-	}
-
-	/**
-	 * Parses the given byte buffer and populate the result object.
-	 * Returns the number of bytes that were parsed from the given buffer.
-	 */
-	protected Record parseRecord(int opCount, int generation, int expiration) 
-		throws AerospikeException, IOException {
-		
-		Map<String,Object> bins = null;
-		
-		for (int i = 0 ; i < opCount; i++) {
-			if (! valid) {
-				throw new AerospikeException.QueryTerminated();
-			}
-			
-			readBytes(8);	
-			int opSize = Buffer.bytesToInt(dataBuffer, 0);
-			byte particleType = dataBuffer[5];
-			byte nameSize = dataBuffer[7];
-			
-			readBytes(nameSize);
-			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
-			
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
-			readBytes(particleBytesSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
-			
-			if (bins == null) {
-				bins = new HashMap<String,Object>();
-			}
-			bins.put(name, value);
+		else {
+			throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 		}
-		return new Record(bins, generation, expiration);	    
 	}
 }

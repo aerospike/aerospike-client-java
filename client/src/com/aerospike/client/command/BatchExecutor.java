@@ -18,7 +18,6 @@ package com.aerospike.client.command;
 
 import java.util.List;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
@@ -35,8 +34,7 @@ public final class BatchExecutor {
 		Record[] records,
 		String[] binNames,
 		int readAttr
-	) throws AerospikeException {
-		
+	) {	
 		if (keys.length == 0) {
 			return;
 		}
@@ -46,14 +44,30 @@ public final class BatchExecutor {
 		if (policy.maxConcurrentThreads == 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+				if (batchNode.node.hasBatchIndex) {
+					// New batch
 					if (records != null) {
-						BatchCommandGet command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+						BatchCommandGet command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
 						command.execute();
 					}
 					else {
-						BatchCommandExists command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
-						command.execute();
+						BatchCommandExists command = new BatchCommandExists(batchNode, policy, keys, existsArray);
+						command.execute();						
+					}
+				}
+				else {
+					// Old batch only allows one namespace per call.
+					batchNode.splitByNamespace(keys);
+					
+					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+						if (records != null) {
+							BatchCommandGetOld command = new BatchCommandGetOld(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							command.execute();
+						}
+						else {
+							BatchCommandExistsOld command = new BatchCommandExistsOld(batchNode.node, batchNamespace, policy, keys, existsArray);
+							command.execute();
+						}
 					}
 				}
 			}
@@ -62,18 +76,34 @@ public final class BatchExecutor {
 			// Run batch requests in parallel in separate threads.
 			Executor executor = new Executor(cluster, batchNodes.size() * 2);
 
-			// Initialize threads.  There may be multiple threads for a single node because the
-			// wire protocol only allows one namespace per command.  Multiple namespaces 
-			// require multiple threads per node.
+			// Initialize threads.  
 			for (BatchNode batchNode : batchNodes) {
-				for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+				if (batchNode.node.hasBatchIndex) {
+					// New batch
 					if (records != null) {
-						MultiCommand command = new BatchCommandGet(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
 						executor.addCommand(command);
 					}
 					else {
-						MultiCommand command = new BatchCommandExists(batchNode.node, batchNamespace, policy, keys, existsArray);
+						MultiCommand command = new BatchCommandExists(batchNode, policy, keys, existsArray);
 						executor.addCommand(command);
+					}
+				}
+				else {
+					// There may be multiple threads for a single node because the
+					// wire protocol only allows one namespace per command.  Multiple namespaces 
+					// require multiple threads per node.
+					batchNode.splitByNamespace(keys);
+
+					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
+						if (records != null) {
+							MultiCommand command = new BatchCommandGetOld(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							executor.addCommand(command);
+						}
+						else {
+							MultiCommand command = new BatchCommandExistsOld(batchNode.node, batchNamespace, policy, keys, existsArray);
+							executor.addCommand(command);
+						}
 					}
 				}
 			}

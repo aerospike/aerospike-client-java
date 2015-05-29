@@ -19,10 +19,9 @@ package com.aerospike.client.query;
 import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
+import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -32,7 +31,7 @@ public final class ServerCommand extends MultiCommand {
 	private final Statement statement;
 	
 	public ServerCommand(Node node, WritePolicy policy, Statement statement) {
-		super(node);
+		super(node, true);
 		this.writePolicy = policy;
 		this.statement = statement;
 	}
@@ -48,51 +47,23 @@ public final class ServerCommand extends MultiCommand {
 	}	
 	
 	@Override
-	protected boolean parseRecordResults(int receiveSize) 
-		throws AerospikeException, IOException {
+	protected void parseRow(Key key) throws IOException {		
 		// Server commands (Query/Execute UDF) should only send back a return code.
 		// Keep parsing logic to empty socket buffer just in case server does
 		// send records back.
-		dataOffset = 0;
+		for (int i = 0 ; i < opCount; i++) {
+    		readBytes(8);	
+			int opSize = Buffer.bytesToInt(dataBuffer, 0);
+			byte nameSize = dataBuffer[7];
+    		
+			readBytes(nameSize);
+	
+			int particleBytesSize = (int) (opSize - (4 + nameSize));
+			readBytes(particleBytesSize);
+	    }
 		
-		while (dataOffset < receiveSize) {
-    		readBytes(MSG_REMAINING_HEADER_SIZE);    		
-			int resultCode = dataBuffer[5] & 0xFF;
-			
-			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-					return false;
-				}
-				throw new AerospikeException(resultCode);
-			}
-
-			byte info3 = dataBuffer[3];
-			
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
-				return false;
-			}		
-			
-			int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-			
-			parseKey(fieldCount);
-
-			for (int i = 0 ; i < opCount; i++) {
-	    		readBytes(8);	
-				int opSize = Buffer.bytesToInt(dataBuffer, 0);
-				byte nameSize = dataBuffer[7];
-	    		
-				readBytes(nameSize);
-		
-				int particleBytesSize = (int) (opSize - (4 + nameSize));
-				readBytes(particleBytesSize);
-		    }
-			
-			if (! valid) {
-				throw new AerospikeException.QueryTerminated();
-			}
+		if (! valid) {
+			throw new AerospikeException.QueryTerminated();
 		}
-		return true;
 	}
 }
