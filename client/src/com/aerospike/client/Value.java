@@ -302,6 +302,11 @@ public abstract class Value {
 		public String toString() {
 			return null;
 		}
+		
+		@Override
+		public final int hashCode() {
+			return 0;
+		}
 	}
 	
 	/**
@@ -350,6 +355,11 @@ public abstract class Value {
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
 		}
+
+		@Override
+		public int hashCode() {
+			return Arrays.hashCode(bytes);
+		}	
 	}
 
 	/**
@@ -403,6 +413,15 @@ public abstract class Value {
 			return Buffer.bytesToHexString(bytes, offset, length);
 		}
 		
+		@Override
+		public int hashCode() {
+	        int result = 1;
+	        for (int i = 0; i < length; i++) {
+	            result = 31 * result + bytes[offset+i];
+	        }
+	        return result;
+		}	
+
 		public byte[] getBytes() {
 			return bytes;
 		}
@@ -460,6 +479,11 @@ public abstract class Value {
 		public String toString() {
 			return value;
 		}
+		
+		@Override
+		public int hashCode() {
+	        return value.hashCode();
+		}	
 	}
 	
 	/**
@@ -508,6 +532,11 @@ public abstract class Value {
 			return Integer.toString(value);
 		}
 		
+		@Override
+		public int hashCode() {
+	        return value;
+		}	
+
 		@Override
 		public int toInteger() {
 			return value;
@@ -565,6 +594,11 @@ public abstract class Value {
 			return Long.toString(value);
 		}
 		
+		@Override
+		public int hashCode() {
+	        return (int)value;
+		}	
+
 		@Override
 		public int toInteger() {
 			return (int)value;
@@ -624,6 +658,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public int hashCode() {
+	        return (int)value;
+		}	
+
+		@Override
 		public int toInteger() {
 			return (int)value;
 		}
@@ -682,6 +721,11 @@ public abstract class Value {
 		}
 		
 		@Override
+		public int hashCode() {
+	        return (int)value;
+		}	
+
+		@Override
 		public int toInteger() {
 			return (int)value;
 		}
@@ -739,6 +783,11 @@ public abstract class Value {
 			return Boolean.toString(value);
 		}
 		
+		@Override
+		public int hashCode() {
+	        return value? 1 : 0;
+		}	
+
 		@Override
 		public int toInteger() {
 			return value? 1 : 0;
@@ -811,6 +860,11 @@ public abstract class Value {
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
 		}
+		
+		@Override
+		public int hashCode() {
+	        return object.hashCode();
+		}	
 	}
 	
 	/**
@@ -866,6 +920,11 @@ public abstract class Value {
 		public String toString() {
 			return Arrays.toString(array);
 		}
+		
+		@Override
+		public int hashCode() {
+	        return Arrays.hashCode(array);
+		}	
 	}
 
 	/**
@@ -921,6 +980,11 @@ public abstract class Value {
 		public String toString() {
 			return list.toString();
 		}
+		
+		@Override
+		public int hashCode() {
+	        return list.hashCode();
+		}	
 	}
 
 	/**
@@ -976,11 +1040,15 @@ public abstract class Value {
 		public String toString() {
 			return map.toString();
 		}
+		
+		@Override
+		public int hashCode() {
+	        return map.hashCode();
+		}	
 	}
 	
 	/**
 	 * checks if to Values are equal
-	 * @param otherValue
 	 */
 	@Override
 	public boolean equals(Object otherValue) {
@@ -988,4 +1056,6 @@ public abstract class Value {
 				&& this.getClass().equals(otherValue.getClass())
 				&& ((Value)otherValue).toString().equals(this.toString()));
 	}
+	
+	public abstract int hashCode();
 }

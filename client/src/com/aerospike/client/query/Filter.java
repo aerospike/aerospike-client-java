@@ -95,8 +95,8 @@ public final class Filter {
 	 * String ranges are not supported.
 	 * 
 	 * @param name			bin name
-	 * @param begin			filter begin value
-	 * @param end			filter end value
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, long begin, long end) {
@@ -110,8 +110,8 @@ public final class Filter {
 	 * 
 	 * @param name			bin name
 	 * @param type			index collection type
-	 * @param begin			filter begin value
-	 * @param end			filter end value
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, IndexCollectionType type, long begin, long end) {
@@ -126,8 +126,8 @@ public final class Filter {
 	 * 
 	 * @deprecated 
 	 * @param name			bin name
-	 * @param begin			filter begin value
-	 * @param end			filter end value
+	 * @param begin			filter begin value inclusive
+	 * @param end			filter end value inclusive
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, Value begin, Value end) {
@@ -187,5 +187,51 @@ public final class Filter {
 	 */
 	public IndexCollectionType getCollectionType() {
 		return type;
+	}
+	
+	/**
+	 * Check for Filter equality.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Filter other = (Filter) obj;
+		if (begin == null) {
+			if (other.begin != null)
+				return false;
+		} else if (!begin.equals(other.begin))
+			return false;
+		if (end == null) {
+			if (other.end != null)
+				return false;
+		} else if (!end.equals(other.end))
+			return false;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		if (type != other.type)
+			return false;
+		return true;
+	}
+	
+	/**
+	 * Generate Filter hashCode.
+	 */
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((begin == null) ? 0 : begin.hashCode());
+		result = prime * result + ((end == null) ? 0 : end.hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		return result;
 	}
 }
