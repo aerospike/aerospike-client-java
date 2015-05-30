@@ -23,7 +23,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
@@ -133,9 +132,9 @@ public class QueryCollection extends Example {
 			int count = 0;
 			
 			while (rs.next()) {
-				Key key = rs.getKey();
+				//Key key = rs.getKey();
 				Record record = rs.getRecord();
-				Map result = (Map)record.getValue(binName);
+				Map<?,?> result = (Map<?,?>)record.getValue(binName);
 
 				if (result.containsKey(queryMapKey)) {
 					/*console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
