@@ -304,6 +304,14 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			if (other == null) {
+				return true;
+			}			
+			return this.getClass().equals(other.getClass());
+		}
+
+		@Override
 		public final int hashCode() {
 			return 0;
 		}
@@ -354,6 +362,13 @@ public abstract class Value {
 		@Override
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				Arrays.equals(this.bytes, ((BytesValue)other).bytes));
 		}
 
 		@Override
@@ -413,6 +428,29 @@ public abstract class Value {
 			return Buffer.bytesToHexString(bytes, offset, length);
 		}
 		
+		@Override
+		public boolean equals(Object obj) {
+			if (obj == null) {
+				return false;
+			}
+			
+			if (! this.getClass().equals(obj.getClass())) {
+				return false;
+			}
+			ByteSegmentValue other = (ByteSegmentValue)obj;
+			
+			if (this.length != other.length) {
+				return false;
+			}
+			
+			for (int i = 0; i < length; i++) {
+				if (this.bytes[this.offset + i] != other.bytes[other.offset + i]) {
+					return false;
+				}
+			}
+			return true;
+		}
+
 		@Override
 		public int hashCode() {
 	        int result = 1;
@@ -481,6 +519,13 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value.equals(((StringValue)other).value));
+		}
+
+		@Override
 		public int hashCode() {
 	        return value.hashCode();
 		}	
@@ -532,6 +577,13 @@ public abstract class Value {
 			return Integer.toString(value);
 		}
 		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((IntegerValue)other).value);
+		}
+
 		@Override
 		public int hashCode() {
 	        return value;
@@ -595,8 +647,15 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((LongValue)other).value);
+		}
+
+		@Override
 		public int hashCode() {
-	        return (int)value;
+	        return (int)(value ^ (value >>> 32));
 		}	
 
 		@Override
@@ -658,8 +717,16 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((DoubleValue)other).value);
+		}
+
+		@Override
 		public int hashCode() {
-	        return (int)value;
+	        long bits = Double.doubleToLongBits(value);
+	        return (int)(bits ^ (bits >>> 32));
 		}	
 
 		@Override
@@ -721,8 +788,15 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((FloatValue)other).value);
+		}
+
+		@Override
 		public int hashCode() {
-	        return (int)value;
+	        return Float.floatToIntBits(value);
 		}	
 
 		@Override
@@ -784,8 +858,15 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((BooleanValue)other).value);
+		}
+
+		@Override
 		public int hashCode() {
-	        return value? 1 : 0;
+	        return value ? 1231 : 1237;
 		}	
 
 		@Override
@@ -862,6 +943,13 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.object.equals(((BlobValue)other).object));
+		}
+
+		@Override
 		public int hashCode() {
 	        return object.hashCode();
 		}	
@@ -922,8 +1010,15 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				Arrays.equals(this.array, ((ValueArray)other).array));
+		}
+
+		@Override
 		public int hashCode() {
-	        return Arrays.hashCode(array);
+			return Arrays.hashCode(array);
 		}	
 	}
 
@@ -979,6 +1074,13 @@ public abstract class Value {
 		@Override
 		public String toString() {
 			return list.toString();
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.list.equals(((ListValue)other).list));
 		}
 		
 		@Override
@@ -1042,20 +1144,15 @@ public abstract class Value {
 		}
 		
 		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.map.equals(((MapValue)other).map));
+		}
+		
+		@Override
 		public int hashCode() {
 	        return map.hashCode();
 		}	
 	}
-	
-	/**
-	 * checks if to Values are equal
-	 */
-	@Override
-	public boolean equals(Object otherValue) {
-		return (otherValue != null
-				&& this.getClass().equals(otherValue.getClass())
-				&& ((Value)otherValue).toString().equals(this.toString()));
-	}
-	
-	public abstract int hashCode();
 }
