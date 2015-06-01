@@ -23,7 +23,7 @@ package com.aerospike.client.policy;
 public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
-	 * Currently, only used for scans.
+	 * Currently, only used for batch and scan.
 	 */
 	public Priority priority = Priority.DEFAULT;
 	
