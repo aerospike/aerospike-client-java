@@ -42,7 +42,7 @@ public final class AsyncBatchGetSequenceExecutor extends AsyncBatchExecutor {
 		int count = 0;
 
 		for (BatchNode batchNode : batchNodes) {			
-			if (batchNode.node.hasBatchIndex) {
+			if (batchNode.node.useNewBatch(policy)) {
 				// New batch
 				tasks[count++] = new AsyncBatchGetSequence(this, cluster, batchNode, policy, keys, binNames, listener, readAttr);
 			}

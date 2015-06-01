@@ -40,7 +40,7 @@ public final class AsyncBatchExistsSequenceExecutor extends AsyncBatchExecutor {
 		int count = 0;
 
 		for (BatchNode batchNode : batchNodes) {			
-			if (batchNode.node.hasBatchIndex) {
+			if (batchNode.node.useNewBatch(policy)) {
 				// New batch
 				tasks[count++] = new AsyncBatchExistsSequence(this, cluster, batchNode, policy, keys, listener);
 			}

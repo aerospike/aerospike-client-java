@@ -35,7 +35,7 @@ public abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 		// Count number of asynchronous commands needed.
 		int size = 0;
 		for (BatchNode batchNode : batchNodes) {
-			if (batchNode.node.hasBatchIndex) {
+			if (batchNode.node.useNewBatch(policy)) {
 				// New batch
 				size++;
 			}

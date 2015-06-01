@@ -23,6 +23,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Priority;
 
 public final class BatchExecutor {
 	
@@ -44,7 +45,7 @@ public final class BatchExecutor {
 		if (policy.maxConcurrentThreads == 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				if (batchNode.node.hasBatchIndex) {
+				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
 					if (records != null) {
 						BatchCommandGet command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
@@ -56,7 +57,7 @@ public final class BatchExecutor {
 					}
 				}
 				else {
-					// Old batch only allows one namespace per call.
+					// Old batch only allows one namespace per call, but does run at low priority.
 					batchNode.splitByNamespace(keys);
 					
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
@@ -78,7 +79,7 @@ public final class BatchExecutor {
 
 			// Initialize threads.  
 			for (BatchNode batchNode : batchNodes) {
-				if (batchNode.node.hasBatchIndex) {
+				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
 					if (records != null) {
 						MultiCommand command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
