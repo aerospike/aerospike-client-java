@@ -28,8 +28,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.Priority;
+import com.aerospike.client.policy.BatchPolicy;
 
 /**
  * Server node representation.  This class manages server node connections and health status.
@@ -299,11 +298,10 @@ public class Node implements Closeable {
 	}
 	
 	/**
-	 * Use new batch protocol if server supports it and the specified priority is normal or high.
-	 * Low priority batch requests should always use old batch protocol.
+	 * Use new batch protocol if server supports it and useBatchDirect is not set.
 	 */
-	public boolean useNewBatch(Policy policy) {
-		return policy.priority != Priority.LOW && hasBatchIndex;
+	public boolean useNewBatch(BatchPolicy policy) {
+		return ! policy.useBatchDirect && hasBatchIndex;
 	}
 
 	/**
