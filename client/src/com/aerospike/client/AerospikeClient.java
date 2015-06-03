@@ -989,6 +989,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		File file = new File(clientPath);
 		byte[] bytes = Util.readFile(file);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
@@ -1011,6 +1014,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
 		throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 		byte[] bytes = Util.readResource(resourceLoader, resourcePath);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
@@ -1166,7 +1172,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
-		return new ExecuteTask(cluster, statement);
+		return new ExecuteTask(cluster, policy, statement);
 	}
 
 	//--------------------------------------------------------
@@ -1325,6 +1331,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		IndexType indexType,
 		IndexCollectionType indexCollectionType
 	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 						
 		StringBuilder sb = new StringBuilder(500);
 		sb.append("sindex-create:ns=");
@@ -1355,7 +1364,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		
 		if (response.equalsIgnoreCase("OK")) {
 			// Return task that could optionally be polled for completion.
-			return new IndexTask(cluster, namespace, indexName);
+			return new IndexTask(cluster, policy, namespace, indexName);
 		}
 		
 		if (response.startsWith("FAIL:200")) {
@@ -1382,6 +1391,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String setName, 
 		String indexName
 	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
 						
 		StringBuilder sb = new StringBuilder(500);
 		sb.append("sindex-delete:ns=");
@@ -1598,8 +1610,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	
 	private String sendInfoCommand(Policy policy, String command) throws AerospikeException {		
 		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		Connection conn = node.getConnection(timeout);
+		Connection conn = node.getConnection(policy.timeout);
 		Info info;
 		
 		try {

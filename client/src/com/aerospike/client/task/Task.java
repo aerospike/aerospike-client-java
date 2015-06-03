@@ -18,6 +18,8 @@ package com.aerospike.client.task;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -25,14 +27,22 @@ import com.aerospike.client.util.Util;
  */
 public abstract class Task {
 	protected final Cluster cluster;
+	protected final InfoPolicy policy;
 	private boolean done;
 
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public Task(Cluster cluster, boolean done) {
+	public Task(Cluster cluster, Policy policy) {
 		this.cluster = cluster;
-		this.done = done;
+		this.policy = new InfoPolicy(policy);
+		this.done = false;
+	}
+
+	public Task() {
+		this.cluster = null;
+		this.policy = null;
+		this.done = true;
 	}
 
 	/**

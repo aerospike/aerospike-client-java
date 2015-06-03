@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Statement;
 
 /**
@@ -32,8 +33,8 @@ public final class ExecuteTask extends Task {
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public ExecuteTask(Cluster cluster, Statement statement) {
-		super(cluster, false);
+	public ExecuteTask(Cluster cluster, Policy policy, Statement statement) {
+		super(cluster, policy);
 		this.taskId = statement.getTaskId();
 		this.scan = statement.isScan();
 	}
@@ -48,7 +49,7 @@ public final class ExecuteTask extends Task {
 		boolean done = false;
 
 		for (Node node : nodes) {
-			String response = Info.request(node, command);
+			String response = Info.request(policy, node, command);
 			String find = "job_id=" + taskId + ':';
 			int index = response.indexOf(find);
 

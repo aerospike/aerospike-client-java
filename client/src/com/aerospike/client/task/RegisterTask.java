@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Task used to poll for UDF registration completion.
@@ -30,8 +31,8 @@ public final class RegisterTask extends Task {
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public RegisterTask(Cluster cluster, String packageName) {
-		super(cluster, false);
+	public RegisterTask(Cluster cluster, Policy policy, String packageName) {
+		super(cluster, policy);
 		this.packageName = packageName;
 	}
 
@@ -44,7 +45,7 @@ public final class RegisterTask extends Task {
 		boolean done = false;
 
 		for (Node node : nodes) {
-			String response = Info.request(node, command);
+			String response = Info.request(policy, node, command);
 			String find = "filename=" + packageName;
 			int index = response.indexOf(find);
 

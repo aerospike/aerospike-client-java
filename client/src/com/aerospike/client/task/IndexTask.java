@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Task used to poll for long running create index completion.
@@ -31,8 +32,8 @@ public final class IndexTask extends Task {
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public IndexTask(Cluster cluster, String namespace, String indexName) {
-		super(cluster, false);
+	public IndexTask(Cluster cluster, Policy policy, String namespace, String indexName) {
+		super(cluster, policy);
 		this.namespace = namespace;
 		this.indexName = indexName;
 	}
@@ -41,7 +42,6 @@ public final class IndexTask extends Task {
 	 * Initialize task with fields needed to query server nodes.
 	 */
 	public IndexTask() {
-		super(null, true);
 		namespace = null;
 		indexName = null;
 	}
@@ -57,7 +57,7 @@ public final class IndexTask extends Task {
 
 		for (Node node : nodes) {
 			try {
-				String response = Info.request(node, command);
+				String response = Info.request(policy, node, command);
 				String find = "load_pct=";
 				int index = response.indexOf(find);
 	

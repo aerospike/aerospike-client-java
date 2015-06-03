@@ -48,8 +48,7 @@ public final class RegisterCommand {
 		// Send UDF to one node. That node will distribute the UDF to other nodes.
 		String command = sb.toString();
 		Node node = cluster.getRandomNode();
-		int timeout = (policy == null)? 0 : policy.timeout;
-		Connection conn = node.getConnection(timeout);
+		Connection conn = node.getConnection(policy.timeout);
 		
 		try {			
 			Info info = new Info(conn, command);
@@ -85,7 +84,7 @@ public final class RegisterCommand {
 			}
 			
 			node.putConnection(conn);
-			return new RegisterTask(cluster, serverPath);
+			return new RegisterTask(cluster, policy, serverPath);
 		}
 		catch (RuntimeException re) {
 			conn.close();
