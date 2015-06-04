@@ -270,6 +270,21 @@ public final class ResultCode {
 	public static final int LARGE_ITEM_NOT_FOUND = 125;
 
 	/**
+	 * Batch functionality has been disabled.
+	 */
+	public static final int BATCH_DISABLED = 150;
+
+	/**
+	 * Batch max requests have been exceeded.
+	 */
+	public static final int BATCH_MAX_REQUESTS_EXCEEDED = 151;
+	
+	/**
+	 * All batch queues are full.
+	 */
+	public static final int BATCH_QUEUES_FULL = 152;
+
+	/**
 	 * Secondary index already exists.
 	 */
 	public static final int INDEX_FOUND = 200;
@@ -501,6 +516,15 @@ public final class ResultCode {
 		case LARGE_ITEM_NOT_FOUND:
 			return "Large collection item not found";
 		
+		case BATCH_DISABLED:
+			return "Batch functionality has been disabled";
+			
+		case BATCH_MAX_REQUESTS_EXCEEDED:
+			return "Batch max requests have been exceeded";
+			
+		case BATCH_QUEUES_FULL:
+			return "All batch queues are full";
+			
 		case INDEX_FOUND:
 			return "Index already exists";
 			
