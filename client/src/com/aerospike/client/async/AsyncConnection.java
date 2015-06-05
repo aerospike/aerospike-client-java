@@ -100,6 +100,7 @@ public final class AsyncConnection implements Closeable{
     }
 
     public void write(ByteBuffer byteBuffer) throws IOException {
+    	/*
     	// Temporary size check for corrupted buffer.
 		long proto = byteBuffer.getLong(0);
 		int protoSize = ((int) (proto & 0xFFFFFFFFFFFFL)) + 8;
@@ -108,6 +109,7 @@ public final class AsyncConnection implements Closeable{
 		if (bufferSize != protoSize) {
 			Log.warn("Socket buffer size " + bufferSize + " not equal to proto size " + protoSize);
 		}
+		*/
 
 		socketChannel.write(byteBuffer);
     	

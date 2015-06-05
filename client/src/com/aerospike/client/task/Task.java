@@ -39,6 +39,9 @@ public abstract class Task {
 		this.done = false;
 	}
 
+	/**
+	 * Initialize task that has already completed.
+	 */
 	public Task() {
 		this.cluster = null;
 		this.policy = null;
