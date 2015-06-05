@@ -318,7 +318,7 @@ public class LargeList {
 	 * @return					list of entries selected
 	 */
 	public List<?> filter(String filterModule, String filterName, Value... filterArgs) throws AerospikeException {
-		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
+		return (List<?>)client.execute(policy, key, PackageName, "filter", binName, Value.getAsNull(), Value.get(filterModule), Value.get(filterName), Value.get(filterArgs));
 	}
 
 	/**

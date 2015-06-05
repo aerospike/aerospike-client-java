@@ -52,7 +52,7 @@ public class LargeList extends Example {
 		}
 		
 		runSimpleExample(client, params);
-		//runFilterExample(client, params);
+		runFilterExample(client, params);
 		runWithDistinctBins(client, params);
 		runWithSerializedBin(client, params);
 		runVolumeInsert(client, params);
