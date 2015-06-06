@@ -23,7 +23,7 @@ import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchGetSequenceOld extends AsyncMultiCommand {
-	private final BatchNode.BatchNamespace batchNamespace;
+	private final BatchNode.BatchNamespace batch;
 	private final Policy policy;
 	private final Key[] keys;
 	private final String[] binNames;
@@ -34,7 +34,7 @@ public final class AsyncBatchGetSequenceOld extends AsyncMultiCommand {
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
 		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
 		Key[] keys,
 		String[] binNames,
@@ -42,7 +42,7 @@ public final class AsyncBatchGetSequenceOld extends AsyncMultiCommand {
 		int readAttr
 	) {
 		super(parent, cluster, node, false);
-		this.batchNamespace = batchNamespace;
+		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
 		this.binNames = binNames;
@@ -57,7 +57,7 @@ public final class AsyncBatchGetSequenceOld extends AsyncMultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setBatchReadOld(policy, keys, batchNamespace, binNames, readAttr);
+		setBatchReadOld(policy, keys, batch, binNames, readAttr);
 	}
 
 	@Override

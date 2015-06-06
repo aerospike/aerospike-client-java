@@ -50,7 +50,7 @@ public final class BatchPolicy extends Policy {
 	public int maxConcurrentThreads = 1;
 	
 	/**
-	 * Use batch direct protocol where batch reads are handled by direct low-level batch server 
+	 * Use old batch direct protocol where batch reads are handled by direct low-level batch server 
 	 * database routines.  The batch direct protocol can be faster when there is a single namespace, 
 	 * but there is one important drawback.  The batch direct protocol will not proxy to a different 
 	 * server node when the mapped node has migrated a record to another node (resulting in not
@@ -59,8 +59,8 @@ public final class BatchPolicy extends Policy {
 	 * This can happen after a node has been added/removed from the cluster and there is a lag 
 	 * between records being migrated and client partition map update (once per second).
 	 * <p>
-	 * The new batch protocol will perform this record proxy when necessary.
-	 * Default: false (use new batch protocol if server supports it)
+	 * The new batch index protocol will perform this record proxy when necessary.
+	 * Default: false (use new batch index protocol if server supports it)
 	 */
 	public boolean useBatchDirect;
 	
