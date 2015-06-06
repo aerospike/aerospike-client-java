@@ -50,9 +50,9 @@ public final class BatchPolicy extends Policy {
 	public int maxConcurrentThreads = 1;
 	
 	/**
-	 * Use old batch protocol where batch reads are handled by direct low-level batch server 
-	 * database routines.  The old batch protocol can be faster when there is a single namespace, 
-	 * but there is one important drawback.  The old batch protocol will not proxy to a different 
+	 * Use batch direct protocol where batch reads are handled by direct low-level batch server 
+	 * database routines.  The batch direct protocol can be faster when there is a single namespace, 
+	 * but there is one important drawback.  The batch direct protocol will not proxy to a different 
 	 * server node when the mapped node has migrated a record to another node (resulting in not
 	 * found record).  
 	 * <p>

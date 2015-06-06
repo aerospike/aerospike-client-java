@@ -36,13 +36,13 @@ public final class AsyncBatchExistsArrayOld extends AsyncMultiCommand {
 		AsyncMultiExecutor parent,
 		AsyncCluster cluster,
 		AsyncNode node,
-		BatchNode.BatchNamespace batchNamespace,
+		BatchNode.BatchNamespace batch,
 		Policy policy,
 		Key[] keys,
 		boolean[] existsArray
 	) {
 		super(parent, cluster, node, false);
-		this.batch = batchNamespace;
+		this.batch = batch;
 		this.policy = policy;
 		this.keys = keys;
 		this.existsArray = existsArray;
