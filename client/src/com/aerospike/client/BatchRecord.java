@@ -68,6 +68,9 @@ public final class BatchRecord {
 		this.readAllBins = readAllBins;
 	}
 
+	/**
+	 * Convert BatchRecord to string.
+	 */
 	@Override
 	public String toString() {
 		return key.toString() + ":" + Arrays.toString(binNames);

@@ -23,7 +23,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.policy.BatchPolicy;
-import com.aerospike.client.policy.Priority;
 
 public final class BatchExecutor {
 	
@@ -48,11 +47,11 @@ public final class BatchExecutor {
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
 					if (records != null) {
-						BatchCommandGet command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
 						command.execute();
 					}
 					else {
-						BatchCommandExists command = new BatchCommandExists(batchNode, policy, keys, existsArray);
+						MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
 						command.execute();						
 					}
 				}
@@ -62,11 +61,11 @@ public final class BatchExecutor {
 					
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
 						if (records != null) {
-							BatchCommandGetOld command = new BatchCommandGetOld(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							MultiCommand command = new Batch.GetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
 							command.execute();
 						}
 						else {
-							BatchCommandExistsOld command = new BatchCommandExistsOld(batchNode.node, batchNamespace, policy, keys, existsArray);
+							MultiCommand command = new Batch.ExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
 							command.execute();
 						}
 					}
@@ -82,11 +81,11 @@ public final class BatchExecutor {
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
 					if (records != null) {
-						MultiCommand command = new BatchCommandGet(batchNode, policy, keys, binNames, records, readAttr);
+						MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
 						executor.addCommand(command);
 					}
 					else {
-						MultiCommand command = new BatchCommandExists(batchNode, policy, keys, existsArray);
+						MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
 						executor.addCommand(command);
 					}
 				}
@@ -98,11 +97,11 @@ public final class BatchExecutor {
 
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
 						if (records != null) {
-							MultiCommand command = new BatchCommandGetOld(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
+							MultiCommand command = new Batch.GetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
 							executor.addCommand(command);
 						}
 						else {
-							MultiCommand command = new BatchCommandExistsOld(batchNode.node, batchNamespace, policy, keys, existsArray);
+							MultiCommand command = new Batch.ExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
 							executor.addCommand(command);
 						}
 					}

@@ -30,7 +30,7 @@ import com.aerospike.client.admin.User;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.BatchCommandGetVarBins;
+import com.aerospike.client.command.Batch;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Buffer;
@@ -559,7 +559,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				if (! batchNode.node.hasBatchIndex) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}			
-				MultiCommand command = new BatchCommandGetVarBins(batchNode, policy, records);
+				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				command.execute();
 			}
 		}
@@ -571,7 +571,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				if (! batchNode.node.hasBatchIndex) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}		
-				MultiCommand command = new BatchCommandGetVarBins(batchNode, policy, records);
+				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				executor.addCommand(command);
 			}
 			executor.execute(policy.maxConcurrentThreads);

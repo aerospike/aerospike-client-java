@@ -25,12 +25,13 @@ import com.aerospike.client.Key;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
-import com.aerospike.client.listener.BatchRecordListener;
+import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -320,7 +321,25 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, BatchRecordListener listener, List<BatchRecord> records)
+	public void get(BatchPolicy policy, BatchListListener listener, List<BatchRecord> records)
+		throws AerospikeException;
+
+	/**
+	 * Asynchronously read multiple records for specified batch keys in one batch call.
+	 * This method allows different bins to be requested for each key in the batch.
+	 * The returned records are located in the same list.
+	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * <p>
+	 * This method schedules the get command with a channel selector and returns.
+	 * Another thread will process the command and send the results to the listener in a single call.
+	 * This method requires Aerospike Server version >= 3.5.14.
+	 * 
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param listener				where to send results
+	 * @param records				list of unique record identifiers and the bins to retrieve.
+	 * @throws AerospikeException	if read fails
+	 */
+	public void get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRecord> records)
 		throws AerospikeException;
 
 	/**

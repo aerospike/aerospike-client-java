@@ -23,8 +23,9 @@ import com.aerospike.client.BatchRecord;
 
 /**
  * Asynchronous result notifications for batch get commands with variable bins per key.
+ * The result is sent in a single list.
  */
-public interface BatchRecordListener {
+public interface BatchListListener {
 	/**
 	 * This method is called when an asynchronous batch get command completes successfully.
 	 * 

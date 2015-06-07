@@ -400,7 +400,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchReadOld(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, String[] binNames, int readAttr) {
+	public final void setBatchReadDirect(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, String[] binNames, int readAttr) {
 		// Estimate buffer size
 		begin();
 		
