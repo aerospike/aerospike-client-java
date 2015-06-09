@@ -16,15 +16,19 @@
  */
 package com.aerospike.examples;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
@@ -102,15 +106,17 @@ public class AsyncBatch extends AsyncExample {
 			if (rows == max) {
 				try {
 					// All writes succeeded. Run batch queries in parallel.
-					taskSize = 5;
+					taskSize = 6;
 					batchExistsArray();
 					batchExistsSequence();
 					batchGetArray();
 					batchGetSequence();
 					batchGetHeaders();
+					batchReadComplex();
 				}
 				catch (Exception e) {				
-					console.error("Batch failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
+					console.error("Batch failed: " + e.getMessage());
+					allTasksComplete();
 				}
 			}
 		}
@@ -260,6 +266,62 @@ public class AsyncBatch extends AsyncExample {
 		}, sendKeys);
     }
 
+	/**
+	 * Read records with varying namespaces, bin names and read types in one batch.
+	 * This requires Aerospike Server version >= 3.5.14.
+	 */
+	private void batchReadComplex() throws Exception {
+		// Batch gets into one call.
+		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
+		String[] bins = new String[] {binName};		
+		List<BatchRecord> records = new ArrayList<BatchRecord>();
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 1), bins));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 2), true));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 3), true));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 4), false));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 5), true));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 6), true));
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 7), bins));
+
+		// This record should be found, but the requested bin will not be found.
+		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 8), new String[] {"binnotfound"}));
+		
+		// This record should not be found.
+		records.add(new BatchRecord(new Key(params.namespace, params.set, "keynotfound"), bins));
+		
+		// Execute batch.
+		client.get(null, new BatchListListener() {
+			public void onSuccess(List<BatchRecord> records) {			
+				// Show results.
+				int found = 0;	
+				for (BatchRecord record : records) {
+					Key key = record.key;
+					Record rec = record.record;
+					
+					if (rec != null) {
+						found++;
+						console.info("Record: ns=%s set=%s key=%s bin=%s value=%s",
+							key.namespace, key.setName, key.userKey, binName, rec.getValue(binName));
+					}
+					else {
+						console.info("Record not found: ns=%s set=%s key=%s bin=%s",
+							key.namespace, key.setName, key.userKey, binName);
+					}
+				}
+				
+				if (found != 8) {
+					console.error("Records found mismatch. Expected %d. Received %d.", 8, found);
+				}		
+				taskComplete();
+			}
+			
+			public void onFailure(AerospikeException e) {
+				console.error("Batch read complex failed: " + Util.getErrorMessage(e));
+				taskComplete();				
+			}
+		}, records);	
+	}
+	
 	private synchronized void waitTillComplete() {
 		while (! completed) {
 			try {
