@@ -135,7 +135,7 @@ public final class Record {
 			return -1;
 		}
 		
-		// Subtract milliseconds (1970/1/1 GMT to 2010/1/1 GMT) from current time.
+		// Subtract epoch difference (1970/1/1 GMT to 2010/1/1 GMT) from current time.
 		// Handle server's unsigned int ttl with java's usage of long for time.
 		int now = (int)((System.currentTimeMillis() - 1262304000000L) / 1000);
 		
