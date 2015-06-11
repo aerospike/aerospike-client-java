@@ -56,7 +56,7 @@ public final class BatchExecutor {
 					}
 				}
 				else {
-					// Old batch only allows one namespace per call, but does run at low priority.
+					// Old batch only allows one namespace per call.
 					batchNode.splitByNamespace(keys);
 					
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
