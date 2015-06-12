@@ -508,7 +508,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
-	 * This method allows different bins to be requested for each key in the batch.
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRecord key field is not found, the corresponding record field will be null.
 	 * <p>
@@ -534,7 +534,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
-	 * This method allows different bins to be requested for each key in the batch.
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRecord key field is not found, the corresponding record field will be null.
 	 * <p>
