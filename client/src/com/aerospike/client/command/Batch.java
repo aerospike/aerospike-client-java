@@ -25,6 +25,7 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 
 public final class Batch {
@@ -34,10 +35,10 @@ public final class Batch {
 	
 	public static final class ReadListCommand extends MultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final List<BatchRecord> records;
 
-		public ReadListCommand(BatchNode batch, Policy policy, List<BatchRecord> records) {
+		public ReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRecord> records) {
 			super(batch.node, false);
 			this.batch = batch;
 			this.policy = policy;
@@ -75,7 +76,7 @@ public final class Batch {
 	
 	public static final class GetArrayCommand extends MultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Record[] records;
@@ -83,7 +84,7 @@ public final class Batch {
 
 		public GetArrayCommand(
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			String[] binNames,
 			Record[] records,
@@ -179,13 +180,13 @@ public final class Batch {
 
 	public static final class ExistsArrayCommand extends MultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
 		public ExistsArrayCommand(
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {

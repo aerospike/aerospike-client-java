@@ -82,14 +82,14 @@ public final class AsyncBatch {
 	
 	private static final class ReadListCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final List<BatchRecord> records;
 		
 		public ReadListCommand(
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			List<BatchRecord> records
 		) {
 			super(parent, cluster, (AsyncNode)batch.node, false);
@@ -164,7 +164,7 @@ public final class AsyncBatch {
 	
 	private static final class ReadSequenceCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final BatchSequenceListener listener;
 		private final List<BatchRecord> records;
 		
@@ -172,7 +172,7 @@ public final class AsyncBatch {
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			BatchSequenceListener listener,
 			List<BatchRecord> records
 		) {
@@ -260,7 +260,7 @@ public final class AsyncBatch {
 
 	private static final class GetArrayCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Record[] records;
@@ -270,7 +270,7 @@ public final class AsyncBatch {
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			String[] binNames,
 			Record[] records,
@@ -413,7 +413,7 @@ public final class AsyncBatch {
 	
 	private static final class GetSequenceCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final String[] binNames;
 		private final RecordSequenceListener listener;
@@ -423,7 +423,7 @@ public final class AsyncBatch {
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			String[] binNames,
 			RecordSequenceListener listener,
@@ -559,7 +559,7 @@ public final class AsyncBatch {
 	
 	private static final class ExistsArrayCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final boolean[] existsArray;
 		
@@ -567,7 +567,7 @@ public final class AsyncBatch {
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
@@ -700,7 +700,7 @@ public final class AsyncBatch {
 	
 	private static final class ExistsSequenceCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
-		private final Policy policy;
+		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
 		
@@ -708,7 +708,7 @@ public final class AsyncBatch {
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
-			Policy policy,
+			BatchPolicy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {

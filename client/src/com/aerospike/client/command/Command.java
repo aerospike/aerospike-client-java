@@ -24,6 +24,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
@@ -215,14 +216,14 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchRead(Policy policy, List<BatchRecord> records, BatchNode batch) {
+	public final void setBatchRead(BatchPolicy policy, List<BatchRecord> records, BatchNode batch) {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
 		BatchRecord prev = null;
 	    
 		begin();
-		dataOffset += FIELD_HEADER_SIZE + 4;
+		dataOffset += FIELD_HEADER_SIZE + 5;
 
 	    for (int i = 0; i < max; i++) {
 			final BatchRecord record = records.get(offsets[i]);
@@ -258,7 +259,8 @@ public abstract class Command {
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 			
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
-	    dataOffset += 4;	    
+	    dataOffset += 4;
+	    dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
 	    prev = null;
 		
 		for (int i = 0; i < max; i++) {
@@ -314,7 +316,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchRead(Policy policy, Key[] keys, BatchNode batch, String[] binNames, int readAttr) {
+	public final void setBatchRead(BatchPolicy policy, Key[] keys, BatchNode batch, String[] binNames, int readAttr) {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
@@ -331,7 +333,7 @@ public abstract class Command {
 		
 		// Estimate buffer size.
 		begin();
-	    dataOffset += FIELD_HEADER_SIZE + 4;
+	    dataOffset += FIELD_HEADER_SIZE + 5;
 	    
 	    String prevNamespace = null;
 
@@ -358,6 +360,7 @@ public abstract class Command {
 			
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 	    dataOffset += 4;
+	    dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
 	    
 	    prevNamespace = null;
 		

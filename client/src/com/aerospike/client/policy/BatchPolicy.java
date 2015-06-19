@@ -65,12 +65,28 @@ public final class BatchPolicy extends Policy {
 	public boolean useBatchDirect;
 	
 	/**
+	 * Allow batch to be processed immediately in the server's receiving thread when the server
+	 * deems it to be appropriate.  If false, the batch will always be processed in separate
+	 * transaction threads.  This field is only relevant for the new batch index protocol.
+	 * <p>
+	 * For batch exists or batch reads of smaller sized records (<= 1K per record), inline 
+	 * processing will be significantly faster on "in memory" namespaces.  The server disables 
+	 * inline processing on disk based namespaces regardless of this policy field.
+	 * <p>
+	 * Inline processing can introduce the possibility of unfairness because the server
+	 * can process the entire batch before moving onto the next command.
+	 * Default: true
+	 */
+	public boolean allowInline = true;
+
+	/**
 	 * Copy batch policy from another batch policy.
 	 */
 	public BatchPolicy(BatchPolicy other) {
 		super(other);
 		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.useBatchDirect = other.useBatchDirect;
+		this.allowInline = other.allowInline;
 	}
 
 	/**
