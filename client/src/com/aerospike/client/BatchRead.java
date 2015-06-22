@@ -19,9 +19,9 @@ package com.aerospike.client;
 import java.util.Arrays;
 
 /**
- * Key and bin names used in batch commands where variables bins are needed for each key.
+ * Key and bin names used in batch read commands where variables bins are needed for each key.
  */
-public final class BatchRecord {
+public final class BatchRead {
 	/**
 	 * Key.
 	 */
@@ -50,7 +50,7 @@ public final class BatchRecord {
 	 * @param key					record key
 	 * @param binNames				array of bins to retrieve.
 	 */
-	public BatchRecord(Key key, String[] binNames) {
+	public BatchRead(Key key, String[] binNames) {
 		this.key = key; 
 		this.binNames = binNames;
 		this.readAllBins = false;
@@ -62,14 +62,14 @@ public final class BatchRecord {
 	 * @param key					record key
 	 * @param readAllBins			should all bins in record be retrieved.
 	 */
-	public BatchRecord(Key key, boolean readAllBins) {
+	public BatchRead(Key key, boolean readAllBins) {
 		this.key = key; 
 		this.binNames = null;
 		this.readAllBins = readAllBins;
 	}
 
 	/**
-	 * Convert BatchRecord to string.
+	 * Convert BatchRead to string.
 	 */
 	@Override
 	public String toString() {

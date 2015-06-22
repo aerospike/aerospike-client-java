@@ -74,6 +74,12 @@ public final class BatchExecutor {
 		}
 		else {
 			// Run batch requests in parallel in separate threads.
+			//			
+			// Multiple threads write to the record/exists array, so one might think that
+			// volatile or memory barriers are needed on the write threads and this read thread.
+			// This should not be necessary here because it happens in Executor which does a 
+			// volatile write (completedCount.incrementAndGet()) at the end of write threads
+			// and a synchronized waitTillComplete() in this thread.
 			Executor executor = new Executor(cluster, batchNodes.size() * 2);
 
 			// Initialize threads.  

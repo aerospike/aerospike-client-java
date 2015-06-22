@@ -20,7 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -45,13 +45,13 @@ public final class AsyncBatch {
 
 	public static final class ReadListExecutor extends AsyncMultiExecutor {
 		private final BatchListListener listener;
-		private final List<BatchRecord> records;
+		private final List<BatchRead> records;
 
 		public ReadListExecutor(
 			AsyncCluster cluster,
 			BatchPolicy policy, 
 			BatchListListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) {
 			this.listener = listener;
 			this.records = records;
@@ -83,14 +83,14 @@ public final class AsyncBatch {
 	private static final class ReadListCommand extends AsyncMultiCommand {
 		private final BatchNode batch;
 		private final BatchPolicy policy;
-		private final List<BatchRecord> records;
+		private final List<BatchRead> records;
 		
 		public ReadListCommand(
 			AsyncMultiExecutor parent,
 			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) {
 			super(parent, cluster, (AsyncNode)batch.node, false);
 			this.batch = batch;
@@ -110,7 +110,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow(Key key) {
-			BatchRecord record = records.get(batchIndex);
+			BatchRead record = records.get(batchIndex);
 			
 			if (Arrays.equals(key.digest, record.key.digest)) {			
 				if (resultCode == 0) {
@@ -134,7 +134,7 @@ public final class AsyncBatch {
 			AsyncCluster cluster,
 			BatchPolicy policy, 
 			BatchSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) {
 			this.listener = listener;
 			
@@ -166,7 +166,7 @@ public final class AsyncBatch {
 		private final BatchNode batch;
 		private final BatchPolicy policy;
 		private final BatchSequenceListener listener;
-		private final List<BatchRecord> records;
+		private final List<BatchRead> records;
 		
 		public ReadSequenceCommand(
 			AsyncMultiExecutor parent,
@@ -174,7 +174,7 @@ public final class AsyncBatch {
 			BatchNode batch,
 			BatchPolicy policy,
 			BatchSequenceListener listener,
-			List<BatchRecord> records
+			List<BatchRead> records
 		) {
 			super(parent, cluster, (AsyncNode)batch.node, false);
 			this.batch = batch;
@@ -195,7 +195,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow(Key key) {
-			BatchRecord record = records.get(batchIndex);
+			BatchRead record = records.get(batchIndex);
 			
 			if (Arrays.equals(key.digest, record.key.digest)) {			
 				if (resultCode == 0) {

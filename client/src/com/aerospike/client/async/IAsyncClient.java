@@ -22,7 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.listener.BatchSequenceListener;
@@ -310,7 +310,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
-	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * <p>
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
@@ -321,14 +321,14 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, BatchListListener listener, List<BatchRecord> records)
+	public void get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
-	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * <p>
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
@@ -339,7 +339,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRecord> records)
+	public void get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		throws AerospikeException;
 
 	/**

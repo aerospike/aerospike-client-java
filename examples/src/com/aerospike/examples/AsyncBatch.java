@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
@@ -274,27 +274,27 @@ public class AsyncBatch extends AsyncExample {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 		String[] bins = new String[] {binName};		
-		List<BatchRecord> records = new ArrayList<BatchRecord>();
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 1), bins));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 2), true));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 3), true));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 4), false));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 5), true));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 6), true));
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 7), bins));
+		List<BatchRead> records = new ArrayList<BatchRead>();
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 1), bins));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 2), true));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 3), true));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 4), false));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 5), true));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 6), true));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 7), bins));
 
 		// This record should be found, but the requested bin will not be found.
-		records.add(new BatchRecord(new Key(params.namespace, params.set, keyPrefix + 8), new String[] {"binnotfound"}));
+		records.add(new BatchRead(new Key(params.namespace, params.set, keyPrefix + 8), new String[] {"binnotfound"}));
 		
 		// This record should not be found.
-		records.add(new BatchRecord(new Key(params.namespace, params.set, "keynotfound"), bins));
+		records.add(new BatchRead(new Key(params.namespace, params.set, "keynotfound"), bins));
 		
 		// Execute batch.
 		client.get(null, new BatchListListener() {
-			public void onSuccess(List<BatchRecord> records) {			
+			public void onSuccess(List<BatchRead> records) {			
 				// Show results.
 				int found = 0;	
-				for (BatchRecord record : records) {
+				for (BatchRead record : records) {
 					Key key = record.key;
 					Record rec = record.record;
 					

@@ -533,7 +533,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified batch keys in one batch call.
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
-	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 * This method requires Aerospike Server version >= 3.5.14.
 	 * 
@@ -542,7 +542,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *                              The returned records are located in the same list.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final void get(BatchPolicy policy, List<BatchRecord> records) throws AerospikeException {
+	public final void get(BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
 		if (records.size() == 0) {
 			return;
 		}
@@ -565,6 +565,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		else {
 			// Run batch requests in parallel in separate threads.
+			//			
+			// Multiple threads write to the record list, so one might think that
+			// volatile or memory barriers are needed on the write threads and this read thread.
+			// This should not be necessary here because it happens in Executor which does a 
+			// volatile write (completedCount.incrementAndGet()) at the end of write threads
+			// and a synchronized waitTillComplete() in this thread.
 			Executor executor = new Executor(cluster, batchNodes.size());
 
 			for (BatchNode batchNode : batchNodes) {

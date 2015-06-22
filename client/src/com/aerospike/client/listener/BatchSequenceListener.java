@@ -17,7 +17,7 @@
 package com.aerospike.client.listener;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 
 /**
  * Asynchronous result notifications for batch get commands with variable bins per key.
@@ -34,11 +34,11 @@ public interface BatchSequenceListener {
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * onFailure() call.
 	 * 
-	 * @param record		record instance, {@link com.aerospike.client.BatchRecord#record}
+	 * @param record		record instance, {@link com.aerospike.client.BatchRead#record}
 	 *						will be null if the key is not found
 	 * @throws AerospikeException	if error occurs or batch should be terminated.
 	 */
-	public void onRecord(BatchRecord record);
+	public void onRecord(BatchRead record);
 	
 	/**
 	 * This method is called when the asynchronous batch get command completes.

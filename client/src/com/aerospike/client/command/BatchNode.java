@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
@@ -64,7 +64,7 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) throws AerospikeException {
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
 		Node[] nodes = cluster.getNodes();
 		
 		if (nodes.length == 0) {

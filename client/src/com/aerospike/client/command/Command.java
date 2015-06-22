@@ -19,7 +19,7 @@ package com.aerospike.client.command;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
@@ -216,17 +216,17 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchRead(BatchPolicy policy, List<BatchRecord> records, BatchNode batch) {
+	public final void setBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch) {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
-		BatchRecord prev = null;
+		BatchRead prev = null;
 	    
 		begin();
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
 	    for (int i = 0; i < max; i++) {
-			final BatchRecord record = records.get(offsets[i]);
+			final BatchRead record = records.get(offsets[i]);
 			final Key key = record.key;
 			final String[] binNames = record.binNames;
 			
@@ -268,7 +268,7 @@ public abstract class Command {
 			Buffer.intToBytes(index, dataBuffer, dataOffset);
 			dataOffset += 4;
 			
-			final BatchRecord record = records.get(index);
+			final BatchRead record = records.get(index);
 			final Key key = record.key;
 			final String[] binNames = record.binNames;
 			final byte[] digest = key.digest;

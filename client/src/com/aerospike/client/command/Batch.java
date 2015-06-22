@@ -21,7 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
@@ -36,9 +36,9 @@ public final class Batch {
 	public static final class ReadListCommand extends MultiCommand {
 		private final BatchNode batch;
 		private final BatchPolicy policy;
-		private final List<BatchRecord> records;
+		private final List<BatchRead> records;
 
-		public ReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRecord> records) {
+		public ReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
 			super(batch.node, false);
 			this.batch = batch;
 			this.policy = policy;
@@ -57,7 +57,7 @@ public final class Batch {
 
 		@Override
 		protected void parseRow(Key key) throws IOException {
-			BatchRecord record = records.get(batchIndex);
+			BatchRead record = records.get(batchIndex);
 			
 			if (Arrays.equals(key.digest, record.key.digest)) {
 				if (resultCode == 0) {

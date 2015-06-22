@@ -263,7 +263,7 @@ public interface IAerospikeClient {
 	 * Read multiple records for specified batch keys in one batch call.
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
-	 * If the BatchRecord key field is not found, the corresponding record field will be null.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 * This method requires Aerospike Server version >= 3.5.14.
 	 * 
@@ -272,7 +272,7 @@ public interface IAerospikeClient {
 	 *                              The returned records are located in the same list.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, List<BatchRecord> records) throws AerospikeException;
+	public void get(BatchPolicy policy, List<BatchRead> records) throws AerospikeException;
 
 	/**
 	 * Read multiple records for specified keys in one batch call.

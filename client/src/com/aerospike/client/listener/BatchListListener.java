@@ -19,7 +19,7 @@ package com.aerospike.client.listener;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchRead;
 
 /**
  * Asynchronous result notifications for batch get commands with variable bins per key.
@@ -29,10 +29,10 @@ public interface BatchListListener {
 	/**
 	 * This method is called when an asynchronous batch get command completes successfully.
 	 * 
-	 * @param records		record instances, {@link com.aerospike.client.BatchRecord#record}
+	 * @param records		record instances, {@link com.aerospike.client.BatchRead#record}
 	 *						will be null if the key is not found
 	 */
-	public void onSuccess(List<BatchRecord> records);
+	public void onSuccess(List<BatchRead> records);
 	
 	/**
 	 * This method is called when an asynchronous batch get command fails.
