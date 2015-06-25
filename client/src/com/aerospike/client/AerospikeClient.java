@@ -54,6 +54,7 @@ import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
@@ -118,6 +119,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Default batch policy that is used when batch command policy is null.
 	 */
 	public final BatchPolicy batchPolicyDefault;
+
+	/**
+	 * Default info policy that is used when info command policy is null.
+	 */
+	public final InfoPolicy infoPolicyDefault;
 
 	//-------------------------------------------------------
 	// Constructors
@@ -196,6 +202,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.scanPolicyDefault = policy.scanPolicyDefault;
 		this.queryPolicyDefault = policy.queryPolicyDefault;
 		this.batchPolicyDefault = policy.batchPolicyDefault;
+		this.infoPolicyDefault = policy.infoPolicyDefault;
 		
 		cluster = new Cluster(policy, hosts);
 		cluster.initTendThread(policy.failIfNotConnected);
@@ -215,6 +222,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.scanPolicyDefault = policy.scanPolicyDefault;
 			this.queryPolicyDefault = policy.queryPolicyDefault;
 			this.batchPolicyDefault = policy.batchPolicyDefault;
+			this.infoPolicyDefault = policy.infoPolicyDefault;
 		}
 		else {
 			this.readPolicyDefault = new Policy();
@@ -222,6 +230,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.scanPolicyDefault = new ScanPolicy();
 			this.queryPolicyDefault = new QueryPolicy();
 			this.batchPolicyDefault = new BatchPolicy();
+			this.infoPolicyDefault = new InfoPolicy();
 		}
 	}
 
@@ -1025,6 +1034,33 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		byte[] bytes = Util.readResource(resourceLoader, resourcePath);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
+	}
+	
+	/**
+	 * Remove user defined function from server nodes.
+	 * 
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param serverPath			location of UDF on server nodes.  Example: mylua.lua
+	 * @throws AerospikeException	if remove fails
+	 */
+	public final void removeUdf(InfoPolicy policy, String serverPath) throws AerospikeException {
+		if (policy == null) {
+			policy = infoPolicyDefault;
+		}
+		// Send UDF command to one node. That node will distribute the UDF command to other nodes.
+		String command = "udf-remove:filename=" + serverPath;
+		Node node = cluster.getRandomNode();		
+		String response = Info.request(policy, node, command);
+		
+		if (response.equalsIgnoreCase("ok")) {
+			return;
+		}
+		
+		if (response.startsWith("error=file_not_found")) {
+			// UDF has already been removed.
+			return;
+		}
+		throw new AerospikeException("Remove UDF failed: " + response);
 	}
 
 	/**

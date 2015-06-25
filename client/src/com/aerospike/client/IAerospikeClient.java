@@ -28,6 +28,7 @@ import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
@@ -604,6 +605,15 @@ public interface IAerospikeClient {
 	 */
 	public RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
 		throws AerospikeException;
+
+	/**
+	 * Remove user defined function from server nodes.
+	 * 
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param serverPath			location of UDF on server nodes.  Example: mylua.lua
+	 * @throws AerospikeException	if remove fails
+	 */
+	public void removeUdf(InfoPolicy policy, String serverPath) throws AerospikeException;
 
 	/**
 	 * Execute user defined function on server and return results.
