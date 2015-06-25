@@ -268,7 +268,7 @@ public class AsyncBatch extends AsyncExample {
 
 	/**
 	 * Read records with varying namespaces, bin names and read types in one batch.
-	 * This requires Aerospike Server version >= 3.5.14.
+	 * This requires Aerospike Server version >= 3.5.15.
 	 */
 	private void batchReadComplex() throws Exception {
 		// Batch gets into one call.

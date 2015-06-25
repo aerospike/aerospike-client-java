@@ -544,7 +544,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
-	 * This method requires Aerospike Server version >= 3.5.14.
+	 * This method requires Aerospike Server version >= 3.5.15.
 	 * 
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
