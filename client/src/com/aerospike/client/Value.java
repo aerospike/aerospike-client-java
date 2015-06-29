@@ -180,6 +180,9 @@ public abstract class Value {
         	return new LongValue((Long)value);
 		}
 		
+		/* Store double/float values as a java serialized blob when an Object argument is used
+		 * instead of the direct double argument (Value.get(double value)).
+		 * Therefore, disable this code block.
 		if (value instanceof Double) {
         	return new DoubleValue((Double)value);
 		}
@@ -187,6 +190,7 @@ public abstract class Value {
 		if (value instanceof Float) {
         	return new FloatValue((Float)value);
 		}
+		*/
 		
 		if (value instanceof Boolean) {
         	return new BooleanValue((Boolean)value);

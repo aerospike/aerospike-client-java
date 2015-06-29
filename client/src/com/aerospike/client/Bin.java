@@ -99,6 +99,21 @@ public final class Bin {
 	
 	/**
 	 * Constructor, specifying bin name and double value.
+	 * The server does not support double, so the value is converted to long bits. On reads,
+	 * it's important to call {@link com.aerospike.client.Record#getDouble(String name)} to
+	 * indicate that the long returned by the server should be converted back to a double.
+	 * <p>
+	 * If the same bin name holds different types for different records, then this constructor
+	 * should not be used because there is no way to know when reading if the long should be
+	 * converted to a double.  Instead, use {@link #Bin(String name, Object value)} which converts
+	 * the double to a java serialized blob.
+	 * <pre>
+	 * double value = 22.7;
+	 * Bin bin = new Bin("mybin", (Object) value);
+	 * </pre>
+	 * This is slower and not portable to other languages, but the double type is preserved, so a
+	 * Double will be returned without knowing if a conversion should be made.
+	 * <p>
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
 	 * @param name		bin name, current limit is 14 characters
@@ -111,6 +126,21 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and float value.
+	 * The server does not support float, so the value is converted to long bits. On reads,
+	 * it's important to call {@link com.aerospike.client.Record#getFloat(String name)} to
+	 * indicate that the long returned by the server should be converted back to a float.
+	 * <p>
+	 * If the same bin name holds different types for different records, then this constructor
+	 * should not be used because there is no way to know when reading if the long should be
+	 * converted to a float.  Instead, use {@link #Bin(String name, Object value)} which converts
+	 * the float to a java serialized blob.
+	 * <pre>
+	 * float value = 11.7;
+	 * Bin bin = new Bin("mybin", (Object) value);
+	 * </pre>
+	 * This is slower and not portable to other languages, but the float type is preserved, so a
+	 * Float will be returned without knowing if a conversion should be made.
+	 * <p>
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
 	 * @param name		bin name, current limit is 14 characters
