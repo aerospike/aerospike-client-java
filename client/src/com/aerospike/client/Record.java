@@ -70,16 +70,17 @@ public final class Record {
 	 * Get bin value as double.
 	 */
 	public double getDouble(String name) {
-		// The server always returns numbers as longs, so get long and convert bits.
-		return Double.longBitsToDouble(getLong(name));
+		// The server may return number as double or long.
+		// Convert bits if returned as long.
+		Object result = getValue(name);
+		return (result instanceof Double)? (Double)result : (result != null)? Double.longBitsToDouble((Long)result) : 0.0;
 	}
 
 	/**
 	 * Get bin value as float.
 	 */
 	public float getFloat(String name) {
-		// The server always returns numbers as longs, so get long and convert bits.
-		return (float)Double.longBitsToDouble(getLong(name));
+		return (float)getDouble(name);
 	}
 
 	/**
