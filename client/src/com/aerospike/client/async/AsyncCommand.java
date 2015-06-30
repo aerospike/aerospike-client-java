@@ -39,6 +39,8 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	private long limit;
 	protected int timeout;
 	private int iteration;
+	private int failedNodes;
+	private int failedConns;
 	protected boolean inAuthenticate;
 	protected boolean inHeader = true;
 	
@@ -85,12 +87,14 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			sendCommand();
 		}
 		catch (AerospikeException.InvalidNode ai) {
+			failedNodes++;
 			if (!retryOnInit()) {				
 				throw ai;
 			}
 		}
 		catch (AerospikeException.Connection ce) {
 			// Socket connection error has occurred.
+			failedConns++;
 			if (!retryOnInit()) {				
 				throw ce;
 			}
@@ -354,7 +358,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	private void failOnClientTimeout() {
 		// Free up resources and notify.
 		closeOnNetworkError();
-		onFailure(new AerospikeException.Timeout());
+		onFailure(new AerospikeException.Timeout(node, timeout, iteration, failedNodes, failedConns));
 	}
 
 	private void closeOnNetworkError() {
