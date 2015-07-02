@@ -44,39 +44,34 @@ public final class ExecuteTask extends Task {
 	 */
 	@Override
 	protected boolean queryIfDone() throws AerospikeException {
-		String command = (scan) ? "scan-list" : "query-list";
+		String module = (scan) ? "scan" : "query";
+		String command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 		Node[] nodes = cluster.getNodes();
 		boolean done = false;
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
-			String find = "job_id=" + taskId + ':';
+			
+			if (response.startsWith("ERROR:")) {
+				done = true;
+				continue;
+			}
+			
+			String find = "status=";
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				done = true;
 				continue;
 			}
 
 			int begin = index + find.length();
-			find = "job_status=";
-			index = response.indexOf(find, begin);
-
-			if (index < 0) {
-				continue;
-			}
-
-			begin = index + find.length();
 			int end = response.indexOf(':', begin);
 			String status = response.substring(begin, end);
 			
-			if (status.equals("ABORTED")) {
-				throw new AerospikeException.QueryTerminated();
-			}
-			else if (status.equals("IN PROGRESS")) {
+			if (status.equals("active")) {
 				return false;
 			}
-			else if (status.equals("DONE")) {
+			else if (status.startsWith("done")) {
 				done = true;
 			}
 		}
