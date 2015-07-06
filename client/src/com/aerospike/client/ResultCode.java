@@ -145,7 +145,7 @@ public final class ResultCode {
 	public static final int BIN_NOT_FOUND = 17;
 
 	/**
-	 * Specified bin name does not exist in record.
+	 * Device not keeping up with writes.
 	 */
 	public static final int DEVICE_OVERLOAD = 18;
 
