@@ -153,6 +153,9 @@ public final class LuaInstance {
 			}
 			throw new AerospikeException("Lua BigInteger not implemented.");
 		
+		case ParticleType.DOUBLE:
+			return LuaDouble.valueOf(Buffer.bytesToDouble(buf, offset));
+
 		case ParticleType.BLOB:
 	        byte[] blob = new byte[len];
 	        System.arraycopy(buf, offset, blob, 0, len);

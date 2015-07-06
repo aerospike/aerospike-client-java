@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.Value;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
@@ -156,6 +157,14 @@ public class Cluster implements Runnable, Closeable {
 				seedsToAdd.add(host);
 			}
 			
+			// Disable double type support if some nodes don't support it.
+			if (Value.UseDoubleType && ! node.hasDouble) {
+				if (Log.warnEnabled()) {
+					Log.warn("Some nodes don't support new double type.  Disabling.");
+				}
+				Value.UseDoubleType = false;
+			}
+
 			// Disable prole requests if some nodes don't support it.
 			if (requestProleReplicas && ! node.hasReplicasAll) {
 				if (Log.warnEnabled()) {

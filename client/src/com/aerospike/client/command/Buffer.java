@@ -38,6 +38,9 @@ public final class Buffer {
 		case ParticleType.INTEGER:
 			return bytesToLongValue(buf, offset, len);
 		
+		case ParticleType.DOUBLE:
+			return new Value.DoubleValue(Buffer.bytesToDouble(buf, offset));
+
 		case ParticleType.BLOB:
 			return Value.get(Arrays.copyOfRange(buf, offset, offset+len));
 		
@@ -56,6 +59,9 @@ public final class Buffer {
 		case ParticleType.INTEGER:
 			return Buffer.bytesToNumber(buf, offset, len);
 		
+		case ParticleType.DOUBLE:
+			return Buffer.bytesToDouble(buf, offset);
+
 		case ParticleType.BLOB:
 			return Arrays.copyOfRange(buf, offset, offset+len);
 			
@@ -381,6 +387,18 @@ public final class Buffer {
 			big = big.negate();
 		}
 		return big;
+	}
+
+	//-------------------------------------------------------
+	// 64 bit double conversions.
+	//-------------------------------------------------------
+	
+	public static double bytesToDouble(byte[] buf, int offset) {
+		return Double.longBitsToDouble(bytesToLong(buf, offset));
+	}
+
+	public static void doubleToBytes(double v, byte[] buf, int offset) {
+		Buffer.longToBytes(Double.doubleToLongBits(v), buf, offset);
 	}
 
 	//-------------------------------------------------------

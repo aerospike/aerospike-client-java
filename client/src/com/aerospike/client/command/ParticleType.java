@@ -20,7 +20,7 @@ public final class ParticleType {
 	// Server particle types. Unsupported types are commented out.
 	public static final int NULL = 0;
 	public static final int INTEGER = 1;
-	//public static final int BIGNUM = 2;
+	public static final int DOUBLE = 2;
 	public static final int STRING = 3;
 	public static final int BLOB = 4;
 	//public static final int TIMESTAMP = 5;

@@ -41,6 +41,17 @@ import com.aerospike.client.util.Packer;
  */
 public abstract class Value {
 	/**
+	 * Should the client use the new double floating point particle type supported by Aerospike
+	 * server versions >= 3.5.15.  It's important that all server nodes and XDR be upgraded before
+	 * enabling this feature.
+	 * <p>
+	 * If false, the old method using an long particle type is used instead.
+	 * <p>
+	 * The current default is false.  Eventually, this default will be changed to true in a future client version.
+	 */
+	public static boolean UseDoubleType = false;
+	
+	/**
 	 * Get string or null value instance.
 	 */
 	public static Value get(String value) {
@@ -690,7 +701,7 @@ public abstract class Value {
 		
 		@Override
 		public int write(byte[] buffer, int offset) {
-			Buffer.longToBytes(Double.doubleToLongBits(value), buffer, offset);
+			Buffer.doubleToBytes(value, buffer, offset);
 			return 8;
 		}
 		
@@ -701,8 +712,7 @@ public abstract class Value {
 
 		@Override
 		public int getType() {
-			// The server does not natively handle doubles, so store as long (8 byte integer).
-			return ParticleType.INTEGER;
+			return UseDoubleType? ParticleType.DOUBLE : ParticleType.INTEGER;
 		}
 		
 		@Override
@@ -761,7 +771,7 @@ public abstract class Value {
 		
 		@Override
 		public int write(byte[] buffer, int offset) {
-			Buffer.longToBytes(Double.doubleToLongBits(value), buffer, offset);
+			Buffer.doubleToBytes(value, buffer, offset);
 			return 8;
 		}
 		
@@ -772,8 +782,7 @@ public abstract class Value {
 
 		@Override
 		public int getType() {
-			// The server does not natively handle floats, so store as long (8 byte integer).
-			return ParticleType.INTEGER;
+			return UseDoubleType? ParticleType.DOUBLE : ParticleType.INTEGER;
 		}
 		
 		@Override
