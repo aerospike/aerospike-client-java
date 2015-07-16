@@ -224,6 +224,59 @@ public abstract class Value {
 	}
 	
 	/**
+	 * Get value from Record object. Useful when copying records from one cluster to another.
+	 * Since map/list are converted, this method should only be called when using
+	 * Aerospike 3 servers.
+	 */
+	public static Value getFromRecordObject(Object value) {
+		if (value == null) {
+			return new NullValue();
+		}
+		
+		if (value instanceof Value) {
+			return (Value)value;
+		}
+
+		if (value instanceof byte[]) {
+        	return new BytesValue((byte[])value);
+		}
+		
+		if (value instanceof String) {
+        	return new StringValue((String)value);
+		}
+		
+		if (value instanceof Integer) {
+        	return new IntegerValue((Integer)value);
+		}
+		
+		if (value instanceof Long) {
+        	return new LongValue((Long)value);
+		}
+		
+		if (value instanceof Double) {
+        	return new DoubleValue((Double)value);
+		}
+		
+		if (value instanceof Float) {
+        	return new FloatValue((Float)value);
+		}
+		
+		if (value instanceof Boolean) {
+        	return new BooleanValue((Boolean)value);
+		}
+		
+		if (value instanceof List<?>) {
+        	return new ListValue((List<?>)value);
+		}
+		
+		if (value instanceof Map<?,?>) {
+        	return new MapValue((Map<?,?>)value);
+		}
+		
+		return new BlobValue(value);
+	}
+
+	/**
 	 * Calculate number of bytes necessary to serialize the value in the wire protocol.
 	 */
 	public abstract int estimateSize() throws AerospikeException;
