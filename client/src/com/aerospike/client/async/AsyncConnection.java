@@ -120,6 +120,10 @@ public final class AsyncConnection implements Closeable{
 		}
     }
     
+    public void setWriteable() {   	
+		key.interestOps(SelectionKey.OP_WRITE);
+    }
+
     public void setReadable() {   	
 		key.interestOps(SelectionKey.OP_READ);
 		manager.wakeup();

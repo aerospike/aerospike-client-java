@@ -38,7 +38,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 	private final AtomicBoolean complete = new AtomicBoolean();
 	private long limit;
 	protected int timeout;
-	private int iteration;
+	protected int iteration;
 	private int failedNodes;
 	private int failedConns;
 	protected boolean inAuthenticate;
@@ -84,7 +84,8 @@ public abstract class AsyncCommand extends Command implements Runnable {
 					return;
 				}
 			}
-			sendCommand();
+			writeCommand();
+			conn.execute(this);
 		}
 		catch (AerospikeException.InvalidNode ai) {
 			failedNodes++;
@@ -106,7 +107,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		}
 	}
 	
-	protected void sendCommand() throws AerospikeException {	
+	protected void writeCommand() throws AerospikeException {	
 		writeBuffer();
 		
 		if (dataOffset > byteBuffer.capacity()) {
@@ -116,10 +117,8 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		byteBuffer.clear();
 		byteBuffer.put(dataBuffer, 0, dataOffset);
 		byteBuffer.flip();
-
-		conn.execute(this);
 	}
-	
+
 	protected void processAuthenticate() throws AerospikeException {	
 		inAuthenticate = false;
 		inHeader = true;
@@ -129,7 +128,8 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}
-		sendCommand();
+		writeCommand();
+		conn.setWriteable();
 	}
 
 	private boolean retryOnInit() throws AerospikeException {

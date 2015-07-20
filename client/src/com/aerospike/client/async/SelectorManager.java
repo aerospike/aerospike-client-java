@@ -119,7 +119,12 @@ public final class SelectorManager extends Thread implements Closeable {
 	    	try {
 	    		if (command.timeout > 0) {
 		    		if (command.checkTimeout()) {
-		    			timeoutQueue.addLast(command);
+		    			// The command should only be added to the timeout
+		    			// queue only once.  Retries should not re-add the
+		    			// command again.
+		    			if (command.iteration == 0) {
+		    				timeoutQueue.addLast(command);
+		    			}
 		    		}
 		    		else {
 		    			continue;
@@ -154,13 +159,15 @@ public final class SelectorManager extends Thread implements Closeable {
 		try {
         	int ops = key.readyOps();
     	
-        	if ((ops & SelectionKey.OP_READ) != 0) {        		
-        		if (taskThreadPool != null) {
-        			key.interestOps(0);
-        			taskThreadPool.execute(command);
+        	if ((ops & SelectionKey.OP_READ) != 0) {
+        		if (taskThreadPool == null || command.inAuthenticate) {
+        			// Read in this selector's thread.
+        			command.read();
         		}
         		else {
-        			command.read();
+        			// Offload read and user callback to a task pool thread.
+        			key.interestOps(0);
+        			taskThreadPool.execute(command);
         		}
         	}
         	else if ((ops & SelectionKey.OP_WRITE) != 0) {
