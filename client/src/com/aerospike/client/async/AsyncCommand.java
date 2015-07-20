@@ -234,11 +234,10 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		}
 		
 		if (limit > 0 && System.currentTimeMillis() > limit) {
-			// If command is currently reading data in an offloaded task thread,
-			// the interestOps is set to zero.  Make sure non-zero because we can't 
-			// timeout while data is actively being read because the byteBuffer 
-			// would be put back into the pool before the read is finished.
-			if (conn.interestOps() != 0) {
+			// Check if timeouts are allowed in the current state.
+			// Do not timeout if the command is currently reading data
+			// in an offloaded task thread.
+			if (conn.allowTimeout()) {
 				// Command has timed out in timeout queue thread.
 				// Ensure that command succeeds or fails, but not both.
 				if (complete.compareAndSet(false, true)) {

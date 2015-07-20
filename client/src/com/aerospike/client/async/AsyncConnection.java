@@ -159,8 +159,15 @@ public final class AsyncConnection implements Closeable{
 		lastUsed = System.currentTimeMillis();
 	}
 
-	public int interestOps() {
-		return key.interestOps();
+	/**
+	 * Should command be allowed to timeout.  If command is currently reading data in an offloaded
+	 * task thread, the interestOps is set to zero.  Make sure non-zero because we can't timeout 
+	 * while data is actively being read because the byteBuffer would be put back into the pool 
+	 * before the read is finished.  It's also okay to timeout when the command hasn't even started
+	 * yet (key is null).
+	 */
+	public boolean allowTimeout() {
+		return key == null || key.interestOps() != 0;
 	}
 	
 	/**
