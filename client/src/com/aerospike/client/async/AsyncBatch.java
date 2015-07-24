@@ -450,12 +450,19 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow(Key key) {
-			if (resultCode == 0) {
-				Record record = parseRecord();
-				listener.onRecord(key, record);
+			Key keyOrig = keys[batchIndex];
+			
+			if (Arrays.equals(key.digest, keyOrig.digest)) {			
+				if (resultCode == 0) {
+					Record record = parseRecord();
+					listener.onRecord(keyOrig, record);
+				}
+				else {
+					listener.onRecord(keyOrig, null);
+				}
 			}
 			else {
-				listener.onRecord(key, null);
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
 	}
@@ -467,6 +474,7 @@ public final class AsyncBatch {
 		private final String[] binNames;
 		private final RecordSequenceListener listener;
 		private final int readAttr;
+		private int index;
 		
 		public GetSequenceDirect(
 			AsyncMultiExecutor parent,
@@ -500,12 +508,20 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow(Key key) {
-			if (resultCode == 0) {
-				Record record = parseRecord();
-				listener.onRecord(key, record);
+			int offset = batch.offsets[index++];
+			Key keyOrig = keys[offset];
+
+			if (Arrays.equals(key.digest, keyOrig.digest)) {			
+				if (resultCode == 0) {
+					Record record = parseRecord();
+					listener.onRecord(keyOrig, record);
+				}
+				else {
+					listener.onRecord(keyOrig, null);
+				}
 			}
 			else {
-				listener.onRecord(key, null);
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
 			}
 		}
 	}
@@ -733,8 +749,16 @@ public final class AsyncBatch {
 		protected void parseRow(Key key) {		
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}			
-			listener.onExists(key, resultCode == 0);
+			}
+			
+			Key keyOrig = keys[batchIndex];
+			
+			if (Arrays.equals(key.digest, keyOrig.digest)) {
+				listener.onExists(keyOrig, resultCode == 0);
+			}
+			else {
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
+			}
 		}
 	}
 	
@@ -743,6 +767,7 @@ public final class AsyncBatch {
 		private final Policy policy;
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
+		private int index;
 		
 		public ExistsSequenceDirect(
 			AsyncMultiExecutor parent,
@@ -774,8 +799,17 @@ public final class AsyncBatch {
 		protected void parseRow(Key key) {		
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}			
-			listener.onExists(key, resultCode == 0);
+			}
+			
+			int offset = batch.offsets[index++];
+			Key keyOrig = keys[offset];
+			
+			if (Arrays.equals(key.digest, keyOrig.digest)) {
+				listener.onExists(keyOrig, resultCode == 0);
+			}
+			else {
+				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
+			}
 		}
 	}
 	
