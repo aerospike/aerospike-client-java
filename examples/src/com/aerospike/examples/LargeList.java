@@ -55,7 +55,6 @@ public class LargeList extends Example {
 		runFilterExample(client, params);
 		runWithDistinctBins(client, params);
 		runWithSerializedBin(client, params);
-		runVolumeInsert(client, params);
 	}
 
 	/**
@@ -391,24 +390,5 @@ public class LargeList extends Example {
 		if (expectedPrice != receivedPrice) {
 			throw new AerospikeException("Price mismatch: Expected " + expectedPrice + ". Received " + receivedPrice);
 		}
-	}
-	
-	/**
-	 * Add a bunch of numbers to show volume insert (add in reverse order).
-	 */
-	public void runVolumeInsert(AerospikeClient client, Parameters params)
-		throws AerospikeException, IOException {
-		
-		// This key has already been created in runSimpleExample().
-		Key key = new Key(params.namespace, params.set, "setkey");
-		
-		int itemCount = 2000;
-		console.info("Add a bunch of LLIST Items(%d)", itemCount);
-		com.aerospike.client.large.LargeList llist2 = client.getLargeList(params.writePolicy, key, "NumberBin");
-		for (int i = itemCount; i > 0; i-- ){
-			llist2.add(Value.get(i));
-		}
-		int size2 = llist2.size();
-		console.info("Done Writing (%d) Items, size(%d)", itemCount, size2 );
 	}
 }
