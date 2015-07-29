@@ -514,7 +514,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * <p>
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
-	 * This method requires Aerospike Server version >= 3.5.15.
+	 * This method requires Aerospike Server version >= 3.6.0.
 	 * 
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
@@ -540,7 +540,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * <p>
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
-	 * This method requires Aerospike Server version >= 3.5.15.
+	 * This method requires Aerospike Server version >= 3.6.0.
 	 * 
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results

@@ -190,7 +190,7 @@ public class Batch extends Example {
 	
 	/**
 	 * Read records with varying namespaces, bin names and read types in one batch.
-	 * This requires Aerospike Server version >= 3.5.15.
+	 * This requires Aerospike Server version >= 3.6.0.
 	 */
 	private void batchReadComplex (
 		AerospikeClient client, 

@@ -99,7 +99,7 @@ public final class Bin {
 	
 	/**
 	 * Constructor, specifying bin name and double value.
-	 * Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+	 * Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
 	 * supports floating point values, then this is always the correct constructor for double.
 	 * Remember to also set {@link com.aerospike.client.Value#UseDoubleType} to true;
 	 * <p>
@@ -129,7 +129,7 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and float value.
-	 * Aerospike server versions >= 3.5.15 natively support floating point values.  If your cluster
+	 * Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
 	 * supports floating point values, then this is always the correct constructor for float.
 	 * Remember to also set {@link com.aerospike.client.Value#UseDoubleType} to true;
 	 * <p>
