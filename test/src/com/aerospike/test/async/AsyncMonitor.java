@@ -21,7 +21,7 @@ import static org.junit.Assert.fail;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 
-public class AsyncMonitor {
+public final class AsyncMonitor {
 	private Throwable error;
 	private boolean completed;
 	
