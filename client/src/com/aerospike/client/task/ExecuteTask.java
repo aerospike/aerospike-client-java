@@ -68,10 +68,12 @@ public final class ExecuteTask extends Task {
 			int end = response.indexOf(':', begin);
 			String status = response.substring(begin, end);
 			
-			if (status.equals("active")) {
+			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
+			if (status.startsWith("active") || status.startsWith("IN_PROGRESS")) {
 				return false;
 			}
-			else if (status.startsWith("done")) {
+			// Newer servers use "done" while older servers use "DONE"
+			else if (status.startsWith("done") || status.startsWith("DONE")) {
 				done = true;
 			}
 		}
