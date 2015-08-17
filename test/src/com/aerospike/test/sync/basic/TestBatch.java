@@ -30,6 +30,7 @@ import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
 public class TestBatch extends TestSync {
@@ -40,11 +41,14 @@ public class TestBatch extends TestSync {
 		
 	@BeforeClass
 	public static void writeRecords() {
+		WritePolicy policy = new WritePolicy();
+		policy.expiration = 2592000;
+		
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			Bin bin = new Bin(binName, valuePrefix + i);
 			
-			client.put(null, key, bin);
+			client.put(policy, key, bin);
 		}
 	}
 
