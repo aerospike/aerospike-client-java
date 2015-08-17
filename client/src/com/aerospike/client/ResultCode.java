@@ -160,7 +160,7 @@ public final class ResultCode {
 	public static final int INVALID_NAMESPACE = 20;
 	
 	/**
-	 * Bin name length greater than 14 characters.
+	 * Bin name length greater than 14 characters or maximum bins exceeded.
 	 */
 	public static final int BIN_NAME_TOO_LONG = 21;
 	
@@ -451,7 +451,7 @@ public final class ResultCode {
 			return "Namespace not found";
 			
 		case BIN_NAME_TOO_LONG:
-			return "Bin name length greater than 14 characters";
+			return "Bin name length greater than 14 characters or maximum bins exceeded";
 
 		case FAIL_FORBIDDEN:
 			return "Operation not allowed at this time";
