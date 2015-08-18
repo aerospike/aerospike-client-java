@@ -34,6 +34,7 @@ import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.WritePolicy;
 
 public class TestAsyncBatch extends TestAsync {
 	private static final String keyPrefix = "batchkey";
@@ -53,10 +54,13 @@ public class TestAsyncBatch extends TestAsync {
 		AsyncMonitor monitor = new AsyncMonitor();
 		WriteHandler handler = new WriteHandler(monitor, size);
 		
+		WritePolicy policy = new WritePolicy();
+		policy.expiration = 2592000;
+
 		for (int i = 1; i <= size; i++) {
 			Key key = sendKeys[i-1];
 			Bin bin = new Bin(binName, valuePrefix + i);			
-			client.put(null, handler, key, bin);
+			client.put(policy, handler, key, bin);
 		}
 		monitor.waitTillComplete();
 	}
