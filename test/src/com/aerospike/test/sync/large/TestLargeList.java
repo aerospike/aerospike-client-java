@@ -18,12 +18,15 @@ package com.aerospike.test.sync.large;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
@@ -65,7 +68,23 @@ public class TestLargeList extends TestSync {
 		llist.add(Value.get(orig1));
 		llist.add(Value.get(orig2));
 		llist.add(Value.get(orig3));
-				
+		
+		// Perform exists.
+		boolean b = llist.exists(Value.get(orig2));
+		assertTrue(b);
+		
+		b = llist.exists(Value.get("notfound"));
+		assertFalse(b);
+		
+		List<Value> klist = new ArrayList<Value>();
+		klist.add(Value.get(orig2));
+		klist.add(Value.get(orig1));
+		klist.add(Value.get("notfound"));
+		List<Boolean> blist = llist.exists(klist);
+		assertTrue(blist.get(0));
+		assertTrue(blist.get(1));
+		assertFalse(blist.get(2));
+		
 		// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));
 		assertNotNull(rangeList);

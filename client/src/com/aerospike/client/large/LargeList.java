@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.large;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -146,6 +147,31 @@ public class LargeList {
 	public int remove(Value begin, Value end) throws AerospikeException {
 		Object result = client.execute(policy, key, PackageName, "remove_range", binName, begin, end);
 		return Util.toInt(result);
+	}
+
+	/**
+	 * Does key value exist?
+	 * 
+	 * @param keyValue			key value to lookup
+	 */
+	public boolean exists(Value keyValue) throws AerospikeException {
+		List<?> list = (List<?>)client.execute(policy, key, PackageName, "exists", binName, keyValue);
+		return Util.toBoolean(list.get(0));
+	}
+	
+	/**
+	 * Do key values exist?  Return list of results in one batch call.
+	 * 
+	 * @param keyValues			key values to lookup
+	 */
+	public List<Boolean> exists(List<Value> keyValues) throws AerospikeException {
+		List<?> list = (List<?>)client.execute(policy, key, PackageName, "exists", binName, Value.get(keyValues));
+		List<Boolean> target = new ArrayList<Boolean>(list.size());
+		
+		for (Object obj : list) {
+			target.add(Util.toBoolean(obj));
+		}
+		return target;
 	}
 
 	/**
