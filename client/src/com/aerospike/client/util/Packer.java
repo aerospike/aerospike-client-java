@@ -148,6 +148,21 @@ public final class Packer {
 	}
 
 	private void packByteArrayBegin(int size) {
+		// Continue to pack byte arrays as strings until all servers/clients
+		// have been upgraded to handle new message pack binary type.
+		if (size < 32) {
+			packByte(0xa0 | size);
+		}
+		else if (size < 65536) {
+			packShort(0xda, size);
+		}
+		else {
+			packInt(0xdb, size);
+		}
+
+		// TODO: Replace with this code after all servers/clients
+		// have been upgraded to handle new message pack binary type.
+		/*
 		if (size < 32) {
 			packByte(0xa0 | size);
 		}
@@ -159,7 +174,7 @@ public final class Packer {
 		}
 		else {
 			packInt(0xc6, size);
-		}
+		}*/
 	}
 
 	public void packObject(Object obj) throws IOException {
@@ -312,9 +327,13 @@ public final class Packer {
 		if (size < 32) {
 			packByte(0xa0 | size);
 		}
+		// TODO: Enable this code after all servers/clients
+		// have been upgraded to handle 8 bit string length format.		
+		/*
 		else if (size < 256) {
 			packByte(0xd9, size);
 		}
+		*/
 		else if (size < 65536) {
 			packShort(0xda, size);
 		}
