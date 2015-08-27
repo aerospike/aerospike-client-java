@@ -97,7 +97,8 @@ public final class Packer {
         } 
         else if (size < 65536) {
         	packShort(0xdc, size);
-        } else {
+        } 
+        else {
         	packInt(0xdd, size);
         }
     }
@@ -113,9 +114,11 @@ public final class Packer {
 	private void packMapBegin(int size) {
         if (size < 16) {
         	packByte(0x80 | size);
-        } else if (size < 65536) {
+        }
+        else if (size < 65536) {
         	packShort(0xde, size);
-        } else {
+        }
+        else {
         	packInt(0xdf, size);
         }
     }
@@ -144,15 +147,20 @@ public final class Packer {
     	packByteArray(bytes, 0, bytes.length);
 	}
 
-	private void packByteArrayBegin(int len) {
-        if (len < 32) {
-            packByte(0xa0 | len);
-        } else if (len < 65536) {
-        	packShort(0xda, len);
-        } else {
-        	packInt(0xdb, len);
-        }
-    }
+	private void packByteArrayBegin(int size) {
+		if (size < 32) {
+			packByte(0xa0 | size);
+		}
+		else if (size < 256) {
+			packByte(0xc4, size);
+		}
+		else if (size < 65536) {
+			packShort(0xc5, size);
+		}
+		else {
+			packInt(0xc6, size);
+		}
+	}
 
 	public void packObject(Object obj) throws IOException {
 		if (obj == null) {
@@ -299,14 +307,26 @@ public final class Packer {
     }
 
 	public void packString(String val) {     	
-        int size = Buffer.estimateSizeUtf8(val) + 1;
-        packByteArrayBegin(size);
-    	
-      	if (offset + size > buffer.length) {
-    		resize(size);
-    	}
-    	buffer[offset++] = (byte)ParticleType.STRING;
-    	offset += Buffer.stringToUtf8(val, buffer, offset);
+		int size = Buffer.estimateSizeUtf8(val) + 1;
+    
+		if (size < 32) {
+			packByte(0xa0 | size);
+		}
+		else if (size < 256) {
+			packByte(0xd9, size);
+		}
+		else if (size < 65536) {
+			packShort(0xda, size);
+		}
+		else {
+			packInt(0xdb, size);
+		}
+
+		if (offset + size > buffer.length) {
+			resize(size);
+		}
+		buffer[offset++] = (byte)ParticleType.STRING;
+		offset += Buffer.stringToUtf8(val, buffer, offset);
 	}
 
 	private void packByteArray(byte[] src, int srcOffset, int srcLength) {

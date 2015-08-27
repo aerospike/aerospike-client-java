@@ -222,14 +222,22 @@ public abstract class Unpacker<T> {
 				offset += 8;			
 				return getLong(val);
 			}
+			
+			case 0xc4:
+			case 0xd9: { // string/raw bytes with 8 bit header
+				int count = buffer[offset++] & 0xff;
+				return (T)unpackBlob(count);
+			}
 
-			case 0xda: { // raw bytes with 16 bit header
+			case 0xc5:
+			case 0xda: { // string/raw bytes with 16 bit header
 				int count = Buffer.bytesToShort(buffer, offset);
 				offset += 2;
 				return (T)unpackBlob(count);
 			}
 			
-			case 0xdb: { // raw bytes with 32 bit header
+			case 0xc6:
+			case 0xdb: { // string/raw bytes with 32 bit header
 				// Java array length is restricted to positive int values (0 - Integer.MAX_VALUE).
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;

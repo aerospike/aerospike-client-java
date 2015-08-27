@@ -85,7 +85,7 @@ public class TestListMap extends TestSync {
 
 		HashMap<String,String> map = new HashMap<String,String>();
 		map.put("key1", "string1");
-		map.put("key2", "string2");
+		map.put("key2", "loooooooooooooooooooooooooongerstring2");
 		map.put("key3", "string3");
 
 		Bin bin = new Bin(args.getBinName("mapbin1"), map);
@@ -96,7 +96,7 @@ public class TestListMap extends TestSync {
 		
 		assertEquals(3, receivedMap.size());
 		assertEquals("string1", receivedMap.get("key1"));
-		assertEquals("string2", receivedMap.get("key2"));
+		assertEquals("loooooooooooooooooooooooooongerstring2", receivedMap.get("key2"));
 		assertEquals("string3", receivedMap.get("key3"));
 	}
 
