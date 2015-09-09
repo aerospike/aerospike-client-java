@@ -2,9 +2,9 @@ name: aerospike-client-java
 
 container:
   - base:
-      - 192.168.106.181/build/aerospike-client-java:openjdk-6
-      - 192.168.106.181/build/aerospike-client-java:openjdk-7
-      - 192.168.106.181/build/aerospike-client-java:openjdk-8
+      - docker.qe.aerospike.com/build/aerospike-client-java:openjdk-6
+      - docker.qe.aerospike.com/build/aerospike-client-java:openjdk-7
+      - docker.qe.aerospike.com/build/aerospike-client-java:openjdk-8
 
 build:
   - name: build
