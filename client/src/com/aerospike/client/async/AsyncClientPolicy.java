@@ -67,19 +67,36 @@ public final class AsyncClientPolicy extends ClientPolicy {
 	public int asyncSelectorThreads = 1;
 	
 	/**
-	 * Asynchronous socket read/user callback task thread pool. Example:
+	 * Asynchronous socket read/user callback task thread pool. If asyncTaskThreadPool is not
+	 * defined (default), asynchronous tasks will be run in the same thread as the selector.
+	 * If asyncTaskThreadPool is defined, the socket read and user callback will be run in a
+	 * separate thread from the selector thread.
+	 * <p>
+	 * A variable sized thread pool can handle any amount of tasks.
 	 * <pre>
+	 * // Daemon threads automatically terminate when the program terminates.
 	 * asyncTaskThreadPool = Executors.newCachedThreadPool(new ThreadFactory() {
 	 *     public final Thread newThread(Runnable runnable) {
 	 *			Thread thread = new Thread(runnable);
 	 *			thread.setDaemon(true);
 	 *			return thread;
 	 *		}
-	 *	});
+	 * });
 	 * </pre>
-	 * Daemon threads automatically terminate when the program terminates.
-	 * <p>
-	 * The default, null, indicates asynchronous tasks should be run in the same thread as the selector.
+	 * If a fixed size thread pool is desired, the size should be the same as asyncMaxCommands.
+	 * <pre>
+	 * asyncTaskThreadPool = Executors.newFixedThreadPool(asyncMaxCommands, new ThreadFactory() {
+	 *     public final Thread newThread(Runnable runnable) {
+	 *			Thread thread = new Thread(runnable);
+	 *			thread.setDaemon(true);
+	 *			return thread;
+	 *		}
+	 * });
+	 * </pre>
+	 * Deadlock can occur when asyncTaskThreadPool is not defined, asyncMaxCommandAction equals
+	 * BLOCK and there are many instances of nested async commands  (one command triggers new
+	 * commands in the user callback).  It is imperative that asyncTaskThreadPool be defined if
+	 * your application is using this scenario.
 	 */
 	public ExecutorService asyncTaskThreadPool;
 	
