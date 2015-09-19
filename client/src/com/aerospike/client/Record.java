@@ -126,6 +126,13 @@ public final class Record {
 	}
 	
 	/**
+	 * Get bin value as GeoJSON.
+	 */
+	public String getGeoJSON(String name) {
+		return (String)getValue(name);
+	}
+	
+	/**
 	 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
 	 * ttl (seconds from now).
 	 */

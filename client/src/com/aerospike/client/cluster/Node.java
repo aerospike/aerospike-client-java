@@ -48,6 +48,7 @@ public class Node implements Closeable {
 	protected int partitionGeneration;
 	protected int referenceCount;
 	protected int failures;
+	public final boolean hasGeo;
 	public final boolean hasDouble;
 	public final boolean hasBatchIndex;
 	public final boolean hasReplicasAll;
@@ -64,6 +65,7 @@ public class Node implements Closeable {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
+		this.hasGeo = nv.hasGeo;
 		this.hasDouble = nv.hasDouble;
 		this.hasBatchIndex = nv.hasBatchIndex;
 		this.hasReplicasAll = nv.hasReplicasAll;

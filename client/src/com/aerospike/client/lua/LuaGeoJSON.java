@@ -14,24 +14,20 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.lua;
 
-/**
- * Underlying data type of secondary index.
- */
-public enum IndexType {
-	/**
-	 * Number index.
-	 */
-	NUMERIC,
+import org.luaj.vm2.LuaUserdata;
+
+public final class LuaGeoJSON extends LuaUserdata implements LuaData {
+
+	private final String	strval;
 	
-	/**
-	 * String index.
-	 */
-	STRING,
-	
-	/**
-	 * 2-dimensional spherical geospatial index.
-	 */
-	GEO2DSPHERE;
+	public LuaGeoJSON(String strval) {
+		super(strval);
+		this.strval = strval;
+	}
+
+	public Object luaToObject() {
+		return strval;
+	}
 }

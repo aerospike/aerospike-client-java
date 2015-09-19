@@ -68,6 +68,9 @@ public final class Buffer {
 		case ParticleType.JBLOB:
 			return Buffer.bytesToObject(buf, offset, len);
 			
+		case ParticleType.GEOJSON:
+			return Buffer.bytesToGeoJSON(buf, offset, len);
+			
 		case ParticleType.LIST:
 			return Unpacker.unpackObjectList(buf, offset, len);
 
@@ -342,6 +345,13 @@ public final class Buffer {
 		return new Value.LongValue(val);
 	}
 
+	public static Object bytesToGeoJSON(byte[] buf, int offset, int len) {
+		// Ignore the flags for now
+		int ncells = bytesToShort(buf, offset + 1);
+		int hdrsz = 1 + 2 + (ncells * 8);
+		return Buffer.utf8ToString(buf, offset + hdrsz, len - hdrsz);
+	}
+	
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {
 		// Server always returns 8 for integer length.
 		if (len == 8) {

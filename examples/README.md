@@ -49,6 +49,7 @@ Usage:
     LargeSet
     LargeStack
     QueryInteger
+    QueryRegion
     QueryString
     QueryFilter
     QuerySum
