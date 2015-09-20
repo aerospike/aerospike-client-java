@@ -75,4 +75,9 @@ public class LuaUnpacker extends Unpacker<LuaValue> {
 	protected LuaBoolean getBoolean(boolean value) {
 		return LuaBoolean.valueOf(value);
 	}
+
+	@Override
+	protected LuaGeoJSON getGeoJSON(String value) {
+		return new LuaGeoJSON(value);
+	}
 }

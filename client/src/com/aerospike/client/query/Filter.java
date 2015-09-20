@@ -19,6 +19,7 @@ package com.aerospike.client.query;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.ParticleType;
 
 /**
  * Query filter definition.
@@ -35,7 +36,7 @@ public final class Filter {
 	 */
 	public static Filter equal(String name, long value) {
 		Value val = Value.get(value);
-		return new Filter(name, IndexCollectionType.DEFAULT, val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
 	}
 
 	/**
@@ -47,7 +48,7 @@ public final class Filter {
 	 */
 	public static Filter equal(String name, String value) {
 		Value val = Value.get(value);
-		return new Filter(name, IndexCollectionType.DEFAULT, val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
 	}
 
 	/**
@@ -60,7 +61,7 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter equal(String name, Value value) {
-		return new Filter(name, IndexCollectionType.DEFAULT, value, value);
+		return new Filter(name, IndexCollectionType.DEFAULT, value.getType(), value, value);
 	}
 	
 	/**
@@ -73,7 +74,7 @@ public final class Filter {
 	 */
 	public static Filter contains(String name, IndexCollectionType type, long value) {
 		Value val = Value.get(value);
-		return new Filter(name, type, val, val);
+		return new Filter(name, type, val.getType(), val, val);
 	}
 
 	/**
@@ -86,7 +87,7 @@ public final class Filter {
 	 */
 	public static Filter contains(String name, IndexCollectionType type, String value) {
 		Value val = Value.get(value);
-		return new Filter(name, type, val, val);
+		return new Filter(name, type, val.getType(), val, val);
 	}
 
 	/**
@@ -100,7 +101,7 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, long begin, long end) {
-		return new Filter(name, IndexCollectionType.DEFAULT, Value.get(begin), Value.get(end));
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.get(begin), Value.get(end));
 	}
 
 	/**
@@ -115,7 +116,7 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, IndexCollectionType type, long begin, long end) {
-		return new Filter(name, type, Value.get(begin), Value.get(end));
+		return new Filter(name, type, ParticleType.INTEGER, Value.get(begin), Value.get(end));
 	}
 
 	/**
@@ -131,17 +132,45 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter range(String name, Value begin, Value end) {
-		return new Filter(name, IndexCollectionType.DEFAULT, begin, end);
+		return new Filter(name, IndexCollectionType.DEFAULT, begin.getType(), begin, end);
+	}
+
+	/**
+	 * Create geospatial "within region" filter for query.
+	 * Argument must be a valid GeoJSON region.
+	 * 
+	 * @param name			bin name
+	 * @param region		filter region
+	 * @return				filter instance
+	 */
+	public static Filter geoWithin(String name, String region) {
+		return new Filter(name, IndexCollectionType.DEFAULT,
+						  ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	}
+
+	/**
+	 * Create geospatial "containing point" filter for query.
+	 * Argument must be a valid GeoJSON point.
+	 * 
+	 * @param name			bin name
+	 * @param region		filter region
+	 * @return				filter instance
+	 */
+	public static Filter geoContains(String name, String point) {
+		return new Filter(name, IndexCollectionType.DEFAULT,
+						  ParticleType.GEOJSON, Value.get(point), Value.get(point));
 	}
 
 	private final String name;
-	private final IndexCollectionType type;
+	private final IndexCollectionType colType;
+	private final int valType;
 	private final Value begin;
 	private final Value end;
 		
-	private Filter(String name, IndexCollectionType type, Value begin, Value end) {
+	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end) {
 		this.name = name;
-		this.type = type;
+		this.valType = valType;
+		this.colType = colType;
 		this.begin = begin;
 		this.end = end;
 	}
@@ -166,7 +195,7 @@ public final class Filter {
 		offset += len + 1;
 		
 		// Write particle type.
-		buf[offset++] = (byte)begin.getType();
+		buf[offset++] = (byte)valType;
 		
 		// Write filter begin.
 		len = begin.write(buf, offset + 4);
@@ -186,7 +215,7 @@ public final class Filter {
 	 * For internal use only.
 	 */
 	public IndexCollectionType getCollectionType() {
-		return type;
+		return colType;
 	}
 	
 	/**
@@ -216,7 +245,9 @@ public final class Filter {
 				return false;
 		} else if (!name.equals(other.name))
 			return false;
-		if (type != other.type)
+		if (colType != other.colType)
+			return false;
+		if (valType != other.valType)
 			return false;
 		return true;
 	}
@@ -231,7 +262,8 @@ public final class Filter {
 		result = prime * result + ((begin == null) ? 0 : begin.hashCode());
 		result = prime * result + ((end == null) ? 0 : end.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
-		result = prime * result + ((type == null) ? 0 : type.hashCode());
+		result = prime * result + ((colType == null) ? 0 : colType.hashCode());
+		result = prime * result + valType;
 		return result;
 	}
 }

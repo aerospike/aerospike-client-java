@@ -175,6 +175,12 @@ public final class LuaInstance {
 			return unpacker.unpackMap();
 		}
 		
+		case ParticleType.GEOJSON:
+			// skip the flags
+			int ncells = Buffer.bytesToShort(buf, offset + 1);
+			int hdrsz = 1 + 2 + (ncells * 8);
+			return new LuaGeoJSON(new String(buf, offset + hdrsz, len - hdrsz));
+			
 		default:
 			return LuaValue.NIL;
 		}

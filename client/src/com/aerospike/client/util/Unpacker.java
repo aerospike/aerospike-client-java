@@ -303,6 +303,7 @@ public abstract class Unpacker<T> {
 	protected abstract T getLong(long value);
 	protected abstract T getDouble(double value);
 	protected abstract T getBoolean(boolean value);
+	protected abstract T getGeoJSON(String value);
 
 	public static Object unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
@@ -357,6 +358,11 @@ public abstract class Unpacker<T> {
 
 		@Override
 		protected Object getBoolean(boolean value) {
+			return value;
+		}
+
+		@Override
+		protected Object getGeoJSON(String value) {
 			return value;
 		}
 	}

@@ -35,6 +35,7 @@ public final class NodeValidator {
 	boolean hasBatchIndex;
 	boolean hasReplicasAll;
 	boolean hasDouble;
+	boolean hasGeo;
 
 	public NodeValidator(Cluster cluster, Host host) throws Exception {
 		try {
@@ -104,7 +105,10 @@ public final class NodeValidator {
 			int end = 0;
 			int len;
 			
-			while (end < features.length() && !(this.hasDouble && this.hasBatchIndex && this.hasReplicasAll)) {
+			while (end < features.length() && !(this.hasGeo &&
+												this.hasDouble &&
+												this.hasBatchIndex &&
+												this.hasReplicasAll)) {
 				end = features.indexOf(';', begin);
 				
 				if (end < 0) {
@@ -112,6 +116,10 @@ public final class NodeValidator {
 				}
 				len = end - begin;
 				
+				if (features.regionMatches(begin, "geo", 0, len)) {
+					this.hasGeo = true;
+				}
+
 				if (features.regionMatches(begin, "float", 0, len)) {
 					this.hasDouble = true;
 				}

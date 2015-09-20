@@ -138,6 +138,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get GeoJSON or null value instance.
+	 */
+	public static Value getAsGeoJSON(String value) {
+		return (value == null)? new NullValue() : new GeoJSONValue(value);
+	}
+
+	/**
 	 * Get list or null value instance.
 	 * @deprecated Use {@link #get(List value)} instead. 
 	 */
@@ -1018,6 +1025,67 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return object.hashCode();
+		}	
+	}
+	
+	/**
+	 * GeoJSON value.
+	 */
+	public static final class GeoJSONValue extends Value {		
+		private final String value;
+
+		public GeoJSONValue(String value) {
+			this.value = value;
+		}
+
+		@Override
+		public int estimateSize() {
+			// flags + ncells + jsonstr
+			return 1 + 2 + Buffer.estimateSizeUtf8(value);
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			buffer[offset] = 0; // flags
+			Buffer.shortToBytes(0, buffer, offset + 1); // ncells
+			return 1 + 2 + Buffer.stringToUtf8(value, buffer, offset + 3); // jsonstr
+		}
+		
+		@Override
+		public void pack(Packer packer) throws IOException {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "can't pack GeoJSON");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.GEOJSON;
+		}
+		
+		@Override
+		public Object getObject() {
+			return value;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaString.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return value;
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value.equals(((GeoJSONValue)other).value));
+		}
+
+		@Override
+		public int hashCode() {
+	        return value.hashCode();
 		}	
 	}
 	

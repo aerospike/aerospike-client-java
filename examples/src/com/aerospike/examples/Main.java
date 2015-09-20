@@ -62,6 +62,8 @@ public class Main extends JPanel {
 		"LargeSet",
 		"LargeStack",
 		"QueryInteger",
+		"QueryRegion",
+		"QueryRegionFilter",
 		"QueryString",
 		"QueryFilter",
 		"QuerySum",

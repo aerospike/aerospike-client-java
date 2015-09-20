@@ -37,6 +37,7 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	boolean singleBin;
+	boolean hasGeo;
 	boolean hasUdf;
 	boolean hasLargeDataTypes;
 	
@@ -59,15 +60,18 @@ public class Parameters {
 		Map<String,String> tokens = Info.request(null, node, featuresFilter, namespaceFilter);
 
 		String features = tokens.get(featuresFilter);
+		hasGeo = false;
 		hasUdf = false;
 		
 		if (features != null) {
 			String[] list = features.split(";");
 			
 			for (String s : list) {
+				if (s.equals("geo")) {
+					hasGeo = true;
+				}
 				if (s.equals("udf")) {
 					hasUdf = true;
-					break;
 				}
 			}
 		}
