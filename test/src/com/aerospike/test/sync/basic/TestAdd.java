@@ -18,6 +18,7 @@ package com.aerospike.test.sync.basic;
 
 import org.junit.Test;
 import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -55,7 +56,7 @@ public class TestAdd extends TestSync {
 	}
 
 	@Test
-	public void add_null_value() {
+	public void addNullValue() {
 		Key key = new Key(args.namespace, args.set, "addkey");
 		String binName = args.getBinName("addbin");
 
@@ -70,7 +71,8 @@ public class TestAdd extends TestSync {
             client.add(null, key, bin);
             fail("add with null value should not have succeeded");
         }
-        catch (AerospikeException e) {
+        catch (AerospikeException ae) {
+            assertEquals(ae.getMessage(), "Error Code 4: Parameter error");
         }
         catch (Exception e) {
             fail("add with null value should have thrown AerospikeException");
