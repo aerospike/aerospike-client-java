@@ -17,7 +17,10 @@
 package com.aerospike.test.sync.basic;
 
 import org.junit.Test;
+import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
@@ -40,6 +43,9 @@ public class TestAdd extends TestSync {
 		bin = new Bin(binName, 5);
 		client.add(null, key, bin);
 
+		// bin = new Bin("created", (Long)null);
+		// client.add(null, key, bin);
+
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin.name, 15);
 
@@ -47,5 +53,29 @@ public class TestAdd extends TestSync {
 		bin = new Bin(binName, 30);
 		record = client.operate(null, key, Operation.add(bin), Operation.get(bin.name));
 		assertBinEqual(key, record, bin.name, 45);
+	}
+
+	@Test
+	public void addNullValue() {
+		Key key = new Key(args.namespace, args.set, "addkey");
+		String binName = args.getBinName("addbin");
+
+		// Delete record if it already exists.
+		client.delete(null, key);
+
+        Bin bin;
+
+        // verify correct exception for previous server crash
+        try {
+            bin = new Bin(binName, (Long)null);
+            client.add(null, key, bin);
+            fail("add with null value should not have succeeded");
+        }
+        catch (AerospikeException ae) {
+            assertEquals(ae.getMessage(), "Error Code 4: Parameter error");
+        }
+        catch (Exception e) {
+            fail("add with null value should have thrown AerospikeException");
+        }
 	}
 }
