@@ -137,57 +137,5 @@ public final class NodeValidator {
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.
 		}
-	}
-	
-	/*
-	private static final class BuildVersion {
-		private final int major;
-		private final int minor;
-		private final int revision;
-		
-		private BuildVersion(String version) {
-			int begin = 0;			
-			int i = begin;
-			int max = version.length();
-			
-			while (i < max) {
-				if (! Character.isDigit(version.charAt(i))) {
-					break;
-				}
-				i++;
-			}
-			
-			major = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
-			begin = ++i;
-			
-			while (i < max) {
-				if (! Character.isDigit(version.charAt(i))) {
-					break;
-				}
-				i++;
-			}
-
-			minor = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
-			begin = ++i;
-			
-			while (i < max) {
-				if (! Character.isDigit(version.charAt(i))) {
-					break;
-				}
-				i++;
-			}
-			
-			revision = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
-		}
-
-		private boolean hasReplicasAll() {
-			// Check for "replicas-all" info protocol support (version >= 3.5.9).
-			return isGreaterEqual(3, 5, 9);
-		}
-		
-		private boolean isGreaterEqual(int v1, int v2, int v3) {
-			return major > v1 || (major == v1 && (minor > v2 || (minor == v2 && revision >= v3)));
-		}
-	}
-	*/
+	}	
 }

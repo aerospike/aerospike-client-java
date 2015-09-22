@@ -25,6 +25,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestAdd extends TestSync {
@@ -43,9 +44,6 @@ public class TestAdd extends TestSync {
 		bin = new Bin(binName, 5);
 		client.add(null, key, bin);
 
-		// bin = new Bin("created", (Long)null);
-		// client.add(null, key, bin);
-
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin.name, 15);
 
@@ -56,26 +54,33 @@ public class TestAdd extends TestSync {
 	}
 
 	@Test
-	public void addNullValue() {
+	public void addNullValue() {	
+		Version version = Version.getServerVersion(client, null);
+		
+		// Do not run on servers < 3.6.1
+		if (version.isLess(3, 6, 1)) {
+			return;
+		}
+		
 		Key key = new Key(args.namespace, args.set, "addkey");
 		String binName = args.getBinName("addbin");
-
+		
 		// Delete record if it already exists.
 		client.delete(null, key);
-
-        Bin bin;
-
-        // verify correct exception for previous server crash
-        try {
-            bin = new Bin(binName, (Long)null);
-            client.add(null, key, bin);
-            fail("add with null value should not have succeeded");
-        }
-        catch (AerospikeException ae) {
-            assertEquals(ae.getMessage(), "Error Code 4: Parameter error");
-        }
-        catch (Exception e) {
-            fail("add with null value should have thrown AerospikeException");
-        }
+		
+		Bin bin;
+		
+		// verify correct exception for previous server crash
+		try {
+			bin = new Bin(binName, (Long)null);
+			client.add(null, key, bin);
+			fail("add with null value should not have succeeded");
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ae.getMessage(), "Error Code 4: Parameter error");
+		}
+		catch (Exception e) {
+			fail("add with null value should have thrown AerospikeException");
+		}
 	}
 }
