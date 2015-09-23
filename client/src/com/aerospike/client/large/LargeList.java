@@ -156,7 +156,7 @@ public class LargeList {
 	 */
 	public boolean exists(Value keyValue) throws AerospikeException {
 		List<?> list = (List<?>)client.execute(policy, key, PackageName, "exists", binName, keyValue);
-		return Util.toBoolean(list.get(0));
+		return (list != null)? Util.toBoolean(list.get(0)) : false;
 	}
 	
 	/**
@@ -166,12 +166,24 @@ public class LargeList {
 	 */
 	public List<Boolean> exists(List<Value> keyValues) throws AerospikeException {
 		List<?> list = (List<?>)client.execute(policy, key, PackageName, "exists", binName, Value.get(keyValues));
-		List<Boolean> target = new ArrayList<Boolean>(list.size());
 		
-		for (Object obj : list) {
-			target.add(Util.toBoolean(obj));
+		if (list != null) {
+			List<Boolean> target = new ArrayList<Boolean>(list.size());
+			
+			for (Object obj : list) {
+				target.add(Util.toBoolean(obj));
+			}
+			return target;
 		}
-		return target;
+		else {
+			int max = keyValues.size();
+			List<Boolean> target = new ArrayList<Boolean>(max);
+			
+			for (int i = 0; i < max; i++) {
+				target.add(false);
+			}
+			return target;			
+		}
 	}
 
 	/**

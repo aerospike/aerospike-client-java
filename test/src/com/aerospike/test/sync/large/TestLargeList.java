@@ -39,6 +39,7 @@ import org.junit.Test;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Value;
+import com.aerospike.client.large.LargeList;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.test.sync.TestSync;
 
@@ -59,7 +60,7 @@ public class TestLargeList extends TestSync {
 		client.delete(null, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.large.LargeList llist = client.getLargeList(null, key, binName);
+		LargeList llist = client.getLargeList(null, key, binName);
 		String orig1 = "llistValue1";
 		String orig2 = "llistValue2";
 		String orig3 = "llistValue3";
@@ -76,6 +77,11 @@ public class TestLargeList extends TestSync {
 		b = llist.exists(Value.get("notfound"));
 		assertFalse(b);
 		
+		// Test record not found.
+		LargeList nflist = client.getLargeList(null, new Key(args.namespace, args.set, "sfdfdqw"), binName);
+		b = nflist.exists(Value.get(orig2));
+		assertFalse(b);
+
 		List<Value> klist = new ArrayList<Value>();
 		klist.add(Value.get(orig2));
 		klist.add(Value.get(orig1));
@@ -85,6 +91,12 @@ public class TestLargeList extends TestSync {
 		assertTrue(blist.get(1));
 		assertFalse(blist.get(2));
 		
+		// Test record not found.
+		List<Boolean> blist2 = nflist.exists(klist);
+		assertFalse(blist2.get(0));
+		assertFalse(blist2.get(1));
+		assertFalse(blist2.get(2));
+
 		// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));
 		assertNotNull(rangeList);
@@ -119,7 +131,7 @@ public class TestLargeList extends TestSync {
 		client.delete(null, key);
 		
 		// Initialize large set operator.
-		com.aerospike.client.large.LargeList llist = client.getLargeList(null, key, binName);
+		LargeList llist = client.getLargeList(null, key, binName);
 		int orig1 = 1;
 		int orig2 = 2;
 		int orig3 = 3;
@@ -146,7 +158,7 @@ public class TestLargeList extends TestSync {
 		client.delete(null, key);	
 
 		// Initialize large list operator.
-		com.aerospike.client.large.LargeList list = client.getLargeList(null, key, "trades");
+		LargeList list = client.getLargeList(null, key, "trades");
 
 		// Write trades
 		Map<String,Value> map = new HashMap<String,Value>();
@@ -216,7 +228,7 @@ public class TestLargeList extends TestSync {
 		client.delete(null, key);
 
 		// Initialize large list operator.
-		com.aerospike.client.large.LargeList list = client.getLargeList(null, key, "trades");
+		LargeList list = client.getLargeList(null, key, "trades");
 
 		// Write trades
 		Map<String, Value> map = new HashMap<String, Value>();
@@ -291,7 +303,7 @@ public class TestLargeList extends TestSync {
 		Key key = new Key(args.namespace, args.set, "setkey");
 		
 		int itemCount = 2000;
-		com.aerospike.client.large.LargeList llist2 = client.getLargeList(null, key, "NumberBin");
+		LargeList llist2 = client.getLargeList(null, key, "NumberBin");
 		for (int i = itemCount; i > 0; i-- ){
 			llist2.add(Value.get(i));
 		}
