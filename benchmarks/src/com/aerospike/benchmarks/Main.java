@@ -136,6 +136,12 @@ public class Main implements Log.Callback {
 			"    -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" + 	    
 			"    -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads."
 			);
+		options.addOption("e", "expirationTime", true,
+			"Set expiration time of each record in seconds." +
+			" -1: Never expire, " +
+			"  0: Default to namespace," +
+			" >0: Actual given expiration time"
+			);
 		options.addOption("g", "throughput", true, 
 			"Set a target transactions per second for the client. The client should not exceed this " + 
 			"average throughput."
@@ -236,6 +242,13 @@ public class Main implements Log.Callback {
         	args.readPolicy = clientPolicy.readPolicyDefault;
         	args.writePolicy = clientPolicy.writePolicyDefault;
         	args.batchPolicy = clientPolicy.batchPolicyDefault;
+        }
+
+		if (line.hasOption("e")) {
+            args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
+            if (args.writePolicy.expiration < -1) {
+				throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
+            }
         }
 
         if (line.hasOption("hosts")) {
