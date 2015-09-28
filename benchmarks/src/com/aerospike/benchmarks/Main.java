@@ -244,12 +244,12 @@ public class Main implements Log.Callback {
         	args.batchPolicy = clientPolicy.batchPolicyDefault;
         }
 
-		if (line.hasOption("e")) {
-            args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
-            if (args.writePolicy.expiration < -1) {
-				throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
-            }
-        }
+	if (line.hasOption("e")) {
+		args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
+		if (args.writePolicy.expiration < -1) {
+			throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
+		}
+	}
 
         if (line.hasOption("hosts")) {
 			this.hosts = line.getOptionValue("hosts").split(",");
