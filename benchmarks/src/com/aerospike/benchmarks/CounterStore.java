@@ -24,6 +24,7 @@ public class CounterStore {
 	
 	Current write = new Current();
 	Current read = new Current();
+	Current transaction = new Current();
 	
 	AtomicLong periodBegin = new AtomicLong();	
 	AtomicInteger readNotFound = new AtomicInteger();
@@ -35,6 +36,8 @@ public class CounterStore {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
+		AtomicInteger min = new AtomicInteger(-1);
+		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;
 	}	
 }

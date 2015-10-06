@@ -39,9 +39,9 @@ public final class InsertTaskSync extends InsertTask {
 	
 	protected void put(Key key, Bin[] bins) throws AerospikeException {
 		if (counters.write.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			client.put(args.writePolicy, key, bins);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -52,10 +52,10 @@ public final class InsertTaskSync extends InsertTask {
 	}
 
 	protected void largeListAdd(Key key, Value value) throws AerospikeException {
-		long begin = System.currentTimeMillis();
+		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeListAdd(key, value, begin);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -77,10 +77,10 @@ public final class InsertTaskSync extends InsertTask {
 	}
 		
 	protected void largeStackPush(Key key, Value value) throws AerospikeException {
-		long begin = System.currentTimeMillis();
+		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeStackPush(key, value, begin);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
