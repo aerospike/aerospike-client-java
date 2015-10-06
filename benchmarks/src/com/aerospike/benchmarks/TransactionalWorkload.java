@@ -212,6 +212,11 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 			}
 			return result;
 		}
+
+		@Override
+		public void remove() {
+			throw new UnsupportedOperationException("Remove is not supported");
+		}
 	}
 	@Override
 	public Iterator<TransactionalItem> iterator() {
@@ -219,12 +224,5 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	}
 	public Iterator<TransactionalItem> iterator(RandomShift random) {
 		return new WorkloadIterator(random);
-	}
-	
-	public static void main(String[] args) throws Exception {
-		TransactionalWorkload workload = new TransactionalWorkload(new String[] {"TXN","t:rrRwuri4R3W","r:10"});
-		for (TransactionalItem item : workload) {
-			System.out.println(item);
-		}
 	}
 }
