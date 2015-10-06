@@ -24,6 +24,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeStack;
+import com.aerospike.client.policy.WritePolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -36,26 +37,28 @@ public class RWTaskSync extends RWTask {
 	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
 		super(client, args, counters, keyStart, keyCount);	
 	}
-		
-	protected void put(Key key, Bin[] bins) throws AerospikeException {
+	protected void put(Key key, Bin[] bins, WritePolicy writePolicy) throws AerospikeException {
 		if (counters.write.latency != null) {
-			long begin = System.currentTimeMillis();
-			client.put(args.writePolicy, key, bins);
-			long elapsed = System.currentTimeMillis() - begin;
+			long begin = System.nanoTime();
+			client.put(writePolicy, key, bins);
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			client.put(args.writePolicy, key, bins);
+			client.put(writePolicy, key, bins);
 			counters.write.count.getAndIncrement();			
 		}
+	}		
+	protected void put(Key key, Bin[] bins) throws AerospikeException {
+		put(key, bins, args.writePolicy);
 	}
 	
 	protected void add(Key key, Bin[] bins) throws AerospikeException {
 		if (counters.write.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			client.add(writePolicyGeneration, key, bins);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -66,10 +69,10 @@ public class RWTaskSync extends RWTask {
 	}
 
 	protected void largeListAdd(Key key, Value value) throws AerospikeException {
-		long begin = System.currentTimeMillis();
+		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeListAdd(key, value, begin);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -91,10 +94,10 @@ public class RWTaskSync extends RWTask {
 	}
 
 	protected void largeStackPush(Key key, Value value) throws AerospikeException {
-		long begin = System.currentTimeMillis();
+		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeStackPush(key, value, begin);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -119,9 +122,9 @@ public class RWTaskSync extends RWTask {
 		Record record;
 		
 		if (counters.read.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			record = client.get(args.readPolicy, key, binName);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {
@@ -134,9 +137,9 @@ public class RWTaskSync extends RWTask {
 		Record record;
 		
 		if (counters.read.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			record = client.get(args.readPolicy, key);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {
@@ -149,9 +152,9 @@ public class RWTaskSync extends RWTask {
 		Record[] records;
 		
 		if (counters.read.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			records = client.get(args.batchPolicy, keys, binName);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {
@@ -167,9 +170,9 @@ public class RWTaskSync extends RWTask {
 		Record[] records;
 		
 		if (counters.read.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			records = client.get(args.batchPolicy, keys);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {
@@ -184,10 +187,10 @@ public class RWTaskSync extends RWTask {
 	protected void largeListGet(Key key) throws AerospikeException {
 		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
 		List<?> results;
-		long begin = System.currentTimeMillis();
+		long begin = System.nanoTime();
 		if (counters.read.latency != null) {
 			results = list.range(Value.get(1000), Value.get(begin));
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {
@@ -200,9 +203,9 @@ public class RWTaskSync extends RWTask {
 		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
 		List<?> results;
 		if (counters.read.latency != null) {
-			long begin = System.currentTimeMillis();
+			long begin = System.nanoTime();
 			results = lstack.peek(1);
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 		}
 		else {

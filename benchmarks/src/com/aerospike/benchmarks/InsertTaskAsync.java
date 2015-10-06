@@ -61,12 +61,12 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 		private long begin;
 		
 		public LatencyWriteHandler() {
-			this.begin = System.currentTimeMillis();
+			this.begin = System.nanoTime();
 		}
 		
 		@Override
 		public void onSuccess(Key key) {
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}

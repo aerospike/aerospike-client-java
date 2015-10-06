@@ -30,6 +30,8 @@ public class Arguments {
 	public DBObjectSpec[] objectSpec;
 	public Policy readPolicy;
 	public WritePolicy writePolicy;
+	public WritePolicy updatePolicy;
+	public WritePolicy replacePolicy;
 	public BatchPolicy batchPolicy;
 	public int batchSize;
 	public int nBins;
@@ -41,6 +43,7 @@ public class Arguments {
 	public boolean reportNotFound;
 	public boolean validate;
 	public boolean debug;
+	public TransactionalWorkload transactionalWorkload;
 	public KeyType keyType;
 	public Bin[] fixedBins;
 	public Bin[] fixedBin;
