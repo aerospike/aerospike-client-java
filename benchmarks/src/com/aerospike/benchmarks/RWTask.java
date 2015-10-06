@@ -16,6 +16,7 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -91,6 +92,10 @@ public abstract class RWTask implements Runnable {
 				case READ_FROM_FILE:
 					readFromFile();	
 					break;
+					
+				case TRANSACTION:
+					runTransaction();
+					break;
 				}
 			} 
 			catch (Exception e) {
@@ -119,6 +124,56 @@ public abstract class RWTask implements Runnable {
 	
 	public void stop() {
 		valid = false;
+	}
+	
+	private void runTransaction() {
+		int key;
+		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
+		long begin = System.nanoTime();
+		while (iterator.hasNext()) {
+			TransactionalItem thisItem = iterator.next();
+			switch (thisItem) {
+				case MULTI_BIN_READ:
+					key = random.nextInt(keyCount);
+					doRead(key, true);
+					break;
+	
+				case MULTI_BIN_REPLACE:
+					key = random.nextInt(keyCount);
+					doWrite(key, true, args.replacePolicy);
+					break;
+				case MULTI_BIN_UPDATE:
+					key = random.nextInt(keyCount);
+					doWrite(key, true, args.updatePolicy);
+					break;
+				case SINGLE_BIN_INCREMENT:
+					key = random.nextInt(keyCount);
+					// Increment one bin.
+					doIncrement(key, 1);
+					break;
+
+				case SINGLE_BIN_READ:
+					key = random.nextInt(keyCount);
+					doRead(key, false);
+					break;
+				case SINGLE_BIN_REPLACE:
+					key = random.nextInt(keyCount);
+					doWrite(key, false, args.replacePolicy);
+					break;
+				case SINGLE_BIN_UPDATE:
+					key = random.nextInt(keyCount);
+					doWrite(key, false, args.updatePolicy);
+					break;
+				default:
+					break;
+			}
+		}
+		
+		if (counters.transaction.latency != null) {
+			long elapsed = System.nanoTime() - begin;
+			counters.transaction.count.getAndIncrement();			
+			counters.transaction.latency.add(elapsed);
+		}
 	}
 	
 	private void readUpdate() {
@@ -236,17 +291,21 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 	
+	protected void doWrite(int keyIdx, boolean multiBin) {
+		doWrite(keyIdx, multiBin, null);
+	}
+	
 	/**
 	 * Write the key at the given index
 	 */
-	protected void doWrite(int keyIdx, boolean multiBin) {
+	protected void doWrite(int keyIdx, boolean multiBin, WritePolicy writePolicy) {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 		Bin[] bins = args.getBins(random, multiBin);
 		
 		try {
 			switch (args.storeType) {
 			case KVS:
-				put(key, bins);
+				put(key, bins, writePolicy);
 				break;
 	
 			case LLIST:
@@ -486,7 +545,10 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 
-	protected abstract void put(Key key, Bin[] bins) throws AerospikeException;
+	protected void put(Key key, Bin[] bins) {
+		put(key, bins, args.writePolicy);
+	}
+	protected abstract void put(Key key, Bin[] bins, WritePolicy policy) throws AerospikeException;
 	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
 	protected abstract void get(Key key, String binName) throws AerospikeException;
 	protected abstract void get(Key key) throws AerospikeException;

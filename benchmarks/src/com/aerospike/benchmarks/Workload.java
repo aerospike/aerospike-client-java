@@ -48,5 +48,10 @@ public enum Workload {
 	/**
 	 * Read the keys(String/Integer) from the File.Read all bins .
 	 */	
-	READ_FROM_FILE;
+	READ_FROM_FILE,
+	
+	/**
+	 * Form business transactions
+	 */
+	TRANSACTION;
 }

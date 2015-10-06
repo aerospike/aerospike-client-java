@@ -25,6 +25,7 @@ import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.WritePolicy;
 
 /**
  * Asynchronous read/write task.
@@ -44,7 +45,7 @@ public class RWTaskAsync extends RWTask {
 		batchReadHandler = new BatchReadHandler();
 	}
 		
-	protected void put(Key key, Bin[] bins) throws AerospikeException {
+	protected void put(Key key, Bin[] bins, WritePolicy writePolicy) throws AerospikeException {
 		// If an error occurred, yield thread to back off throttle.
 		// Fail counters are reset every second.
 		if (counters.write.timeouts.get() > 0) {
@@ -52,10 +53,10 @@ public class RWTaskAsync extends RWTask {
 		}
 
 		if (counters.write.latency != null) {
-			client.put(args.writePolicy, new LatencyWriteHandler(), key, bins);	
+			client.put(writePolicy, new LatencyWriteHandler(), key, bins);	
 		}
 		else {
-			client.put(args.writePolicy, writeHandler, key, bins);
+			client.put(writePolicy, writeHandler, key, bins);
 		}
 	}
 		
@@ -186,12 +187,12 @@ public class RWTaskAsync extends RWTask {
 		private long begin;
 		
 		public LatencyWriteHandler() {
-			this.begin = System.currentTimeMillis();
+			this.begin = System.nanoTime();
 		}
 		
 		@Override
 		public void onSuccess(Key key) {
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
 		}
@@ -206,12 +207,12 @@ public class RWTaskAsync extends RWTask {
 		private long begin;
 		
 		public LatencyReadHandler() {
-			this.begin = System.currentTimeMillis();
+			this.begin = System.nanoTime();
 		}
 		
 		@Override
 		public void onSuccess(Key key, Record record) {
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 			
 			if (record == null && args.reportNotFound) {
@@ -232,12 +233,12 @@ public class RWTaskAsync extends RWTask {
 		private long begin;
 		
 		public LatencyBatchReadHandler() {
-			this.begin = System.currentTimeMillis();
+			this.begin = System.nanoTime();
 		}
 		
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
-			long elapsed = System.currentTimeMillis() - begin;
+			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
 			
 			for (int i = 0; i < records.length; i++) {

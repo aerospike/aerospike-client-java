@@ -23,15 +23,34 @@ public final class LatencyManager {
     private final AtomicInteger[] buckets;
     private final int lastBucket;
     private final int bitShift;
+    private final boolean showMicroSeconds;
+    private static final long NS_TO_MS = 1000000;
+    private static final long NS_TO_US = 1000;
+    private String header;
 
-    public LatencyManager(int columns, int bitShift) {
+    public LatencyManager(int columns, int bitShift, boolean showMicroSeconds) {
     	this.lastBucket = columns - 1;
     	this.bitShift = bitShift;
+    	this.showMicroSeconds = showMicroSeconds;
 		buckets = new AtomicInteger[columns];
 		
 		for (int i = 0; i < columns; i++) {
 			buckets[i] = new AtomicInteger();
 		}
+		formHeader();
+    }
+    
+    private void formHeader() {
+		int limit = 1;
+		String units = showMicroSeconds ? "µs" : "ms";
+		StringBuilder s = new StringBuilder(64);
+		s.append("      <=1").append(units).append(" >1").append(units);
+		
+		for (int i = 2; i < buckets.length; i++) {			
+			limit <<= bitShift;
+			s.append(" >").append(limit).append(units);
+		}
+		header = s.toString();
     }
     
 	public void add(long elapsed) {
@@ -41,7 +60,12 @@ public final class LatencyManager {
 
 	private int getIndex(long elapsed) {
 		long limit = 1L;
-		
+		if (showMicroSeconds) {
+			elapsed /= NS_TO_US;
+		}
+		else {
+			elapsed /= NS_TO_MS;
+		}
 		for (int i = 0; i < lastBucket; i++) {
 			if (elapsed <= limit) {
 				return i;
@@ -51,16 +75,8 @@ public final class LatencyManager {
 		return lastBucket;
 	}
 	
-	public void printHeader(PrintStream stream) {		
-		int limit = 1;
-		stream.print("      <=1ms >1ms");
-		
-		for (int i = 2; i < buckets.length; i++) {			
-			limit <<= bitShift;
-			String s = " >" + limit + "ms";
-			stream.print(s);
-		}
-		stream.println();
+	public void printHeader(PrintStream stream) {	
+		stream.println(header);
 	}
 	
 	/**
