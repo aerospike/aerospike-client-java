@@ -42,7 +42,7 @@ public final class LatencyManager {
     
     private void formHeader() {
 		int limit = 1;
-		String units = showMicroSeconds ? "µs" : "ms";
+		String units = showMicroSeconds ? "us" : "ms";
 		StringBuilder s = new StringBuilder(64);
 		s.append("      <=1").append(units).append(" >1").append(units);
 		
