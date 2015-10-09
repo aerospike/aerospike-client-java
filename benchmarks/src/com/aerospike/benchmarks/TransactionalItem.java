@@ -1,37 +1,24 @@
 package com.aerospike.benchmarks;
 
-public enum TransactionalItem {
-	SINGLE_BIN_READ('r', true),
-	SINGLE_BIN_UPDATE('u', false),
-	SINGLE_BIN_REPLACE('p', false),
-	SINGLE_BIN_INCREMENT('i', false),
-	SINGLE_BIN_WRITE('w', false),		// either an update or a replace
-	MULTI_BIN_READ('R', true),
-	MULTI_BIN_UPDATE('U', false),
-	MULTI_BIN_REPLACE('P', false),
-	MULTI_BIN_WRITE('W', false);
-	
-	private char code;
-	private boolean read;
-	private TransactionalItem(char code, boolean isRead) {
-		this.code = code;
-		this.read = isRead;
+public class TransactionalItem {
+	private TransactionalType type;
+	private int repetitions;
+	public TransactionalItem(TransactionalType type, int repetitions) {
+		super();
+		this.type = type;
+		this.repetitions = repetitions;
 	}
 	
-	public char getCode() {
-		return code;
+	public TransactionalItem(TransactionalType type) {
+		super();
+		this.type = type;
+		this.repetitions = 1;
 	}
 	
-	public boolean isRead() {
-		return this.read;
+	public TransactionalType getType() {
+		return type;
 	}
-	
-	public static TransactionalItem lookupCode(char code) {
-		for (TransactionalItem thisItem : TransactionalItem.values()) {
-			if (thisItem.code == code) {
-				return thisItem;
-			}
-		}
-		return null;
+	public int getRepetitions() {
+		return repetitions;
 	}
 }

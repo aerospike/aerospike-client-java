@@ -105,6 +105,8 @@ public final class LatencyManager {
 		
 		// Print cumulative results.
 		stream.print(prefix);
+//		stream.print(' ' );
+//		stream.print(sum);
         int spaces = 6 - prefix.length();
 
         for (int j = 0; j < spaces; j++) {

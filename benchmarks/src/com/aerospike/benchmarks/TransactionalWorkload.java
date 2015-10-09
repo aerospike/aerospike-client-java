@@ -22,6 +22,10 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private int minWrites;
 	private int maxWrites;
 	private TransactionalItem[] items;
+	private static final TransactionalItem MULTI_BIN_WRITE = new TransactionalItem(TransactionalType.MULTI_BIN_WRITE);
+	private static final TransactionalItem MULTI_BIN_READ = new TransactionalItem(TransactionalType.MULTI_BIN_READ);
+	private static final TransactionalItem SINGLE_BIN_UPDATE = new TransactionalItem(TransactionalType.SINGLE_BIN_UPDATE);
+	private static final TransactionalItem MULTI_BIN_UPDATE = new TransactionalItem(TransactionalType.MULTI_BIN_UPDATE);
 	
 	public TransactionalWorkload(String[] formatStrings) throws Exception {
 		if (formatStrings == null || formatStrings.length == 0) {
@@ -80,7 +84,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 		// an update then 20 reads, in that order.
 		List<TransactionalItem> itemList = new ArrayList<TransactionalItem>();
 		String options = "^((\\d*[";
-		for (TransactionalItem item : TransactionalItem.values()) {
+		for (TransactionalType item : TransactionalType.values()) {
 			options += item.getCode();
 		}
 		options += "]))+$";
@@ -97,9 +101,14 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 			if (index != startIndex) {
 				count = Integer.parseInt(thisOptionValue.substring(startIndex, index));
 			}
-			TransactionalItem item = TransactionalItem.lookupCode(thisOptionValue.charAt(index));
-			for (int c = 0; c < count; c++) {
-				itemList.add(item);
+			TransactionalType type = TransactionalType.lookupCode(thisOptionValue.charAt(index));
+			if (type.isBatch()) {
+				itemList.add(new TransactionalItem(type, count));
+			}
+			else {
+				for (int c = 0; c < count; c++) {
+					itemList.add(new TransactionalItem(type));
+				}
 			}
 			index++;
 		}
@@ -183,32 +192,32 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 				// determine the result based on what's pending
 				if (writes > 0 && reads > 0) {
 					if (random == null) {
-						result = (writes > reads) ? TransactionalItem.MULTI_BIN_WRITE : TransactionalItem.MULTI_BIN_READ;
+						result = (writes > reads) ? MULTI_BIN_WRITE : MULTI_BIN_READ;
 					}
 					else {
 						int index = random.nextInt(writes + reads);
-						result = (index > writes)? TransactionalItem.MULTI_BIN_READ : TransactionalItem.MULTI_BIN_WRITE;
+						result = (index > writes)? MULTI_BIN_READ : MULTI_BIN_WRITE;
 					}
 				}
 				else if (reads > 0) {
-					result = TransactionalItem.MULTI_BIN_READ;
+					result = MULTI_BIN_READ;
 				}
 				else if (writes > 0) {
-					result = TransactionalItem.MULTI_BIN_WRITE;
+					result = MULTI_BIN_WRITE;
 				}
 			}
-			if (result.isRead()) {
+			if (result.getType().isRead()) {
 				reads--;
 			}
 			else {
 				writes--;
 			}
 			// We never want to return back a WRITE, this really is either an update or a replace
-			if (result == TransactionalItem.MULTI_BIN_WRITE) {
-				result = TransactionalItem.MULTI_BIN_UPDATE;
+			if (result.getType() == TransactionalType.MULTI_BIN_WRITE) {
+				result = MULTI_BIN_UPDATE;
 			}
-			else if (result == TransactionalItem.SINGLE_BIN_WRITE) {
-				result = TransactionalItem.SINGLE_BIN_UPDATE;
+			else if (result.getType() == TransactionalType.SINGLE_BIN_WRITE) {
+				result = SINGLE_BIN_UPDATE;
 			}
 			return result;
 		}
