@@ -126,18 +126,27 @@ public abstract class RWTask implements Runnable {
 		valid = false;
 	}
 	
+	private int[] getKeys(int count) {
+		int[] keys = new int[count];
+		for (int i = 0; i < count; i++) {
+			keys[i] = random.nextInt(keyCount);
+		}
+		return keys;
+	}
 	private void runTransaction() {
 		int key;
 		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
 		long begin = System.nanoTime();
 		while (iterator.hasNext()) {
 			TransactionalItem thisItem = iterator.next();
-			switch (thisItem) {
+			switch (thisItem.getType()) {
 				case MULTI_BIN_READ:
 					key = random.nextInt(keyCount);
 					doRead(key, true);
 					break;
-	
+				case MULTI_BIN_BATCH_READ:
+					doRead(getKeys(thisItem.getRepetitions()), true);
+					break;
 				case MULTI_BIN_REPLACE:
 					key = random.nextInt(keyCount);
 					doWrite(key, true, args.replacePolicy);
@@ -156,6 +165,10 @@ public abstract class RWTask implements Runnable {
 					key = random.nextInt(keyCount);
 					doRead(key, false);
 					break;
+				case SINGLE_BIN_BATCH_READ:
+					doRead(getKeys(thisItem.getRepetitions()), false);
+					break;
+
 				case SINGLE_BIN_REPLACE:
 					key = random.nextInt(keyCount);
 					doWrite(key, false, args.replacePolicy);
@@ -387,6 +400,57 @@ public abstract class RWTask implements Runnable {
 
 				case LSTACK:
 					largeStackPeek(key);
+					break;
+				}
+			}
+		}
+		catch (AerospikeException ae) {
+			readFailure(ae);
+		}
+		catch (Exception e) {
+			readFailure(e);
+		}
+	}
+
+	/**
+	 * Read the keys at the given indexex.
+	 */
+	protected void doRead(int[] keyIdxs, boolean multiBin) {
+		try {
+			Key[] keys = new Key[keyIdxs.length];
+			for (int i = 0; i < keyIdxs.length; i++) {
+				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdxs[i]);
+			}
+			
+			if (multiBin) {
+				switch (args.storeType) {
+				case KVS:
+					// Read all bins, maybe validate
+					get(keys);			
+					break;
+					
+				case LLIST:
+					largeListGet(keys[0]);
+					break;
+
+				case LSTACK:
+					largeStackPeek(keys[0]);
+					break;
+				}
+			} 
+			else {
+				switch (args.storeType) {
+				case KVS:
+					// Read one bin, maybe validate
+					get(keys, "0");
+					break;
+					
+				case LLIST:
+					largeListGet(keys[0]);
+					break;
+
+				case LSTACK:
+					largeStackPeek(keys[0]);
 					break;
 				}
 			}
