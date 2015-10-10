@@ -36,6 +36,8 @@ public class CounterStore {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();
 		AtomicInteger errors = new AtomicInteger();
+		AtomicInteger min = new AtomicInteger(-1);
+		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;
 	}	
 }

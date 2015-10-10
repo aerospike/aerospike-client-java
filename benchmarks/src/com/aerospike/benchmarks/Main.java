@@ -179,7 +179,8 @@ public class Main implements Log.Callback {
 			"It is not recommended to use a value greater than 125."
 			);	
 		options.addOption("latency", true, 
-			"<number of latency columns>,<range shift increment>[,(ms|us)]\n" +
+			"\"ycsb\" or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
+			"ycsb: show the timings in ycsb format\n" +
 			"Show transaction latency percentages using elapsed time ranges.\n" +
 			"<number of latency columns>: Number of elapsed time ranges.\n" +
 			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n"+
@@ -588,23 +589,31 @@ public class Main implements Log.Callback {
         if (line.hasOption("latency")) {
 			String[] latencyOpts = line.getOptionValue("latency").split(",");
 			
-			if (latencyOpts.length != 2 && latencyOpts.length != 3) {
-				throw new Exception("Latency expects 2 arguments. Received: " + latencyOpts.length);
-			}
-			int columns = Integer.parseInt(latencyOpts[0]);
-			int bitShift = Integer.parseInt(latencyOpts[1]);
-			boolean showMicroSeconds = false;
-			if (latencyOpts.length == 3) {
-				if ("us".equalsIgnoreCase(latencyOpts[2])) {
-					showMicroSeconds = true;
+			if (latencyOpts.length == 1 && "ycsb".equalsIgnoreCase(latencyOpts[0])) {
+				counters.read.latency = new LatencyManagerYcsb(" read");
+				counters.write.latency = new LatencyManagerYcsb("write"); 
+				if (hasTxns) {
+					counters.transaction.latency = new LatencyManagerYcsb(" txns");
 				}
 			}
-			counters.read.latency = new LatencyManager(columns, bitShift, showMicroSeconds);
-			counters.write.latency = new LatencyManager(columns, bitShift, showMicroSeconds); 
-			if (hasTxns) {
-				counters.transaction.latency = new LatencyManager(columns, bitShift, showMicroSeconds);
+			else if (latencyOpts.length != 2 && latencyOpts.length != 3) {
+				throw new Exception("Latency expects either \"ycsb\" or 2 or 3 arguments. Received: " + latencyOpts.length);
 			}
-
+			else {
+				int columns = Integer.parseInt(latencyOpts[0]);
+				int bitShift = Integer.parseInt(latencyOpts[1]);
+				boolean showMicroSeconds = false;
+				if (latencyOpts.length == 3) {
+					if ("us".equalsIgnoreCase(latencyOpts[2])) {
+						showMicroSeconds = true;
+					}
+				}
+				counters.read.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+				counters.write.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds); 
+				if (hasTxns) {
+					counters.transaction.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+				}
+			}
         }
 
 		if (! line.hasOption("random")) {
