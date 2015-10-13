@@ -179,7 +179,7 @@ public class Main implements Log.Callback {
 			"It is not recommended to use a value greater than 125."
 			);	
 		options.addOption("latency", true, 
-			"\"ycsb\" or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
+			"\"ycsb\"[,warmup count] or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
 			"ycsb: show the timings in ycsb format\n" +
 			"Show transaction latency percentages using elapsed time ranges.\n" +
 			"<number of latency columns>: Number of elapsed time ranges.\n" +
@@ -589,11 +589,15 @@ public class Main implements Log.Callback {
         if (line.hasOption("latency")) {
 			String[] latencyOpts = line.getOptionValue("latency").split(",");
 			
-			if (latencyOpts.length == 1 && "ycsb".equalsIgnoreCase(latencyOpts[0])) {
-				counters.read.latency = new LatencyManagerYcsb(" read");
-				counters.write.latency = new LatencyManagerYcsb("write"); 
+			if (latencyOpts.length >= 1 && "ycsb".equalsIgnoreCase(latencyOpts[0])) {
+				int warmupCount = 0;
+				if (latencyOpts.length == 2) {
+					warmupCount = Integer.parseInt(latencyOpts[1]);
+				}
+				counters.read.latency = new LatencyManagerYcsb(" read", warmupCount);
+				counters.write.latency = new LatencyManagerYcsb("write", warmupCount); 
 				if (hasTxns) {
-					counters.transaction.latency = new LatencyManagerYcsb(" txns");
+					counters.transaction.latency = new LatencyManagerYcsb(" txns", warmupCount);
 				}
 			}
 			else if (latencyOpts.length != 2 && latencyOpts.length != 3) {
@@ -887,12 +891,15 @@ public class Main implements Log.Callback {
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 			
+			int numTxns = this.counters.transaction.count.getAndSet(0);
+			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
+			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+
 			int notFound = 0;
 			
 			if (args.reportNotFound) {
 				notFound = this.counters.readNotFound.getAndSet(0);
 			}
-			
 			this.counters.periodBegin.set(time);
 
 			//int used = (client != null)? client.getAsyncConnUsed() : 0;
@@ -902,7 +909,9 @@ public class Main implements Log.Callback {
 			System.out.print(date.toString());
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			
+			if (this.counters.transaction.latency != null) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
 			}
