@@ -109,8 +109,14 @@ public abstract class RWTask implements Runnable {
 
 			// Throttle throughput
 			if (args.throughput > 0) {
-				int transactions = counters.write.count.get() + counters.read.count.get();
-				
+				int transactions;
+				if (counters.transaction.latency != null) {
+					// Measure the transactions as per one "business" transaction
+					transactions = counters.transaction.count.get();
+				}
+				else {
+					transactions = counters.write.count.get() + counters.read.count.get();
+				}
 				if (transactions > args.throughput) {
 					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
 
