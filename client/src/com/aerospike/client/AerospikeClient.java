@@ -235,6 +235,34 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	//-------------------------------------------------------
+	// Default Policies
+	//-------------------------------------------------------
+	
+	public final Policy getReadPolicyDefault() {
+		return readPolicyDefault;
+	}
+
+	public final WritePolicy getWritePolicyDefault() {
+		return writePolicyDefault;
+	}
+
+	public final ScanPolicy getScanPolicyDefault() {
+		return scanPolicyDefault;
+	}
+
+	public final QueryPolicy getQueryPolicyDefault() {
+		return queryPolicyDefault;
+	}
+
+	public final BatchPolicy getBatchPolicyDefault() {
+		return batchPolicyDefault;
+	}
+
+	public final InfoPolicy getInfoPolicyDefault() {
+		return infoPolicyDefault;
+	}
+
+	//-------------------------------------------------------
 	// Cluster Connection Management
 	//-------------------------------------------------------
 		

@@ -49,6 +49,20 @@ import com.aerospike.client.query.Statement;
  */
 public interface IAsyncClient extends IAerospikeClient {	
 	//-------------------------------------------------------
+	// Default Policies
+	//-------------------------------------------------------
+
+	public Policy getAsyncReadPolicyDefault();
+
+	public WritePolicy getAsyncWritePolicyDefault();
+
+	public ScanPolicy getAsyncScanPolicyDefault();
+
+	public QueryPolicy getAsyncQueryPolicyDefault();
+
+	public BatchPolicy getAsyncBatchPolicyDefault();
+
+	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
 	

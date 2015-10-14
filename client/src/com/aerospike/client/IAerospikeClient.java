@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import java.io.Closeable;
 import java.util.List;
 
 import com.aerospike.client.admin.Privilege;
@@ -46,7 +47,23 @@ import com.aerospike.client.task.RegisterTask;
  * This interface's sole purpose is to allow mock frameworks to operate on
  * AerospikeClient without being constrained by final methods.
  */
-public interface IAerospikeClient {
+public interface IAerospikeClient extends Closeable {
+	//-------------------------------------------------------
+	// Default Policies
+	//-------------------------------------------------------
+	
+	public Policy getReadPolicyDefault();
+
+	public WritePolicy getWritePolicyDefault();
+
+	public ScanPolicy getScanPolicyDefault();
+
+	public QueryPolicy getQueryPolicyDefault();
+
+	public BatchPolicy getBatchPolicyDefault();
+
+	public InfoPolicy getInfoPolicyDefault();
+	
 	//-------------------------------------------------------
 	// Cluster Connection Management
 	//-------------------------------------------------------

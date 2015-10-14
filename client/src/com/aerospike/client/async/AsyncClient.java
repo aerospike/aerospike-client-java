@@ -179,6 +179,30 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	}
 
 	//-------------------------------------------------------
+	// Default Policies
+	//-------------------------------------------------------
+
+	public final Policy getAsyncReadPolicyDefault() {
+		return asyncReadPolicyDefault;
+	}
+
+	public final WritePolicy getAsyncWritePolicyDefault() {
+		return asyncWritePolicyDefault;
+	}
+
+	public final ScanPolicy getAsyncScanPolicyDefault() {
+		return asyncScanPolicyDefault;
+	}
+
+	public final QueryPolicy getAsyncQueryPolicyDefault() {
+		return asyncQueryPolicyDefault;
+	}
+
+	public final BatchPolicy getAsyncBatchPolicyDefault() {
+		return asyncBatchPolicyDefault;
+	}
+
+	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
 	
