@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.luaj.vm2.Globals;
+import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaClosure;
 import org.luaj.vm2.LuaDouble;
@@ -83,6 +84,7 @@ public final class LuaInstance {
 		loadSystemPackage(resourceLoader, "aerospike");
 		
 		globals.load(new LuaAerospikeLib(this));
+		LoadState.install(globals);
 	}
 	
 	public void registerPackage(String packageName, LuaTable table) {
