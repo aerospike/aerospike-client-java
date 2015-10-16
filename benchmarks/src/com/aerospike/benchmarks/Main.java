@@ -37,6 +37,7 @@ import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
@@ -84,6 +85,8 @@ public class Main implements Log.Callback {
 	private CounterStore counters = new CounterStore();
 
 	public Main(String[] commandLineArgs) throws Exception {
+		boolean hasTxns = false;
+		
 		Options options = new Options();
 		options.addOption("h", "hosts", true, "Set the Aerospike host node.");
 		options.addOption("p", "port", true, "Set the port on which to connect to Aerospike.");
@@ -134,7 +137,9 @@ public class Main implements Log.Callback {
 			"      30% of writes will write all bins. 70% of writes will write a single bin.\n\n" + 
 			"    -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n" +      
 			"    -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" + 	    
-			"    -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads."
+			"    -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n" +
+			"    -w TXN,r:1000,w:200,v:20%\n\n" + 
+			"       form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
 			);
 		options.addOption("e", "expirationTime", true,
 			"Set expiration time of each record in seconds." +
@@ -174,10 +179,12 @@ public class Main implements Log.Callback {
 			"It is not recommended to use a value greater than 125."
 			);	
 		options.addOption("latency", true, 
-			"<number of latency columns>,<range shift increment>\n" +
+			"\"ycsb\"[,warmup count] or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
+			"ycsb: show the timings in ycsb format\n" +
 			"Show transaction latency percentages using elapsed time ranges.\n" +
 			"<number of latency columns>: Number of elapsed time ranges.\n" +
-			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n\n" + 
+			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n"+
+			"(ms|us): display times in milliseconds (ms, default) or microseconds (us)\n\n" + 
 			"A latency definition of '-latency 7,1' results in this layout:\n" +
 			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
 			"       x%   x%   x%   x%   x%    x%    x%\n" +
@@ -437,6 +444,11 @@ public class Main implements Log.Callback {
 					throw new Exception("Invalid workload number of arguments: " + workloadOpts.length + " Expected 1.");
 				}
 			}
+			else if (workloadType.equals("TXN")) {
+				args.workload = Workload.TRANSACTION;
+				args.transactionalWorkload = new TransactionalWorkload(workloadOpts);
+				hasTxns = true;
+			}
 			else {
 				throw new Exception("Unknown workload: " + workloadType);
 			}
@@ -577,13 +589,35 @@ public class Main implements Log.Callback {
         if (line.hasOption("latency")) {
 			String[] latencyOpts = line.getOptionValue("latency").split(",");
 			
-			if (latencyOpts.length != 2) {
-				throw new Exception("Latency expects 2 arguments. Received: " + latencyOpts.length);
+			if (latencyOpts.length >= 1 && "ycsb".equalsIgnoreCase(latencyOpts[0])) {
+				int warmupCount = 0;
+				if (latencyOpts.length == 2) {
+					warmupCount = Integer.parseInt(latencyOpts[1]);
+				}
+				counters.read.latency = new LatencyManagerYcsb(" read", warmupCount);
+				counters.write.latency = new LatencyManagerYcsb("write", warmupCount); 
+				if (hasTxns) {
+					counters.transaction.latency = new LatencyManagerYcsb(" txns", warmupCount);
+				}
 			}
-			int columns = Integer.parseInt(latencyOpts[0]);
-			int bitShift = Integer.parseInt(latencyOpts[1]);
-			counters.read.latency = new LatencyManager(columns, bitShift);
-			counters.write.latency = new LatencyManager(columns, bitShift);      	
+			else if (latencyOpts.length != 2 && latencyOpts.length != 3) {
+				throw new Exception("Latency expects either \"ycsb\" or 2 or 3 arguments. Received: " + latencyOpts.length);
+			}
+			else {
+				int columns = Integer.parseInt(latencyOpts[0]);
+				int bitShift = Integer.parseInt(latencyOpts[1]);
+				boolean showMicroSeconds = false;
+				if (latencyOpts.length == 3) {
+					if ("us".equalsIgnoreCase(latencyOpts[2])) {
+						showMicroSeconds = true;
+					}
+				}
+				counters.read.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+				counters.write.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds); 
+				if (hasTxns) {
+					counters.transaction.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+				}
+			}
         }
 
 		if (! line.hasOption("random")) {
@@ -667,8 +701,27 @@ public class Main implements Log.Callback {
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
 		Log.setCallback(this);		
+		args.updatePolicy = cloneWritePolicy(args.writePolicy);
+		args.updatePolicy.recordExistsAction = RecordExistsAction.UPDATE;
+		args.replacePolicy = cloneWritePolicy(args.writePolicy);
+		args.replacePolicy.recordExistsAction = RecordExistsAction.REPLACE;
 
 		clientPolicy.failIfNotConnected = true;
+	}
+	
+	private WritePolicy cloneWritePolicy(WritePolicy writePolicy) {
+		WritePolicy result = new WritePolicy();
+		result.commitLevel = writePolicy.commitLevel;
+		result.consistencyLevel = writePolicy.consistencyLevel;
+		result.expiration = writePolicy.expiration;
+		result.generationPolicy = writePolicy.generationPolicy;
+		result.maxRetries = writePolicy.maxRetries;
+		result.priority = writePolicy.priority;
+		result.recordExistsAction = writePolicy.recordExistsAction;
+		result.sendKey = writePolicy.sendKey;
+		result.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
+		result.timeout = writePolicy.timeout;
+		return result;
 	}
 	
 	private static void logUsage(Options options) {
@@ -838,12 +891,15 @@ public class Main implements Log.Callback {
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 			
+			int numTxns = this.counters.transaction.count.getAndSet(0);
+			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
+			int errorTxns = this.counters.transaction.errors.getAndSet(0);
+
 			int notFound = 0;
 			
 			if (args.reportNotFound) {
 				notFound = this.counters.readNotFound.getAndSet(0);
 			}
-			
 			this.counters.periodBegin.set(time);
 
 			//int used = (client != null)? client.getAsyncConnUsed() : 0;
@@ -853,7 +909,9 @@ public class Main implements Log.Callback {
 			System.out.print(date.toString());
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
-			
+			if (this.counters.transaction.latency != null) {
+				System.out.print(" txns(tps=" + numTxns + " timeouts=" + timeoutTxns + " errors=" + errorTxns);
+			}
 			if (args.reportNotFound) {
 				System.out.print(" nf=" + notFound);
 			}
@@ -868,6 +926,9 @@ public class Main implements Log.Callback {
 				this.counters.write.latency.printHeader(System.out);
 				this.counters.write.latency.printResults(System.out, "write");
 				this.counters.read.latency.printResults(System.out, "read");
+				if (this.counters.transaction != null && this.counters.transaction.latency != null) {
+					this.counters.transaction.latency.printResults(System.out, "txn");
+				}
 			}
 			
 			if (args.transactionLimit > 0 ) {
