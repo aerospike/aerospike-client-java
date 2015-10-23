@@ -626,7 +626,18 @@ public class Cluster implements Runnable, Closeable {
 	public final boolean isConnected() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
-		return nodeArray.length > 0 && tendValid;
+		
+		if (nodeArray.length > 0 && tendValid) {
+			// Even though nodes exist, they may not be currently responding.  Check further.
+			for (Node node : nodeArray) {
+				// Mark connected if any node is active and cluster tend consecutive info request 
+				// failures are less than 5.
+				if (node.active && node.failures < 5) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 	
 	public final Node getReadNode(Partition partition, Replica replica) throws AerospikeException.InvalidNode {
