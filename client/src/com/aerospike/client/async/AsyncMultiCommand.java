@@ -56,7 +56,9 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		return node;
 	}
 
-	protected final void read() throws AerospikeException, IOException {		
+	protected final void read() throws AerospikeException, IOException {
+		int groups = 0;
+		
 		while (true) {
 			if (inHeader) {
 				if (! conn.read(byteBuffer)) {
@@ -79,6 +81,15 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 					byteBuffer.limit(receiveSize);
 				}
 				inHeader = false;
+				
+				// In the interest of fairness, only one group of records should be read at a time.
+				// There is, however, one exception.  The server returns the end code in a separate
+				// group that only has one dummy record header.  Therefore, we continue to read
+				// this small group in order to avoid having to wait one more async iteration just
+				// to find out the batch/scan/query has already ended.
+		        if (groups > 0 && receiveSize != MSG_REMAINING_HEADER_SIZE) {
+		        	return;
+		        }
 			}
 	
 			if (! conn.read(byteBuffer)) {
@@ -105,6 +116,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 				byteBuffer.limit(8);
 				receiveOffset = 0;
 				inHeader = true;
+				groups++;
 			}
 			else {
 				int remaining = receiveSize - receiveOffset;
