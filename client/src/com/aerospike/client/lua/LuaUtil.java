@@ -28,9 +28,17 @@ public final class LuaUtil {
 		}
 		
 		switch (source.type()) {
-		case LuaValue.TNUMBER:
-			return source.tolong();
-		
+		case LuaValue.TNUMBER: {
+			double d = source.todouble();
+			long l = (long)d;
+			
+			if (d == (double)l) {
+				return l;
+			}
+			else {
+				return d;
+			}
+		}
 		case LuaValue.TBOOLEAN:
 			return source.toboolean();
 			
