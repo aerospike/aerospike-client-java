@@ -97,9 +97,9 @@ public class Main implements Log.Callback {
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " + 
 			"If using an 'insert' workload (detailed below), the client will write this " + 
-			"number of keys, starting from value = start_value. Otherwise, the client " + 
-			"will read and update randomly across the values between start_value and " + 
-			"start_value + num_keys."
+			"number of keys, starting from value = startkey. Otherwise, the client " + 
+			"will read and update randomly across the values between startkey and " + 
+			"startkey + num_keys.  startkey can be set using '-S' or '-startkey'."
 			);
 		
 		// key type has been changed to integer, so this option is no longer relevant.
