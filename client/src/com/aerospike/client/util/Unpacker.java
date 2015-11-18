@@ -315,6 +315,19 @@ public abstract class Unpacker<T> {
 		return unpacker.unpackMap();
 	}
 
+	public static Object unpackObject(byte[] buffer, int offset, int length) throws AerospikeException {
+		try {
+			if (length <= 0) {
+				return null;
+			}
+			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
+			return unpacker.unpackObject();
+		}
+		catch (Exception e) {
+    		throw new AerospikeException.Serialize(e);
+		}
+	}
+
 	public static final class ObjectUnpacker extends Unpacker<Object> {
 		
 		public ObjectUnpacker(byte[] buffer, int offset, int length) {

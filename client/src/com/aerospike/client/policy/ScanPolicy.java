@@ -48,6 +48,15 @@ public final class ScanPolicy extends Policy {
 	public boolean includeBinData = true;
 	
 	/**
+	 * Include large data type bin values in addition to large data type bin names.
+	 * If false, LDT bin names will be returned, but LDT bin values will be empty.
+	 * If true,  LDT bin names and the entire LDT bin values will be returned.
+	 * Warning: LDT values may consume huge of amounts of memory depending on LDT size.
+	 * Default: false
+	 */
+	public boolean includeLDT = false;
+
+	/**
 	 * Terminate scan if cluster in fluctuating state.
 	 */
 	public boolean failOnClusterChange;

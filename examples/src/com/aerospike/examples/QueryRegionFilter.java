@@ -16,13 +16,11 @@
  */
 package com.aerospike.examples;
 
-import java.util.Map;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
@@ -30,7 +28,6 @@ import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.Value;
 
 public class QueryRegionFilter extends Example {
 

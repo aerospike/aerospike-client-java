@@ -495,7 +495,12 @@ public abstract class Command {
 		
 		if (policy.failOnClusterChange) {
 			priority |= 0x08;
-		}		
+		}
+		
+		if (policy.includeLDT) {
+			priority |= 0x02;
+		}
+
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
