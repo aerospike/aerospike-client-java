@@ -49,6 +49,7 @@ public abstract class Command {
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
+	public static final int INFO2_RESPOND_ALL_OPS	= (1 << 7); // Return a result for every operation.
 	
 	public static final int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
 	public static final int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
@@ -164,6 +165,7 @@ public abstract class Command {
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
+			case CDT_READ:
 			case READ:
 				readAttr |= Command.INFO1_READ;
 				
@@ -189,6 +191,10 @@ public abstract class Command {
 		
 		if (readHeader && ! readBin) {
 			readAttr |= Command.INFO1_NOBINDATA;
+		}
+		
+		if (writeAttr != 0 && policy.respondAllOps) {
+			writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
 		
 		writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
@@ -731,7 +737,7 @@ public abstract class Command {
 
 	private final void estimateOperationSize(Operation operation) throws AerospikeException {
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
-		dataOffset += operation.binValue.estimateSize();
+		dataOffset += operation.value.estimateSize();
 	}
 
 	protected final void estimateOperationSize(String binName) {
@@ -862,12 +868,12 @@ public abstract class Command {
 		
 	private final void writeOperation(Operation operation) throws AerospikeException {
         int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-        int valueLength = operation.binValue.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+        int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
          
         Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
 		dataOffset += 4;
         dataBuffer[dataOffset++] = (byte) operation.type.protocolType;
-        dataBuffer[dataOffset++] = (byte) operation.binValue.getType();
+        dataBuffer[dataOffset++] = (byte) operation.value.getType();
         dataBuffer[dataOffset++] = (byte) 0;
         dataBuffer[dataOffset++] = (byte) nameLength;
         dataOffset += nameLength + valueLength;

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
@@ -125,6 +126,13 @@ public final class Record {
 		return (getLong(name) != 0) ? true : false;
 	}
 	
+	/**
+	 * Get bin value as list.
+	 */
+	public List<?> getList(String name) {
+		return (List<?>)getValue(name);
+	}
+
 	/**
 	 * Get bin value as GeoJSON.
 	 */

@@ -40,6 +40,7 @@ public class Parameters {
 	boolean hasGeo;
 	boolean hasUdf;
 	boolean hasLargeDataTypes;
+	boolean hasCDTList;
 	
 	protected Parameters(String host, int port, String user, String password, String namespace, String set) {
 		this.host = host;
@@ -62,6 +63,7 @@ public class Parameters {
 		String features = tokens.get(featuresFilter);
 		hasGeo = false;
 		hasUdf = false;
+		hasCDTList = false;
 		
 		if (features != null) {
 			String[] list = features.split(";");
@@ -70,8 +72,11 @@ public class Parameters {
 				if (s.equals("geo")) {
 					hasGeo = true;
 				}
-				if (s.equals("udf")) {
+				else if (s.equals("udf")) {
 					hasUdf = true;
+				}
+				else if (s.equals("cdt-list")) {
+					hasCDTList = true;
 				}
 			}
 		}

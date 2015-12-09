@@ -134,9 +134,13 @@ public class AsyncRead extends AsyncSingleCommand {
 			if (bins == null) {
 				bins = new HashMap<String,Object>();
 			}
-			bins.put(name, value);
+			addBin(bins, name, value);
 	    }	
 	    return new Record(bins, generation, expiration);
+	}
+
+	protected void addBin(Map<String,Object> bins, String name, Object value) {
+		bins.put(name, value);	
 	}
 
 	@Override

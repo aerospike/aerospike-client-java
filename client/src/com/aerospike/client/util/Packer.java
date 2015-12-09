@@ -77,21 +77,28 @@ public final class Packer {
 		this.buffer = ThreadLocalData.getBuffer();
 	}
 	
-	public void packValueArray(Value[] values) throws IOException {
+	public void packValueArray(Value[] values) {
 		packArrayBegin(values.length);
 		for (Value value : values) {
 			value.pack(this);
 		}
 	}
 	
-	public void packList(List<?> list) throws IOException {
+	public void packValueList(List<Value> list) {
+		packArrayBegin(list.size());
+		for (Value value : list) {
+			value.pack(this);
+		}
+	}
+
+	public void packList(List<?> list) {
 		packArrayBegin(list.size());
 		for (Object obj : list) {
 			packObject(obj);
 		}
 	}
 
-	private void packArrayBegin(int size) {
+	public void packArrayBegin(int size) {
         if (size < 16) {
         	packByte(0x90 | size);
         } 
@@ -103,7 +110,7 @@ public final class Packer {
         }
     }
 
-	public void packMap(Map<?,?> map) throws IOException {
+	public void packMap(Map<?,?> map) {
 		packMapBegin(map.size());
 		for (Entry<?,?> entry : map.entrySet()) {
 			packObject(entry.getKey());
@@ -135,13 +142,19 @@ public final class Packer {
     	packByteArray(b, offset, length);
 	}
 	
-	public void packBlob(Object val) throws IOException {
+	public void packBlob(Object val) throws AerospikeException {
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-		ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-		ostream.writeObject(val);
-		ostream.close();
-		byte[] bytes = bstream.toByteArray();
 		
+		try {
+			ObjectOutputStream ostream = new ObjectOutputStream(bstream);
+			ostream.writeObject(val);
+			ostream.close();
+		}
+		catch (IOException ioe) {
+			throw new AerospikeException.Serialize(ioe);
+		}
+		
+		byte[] bytes = bstream.toByteArray();		
         packByteArrayBegin(bytes.length + 1);
     	packByte(ParticleType.JBLOB);
     	packByteArray(bytes, 0, bytes.length);
@@ -177,7 +190,7 @@ public final class Packer {
 		}*/
 	}
 
-	public void packObject(Object obj) throws IOException {
+	public void packObject(Object obj) {
 		if (obj == null) {
 			packNil();
 			return;
@@ -397,6 +410,15 @@ public final class Packer {
     		resize(3);
     	}
     	buffer[offset++] = (byte)type;
+    	Buffer.shortToBytes(val, buffer, offset);
+    	offset += 2;
+    }
+
+    public void packRawShort(int val) {
+    	// WARNING. This method is not compatible with message pack standard.
+    	if (offset + 2 > buffer.length) {
+    		resize(2);
+    	}
     	Buffer.shortToBytes(val, buffer, offset);
     	offset += 2;
     }

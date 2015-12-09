@@ -61,6 +61,22 @@ public final class WritePolicy extends Policy {
 	public int expiration;
 	
 	/**
+	 * For client operate(), return a result for every operation.
+	 * <p>
+	 * Some list operations do not return results by default (ListOperation.clear() for example).
+	 * This can sometimes make it difficult to determine the desired result offset in the returned
+	 * bin's result list.
+	 * <p>
+	 * Setting respondAllOps to true makes it easier to identify the desired result offset 
+	 * (result offset equals bin's operate sequence). This only makes sense when multiple list
+	 * operations are used in one operate call and some of those operations do not return results
+	 * by default.
+	 * <p>
+	 * Default: false
+	 */
+	public boolean respondAllOps;
+
+	/**
 	 * Copy write policy from another write policy.
 	 */
 	public WritePolicy(WritePolicy other) {
@@ -70,6 +86,7 @@ public final class WritePolicy extends Policy {
 		this.commitLevel = other.commitLevel;
 		this.generation = other.generation;
 		this.expiration = other.expiration;
+		this.respondAllOps = other.respondAllOps;
 	}
 
 	/**

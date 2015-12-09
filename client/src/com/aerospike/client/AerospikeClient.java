@@ -750,6 +750,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Write operations are always performed first, regardless of operation order 
 	 * relative to read operations.
+	 * <p>
+	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
+	 * can be performed in same call.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier

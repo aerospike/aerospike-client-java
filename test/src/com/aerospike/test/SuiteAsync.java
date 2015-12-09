@@ -24,6 +24,7 @@ import org.junit.runners.Suite;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
 import com.aerospike.test.async.TestAsyncBatch;
+import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
 import com.aerospike.test.async.TestAsyncQuery;
 import com.aerospike.test.async.TestAsyncScan;
@@ -34,6 +35,7 @@ import com.aerospike.test.util.Args;
 @Suite.SuiteClasses({
 	TestAsyncPutGet.class,
 	TestAsyncBatch.class,
+	TestAsyncOperate.class,
 	TestAsyncScan.class,
 	TestAsyncQuery.class,
 	TestAsyncUDF.class

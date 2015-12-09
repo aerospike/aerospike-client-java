@@ -17,7 +17,6 @@
 package com.aerospike.client;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.List;
@@ -296,7 +295,7 @@ public abstract class Value {
 	/**
 	 * Serialize the value using MessagePack.
 	 */
-	public abstract void pack(Packer packer) throws IOException;
+	public abstract void pack(Packer packer);
 
 	/**
 	 * Validate if value type can be used as a key.
@@ -349,7 +348,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packNil();
 		}
 		
@@ -415,7 +414,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packBytes(bytes);
 		}
 
@@ -479,7 +478,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packBytes(bytes, offset, length);
 		}
 
@@ -569,7 +568,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packString(value);
 		}
 
@@ -628,7 +627,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packInt(value);
 		}
 
@@ -697,7 +696,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packLong(value);
 		}
 
@@ -766,7 +765,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packDouble(value);
 		}
 
@@ -836,7 +835,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packFloat(value);
 		}
 
@@ -905,7 +904,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packBoolean(value);
 		}
 
@@ -986,7 +985,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packBlob(object);
 		}
 
@@ -1052,7 +1051,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "can't pack GeoJSON");
 		}
 
@@ -1114,7 +1113,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packValueArray(array);
 		}
 
@@ -1181,7 +1180,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packList(list);
 		}
 
@@ -1248,7 +1247,7 @@ public abstract class Value {
 		}
 		
 		@Override
-		public void pack(Packer packer) throws IOException {
+		public void pack(Packer packer) {
 			packer.packMap(map);
 		}
 

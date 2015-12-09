@@ -865,6 +865,9 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient {
 	 * <p>
 	 * This method schedules the operate command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
+	 * <p>
+	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
+	 * can be performed in same call.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget

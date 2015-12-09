@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.async;
 
+import java.util.ArrayList;
+import java.util.Map;
+
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.listener.RecordListener;
@@ -39,5 +42,33 @@ public final class AsyncOperate extends AsyncRead {
 	@Override
 	protected AsyncNode getNode() {	
 		return (AsyncNode)cluster.getMasterNode(partition);
+	}
+	
+	@Override
+	protected void addBin(Map<String,Object> bins, String name, Object value) {
+		if (bins.containsKey(name)) {
+			// Multiple values returned for the same bin. 
+			Object prev = bins.get(name);
+			
+			if (prev instanceof OpResults) {
+				// List already exists.  Add to it.
+				OpResults list = (OpResults)prev;
+				list.add(value);					
+			}
+			else {
+				// Make a list to store all values.
+				OpResults list = new OpResults();
+				list.add(prev);
+				list.add(value);
+				bins.put(name, list);
+			}
+		}
+		else {
+			bins.put(name, value);
+		}
+	}
+	
+	private static class OpResults extends ArrayList<Object> {
+		private static final long serialVersionUID = 1L;
 	}
 }

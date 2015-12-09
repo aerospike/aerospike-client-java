@@ -45,28 +45,28 @@ public final class Operation {
 	 * Create set database operation.
 	 */
 	public static Operation put(Bin bin) {
-		return new Operation(Type.WRITE, bin);
+		return new Operation(Type.WRITE, bin.name, bin.value);
 	}
 
 	/**
 	 * Create string append database operation.
 	 */
 	public static Operation append(Bin bin) {
-		return new Operation(Type.APPEND, bin);
+		return new Operation(Type.APPEND, bin.name, bin.value);
 	}
 	
 	/**
 	 * Create string prepend database operation.
 	 */
 	public static Operation prepend(Bin bin) {
-		return new Operation(Type.PREPEND, bin);
+		return new Operation(Type.PREPEND, bin.name, bin.value);
 	}
 	
 	/**
 	 * Create integer add database operation.
 	 */
 	public static Operation add(Bin bin) {
-		return new Operation(Type.ADD, bin);
+		return new Operation(Type.ADD, bin.name, bin.value);
 	}
 
 	/**
@@ -80,6 +80,8 @@ public final class Operation {
 		READ(1),
 		READ_HEADER(1),
 		WRITE(2),
+		CDT_READ(3),
+		CDT_MODIFY(4),
 		ADD(5),
 		APPEND(9),
 		PREPEND(10),
@@ -103,25 +105,25 @@ public final class Operation {
 	public final String binName;
 	
 	/**
-	 * Optional bin value used in operation.
+	 * Optional argument to operation.
 	 */
-	public final Value binValue;
+	public final Value value;
 		 
-	private Operation(Type type, Bin bin) {
+	public Operation(Type type, String binName, Value value) {
 		this.type = type;
-		this.binName = bin.name;
-		this.binValue = bin.value;
+		this.binName = binName;
+		this.value = value;
 	}
-	
+
 	private Operation(Type type, String binName) {
 		this.type = type;
 		this.binName = binName;
-		this.binValue = Value.getAsNull();
+		this.value = Value.getAsNull();
 	}
 	
 	private Operation(Type type) {
 		this.type = type;
 		this.binName = null;
-		this.binValue = Value.getAsNull();
+		this.value = Value.getAsNull();
 	}
 }

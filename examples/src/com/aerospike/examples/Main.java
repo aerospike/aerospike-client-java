@@ -47,6 +47,7 @@ public class Main extends JPanel {
 		"Expire",
 		"Touch",
 		"Operate",
+		"OperateList",
 		"DeleteBin",
 		"ScanParallel",
 		"ScanSeries",
