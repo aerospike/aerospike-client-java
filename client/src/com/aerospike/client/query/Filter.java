@@ -141,7 +141,7 @@ public final class Filter {
 	 * 
 	 * @param name			bin name
 	 * @param region		filter region
-	 * @return				filter instance
+	 * @return			filter instance
 	 */
 	public static Filter geoWithinRegion(String name, String region) {
 		return new Filter(name, IndexCollectionType.DEFAULT,
@@ -153,8 +153,10 @@ public final class Filter {
 	 * Argument must be a valid lon/lat/radius(meters).
 	 * 
 	 * @param name			bin name
-	 * @param region		filter region
-	 * @return				filter instance
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @return			filter instance
 	 */
 	public static Filter geoWithinRadius(String name, double lng, double lat, double radius) {
 		String rgnstr =
@@ -171,7 +173,7 @@ public final class Filter {
 	 * 
 	 * @param name			bin name
 	 * @param point			filter point
-	 * @return				filter instance
+	 * @return			filter instance
 	 */
 	public static Filter geoContains(String name, String point) {
 		return new Filter(name, IndexCollectionType.DEFAULT,
