@@ -95,7 +95,8 @@ public class TestOperateList extends TestSync {
 				ListOperation.insert(binName, -1, Value.get(8)),
 				Operation.append(new Bin("otherbin", Value.get("goodbye"))),
 				Operation.get("otherbin"),
-				ListOperation.getRange(binName, 0, 4)
+				ListOperation.getRange(binName, 0, 4),
+				ListOperation.getRange(binName, 3)
 				);
 		
 		assertRecordFound(key, record);
@@ -121,6 +122,10 @@ public class TestOperateList extends TestSync {
 		
 		val = (String)rangeList.get(3);
 		assertEquals("my string", val);
+		
+		rangeList = (List<?>)list.get(2);
+		val = (String)rangeList.get(0);
+		assertEquals("my string", val);
 	}
 	
 	@Test
@@ -141,13 +146,13 @@ public class TestOperateList extends TestSync {
 
 		Record record = client.operate(null, key,
 				ListOperation.appendItems(binName, itemList),
-				ListOperation.get(binName, 7),
 				ListOperation.get(binName, 2),
 				ListOperation.getRange(binName, 6, 4),
-				ListOperation.getRange(binName, 7, 1),
 				ListOperation.getRange(binName, -7, 3),
 				ListOperation.getRange(binName, 0, 2),
 				ListOperation.getRange(binName, -2, 4)
+				//ListOperation.get(binName, 7) causes entire command to fail.
+				//ListOperation.getRange(binName, 7, 1), causes entire command to fail.
 				//ListOperation.getRange(binName, -8, 1) causes entire command to fail.
 				//ListOperation.get(binName, -8), causes entire command to fail.
 				);
@@ -160,28 +165,24 @@ public class TestOperateList extends TestSync {
 		long size = (Long)list.get(0);	
 		assertEquals(7, size);
 		
-		assertNull(list.get(1));
-		assertEquals("str3", (String)list.get(2));
+		assertEquals("str3", (String)list.get(1));
 		
-		List<?> rangeList = (List<?>)list.get(3);
+		List<?> rangeList = (List<?>)list.get(2);
 		assertEquals(1, rangeList.size());
 		assertEquals("str7", (String)rangeList.get(0));
 		
-		rangeList = (List<?>)list.get(4);
-		assertEquals(0, rangeList.size());
-		
-		rangeList = (List<?>)list.get(5);
+		rangeList = (List<?>)list.get(3);
 		assertEquals(3, rangeList.size());
 		assertEquals("str1", (String)rangeList.get(0));
 		assertEquals("str2", (String)rangeList.get(1));
 		assertEquals("str3", (String)rangeList.get(2));
 		
-		rangeList = (List<?>)list.get(6);
+		rangeList = (List<?>)list.get(4);
 		assertEquals(2, rangeList.size());
 		assertEquals("str1", (String)rangeList.get(0));
 		assertEquals("str2", (String)rangeList.get(1));
 		
-		rangeList = (List<?>)list.get(7);
+		rangeList = (List<?>)list.get(5);
 		assertEquals(2, rangeList.size());
 		assertEquals("str6", (String)rangeList.get(0));
 		assertEquals("str7", (String)rangeList.get(1));

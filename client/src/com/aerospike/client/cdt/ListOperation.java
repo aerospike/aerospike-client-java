@@ -143,6 +143,21 @@ public class ListOperation {
 	}
 
 	/**
+	 * Create list pop range operation.
+	 * Server returns items starting at specified index to the end of list and removes those items
+	 * from list bin.
+	 */
+	/* Server doesn't support this yet...
+	public static Operation popRange(String binName, int index) {
+		Packer packer = new Packer();
+		packer.packRawShort(POP_RANGE);
+		packer.packArrayBegin(1);
+		packer.packInt(index);
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}*/
+
+	/**
 	 * Create list remove operation.
 	 * Server removes item at specified index from list bin.
 	 * Server returns number of items removed.
@@ -171,6 +186,21 @@ public class ListOperation {
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
 	}
 	
+	/**
+	 * Create list remove range operation.
+	 * Server removes items starting at specified index to the end of list.
+	 * Server returns number of items removed.
+	 */
+	/* Server doesn't support this yet...
+	public static Operation removeRange(String binName, int index) {
+		Packer packer = new Packer();
+		packer.packRawShort(REMOVE_RANGE);
+		packer.packArrayBegin(1);
+		packer.packInt(index);
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}*/
+
 	/**
 	 * Create list set operation.
 	 * Server sets item value at specified index in list bin.
@@ -250,6 +280,19 @@ public class ListOperation {
 		packer.packArrayBegin(2);
 		packer.packInt(index);
 		packer.packInt(count);
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.CDT_READ, binName, Value.get(bytes));
+	}
+	
+	/**
+	 * Create list get range operation.
+	 * Server returns items starting at index to the end of list.
+	 */
+	public static Operation getRange(String binName, int index) {
+		Packer packer = new Packer();
+		packer.packRawShort(GET_RANGE);
+		packer.packArrayBegin(1);
+		packer.packInt(index);
 		byte[] bytes = packer.toByteArray();
 		return new Operation(Operation.Type.CDT_READ, binName, Value.get(bytes));
 	}
