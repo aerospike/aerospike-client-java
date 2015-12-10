@@ -141,11 +141,30 @@ public final class Filter {
 	 * 
 	 * @param name			bin name
 	 * @param region		filter region
-	 * @return				filter instance
+	 * @return			filter instance
 	 */
-	public static Filter geoWithin(String name, String region) {
+	public static Filter geoWithinRegion(String name, String region) {
 		return new Filter(name, IndexCollectionType.DEFAULT,
 						  ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	}
+
+	/**
+	 * Create geospatial "within radius" filter for query.
+	 * Argument must be a valid lon/lat/radius(meters).
+	 * 
+	 * @param name			bin name
+	 * @param lng			longitude
+	 * @param lat			latitude
+	 * @param radius 		radius (meters)
+	 * @return			filter instance
+	 */
+	public static Filter geoWithinRadius(String name, double lng, double lat, double radius) {
+		String rgnstr =
+				String.format("{ \"type\": \"AeroCircle\", "
+							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+							  lng, lat, radius);		
+		return new Filter(name, IndexCollectionType.DEFAULT,
+						  ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
 	}
 
 	/**
@@ -154,7 +173,7 @@ public final class Filter {
 	 * 
 	 * @param name			bin name
 	 * @param point			filter point
-	 * @return				filter instance
+	 * @return			filter instance
 	 */
 	public static Filter geoContains(String name, String point) {
 		return new Filter(name, IndexCollectionType.DEFAULT,

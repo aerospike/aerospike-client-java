@@ -52,6 +52,7 @@ public class QueryRegion extends Example {
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
+		runRadiusQuery(client, params, indexName, binName);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
@@ -114,14 +115,14 @@ public class QueryRegion extends Example {
 		rgnsb.append("    ] ");
 		rgnsb.append(" } ");
 
-		console.info("Query for: ns=%s set=%s index=%s bin=%s within %s",
+		console.info("QueryRegion for: ns=%s set=%s index=%s bin=%s within %s",
 			params.namespace, params.set, indexName, binName, rgnsb);			
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.geoWithin(binName, rgnsb.toString()));
+		stmt.setFilters(Filter.geoWithinRegion(binName, rgnsb.toString()));
 		
 		RecordSet rs = client.query(null, stmt);
 		
@@ -140,7 +141,51 @@ public class QueryRegion extends Example {
 			}
 			
 			if (count != 6) {
-				console.error("Query count mismatch. Expected 5. Received " + count);			
+				console.error("Query count mismatch. Expected 6. Received " + count);			
+			}
+		}
+		finally {
+			rs.close();
+		}
+	}
+	
+	private void runRadiusQuery(
+			AerospikeClient client,
+			Parameters params,
+			String indexName,
+			String binName
+		) throws Exception {
+
+		double lon= -122.0;
+		double lat= 37.5;
+		double radius=50000.0;
+		console.info("QueryRadius for: ns=%s set=%s index=%s bin=%s within long=%f lat=%f radius=%f",
+			params.namespace, params.set, indexName, binName, lon,lat,radius);			
+		
+		Statement stmt = new Statement();
+		stmt.setNamespace(params.namespace);
+		stmt.setSetName(params.set);
+		stmt.setBinNames(binName);
+		stmt.setFilters(Filter.geoWithinRadius(binName, lon, lat, radius));
+		
+		RecordSet rs = client.query(null, stmt);
+		
+		try {
+			int count = 0;
+			
+			while (rs.next()) {
+				Key key = rs.getKey();
+				Record record = rs.getRecord();
+				String result = record.getGeoJSON(binName);
+				
+				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
+					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
+				
+				count++;
+			}
+			
+			if (count != 4) {
+				console.error("Query count mismatch. Expected 4. Received " + count);			
 			}
 		}
 		finally {
