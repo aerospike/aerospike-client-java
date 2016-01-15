@@ -221,8 +221,10 @@ public class TestOperateList extends TestSync {
 				ListOperation.set(binName, 1, Value.get("88")),
 				ListOperation.get(binName, 1),
 				ListOperation.popRange(binName, -2, 1),
+				ListOperation.popRange(binName, -1),
 				ListOperation.remove(binName, 3),
 				ListOperation.removeRange(binName, 0, 1),
+				ListOperation.removeRange(binName, 2),
 				ListOperation.size(binName)
 				);
 		
@@ -262,11 +264,16 @@ public class TestOperateList extends TestSync {
 		assertEquals(1, subList.size());	
 		assertEquals(99.99, (double)(Double)subList.get(0), 0.00001);
 		
-		assertEquals(1, (long)(Long)list.get(4));
+		subList = (List<?>)list.get(4);
+		assertEquals(1, subList.size());	
+		assertTrue(subList.get(0) instanceof Map);
+
 		assertEquals(1, (long)(Long)list.get(5));
+		assertEquals(1, (long)(Long)list.get(6));
+		assertEquals(1, (long)(Long)list.get(7));
 		
-		size = (Long)list.get(6);
-		assertEquals(4, size);	
+		size = (Long)list.get(8);
+		assertEquals(2, size);	
 	}
 	
 	@Test

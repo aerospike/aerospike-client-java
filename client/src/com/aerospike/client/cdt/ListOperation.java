@@ -147,7 +147,6 @@ public class ListOperation {
 	 * Server returns items starting at specified index to the end of list and removes those items
 	 * from list bin.
 	 */
-	/* Server doesn't support this yet...
 	public static Operation popRange(String binName, int index) {
 		Packer packer = new Packer();
 		packer.packRawShort(POP_RANGE);
@@ -155,7 +154,7 @@ public class ListOperation {
 		packer.packInt(index);
 		byte[] bytes = packer.toByteArray();
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
-	}*/
+	}
 
 	/**
 	 * Create list remove operation.
@@ -191,7 +190,6 @@ public class ListOperation {
 	 * Server removes items starting at specified index to the end of list.
 	 * Server returns number of items removed.
 	 */
-	/* Server doesn't support this yet...
 	public static Operation removeRange(String binName, int index) {
 		Packer packer = new Packer();
 		packer.packRawShort(REMOVE_RANGE);
@@ -199,7 +197,7 @@ public class ListOperation {
 		packer.packInt(index);
 		byte[] bytes = packer.toByteArray();
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
-	}*/
+	}
 
 	/**
 	 * Create list set operation.
