@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.task;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -39,10 +38,15 @@ public final class RegisterTask extends Task {
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	protected boolean queryIfDone() throws AerospikeException {
-		String command = "udf-list";
+	protected boolean queryIfDone() {
+		// All nodes must respond with package to be considered done.
 		Node[] nodes = cluster.getNodes();
-		boolean done = false;
+		
+		if (nodes.length == 0) {
+			return false;
+		}
+
+		String command = "udf-list";
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
@@ -52,8 +56,7 @@ public final class RegisterTask extends Task {
 			if (index < 0) {
 				return false;
 			}
-			done = true;
 		}
-		return done;
+		return true;
 	}
 }

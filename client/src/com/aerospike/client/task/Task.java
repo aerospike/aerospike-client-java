@@ -27,7 +27,7 @@ import com.aerospike.client.util.Util;
  */
 public abstract class Task {
 	protected final Cluster cluster;
-	protected final InfoPolicy policy;
+	protected InfoPolicy policy;
 	private boolean done;
 
 	/**
@@ -49,26 +49,80 @@ public abstract class Task {
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using default sleep interval.
+	 * Wait for asynchronous task to complete using default sleep interval (1 second).
+	 * The timeout is passed from the original task policy. If task is not complete by timeout,
+	 * an exception is thrown.  Do not timeout if timeout set to zero.
 	 */
-	public final void waitTillComplete() throws AerospikeException {
-		waitTillComplete(1000);
+	public final void waitTillComplete() {
+		taskWait(1000);
 	}
 
 	/**
-	 * Wait for asynchronous task to complete using given sleep interval.
+	 * Wait for asynchronous task to complete using given sleep interval in milliseconds.
+	 * The timeout is passed from the original task policy. If task is not complete by timeout,
+	 * an exception is thrown.  Do not timeout if policy timeout set to zero.
 	 */
-	public final void waitTillComplete(int sleepInterval) throws AerospikeException {
+	public final void waitTillComplete(int sleepInterval) {
+		taskWait(sleepInterval);
+	}
+
+	/**
+	 * Wait for asynchronous task to complete using given sleep interval and timeout in milliseconds.
+	 * If task is not complete by timeout, an exception is thrown.  Do not timeout if timeout set to
+	 * zero.
+	 */
+	public final void waitTillComplete(int sleepInterval, int timeout) {
+		policy = new InfoPolicy();
+		policy.timeout = timeout;
+		taskWait(sleepInterval);
+	}
+
+	/**
+	 * Wait for asynchronous task to complete using given sleep interval in milliseconds.
+	 * The timeout is passed from the original task policy. If task is not complete by timeout,
+	 * an exception is thrown.  Do not timeout if policy timeout set to zero.
+	 */
+	private final void taskWait(int sleepInterval) {
+		long deadline = 0;
+		RuntimeException exception = null;
+		
 		while (! done) {
+			// Only check for timeout on successive iterations.
+			if (deadline == 0) {
+				deadline = System.currentTimeMillis() + policy.timeout;
+			}
+			else {
+				if (policy.timeout != 0 && System.currentTimeMillis() + sleepInterval > deadline) {
+					if (exception != null) {
+						// Use last exception received from queryIfDone().
+						throw exception;
+					}
+					else {
+						throw new AerospikeException.Timeout();
+					}
+				}
+			}
 			Util.sleep(sleepInterval);
-			done = queryIfDone();
+			
+			try {
+				done = queryIfDone();			
+			}
+			catch (DoneException de) {
+				// Throw exception immediately.
+				throw de;
+			}
+			catch (RuntimeException re) {
+				// Some tasks may initially give errors and then eventually succeed.
+				// Store exception and continue till timeout. 
+				exception = re;
+			}
 		}
 	}
 
 	/**
 	 * Has task completed.
 	 */
-	public final boolean isDone() throws AerospikeException {
+	public final boolean isDone() {
 		if (done) {
 			return true;
 		}
@@ -79,5 +133,13 @@ public abstract class Task {
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	protected abstract boolean queryIfDone() throws AerospikeException;
+	protected abstract boolean queryIfDone();
+	
+	public static class DoneException extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+		
+		public DoneException(String message) {
+			super(message);
+		}
+	}	
 }

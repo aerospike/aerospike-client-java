@@ -44,39 +44,53 @@ public final class ExecuteTask extends Task {
 	 */
 	@Override
 	protected boolean queryIfDone() throws AerospikeException {
+		// All nodes must respond with complete to be considered done.
+		Node[] nodes = cluster.getNodes();
+		
+		if (nodes.length == 0) {
+			return false;
+		}
+
 		String module = (scan) ? "scan" : "query";
 		String command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
-		Node[] nodes = cluster.getNodes();
-		boolean done = false;
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
 			
-			if (response.startsWith("ERROR:")) {
-				done = true;
+			if (response.startsWith("ERROR:2")) {
+				// Task not found. This could mean task already completed or
+				// task not started yet.  We are going to have to assume that
+				// the task already completed...
 				continue;
+			}
+			
+			if (response.startsWith("ERROR:")) {
+				// Mark done and quit immediately.
+				throw new DoneException(command + " failed: " + response);
 			}
 			
 			String find = "status=";
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				continue;
+				// Store exception and keep waiting.
+				throw new AerospikeException(command + " failed: " + response);
 			}
 
 			int begin = index + find.length();
 			int end = response.indexOf(':', begin);
 			String status = response.substring(begin, end);
 			
-			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
-			if (status.startsWith("active") || status.startsWith("IN_PROGRESS")) {
-				return false;
-			}
 			// Newer servers use "done" while older servers use "DONE"
-			else if (status.startsWith("done") || status.startsWith("DONE")) {
-				done = true;
+			if (! (status.startsWith("done") || status.startsWith("DONE"))) {
+				return false;				
 			}
+
+			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
+			//if (status.startsWith("active") || status.startsWith("IN_PROGRESS")) {
+			//	return false;
+			//}
 		}
-		return done;
+		return true;
 	}
 }

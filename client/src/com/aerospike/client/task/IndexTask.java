@@ -50,36 +50,42 @@ public final class IndexTask extends Task {
 	 * Query all nodes for task completion status.
 	 */
 	@Override
-	protected boolean queryIfDone() throws AerospikeException {
-		String command = "sindex/" + namespace + '/' + indexName;
+	protected boolean queryIfDone() {
+		// All nodes must respond with load_pct of 100 to be considered done.
 		Node[] nodes = cluster.getNodes();
-		boolean complete = false;
+		
+		if (nodes.length == 0) {
+			return false;
+		}
+		
+		String command = "sindex/" + namespace + '/' + indexName;
 
 		for (Node node : nodes) {
-			try {
-				String response = Info.request(policy, node, command);
-				String find = "load_pct=";
-				int index = response.indexOf(find);
-	
-				if (index < 0) {
-					complete = true;
-					continue;
+			String response = Info.request(policy, node, command);
+			String find = "load_pct=";
+			int index = response.indexOf(find);
+
+			if (index < 0) {
+				if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
+					// Index not found or not readable.  Keep waiting because create index may not
+					// have been started yet.
+					throw new AerospikeException(command + " failed: " + response);				
 				}
-	
-				int begin = index + find.length();
-				int end = response.indexOf(';', begin);
-				String str = response.substring(begin, end);
-				int pct = Integer.parseInt(str);
-				
-				if (pct >= 0 && pct < 100) {
-					return false;
+				else {
+					// Mark done and throw exception immediately.
+					throw new DoneException(command + " failed: " + response);				
 				}
-				complete = true;
 			}
-			catch (Exception e) {
-				complete = true;
+
+			int begin = index + find.length();
+			int end = response.indexOf(';', begin);
+			String str = response.substring(begin, end);
+			int pct = Integer.parseInt(str);
+			
+			if (pct != 100) {				
+				return false;
 			}
 		}
-		return complete;
+		return true;
 	}
 }
