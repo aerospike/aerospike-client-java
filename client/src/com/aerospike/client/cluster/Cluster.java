@@ -94,6 +94,9 @@ public class Cluster implements Runnable, Closeable {
 	// Request prole replicas in addition to master replicas?
 	private boolean requestProleReplicas;
 
+	// Should use "services-alternate" instead of "services" in info request?
+	protected final boolean useServicesAlternate;
+
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.seeds = hosts;
 		
@@ -131,6 +134,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 		sharedThreadPool = policy.sharedThreadPool;
 		requestProleReplicas = policy.requestProleReplicas;
+		useServicesAlternate = policy.useServicesAlternate;
 		
 		aliases = new HashMap<Host,Node>();
 		nodes = new Node[0];	

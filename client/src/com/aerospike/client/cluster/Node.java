@@ -89,7 +89,11 @@ public class Node implements Closeable {
 		Connection conn = getConnection(1000);
 		
 		try {
-			HashMap<String,String> infoMap = Info.request(conn, "node", "partition-generation", "services");
+			String[] commands = cluster.useServicesAlternate ? 
+					new String[] {"node", "partition-generation", "services-alternate"} :
+					new String[] {"node", "partition-generation", "services"};
+						
+			HashMap<String,String> infoMap = Info.request(conn, commands);
 			verifyNodeName(infoMap);			
 			
 			if (addFriends(infoMap, friends)) {
@@ -122,7 +126,8 @@ public class Node implements Closeable {
 	
 	private final boolean addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
 		// Parse the service addresses and add the friends to the list.
-		String friendString = infoMap.get("services");
+		String command = cluster.useServicesAlternate ? "services-alternate" : "services";
+		String friendString = infoMap.get(command);
 		
 		if (friendString == null || friendString.length() == 0) {
 			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
