@@ -292,6 +292,7 @@ public final class Bin {
 	 * Create bin with a GeoJSON value.
 	 * 
 	 * @param name		bin name, current limit is 14 characters
+	 * @param value		bin value
 	 */
 	public static Bin asGeoJSON(String name, String value) {
 		return new Bin(name, Value.getAsGeoJSON(value));
