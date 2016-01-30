@@ -226,6 +226,7 @@ public abstract class Command {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
+		final int fieldCount = policy.sendSetName ? 2 : 1;
 		BatchRead prev = null;
 	    
 		begin();
@@ -242,13 +243,19 @@ public abstract class Command {
 			// Use reference equality only in hope that common namespaces/bin names are set from 
 			// fixed variables.  It's fine if equality not determined correctly because it just 
 			// results in more space used. The batch will still be correct.
-			if (prev != null && prev.key.namespace == key.namespace && prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
+			if (prev != null && prev.key.namespace == key.namespace && 
+				(! policy.sendSetName || prev.key.setName == key.setName) && 
+				prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
 		    	// Can set repeat previous namespace/bin names to save space.
 			    dataOffset++;
 		    }
 		    else {
 				// Estimate full header, namespace and bin names.
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE + 6;
+				
+				if (policy.sendSetName) {
+					dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+				}
 			    
 				if (binNames != null) {
 					for (String binName : binNames) {
@@ -262,7 +269,7 @@ public abstract class Command {
 
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
 		final int fieldSizeOffset = dataOffset;
-		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 			
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 	    dataOffset += 4;
@@ -285,7 +292,9 @@ public abstract class Command {
 			// Use reference equality only in hope that common namespaces/bin names are set from 
 			// fixed variables.  It's fine if equality not determined correctly because it just 
 			// results in more space used. The batch will still be correct.		
-			if (prev != null && prev.key.namespace == key.namespace && prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
+			if (prev != null && prev.key.namespace == key.namespace && 
+				(! policy.sendSetName || prev.key.setName == key.setName) && 
+				prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = 1;  // repeat
 			}
@@ -295,23 +304,31 @@ public abstract class Command {
 		    	
 				if (binNames != null && binNames.length != 0) {
 			    	dataBuffer[dataOffset++] = Command.INFO1_READ;
-			    	dataBuffer[dataOffset++] = 0;  // pad
-			    	dataBuffer[dataOffset++] = 0;  // pad
+					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+				    dataOffset += 2;		    
 					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					writeField(key.namespace, FieldType.NAMESPACE);
 			
+					if (policy.sendSetName) {
+						writeField(key.setName, FieldType.TABLE);
+					}
+					
 					for (String binName : binNames) {
 						writeOperation(binName, Operation.Type.READ);
 					}
 				}
 				else {
 			    	dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
-			    	dataBuffer[dataOffset++] = 0;  // pad
-			    	dataBuffer[dataOffset++] = 0;  // pad
+					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+				    dataOffset += 2;		    
 					Buffer.shortToBytes(0, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					writeField(key.namespace, FieldType.NAMESPACE);
+					
+					if (policy.sendSetName) {
+						writeField(key.setName, FieldType.TABLE);
+					}
 				}
 				prev = record;
 			}
@@ -326,14 +343,16 @@ public abstract class Command {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
-		int rowSize = 30 + FIELD_HEADER_SIZE + 31;  // Row's header(30) + max namespace(31). 
-		int operationCount = 0;
+		final int fieldCount = policy.sendSetName ? 2 : 1;
 
+		// Calculate size of bin names.
+		int binNameSize = 0;
+		int operationCount = 0;
+		
 		if (binNames != null) {
 			for (String binName : binNames) {
-				estimateOperationSize(binName);
+				binNameSize += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 			}
-			rowSize += dataOffset;
 			operationCount = binNames.length;
 		}
 		
@@ -341,20 +360,28 @@ public abstract class Command {
 		begin();
 	    dataOffset += FIELD_HEADER_SIZE + 5;
 	    
-	    String prevNamespace = null;
+	    Key prev = null;
 
 	    for (int i = 0; i < max; i++) {
 		    Key key = keys[offsets[i]];
 		    
-		    // Try reference equality in hope that namespace for all keys is set from a fixed variable.
-		    if (key.namespace == prevNamespace || (prevNamespace != null && prevNamespace.equals(key.namespace))) {
+			dataOffset += key.digest.length + 4;
+
+			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
+		    if (prev != null && prev.namespace == key.namespace &&
+		       (! policy.sendSetName || prev.setName == key.setName)) {	
 		    	// Can set repeat previous namespace/bin names to save space.
-			    dataOffset += 25;
+			    dataOffset++;
 		    }
 		    else {
-		    	// Must write full header and namespace/bin names.
-			    dataOffset += rowSize;	    
-				prevNamespace = key.namespace;
+		    	// Must write full header and namespace/set/bin names.
+				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE + 6;
+				
+				if (policy.sendSetName) {
+					dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+				}
+			    dataOffset += binNameSize;
+				prev = key;
 		    }
 		}
 	    
@@ -362,13 +389,13 @@ public abstract class Command {
 
 		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 		int fieldSizeOffset = dataOffset;
-		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 			
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
 	    dataOffset += 4;
 	    dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
 	    
-	    prevNamespace = null;
+	    prev = null;
 		
 		for (int i = 0; i < max; i++) {
 			int index = offsets[i];
@@ -380,8 +407,9 @@ public abstract class Command {
 		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 		    dataOffset += digest.length;
 
-		    // Try reference equality in hope that namespace for all keys is set from a fixed variable.
-		    if (key.namespace == prevNamespace || (prevNamespace != null && prevNamespace.equals(key.namespace))) {
+			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
+		    if (prev != null && prev.namespace == key.namespace &&
+		       (! policy.sendSetName || prev.setName == key.setName)) {	
 		    	// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = 1;  // repeat
 		    }
@@ -389,18 +417,22 @@ public abstract class Command {
 				// Write full header, namespace and bin names.
 		    	dataBuffer[dataOffset++] = 0;  // do not repeat	    	
 		    	dataBuffer[dataOffset++] = (byte)readAttr;
-		    	dataBuffer[dataOffset++] = 0;  // pad
-		    	dataBuffer[dataOffset++] = 0;  // pad
+				Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+			    dataOffset += 2;
 				Buffer.shortToBytes(operationCount, dataBuffer, dataOffset);
 			    dataOffset += 2;		    
 				writeField(key.namespace, FieldType.NAMESPACE);
+
+				if (policy.sendSetName) {
+					writeField(key.setName, FieldType.TABLE);
+				}
 
 				if (binNames != null) {
 			    	for (String binName : binNames) {
 						writeOperation(binName, Operation.Type.READ);
 					}
 				}
-				prevNamespace = key.namespace;
+				prev = key;
 		    }
 		}
 		

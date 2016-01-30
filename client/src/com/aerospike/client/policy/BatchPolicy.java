@@ -80,6 +80,14 @@ public final class BatchPolicy extends Policy {
 	public boolean allowInline = true;
 
 	/**
+	 * Send set name field to server for every key in the batch for batch index protocol. 
+	 * This is only necessary when authentication is enabled and security roles are defined
+	 * on a per set basis.
+	 * Default: false
+	 */
+	public boolean sendSetName;
+
+	/**
 	 * Copy batch policy from another batch policy.
 	 */
 	public BatchPolicy(BatchPolicy other) {
@@ -87,6 +95,7 @@ public final class BatchPolicy extends Policy {
 		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.useBatchDirect = other.useBatchDirect;
 		this.allowInline = other.allowInline;
+		this.sendSetName = other.sendSetName;
 	}
 
 	/**
