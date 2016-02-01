@@ -37,7 +37,7 @@ public class RWTaskAsync extends RWTask {
 	private final ReadHandler readHandler;
 	private final BatchReadHandler batchReadHandler;
 	
-	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(client, args, counters, keyStart, keyCount);
 		this.client = client;
 		writeHandler = new WriteHandler();

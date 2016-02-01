@@ -34,7 +34,7 @@ import java.util.HashMap;
  */
 public class RWTaskSync extends RWTask {
 
-	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(client, args, counters, keyStart, keyCount);	
 	}
 	protected void put(Key key, Bin[] bins, WritePolicy writePolicy) throws AerospikeException {

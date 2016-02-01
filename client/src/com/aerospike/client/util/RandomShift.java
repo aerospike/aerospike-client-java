@@ -73,7 +73,7 @@ public final class RandomShift {
 	 * Generate random integer between 0 (inclusive) and the specified value (exclusive).
 	 */
 	public int nextInt(int n) {
-		return (((int)nextLong()) & 0x7FFFFFFF) % n;
+		return (((int)nextLong()) & Integer.MAX_VALUE) % n;
 	}
 
 	/**
@@ -81,6 +81,13 @@ public final class RandomShift {
 	 */
 	public int nextInt() {
 		return (int)nextLong();
+	}
+	
+	/**
+	 * Generate random integer between 0 (inclusive) and the specified value (exclusive).
+	 */
+	public long nextLong(long n) {
+		return (nextLong() & Long.MAX_VALUE) % n;
 	}
 	
 	/**

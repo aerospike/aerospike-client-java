@@ -32,7 +32,7 @@ public final class InsertTaskSync extends InsertTask {
 
 	private final AerospikeClient client; 
 
-	public InsertTaskSync(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public InsertTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 	}

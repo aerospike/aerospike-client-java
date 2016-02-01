@@ -73,8 +73,8 @@ public class Main implements Log.Callback {
 	private Arguments args = new Arguments();
 	private String[] hosts;
 	private int port = 3000;
-	private int nKeys;
-	private int startKey;
+	private long nKeys;
+	private long startKey;
 	private int nThreads;
 	private int asyncTaskThreads;
 	private boolean asyncEnabled;
@@ -303,17 +303,22 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("keys")) {
-			this.nKeys = Integer.parseInt(line.getOptionValue("keys"));
+			this.nKeys = Long.parseLong(line.getOptionValue("keys"));
 		} else {
 			this.nKeys = 100000;
 		}
 
 		if (line.hasOption("startkey")) {
-			this.startKey = Integer.parseInt(line.getOptionValue("startkey"));
+			this.startKey = Long.parseLong(line.getOptionValue("startkey"));
 		}
 		
 		//Variables setting in case of command arguments passed with keys in File
 		if (line.hasOption("keyFile")) {
+			if (startKey + nKeys > Integer.MAX_VALUE) {
+				throw new Exception("Invalid arguments when keyFile specified.  startkey " + startKey + 
+									" + keys " + nKeys + " must be <= " + Integer.MAX_VALUE);
+			}
+			
 			this.filepath = line.getOptionValue("keyFile");
 			// Load the file
 			keyList = Utils.readKeyFromFile(filepath);
@@ -539,6 +544,11 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("validate")) {
 			args.validate = true;
+			
+			if (startKey + nKeys > Integer.MAX_VALUE) {
+				throw new Exception("Invalid arguments when validate specified.  startkey " + startKey + 
+									" + keys " + nKeys + " must be <= " + Integer.MAX_VALUE);
+			}
 		}
 
 		if (line.hasOption("debug")) {
@@ -771,14 +781,16 @@ public class Main implements Log.Callback {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 
 		// Create N insert tasks
-		int ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
-		int start = this.startKey;
-		int keysPerTask = this.nKeys / ntasks + 1;
+		long ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
+		long keysPerTask = this.nKeys / ntasks;
+		long rem = this.nKeys - (keysPerTask * ntasks);
+		long start = this.startKey;
 
-		for (int i = 0 ; i < ntasks; i++) {
-			InsertTask it = new InsertTaskSync(client, args, counters, start, keysPerTask); 			
+		for (long i = 0 ; i < ntasks; i++) {
+			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
+			InsertTask it = new InsertTaskSync(client, args, counters, start, keyCount); 			
 			es.execute(it);
-			start += keysPerTask;
+			start += keyCount;
 		}	
 		collectInsertStats();
 		es.shutdownNow();
@@ -788,21 +800,23 @@ public class Main implements Log.Callback {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 
 		// Create N insert tasks
-		int ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
-		int start = this.startKey;
-		int keysPerTask = this.nKeys / ntasks + 1;
+		long ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
+		long keysPerTask = this.nKeys / ntasks;
+		long rem = this.nKeys - (keysPerTask * ntasks);
+		long start = this.startKey;
 
-		for (int i=0 ; i<ntasks; i++) {
-			InsertTask it = new InsertTaskAsync(client, args, counters, start, keysPerTask); 			
+		for (long i = 0 ; i < ntasks; i++) {
+			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
+			InsertTask it = new InsertTaskAsync(client, args, counters, start, keyCount); 			
 			es.execute(it);
-			start += keysPerTask;
+			start += keyCount;
 		}
 		collectInsertStats();
 		es.shutdownNow();
 	}
 
 	private void collectInsertStats() throws Exception {	
-		int total = 0;
+		long total = 0;
 		
 		while (total < this.nKeys) {
 			long time = System.currentTimeMillis();
@@ -834,8 +848,8 @@ public class Main implements Log.Callback {
 		for (int i = 0 ; i < this.nThreads; i++) {
 			RWTask rt;
 			if (args.validate) {
-				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nThreads)));			
-				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nThreads)) - (int) (this.nKeys*(((float) i)/this.nThreads));
+				long tstart = this.startKey + ((long) (this.nKeys*(((float) i)/this.nThreads)));			
+				long tkeys = (long) (this.nKeys*(((float) (i+1))/this.nThreads)) - (long) (this.nKeys*(((float) i)/this.nThreads));
 				rt = new RWTaskSync(client, args, counters, tstart, tkeys);
 			} else {
 				rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
@@ -854,8 +868,8 @@ public class Main implements Log.Callback {
 		for (int i = 0 ; i < this.nThreads; i++) {
 			RWTask rt;
 			if (args.validate) {
-				int tstart = this.startKey + ((int) (this.nKeys*(((float) i)/this.nThreads)));			
-				int tkeys = (int) (this.nKeys*(((float) (i+1))/this.nThreads)) - (int) (this.nKeys*(((float) i)/this.nThreads));
+				long tstart = this.startKey + ((long) (this.nKeys*(((float) i)/this.nThreads)));			
+				long tkeys = (long) (this.nKeys*(((float) (i+1))/this.nThreads)) - (long) (this.nKeys*(((float) i)/this.nThreads));
 				rt = new RWTaskAsync(client, args, counters, tstart, tkeys);
 			} else {
 				rt = new RWTaskAsync(client, args, counters, this.startKey, this.nKeys);

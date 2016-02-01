@@ -27,7 +27,7 @@ public final class InsertTaskAsync extends InsertTask implements WriteListener {
 	
 	private final AsyncClient client;
 	
-	public InsertTaskAsync(AsyncClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public InsertTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 	}

@@ -43,11 +43,11 @@ public abstract class RWTask implements Runnable {
 	final RandomShift random;
 	final WritePolicy writePolicyGeneration;
 	ExpectedValue[] expectedValues;
-	final int keyStart;
-	final int keyCount;
+	final long keyStart;
+	final long keyCount;
 	volatile boolean valid;
 	
-	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.client = client;
 		this.args = args;
 		this.counters = counters;
@@ -133,43 +133,44 @@ public abstract class RWTask implements Runnable {
 		valid = false;
 	}
 	
-	private int[] getKeys(int count) {
-		int[] keys = new int[count];
+	private long[] getKeys(int count) {
+		long[] keys = new long[count];
 		for (int i = 0; i < count; i++) {
-			keys[i] = random.nextInt(keyCount);
+			keys[i] = random.nextLong(keyCount);
 		}
 		return keys;
 	}
+	
 	private void runTransaction() {
-		int key;
+		long key;
 		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
 		long begin = System.nanoTime();
 		while (iterator.hasNext()) {
 			TransactionalItem thisItem = iterator.next();
 			switch (thisItem.getType()) {
 				case MULTI_BIN_READ:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doRead(key, true);
 					break;
 				case MULTI_BIN_BATCH_READ:
 					doRead(getKeys(thisItem.getRepetitions()), true);
 					break;
 				case MULTI_BIN_REPLACE:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doWrite(key, true, args.replacePolicy);
 					break;
 				case MULTI_BIN_UPDATE:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doWrite(key, true, args.updatePolicy);
 					break;
 				case SINGLE_BIN_INCREMENT:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					// Increment one bin.
 					doIncrement(key, 1);
 					break;
 
 				case SINGLE_BIN_READ:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doRead(key, false);
 					break;
 				case SINGLE_BIN_BATCH_READ:
@@ -177,11 +178,11 @@ public abstract class RWTask implements Runnable {
 					break;
 
 				case SINGLE_BIN_REPLACE:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doWrite(key, false, args.replacePolicy);
 					break;
 				case SINGLE_BIN_UPDATE:
-					key = random.nextInt(keyCount);
+					key = random.nextLong(keyCount);
 					doWrite(key, false, args.updatePolicy);
 					break;
 				default:
@@ -201,7 +202,7 @@ public abstract class RWTask implements Runnable {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
 			
 			if (args.batchSize <= 1) {
-				int key = random.nextInt(keyCount);
+				long key = random.nextLong(keyCount);
 				doRead(key, isMultiBin);
 			}
 			else {
@@ -213,13 +214,13 @@ public abstract class RWTask implements Runnable {
 			
 			if (args.batchSize <= 1) {
 				// Single record write.
-				int key = random.nextInt(keyCount);
+				long key = random.nextLong(keyCount);
 				doWrite(key, isMultiBin);
 			}
 			else {
 				// Batch write is not supported, so write batch size one record at a time.
 				for (int i = 0; i < args.batchSize; i++) {
-					int key = random.nextInt(keyCount);
+					long key = random.nextLong(keyCount);
 					doWrite(key, isMultiBin);
 				}
 			}
@@ -227,7 +228,7 @@ public abstract class RWTask implements Runnable {
 	}
 	
 	private void readModifyUpdate() {
-		int key = random.nextInt(keyCount);
+		long key = random.nextLong(keyCount);
 				
 		// Read all bins.
 		doRead(key, true);
@@ -236,7 +237,7 @@ public abstract class RWTask implements Runnable {
 	}
 	
 	private void readModifyIncrement() {
-		int key = random.nextInt(keyCount);
+		long key = random.nextLong(keyCount);
 
 		// Read all bins.
 		doRead(key, true);
@@ -245,7 +246,7 @@ public abstract class RWTask implements Runnable {
 	}
 
 	private void readModifyDecrement() {
-		int key = random.nextInt(keyCount);
+		long key = random.nextLong(keyCount);
 
 		// Read all bins.
 		doRead(key, true);
@@ -254,7 +255,7 @@ public abstract class RWTask implements Runnable {
 	}
 	
 	private void readFromFile() {
-		int key = random.nextInt(keyCount);
+		long key = random.nextLong(keyCount);
 		
 		if (args.keyType == KeyType.STRING) {
 		    doReadString(key, true);
@@ -268,10 +269,12 @@ public abstract class RWTask implements Runnable {
 	 * Read existing values from the database, save them away in our validation arrays.
 	 */
 	private void setupValidation() {
-		expectedValues = new ExpectedValue[keyCount];
+		// Warning: validate only works when keyCount < Integer.MAX_VALUE.
+		int keyCapacity = (int)keyCount;
+		expectedValues = new ExpectedValue[keyCapacity];
 		
 		// Load starting values
-		for (int i = 0; i < keyCount; i++) {
+		for (int i = 0; i < keyCapacity; i++) {
 			Bin[] bins = null;
 			int generation = 0;
 			
@@ -311,14 +314,14 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 	
-	protected void doWrite(int keyIdx, boolean multiBin) {
+	protected void doWrite(long keyIdx, boolean multiBin) {
 		doWrite(keyIdx, multiBin, null);
 	}
 	
 	/**
 	 * Write the key at the given index
 	 */
-	protected void doWrite(int keyIdx, boolean multiBin, WritePolicy writePolicy) {
+	protected void doWrite(long keyIdx, boolean multiBin, WritePolicy writePolicy) {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 		Bin[] bins = args.getBins(random, multiBin);
 		
@@ -338,7 +341,8 @@ public abstract class RWTask implements Runnable {
 			}
 			
 			if (args.validate) {
-				this.expectedValues[keyIdx].write(bins);
+				// Warning: validate only works when keyIdx < Integer.MAX_VALUE.
+				this.expectedValues[(int)keyIdx].write(bins);
 			}
 		}
 		catch (AerospikeException ae) {
@@ -352,7 +356,7 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Increment (or decrement, if incrValue is negative) the key at the given index.
 	 */
-	protected void doIncrement(int keyIdx, int incrValue) {
+	protected void doIncrement(long keyIdx, int incrValue) {
 		// set up bin for increment
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
 		
@@ -360,7 +364,8 @@ public abstract class RWTask implements Runnable {
 			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
 			
 			if (args.validate) {
-				this.expectedValues[keyIdx].add(bins, incrValue);
+				// Warning: validate only works when keyIdx < Integer.MAX_VALUE.
+				this.expectedValues[(int)keyIdx].add(bins, incrValue);
 			}
 		}
 		catch (AerospikeException ae) {
@@ -374,7 +379,7 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the key at the given index.
 	 */
-	protected void doRead(int keyIdx, boolean multiBin) {
+	protected void doRead(long keyIdx, boolean multiBin) {
 		try {
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 			
@@ -422,7 +427,7 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the keys at the given indexex.
 	 */
-	protected void doRead(int[] keyIdxs, boolean multiBin) {
+	protected void doRead(long[] keyIdxs, boolean multiBin) {
 		try {
 			Key[] keys = new Key[keyIdxs.length];
 			for (int i = 0; i < keyIdxs.length; i++) {
@@ -477,7 +482,7 @@ public abstract class RWTask implements Runnable {
 		Key[] keys = new Key[args.batchSize];
 		
 		for (int i = 0; i < keys.length; i++) {
-			int keyIdx = random.nextInt(keyCount);
+			long keyIdx = random.nextLong(keyCount);
 			keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
 		}
 		
@@ -502,8 +507,9 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the keys of type Integer from the file supplied.
 	 */
-	protected void doReadLong(int keyIdx, boolean multiBin) {
-		long numKey = Long.parseLong(Main.keyList.get(keyStart + keyIdx));
+	protected void doReadLong(long keyIdx, boolean multiBin) {
+		// Warning: read from file only works when keyStart + keyIdx < Integer.MAX_VALUE.
+		long numKey = Long.parseLong(Main.keyList.get((int)(keyStart + keyIdx)));
 		
 		try {
 			if (multiBin) {
@@ -526,8 +532,9 @@ public abstract class RWTask implements Runnable {
 	/**
 	 * Read the keys of type String from the file supplied.
 	 */
-	protected void doReadString(int keyIdx,boolean multiBin) {
-		String strKey = Main.keyList.get(keyStart+keyIdx);
+	protected void doReadString(long keyIdx,boolean multiBin) {
+		// Warning: read from file only works when keyStart + keyIdx < Integer.MAX_VALUE.
+		String strKey = Main.keyList.get((int)(keyStart+keyIdx));
 
 		try {
 			if (multiBin) {
@@ -557,7 +564,7 @@ public abstract class RWTask implements Runnable {
 		}
 
 		if (args.validate) {
-			int keyIdx = key.userKey.toInteger() - keyStart;
+			int keyIdx = (int)(key.userKey.toLong() - keyStart);
 			
 			if (! this.expectedValues[keyIdx].validate(record)) {
 				this.counters.valueMismatchCnt.incrementAndGet();

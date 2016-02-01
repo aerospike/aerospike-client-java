@@ -27,11 +27,11 @@ import com.aerospike.client.util.Util;
 public abstract class InsertTask implements Runnable {
 
 	final Arguments args;
-	final int keyStart;
-	final int keyCount;
+	final long keyStart;
+	final long keyCount;
 	final CounterStore counters;
 	
-	public InsertTask(Arguments args, CounterStore counters, int keyStart, int keyCount) {
+	public InsertTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.args = args;
 		this.counters = counters;
 		this.keyStart = keyStart;
@@ -42,7 +42,7 @@ public abstract class InsertTask implements Runnable {
 		try {			
 			RandomShift random = new RandomShift();
 
-			for (int i = 0; i < keyCount; i++) {
+			for (long i = 0; i < keyCount; i++) {
 				try {
 					Key key = new Key(args.namespace, args.setName, keyStart + i);
 					Bin[] bins = args.getBins(random, true);
