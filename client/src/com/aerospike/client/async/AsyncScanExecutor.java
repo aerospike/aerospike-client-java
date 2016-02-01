@@ -21,6 +21,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.util.RandomShift;
 
 public final class AsyncScanExecutor extends AsyncMultiExecutor {
 	private final RecordSequenceListener listener;
@@ -40,7 +41,7 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 		}
 		
-		long taskId = System.nanoTime();
+		long taskId = RandomShift.instance().nextLong();
 
 		// Create commands.
 		AsyncScan[] tasks = new AsyncScan[nodes.length];

@@ -21,6 +21,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.RandomShift;
 
 public class Arguments {
 	public String namespace;

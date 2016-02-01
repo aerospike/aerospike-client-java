@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.aerospike.client.util.RandomShift;
+
 /**
  * Create a transactional workload with a fixed set of transactions. This could be for example
  * 3 reads, 2 updates and 1 replace.

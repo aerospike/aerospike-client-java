@@ -70,6 +70,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 /**
@@ -803,7 +804,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (policy.concurrentNodes) {
 			Executor executor = new Executor(cluster, nodes.length);
-			long taskId = System.nanoTime();
+			long taskId = RandomShift.instance().nextLong();
 
 			for (Node node : nodes)
 			{
@@ -862,7 +863,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
-		long taskId = System.nanoTime();
+		long taskId = RandomShift.instance().nextLong();
 
 		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
 		command.execute();

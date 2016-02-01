@@ -29,6 +29,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 /**

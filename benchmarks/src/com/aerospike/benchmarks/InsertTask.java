@@ -21,6 +21,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 public abstract class InsertTask implements Runnable {

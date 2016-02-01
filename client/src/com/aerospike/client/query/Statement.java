@@ -17,6 +17,7 @@
 package com.aerospike.client.query;
 
 import com.aerospike.client.Value;
+import com.aerospike.client.util.RandomShift;
 
 /**
  * Query statement parameters.
@@ -205,7 +206,7 @@ public final class Statement {
 		this.returnData = returnData;
 		
 		if (taskId == 0) {
-			taskId = System.nanoTime();
+			taskId = RandomShift.instance().nextLong();
 		}
 	}
 
