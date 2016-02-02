@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.query;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
@@ -101,6 +103,9 @@ public final class Statement {
 	 * aggregation function. 
 	 */
 	public void setFilters(Filter... filters) {
+		if (filters.length > 1) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
+		}
 		this.filters = filters;
 	}
 
