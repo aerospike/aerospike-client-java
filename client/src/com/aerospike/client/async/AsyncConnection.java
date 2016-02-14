@@ -38,12 +38,9 @@ public final class AsyncConnection implements Closeable{
 	private final SocketChannel socketChannel;
 	private final SelectorManager manager;
 	private SelectionKey key;
-	private final long maxSocketIdleMillis;
-	private volatile long lastUsed;
 	
 	public AsyncConnection(InetSocketAddress address, AsyncCluster cluster) throws AerospikeException.Connection {
 		this.manager = cluster.getSelectorManager();
-		this.maxSocketIdleMillis = cluster.getMaxSocketIdleMillis();
 		
 		try {
 			socketChannel = SocketChannel.open();
@@ -64,9 +61,7 @@ public final class AsyncConnection implements Closeable{
 			// socket.setReuseAddress(true);
 			// socket.setSoLinger(true, 0);
 			
-			if (socketChannel.connect(address)) {
-				lastUsed = System.currentTimeMillis();
-			}
+			socketChannel.connect(address);
 		}
 		catch (Exception e) {
 			close();
@@ -80,7 +75,6 @@ public final class AsyncConnection implements Closeable{
 
 	public void finishConnect() throws IOException {		
 		socketChannel.finishConnect();
-		lastUsed = System.currentTimeMillis();
 		key.interestOps(SelectionKey.OP_WRITE);
 	}
 	
@@ -148,21 +142,27 @@ public final class AsyncConnection implements Closeable{
 		}
 		return true;
     }
-
-	/**
-	 * Is socket open and used within specified limits.
-	 */
-	public boolean isValid() {
-		// Since lastUsed == 0 indicates closed connection, there is no need to
-		// check socketChannel.isOpen() or socketChannel.isConnected() (which is unreliable)
-		// because System.currentTimeMillis() will always be greater than maxSocketIdleMillis.
-		return (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
-	}
+    
+    /**
+     * Is socket valid.  Return true if socket is connected and has no data in it's buffer.
+     * Return false, if not connected, socket read error or has data in it's buffer.
+     */
+    public boolean isValid(ByteBuffer byteBuffer) {
+		// Do not use socketChannel.isOpen() or socketChannel.isConnected() because
+    	// they do not take server actions on socket into account.
+		byteBuffer.position(0);
+		byteBuffer.limit(1);
+		
+		try {
+			// Perform non-blocking read.
+			// Expect socket buffer to be empty.
+			return socketChannel.read(byteBuffer) == 0;
+		}
+		catch (Exception e) {
+			return false;
+		}
+    }
 	
-	public void updateLastUsed() {
-		lastUsed = System.currentTimeMillis();
-	}
-
 	/**
 	 * Should command be allowed to timeout.  If command is currently reading data in an offloaded
 	 * task thread, the interestOps is set to zero.  Make sure non-zero because we can't timeout 
@@ -177,9 +177,7 @@ public final class AsyncConnection implements Closeable{
 	/**
 	 * Close socket channel.
 	 */
-	public void close() {
-		lastUsed = 0;
-		
+	public void close() {		
 		if (key != null) {
 			key.cancel();
 		}

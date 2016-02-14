@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.ArrayBlockingQueue;
 
 import com.aerospike.client.cluster.Node;
@@ -42,12 +43,12 @@ public final class AsyncNode extends Node {
 	/**
 	 * Get asynchronous socket connection from connection pool for the server node.
 	 */
-	public AsyncConnection getAsyncConnection() {
+	public AsyncConnection getAsyncConnection(ByteBuffer byteBuffer) {
 		// Try to find connection in pool.
 		AsyncConnection conn;
 
 		while ((conn = asyncConnQueue.poll()) != null) {		
-			if (conn.isValid()) {
+			if (conn.isValid(byteBuffer)) {
 				return conn;
 			}
 			conn.close();

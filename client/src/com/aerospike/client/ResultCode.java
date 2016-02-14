@@ -350,13 +350,10 @@ public final class ResultCode {
 		case INVALID_NODE_ERROR:
 		case PARSE_ERROR:
 		case SERIALIZE_ERROR:
-		case SERVER_MEM_ERROR:
 		case TIMEOUT:
 		case SERVER_NOT_AVAILABLE:
 		case SCAN_ABORT:
-		case INDEX_OOM:
 		case QUERY_ABORTED:
-		case QUERY_TIMEOUT:
 			return false;
 			
 		default:
