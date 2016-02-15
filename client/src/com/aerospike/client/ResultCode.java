@@ -343,14 +343,14 @@ public final class ResultCode {
 	 * Should connection be put back into pool.
 	 */
 	public static boolean keepConnection(int resultCode) {
+		// Keep connection on TIMEOUT because it can be server response which does not 
+		// close socket.  Also, client timeout code path does not call this method. 
 		switch (resultCode) {
 		case 0: // Exception did not originate on server.
 		case QUERY_TERMINATED:
 		case SCAN_TERMINATED:
-		case INVALID_NODE_ERROR:
 		case PARSE_ERROR:
 		case SERIALIZE_ERROR:
-		case TIMEOUT:
 		case SERVER_NOT_AVAILABLE:
 		case SCAN_ABORT:
 		case QUERY_ABORTED:
