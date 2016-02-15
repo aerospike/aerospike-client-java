@@ -798,10 +798,6 @@ public class Cluster implements Runnable, Closeable {
 		return connectionTimeout;
 	}
 
-	public final int getMaxSocketIdleMillis() {
-		return maxSocketIdleMillis;
-	}
-	
 	public final byte[] getUser() {
 		return user;
 	}
