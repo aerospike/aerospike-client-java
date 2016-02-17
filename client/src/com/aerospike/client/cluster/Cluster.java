@@ -120,7 +120,7 @@ public class Cluster implements Runnable, Closeable {
 			this.user = null;
 		}
 		
-		connectionQueueSize = policy.maxThreads + 1;  // Add one connection for tend thread.
+		connectionQueueSize = policy.maxConnsPerNode;
 		connectionTimeout = policy.timeout;
 		maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;

@@ -62,9 +62,11 @@ public abstract class InsertTask implements Runnable {
 					}
 				}
 				catch (AerospikeException ae) {
+					i--;
 					writeFailure(ae);
 				}	
 				catch (Exception e) {
+					i--;
 					writeFailure(e);
 				}
 				

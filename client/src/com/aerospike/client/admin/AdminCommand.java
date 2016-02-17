@@ -269,7 +269,7 @@ public class AdminCommand {
 		catch (Exception e) {
 			// All IO exceptions are considered fatal.  Do not retry.
 			// Close socket to flush out possible garbage.  Do not put back in pool.
-			conn.close();
+			node.closeConnection(conn);
 			throw new AerospikeException(e);
 		}
 
@@ -295,7 +295,7 @@ public class AdminCommand {
 		}
 		catch (Exception e) {
 			// Garbage may be in socket.  Do not put back into pool.
-			conn.close();
+			node.closeConnection(conn);
 			throw new AerospikeException(e);
 		}
 

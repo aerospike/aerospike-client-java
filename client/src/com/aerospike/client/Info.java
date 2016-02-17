@@ -194,7 +194,7 @@ public final class Info {
 			return response;
 		}
 		catch (RuntimeException re) {
-			conn.close();
+			node.closeConnection(conn);
 			throw re;
 		}
 	}
@@ -217,7 +217,7 @@ public final class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			conn.close();
+			node.closeConnection(conn);
 			throw re;
 		}
 	}
@@ -240,7 +240,7 @@ public final class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			conn.close();
+			node.closeConnection(conn);
 			throw re;
 		}
 	}
@@ -262,7 +262,7 @@ public final class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			conn.close();
+			node.closeConnection(conn);
 			throw re;
 		}
 	}

@@ -17,9 +17,9 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
@@ -32,6 +32,7 @@ public abstract class SyncCommand extends Command {
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
 		Node node = null;
+		RuntimeException exception = null;
         int failedNodes = 0;
         int failedConns = 0;
         int iterations = 0;
@@ -72,36 +73,38 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						// Close socket to flush out possible garbage.  Do not put back in pool.
-						conn.close();
+						node.closeConnection(conn);
 					}
 					throw ae;
 				}
 				catch (RuntimeException re) {
 					// All runtime exceptions are considered fatal.  Do not retry.
 					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
+					node.closeConnection(conn);
 					throw re;
+				}
+				catch (SocketTimeoutException ste) {
+					// Full timeout has been reached.  Do not retry.
+					// Close socket to flush out possible garbage.  Do not put back in pool.
+					node.closeConnection(conn);
+					throw new AerospikeException.Timeout(node, policy.timeout, ++iterations, failedNodes, failedConns);
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
 					// Close socket to flush out possible garbage.  Do not put back in pool.
-					conn.close();
-					
-					if (Log.debugEnabled()) {
-						Log.debug("Node " + node + ": " + Util.getErrorMessage(ioe));
-					}
+					exception = new AerospikeException(ioe);
+					node.closeConnection(conn);
 				}
 			}
 			catch (AerospikeException.InvalidNode ine) {
 				// Node is currently inactive.  Retry.
+				exception = ine;
 				failedNodes++;
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Retry.				
-				if (Log.debugEnabled()) {
-					Log.debug("Node " + node + ": " + Util.getErrorMessage(ce));
-				}
-				failedConns++;	
+				exception = ce;
+				failedConns++;
 			}
 
 			if (++iterations > policy.maxRetries) {
@@ -126,9 +129,10 @@ public abstract class SyncCommand extends Command {
 			node = null;
 		}
 		
-		throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
+		// Retries have been exhausted.  Throw last exception.
+		throw exception;
 	}
-		
+
 	protected final void emptySocket(Connection conn) throws IOException
 	{
 		// There should not be any more bytes.

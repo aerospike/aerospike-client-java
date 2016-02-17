@@ -22,11 +22,13 @@ import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.policy.BatchPolicy;
 
@@ -45,6 +47,8 @@ public class Node implements Closeable {
 	private Host[] aliases;
 	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
+	private final AtomicInteger connectionCount;
+	private Connection tendConnection;
 	protected int partitionGeneration;
 	protected int referenceCount;
 	protected int failures;
@@ -65,6 +69,7 @@ public class Node implements Closeable {
 		this.name = nv.name;
 		this.aliases = nv.aliases;
 		this.address = nv.address;
+		this.tendConnection = nv.conn;
 		this.hasGeo = nv.hasGeo;
 		this.hasDouble = nv.hasDouble;
 		this.hasBatchIndex = nv.hasBatchIndex;
@@ -74,7 +79,8 @@ public class Node implements Closeable {
 		// by IP address (not hostname). 
 		this.host = aliases[0];
 		
-		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);		
+		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);
+		connectionCount = new AtomicInteger();
 		partitionGeneration = -1;
 		active = true;
 	}
@@ -86,24 +92,28 @@ public class Node implements Closeable {
 	 * @throws Exception	if status request fails
 	 */
 	public final void refresh(List<Host> friends) throws Exception {
-		Connection conn = getConnection(1000);
-		
+		if (tendConnection.isClosed()) {
+			tendConnection = new Connection(address, 1000);
+		}
+
 		try {
 			String[] commands = cluster.useServicesAlternate ? 
 					new String[] {"node", "partition-generation", "services-alternate"} :
 					new String[] {"node", "partition-generation", "services"};
 						
-			HashMap<String,String> infoMap = Info.request(conn, commands);
+			HashMap<String,String> infoMap = Info.request(tendConnection, commands);
 			verifyNodeName(infoMap);			
 			
 			if (addFriends(infoMap, friends)) {
-				updatePartitions(conn, infoMap);
+				updatePartitions(tendConnection, infoMap);
 			}
-			putConnection(conn);
 		}
 		catch (Exception e) {
-			conn.close();
-			throw e;
+			// Swallow exception if node was closed in another thread.
+			if (! tendConnection.isClosed()) {
+				tendConnection.close();
+				throw e;
+			}
 		}
 	}
 	
@@ -220,31 +230,39 @@ public class Node implements Closeable {
 				catch (Exception e) {
 					// Set timeout failed. Something is probably wrong with timeout
 					// value itself, so don't empty queue retrying.  Just get out.
-					conn.close();
+					closeConnection(conn);
 					throw new AerospikeException.Connection(e);
 				}
 			}
-			conn.close();
+			closeConnection(conn);
 		}
-		conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
 		
-		if (cluster.user != null) {
-			try {
-				AdminCommand command = new AdminCommand();
-				command.authenticate(conn, cluster.user, cluster.password);
+		if (connectionCount.getAndIncrement() < cluster.connectionQueueSize) {
+			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+			
+			if (cluster.user != null) {
+				try {
+					AdminCommand command = new AdminCommand();
+					command.authenticate(conn, cluster.user, cluster.password);
+				}
+				catch (AerospikeException ae) {
+					// Socket not authenticated.  Do not put back into pool.
+					closeConnection(conn);
+					throw ae;
+				}
+				catch (Exception e) {
+					// Socket not authenticated.  Do not put back into pool.
+					closeConnection(conn);
+					throw new AerospikeException(e);
+				}
 			}
-			catch (AerospikeException ae) {
-				// Socket not authenticated.  Do not put back into pool.
-				conn.close();
-				throw ae;
-			}
-			catch (Exception e) {
-				// Socket not authenticated.  Do not put back into pool.
-				conn.close();
-				throw new AerospikeException(e);
-			}
+			return conn;		
 		}
-		return conn;		
+		else {
+			connectionCount.getAndDecrement();
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS, 
+				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+		}
 	}
 	
 	/**
@@ -254,10 +272,18 @@ public class Node implements Closeable {
 	 */
 	public final void putConnection(Connection conn) {
 		if (! active || ! connectionQueue.offer(conn)) {
-			conn.close();
+			closeConnection(conn);
 		}
 	}
 	
+	/**
+	 * Close connection and decrement connection count.
+	 */
+	public final void closeConnection(Connection conn) {
+		connectionCount.getAndDecrement();
+		conn.close();
+	}
+
 	/**
 	 * Return server node IP address and port.
 	 */
@@ -349,8 +375,11 @@ public class Node implements Closeable {
 	}
 	
 	protected void closeConnections() {
+		// Close tend connection after making reference copy.
+		Connection conn = tendConnection;
+		conn.close();
+		
 		// Empty connection pool.
-		Connection conn;
 		while ((conn = connectionQueue.poll()) != null) {			
 			conn.close();
 		}		

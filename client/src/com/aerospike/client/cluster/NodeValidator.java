@@ -32,6 +32,7 @@ public final class NodeValidator {
 	String name;
 	Host[] aliases;
 	InetSocketAddress address;
+	Connection conn;
 	boolean hasBatchIndex;
 	boolean hasReplicasAll;
 	boolean hasDouble;
@@ -70,12 +71,17 @@ public final class NodeValidator {
 					if (nodeName != null) {
 						this.name = nodeName;
 						this.address = address;
+						this.conn = conn;
 						setFeatures(map);
 						return;
 					}
+					else {
+						conn.close();
+					}
 				}
-				finally {
+				catch (Exception e) {
 					conn.close();
+					throw e;
 				}
 			}
 			catch (Exception e) {

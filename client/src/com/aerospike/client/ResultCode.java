@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Max connections would be exceeded.  There are no more available connections.
+	 */
+	public static final int NO_MORE_CONNECTIONS = -7;
+	
+	/**
 	 * Asynchronous max concurrent database commands have been exceeded and therefore rejected.
 	 */
 	public static final int COMMAND_REJECTED = -6;
@@ -366,6 +371,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case NO_MORE_CONNECTIONS:
+			return "No more available connections";
+			
 		case COMMAND_REJECTED:
 			return "Command rejected";
 		

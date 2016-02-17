@@ -101,6 +101,13 @@ public final class Connection implements Closeable{
 	public boolean isValid() {
 		return (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
 	}
+	
+	/**
+	 * Is socket closed from client perspective only.
+	 */
+	public boolean isClosed() {
+		return lastUsed == 0;
+	}
 
 	public void setTimeout(int timeout) throws SocketException {
 		socket.setSoTimeout(timeout);
