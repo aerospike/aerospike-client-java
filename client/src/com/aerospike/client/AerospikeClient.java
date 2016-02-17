@@ -471,23 +471,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
-	 * The policy can be used to specify timeouts.
-	 *  
-	 * @deprecated Use {@link #exists(BatchPolicy, Key[])} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array key/existence status pairs
-	 * @throws AerospikeException	if command fails
-	 */
-	@Deprecated
-	public final boolean[] exists(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return exists(batchPolicy, keys);
-	}
-
-	/**
-	 * Check if multiple record keys exist in one batch call.
-	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 *  
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -626,24 +609,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Read multiple records for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * The policy can be used to specify timeouts.
-	 * 
-	 * @deprecated Use {@link #get(BatchPolicy, Key[])} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
-	 */
-	@Deprecated
-	public final Record[] get(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return get(batchPolicy, keys);
-	}
-
-	/**
-	 * Read multiple records for specified keys in one batch call.
-	 * The returned records are in positional order with the original key array order.
-	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 * 
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -658,26 +623,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Record[] records = new Record[keys.length];
 		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 		return records;
-	}
-
-	/**
-	 * Read multiple record headers and bins for specified keys in one batch call.
-	 * The returned records are in positional order with the original key array order.
-	 * If a key is not found, the positional record will be null.
-	 * The policy can be used to specify timeouts.
-	 * 
-	 * @deprecated Use {@link #get(BatchPolicy, Key[], String...)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param binNames				array of bins to retrieve
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
-	 */
-	@Deprecated
-	public final Record[] get(Policy policy, Key[] keys, String... binNames) 
-		throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return get(batchPolicy, keys, binNames);
 	}
 
 	/**
@@ -700,24 +645,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Record[] records = new Record[keys.length];
 		BatchExecutor.execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
 		return records;
-	}
-
-	/**
-	 * Read multiple record header data for specified keys in one batch call.
-	 * The returned records are in positional order with the original key array order.
-	 * If a key is not found, the positional record will be null.
-	 * The policy can be used to specify timeouts.
-	 * 
-	 * @deprecated Use {@link #getHeader(BatchPolicy, Key[])} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
-	 */
-	@Deprecated
-	public final Record[] getHeader(Policy policy, Key[] keys) throws AerospikeException {
-		BatchPolicy batchPolicy = (policy == null)? batchPolicyDefault : new BatchPolicy(policy);
-		return getHeader(batchPolicy, keys);
 	}
 
 	/**
@@ -1094,31 +1021,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		throw new AerospikeException("Remove UDF failed: " + response);
 	}
-
-	/**
-	 * Execute user defined function on server and return results.
-	 * The function operates on a single record.
-	 * The package name is used to locate the udf file location:
-	 * <p>
-	 * udf file = <server udf dir>/<package name>.lua
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param packageName			server package name where user defined function resides
-	 * @param functionName			user defined function
-	 * @param args					arguments passed in to user defined function
-	 * @return						return value of user defined function
-	 * @throws AerospikeException	if transaction fails
-	 */
-	public final Object execute(Policy policy, Key key, String packageName, String functionName, Value... args) 
-		throws AerospikeException {	
-		
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return execute(writePolicy, key, packageName, functionName, args);
-	}
 	
 	/**
 	 * Execute user defined function on server and return results.
@@ -1175,34 +1077,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//----------------------------------------------------------
 	// Query/Execute UDF (Supported by Aerospike 3 servers only)
 	//----------------------------------------------------------
-
-	/**
-	 * Apply user defined function on records that match the statement filter.
-	 * Records are not returned to the client.
-	 * This asynchronous server call will return before command is complete.
-	 * The user can optionally wait for command completion by using the returned
-	 * ExecuteTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #execute(WritePolicy policy, Statement statement, String packageName, String functionName, Value... functionArgs)} instead. 
-	 * @param policy				scan configuration parameters, pass in null for defaults
-	 * @param statement				record filter
-	 * @param packageName			server package where user defined function resides
-	 * @param functionName			function name
-	 * @param functionArgs			to pass to function name, if any
-	 * @throws AerospikeException	if command fails
-	 */
-	public final ExecuteTask execute(
-		Policy policy,
-		Statement statement,
-		String packageName,
-		String functionName,
-		Value... functionArgs
-	) throws AerospikeException {
-		WritePolicy writePolicy = (policy == null)? writePolicyDefault : new WritePolicy(policy);
-		return execute(writePolicy, statement, packageName, functionName, functionArgs);
-	}
 
 	/**
 	 * Apply user defined function on records that match the statement filter.

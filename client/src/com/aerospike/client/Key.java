@@ -231,22 +231,6 @@ public final class Key {
 		this.setName = setName;
 		this.userKey = userKey;
 	}
-	
-	/**
-	 * Initialize key from namespace and digest.
-	 * This constructor exists for the legacy CitrusleafClient compatibility layer only.
-	 * Do not use.
-	 * 
-	 * @param namespace				namespace
-	 * @param digest				unique server hash value
-	 * @deprecated Use {@link Key#Key(String namespace, byte[] digest, String setName, Value userKey)}
-	 */
-	public Key(String namespace, byte[] digest) {
-		this.namespace = namespace; 
-		this.digest = digest;
-		this.setName = null;
-		this.userKey = null;
-	}
 
 	/**
 	 * Hash lookup uses namespace and digest.

@@ -237,34 +237,6 @@ public final class Bin {
 	}
 	
 	/**
-	 * Create bin with a list value.  The list value will be serialized as a Aerospike 3 server list type.
-	 * Supported by Aerospike 3 servers only.
-	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
-	 * @deprecated Use {@link #Bin(String name, List value)} instead.
-	 * @param name		bin name, current limit is 14 characters
-	 * @param value		bin value
-	 */
-	@Deprecated
-	public static Bin asList(String name, List<?> value) {
-		return new Bin(name, Value.get(value));
-	}
-
-	/**
-	 * Create bin with a map value.  The map value will be serialized as a Aerospike 3 server map type.
-	 * Supported by Aerospike 3 servers only.
-	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
-	 * @deprecated Use {@link #Bin(String name, Map value)} instead.
-	 * @param name		bin name, current limit is 14 characters
-	 * @param value		bin value
-	 */
-	@Deprecated
-	public static Bin asMap(String name, Map<?,?> value) {
-		return new Bin(name, Value.get(value));
-	}
-	
-	/**
 	 * Create bin with a blob value.  The value will be java serialized.
 	 * This method is faster than the bin Object constructor because the blob is converted 
 	 * directly instead of using multiple "instanceof" type checks with a blob default.

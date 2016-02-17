@@ -50,19 +50,6 @@ public final class Filter {
 		Value val = Value.get(value);
 		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
 	}
-
-	/**
-	 * Create equality filter for query.
-	 * This method exists for backward compatibility only.  Do not use.
-	 * 
-	 * @deprecated 
-	 * @param name			bin name
-	 * @param value			filter value
-	 * @return				filter instance
-	 */
-	public static Filter equal(String name, Value value) {
-		return new Filter(name, IndexCollectionType.DEFAULT, value.getType(), value, value);
-	}
 	
 	/**
 	 * Create contains number filter for query on collection index.
@@ -117,22 +104,6 @@ public final class Filter {
 	 */
 	public static Filter range(String name, IndexCollectionType type, long begin, long end) {
 		return new Filter(name, type, ParticleType.INTEGER, Value.get(begin), Value.get(end));
-	}
-
-	/**
-	 * Create range filter for query.  
-	 * Range arguments must be longs or integers which can be cast to longs.
-	 * String ranges are not supported.
-	 * This method exists for backward compatibility only.  Do not use.
-	 * 
-	 * @deprecated 
-	 * @param name			bin name
-	 * @param begin			filter begin value inclusive
-	 * @param end			filter end value inclusive
-	 * @return				filter instance
-	 */
-	public static Filter range(String name, Value begin, Value end) {
-		return new Filter(name, IndexCollectionType.DEFAULT, begin.getType(), begin, end);
 	}
 
 	/**

@@ -144,24 +144,6 @@ public abstract class Value {
 	}
 
 	/**
-	 * Get list or null value instance.
-	 * @deprecated Use {@link #get(List value)} instead. 
-	 */
-	@Deprecated
-	public static Value getAsList(List<?> value) {
-		return (value == null)? new NullValue() : new ListValue(value);
-	}
-	
-	/**
-	 * Get map or null value instance.
-	 * @deprecated Use {@link #get(Map value)} instead. 
-	 */
-	@Deprecated
-	public static Value getAsMap(Map<?,?> value) {
-		return (value == null)? new NullValue() : new MapValue(value);
-	}
-
-	/**
 	 * Get null value instance.
 	 */
 	public static Value getAsNull() {
