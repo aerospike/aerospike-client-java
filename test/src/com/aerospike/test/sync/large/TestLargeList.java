@@ -54,6 +54,9 @@ public class TestLargeList extends TestSync {
 
 	@Test
 	public void simpleLargeList() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "setkey");
 		
 		// Delete record if it already exists.
@@ -125,6 +128,9 @@ public class TestLargeList extends TestSync {
 	
 	@Test
 	public void filterLargeList() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "setkey");
 		
 		// Delete record if it already exists.
@@ -152,6 +158,9 @@ public class TestLargeList extends TestSync {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void distinctBinsLargeList() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "accountId");
 
 		// Delete record if it already exists.
@@ -222,6 +231,9 @@ public class TestLargeList extends TestSync {
 	@Test
 	@SuppressWarnings("unchecked")
 	public void runWithSerializedBin() throws IOException {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "accountId");
 
 		// Delete record if it already exists.
@@ -299,6 +311,9 @@ public class TestLargeList extends TestSync {
 	
 	@Test
 	public void runVolumeInsert() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		// This key has already been created in runSimpleExample().
 		Key key = new Key(args.namespace, args.set, "setkey");
 		

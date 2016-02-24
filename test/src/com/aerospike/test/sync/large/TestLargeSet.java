@@ -27,6 +27,9 @@ import com.aerospike.test.sync.TestSync;
 public class TestLargeSet extends TestSync {
 	@Test
 	public void largeSet() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "setkey");
 		String binName = args.getBinName("setbin");
 		

@@ -29,6 +29,9 @@ import com.aerospike.test.sync.TestSync;
 public class TestLargeStack extends TestSync {
 	@Test
 	public void largeStack() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "stackkey");
 		String binName = args.getBinName("stackbin");
 		

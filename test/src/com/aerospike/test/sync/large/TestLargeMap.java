@@ -29,6 +29,9 @@ import com.aerospike.test.sync.TestSync;
 public class TestLargeMap extends TestSync {
 	@Test
 	public void largeMap() {
+		if (! args.validateLDT()) {
+			return;
+		}
 		Key key = new Key(args.namespace, args.set, "setkey");
 		String binName = args.getBinName("setbin");
 		

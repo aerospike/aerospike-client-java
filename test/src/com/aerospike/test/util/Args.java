@@ -180,4 +180,12 @@ public class Args {
 		// Single bin servers don't need a bin name.
 		return singleBin ? "" : name;
 	}
+
+	public boolean validateLDT() {
+		if (! hasLargeDataTypes) {
+			System.out.println("Skip test because LDT not enabled on server");
+			return false;
+		}
+		return true;
+	}
 }
