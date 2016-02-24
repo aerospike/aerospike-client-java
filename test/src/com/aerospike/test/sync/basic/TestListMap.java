@@ -28,6 +28,7 @@ import org.junit.Test;
 
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.Record;
 import com.aerospike.test.sync.TestSync;
 
@@ -59,11 +60,15 @@ public class TestListMap extends TestSync {
 		Key key = new Key(args.namespace, args.set, "listkey2");
 		client.delete(null, key);
 
+		String geopoint =
+			"{ \"type\": \"Point\", \"coordinates\": [0.00, 0.00] }";
+		
 		byte[] blob = new byte[] {3, 52, 125};		
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(2);
 		list.add(blob);
+		list.add(Value.getAsGeoJSON(geopoint));
 
 		Bin bin = new Bin(args.getBinName("listbin2"), list);
 		client.put(null, key, bin);
@@ -71,11 +76,12 @@ public class TestListMap extends TestSync {
 		Record record = client.get(null, key, bin.name);
 		List<?> receivedList = (List<?>) record.getValue(bin.name);
 
-		assertEquals(3, receivedList.size());
+		assertEquals(4, receivedList.size());
 		assertEquals("string1", receivedList.get(0));
 		// Server convert numbers to long, so must expect long.
 		assertEquals(2L, receivedList.get(1)); 
 		assertArrayEquals(blob, (byte[])receivedList.get(2));
+		assertEquals(Value.getAsGeoJSON(geopoint), receivedList.get(3));
 	}
 	
 	@Test

@@ -160,6 +160,13 @@ public final class Packer {
     	packByteArray(bytes, 0, bytes.length);
 	}
 
+	public void packGeoJSON(String val) {
+		byte[] buffer = Buffer.stringToUtf8(val);
+		packByteArrayBegin(buffer.length + 1);
+		packByte(ParticleType.GEOJSON);
+		packByteArray(buffer, 0, buffer.length);
+	}
+	
 	private void packByteArrayBegin(int size) {
 		// Continue to pack byte arrays as strings until all servers/clients
 		// have been upgraded to handle new message pack binary type.

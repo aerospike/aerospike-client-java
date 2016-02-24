@@ -1034,7 +1034,7 @@ public abstract class Value {
 		
 		@Override
 		public void pack(Packer packer) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "can't pack GeoJSON");
+			packer.packGeoJSON(value);
 		}
 
 		@Override

@@ -28,6 +28,7 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.Value;
 
 /**
  * De-serialize collection objects using MessagePack format specification:
@@ -140,6 +141,10 @@ public abstract class Unpacker<T> {
 			ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count);
 			ObjectInputStream oistream = new ObjectInputStream(bastream);
 			val = getJavaBlob(oistream.readObject());
+			break;
+
+		case ParticleType.GEOJSON:
+			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
 			break;
 			
 		default:
@@ -376,7 +381,7 @@ public abstract class Unpacker<T> {
 
 		@Override
 		protected Object getGeoJSON(String value) {
-			return value;
+			return Value.getAsGeoJSON(value);
 		}
 	}
 }
