@@ -93,7 +93,7 @@ public class Node implements Closeable {
 	 */
 	public final void refresh(List<Host> friends) throws Exception {
 		if (tendConnection.isClosed()) {
-			tendConnection = new Connection(address, 1000);
+			tendConnection = new Connection(address, cluster.getConnectionTimeout());
 		}
 
 		try {
