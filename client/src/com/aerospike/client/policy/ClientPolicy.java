@@ -52,7 +52,7 @@ public class ClientPolicy {
 	 * <p>
 	 * This field is ignored by asynchronous transactions since these transactions are already
 	 * bound by asyncMaxCommands by default. Each async command has a one-to-one relationship with
-	 * connections.
+	 * a connection.
 	 * <p>
 	 * Default: 300
 	 */
