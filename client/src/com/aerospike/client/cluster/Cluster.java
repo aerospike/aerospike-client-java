@@ -341,10 +341,13 @@ public class Cluster implements Runnable, Closeable {
 			if (aliases.containsKey(seed)) {
 				continue;
 			}
-
+			
+			Connection conn = null;
+			
 			try {
 				// Try to communicate with seed.
 				NodeValidator seedNodeValidator = new NodeValidator(this, seed);
+				conn = seedNodeValidator.conn;
 				
 				// Seed host may have multiple aliases in the case of round-robin dns configurations.
 				for (Host alias : seedNodeValidator.aliases) {
@@ -352,6 +355,7 @@ public class Cluster implements Runnable, Closeable {
 					
 					if (alias.equals(seed)) {
 						nv = seedNodeValidator;
+						conn = null;  // conn will be handled using nv.conn.
 					}
 					else {
 						nv = new NodeValidator(this, alias);
@@ -361,6 +365,9 @@ public class Cluster implements Runnable, Closeable {
 						Node node = createNode(nv);
 						addAliases(node);
 						list.add(node);
+					}
+					else {
+						nv.conn.close();
 					}
 				}
 			}
@@ -375,6 +382,12 @@ public class Cluster implements Runnable, Closeable {
 						exceptions = new Exception[seedArray.length];
 					}
 					exceptions[i] = e;
+				}
+			}
+			finally {
+				// Check if original seedNodeValidator connection needs to be closed.
+				if (conn != null) {
+					conn.close();
 				}
 			}
 		}
@@ -428,6 +441,7 @@ public class Cluster implements Runnable, Closeable {
 					// services list contains both internal and external IP addresses 
 					// for the same node.  Add new host to list of alias filters
 					// and do not add new node.
+					nv.conn.close();
 					node.referenceCount++;
 					node.addAlias(host);
 					aliases.put(host, node);
