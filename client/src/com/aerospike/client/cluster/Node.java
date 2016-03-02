@@ -238,7 +238,13 @@ public class Node implements Closeable {
 		}
 		
 		if (connectionCount.getAndIncrement() < cluster.connectionQueueSize) {
-			conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+			try {
+				conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+			}
+			catch (RuntimeException re) {
+				connectionCount.getAndDecrement();
+				throw re;
+			}
 			
 			if (cluster.user != null) {
 				try {
