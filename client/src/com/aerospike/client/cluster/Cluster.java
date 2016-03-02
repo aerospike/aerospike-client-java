@@ -341,35 +341,10 @@ public class Cluster implements Runnable, Closeable {
 			if (aliases.containsKey(seed)) {
 				continue;
 			}
-			
-			Connection conn = null;
-			
+
 			try {
-				// Try to communicate with seed.
-				NodeValidator seedNodeValidator = new NodeValidator(this, seed);
-				conn = seedNodeValidator.conn;
-				
-				// Seed host may have multiple aliases in the case of round-robin dns configurations.
-				for (Host alias : seedNodeValidator.aliases) {
-					NodeValidator nv;
-					
-					if (alias.equals(seed)) {
-						nv = seedNodeValidator;
-						conn = null;  // conn will be handled using nv.conn.
-					}
-					else {
-						nv = new NodeValidator(this, alias);
-					}
-										
-					if (! findNodeName(list, nv.name)) {
-						Node node = createNode(nv);
-						addAliases(node);
-						list.add(node);
-					}
-					else {
-						nv.conn.close();
-					}
-				}
+				NodeValidator nv = new NodeValidator();
+				nv.seedNodes(this, seed, list);		
 			}
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
@@ -382,14 +357,8 @@ public class Cluster implements Runnable, Closeable {
 						exceptions = new Exception[seedArray.length];
 					}
 					exceptions[i] = e;
-				}
-			}
-			finally {
-				// Check if original seedNodeValidator connection needs to be closed.
-				if (conn != null) {
-					conn.close();
-				}
-			}
+				}				
+			}			
 		}
 
 		if (list.size() > 0) {
@@ -419,21 +388,14 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 	
-	private final static boolean findNodeName(ArrayList<Node> list, String name) {
-		for (Node node : list) {
-			if (node.getName().equals(name)) {
-				return true;
-			}
-		}
-		return false;
-	}
-	
 	private final ArrayList<Node> findNodesToAdd(List<Host> hosts) {
 		ArrayList<Node> list = new ArrayList<Node>(hosts.size());
 		
 		for (Host host : hosts) {
 			try {
-				NodeValidator nv = new NodeValidator(this, host);
+				NodeValidator nv = new NodeValidator();
+				nv.validateNode(this, host);
+								
 				Node node = findNode(nv.name, list);
 				
 				if (node != null) {
@@ -541,7 +503,7 @@ public class Cluster implements Runnable, Closeable {
 		addNodesCopy(nodesToAdd);
 	}
 	
-	private final void addAliases(Node node) {		
+	protected final void addAliases(Node node) {		
 		// Add node's aliases to global alias set.
 		// Aliases are only used in tend thread, so synchronization is not necessary.
 		for (Host alias : node.getAliases()) {

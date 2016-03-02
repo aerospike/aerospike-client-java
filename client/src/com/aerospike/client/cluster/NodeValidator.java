@@ -19,6 +19,7 @@ package com.aerospike.client.cluster;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import com.aerospike.client.AerospikeException;
@@ -37,71 +38,130 @@ public final class NodeValidator {
 	boolean hasReplicasAll;
 	boolean hasDouble;
 	boolean hasGeo;
-
-	public NodeValidator(Cluster cluster, Host host) throws Exception {
-		try {
-			InetAddress[] addresses = InetAddress.getAllByName(host.name);
-			aliases = new Host[addresses.length];
-			
-			for (int i = 0; i < addresses.length; i++) {
-				aliases[i] = new Host(addresses[i].getHostAddress(), host.port);
-			}
-		}
-		catch (UnknownHostException uhe) {
-			throw new AerospikeException.Connection("Invalid host: " + host);
-		}
-
-		Exception exception = null;
+	
+	/**
+	 * Add node(s) referenced by seed host aliases. In most cases, aliases reference
+	 * a single node.  If round robin DNS configuration is used, the seed host may have 
+	 * several aliases that reference different nodes in the cluster.
+	 */
+	public void seedNodes(Cluster cluster, Host host, ArrayList<Node> list) throws Exception {
+		setAliases(host);
 		
-		for (int i = 0; i < aliases.length; i++) {
-			Host alias = aliases[i];
-			
+		Exception exception = null;
+		boolean found = false;
+		
+		for (Host alias : aliases) {			
 			try {
-				InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-				Connection conn = new Connection(address, cluster.getConnectionTimeout());
+				validateAlias(cluster, alias);
+				found = true;
 				
-				try {			
-					if (cluster.user != null) {
-						AdminCommand command = new AdminCommand();
-						command.authenticate(conn, cluster.user, cluster.password);
-					}
-					HashMap<String,String> map = Info.request(conn, "node", "features");
-					String nodeName = map.get("node");
-					
-					if (nodeName != null) {
-						this.name = nodeName;
-						this.address = address;
-						this.conn = conn;
-						setFeatures(map);
-						return;
-					}
-					else {
-						conn.close();
-					}
+				if (! findNodeName(list, name)) {
+					// New node found.
+					Node node = cluster.createNode(this);
+					cluster.addAliases(node);
+					list.add(node);
 				}
-				catch (Exception e) {
+				else {
+					// Node already referenced. Close connection.
 					conn.close();
-					throw e;
 				}
 			}
 			catch (Exception e) {
-				// Try next address.
+				// Log and continue to next alias.
+				if (Log.debugEnabled()) {
+					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
+				}
+				
+				if (exception == null) {
+					exception = e;
+				}
+			}
+		}
+		
+		if (! found) {
+			// Exception can't be null here because setAliases() will throw exception 
+			// if aliases length is zero.
+			throw exception;
+		}
+	}
+	
+	/**
+	 * Verify that a host alias references a valid node.
+	 */
+	public void validateNode(Cluster cluster, Host host) throws Exception {
+		setAliases(host);
+		
+		Exception exception = null;
+		
+		for (Host alias : aliases) {			
+			try {
+				validateAlias(cluster, alias);
+				return;
+			}
+			catch (Exception e) {
+				// Log and continue to next alias.
 				if (Log.debugEnabled()) {
 					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
 				}
 
-				if (exception == null)
-				{
+				if (exception == null) {
 					exception = e;
 				}
-			}	
-		}		
+			}
+		}
+		// Exception can't be null here because setAliases() will throw exception 
+		// if aliases length is zero.
+		throw exception;
+	}
 
-		if (exception == null)
-		{
+	private void setAliases(Host host) {
+		InetAddress[] addresses;
+		
+		try {
+			addresses = InetAddress.getAllByName(host.name);
+		}
+		catch (UnknownHostException uhe) {
+			throw new AerospikeException.Connection("Invalid host: " + host);
+		}
+			
+		if (addresses.length == 0) {
 			throw new AerospikeException.Connection("Failed to find addresses for " + host);
 		}
-		throw exception;
+		
+		aliases = new Host[addresses.length];
+		
+		for (int i = 0; i < addresses.length; i++) {
+			aliases[i] = new Host(addresses[i].getHostAddress(), host.port);
+		}
+	}
+	
+	private void validateAlias(Cluster cluster, Host alias) throws Exception {
+		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
+		Connection conn = new Connection(address, cluster.getConnectionTimeout());
+		
+		try {			
+			if (cluster.user != null) {
+				AdminCommand command = new AdminCommand();
+				command.authenticate(conn, cluster.user, cluster.password);
+			}
+			HashMap<String,String> map = Info.request(conn, "node", "features");
+			String nodeName = map.get("node");
+			
+			if (nodeName != null) {
+				this.name = nodeName;
+				this.address = address;
+				this.conn = conn;
+				setFeatures(map);
+				return;
+			}
+			else {
+				throw new AerospikeException.InvalidNode();
+			}
+		}
+		catch (Exception e) {
+			conn.close();
+			throw e;
+		}
 	}
 	
 	private void setFeatures(HashMap<String,String> map) {
@@ -143,5 +203,14 @@ public final class NodeValidator {
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.
 		}
-	}	
+	}
+	
+	private final static boolean findNodeName(ArrayList<Node> list, String name) {
+		for (Node node : list) {
+			if (node.getName().equals(name)) {
+				return true;
+			}
+		}
+		return false;
+	}
 }
