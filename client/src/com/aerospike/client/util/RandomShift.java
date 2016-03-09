@@ -19,7 +19,7 @@ package com.aerospike.client.util;
 import java.util.Random;
 
 /**
- * Generate pseudo random numbers using xorshift128plus algorithm.
+ * Generate pseudo random numbers using xorshift128+ algorithm.
  * This class is not thread-safe and should be instantiated once per thread.
  */
 public final class RandomShift {
@@ -95,10 +95,10 @@ public final class RandomShift {
 	 */
 	public long nextLong() {
 		long s1 = seed0;
-		long s0 = seed1;
+		final long s0 = seed1;
 		seed0 = s0;
 		s1 ^= s1 << 23;
-		seed1 = (s1 ^ s0 ^ (s1 >>> 17) ^ (s0 >>> 26));
+		seed1 = (s1 ^ s0 ^ (s1 >>> 18) ^ (s0 >>> 5));
 		return seed1 + s0;
 	}
 }
