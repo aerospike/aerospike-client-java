@@ -55,9 +55,17 @@ public final class Connection implements Closeable{
 				timeoutMillis = 2000;
 			}
 			socket.connect(address, timeoutMillis);
-			in = socket.getInputStream();
-			out = socket.getOutputStream();
-			lastUsed = System.currentTimeMillis();
+		
+			try {
+				in = socket.getInputStream();
+				out = socket.getOutputStream();
+				lastUsed = System.currentTimeMillis();
+			}
+			catch (Exception e) {
+				// socket.close() will close input/output streams according to doc.
+				socket.close();
+				throw e;
+			}
 		}
 		catch (Exception e) {
 			throw new AerospikeException.Connection(e);
