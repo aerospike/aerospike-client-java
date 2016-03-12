@@ -137,9 +137,10 @@ public final class NodeValidator {
 	
 	private void validateAlias(Cluster cluster, Host alias) throws Exception {
 		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-		Connection conn = new Connection(address, cluster.getConnectionTimeout());
-		
-		try {			
+		Connection conn = null;
+
+		try {
+                        conn = new Connection(address, cluster.getConnectionTimeout());
 			if (cluster.user != null) {
 				AdminCommand command = new AdminCommand();
 				command.authenticate(conn, cluster.user, cluster.password);
@@ -158,10 +159,11 @@ public final class NodeValidator {
 				throw new AerospikeException.InvalidNode();
 			}
 		}
-		catch (Exception e) {
-			conn.close();
-			throw e;
-		}
+		finally {
+                    if (conn != null) {
+                        conn.close();
+                    }
+                }
 	}
 	
 	private void setFeatures(HashMap<String,String> map) {
