@@ -323,7 +323,8 @@ public abstract class RWTask implements Runnable {
 	 */
 	protected void doWrite(long keyIdx, boolean multiBin, WritePolicy writePolicy) {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
-		Bin[] bins = args.getBins(random, multiBin);
+		// Use predictable value for 0th bin same as key value
+		Bin[] bins = args.getBins(random, multiBin, keyStart + keyIdx);
 		
 		try {
 			switch (args.storeType) {

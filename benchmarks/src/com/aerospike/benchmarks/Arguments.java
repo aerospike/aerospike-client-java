@@ -53,11 +53,11 @@ public class Arguments {
 		// Fixed values are used when the extra random call overhead is not wanted
 		// in the benchmark measurement.
 		RandomShift random = new RandomShift();
-		fixedBins = getBins(random, true);
+		fixedBins = getBins(random, true, -1);
 		fixedBin = new Bin[] {fixedBins[0]};
 	}
 
-	public Bin[] getBins(RandomShift random, boolean multiBin) {
+	public Bin[] getBins(RandomShift random, boolean multiBin, long keySeed) {
 		if (fixedBins != null) {
 		    return (multiBin)? fixedBins : fixedBin;
 		}
@@ -68,16 +68,22 @@ public class Arguments {
 		
 		for (int i = 0; i < binCount; i++) {
 			String name = Integer.toString(i);
-			Value value = genValue(random, objectSpec[i % specLength]);
+			// Use passed in value for 0th bin. Random for others.
+			Value value = genValue(random, objectSpec[i % specLength],
+							i == 0 ? keySeed : -1);
 			bins[i] = new Bin(name, value);
 		}
 		return bins;
 	}
     
-	private static Value genValue(RandomShift random, DBObjectSpec spec) {
+	private static Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 		switch (spec.type) {
 		case 'I':
-			return Value.get(random.nextInt());
+			if (keySeed == -1) {
+				return Value.get(random.nextInt());
+			} else {
+				return Value.get(keySeed);
+			}
 			
 		case 'B':
 			byte[] ba = new byte[spec.size];

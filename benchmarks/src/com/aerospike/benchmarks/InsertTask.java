@@ -45,7 +45,8 @@ public abstract class InsertTask implements Runnable {
 			for (long i = 0; i < keyCount; i++) {
 				try {
 					Key key = new Key(args.namespace, args.setName, keyStart + i);
-					Bin[] bins = args.getBins(random, true);
+					// Use predictable value for 0th bin same as key value
+					Bin[] bins = args.getBins(random, true, keyStart + i);
 					
 					switch (args.storeType) {
 					case KVS:
