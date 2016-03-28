@@ -70,7 +70,8 @@ public class Main extends JPanel {
 		"QuerySum",
 		"QueryAverage",
 		"QueryExecute",
-		//"QueryCollection",
+		"QueryCollection",
+		"QueryGeoCollection",
 		"StoreKey"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
