@@ -122,7 +122,10 @@ public abstract class Unpacker<T> {
 		for (int i = 0; i < count; i++) {
 			T key = unpackObject();
 			T val = unpackObject();
-			out.put(key, val);
+			
+			if (key != null) {
+				out.put(key, val);
+			}
 		}
 		return getMap(out);
 	}
