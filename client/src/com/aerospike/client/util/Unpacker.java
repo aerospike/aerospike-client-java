@@ -26,9 +26,9 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.Value;
 
 /**
  * De-serialize collection objects using MessagePack format specification:
@@ -126,7 +126,7 @@ public abstract class Unpacker<T> {
 		}
 		return getMap(out);
 	}
-
+	
 	private T unpackBlob(int count) throws IOException, ClassNotFoundException {
 		int type = buffer[offset++] & 0xff;
 		count--;		
@@ -273,6 +273,49 @@ public abstract class Unpacker<T> {
 				int count = Buffer.bytesToInt(buffer, offset);
 				offset += 4;
 				return unpackMap(count);
+			}
+			
+			case 0xd4: { // Skip over type extension with 1 byte
+				offset += 1 + 1;
+				return null;
+			}
+			
+			case 0xd5: { // Skip over type extension with 2 bytes
+				offset += 1 + 2;
+				return null;
+			}
+			
+			case 0xd6: { // Skip over type extension with 4 bytes
+				offset += 1 + 4;
+				return null;
+			}
+
+			case 0xd7: { // Skip over type extension with 8 bytes
+				offset += 1 + 8;
+				return null;
+			}
+
+			case 0xd8: { // Skip over type extension with 16 bytes
+				offset += 1 + 16;
+				return null;
+			}
+
+			case 0xc7: { // Skip over type extension with 8 bit header and bytes
+				int count = buffer[offset] & 0xff;
+				offset += count + 1 + 1;
+				return null;
+			}
+			
+			case 0xc8: { // Skip over type extension with 16 bit header and bytes
+				int count = Buffer.bytesToShort(buffer, offset);
+				offset += count + 1 + 2;
+				return null;
+			}
+
+			case 0xc9: { // Skip over type extension with 32 bit header and bytes
+				int count = Buffer.bytesToInt(buffer, offset);
+				offset += count + 1 + 4;
+				return null;
 			}
 			
 			default: {
