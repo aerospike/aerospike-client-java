@@ -110,6 +110,14 @@ public final class Packer {
         }
     }
 
+	public void packValueMap(Map<Value,Value> map) {
+		packMapBegin(map.size());
+		for (Entry<Value,Value> entry : map.entrySet()) {
+			entry.getKey().pack(this);
+			entry.getValue().pack(this);
+		}
+	}
+
 	public void packMap(Map<?,?> map) {
 		packMapBegin(map.size());
 		for (Entry<?,?> entry : map.entrySet()) {
@@ -118,7 +126,7 @@ public final class Packer {
 		}
 	}
 
-	private void packMapBegin(int size) {
+	public void packMapBegin(int size) {
         if (size < 16) {
         	packByte(0x80 | size);
         }
