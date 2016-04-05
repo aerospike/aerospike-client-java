@@ -57,8 +57,8 @@ public class QueryGeoCollection extends Example {
 		String indexName = "geo_map";
 		String keyPrefix = "map";
 		String mapValuePrefix = "mv";
-		String binName = "map_bin";  
-		String binName2 = "unique_bin";
+		String binName = "geo_map_bin";
+		String binName2 = "geo_uniq_bin";
 		int size = 1000;
 		
 		// create collection index on mapValue
@@ -73,8 +73,8 @@ public class QueryGeoCollection extends Example {
 		String indexName = "geo_mapkey";
 		String keyPrefix = "mapkey";
 		String mapValuePrefix = "mk";
-		String binName = "mapkey_bin";  
-		String binName2 = "unique_bin";
+		String binName = "geo_mkey_bin";
+		String binName2 = "geo_uniq_bin";
 		int size = 1000;
 		
 		// create collection index on mapKey
@@ -88,8 +88,8 @@ public class QueryGeoCollection extends Example {
 	private void runListExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_list";
 		String keyPrefix = "list";
-		String binName = "list_bin";  
-		String binName2 = "unique_bin";
+		String binName = "geo_list_bin";
+		String binName2 = "geo_uniq_bin";
 		int size = 1000;		
 		
 		// create collection index on list
