@@ -264,10 +264,12 @@ public class QueryGeoCollection extends Example {
 			if (count != 697) {
 				console.error("Query failed. %d records expected. %d returned.", 697, count);			
 			} 
-			if (uniques.size()!=21) {
+			else if (uniques.size()!=21) {
 				console.error("Query failed. %d unique records expected. %d unique returned.", 21, uniques.size());			
 			}
-			console.info("query succeeded with %d records %d unique",count,uniques.size());
+			else {
+				console.info("query succeeded with %d records %d unique",count,uniques.size());
+			}
 		}
 		finally {
 			rs.close();
@@ -302,21 +304,16 @@ public class QueryGeoCollection extends Example {
 	}
 	
 	private String generatePoint(double plat, double plng) {
-		String geoString = 
-				String.format("{ \"type\": \"Point\", \"coordinates\": [%f, %f] }", plng, plat);
-		return geoString;
+		return String.format("{ \"type\": \"Point\", \"coordinates\": [%f, %f] }", plng, plat);
 	}
 
 	private String generatePolygon(double rlat, double rlng) {
-		String geoString;
-		geoString = 
-				String.format("{ \"type\": \"Polygon\", \"coordinates\": [ [[%f, %f], [%f, %f], [%f, %f], [%f, %f], [%f, %f]] ] }",
-				 rlng - 0.001, rlat - 0.001,
-				 rlng + 0.001, rlat - 0.001,
-				 rlng + 0.001, rlat + 0.001,
-				 rlng - 0.001, rlat + 0.001,
-				 rlng - 0.001, rlat - 0.001);
-		return geoString;
+		return String.format("{ \"type\": \"Polygon\", \"coordinates\": [ [[%f, %f], [%f, %f], [%f, %f], [%f, %f], [%f, %f]] ] }",
+			rlng - 0.001, rlat - 0.001,
+			rlng + 0.001, rlat - 0.001,
+			rlng + 0.001, rlat + 0.001,
+			rlng - 0.001, rlat + 0.001,
+			rlng - 0.001, rlat - 0.001);
 	}
 
 }
