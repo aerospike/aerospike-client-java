@@ -46,13 +46,17 @@ The source code can be imported into your IDE and/or built using Maven.
 
     mvn package
 
-#### Usage
+#### Run Scripts
 
 There are two scripts to run example code:
 
-* run_examples_swing - Run examples with a graphical user interface.
-* run_examples - Run examples on the command line.
-  
+Script | Description
+------ | -----------
+run_examples_swing | Run examples with a graphical user interface.
+run_examples | Run examples on the command line.
+
+#### Usage
+
     ./run_examples [<options>] all|(<example1> <example2> ...)
     options:
     -d,--debug            Run in debug mode.
