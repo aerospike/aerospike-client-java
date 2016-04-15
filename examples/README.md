@@ -2,36 +2,6 @@ Aerospike Java Client Examples
 ==============================
 
 This project contains source code examples using the Aerospike Java Client.
-The source code can be imported into your IDE and/or built using Maven.
-
-    mvn package
-
-There are two scripts to run example code:
-
-* run_examples_swing - Run examples with a graphical user interface.
-* run_examples - Run examples on the command line.
-  
-#### Usage
-
-    ./run_examples [<options>] all|(<example1> <example2> ...)
-    options:
-    -d,--debug            Run in debug mode.
-    -g,--gui              Invoke GUI to selectively run tests.
-    -h,--host <arg>       Server hostname (default: localhost)
-    -n,--namespace <arg>  Namespace (default: test)
-    -P,--password <arg>   Password
-    -p,--port <arg>       Server port (default: 3000)
-    -s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
-    -U,--user <arg>       User name
-    -u,--usage            Print usage.
-
-#### Usage Examples
-
-    ./run_examples -h localhost -p 3000 -n test -s demoset all
-    ./run_examples -h localhost -p 3000 -n test -s demoset ServerInfo PutGet Generation
-    ./run_examples -g -h localhost -p 3000 -n test -s demoset 
-
-#### Examples
 
 Example | Description | Link 
 --- | --- | --- 
@@ -69,3 +39,34 @@ AsyncBatch          | Perform multiple read commands in a single batch in asynch
 AsyncQuery          | Query records in asynchronous mode.                                                  | [View](https://github.com/aerospike/aerospike-client-java/blob/master/examples/src/com/aerospike/examples/AsyncQuery.java)
 AsyncScan           | Scan all records in a namespace or set in series in asynchronous mode.               | [View](https://github.com/aerospike/aerospike-client-java/blob/master/examples/src/com/aerospike/examples/AsyncScan.java)
 AsyncUserDefinedFunction | Call UDFs on the server in asynchronous mode.                                   | [View](https://github.com/aerospike/aerospike-client-java/blob/master/examples/src/com/aerospike/examples/AsyncUserDefinedFunction.java)
+
+#### Build
+
+The source code can be imported into your IDE and/or built using Maven.
+
+    mvn package
+
+#### Usage
+
+There are two scripts to run example code:
+
+* run_examples_swing - Run examples with a graphical user interface.
+* run_examples - Run examples on the command line.
+  
+    ./run_examples [<options>] all|(<example1> <example2> ...)
+    options:
+    -d,--debug            Run in debug mode.
+    -g,--gui              Invoke GUI to selectively run tests.
+    -h,--host <arg>       Server hostname (default: localhost)
+    -n,--namespace <arg>  Namespace (default: test)
+    -P,--password <arg>   Password
+    -p,--port <arg>       Server port (default: 3000)
+    -s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
+    -U,--user <arg>       User name
+    -u,--usage            Print usage.
+
+#### Usage Examples
+
+    ./run_examples -h localhost -p 3000 -n test -s demoset all
+    ./run_examples -h localhost -p 3000 -n test -s demoset ServerInfo PutGet Generation
+    ./run_examples -g -h localhost -p 3000 -n test -s demoset
