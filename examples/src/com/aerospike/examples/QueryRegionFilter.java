@@ -36,7 +36,7 @@ public class QueryRegionFilter extends Example {
 	}
 
 	/**
-	 * Create secondary index on an integer bin and query on it.
+	 * Perform region query using a Geo index with an aggregation filter.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -166,11 +166,3 @@ public class QueryRegionFilter extends Example {
 		}
 	}
 }
-
-// Local Variables:
-// mode: Java
-// c-basic-offset: 4
-// tab-width: 4
-// indent-tabs-mode: t
-// End:
-// vim: tabstop=4:shiftwidth=4

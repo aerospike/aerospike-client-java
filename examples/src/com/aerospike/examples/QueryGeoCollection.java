@@ -42,7 +42,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	/**
-	 * Create secondary index on a string bin and query on it.
+	 * Perform region queries using a Geo index on a collection. 
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -52,7 +52,6 @@ public class QueryGeoCollection extends Example {
 		runListExample(client,params);
 	}
 	
-
 	private void runMapExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_map";
 		String keyPrefix = "map";
@@ -130,7 +129,7 @@ public class QueryGeoCollection extends Example {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			HashMap<String, Value> map = new HashMap<String,Value>();
 			
-			for ( int jj = 0; jj < 10; ++jj ) {
+			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
 				double plng = 0.0 + (0.10 * jj);
@@ -154,21 +153,20 @@ public class QueryGeoCollection extends Example {
 		console.info("Write " + size + " records.");
 	}
 
-
 	private void writeMapKeyRecords(
-			AerospikeClient client,
-			Parameters params,
-			String keyPrefix,
-			String binName,
-			String binName2,
-			String valuePrefix,
-			int size
-		) throws Exception {
+		AerospikeClient client,
+		Parameters params,
+		String keyPrefix,
+		String binName,
+		String binName2,
+		String valuePrefix,
+		int size
+	) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			HashMap<Value, String> map = new HashMap<Value, String>();
 			
-			for ( int jj = 0; jj < 10; ++jj ) {
+			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
 				double plng = 0.0 + (0.10 * jj);
@@ -192,20 +190,19 @@ public class QueryGeoCollection extends Example {
 		console.info("Write " + size + " records.");
 	}
 
-	
 	private void writeListRecords(
-			AerospikeClient client,
-			Parameters params,
-			String keyPrefix,
-			String binName,
-			String binName2,
-			int size
-		) throws Exception {
+		AerospikeClient client,
+		Parameters params,
+		String keyPrefix,
+		String binName,
+		String binName2,
+		int size
+	) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			List<Value> mylist = new ArrayList<Value>();
 			
-			for ( int jj = 0; jj < 10; ++jj ) {
+			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
 				double plng = 0.0 + (0.10 * jj);
@@ -231,12 +228,12 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void runQuery(
-			AerospikeClient client,
-			Parameters params,
-			String binName,
-			String binName2,
-			IndexCollectionType indexType
-		) throws Exception {
+		AerospikeClient client,
+		Parameters params,
+		String binName,
+		String binName2,
+		IndexCollectionType indexType
+	) throws Exception {
 			
 		console.info("Query for: ns=%s set=%s bin=%s %s within <region>",
 			params.namespace, params.set, binName, indexType.toString());			
@@ -277,10 +274,10 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void deleteRecords(
-			AerospikeClient client,
-			Parameters params,
-			String keyPrefix,
-			int size	
+		AerospikeClient client,
+		Parameters params,
+		String keyPrefix,
+		int size	
 	) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
@@ -315,5 +312,4 @@ public class QueryGeoCollection extends Example {
 			rlng - 0.001, rlat + 0.001,
 			rlng - 0.001, rlat - 0.001);
 	}
-
 }

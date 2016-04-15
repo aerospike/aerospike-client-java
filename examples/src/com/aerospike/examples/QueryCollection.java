@@ -38,7 +38,7 @@ public class QueryCollection extends Example {
 	}
 
 	/**
-	 * Create secondary index on a string bin and query on it.
+	 * Query records using a map index.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {

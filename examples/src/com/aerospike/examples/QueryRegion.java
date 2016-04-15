@@ -35,7 +35,7 @@ public class QueryRegion extends Example {
 	}
 
 	/**
-	 * Create secondary index on an integer bin and query on it.
+	 * Perform region/radius queries using a Geo index.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -193,11 +193,3 @@ public class QueryRegion extends Example {
 		}
 	}
 }
-
-// Local Variables:
-// mode: Java
-// c-basic-offset: 4
-// tab-width: 4
-// indent-tabs-mode: t
-// End:
-// vim: tabstop=4:shiftwidth=4

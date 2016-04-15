@@ -36,7 +36,7 @@ public class QuerySum extends Example {
 	}
 
 	/**
-	 * Create secondary index and query on it and apply aggregation user defined function.
+	 * Query records and calculate sum using a user-defined aggregation function.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
