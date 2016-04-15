@@ -267,7 +267,7 @@ public class GuiDisplay implements ActionListener {
 
 		//int width = 785;
 		int width = 1000;
-		int height = 220;
+		int height = 180;
 		consoleTextArea = new JTextArea();
 		consoleTextArea.setSize(new Dimension(width, height));
 		consoleTextArea.setEditable(false);
