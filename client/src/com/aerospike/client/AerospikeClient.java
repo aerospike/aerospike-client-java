@@ -994,6 +994,45 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		byte[] bytes = Util.readResource(resourceLoader, resourcePath);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
+
+	/**
+	 * Register UDF functions located in a code string with server.  Example:
+	 * <pre>
+	 * {@code
+	 * String code = 
+	 *   "local function reducer(val1,val2)\n" + 
+	 *   "  return val1 + val2\n" + 
+	 *   "end\n" +
+	 *   "\n" +
+	 *   "function sum_single_bin(stream,name)\n" +
+	 *   "  local function mapper(rec)\n" +
+	 *   "    return rec[name]\n" +
+	 *   "  end\n" +
+	 *   "  return stream : map(mapper) : reduce(reducer)\n" +
+	 *   "end\n";
+	 *   
+	 * client.registerUdfString(null, code, "mysum.lua", Language.LUA);
+	 * }
+	 * </pre>
+	 * <p>
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * RegisterTask instance.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param code					code string containing user defined functions.
+	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
+	 * @param language				language of user defined functions
+	 * @throws AerospikeException	if register fails
+	 */
+	public final RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language) 
+		throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		byte[] bytes = Buffer.stringToUtf8(code);
+		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
+	}
 	
 	/**
 	 * Remove user defined function from server nodes.
