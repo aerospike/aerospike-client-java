@@ -40,8 +40,8 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	private final ResultSet resultSet;
 	private LuaInstance lua;
 	
-	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement) throws AerospikeException {
-		super(cluster, policy, statement, null);
+	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
+		super(cluster, policy, statement, node);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 

@@ -1196,6 +1196,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
+	 * @param node					server node to execute query
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
@@ -1261,7 +1262,34 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}		
 		statement.prepare(true);
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, null);
+		return executor.getResultSet();
+	}
+
+	/**
+	 * Execute query on a single server node, apply statement's aggregation function, and return 
+	 * result iterator.
+	 * The aggregation function should be initialized via the statement's setAggregateFunction()
+	 * and should be located in a resource or a filesystem file.
+	 * <p>
+	 * The query executor puts results on a queue in separate threads.  The calling thread
+	 * concurrently pops results off the queue through the ResultSet iterator.
+	 * The aggregation function is called on both server and client (final reduce).
+	 * Therefore, the Lua script file must also reside on both server and client.
+	 * <p>
+	 * This method is only supported by Aerospike 3 servers.
+	 * 
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @param node					server node to execute query
+	 * @throws AerospikeException	if query fails
+	 */
+	public final ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}		
+		statement.prepare(true);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, node);
 		return executor.getResultSet();
 	}
 
