@@ -439,10 +439,9 @@ public class Cluster implements Runnable, Closeable {
 			case 1:
 				// Single node clusters rely on whether it responded to info requests.
 				if (node.failures >= 5) {
-					// 5 consecutive info requests failed. Try seeds.
-					if (seedNodes(false)) {
-						removeList.add(node);
-					}
+					// 5 consecutive info requests failed.
+					// Remove node.  Seeds will be tried in next cluster tend iteration.
+					removeList.add(node);
 				}
 				break;
 				
