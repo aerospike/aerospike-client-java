@@ -360,4 +360,42 @@ public class TestOperateList extends TestSync {
 		size = (Long)list.get(2);
 		assertEquals(0, size);
 	}
+	
+	@Test
+	public void operateList7() {
+		// Test null values.
+		Key key = new Key(args.namespace, args.set, "oplkey7");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get("s11"));
+		itemList.add(Value.getAsNull());
+		itemList.add(Value.get("s3333333"));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(binName, itemList),
+				ListOperation.get(binName, 0),
+				ListOperation.get(binName, 1),
+				ListOperation.get(binName, 2)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+				
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(3, size);
+
+		String str = (String)results.get(i++);	
+		assertEquals("s11", str);
+		
+		str = (String)results.get(i++);	
+		assertNull(str);
+		
+		str = (String)results.get(i++);	
+		assertEquals("s3333333", str);
+	}
 }

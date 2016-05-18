@@ -82,6 +82,8 @@ public final class Operation {
 		WRITE(2),
 		CDT_READ(3),
 		CDT_MODIFY(4),
+		MAP_READ(3),
+		MAP_MODIFY(4),
 		ADD(5),
 		APPEND(9),
 		PREPEND(10),

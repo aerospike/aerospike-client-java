@@ -162,9 +162,14 @@ public abstract class Command {
 		int writeAttr = 0;
 		boolean readBin = false;
 		boolean readHeader = false;
+		boolean respondAllOps = policy.respondAllOps;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
+			case MAP_READ:
+				// Map operations require respondAllOps to be true.
+				respondAllOps = true; 
+				// Fall through to read.
 			case CDT_READ:
 			case READ:
 				readAttr |= Command.INFO1_READ;
@@ -180,7 +185,11 @@ public abstract class Command {
 				readAttr |= Command.INFO1_READ;
 				readHeader = true;
 				break;
-				
+	
+			case MAP_MODIFY:
+				// Map operations require respondAllOps to be true.
+				respondAllOps = true; 
+				// Fall through to write.
 			default:
 				writeAttr = Command.INFO2_WRITE;
 				break;				
@@ -193,7 +202,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_NOBINDATA;
 		}
 		
-		if (writeAttr != 0 && policy.respondAllOps) {
+		if (respondAllOps) {
 			writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
 		

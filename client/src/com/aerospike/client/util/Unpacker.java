@@ -19,11 +19,14 @@ package com.aerospike.client.util;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
@@ -78,7 +81,7 @@ public abstract class Unpacker<T> {
 	}
 
 	private T unpackList(int count) throws IOException, ClassNotFoundException {
-		ArrayList<T> out = new ArrayList<T>();
+		ArrayList<T> out = new ArrayList<T>(count);
 		
 		for (int i = 0; i < count; i++) {
 			out.add(unpackObject());
@@ -116,18 +119,61 @@ public abstract class Unpacker<T> {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	private T unpackMap(int count) throws IOException, ClassNotFoundException {
-		HashMap<T,T> out = new HashMap<T,T>();
-
-		for (int i = 0; i < count; i++) {
-			T key = unpackObject();
-			T val = unpackObject();
+		Map<T,T> map = createMap(count);
+		
+		if (map != null) {
+			// HashMap or TreeMap			
+			for (int i = 0; i < count; i++) {
+				T key = unpackObject();
+				T val = unpackObject();
+				
+				if (key != null) {
+					map.put(key, val);
+				}
+			}
+			return getMap(map);
+		}
+		else {			
+			// Store in List<Entry<?,?> to preserve order.
+			List<Entry<T,T>> list = new ArrayList<Entry<T,T>>(count - 1);
 			
-			if (key != null) {
-				out.put(key, val);
+			for (int i = 0; i < count; i++) {
+				T key = unpackObject();
+				T val = unpackObject();
+				
+				if (key != null) {
+					list.add(new AbstractMap.SimpleEntry<T,T>(key, val));
+				}
+			}
+			return getList((List<T>)list);
+		}		
+	}
+	
+	private Map<T,T> createMap(int count) {
+		// Peek at buffer to determine map type, but do not advance.
+		int type = buffer[offset] & 0xff;
+		
+		// Check for extension that the server uses.
+		if (type == 0xc7) {
+			int extensionType = buffer[offset + 1] & 0xff;
+			
+			if (extensionType == 0) {
+				int mapBits = buffer[offset + 2] & 0xff;
+				
+				// Extension is a map type.  Determine which one.
+				if ((mapBits & (0x04 | 0x08)) != 0) {
+					// Index/rank range result where order needs to be preserved.
+					return null;
+				}
+				else if ((mapBits & 0x01) != 0) {
+					// Sorted map
+					return new TreeMap<T,T>();
+				}
 			}
 		}
-		return getMap(out);
+		return new HashMap<T,T>(count);
 	}
 	
 	private T unpackBlob(int count) throws IOException, ClassNotFoundException {

@@ -134,6 +134,13 @@ public final class Record {
 	}
 
 	/**
+	 * Get bin value as map.
+	 */
+	public Map<?,?> getMap(String name) {
+		return (Map<?,?>)getValue(name);
+	}
+
+	/**
 	 * Get bin value as GeoJSON.
 	 */
 	public String getGeoJSON(String name) {

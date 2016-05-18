@@ -45,10 +45,8 @@ public abstract class Value {
 	 * enabling this feature.
 	 * <p>
 	 * If false, the old method using an long particle type is used instead.
-	 * <p>
-	 * The current default is false.  Eventually, this default will be changed to true in a future client version.
 	 */
-	public static boolean UseDoubleType = false;
+	public static boolean UseDoubleType = true;
 	
 	/**
 	 * Get string or null value instance.
@@ -153,6 +151,9 @@ public abstract class Value {
 	/**
 	 * Determine value given generic object.
 	 * This is the slowest of the Value get() methods.
+	 * Useful when copying records from one cluster to another.
+	 * Since map/list are converted, this method should only be called when using
+	 * Aerospike 3 servers.
 	 */
 	public static Value get(Object value) {
 		if (value == null) {
@@ -179,9 +180,6 @@ public abstract class Value {
         	return new LongValue((Long)value);
 		}
 		
-		/* Store double/float values as a java serialized blob when an Object argument is used
-		 * instead of the direct double argument (Value.get(double value)).
-		 * Therefore, disable this code block.
 		if (value instanceof Double) {
         	return new DoubleValue((Double)value);
 		}
@@ -189,17 +187,11 @@ public abstract class Value {
 		if (value instanceof Float) {
         	return new FloatValue((Float)value);
 		}
-		*/
 		
 		if (value instanceof Boolean) {
         	return new BooleanValue((Boolean)value);
 		}
 		
-		/* Do not enable this code because it will break clients that use Aerospike 2 servers.
-		 * Aerospike 2 servers do not support list/map natively, so the default java runtime 
-		 * serialization must be used instead.  If the user chooses the right bin constructor, 
-		 * this code is not necessary anyhow.
-		 * 
 		if (value instanceof List<?>) {
         	return new ListValue((List<?>)value);
 		}
@@ -207,7 +199,7 @@ public abstract class Value {
 		if (value instanceof Map<?,?>) {
         	return new MapValue((Map<?,?>)value);
 		}
-		*/
+
 		return new BlobValue(value);
 	}
 	
@@ -217,51 +209,7 @@ public abstract class Value {
 	 * Aerospike 3 servers.
 	 */
 	public static Value getFromRecordObject(Object value) {
-		if (value == null) {
-			return new NullValue();
-		}
-		
-		if (value instanceof Value) {
-			return (Value)value;
-		}
-
-		if (value instanceof byte[]) {
-        	return new BytesValue((byte[])value);
-		}
-		
-		if (value instanceof String) {
-        	return new StringValue((String)value);
-		}
-		
-		if (value instanceof Integer) {
-        	return new IntegerValue((Integer)value);
-		}
-		
-		if (value instanceof Long) {
-        	return new LongValue((Long)value);
-		}
-		
-		if (value instanceof Double) {
-        	return new DoubleValue((Double)value);
-		}
-		
-		if (value instanceof Float) {
-        	return new FloatValue((Float)value);
-		}
-		
-		if (value instanceof Boolean) {
-        	return new BooleanValue((Boolean)value);
-		}
-		
-		if (value instanceof List<?>) {
-        	return new ListValue((List<?>)value);
-		}
-		
-		if (value instanceof Map<?,?>) {
-        	return new MapValue((Map<?,?>)value);
-		}
-		
-		return new BlobValue(value);
+		return Value.get(value);
 	}
 
 	/**
