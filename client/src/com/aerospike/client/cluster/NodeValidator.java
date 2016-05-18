@@ -27,6 +27,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
+import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
@@ -141,7 +142,7 @@ public final class NodeValidator {
 		
 		try {			
 			if (cluster.user != null) {
-				AdminCommand command = new AdminCommand();
+				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
 				command.authenticate(conn, cluster.user, cluster.password);
 			}
 			HashMap<String,String> map = Info.request(conn, "node", "features");

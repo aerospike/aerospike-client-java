@@ -31,6 +31,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Server node representation.  This class manages server node connections and health status.
@@ -248,7 +249,7 @@ public class Node implements Closeable {
 			
 			if (cluster.user != null) {
 				try {
-					AdminCommand command = new AdminCommand();
+					AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
 					command.authenticate(conn, cluster.user, cluster.password);
 				}
 				catch (AerospikeException ae) {

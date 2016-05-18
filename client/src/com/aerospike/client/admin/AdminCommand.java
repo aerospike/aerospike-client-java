@@ -70,7 +70,7 @@ public class AdminCommand {
 	private int dataOffset;
 
 	public AdminCommand() {
-		dataBuffer = ThreadLocalData.getBuffer();
+		this.dataBuffer = new byte[8096];
 		dataOffset = 8;
 	}
 
