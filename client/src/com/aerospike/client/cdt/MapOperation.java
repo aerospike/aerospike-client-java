@@ -151,7 +151,7 @@ public class MapOperation {
 	 * Server removes map items identified by keys and returns removed data specified by returnType.
 	 */
 	public static Operation removeByKeyList(String binName, List<Value> keys, MapReturnType returnType) {
-		return MapBase.createOperation(MapBase.REMOVE_ALL_KEY_ITEMS, Operation.Type.MAP_MODIFY, binName, keys, returnType);
+		return MapBase.createOperation(MapBase.REMOVE_BY_KEY_LIST, Operation.Type.MAP_MODIFY, binName, keys, returnType);
 	}
 
 	/**
@@ -171,7 +171,7 @@ public class MapOperation {
 	 * Server removes map items identified by value and returns removed data specified by returnType.
 	 */
 	public static Operation removeByValue(String binName, Value value, MapReturnType returnType) {
-		return MapBase.createOperation(MapBase.REMOVE_ALL_VALUES, Operation.Type.MAP_MODIFY, binName, value, returnType);
+		return MapBase.createOperation(MapBase.REMOVE_BY_VALUE, Operation.Type.MAP_MODIFY, binName, value, returnType);
 	}
 	
 	/**
@@ -179,7 +179,7 @@ public class MapOperation {
 	 * Server removes map items identified by values and returns removed data specified by returnType.
 	 */
 	public static Operation removeByValueList(String binName, List<Value> values, MapReturnType returnType) {
-		return MapBase.createOperation(MapBase.REMOVE_ALL_VALUE_ITEMS, Operation.Type.MAP_MODIFY, binName, values, returnType);
+		return MapBase.createOperation(MapBase.REMOVE_BY_VALUE_LIST, Operation.Type.MAP_MODIFY, binName, values, returnType);
 	}
 
 	/**
