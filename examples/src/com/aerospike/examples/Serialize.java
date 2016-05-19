@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 
 public class Serialize extends Example {
 
@@ -183,7 +184,7 @@ public class Serialize extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("complexbin"), (Object)list);
+		Bin bin = new Bin(params.getBinName("complexbin"), new Value.BlobValue(list));
 
 		console.info("Write complex object using serializer.");
 		client.put(params.writePolicy, key, bin);
