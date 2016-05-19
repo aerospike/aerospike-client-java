@@ -48,7 +48,7 @@ public class TestServerInfo extends TestSync {
 				LogNameValueTokens(entry.getValue());
 			}
 			else {
-				if (! (key.equals("services-alumni") || key.equals("services"))) {
+				if (! (key.equals("services-alumni") || key.equals("services") || key.equals("dcs"))) {
 					assertNotNull(entry.getValue());
 				}
 			}

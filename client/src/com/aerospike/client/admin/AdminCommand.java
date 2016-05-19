@@ -87,8 +87,7 @@ public class AdminCommand {
 		conn.readFully(dataBuffer, HEADER_SIZE);
 
 		int result = dataBuffer[RESULT_CODE];
-		if (result != 0)
-		{
+		if (result != 0) {
 			throw new AerospikeException(result, "Authentication failed");
 		}
 	}

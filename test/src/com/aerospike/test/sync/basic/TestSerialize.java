@@ -29,6 +29,7 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.util.Environment;
 import com.aerospike.test.sync.TestSync;
 
@@ -140,7 +141,7 @@ public class TestSerialize extends TestSync {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(args.getBinName("complexbin"), (Object)list);
+		Bin bin = new Bin(args.getBinName("complexbin"), new Value.BlobValue(list));
 
 		client.put(null, key, bin);
 

@@ -44,6 +44,10 @@ public class TestOperateMap extends TestSync {
 	
 	@Test
 	public void operateMapPut() {
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey1");		
 		client.delete(null, key);
 		
@@ -99,6 +103,10 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapPutItems() {
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey2");	
 		client.delete(null, key);
 		
@@ -164,6 +172,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapMixed() {
 		// Test normal operations with map operations.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey2");		
 		client.delete(null, key);
 		
@@ -203,6 +215,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapSwitch() {
 		// Switch from unordered map to a key ordered map.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey4");		
 		client.delete(null, key);
 		
@@ -266,6 +282,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRank() {
 		// Test rank.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey6");
 		client.delete(null, key);
 		
@@ -370,6 +390,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRemove() {
 		// Test remove.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey7");
 		client.delete(null, key);
 
@@ -425,6 +449,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRemoveRange() {
 		// Test remove ranges.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey8");
 		client.delete(null, key);
 		
@@ -470,6 +498,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapClear() {
 		// Test clear.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey9");
 		client.delete(null, key);
 		
@@ -499,6 +531,10 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapScore() {
 		// Test score.
+		if (! args.validateMap()) {
+			return;
+		}
+
 		Key key = new Key(args.namespace, args.set, "opmkey10");
 		client.delete(null, key);
 		

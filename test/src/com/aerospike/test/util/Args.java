@@ -43,6 +43,7 @@ public class Args {
 	public String namespace;
 	public String set;
 	public boolean hasUdf;
+	public boolean hasMap;
 	public boolean singleBin;
 	public boolean hasLargeDataTypes;
 	
@@ -133,6 +134,7 @@ public class Args {
 
 		String features = tokens.get(featuresFilter);
 		hasUdf = false;
+		hasMap = false;
 		
 		if (features != null) {
 			String[] list = features.split(";");
@@ -140,6 +142,10 @@ public class Args {
 			for (String s : list) {
 				if (s.equals("udf")) {
 					hasUdf = true;
+					break;
+				}
+				else if (s.equals("cdt-map")) {
+					hasMap = true;
 					break;
 				}
 			}
@@ -184,6 +190,14 @@ public class Args {
 	public boolean validateLDT() {
 		if (! hasLargeDataTypes) {
 			System.out.println("Skip test because LDT not enabled on server");
+			return false;
+		}
+		return true;
+	}
+	
+	public boolean validateMap() {
+		if (! hasMap) {
+			System.out.println("Skip test because cdt-map not enabled on server");
 			return false;
 		}
 		return true;
