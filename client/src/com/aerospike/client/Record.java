@@ -208,4 +208,28 @@ public final class Record {
 		sb.append(')');
 		return sb.toString();
 	}
+
+	/**
+	 * Compare records for equality.
+	 */
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Record other = (Record) obj;
+		if (expiration != other.expiration)
+			return false;
+		if (generation != other.generation)
+			return false;
+		if (bins == null) {
+			if (other.bins != null)
+				return false;
+		} else if (!bins.equals(other.bins))
+			return false;
+		return true;
+	}
 }
