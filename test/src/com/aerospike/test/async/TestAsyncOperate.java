@@ -17,7 +17,10 @@
 package com.aerospike.test.async;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.junit.Test;
 
@@ -26,6 +29,9 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapPolicy;
+import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.RecordListener;
 
@@ -73,6 +79,56 @@ public class TestAsyncOperate extends TestAsync {
 			
 			size = (Long)list.get(2);	
 			assertEquals(1, size);
+			
+			notifyCompleted();
+		}
+
+		public void onFailure(AerospikeException e) {
+			setError(e);
+			notifyCompleted();
+		}
+	}
+	
+	@Test
+	public void asyncOperateMap() {
+		final Key key = new Key(args.namespace, args.set, "aopmkey1");
+		
+		client.delete(null, new DeleteListener() {
+			public void onSuccess(Key key, boolean existed) {				
+				Map<Value,Value> map = new HashMap<Value,Value>();
+				map.put(Value.get("a"), Value.get(1));
+				map.put(Value.get("b"), Value.get(2));
+				map.put(Value.get("c"), Value.get(3));
+
+				client.operate(null, new MapHandler(), key, 
+						MapOperation.putItems(MapPolicy.Default, binName, map),
+						MapOperation.getByRankRange(binName, -1, 1, MapReturnType.KEY_VALUE)
+						);
+			}
+			
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyCompleted();				
+			}
+		}, key);
+		
+		waitTillComplete();
+	}
+	
+	private class MapHandler implements RecordListener {
+		
+		public void onSuccess(Key key, Record record) {
+			assertRecordFound(key, record);
+			
+			List<?> results = record.getList(binName);
+			
+			long size = (Long)results.get(0);	
+			assertEquals(3, size);
+			
+			List<?> list = (List<?>)results.get(1);
+			Entry<?,?> entry = (Entry<?,?>)list.get(0);
+			assertEquals("c", entry.getKey());
+			assertEquals(3L, entry.getValue());
 			
 			notifyCompleted();
 		}
