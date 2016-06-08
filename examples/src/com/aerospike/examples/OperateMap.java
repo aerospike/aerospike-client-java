@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Map.Entry;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Key;
@@ -36,11 +35,11 @@ public class OperateMap extends Example {
 	}
 
 	/**
-	 * Perform operations on a list bin.
+	 * Perform operations on a map bin.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasCDTList) {
+		if (! params.hasCDTMap) {
 			console.info("CDT map functions are not supported by the connected Aerospike server.");
 			return;
 		}	
@@ -126,10 +125,10 @@ public class OperateMap extends Example {
 		console.info("Record: " + record);			
 
 		// Print results.
-		Map<?,?> results = record.getMap(binName);
+		List<?> results = record.getList(binName);
 		
-		for (Entry<?,?> entry : results.entrySet()) {
-			console.info("Received: " + entry);			
+		for (Object result : results) {
+			console.info("Received: " + result);			
 		}
 	}
 }

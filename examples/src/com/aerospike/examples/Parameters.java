@@ -41,6 +41,7 @@ public class Parameters {
 	boolean hasUdf;
 	boolean hasLargeDataTypes;
 	boolean hasCDTList;
+	boolean hasCDTMap;
 	
 	protected Parameters(String host, int port, String user, String password, String namespace, String set) {
 		this.host = host;
@@ -64,6 +65,7 @@ public class Parameters {
 		hasGeo = false;
 		hasUdf = false;
 		hasCDTList = false;
+		hasCDTMap = false;
 		
 		if (features != null) {
 			String[] list = features.split(";");
@@ -77,6 +79,9 @@ public class Parameters {
 				}
 				else if (s.equals("cdt-list")) {
 					hasCDTList = true;
+				}
+				else if (s.equals("cdt-map")) {
+					hasCDTMap = true;
 				}
 			}
 		}
