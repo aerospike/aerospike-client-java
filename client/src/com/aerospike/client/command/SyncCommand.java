@@ -56,9 +56,6 @@ public abstract class SyncCommand extends Command {
 					// Parse results.
 					parseResult(conn);
 					
-					// Reflect healthy status.
-					conn.updateLastUsed();
-					
 					// Put connection back in pool.
 					node.putConnection(conn);
 					
@@ -68,7 +65,6 @@ public abstract class SyncCommand extends Command {
 				catch (AerospikeException ae) {
 					if (ae.keepConnection()) {
 						// Put connection back in pool.
-						conn.updateLastUsed();
 						node.putConnection(conn);						
 					}
 					else {
