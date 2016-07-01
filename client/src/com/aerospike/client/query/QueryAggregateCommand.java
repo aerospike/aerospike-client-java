@@ -79,7 +79,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 				throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
 			}
 			else {
-				throw new AerospikeException(ResultCode.QUERY_GENERIC, "Query aggregate expected bin name SUCCESS.  Received " + name);
+				throw new AerospikeException(ResultCode.PARSE_ERROR, "Query aggregate expected bin name SUCCESS.  Received " + name);
 			}
 		}
 		
