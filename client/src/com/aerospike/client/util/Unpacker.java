@@ -121,6 +121,10 @@ public abstract class Unpacker<T> {
 	
 	@SuppressWarnings("unchecked")
 	private T unpackMap(int count) throws IOException, ClassNotFoundException {
+		if (count <= 0) {
+			return getMap(new HashMap<T,T>(0));
+		}
+		
 		Map<T,T> map = createMap(count);
 		
 		if (map != null) {
