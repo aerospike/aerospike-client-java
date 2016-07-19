@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class ExecuteCommand extends ReadCommand {
@@ -46,5 +47,10 @@ public final class ExecuteCommand extends ReadCommand {
 	@Override
 	protected void writeBuffer() throws AerospikeException {
 		setUdf(writePolicy, key, packageName, functionName, args);
+	}
+
+	@Override
+	protected Node getNode() {
+		return cluster.getMasterNode(partition);
 	}
 }
