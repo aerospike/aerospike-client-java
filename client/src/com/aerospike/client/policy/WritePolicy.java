@@ -74,6 +74,15 @@ public final class WritePolicy extends Policy {
 	 * Default: false
 	 */
 	public boolean respondAllOps;
+	
+	/**
+	 * If the transaction results in a record deletion, leave a tombstone for the record.
+	 * This prevents deleted records from reappearing after node failures.
+	 * Valid for Aerospike Server Enterprise Edition 4+ only.
+	 * <p>
+	 * Default: false (do not tombstone deleted records).
+	 */
+	public boolean durableDelete;
 
 	/**
 	 * Copy write policy from another write policy.
@@ -86,6 +95,7 @@ public final class WritePolicy extends Policy {
 		this.generation = other.generation;
 		this.expiration = other.expiration;
 		this.respondAllOps = other.respondAllOps;
+		this.durableDelete = other.durableDelete;
 	}
 
 	/**

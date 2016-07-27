@@ -48,14 +48,15 @@ public abstract class Command {
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
 	public static final int INFO2_GENERATION		= (1 << 2); // Update if expected generation == old.
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
+	public static final int INFO2_DURABLE_DELETE	= (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
 	public static final int INFO2_RESPOND_ALL_OPS	= (1 << 7); // Return a result for every operation.
 	
-	public static final int INFO3_LAST              = (1 << 0); // This is the last of a multi-part message.
-	public static final int INFO3_COMMIT_MASTER     = (1 << 1); // Commit to master only before declaring success.
-	public static final int INFO3_UPDATE_ONLY       = (1 << 3); // Update only. Merge bins.
-	public static final int INFO3_CREATE_OR_REPLACE = (1 << 4); // Create or completely replace record.
-	public static final int INFO3_REPLACE_ONLY      = (1 << 5); // Completely replace existing record only.
+	public static final int INFO3_LAST				= (1 << 0); // This is the last of a multi-part message.
+	public static final int INFO3_COMMIT_MASTER		= (1 << 1); // Commit to master only before declaring success.
+	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
+	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
+	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
 	
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
@@ -833,6 +834,10 @@ public abstract class Command {
 		
 		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
 			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
+		
+		if (policy.durableDelete) {
+			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 				
     	// Write all header data except total size which must be written last. 
