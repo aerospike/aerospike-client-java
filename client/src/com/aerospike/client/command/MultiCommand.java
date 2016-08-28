@@ -160,6 +160,8 @@ public abstract class MultiCommand extends SyncCommand {
 		
 		Map<String,Object> bins = null;
 		
+		Map<String, Integer> schema = null;
+		
 		for (int i = 0 ; i < opCount; i++) {			
 			readBytes(8);	
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
@@ -177,8 +179,14 @@ public abstract class MultiCommand extends SyncCommand {
 				bins = new HashMap<String,Object>();
 			}
 			bins.put(name, value);
+			
+			if (schema == null) {
+				schema = new HashMap<String,Integer>();
+			}
+			int particle = particleType;
+			schema.put(name, particle);
 		}
-		return new Record(bins, generation, expiration);	    
+		return new Record(bins, schema, generation, expiration);	    
 	}
 
 	protected final void readBytes(int length) throws IOException {

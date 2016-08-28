@@ -63,7 +63,7 @@ public class AsyncReadHeader extends AsyncSingleCommand {
         if (resultCode == 0) {
         	int generation = byteBuffer.getInt(6);
     		int expiration = byteBuffer.getInt(10);
-    		record = new Record(null, generation, expiration);
+    		record = new Record(null, null, generation, expiration);
         }
         else {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {

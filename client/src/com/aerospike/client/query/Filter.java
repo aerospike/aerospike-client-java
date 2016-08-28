@@ -176,6 +176,18 @@ public final class Filter {
 	}
 
 	/**
+	 * Create geospatial "containing point" filter for query.
+	 * 
+	 * @param name			bin name
+	 * @param lon			longitude
+	 * @param lat			latitude
+	 * @return				filter instance
+	 */
+	public static Filter geoContains(String name, double lon, double lat) {
+		String point = generatePoint(lat, lon);
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+	/**
 	 * Create geospatial "containing point" filter for query on collection index.
 	 * 
 	 * @param name			bin name
@@ -185,6 +197,24 @@ public final class Filter {
 	 */
 	public static Filter geoContains(String name, IndexCollectionType type, String point) {
 		return new Filter(name, type, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+
+	/**
+	 * Create geospatial "containing point" filter for query on collection index.
+	 * 
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param lon			longitude
+	 * @param lat			latitude
+	 * @return				filter instance
+	 */
+	public static Filter geoContains(String name, IndexCollectionType type, double lon, double lat) {
+		String point = generatePoint(lat, lon);
+		return new Filter(name, type, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	}
+	
+	private static String generatePoint(double plat, double plng) {
+		return String.format("{ \"type\": \"Point\", \"coordinates\": [%f, %f] }", plng, plat);
 	}
 
 	private final String name;

@@ -84,7 +84,7 @@ public class AsyncRead extends AsyncSingleCommand {
         if (resultCode == 0) {
             if (opCount == 0) {
             	// Bin data was not returned.
-            	record = new Record(null, generation, expiration);
+            	record = new Record(null, null, generation, expiration);
             }
             else {
             	record = parseRecord(opCount, fieldCount, generation, expiration);
@@ -118,6 +118,8 @@ public class AsyncRead extends AsyncSingleCommand {
 	
 		Map<String,Object> bins = null;
 		
+		Map<String,Integer> schema = null;
+		
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
 			byte particleType = dataBuffer[dataOffset+5];
@@ -135,8 +137,15 @@ public class AsyncRead extends AsyncSingleCommand {
 				bins = new HashMap<String,Object>();
 			}
 			addBin(bins, name, value);
+			
+			if (schema == null) {
+				schema = new HashMap<String,Integer>();
+			}
+			int particle = particleType;
+			schema.put(name, particle);
+
 	    }	
-	    return new Record(bins, generation, expiration);
+	    return new Record(bins, schema, generation, expiration);
 	}
 
 	protected void addBin(Map<String,Object> bins, String name, Object value) {
