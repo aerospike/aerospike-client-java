@@ -54,9 +54,9 @@ public final class Connection implements Closeable{
 				// Retry functionality will attempt to reconnect later.
 				timeoutMillis = 2000;
 			}
-			socket.connect(address, timeoutMillis);
-		
+			
 			try {
+				socket.connect(address, timeoutMillis);
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.currentTimeMillis();
