@@ -175,6 +175,16 @@ public final class ResultCode {
 	public static final int FAIL_FORBIDDEN = 22;
 
 	/**
+	 *	Map element not found in UPDATE_ONLY write mode.
+	 */
+	public static final int ELEMENT_NOT_FOUND = 23;
+
+	/**
+	 *	Map element exists in CREATE_ONLY write mode.
+	 */
+	public static final int ELEMENT_EXISTS = 24;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -460,6 +470,12 @@ public final class ResultCode {
 
 		case FAIL_FORBIDDEN:
 			return "Operation not allowed at this time";
+
+		case ELEMENT_NOT_FOUND:
+			return "Map key not found";
+
+		case ELEMENT_EXISTS:
+			return "Map key exists";
 
 		case QUERY_END:
 			return "Query end";

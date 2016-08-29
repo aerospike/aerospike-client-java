@@ -66,7 +66,7 @@ public class TestOperateMap extends TestSync {
 				MapOperation.put(addMode, binName, Value.get(15), Value.get(1000)),
 				// Ordered type should be ignored since map has already been created in first put().
 				MapOperation.put(orderedUpdateMode, binName, Value.get(10), Value.get(1)),
-				MapOperation.put(updateMode, binName, Value.get(77), Value.get(5))
+				MapOperation.put(updateMode, binName, Value.get(15), Value.get(5))
 				);
 		
 		assertRecordFound(key, record);
@@ -121,7 +121,6 @@ public class TestOperateMap extends TestSync {
 
 		Map<Value,Value> updateMap = new HashMap<Value,Value>();
 		updateMap.put(Value.get(13), Value.get("myval2"));
-		updateMap.put(Value.get(14), Value.get("str14"));
 
 		Map<Value,Value> replaceMap = new HashMap<Value,Value>();
 		replaceMap.put(Value.get(12), Value.get(23));
