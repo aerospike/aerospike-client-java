@@ -28,7 +28,7 @@ import com.aerospike.client.util.Util;
 /**
  * Socket connection wrapper.
  */
-public final class Connection implements Closeable{
+public final class Connection implements Closeable {
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
@@ -36,7 +36,7 @@ public final class Connection implements Closeable{
 	private volatile long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(address, timeoutMillis, 14000);
+		this(address, timeoutMillis, 55000);
 	}
 
 	public Connection(InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis) throws AerospikeException.Connection {
@@ -44,19 +44,19 @@ public final class Connection implements Closeable{
 
 		try {
 			socket = new Socket();
-			socket.setTcpNoDelay(true);
-			
-			if (timeoutMillis > 0) {
-				socket.setSoTimeout(timeoutMillis);
-			}
-			else {				
-				// Do not wait indefinitely on connection if no timeout is specified.
-				// Retry functionality will attempt to reconnect later.
-				timeoutMillis = 2000;
-			}
-			socket.connect(address, timeoutMillis);
 		
 			try {
+				socket.setTcpNoDelay(true);
+				
+				if (timeoutMillis > 0) {
+					socket.setSoTimeout(timeoutMillis);
+				}
+				else {				
+					// Do not wait indefinitely on connection if no timeout is specified.
+					// Retry functionality will attempt to reconnect later.
+					timeoutMillis = 2000;
+				}
+				socket.connect(address, timeoutMillis);
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.currentTimeMillis();
@@ -97,7 +97,7 @@ public final class Connection implements Closeable{
 			int count = in.read(buffer, pos, length - pos);
 		    
 			if (count < 0)
-		    	throw new EOFException();
+				throw new EOFException();
 			
 			pos += count;
 		}
