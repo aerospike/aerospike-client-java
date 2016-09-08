@@ -27,11 +27,19 @@ public enum Replica {
 
 	/**
 	 * Distribute reads across nodes containing key's master and replicated partitions
-	 * in round-robin fashion.  This option requires {@link com.aerospike.client.policy.ClientPolicy#requestProleReplicas}
+	 * in round-robin fashion.  This option requires {@link ClientPolicy#requestProleReplicas}
 	 * to be enabled in order to function properly.
 	 */
 	MASTER_PROLES,
 	
+	/**
+	 * Always try node containing master partition first. If connection fails and
+	 * {@link Policy#retryOnTimeout} is true, try nodes containing prole partition.
+	 * This option requires {@link ClientPolicy#requestProleReplicas} to be enabled
+	 * in order to function properly.
+	 */
+	SEQUENCE,
+
 	/**
 	 * Distribute reads across all nodes in cluster in round-robin fashion.
 	 * This option is useful when the replication factor equals the number

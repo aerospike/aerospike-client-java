@@ -59,7 +59,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		byteBuffer = cluster.getByteBuffer();
 		
 		try {
-			node = getNode();
+			node = (AsyncNode)getNode();
 			conn = node.getAsyncConnection(byteBuffer);
 			
 			if (conn == null) {
@@ -263,7 +263,6 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		cluster.putByteBuffer(byteBuffer);
 	}
 
-	protected abstract AsyncNode getNode() throws AerospikeException.InvalidNode;
 	protected abstract void read() throws AerospikeException, IOException;
 	protected abstract void onSuccess();
 	protected abstract void onFailure(AerospikeException ae);

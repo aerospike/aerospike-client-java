@@ -25,6 +25,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
@@ -52,7 +53,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		this.stopOnNotFound = stopOnNotFound;
 	}
 
-	protected final AsyncNode getNode() {	
+	protected final Node getNode() {	
 		return node;
 	}
 

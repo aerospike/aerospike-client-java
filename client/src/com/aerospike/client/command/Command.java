@@ -16,7 +16,9 @@
  */
 package com.aerospike.client.command;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -24,10 +26,14 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
@@ -68,6 +74,7 @@ public abstract class Command {
 
 	protected byte[] dataBuffer;
 	protected int dataOffset;
+	protected int sequence;
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -991,6 +998,46 @@ public abstract class Command {
 		Buffer.longToBytes(size, dataBuffer, 0);
 	}
 	
+	public final Node getReadNode(Cluster cluster, Partition partition, Replica replica)
+	{
+		switch (replica)
+		{
+			case MASTER:
+				return cluster.getMasterNode(partition);
+
+			case MASTER_PROLES:
+				return cluster.getMasterProlesNode(partition);
+
+			case SEQUENCE:
+				return getSequenceNode(cluster, partition);
+
+			default:
+			case RANDOM:
+				return cluster.getRandomNode();
+		}
+	}
+
+	public final Node getSequenceNode(Cluster cluster, Partition partition)
+	{
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,AtomicReferenceArray<Node>[]> map = cluster.partitionMap;
+		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
+		
+		if (replicaArray != null) {
+			for (int i = 0; i < replicaArray.length; i++) {
+				int index = Math.abs(sequence % replicaArray.length);						
+				sequence++;
+				Node node = replicaArray[index].get(partition.partitionId);
+				
+				if (node != null && node.isActive()) {
+					return node;
+				}				
+			}
+		}
+		return cluster.getRandomNode();		
+	}
+	
 	protected abstract Policy getPolicy();
+	protected abstract Node getNode() throws AerospikeException.InvalidNode;
 	protected abstract void writeBuffer() throws AerospikeException;
 }

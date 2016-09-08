@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
@@ -52,8 +53,8 @@ public class AsyncReadHeader extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected AsyncNode getNode() {
-		return (AsyncNode)cluster.getReadNode(partition, policy.replica);
+	protected Node getNode() {
+		return getReadNode(cluster, partition, policy.replica);
 	}
 
 	@Override

@@ -61,7 +61,7 @@ public class Cluster implements Runnable, Closeable {
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	protected volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
+	public volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
 	
 	// IP translations.
 	protected final Map<String,String> ipMap;
@@ -606,14 +606,16 @@ public class Cluster implements Runnable, Closeable {
 	}
 	
 	public final Node getReadNode(Partition partition, Replica replica) throws AerospikeException.InvalidNode {
+		// This method should only be called by batch.
 		switch (replica) {
+		default:
+		case SEQUENCE:  // Use Command.getReadNode() to really use sequence mode.
 		case MASTER:
 			return getMasterNode(partition);
 			
 		case MASTER_PROLES:
 			return getMasterProlesNode(partition);			
 		
-		default:
 		case RANDOM:
 			return getRandomNode();			
 		}
@@ -639,7 +641,7 @@ public class Cluster implements Runnable, Closeable {
 		return getRandomNode();
 	}
 
-	private final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {		
+	public final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {		
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,AtomicReferenceArray<Node>[]> map = partitionMap;
 		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);

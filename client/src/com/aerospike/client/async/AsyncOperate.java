@@ -21,6 +21,7 @@ import java.util.Map;
 
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -40,8 +41,8 @@ public final class AsyncOperate extends AsyncRead {
 	}
 	
 	@Override
-	protected AsyncNode getNode() {	
-		return (AsyncNode)cluster.getMasterNode(partition);
+	protected Node getNode() {	
+		return cluster.getMasterNode(partition);
 	}
 	
 	@Override

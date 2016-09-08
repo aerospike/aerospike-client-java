@@ -58,7 +58,7 @@ public class ReadCommand extends SyncCommand {
 
 	@Override
 	protected Node getNode() {
-		return cluster.getReadNode(partition, policy.replica);
+		return getReadNode(cluster, partition, policy.replica);
 	}
 
 	@Override

@@ -150,6 +150,5 @@ public abstract class SyncCommand extends Command {
 		}
 	}
 
-	protected abstract Node getNode() throws AerospikeException.InvalidNode;
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 }

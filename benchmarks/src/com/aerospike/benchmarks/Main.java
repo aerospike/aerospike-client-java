@@ -178,6 +178,13 @@ public class Main implements Log.Callback {
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
 			"Enter zero to skip sleep."	
 			);
+		options.addOption("r", "replica", true,
+				"Which replica to use for reads.\n\n" +
+				"Values:  master | any | sequence.  Default: master\n" +
+				"master: Always use node containing master partition.\n" +
+				"any: Distribute reads across master and proles in round-robin fashion.\n" +
+				"sequence: Always try master first. If master fails, try proles in sequence."	
+				);		
 		options.addOption("consistencyLevel", true, 
 				"How replicas should be consulted in a read operation to provide the desired consistency guarantee. " +
 				"Values:  one | all.  Default: one"	
@@ -516,6 +523,32 @@ public class Main implements Log.Callback {
 			args.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 		
+		if (line.hasOption("replica")) {
+			String replica = line.getOptionValue("replica");
+			
+			if (replica.equals("master")) {
+				args.readPolicy.replica = Replica.MASTER;
+			}
+			else if (replica.equals("any")) {
+				args.readPolicy.replica = Replica.MASTER_PROLES;
+				clientPolicy.requestProleReplicas = true;
+			}
+			else if (replica.equals("sequence")) {
+				args.readPolicy.replica = Replica.SEQUENCE;
+				args.readPolicy.retryOnTimeout = true;
+				clientPolicy.requestProleReplicas = true;
+			}
+			else {
+				throw new Exception("Invalid replica: " + replica);
+			}
+		}
+
+		// Leave this in for legacy reasons.
+		if (line.hasOption("prole")) {
+			clientPolicy.requestProleReplicas = true;
+			args.readPolicy.replica = Replica.MASTER_PROLES;
+		}
+
 		if (line.hasOption("consistencyLevel")) {
 			String level = line.getOptionValue("consistencyLevel");
 			
@@ -540,11 +573,6 @@ public class Main implements Log.Callback {
 			}
 		}
 		
-		if (line.hasOption("prole")) {
-			clientPolicy.requestProleReplicas = true;
-			args.readPolicy.replica = Replica.MASTER_PROLES;
-		}
-
 		if (line.hasOption("threads")) {
 			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
 			

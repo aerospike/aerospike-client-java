@@ -21,6 +21,7 @@ import java.nio.ByteBuffer;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.Policy;
@@ -52,8 +53,8 @@ public final class AsyncDelete extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected AsyncNode getNode() {	
-		return (AsyncNode)cluster.getMasterNode(partition);
+	protected Node getNode() {	
+		return cluster.getMasterNode(partition);
 	}
 
 	@Override
