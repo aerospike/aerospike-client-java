@@ -22,15 +22,15 @@ package com.aerospike.client.policy;
  */
 public class Policy {
 	/**
-	 * Priority of request relative to other transactions.
-	 * Currently, only used for scans.
+	 * Transaction policy attributes used in all database commands.
 	 */
 	public Priority priority = Priority.DEFAULT;
 	
 	/**
 	 * How replicas should be consulted in a read operation to provide the desired
-	 * consistency guarantee. Default to allowing one replica to be used in the
-	 * read operation.
+	 * consistency guarantee.
+	 * <p>
+	 * Default: {@link ConsistencyLevel#CONSISTENCY_ONE}
 	 */
 	public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
@@ -39,7 +39,7 @@ public class Policy {
 	 * Write commands are not affected by this setting, because all writes are directed 
 	 * to the node containing the key's master partition.
 	 * <p>
-	 * Default to sending read commands to the node containing the key's master partition.
+	 * Default: {@link Replica#MASTER}
 	 */
 	public Replica replica = Replica.MASTER;
 	
@@ -50,9 +50,8 @@ public class Policy {
 	 * timeout first, but the server has the capability to timeout the transaction
 	 * as well.
 	 * <p>
-	 * The timeout is also used as a socket timeout.  Retries will not occur
-	 * if the timeout limit has been reached.
-	 * Default to no timeout (0).
+	 * The timeout is also used as a socket timeout.
+	 * Default: 0 (no timeout).
 	 */
 	public int timeout;
 	
@@ -80,7 +79,7 @@ public class Policy {
 
 	/**
 	 * Maximum number of retries before aborting the current transaction.
-	 * A retry is attempted when there is a network error other than timeout.  
+	 * A retry may be attempted when there is a network error.  
 	 * If maxRetries is exceeded, the abort will occur even if the timeout 
 	 * has not yet been exceeded.
 	 * <p>
@@ -92,9 +91,7 @@ public class Policy {
 	public int maxRetries = 1;
 
 	/**
-	 * Milliseconds to sleep between retries if a transaction fails and the 
-	 * timeout was not exceeded.  Enter zero to skip sleep.
-	 * <p>
+	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
 	 * This field is ignored in async mode.
 	 * <p>
 	 * Default: 500ms
@@ -102,8 +99,24 @@ public class Policy {
 	public int sleepBetweenRetries = 500;
 	
 	/**
-	 * Send user defined key in addition to hash digest on both reads and writes.  
-	 * The default is to not send the user defined key.
+	 * Should the client retry a command if the timeout is reached.
+	 * Used by synchronous commands only.
+	 * <p>
+	 * If false, throw timeout exception when the timeout has been reached.  Note that
+	 * retries can still occur if a command fails on a network error before the timeout
+	 * has been reached.
+	 * <p>
+	 * If true, retry command with same timeout when the timeout has been reached.
+	 * The maximum number of retries is defined by maxRetries.
+	 * <p>
+	 * Default: false
+	 */
+	public boolean retryOnTimeout;
+
+	/**
+	 * Send user defined key in addition to hash digest on both reads and writes.
+	 * <p>
+	 * Default: false (do not send the user defined key)
 	 */
 	public boolean sendKey;
 	
@@ -118,6 +131,7 @@ public class Policy {
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
+		this.retryOnTimeout = other.retryOnTimeout;
 		this.sendKey = other.sendKey;
 	}
 	

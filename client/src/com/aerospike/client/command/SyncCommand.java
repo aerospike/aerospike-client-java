@@ -27,12 +27,12 @@ import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {
 
-	public final void execute() throws AerospikeException {
+	public final void execute() {
 		Policy policy = getPolicy();        
 		int remainingMillis = policy.timeout;
 		long limit = System.currentTimeMillis() + remainingMillis;
 		Node node = null;
-		RuntimeException exception = null;
+		Exception exception = null;
         int failedNodes = 0;
         int failedConns = 0;
         int iterations = 0;
@@ -47,8 +47,11 @@ public abstract class SyncCommand extends Command {
 					// Set command buffer.
 					writeBuffer();
 
-					// Reset timeout in send buffer (destined for server) and socket.
-					Buffer.intToBytes(remainingMillis, dataBuffer, 22);
+					// Check if timeout needs to be changed in send buffer.
+					if (remainingMillis != policy.timeout) {
+						// Reset timeout in send buffer (destined for server) and socket.
+						Buffer.intToBytes(remainingMillis, dataBuffer, 22);
+					}
 					
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
@@ -80,16 +83,14 @@ public abstract class SyncCommand extends Command {
 					throw re;
 				}
 				catch (SocketTimeoutException ste) {
-					// Full timeout has been reached.  Do not retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
+					// Full timeout has been reached.
 					node.closeConnection(conn);
-					throw new AerospikeException.Timeout(node, policy.timeout, ++iterations, failedNodes, failedConns);
+					exception = ste;
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					exception = new AerospikeException(ioe);
 					node.closeConnection(conn);
+					exception = new AerospikeException(ioe);
 				}
 			}
 			catch (AerospikeException.InvalidNode ine) {
@@ -108,7 +109,8 @@ public abstract class SyncCommand extends Command {
 			}
 			
 			// Check for client timeout.
-			if (policy.timeout > 0) {
+			if (policy.timeout > 0 && ! policy.retryOnTimeout) {
+				// Timeout is absolute.  Stop if timeout has been reached.
 				remainingMillis = (int)(limit - System.currentTimeMillis() - policy.sleepBetweenRetries);
 				
 				if (remainingMillis <= 0) {
@@ -126,7 +128,10 @@ public abstract class SyncCommand extends Command {
 		}
 		
 		// Retries have been exhausted.  Throw last exception.
-		throw exception;
+		if (exception instanceof SocketTimeoutException) {
+			throw new AerospikeException.Timeout(node, policy.timeout, iterations, failedNodes, failedConns);
+		}
+		throw (RuntimeException)exception;
 	}
 
 	protected final void emptySocket(Connection conn) throws IOException
