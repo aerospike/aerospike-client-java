@@ -56,7 +56,14 @@ public final class AsyncCluster extends Cluster {
 		}
 		
 		selectorManagers = new SelectorManagers(policy);
-		initTendThread(policy.failIfNotConnected);
+		
+		try {
+			initTendThread(policy.failIfNotConnected);
+		}
+		catch (Exception e) {
+			selectorManagers.close();
+			throw e;
+		}
 	}
 	
 	@Override
