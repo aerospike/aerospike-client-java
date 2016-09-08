@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
@@ -34,6 +35,7 @@ public class Parameters {
 	String password;
 	String namespace;
 	String set;
+	TlsPolicy tlsPolicy;
 	WritePolicy writePolicy;
 	Policy policy;
 	boolean singleBin;
@@ -43,13 +45,14 @@ public class Parameters {
 	boolean hasCDTList;
 	boolean hasCDTMap;
 	
-	protected Parameters(String host, int port, String user, String password, String namespace, String set) {
+	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, String namespace, String set) {
 		this.host = host;
 		this.port = port;
 		this.user = user;
 		this.password = password;
 		this.namespace = namespace;
 		this.set = set;
+		this.tlsPolicy = policy;
 	}
 	
 	/**

@@ -51,9 +51,9 @@ public final class Info {
 	// Member variables.
 	//-------------------------------------------------------
 
-	private byte[] buffer;
-	private int length;
-	private int offset;
+	public byte[] buffer;
+	public int length;
+	public int offset;
 
 	//-------------------------------------------------------
 	// Constructor
@@ -157,7 +157,7 @@ public final class Info {
 		return Buffer.utf8ToString(buffer, offset, length - offset - 1);
 	}
 	
-	private void skipToValue() {
+	public void skipToValue() {
 		// Skip past command.
 		while (offset < length) {
 			byte b = buffer[offset];
@@ -173,7 +173,73 @@ public final class Info {
 			offset++;
 		}
 	}
+	
+    /**
+     * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
+     * Input format: 1234
+     */
+	public int parseInt() {
+		int begin = offset;
+		int end = offset;
+		byte b;
 
+    	// Skip to end of integer.
+    	while (offset < length) {
+			b = buffer[offset];
+		
+			if (b < 48 || b > 57) {
+				end = offset;
+    			break;
+			}
+    		offset++;
+    	}
+    	
+    	// Convert digits into an integer.
+    	return Buffer.utf8DigitsToInt(buffer, begin, end);
+	}
+	
+	public String parseString(char stop) {
+		int begin = offset;
+		byte b;
+		
+    	while (offset < length) {
+			b = buffer[offset];
+    		
+    		if (b == stop) {
+    			break;
+    		}
+    		offset++;
+    	}    	
+		return Buffer.utf8ToString(buffer, begin, offset - begin);
+	}
+
+	public String parseString(char stop1, char stop2, char stop3) {
+		int begin = offset;
+		byte b;
+		
+    	while (offset < length) {
+			b = buffer[offset];
+    		
+    		if (b == stop1 || b == stop2 || b == stop3) {
+    			break;
+    		}
+    		offset++;
+    	}    	
+		return Buffer.utf8ToString(buffer, begin, offset - begin);
+	}
+
+	public void expect(char expected) {
+		if (expected != buffer[offset]) {
+			throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)(buffer[offset] & 0xFF));			
+		}
+		offset++;		
+	}
+
+	public String getTruncatedResponse() {
+		int max = (length > 200) ? 200 : length;
+		return Buffer.utf8ToString(buffer, 0, max);		
+	}
+	
 	//-------------------------------------------------------
 	// Get Info via Node
 	//-------------------------------------------------------
@@ -320,7 +386,7 @@ public final class Info {
 
 	/**
 	 * Get one info value by name from the specified database server node.
-	 * This method does not support user authentication.
+	 * This method does not support TLS connections nor user authentication.
 	 * 
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param name					name of value to retrieve
@@ -340,7 +406,7 @@ public final class Info {
 
 	/**
 	 * Get many info values by name from the specified database server node.
-	 * This method does not support user authentication.
+	 * This method does not support TLS connections nor user authentication.
 	 * 
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param names					names of values to retrieve
@@ -360,7 +426,7 @@ public final class Info {
 
 	/**
 	 * Get all the default info from the specified database server node.
-	 * This method does not support user authentication.
+	 * This method does not support TLS connections nor user authentication.
 	 *
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @return						info name/value pairs
@@ -419,20 +485,6 @@ public final class Info {
 		throws AerospikeException {		
 		Info info = new Info(conn);
 		return info.parseMultiResponse();
-	}
-
-	/**
-	 * Get response buffer. For internal use only.
-	 */
-	public byte[] getBuffer() {
-		return buffer;
-	}
-
-	/**
-	 * Get response length. For internal use only.
-	 */
-	public int getLength() {
-		return length;
 	}
 
 	//-------------------------------------------------------

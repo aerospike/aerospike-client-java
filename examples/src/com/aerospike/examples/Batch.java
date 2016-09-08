@@ -57,7 +57,7 @@ public class Batch extends Example {
 			Node[] nodes = client.getNodes();
 			
 			for (Node node : nodes) {
-				if (! node.hasBatchIndex) {
+				if (! node.hasBatchIndex()) {
 					Log.warn("Server does not support new batch protocol");
 					return;
 				}

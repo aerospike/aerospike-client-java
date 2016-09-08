@@ -21,6 +21,7 @@ import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -32,20 +33,18 @@ import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
 	String name;
-	Host[] aliases;
-	InetSocketAddress address;
+	List<Host> aliases;
+	Host primaryHost;
+	InetSocketAddress primaryAddress;
 	Connection conn;
-	boolean hasBatchIndex;
-	boolean hasReplicasAll;
-	boolean hasDouble;
-	boolean hasGeo;
+	int features;
 	
 	/**
 	 * Add node(s) referenced by seed host aliases. In most cases, aliases reference
 	 * a single node.  If round robin DNS configuration is used, the seed host may have 
 	 * several aliases that reference different nodes in the cluster.
 	 */
-	public void seedNodes(Cluster cluster, Host host, ArrayList<Node> list) throws Exception {
+	public void seedNodes(Cluster cluster, Host host, HashMap<String,Node> nodesToAdd) throws Exception {
 		setAliases(host);
 		
 		Exception exception = null;
@@ -56,11 +55,10 @@ public final class NodeValidator {
 				validateAlias(cluster, alias);
 				found = true;
 				
-				if (! findNodeName(list, name)) {
+				if (! nodesToAdd.containsKey(name)) {
 					// New node found.
 					Node node = cluster.createNode(this);
-					cluster.addAliases(node);
-					list.add(node);
+					nodesToAdd.put(name, node);
 				}
 				else {
 					// Node already referenced. Close connection.
@@ -129,35 +127,54 @@ public final class NodeValidator {
 			throw new AerospikeException.Connection("Failed to find addresses for " + host);
 		}
 		
-		aliases = new Host[addresses.length];
+		// Add capacity for current address aliases plus IPV6 address and hostname.
+		aliases = new ArrayList<Host>(addresses.length + 2);
 		
-		for (int i = 0; i < addresses.length; i++) {
-			aliases[i] = new Host(addresses[i].getHostAddress(), host.port);
+		for (InetAddress address : addresses) {
+			aliases.add(new Host(address.getHostAddress(), host.tlsName, host.port));
 		}
 	}
 	
 	private void validateAlias(Cluster cluster, Host alias) throws Exception {
 		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-		Connection conn = new Connection(address, cluster.getConnectionTimeout());
+		Connection conn = new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis);
 		
 		try {			
 			if (cluster.user != null) {
 				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
 				command.authenticate(conn, cluster.user, cluster.password);
 			}
-			HashMap<String,String> map = Info.request(conn, "node", "features");
-			String nodeName = map.get("node");
 			
-			if (nodeName != null) {
-				this.name = nodeName;
-				this.address = address;
-				this.conn = conn;
-				setFeatures(map);
-				return;
+			HashMap<String,String> map;
+			boolean hasClusterId = cluster.clusterId != null && cluster.clusterId.length() > 0;
+			
+			if (hasClusterId) {
+				map = Info.request(conn, "node", "features", "cluster-id");			
 			}
 			else {
-				throw new AerospikeException.InvalidNode();
+				map = Info.request(conn, "node", "features");
 			}
+			
+			String nodeName = map.get("node");
+			
+			if (nodeName == null) {
+				throw new AerospikeException.InvalidNode();				
+			}
+			
+			if (hasClusterId) {
+				String id = map.get("cluster-id");
+				
+				if (id == null || ! cluster.clusterId.equals(id)) {
+					throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' +
+							" expected cluster ID '" + cluster.clusterId + "' received '" + id + "'");
+				}
+			}
+			
+			this.name = nodeName;
+			this.primaryHost = alias;
+			this.primaryAddress = address;
+			this.conn = conn;
+			setFeatures(map);
 		}
 		catch (Exception e) {
 			conn.close();
@@ -167,36 +184,33 @@ public final class NodeValidator {
 	
 	private void setFeatures(HashMap<String,String> map) {
 		try {
-			String features = map.get("features");
+			String featuresString = map.get("features");
 			int begin = 0;
 			int end = 0;
 			int len;
 			
-			while (end < features.length() && !(this.hasGeo &&
-												this.hasDouble &&
-												this.hasBatchIndex &&
-												this.hasReplicasAll)) {
-				end = features.indexOf(';', begin);
+			while (end < featuresString.length()) {
+				end = featuresString.indexOf(';', begin);
 				
 				if (end < 0) {
-					end = features.length();
+					end = featuresString.length();
 				}
 				len = end - begin;
 				
-				if (features.regionMatches(begin, "geo", 0, len)) {
-					this.hasGeo = true;
+				if (featuresString.regionMatches(begin, "geo", 0, len)) {
+					this.features |= Node.HAS_GEO;
 				}
-
-				if (features.regionMatches(begin, "float", 0, len)) {
-					this.hasDouble = true;
+				else if (featuresString.regionMatches(begin, "float", 0, len)) {
+					this.features |= Node.HAS_DOUBLE;
 				}
-
-				if (features.regionMatches(begin, "batch-index", 0, len)) {
-					this.hasBatchIndex = true;
+				else if (featuresString.regionMatches(begin, "batch-index", 0, len)) {
+					this.features |= Node.HAS_BATCH_INDEX;
 				}
-				
-				if (features.regionMatches(begin, "replicas-all", 0, len)) {
-					this.hasReplicasAll = true;
+				else if (featuresString.regionMatches(begin, "replicas-all", 0, len)) {
+					this.features |= Node.HAS_REPLICAS_ALL;
+				}
+				else if (featuresString.regionMatches(begin, "peers", 0, len)) {
+					this.features |= Node.HAS_PEERS;
 				}	        	
 				begin = end + 1;
 			}        
@@ -204,14 +218,5 @@ public final class NodeValidator {
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.
 		}
-	}
-	
-	private final static boolean findNodeName(ArrayList<Node> list, String name) {
-		for (Node node : list) {
-			if (node.getName().equals(name)) {
-				return true;
-			}
-		}
-		return false;
-	}
+	}	
 }

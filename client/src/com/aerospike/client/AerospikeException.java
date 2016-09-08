@@ -185,6 +185,10 @@ public class AerospikeException extends RuntimeException {
 		public InvalidNode() {
 			super(ResultCode.INVALID_NODE_ERROR);
 		}
+		
+		public InvalidNode(String message) {
+			super(ResultCode.INVALID_NODE_ERROR, message);
+		}
 	}
 
 	/**

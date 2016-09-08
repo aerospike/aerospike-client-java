@@ -37,7 +37,9 @@ import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
@@ -71,7 +73,7 @@ public class Main implements Log.Callback {
 	}
 
 	private Arguments args = new Arguments();
-	private String[] hosts;
+	private Host[] hosts;
 	private int port = 3000;
 	private long nKeys;
 	private long startKey;
@@ -88,8 +90,19 @@ public class Main implements Log.Callback {
 		boolean hasTxns = false;
 		
 		Options options = new Options();
-		options.addOption("h", "hosts", true, "Set the Aerospike host node.");
-		options.addOption("p", "port", true, "Set the port on which to connect to Aerospike.");
+		options.addOption("h", "hosts", true,
+			"List of seed hosts in format:\n" +
+			"hostname1[:tlsname][:port1],...\n" +
+			"The tlsname is only used when connecting with a secure TLS enabled server. " +
+			"If the port is not specified, the default port is used.\n" +
+			"IPv6 addresses must be enclosed in square brackets.\n" +
+			"Default: localhost\n" + 
+			"Examples:\n" + 
+			"host1\n" + 
+			"host1:3000,host2:3000\n" + 
+			"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n"
+			);
+		options.addOption("p", "port", true, "Set the default port on which to connect to Aerospike.");
 		options.addOption("U", "user", true, "User name");
 		options.addOption("P", "password", true, "Password");
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
@@ -224,6 +237,7 @@ public class Main implements Log.Callback {
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
+		options.addOption("tls", "tls", true, "Server certificate name when using TLS/SSL sockets");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -250,20 +264,12 @@ public class Main implements Log.Callback {
         	args.writePolicy = clientPolicy.writePolicyDefault;
         	args.batchPolicy = clientPolicy.batchPolicyDefault;
         }
-
-	if (line.hasOption("e")) {
-		args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
-		if (args.writePolicy.expiration < -1) {
-			throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
-		}
-	}
-
-        if (line.hasOption("hosts")) {
-			this.hosts = line.getOptionValue("hosts").split(",");
-		} 
-		else {
-			this.hosts = new String[1];
-			this.hosts[0] = "127.0.0.1";
+        
+		if (line.hasOption("e")) {
+			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
+			if (args.writePolicy.expiration < -1) {
+				throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
+			}
 		}
 
 		if (line.hasOption("port")) {
@@ -272,6 +278,18 @@ public class Main implements Log.Callback {
 		else {
 			this.port = 3000;
 		}
+
+        if (line.hasOption("hosts")) {
+			this.hosts = Host.parseHosts(line.getOptionValue("hosts"), this.port);
+		} 
+		else {
+			this.hosts = new Host[1];
+			this.hosts[0] = new Host("127.0.0.1", this.port);
+		}
+
+        if (line.hasOption("tls")) {
+        	clientPolicy.tlsPolicy = new TlsPolicy();
+        }
 
 		clientPolicy.user = line.getOptionValue("user");
 		clientPolicy.password = line.getOptionValue("password");
@@ -746,7 +764,7 @@ public class Main implements Log.Callback {
 
 	public void runBenchmarks() throws Exception {
 		if (this.asyncEnabled) {
-			AsyncClient client = new AsyncClient(clientPolicy, hosts[0], port);		
+			AsyncClient client = new AsyncClient(clientPolicy, hosts);		
 
 			try {
 				if (initialize) {
@@ -761,7 +779,7 @@ public class Main implements Log.Callback {
 			}			
 		}
 		else {			
-			AerospikeClient client = new AerospikeClient(clientPolicy, hosts[0], port);		
+			AerospikeClient client = new AerospikeClient(clientPolicy, hosts);		
 
 			try {
 				if (initialize) {

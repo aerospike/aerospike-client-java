@@ -97,7 +97,7 @@ public class SuiteSync {
 		ClientPolicy policy = new ClientPolicy();
 		policy.user = args.user;
 		policy.password = args.password;
-		policy.failIfNotConnected = true;
+		policy.tlsPolicy = args.tlsPolicy;
 		
 		client = new AerospikeClient(policy, args.host, args.port);
 		

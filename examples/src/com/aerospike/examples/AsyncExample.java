@@ -19,6 +19,7 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+import com.aerospike.client.Host;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
 
@@ -38,7 +39,9 @@ public abstract class AsyncExample {
 		params.policy = policy.asyncReadPolicyDefault;
 		params.writePolicy = policy.asyncWritePolicyDefault;
 		
-		AsyncClient client = new AsyncClient(policy, params.host, params.port);
+		Host[] hosts = Host.parseHosts(params.host, params.port);
+		
+		AsyncClient client = new AsyncClient(policy, hosts);
 
 		try {
 			params.setServerSpecific(client);

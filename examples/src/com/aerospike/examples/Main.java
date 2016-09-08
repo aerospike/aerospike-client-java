@@ -30,6 +30,7 @@ import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.policy.TlsPolicy;
 
 public class Main extends JPanel {
 
@@ -83,12 +84,24 @@ public class Main extends JPanel {
 
 		try {
 			Options options = new Options();
-			options.addOption("h", "host", true, "Server hostname (default: localhost)");
-			options.addOption("p", "port", true, "Server port (default: 3000)");
+			options.addOption("h", "host", true,
+					"List of seed hosts in format:\n" +
+					"hostname1[:tlsname][:port1],...\n" +
+					"The tlsname is only used when connecting with a secure TLS enabled server. " +
+					"If the port is not specified, the default port is used.\n" +
+					"IPv6 addresses must be enclosed in square brackets.\n" +
+					"Default: localhost\n" + 
+					"Examples:\n" + 
+					"host1\n" + 
+					"host1:3000,host2:3000\n" + 
+					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n" 
+					);
+			options.addOption("p", "port", true, "Server default port (default: 3000)");
 			options.addOption("U", "user", true, "User name");
 			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
+			options.addOption("tls", "tls", false, "Use TLS/SSL sockets");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -129,7 +142,6 @@ public class Main extends JPanel {
 			}
 		}
 		catch (Exception ex) {
-			System.out.println(ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
@@ -159,7 +171,7 @@ public class Main extends JPanel {
 	private static Parameters parseParameters(CommandLine cl) throws Exception {
 		String host = cl.getOptionValue("h", "127.0.0.1");
 		String portString = cl.getOptionValue("p", "3000");
-		int port = Integer.parseInt(portString);
+		int port = Integer.parseInt(portString);		
 		String namespace = cl.getOptionValue("n","test");
 		String set = cl.getOptionValue("s", "demoset");
 
@@ -181,7 +193,13 @@ public class Main extends JPanel {
 				}
 			}
 		}
-		return new Parameters(host, port, user, password, namespace, set);
+		
+		TlsPolicy policy = null;
+		
+		if (cl.hasOption("tls")) {
+			policy = new TlsPolicy();
+		}
+		return new Parameters(policy, host, port, user, password, namespace, set);
 	}
 	
 	/**

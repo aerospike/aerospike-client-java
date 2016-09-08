@@ -16,6 +16,8 @@
  */
 package com.aerospike.client;
 
+import java.util.ArrayList;
+
 /**
  * Host name/port of database server. 
  */
@@ -26,6 +28,11 @@ public final class Host {
 	public final String name;
 	
 	/**
+	 * TLS certificate name used for secure connections.
+	 */
+	public final String tlsName;
+
+	/**
 	 * Port of database server.
 	 */
 	public final int port;
@@ -35,16 +42,28 @@ public final class Host {
 	 */
 	public Host(String name, int port) {
 		this.name = name;
+		this.tlsName = null;
+		this.port = port;
+	}
+
+	/**
+	 * Initialize host.
+	 */
+	public Host(String name, String tlsName, int port) {
+		this.name = name;
+		this.tlsName = tlsName;
 		this.port = port;
 	}
 
 	@Override
 	public String toString() {
+		// Ignore tlsName in string representation.
 		return name + ':' + port;
 	}
 	
 	@Override
 	public int hashCode() {
+		// Ignore tlsName in default hash code.
 		final int prime = 31;
 		int result = prime + name.hashCode();
 		return prime * result + port;
@@ -52,7 +71,120 @@ public final class Host {
 
 	@Override
 	public boolean equals(Object obj) {
+		// Ignore tlsName in default equality comparison.
 		Host other = (Host) obj;
 		return this.name.equals(other.name) && this.port == other.port;
+	}
+	
+	/**
+	 * Parse hosts from string format: hostname1[:tlsname1][:port1],...
+	 * <p>
+	 * Hostname may also be an IP address in the following formats.
+	 * <ul>
+	 * <li>IPv4: xxx.xxx.xxx.xxx</li>
+	 * <li>IPv6: [xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]</li>
+	 * <li>IPv6: [xxxx::xxxx]</li>
+	 * </ul>
+	 * IPv6 addresses must be enclosed by brackets.
+	 * tlsname and port are optional.
+	 */
+	public static Host[] parseHosts(String str, int defaultPort) {
+		try {
+			return new HostParser(str, defaultPort).hosts;
+		}
+		catch (Exception e) {
+			throw new AerospikeException("Invalid hosts string: " + str);
+		}
+	}
+	
+	private static class HostParser {
+		private Host[] hosts;
+		private String str;
+		private int offset;
+		private int length;
+		private char c;
+		
+		private HostParser(String str, int defaultPort) {
+			this.str = str;
+			this.length = str.length();
+			this.offset = 0;
+			this.c = ',';
+			
+			ArrayList<Host> list = new ArrayList<Host>();
+			String hostname;
+			String tlsname;
+			int port;
+			
+			while (offset < length) {
+				if (c != ',') {
+					throw new RuntimeException();
+				}
+				hostname = parseHost();
+				tlsname = null;
+				port = defaultPort;
+				
+				if (offset < length && c == ':') {
+					String s = parseString();
+					
+					if (s.length() > 0) {
+						if (Character.isDigit(s.charAt(0))) {
+							// Found port.
+							port = Integer.parseInt(s);
+						}
+						else {
+							// Found tls name.
+							tlsname = s;
+							
+							// Parse port.
+							s = parseString();
+							
+							if (s.length() > 0) {
+								port = Integer.parseInt(s);
+							}
+						}
+					}
+				}				
+				list.add(new Host(hostname, tlsname, port));
+			}
+			hosts = list.toArray(new Host[list.size()]);
+		}
+		
+		private String parseHost() {
+			c = str.charAt(offset);
+			
+			if (c == '[') {
+				// IPv6 addresses are enclosed by brackets.
+				int begin = ++offset;
+				
+				while (offset < length) {
+					c = str.charAt(offset);
+					
+					if (c == ']') {
+						String s = str.substring(begin, offset++);
+						c = str.charAt(offset++);						
+						return s;
+					}
+					offset++;
+				}
+				throw new RuntimeException("Unterminated bracket");
+			}
+			else {
+				return parseString();
+			}
+		}
+		
+		private String parseString() {
+			int begin = offset;
+			
+			while (offset < length) {
+				c = str.charAt(offset);
+				
+				if (c == ':' || c == ',') {
+					return str.substring(begin, offset++);
+				}
+				offset++;
+			}
+			return str.substring(begin, offset);
+		}
 	}
 }

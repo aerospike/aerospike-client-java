@@ -35,6 +35,13 @@ public class ClientPolicy {
 	public String password;
 
 	/**
+	 * Expected cluster ID.  If not null, server nodes must return this cluster ID in order to
+	 * join the client's view of the cluster. Should only be set when connecting to servers that
+	 * support the "cluster-id" info command.
+	 */
+	public String clusterId;
+
+	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.
 	 * Default: 1000ms
@@ -114,6 +121,13 @@ public class ClientPolicy {
 	public InfoPolicy infoPolicyDefault = new InfoPolicy();
 
 	/**
+	 * TLS secure connection policy for TLS enabled servers.
+	 * TLS connections are only supported for AerospikeClient synchronous commands.
+	 * Default: null (Use normal sockets)
+	 */
+	public TlsPolicy tlsPolicy;
+
+	/**
 	 * A IP translation table is used in cases where different clients use different server 
 	 * IP addresses.  This may be necessary when using clients from both inside and outside 
 	 * a local area network.  Default is no translation.
@@ -124,9 +138,9 @@ public class ClientPolicy {
 	public Map<String,String> ipMap;
 
 	/**
-	 * Underlying thread pool used in batch, scan, and query commands. These commands are often 
-	 * sent to multiple server nodes in parallel threads.  A thread pool improves performance
-	 * because threads do not have to be created/destroyed for each command.
+	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
+	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
+	 * performance because threads do not have to be created/destroyed for each command.
 	 * The default, null, indicates that the following daemon thread pool will be used:
 	 * <pre>
 	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {

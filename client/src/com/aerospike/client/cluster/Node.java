@@ -17,7 +17,6 @@
 package com.aerospike.client.cluster;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +31,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.util.ThreadLocalData;
+import com.aerospike.client.util.Util;
 
 /**
  * Server node representation.  This class manages server node connections and health status.
@@ -41,22 +41,27 @@ public class Node implements Closeable {
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
+	
+	public static final int HAS_GEO	= (1 << 0);
+	public static final int HAS_DOUBLE = (1 << 1);
+	public static final int HAS_BATCH_INDEX	= (1 << 2);
+	public static final int HAS_REPLICAS_ALL = (1 << 3);
+	public static final int HAS_PEERS = (1 << 4);
 
 	protected final Cluster cluster;
 	private final String name;
 	private final Host host;
-	private Host[] aliases;
+	protected final List<Host> aliases;
 	protected final InetSocketAddress address;
 	private final ArrayBlockingQueue<Connection> connectionQueue;
 	private final AtomicInteger connectionCount;
 	private Connection tendConnection;
+	protected int peersGeneration;
 	protected int partitionGeneration;
 	protected int referenceCount;
 	protected int failures;
-	public final boolean hasGeo;
-	public final boolean hasDouble;
-	public final boolean hasBatchIndex;
-	public final boolean hasReplicasAll;
+	private final int features;
+	protected boolean partitionChanged;
 	protected volatile boolean active;
 
 	/**
@@ -69,56 +74,56 @@ public class Node implements Closeable {
 		this.cluster = cluster;
 		this.name = nv.name;
 		this.aliases = nv.aliases;
-		this.address = nv.address;
+		this.host = nv.primaryHost;
+		this.address = nv.primaryAddress;
 		this.tendConnection = nv.conn;
-		this.hasGeo = nv.hasGeo;
-		this.hasDouble = nv.hasDouble;
-		this.hasBatchIndex = nv.hasBatchIndex;
-		this.hasReplicasAll = nv.hasReplicasAll;
-		
-		// Assign host to first IP alias because the server identifies nodes 
-		// by IP address (not hostname). 
-		this.host = aliases[0];
-		
+		this.features = nv.features;
+				
 		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);
 		connectionCount = new AtomicInteger();
+		peersGeneration = -1;
 		partitionGeneration = -1;
 		active = true;
 	}
 	
 	/**
 	 * Request current status from server node.
-	 *  
-	 * @param friends		other nodes in the cluster, populated by this method
-	 * @throws Exception	if status request fails
 	 */
-	public final void refresh(List<Host> friends) throws Exception {
-		if (tendConnection.isClosed()) {
-			tendConnection = new Connection(address, cluster.getConnectionTimeout());
+	public final void refresh(Peers peers) {
+		if (! active) {
+			return;
 		}
-
+		
 		try {
-			String[] commands = cluster.useServicesAlternate ? 
+			if (tendConnection.isClosed()) {
+				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis);
+			}
+	
+			if (peers.usePeers) {
+				HashMap<String,String> infoMap = Info.request(tendConnection, "node", "peers-generation", "partition-generation");
+				verifyNodeName(infoMap);
+				verifyPeersGeneration(infoMap, peers);
+				verifyPartitionGeneration(infoMap);
+			}
+			else {
+				String[] commands = cluster.useServicesAlternate ? 
 					new String[] {"node", "partition-generation", "services-alternate"} :
 					new String[] {"node", "partition-generation", "services"};
-						
-			HashMap<String,String> infoMap = Info.request(tendConnection, commands);
-			verifyNodeName(infoMap);			
-			
-			if (addFriends(infoMap, friends)) {
-				updatePartitions(tendConnection, infoMap);
+					
+				HashMap<String,String> infoMap = Info.request(tendConnection, commands);
+				verifyNodeName(infoMap);
+				verifyPartitionGeneration(infoMap);
+				addFriends(infoMap, peers);		
 			}
+			peers.refreshCount++;
+			failures = 0;
 		}
 		catch (Exception e) {
-			// Swallow exception if node was closed in another thread.
-			if (! tendConnection.isClosed()) {
-				tendConnection.close();
-				throw e;
-			}
+			refreshFailed(e);
 		}
 	}
 	
-	private final void verifyNodeName(HashMap <String,String> infoMap) throws AerospikeException {
+	private final void verifyNodeName(HashMap <String,String> infoMap) {
 		// If the node name has changed, remove node from cluster and hope one of the other host
 		// aliases is still valid.  Round-robbin DNS may result in a hostname that resolves to a
 		// new address.
@@ -135,7 +140,35 @@ public class Node implements Closeable {
 		}
 	}
 	
-	private final boolean addFriends(HashMap <String,String> infoMap, List<Host> friends) throws AerospikeException {
+	private final void verifyPeersGeneration(HashMap<String,String> infoMap, Peers peers) {	
+		String genString = infoMap.get("peers-generation");
+		
+		if (genString == null || genString.length() == 0) {
+			throw new AerospikeException.Parse("peers-generation is empty");
+		}
+
+		int gen = Integer.parseInt(genString);
+		
+		if (peersGeneration != gen) {
+			peers.genChanged = true;
+		}						
+	}
+
+	private final void verifyPartitionGeneration(HashMap<String,String> infoMap) {	
+		String genString = infoMap.get("partition-generation");
+				
+		if (genString == null || genString.length() == 0) {
+			throw new AerospikeException.Parse("partition-generation is empty");
+		}
+
+		int gen = Integer.parseInt(genString);
+			
+		if (partitionGeneration != gen) {
+			this.partitionChanged = true;
+		}
+	}
+
+	private final void addFriends(HashMap <String,String> infoMap, Peers peers) throws AerospikeException {
 		// Parse the service addresses and add the friends to the list.
 		String command = cluster.useServicesAlternate ? "services-alternate" : "services";
 		String friendString = infoMap.get(command);
@@ -144,74 +177,206 @@ public class Node implements Closeable {
 			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
 			// Unchecked, such a node can dominate the partition map and cause all other
 			// nodes to be dropped.
-			int nodeCount = cluster.getNodes().length;
-			
-			if (nodeCount > 2) {
-				if (Log.warnEnabled()) {
-					Log.warn("Node " + this + " thinks it owns cluster, but client sees " + nodeCount + " nodes.");
-				}
-				return false;
+			if (cluster.getNodes().length > 2) {
+				throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.getNodes().length + " nodes.");
 			}
-			return true;
+			return;
 		}
 
 		String friendNames[] = friendString.split(";");
 
 		for (String friend : friendNames) {
 			String friendInfo[] = friend.split(":");
-			String host = friendInfo[0];
+			String hostname = friendInfo[0];
 
 			if (cluster.ipMap != null) {
-				String alternativeHost = cluster.ipMap.get(host);
+				String alternativeHost = cluster.ipMap.get(hostname);
 				
 				if (alternativeHost != null) {
-					host = alternativeHost;
+					hostname = alternativeHost;
 				}				
 			}
 			
 			int port = Integer.parseInt(friendInfo[1]);
-			Host alias = new Host(host, port);
-			Node node = cluster.findAlias(alias);
+			Host host = new Host(hostname, port);
 			
-			if (node != null) {
-				node.referenceCount++;
-			}
-			else {
-				if (! findAlias(friends, alias)) {
-					friends.add(alias);					
+			// Check global aliases for existing cluster.
+			Node node = cluster.aliases.get(host);
+			
+			if (node == null) {
+				// Check local aliases for this tend iteration.	
+				if (! peers.hosts.contains(host)) {
+					prepareFriend(host, peers);
 				}
 			}
-		}
-		return true;
-	}
-		
-	private final static boolean findAlias(List<Host> friends, Host alias) {
-		for (Host host : friends) {
-			if (host.equals(alias)) {
-				return true;
+			else {				
+				node.referenceCount++;
 			}
-		}
-		return false;
-	}
-
-	private final void updatePartitions(Connection conn, HashMap<String,String> infoMap) 
-		throws AerospikeException, IOException {	
-		String genString = infoMap.get("partition-generation");
-				
-		if (genString == null || genString.length() == 0) {
-			throw new AerospikeException.Parse("partition-generation is empty");
-		}
-
-		int generation = Integer.parseInt(genString);
-		
-		if (partitionGeneration != generation) {
-			if (Log.debugEnabled()) {
-				Log.debug("Node " + this + " partition generation " + generation + " changed.");
-			}
-			partitionGeneration = cluster.updatePartitions(conn, this);
 		}
 	}
 	
+	private final boolean prepareFriend(Host host, Peers peers) {
+		try {
+			NodeValidator nv = new NodeValidator();
+			nv.validateNode(cluster, host);
+			
+			// Check for duplicate nodes in nodes slated to be added.
+			Node node = peers.nodes.get(nv.name);
+			
+			if (node != null) {
+				// Duplicate node name found.  This usually occurs when the server 
+				// services list contains both internal and external IP addresses 
+				// for the same node.
+				nv.conn.close();
+				peers.hosts.add(host);
+				node.aliases.add(host);
+				return true;				
+			}
+			
+			// Check for duplicate nodes in cluster.
+			node = cluster.nodesMap.get(nv.name);
+			
+			if (node != null) {
+				nv.conn.close();
+				peers.hosts.add(host);
+				node.aliases.add(host);
+				node.referenceCount++;
+				cluster.aliases.put(host, node);
+				return true;
+			}
+
+			node = cluster.createNode(nv);
+			peers.hosts.add(host);
+			peers.nodes.put(nv.name, node);
+			return true;
+		}
+		catch (Exception e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
+			}
+			return false;
+		}
+	}
+
+	protected final void refreshPeers(Peers peers) {
+		// Do not refresh peers when node connection has already failed during this cluster tend iteration.
+		if (failures > 0 || ! active) {
+			return;
+		}
+		
+		try { 
+			if (Log.debugEnabled()) {
+				Log.debug("Update peers for node " + this);
+			}
+			PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
+			peersGeneration = parser.generation;
+		
+			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
+			// Unchecked, such a node can dominate the partition map and cause all other
+			// nodes to be dropped.
+			if (peers.peers.size() == 0 && cluster.getNodes().length > 2) {
+				throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.getNodes().length + " nodes.");
+			}
+	
+			for (Peer peer : peers.peers) {		
+				if (findPeerNode(cluster, peers, peer.nodeName)) {
+					// Node already exists. Do not even try to connect to hosts.				
+					continue;
+				}
+	
+				// Find first host that connects.
+				for (Host host : peer.hosts) {
+					try {
+						// Attempt connection to host.
+						NodeValidator nv = new NodeValidator();
+						nv.validateNode(cluster, host);
+						
+						if (! peer.nodeName.equals(nv.name)) {					
+							// Must look for new node name in the unlikely event that node names do not agree. 
+							if (Log.warnEnabled()) {
+								Log.warn("Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
+							}
+							
+							if (findPeerNode(cluster, peers, nv.name)) {
+								// Node already exists. Do not even try to connect to hosts.				
+								nv.conn.close();
+								break;
+							}
+						}
+						
+						// Create new node.
+						Node node = cluster.createNode(nv);
+						peers.nodes.put(nv.name, node);
+						break;
+					}
+					catch (Exception e) {
+						if (Log.warnEnabled()) {
+							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
+						}
+					}
+				}
+			}
+			peers.refreshCount++;
+		}
+		catch (Exception e) {
+			refreshFailed(e);			
+		}
+	}
+	
+	private static boolean findPeerNode(Cluster cluster, Peers peers, String nodeName) {		
+		// Check global node map for existing cluster.
+		Node node = cluster.nodesMap.get(nodeName);
+		
+		if (node != null) {
+			node.referenceCount++;
+			return true;
+		}
+
+		// Check local node map for this tend iteration.
+		node = peers.nodes.get(nodeName);
+
+		if (node != null) {
+			node.referenceCount++;
+			return true;
+		}
+		return false;
+	}
+	
+	protected final void refreshPartitions(Peers peers) {
+		// Do not refresh partitions when node connection has already failed during this cluster tend iteration.
+		if (failures > 0 || ! active) {
+			return;
+		}
+		
+		try {
+			if (Log.debugEnabled()) {
+				Log.debug("Update partition map for node " + this);
+			}
+			PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);			
+
+			if (parser.isPartitionMapCopied()) {		
+				cluster.partitionMap = parser.getPartitionMap();
+			}
+			partitionGeneration = parser.getGeneration();
+		}
+		catch (Exception e) {
+			refreshFailed(e);
+		}
+	}
+
+	private final void refreshFailed(Exception e) {		
+		failures++;	
+		
+		if (! tendConnection.isClosed()) {
+			tendConnection.close();
+		}
+		
+		// Only log message if cluster is still active.
+		if (cluster.tendValid && Log.warnEnabled()) {
+			Log.warn("Node " + this + " refresh failed: " + Util.getErrorMessage(e));
+		}
+	}
+
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 * 
@@ -240,7 +405,7 @@ public class Node implements Closeable {
 		
 		if (connectionCount.getAndIncrement() < cluster.connectionQueueSize) {
 			try {
-				conn = new Connection(address, timeoutMillis, cluster.maxSocketIdleMillis);
+				conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleMillis);
 			}
 			catch (RuntimeException re) {
 				connectionCount.getAndDecrement();
@@ -313,39 +478,44 @@ public class Node implements Closeable {
 	public final String getName() {
 		return name;
 	}
-
-	/**
-	 * Return server node IP address aliases.
-	 */
-	public final Host[] getAliases() {
-		return aliases;
-	}
 	
-	/**
-	 * Add node alias to list.
-	 */
-	public final void addAlias(Host aliasToAdd) {
-		// Aliases are only referenced in the cluster tend thread,
-		// so synchronization is not necessary.
-		Host[] tmpAliases = new Host[aliases.length + 1];
-		int count = 0;
-		
-		for (Host host : aliases) {
-			tmpAliases[count++] = host;
-		}
-		tmpAliases[count] = aliasToAdd;
-		aliases = tmpAliases;
-	}
-	
-	public InetSocketAddress getAddress() {
+	public final InetSocketAddress getAddress() {
 		return address;
 	}
 	
 	/**
 	 * Use new batch protocol if server supports it and useBatchDirect is not set.
 	 */
-	public boolean useNewBatch(BatchPolicy policy) {
-		return ! policy.useBatchDirect && hasBatchIndex;
+	public final boolean useNewBatch(BatchPolicy policy) {
+		return ! policy.useBatchDirect && hasBatchIndex();
+	}
+	
+	/**
+	 * Does server support batch index protocol.
+	 */
+	public final boolean hasBatchIndex() {
+		return (features & HAS_BATCH_INDEX) != 0;
+	}
+
+	/**
+	 * Does server support double particle types.
+	 */
+	public final boolean hasDouble() {
+		return (features & HAS_DOUBLE) != 0;
+	}
+
+	/**
+	 * Does server support replicas-all info command.
+	 */
+	public final boolean hasReplicasAll() {
+		return (features & HAS_REPLICAS_ALL) != 0;
+	}
+
+	/**
+	 * Does server support peers info command.
+	 */
+	public final boolean hasPeers() {
+		return (features & HAS_PEERS) != 0;
 	}
 
 	/**

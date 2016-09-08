@@ -62,7 +62,7 @@ public final class AsyncBatch {
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
-				if (! batchNode.node.hasBatchIndex) {
+				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}
 				tasks[count++] = new ReadListCommand(this, cluster, batchNode, policy, records);
@@ -144,7 +144,7 @@ public final class AsyncBatch {
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
-				if (! batchNode.node.hasBatchIndex) {
+				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}
 				tasks[count++] = new ReadSequenceCommand(this, cluster, batchNode, policy, listener, records);

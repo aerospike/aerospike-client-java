@@ -32,6 +32,7 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.TlsPolicy;
 
 public class Args {
 	public static Args Instance = new Args();
@@ -42,6 +43,7 @@ public class Args {
 	public String password;
 	public String namespace;
 	public String set;
+	public TlsPolicy tlsPolicy;
 	public boolean hasUdf;
 	public boolean hasMap;
 	public boolean singleBin;
@@ -69,6 +71,7 @@ public class Args {
 			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
+			options.addOption("tls", "tls", false, "Use TLS/SSL sockets");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -90,7 +93,11 @@ public class Args {
 				set = "";
 			}
 			
-			user = cl.getOptionValue("U");
+	        if (cl.hasOption("tls")) {
+	        	tlsPolicy = new TlsPolicy();
+	        }
+
+	        user = cl.getOptionValue("U");
 			password = cl.getOptionValue("P");
 			
 			if (user != null && password == null) {

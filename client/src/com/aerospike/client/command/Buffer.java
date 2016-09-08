@@ -218,7 +218,11 @@ public final class Buffer {
 
     public static String utf8ToString(byte[] buf, int offset, int length) {
     	// A Thread local implementation does not help here, so  
-    	// allocate character buffer each time.  
+    	// allocate character buffer each time.
+    	if (length == 0) {
+    		return "";
+    	}
+    	
 		char[] charBuffer = new char[length];
     	int charCount = 0;
         int limit = offset + length;
@@ -251,6 +255,10 @@ public final class Buffer {
     }
 
     public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) {
+    	if (length == 0) {
+    		return "";
+    	}
+    	
     	// This method is designed to accommodate multiple string conversions on the same
     	// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
     	// created on the stack and passed in each method invocation.

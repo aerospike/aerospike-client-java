@@ -36,28 +36,40 @@ import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Replica;
+import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
 	private static final int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
 	
+	// Expected cluster ID.
+	protected final String clusterId;
+	
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
 	
-	// All aliases for all nodes in cluster.
-	private final HashMap<Host,Node> aliases;
+	// All host aliases for all nodes in cluster.
+	// Only accessed within cluster tend thread.
+	protected final HashMap<Host,Node> aliases;
+
+	// Map of active nodes in cluster.
+	// Only accessed within cluster tend thread.
+	protected final HashMap<String,Node> nodesMap;
 
 	// Active nodes in cluster.
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	private volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
+	protected volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
 	
 	// IP translations.
 	protected final Map<String,String> ipMap;
 
-	// User name in UTF-8 encoded bytes.
+    // TLS connection policy.
+	protected final TlsPolicy tlsPolicy;
+
+    // User name in UTF-8 encoded bytes.
 	protected final byte[] user;
 
 	// Password in hashed format in bytes.
@@ -86,18 +98,33 @@ public class Cluster implements Runnable, Closeable {
 
 	// Tend thread variables.
 	private Thread tendThread;
-	private volatile boolean tendValid;
+	protected volatile boolean tendValid;
 	
 	// Is threadPool shared with other client instances?
 	private final boolean sharedThreadPool;
 	
 	// Request prole replicas in addition to master replicas?
-	private boolean requestProleReplicas;
+	protected boolean requestProleReplicas;
 
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
+		this.clusterId = policy.clusterId;
+
+		// Default TLS names when TLS enabled.
+		if (policy.tlsPolicy != null && ! policy.tlsPolicy.encryptOnly) {
+			boolean useClusterId = clusterId != null && clusterId.length() > 0;
+			
+			for (int i = 0; i < hosts.length; i++) {
+				Host host = hosts[i];
+				
+				if (host.tlsName == null) {
+					String tlsName = useClusterId ? clusterId : host.name;
+					hosts[i] = new Host(host.name, tlsName, host.port);
+				}
+			}
+		}
 		this.seeds = hosts;
 		
 		if (policy.user != null && policy.user.length() > 0) {
@@ -120,6 +147,7 @@ public class Cluster implements Runnable, Closeable {
 			this.user = null;
 		}
 		
+		tlsPolicy = policy.tlsPolicy;
 		connectionQueueSize = policy.maxConnsPerNode;
 		connectionTimeout = policy.timeout;
 		maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
@@ -137,6 +165,7 @@ public class Cluster implements Runnable, Closeable {
 		useServicesAlternate = policy.useServicesAlternate;
 		
 		aliases = new HashMap<Host,Node>();
+		nodesMap = new HashMap<String,Node>();
 		nodes = new Node[0];	
 		partitionMap = new HashMap<String,AtomicReferenceArray<Node>[]>();		
 		nodeIndex = new AtomicInteger();
@@ -162,7 +191,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 			
 			// Disable double type support if some nodes don't support it.
-			if (Value.UseDoubleType && ! node.hasDouble) {
+			if (Value.UseDoubleType && ! node.hasDouble()) {
 				if (Log.warnEnabled()) {
 					Log.warn("Some nodes don't support new double type.  Disabling.");
 				}
@@ -170,7 +199,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 
 			// Disable prole requests if some nodes don't support it.
-			if (requestProleReplicas && ! node.hasReplicasAll) {
+			if (requestProleReplicas && ! node.hasReplicasAll()) {
 				if (Log.warnEnabled()) {
 					Log.warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
 				}
@@ -273,96 +302,90 @@ public class Cluster implements Runnable, Closeable {
 			seedNodes(failIfNotConnected);
 		}
 
+		// Initialize tend iteration node statistics.
+		Peers peers = new Peers(nodes.length + 16, 16);
+		
 		// Clear node reference counts.
 		for (Node node : nodes) {
 			node.referenceCount = 0;
+			node.partitionChanged = false;
+			
+			if (! node.hasPeers()) {
+				peers.usePeers = false;
+			}
 		}
 		
 		// Refresh all known nodes.
-		ArrayList<Host> friendList = new ArrayList<Host>();
-		int refreshCount = 0;
-		
 		for (Node node : nodes) {
-			try {
-				if (node.isActive()) {
-					node.refresh(friendList);
-					node.failures = 0;
-					refreshCount++;
-				}
-			}
-			catch (Exception e) {
-				node.failures++;
-				if (tendValid && Log.infoEnabled()) {
-					Log.info("Node " + node + " refresh failed: " + Util.getErrorMessage(e));
-				}
+			node.refresh(peers);
+		}
+		
+		// Refresh peers when necessary.
+		if (peers.genChanged) {
+			// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
+			peers.refreshCount = 0;
+			
+			for (Node node : nodes) {
+				node.refreshPeers(peers);				
 			}
 		}
 		
-		// Handle nodes changes determined from refreshes.
-		ArrayList<Node> addList = findNodesToAdd(friendList);
-		ArrayList<Node> removeList = findNodesToRemove(refreshCount);
-		
-		// Remove nodes in a batch.
-		if (removeList.size() > 0) {
-			removeNodes(removeList);
+		// Refresh partition map when necessary.
+		for (Node node : nodes) {			
+			if (node.partitionChanged) {
+				node.refreshPartitions(peers);
+			}
+		}
+
+		if (peers.genChanged || ! peers.usePeers) {
+			// Handle nodes changes determined from refreshes.
+			ArrayList<Node> removeList = findNodesToRemove(peers.refreshCount);
+			
+			// Remove nodes in a batch.
+			if (removeList.size() > 0) {
+				removeNodes(removeList);
+			}
 		}
 
 		// Add nodes in a batch.
-		if (addList.size() > 0) {
-			addNodes(addList);
+		if (peers.nodes.size() > 0) {
+			addNodes(peers.nodes);
 		}
 	}
 	
-	protected final Node findAlias(Host alias) {
-		return aliases.get(alias);
-	}
-	
-	protected final int updatePartitions(Connection conn, Node node) throws AerospikeException {		
-		PartitionParser parser = new PartitionParser(conn, node, partitionMap, Node.PARTITIONS, requestProleReplicas);			
-
-		if (parser.isPartitionMapCopied()) {		
-			partitionMap = parser.getPartitionMap();
-		}
-		return parser.getGeneration();
-	}
-
 	private final boolean seedNodes(boolean failIfNotConnected) throws AerospikeException {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		Exception[] exceptions = null;
 		
 		// Add all nodes at once to avoid copying entire array multiple times.
-		ArrayList<Node> list = new ArrayList<Node>();
+		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(seedArray.length + 16);
 
 		for (int i = 0; i < seedArray.length; i++) {
 			Host seed = seedArray[i];
-			
-			// Check if seed already exists in cluster.
-			if (aliases.containsKey(seed)) {
-				continue;
-			}
 
 			try {
 				NodeValidator nv = new NodeValidator();
-				nv.seedNodes(this, seed, list);		
+				nv.seedNodes(this, seed, nodesToAdd);	
 			}
 			catch (Exception e) {
-				if (Log.warnEnabled()) {
-					Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
-				}
-				
 				// Store exception and try next host
 				if (failIfNotConnected) {
 					if (exceptions == null) {
 						exceptions = new Exception[seedArray.length];
 					}
 					exceptions[i] = e;
-				}				
+				}
+				else {
+					if (Log.warnEnabled()) {
+						Log.warn("Seed " + seed + " failed: " + Util.getErrorMessage(e));
+					}					
+				}
 			}			
 		}
 
-		if (list.size() > 0) {
-			addNodesCopy(list);
+		if (nodesToAdd.size() > 0) {
+			addNodes(nodesToAdd);
 			return true;
 		}
 		else if (failIfNotConnected) {
@@ -388,39 +411,6 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 	
-	private final ArrayList<Node> findNodesToAdd(List<Host> hosts) {
-		ArrayList<Node> list = new ArrayList<Node>(hosts.size());
-		
-		for (Host host : hosts) {
-			try {
-				NodeValidator nv = new NodeValidator();
-				nv.validateNode(this, host);
-								
-				Node node = findNode(nv.name, list);
-				
-				if (node != null) {
-					// Duplicate node name found.  This usually occurs when the server 
-					// services list contains both internal and external IP addresses 
-					// for the same node.  Add new host to list of alias filters
-					// and do not add new node.
-					nv.conn.close();
-					node.referenceCount++;
-					node.addAlias(host);
-					aliases.put(host, node);
-					continue;
-				}
-				node = createNode(nv);		
-				list.add(node);
-			}
-			catch (Exception e) {
-				if (Log.warnEnabled()) {
-					Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
-				}
-			}
-		}
-		return list;
-	}
-
 	protected Node createNode(NodeValidator nv) {
 		return new Node(this, nv);
 	}
@@ -494,26 +484,11 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 	
-	private final void addNodes(List<Node> nodesToAdd) {
-		// Add all nodes at once to avoid copying entire array multiple times.		
-		for (Node node : nodesToAdd) {
-			addAliases(node);
-		}
-		addNodesCopy(nodesToAdd);
-	}
-	
-	protected final void addAliases(Node node) {		
-		// Add node's aliases to global alias set.
-		// Aliases are only used in tend thread, so synchronization is not necessary.
-		for (Host alias : node.getAliases()) {
-			aliases.put(alias, node);
-		}
-	}
-	
 	/**
 	 * Add nodes using copy on write semantics.
 	 */
-	private final void addNodesCopy(List<Node> nodesToAdd) {
+	private final void addNodes(HashMap<String,Node> nodesToAdd) {
+		// Add all nodes at once to avoid copying entire array multiple times.		
 		// Create temporary nodes array.
 		Node[] nodeArray = new Node[nodes.length + nodesToAdd.size()];
 		int count = 0;
@@ -524,11 +499,19 @@ public class Cluster implements Runnable, Closeable {
 		}
 		
 		// Add new nodes.
-		for (Node node : nodesToAdd) {			
+		for (Node node : nodesToAdd.values()) {
 			if (Log.infoEnabled()) {
 				Log.info("Add node " + node);
 			}
+			
 			nodeArray[count++] = node;
+			nodesMap.put(node.getName(), node);
+			
+			// Add node's aliases to global alias set.
+			// Aliases are only used in tend thread, so synchronization is not necessary.
+			for (Host alias : node.aliases) {
+				aliases.put(alias, node);
+			}
 		}
 		
 		// Replace nodes with copy.
@@ -541,10 +524,13 @@ public class Cluster implements Runnable, Closeable {
 		// in an exception and a different node will be tried.
 		
 		// Cleanup node resources.
-		for (Node node : nodesToRemove) {			
+		for (Node node : nodesToRemove) {
+			// Remove node from map.
+			nodesMap.remove(node.getName());
+			
 			// Remove node's aliases from cluster alias set.
 			// Aliases are only used in tend thread, so synchronization is not necessary.
-			for (Host alias : node.getAliases()) {
+			for (Host alias : node.aliases) {
 				// Log.debug("Remove alias " + alias);
 				aliases.remove(alias);
 			}		
@@ -710,27 +696,10 @@ public class Cluster implements Runnable, Closeable {
 		return node;
 	}
 
-	private final Node findNode(String nodeName) {
+	protected final Node findNode(String nodeName) {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 		
-		for (Node node : nodeArray) {
-			if (node.getName().equals(nodeName)) {
-				return node;
-			}
-		}
-		return null;
-	}
-
-	private final Node findNode(String nodeName, ArrayList<Node> localList) {
-		for (Node node : localList) {
-			if (node.getName().equals(nodeName)) {
-				return node;
-			}
-		}
-
-		// Must copy array reference for copy on write semantics to work.
-		Node[] nodeArray = nodes;
 		for (Node node : nodeArray) {
 			if (node.getName().equals(nodeName)) {
 				return node;

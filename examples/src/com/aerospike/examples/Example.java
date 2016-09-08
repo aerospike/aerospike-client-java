@@ -20,6 +20,7 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Host;
 import com.aerospike.client.policy.ClientPolicy;
 
 public abstract class Example {
@@ -33,12 +34,14 @@ public abstract class Example {
 		ClientPolicy policy = new ClientPolicy();
 		policy.user = params.user;
 		policy.password = params.password;
-		policy.failIfNotConnected = true;
+		policy.tlsPolicy = params.tlsPolicy;
 		
 		params.policy = policy.readPolicyDefault;
 		params.writePolicy = policy.writePolicyDefault;
 
-		AerospikeClient client = new AerospikeClient(policy, params.host, params.port);
+		Host[] hosts = Host.parseHosts(params.host, params.port);
+
+		AerospikeClient client = new AerospikeClient(policy, hosts);
 
 		try {
 			params.setServerSpecific(client);

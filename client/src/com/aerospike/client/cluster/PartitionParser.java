@@ -51,12 +51,12 @@ public final class PartitionParser {
 		
 		String command = (requestProleReplicas)? ReplicasAll : ReplicasMaster;
 		Info info = new Info(conn, PartitionGeneration, command);
-		this.length = info.getLength();
+		this.length = info.length;
 
 		if (length == 0) {
 			throw new AerospikeException.Parse("Partition info is empty");
 		}
-		this.buffer = info.getBuffer();
+		this.buffer = info.buffer;
 
 		// Create reusable StringBuilder for performance.
 		this.sb = new StringBuilder(32);  // Max namespace length
