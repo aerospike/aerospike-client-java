@@ -83,9 +83,6 @@ public class Policy {
 	 * If maxRetries is exceeded, the abort will occur even if the timeout 
 	 * has not yet been exceeded.
 	 * <p>
-	 * This field is ignored in async mode.  Async transactions only retry on
-	 * invalid connections in the connection pool which is not bounded.
-	 * <p>
 	 * Default: 1
 	 */
 	public int maxRetries = 1;
@@ -100,14 +97,15 @@ public class Policy {
 	
 	/**
 	 * Should the client retry a command if the timeout is reached.
-	 * Used by synchronous commands only.
 	 * <p>
 	 * If false, throw timeout exception when the timeout has been reached.  Note that
 	 * retries can still occur if a command fails on a network error before the timeout
 	 * has been reached.
 	 * <p>
 	 * If true, retry command with same timeout when the timeout has been reached.
-	 * The maximum number of retries is defined by maxRetries.
+	 * The maximum number of retries is defined by maxRetries.  Note that retries in 
+	 * async mode can only be made if timeoutDelay is zero. Otherwise, deadlock would 
+	 * have been possible.
 	 * <p>
 	 * Default: false
 	 */
