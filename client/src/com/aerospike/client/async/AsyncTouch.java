@@ -23,31 +23,38 @@ import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncTouch extends AsyncSingleCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final WriteListener listener;
 	private final Key key;
 	private final Partition partition;
 		
-	public AsyncTouch(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key) {
-		super(cluster);
-		this.policy = policy;
+	public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key) {
+		super(cluster, writePolicy);
+		this.writePolicy = writePolicy;
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 	}
 
+	public AsyncTouch(AsyncTouch other) {
+		super(other);
+		this.writePolicy = other.writePolicy;
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+	}
+
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncTouch(this);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTouch(policy, key);
+		setTouch(writePolicy, key);
 	}
 
 	@Override

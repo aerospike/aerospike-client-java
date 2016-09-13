@@ -25,35 +25,44 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncWrite extends AsyncSingleCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final WriteListener listener;
 	private final Key key;
 	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 		
-	public AsyncWrite(AsyncCluster cluster, WritePolicy policy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) {
-		super(cluster);
-		this.policy = policy;
+	public AsyncWrite(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) {
+		super(cluster, writePolicy);
+		this.writePolicy = writePolicy;
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 		this.bins = bins;
 		this.operation = operation;
 	}
-
+	
+	public AsyncWrite(AsyncWrite other) {
+		super(other);
+		this.writePolicy = other.writePolicy;
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+		this.bins = other.bins;
+		this.operation = other.operation;
+	}
+	
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncWrite(this);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setWrite(policy, operation, key, bins);
+		setWrite(writePolicy, operation, key, bins);
 	}
 
 	@Override

@@ -28,23 +28,28 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
 public class AsyncReadHeader extends AsyncSingleCommand {
-	private final Policy policy;
 	private final RecordListener listener;
 	private final Key key;
 	private final Partition partition;
 	private Record record;
 	
 	public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) {
-		super(cluster);
-		this.policy = policy;
+		super(cluster, policy);
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 	}
 
+	public AsyncReadHeader(AsyncReadHeader other) {
+		super(other);
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+	}
+
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncReadHeader(this);
 	}
 
 	@Override

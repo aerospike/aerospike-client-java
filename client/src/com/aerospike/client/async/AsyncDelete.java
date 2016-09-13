@@ -24,32 +24,39 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.DeleteListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncDelete extends AsyncSingleCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final DeleteListener listener;
 	private final Key key;
 	private final Partition partition;
 	private boolean existed;
 		
-	public AsyncDelete(AsyncCluster cluster, WritePolicy policy, DeleteListener listener, Key key) {
-		super(cluster);
-		this.policy = policy;
+	public AsyncDelete(AsyncCluster cluster, WritePolicy writePolicy, DeleteListener listener, Key key) {
+		super(cluster, writePolicy);
+		this.writePolicy = writePolicy;
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 	}
 	
+	public AsyncDelete(AsyncDelete other) {
+		super(other);
+		this.writePolicy = other.writePolicy;
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+	}
+
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncDelete(this);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setDelete(policy, key);
+		setDelete(writePolicy, key);
 	}
 
 	@Override

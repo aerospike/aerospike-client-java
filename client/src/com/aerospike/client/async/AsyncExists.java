@@ -27,23 +27,28 @@ import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncExists extends AsyncSingleCommand {
-	private final Policy policy;
 	private final ExistsListener listener;
 	private final Key key;
 	private final Partition partition;
 	private boolean exists;
 	
 	public AsyncExists(AsyncCluster cluster, Policy policy, ExistsListener listener, Key key) {
-		super(cluster);
-		this.policy = policy;
+		super(cluster, policy);
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 	}
 		
+	public AsyncExists(AsyncExists other) {
+		super(other);
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+	}
+
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncExists(this);
 	}
 
 	@Override

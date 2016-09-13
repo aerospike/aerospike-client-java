@@ -150,5 +150,6 @@ public abstract class SyncCommand extends Command {
 		}
 	}
 
+	protected abstract Policy getPolicy();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 }

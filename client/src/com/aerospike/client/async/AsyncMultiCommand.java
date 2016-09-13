@@ -29,6 +29,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
+import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	
@@ -46,11 +47,16 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	private final boolean stopOnNotFound;
 	protected volatile boolean valid = true;
 		
-	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, boolean stopOnNotFound) {
-		super(cluster);
+	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, Policy policy, boolean stopOnNotFound) {
+		super(cluster, policy);
 		this.parent = parent;
 		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
+	}
+
+	protected final AsyncCommand cloneCommand() {
+		// Retry not allowed for async batch, scan and query.
+		return null;
 	}
 
 	protected final Node getNode() {	

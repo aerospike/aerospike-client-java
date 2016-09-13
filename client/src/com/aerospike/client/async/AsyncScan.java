@@ -20,7 +20,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ScanPolicy;
 
 public final class AsyncScan extends AsyncMultiCommand {
@@ -42,18 +41,13 @@ public final class AsyncScan extends AsyncMultiCommand {
 		String[] binNames,
 		long taskId
 	) {
-		super(parent, cluster, node, true);
+		super(parent, cluster, node, policy, true);
 		this.policy = policy;
 		this.listener = listener;
 		this.namespace = namespace;
 		this.setName = setName;
 		this.binNames = binNames;
 		this.taskId = taskId;
-	}
-		
-	@Override
-	protected Policy getPolicy() {
-		return policy;
 	}
 
 	@Override

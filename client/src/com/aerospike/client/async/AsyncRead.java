@@ -33,7 +33,6 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
 
 public class AsyncRead extends AsyncSingleCommand {
-	private final Policy policy;
 	private final RecordListener listener;
 	protected final Key key;
 	protected final Partition partition;
@@ -41,17 +40,24 @@ public class AsyncRead extends AsyncSingleCommand {
 	protected Record record;
 	
 	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
-		super(cluster);
-		this.policy = policy;
+		super(cluster, policy);
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 		this.binNames = binNames;
 	}
 
+	public AsyncRead(AsyncRead other) {
+		super(other);
+		this.listener = other.listener;
+		this.key = other.key;
+		this.partition = other.partition;
+		this.binNames = other.binNames;
+	}
+
 	@Override
-	protected Policy getPolicy() {
-		return policy;
+	protected AsyncCommand cloneCommand() {
+		return new AsyncRead(this);
 	}
 
 	@Override

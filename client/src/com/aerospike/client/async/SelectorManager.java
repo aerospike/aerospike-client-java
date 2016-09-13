@@ -117,7 +117,7 @@ public final class SelectorManager extends Thread implements Closeable {
     	
     	while ((command = commandQueue.poll()) != null) {
 	    	try {
-	    		if (command.timeout > 0) {
+	    		if (command.policy.timeout > 0) {
 		    		if (command.checkTimeout()) {
 		    			// The command should only be added to the timeout
 		    			// queue once because retries are not supported.
@@ -130,7 +130,7 @@ public final class SelectorManager extends Thread implements Closeable {
 		    	command.conn.register(command, selector);
 	    	}
     		catch (Exception e) {
-            	command.failOnNetworkError(new AerospikeException(e));
+            	command.onNetworkError(new AerospikeException(e));
     		}	    	
     	}    	
     }
@@ -175,18 +175,18 @@ public final class SelectorManager extends Thread implements Closeable {
         	}
         }
         catch (AerospikeException.Connection ac) {
-        	command.failOnNetworkError(ac);
+        	command.onNetworkError(ac);
         }
         catch (AerospikeException ae) {
 			// Fail without retry on non-network errors.
-			command.failOnApplicationError(ae);
+			command.onApplicationError(ae);
         }
         catch (IOException ioe) {
-        	command.failOnNetworkError(new AerospikeException(ioe));
+        	command.onNetworkError(new AerospikeException(ioe));
         }
         catch (Exception e) {
 			// Fail without retry on unknown errors.
-			command.failOnApplicationError(new AerospikeException(e));
+			command.onApplicationError(new AerospikeException(e));
         }
     }
  	

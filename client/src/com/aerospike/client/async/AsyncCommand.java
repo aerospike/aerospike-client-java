@@ -36,28 +36,39 @@ public abstract class AsyncCommand extends Command implements Runnable {
 
 	protected AsyncConnection conn;
 	protected ByteBuffer byteBuffer;
-	protected final AsyncCluster cluster;
 	protected AsyncNode node;
+	protected final AsyncCluster cluster;
+	protected final Policy policy;
 	private final AtomicInteger state = new AtomicInteger();
 	private long limit;
-	protected int timeout;
+	private int iterations;
 	protected boolean inAuthenticate;
 	protected boolean inHeader = true;
 	
-	public AsyncCommand(AsyncCluster cluster) {
+	public AsyncCommand(AsyncCluster cluster, Policy policy) {
 		this.cluster = cluster;
+		this.policy = policy;	
 	}
-	
-	public void execute() {
-		Policy policy = getPolicy();
-		timeout = policy.timeout;
-		
-		if (timeout > 0) {	
-			limit = System.currentTimeMillis() + timeout;
+
+	public AsyncCommand(AsyncCommand other) {
+		// Retry constructor.
+		this.cluster = other.cluster;
+		this.policy = other.policy;
+		this.byteBuffer = other.byteBuffer;
+		this.limit = other.limit;
+		this.iterations = other.iterations + 1;
+		this.sequence = other.sequence;
+	}
+
+	public final void execute() {
+		if (policy.timeout > 0) {
+			limit = System.currentTimeMillis() + policy.timeout;
 		}
-		
 		byteBuffer = cluster.getByteBuffer();
-		
+		executeCommand();
+	}
+
+	private void executeCommand() {
 		try {
 			node = (AsyncNode)getNode();
 			conn = node.getAsyncConnection(byteBuffer);
@@ -80,13 +91,29 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			writeCommand();
 			conn.execute(this);
 		}
+		catch (AerospikeException.Connection aec) {
+			// Attempt retry on failed connection.
+			if (iterations < policy.maxRetries && (policy.retryOnTimeout || limit == 0 || System.currentTimeMillis() < limit)) {
+				closeConnection();
+				iterations++;
+				
+				if (policy.timeout > 0 && policy.retryOnTimeout) {
+					limit = System.currentTimeMillis() + policy.timeout;
+				}
+				executeCommand();  // recursive call
+			}
+			else {
+				cleanup();
+				throw aec;
+			}
+		}
 		catch (RuntimeException re) {
-			close();
+			cleanup();
 			throw re;
 		}
 	}
 	
-	protected void writeCommand() {	
+	protected final void writeCommand() {	
 		writeBuffer();
 		
 		if (dataOffset > byteBuffer.capacity()) {
@@ -98,7 +125,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		byteBuffer.flip();
 	}
 
-	protected void processAuthenticate() {	
+	protected final void processAuthenticate() {	
 		inAuthenticate = false;
 		inHeader = true;
 		
@@ -130,15 +157,15 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			if (conn.allowTimeout()) {
 				// Command has timed out in timeout queue thread.
 				// At this point, we know another thread can't be modifying this command's state.
-				Policy policy = getPolicy();
-				
 				if (policy.timeoutDelay > 0) {
 					if (status == IN_PROGRESS) {
 						if (state.compareAndSet(IN_PROGRESS, TIMEOUT_DELAY)) {
 							// Notify user of timeout, but allow transaction to continue
-							// in hope of reusing the socket. Reset timeout
+							// in hope of reusing the socket.  Do not perform concurrent retry
+							// because that would require a new byte buffer which could possibly
+							// result in deadlock.
 							limit = System.currentTimeMillis() + policy.timeoutDelay;
-							onFailure(new AerospikeException.Timeout(node, timeout, 0, 0, 0));
+							onFailure(new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0));
 							return true;
 						}											
 					}
@@ -147,7 +174,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 							// Transaction has been delayed long enough.
 							// We know the task has not been offloaded to another thread,
 							// so we can close safely here.
-							close();
+							cleanup();
 						}
 					}
 				}
@@ -156,8 +183,27 @@ public abstract class AsyncCommand extends Command implements Runnable {
 					if (state.compareAndSet(IN_PROGRESS, COMPLETE)) {
 						// We know the task has not been offloaded to another thread,
 						// so we can close safely here.
-						close();
-						onFailure(new AerospikeException.Timeout(node, timeout, 0, 0, 0));
+						// Attempt retry.
+						if (iterations < policy.maxRetries && policy.retryOnTimeout) {
+							AsyncCommand command = cloneCommand();
+
+							if (command != null) {
+								closeConnection();							
+								command.limit = System.currentTimeMillis() + policy.timeout;
+								
+								try {
+									command.executeCommand();
+								}
+								catch (Exception e) {
+									// Command has already been cleaned up.
+									// Notify user with original error.
+									onFailure(new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0));
+								}
+								return false;
+							}							
+						}					
+						cleanup();
+						onFailure(new AerospikeException.Timeout(node, policy.timeout, iterations + 1, 0, 0));
 					}
 				}
 				return false;  // Do not put back on timeout queue.
@@ -175,18 +221,18 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			}
 		}
         catch (AerospikeException.Connection ac) {
-        	failOnNetworkError(ac);
+        	onNetworkError(ac);
         }
         catch (AerospikeException ae) {
 			// Fail without retry on non-network errors.
-			failOnApplicationError(ae);
+			onApplicationError(ae);
         }
         catch (IOException ioe) {
-        	failOnNetworkError(new AerospikeException(ioe));
+        	onNetworkError(new AerospikeException(ioe));
         }
         catch (Exception e) {
 			// Fail without retry on unknown errors.
-			failOnApplicationError(new AerospikeException(e));
+			onApplicationError(new AerospikeException(e));
         }
 	}
 	
@@ -222,18 +268,40 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		}
 	}
 
-	protected final void failOnNetworkError(AerospikeException ae) {
+	protected final void onNetworkError(AerospikeException ae) {
 		// Ensure that command succeeds or fails, but not both.
-		if (state.compareAndSet(IN_PROGRESS, COMPLETE)) {
-			close();
+		if (state.compareAndSet(IN_PROGRESS, COMPLETE)) {			
+			// Attempt retry.
+			if (iterations < policy.maxRetries && (policy.retryOnTimeout || limit == 0 || System.currentTimeMillis() < limit)) {
+				AsyncCommand command = cloneCommand();
+
+				if (command != null) {
+					closeConnection();
+					
+					if (policy.timeout > 0 && policy.retryOnTimeout) {
+						command.limit = System.currentTimeMillis() + policy.timeout;
+					}
+					
+					try {				
+						command.executeCommand();
+					}
+					catch (Exception e) {
+						// Command has already been cleaned up.
+						// Notify user with original error.
+						onFailure(ae);
+					}
+					return;
+				}
+			}
+			cleanup();
 			onFailure(ae);
 		}
 		else if (state.compareAndSet(TIMEOUT_DELAY, COMPLETE)) {			
-			close();
+			cleanup();
 		}
 	}
 
-	protected final void failOnApplicationError(AerospikeException ae) {
+	protected final void onApplicationError(AerospikeException ae) {
 		// Ensure that command succeeds or fails exactly once.
 		boolean notify = state.compareAndSet(IN_PROGRESS, COMPLETE);
 		
@@ -246,7 +314,7 @@ public abstract class AsyncCommand extends Command implements Runnable {
 			}
 			else {
 				// Close socket to flush out possible garbage.
-				close();
+				cleanup();
 			}
 			
 			if (notify) {			
@@ -255,14 +323,19 @@ public abstract class AsyncCommand extends Command implements Runnable {
 		}
 	}
 
-	private void close() {
+	private void cleanup() {
+		closeConnection();
+		cluster.putByteBuffer(byteBuffer);
+	}
+
+	private void closeConnection() {
 		if (conn != null) {
 			conn.close();
 			conn = null;
 		}
-		cluster.putByteBuffer(byteBuffer);
 	}
 
+	protected abstract AsyncCommand cloneCommand();
 	protected abstract void read() throws AerospikeException, IOException;
 	protected abstract void onSuccess();
 	protected abstract void onFailure(AerospikeException ae);

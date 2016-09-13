@@ -1037,7 +1037,6 @@ public abstract class Command {
 		return cluster.getRandomNode();		
 	}
 	
-	protected abstract Policy getPolicy();
 	protected abstract Node getNode() throws AerospikeException.InvalidNode;
 	protected abstract void writeBuffer() throws AerospikeException;
 }

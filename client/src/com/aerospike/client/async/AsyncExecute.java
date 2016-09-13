@@ -49,6 +49,20 @@ public final class AsyncExecute extends AsyncRead {
 		this.args = args;
 	}
 	
+	public AsyncExecute(AsyncExecute other) {
+		super(other);
+		this.writePolicy = other.writePolicy;
+		this.executeListener = other.executeListener;
+		this.packageName = other.packageName;
+		this.functionName = other.functionName;
+		this.args = other.args;
+	}
+
+	@Override
+	protected AsyncCommand cloneCommand() {
+		return new AsyncExecute(this);
+	}
+
 	@Override
 	protected void writeBuffer() throws AerospikeException {
 		setUdf(writePolicy, key, packageName, functionName, args);

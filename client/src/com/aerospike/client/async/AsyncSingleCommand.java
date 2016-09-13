@@ -20,14 +20,19 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncSingleCommand extends AsyncCommand {
 	protected int receiveSize;
 	
-	public AsyncSingleCommand(AsyncCluster cluster) {
-		super(cluster);
+	public AsyncSingleCommand(AsyncCluster cluster, Policy policy) {
+		super(cluster, policy);
 	}
 	
+	public AsyncSingleCommand(AsyncSingleCommand other) {
+		super(other);
+	}
+
 	protected final void read() throws AerospikeException, IOException {
 		if (inHeader) {
 			if (! conn.read(byteBuffer)) {

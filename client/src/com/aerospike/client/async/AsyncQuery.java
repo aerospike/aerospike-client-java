@@ -20,7 +20,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Statement;
 
@@ -37,15 +36,10 @@ public final class AsyncQuery extends AsyncMultiCommand {
 		RecordSequenceListener listener,
 		Statement statement
 	) {
-		super(parent, cluster, node, true);
+		super(parent, cluster, node, policy, true);
 		this.policy = policy;
 		this.listener = listener;
 		this.statement = statement;
-	}
-		
-	@Override
-	protected Policy getPolicy() {
-		return policy;
 	}
 
 	@Override

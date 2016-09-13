@@ -92,15 +92,10 @@ public final class AsyncBatch {
 			BatchPolicy policy,
 			List<BatchRead> records
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -176,16 +171,11 @@ public final class AsyncBatch {
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.listener = listener;
 			this.records = records;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -276,7 +266,7 @@ public final class AsyncBatch {
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -285,11 +275,6 @@ public final class AsyncBatch {
 			this.readAttr = readAttr;
 		}
 			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
-		}
-
 		@Override
 		protected void writeBuffer() {
 			setBatchRead(policy, keys, batch, binNames, readAttr);
@@ -328,7 +313,7 @@ public final class AsyncBatch {
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, cluster, node, false);
+			super(parent, cluster, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -337,11 +322,6 @@ public final class AsyncBatch {
 			this.readAttr = readAttr;
 		}
 			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
-		}
-
 		@Override
 		protected void writeBuffer() {
 			setBatchReadDirect(policy, keys, batch, binNames, readAttr);
@@ -429,18 +409,13 @@ public final class AsyncBatch {
 			RecordSequenceListener listener,
 			int readAttr
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
 			this.readAttr = readAttr;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -487,18 +462,13 @@ public final class AsyncBatch {
 			RecordSequenceListener listener,
 			int readAttr
 		) {
-			super(parent, cluster, node, false);
+			super(parent, cluster, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
 			this.readAttr = readAttr;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -587,16 +557,11 @@ public final class AsyncBatch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -635,16 +600,11 @@ public final class AsyncBatch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, cluster, node, false);
+			super(parent, cluster, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -728,16 +688,11 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, false);
+			super(parent, cluster, (AsyncNode)batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.listener = listener;
-		}
-			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -778,18 +733,13 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, cluster, node, false);
+			super(parent, cluster, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.listener = listener;
 		}
 			
-		@Override
-		protected Policy getPolicy() {
-			return policy;
-		}
-
 		@Override
 		protected void writeBuffer() {
 			setBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
