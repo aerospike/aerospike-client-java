@@ -170,19 +170,23 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	private class ResultSetIterator implements Iterator<Object>, Closeable {
 		
 		private final ResultSet resultSet;
+		private boolean more;
 
-		ResultSetIterator(ResultSet resultSet){
+		ResultSetIterator(ResultSet resultSet) {
 			this.resultSet = resultSet;
+			more = this.resultSet.next();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.resultSet.next();
+			return more;
 		}
 
 		@Override
 		public Object next() {
-			return this.resultSet.row;
+			Object obj = resultSet.row;
+			more = resultSet.next();
+			return obj;
 		}
 
 		@Override
@@ -191,7 +195,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 
 		@Override
 		public void close() {
-			this.resultSet.close();
+			resultSet.close();
 		}
 	}
 }

@@ -179,19 +179,23 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	private class RecordSetIterator implements Iterator<KeyRecord>, Closeable {
 		
 		private final RecordSet recordSet;
+		private boolean more;
 
-		RecordSetIterator(RecordSet recordSet){
+		RecordSetIterator(RecordSet recordSet) {
 			this.recordSet = recordSet;
+			more = this.recordSet.next();
 		}
 
 		@Override
 		public boolean hasNext() {
-			return this.recordSet.next();
+			return more;
 		}
 
 		@Override
 		public KeyRecord next() {
-			return this.recordSet.record;
+			KeyRecord kr = recordSet.record;
+			more = recordSet.next();
+			return kr;
 		}
 
 		@Override
@@ -200,7 +204,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 
 		@Override
 		public void close() {
-			this.recordSet.close();
+			recordSet.close();
 		}
 	}
 }
