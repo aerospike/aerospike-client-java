@@ -146,10 +146,10 @@ public final class NodeValidator {
 			}
 			
 			HashMap<String,String> map;
-			boolean hasClusterId = cluster.clusterId != null && cluster.clusterId.length() > 0;
+			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
 			
-			if (hasClusterId) {
-				map = Info.request(conn, "node", "features", "cluster-id");			
+			if (hasClusterName) {
+				map = Info.request(conn, "node", "features", "cluster-name");			
 			}
 			else {
 				map = Info.request(conn, "node", "features");
@@ -161,12 +161,12 @@ public final class NodeValidator {
 				throw new AerospikeException.InvalidNode();				
 			}
 			
-			if (hasClusterId) {
-				String id = map.get("cluster-id");
+			if (hasClusterName) {
+				String id = map.get("cluster-name");
 				
-				if (id == null || ! cluster.clusterId.equals(id)) {
+				if (id == null || ! cluster.clusterName.equals(id)) {
 					throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' +
-							" expected cluster ID '" + cluster.clusterId + "' received '" + id + "'");
+							" expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
 				}
 			}
 			

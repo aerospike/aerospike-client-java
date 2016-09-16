@@ -35,11 +35,11 @@ public class ClientPolicy {
 	public String password;
 
 	/**
-	 * Expected cluster ID.  If not null, server nodes must return this cluster ID in order to
+	 * Expected cluster name.  If not null, server nodes must return this cluster name in order to
 	 * join the client's view of the cluster. Should only be set when connecting to servers that
-	 * support the "cluster-id" info command.
+	 * support the "cluster-name" info command.
 	 */
-	public String clusterId;
+	public String clusterName;
 
 	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 

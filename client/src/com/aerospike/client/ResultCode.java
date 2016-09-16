@@ -94,7 +94,7 @@ public final class ResultCode {
 	public static final int BIN_EXISTS_ERROR = 6;
 
 	/**
-	 * Expected cluster ID was not received.
+	 * Expected cluster was not received.
 	 */
 	public static final int CLUSTER_KEY_MISMATCH = 7;
 

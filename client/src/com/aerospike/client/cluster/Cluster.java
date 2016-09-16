@@ -43,8 +43,8 @@ import com.aerospike.client.util.Util;
 public class Cluster implements Runnable, Closeable {
 	private static final int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
 	
-	// Expected cluster ID.
-	protected final String clusterId;
+	// Expected cluster name.
+	protected final String clusterName;
 	
 	// Initial host nodes specified by user.
 	private volatile Host[] seeds;
@@ -110,17 +110,17 @@ public class Cluster implements Runnable, Closeable {
 	protected final boolean useServicesAlternate;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
-		this.clusterId = policy.clusterId;
+		this.clusterName = policy.clusterName;
 
 		// Default TLS names when TLS enabled.
 		if (policy.tlsPolicy != null && ! policy.tlsPolicy.encryptOnly) {
-			boolean useClusterId = clusterId != null && clusterId.length() > 0;
+			boolean useClusterName = clusterName != null && clusterName.length() > 0;
 			
 			for (int i = 0; i < hosts.length; i++) {
 				Host host = hosts[i];
 				
 				if (host.tlsName == null) {
-					String tlsName = useClusterId ? clusterId : host.name;
+					String tlsName = useClusterName ? clusterName : host.name;
 					hosts[i] = new Host(host.name, tlsName, host.port);
 				}
 			}
