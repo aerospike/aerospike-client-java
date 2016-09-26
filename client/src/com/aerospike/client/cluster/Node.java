@@ -58,6 +58,7 @@ public class Node implements Closeable {
 	private Connection tendConnection;
 	protected int peersGeneration;
 	protected int partitionGeneration;
+	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
 	private final int features;
@@ -174,16 +175,12 @@ public class Node implements Closeable {
 		String friendString = infoMap.get(command);
 		
 		if (friendString == null || friendString.length() == 0) {
-			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
-			// Unchecked, such a node can dominate the partition map and cause all other
-			// nodes to be dropped.
-			if (cluster.getNodes().length > 2) {
-				throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.getNodes().length + " nodes.");
-			}
+			peersCount = 0;
 			return;
 		}
 
 		String friendNames[] = friendString.split(";");
+		peersCount = friendNames.length;
 
 		for (String friend : friendNames) {
 			String friendInfo[] = friend.split(":");
@@ -270,14 +267,8 @@ public class Node implements Closeable {
 			}
 			PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
 			peersGeneration = parser.generation;
+			peersCount = peers.peers.size();
 		
-			// Detect "split cluster" case where this node thinks it's a 1-node cluster.
-			// Unchecked, such a node can dominate the partition map and cause all other
-			// nodes to be dropped.
-			if (peers.peers.size() == 0 && cluster.getNodes().length > 2) {
-				throw new AerospikeException("Node " + this + " thinks it owns cluster, but client sees " + cluster.getNodes().length + " nodes.");
-			}
-	
 			for (Peer peer : peers.peers) {		
 				if (findPeerNode(cluster, peers, peer.nodeName)) {
 					// Node already exists. Do not even try to connect to hosts.				
@@ -344,7 +335,10 @@ public class Node implements Closeable {
 	
 	protected final void refreshPartitions(Peers peers) {
 		// Do not refresh partitions when node connection has already failed during this cluster tend iteration.
-		if (failures > 0 || ! active) {
+		// Also, avoid "split cluster" case where this node thinks it's a 1-node cluster.
+		// Unchecked, such a node can dominate the partition map and cause all other
+		// nodes to be dropped.
+		if (failures > 0 || ! active || (peersCount == 0 && peers.refreshCount > 1)) {
 			return;
 		}
 		
