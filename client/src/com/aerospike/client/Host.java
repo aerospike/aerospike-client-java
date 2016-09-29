@@ -161,7 +161,10 @@ public final class Host {
 					
 					if (c == ']') {
 						String s = str.substring(begin, offset++);
-						c = str.charAt(offset++);						
+						
+						if (offset < length) {
+							c = str.charAt(offset++);
+						}
 						return s;
 					}
 					offset++;
