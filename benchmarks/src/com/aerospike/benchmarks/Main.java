@@ -680,7 +680,7 @@ public class Main implements Log.Callback {
 			args.setFixedBins();
 		}
 
-		System.out.println("Benchmark: " + this.hosts[0] + ":" + this.port 
+		System.out.println("Benchmark: " + this.hosts[0] 
 			+ ", namespace: " + args.namespace 
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
 			+ ", threads: " + this.nThreads
