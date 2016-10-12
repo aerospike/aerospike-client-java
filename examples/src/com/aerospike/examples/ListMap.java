@@ -35,7 +35,6 @@ public class ListMap extends Example {
 
 	/**
 	 * Write List and Map objects directly instead of relying on java serializer.
-	 * This functionality is only supported in Aerospike 3.0 servers.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {	

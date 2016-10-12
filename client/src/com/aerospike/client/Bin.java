@@ -170,8 +170,7 @@ public final class Bin {
 	}
 
 	/**
-	 * Create bin with a list value.  The list value will be serialized as a Aerospike 3 server list type.
-	 * Supported by Aerospike 3 servers only. 
+	 * Create bin with a list value.  The list value will be serialized as a server list type.
 	 * <p>
 	 * If connecting to Aerospike 2 servers, use the following instead:
 	 * <pre>
@@ -190,15 +189,7 @@ public final class Bin {
 	}
 
 	/**
-	 * Create bin with a map value.  The map value will be serialized as a Aerospike 3 server map type.
-	 * Supported by Aerospike 3 servers only. 
-	 * <p>
-	 * If connecting to Aerospike 2 servers, use the following instead:
-	 * <pre>
-	 * {@code
-	 * Bin bin = new Bin(name, (Object)map);
-	 * }
-	 * </pre>
+	 * Create bin with a map value.  The map value will be serialized as a server map type.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 * 
 	 * @param name		bin name, current limit is 14 characters

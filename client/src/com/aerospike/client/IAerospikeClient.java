@@ -399,42 +399,12 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException;
 
 	//-------------------------------------------------------------------
-	// Large collection functions (Supported by Aerospike 3 servers only)
+	// Large collection functions
 	//-------------------------------------------------------------------
 
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
 	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			no longer used, pass in null.
-	 */
-	public LargeList getLargeList(Policy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large list operator.  This operator can be used to create and manage a list 
-	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #getLargeList(WritePolicy policy, Key key, String binName)} instead. 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			no longer used, pass in null.
-	 */
-	public LargeList getLargeList(WritePolicy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large list operator.  This operator can be used to create and manage a list 
-	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -445,22 +415,6 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
 	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #getLargeMap(WritePolicy policy, Key key, String binName, String userModule)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeMap getLargeMap(Policy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large map operator.  This operator can be used to create and manage a map 
-	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -472,22 +426,6 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
 	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #getLargeSet(WritePolicy policy, Key key, String binName, String userModule)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeSet getLargeSet(Policy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large set operator.  This operator can be used to create and manage a set 
-	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -499,22 +437,6 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
 	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
-	 * 
-	 * @deprecated Use {@link #getLargeStack(WritePolicy policy, Key key, String binName, String userModule)} instead. 
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeStack getLargeStack(Policy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
-	 * within a single bin.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -524,7 +446,7 @@ public interface IAerospikeClient extends Closeable {
 	public LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule);
 
 	//---------------------------------------------------------------
-	// User defined functions (Supported by Aerospike 3 servers only)
+	// User defined functions
 	//---------------------------------------------------------------
 	
 	/**
@@ -532,8 +454,6 @@ public interface IAerospikeClient extends Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param clientPath			path of client file containing user defined functions, relative to current directory
@@ -549,8 +469,6 @@ public interface IAerospikeClient extends Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
@@ -610,8 +528,6 @@ public interface IAerospikeClient extends Closeable {
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <server udf dir>/<package name>.lua
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -625,7 +541,7 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException;
 
 	//----------------------------------------------------------
-	// Query/Execute UDF (Supported by Aerospike 3 servers only)
+	// Query/Execute UDF
 	//----------------------------------------------------------
 
 	/**
@@ -634,8 +550,6 @@ public interface IAerospikeClient extends Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param statement				record filter
@@ -653,15 +567,13 @@ public interface IAerospikeClient extends Closeable {
 	) throws AerospikeException;
 
 	//--------------------------------------------------------
-	// Query functions (Supported by Aerospike 3 servers only)
+	// Query functions
 	//--------------------------------------------------------
 
 	/**
 	 * Execute query on all server nodes and return record iterator.  The query executor puts 
 	 * records on a queue in separate threads.  The calling thread concurrently pops records off 
 	 * the queue through the record iterator.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -674,8 +586,6 @@ public interface IAerospikeClient extends Closeable {
 	 * Execute query on a single server node and return record iterator.  The query executor puts
 	 * records on a queue in a separate thread.  The calling thread concurrently pops records off 
 	 * the queue through the record iterator.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -695,8 +605,6 @@ public interface IAerospikeClient extends Closeable {
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -723,8 +631,6 @@ public interface IAerospikeClient extends Closeable {
 	 * concurrently pops results off the queue through the ResultSet iterator.
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -742,8 +648,6 @@ public interface IAerospikeClient extends Closeable {
 	 * concurrently pops results off the queue through the ResultSet iterator.
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
@@ -757,8 +661,6 @@ public interface IAerospikeClient extends Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -782,8 +684,6 @@ public interface IAerospikeClient extends Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
-	 * <p>
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -806,7 +706,6 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Delete secondary index.
-	 * This method is only supported by Aerospike 3 servers.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name

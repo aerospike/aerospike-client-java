@@ -106,7 +106,6 @@ public abstract class Value {
 
 	/**
 	 * Get list or null value instance.
-	 * Supported by Aerospike 3 servers only.
 	 */
 	public static Value get(List<?> value) {
 		return (value == null)? new NullValue() : new ListValue(value);
@@ -114,7 +113,6 @@ public abstract class Value {
 
 	/**
 	 * Get map or null value instance.
-	 * Supported by Aerospike 3 servers only.
 	 */
 	public static Value get(Map<?,?> value) {
 		return (value == null)? new NullValue() : new MapValue(value);
@@ -152,8 +150,6 @@ public abstract class Value {
 	 * Determine value given generic object.
 	 * This is the slowest of the Value get() methods.
 	 * Useful when copying records from one cluster to another.
-	 * Since map/list are converted, this method should only be called when using
-	 * Aerospike 3 servers.
 	 */
 	public static Value get(Object value) {
 		if (value == null) {
@@ -205,8 +201,6 @@ public abstract class Value {
 	
 	/**
 	 * Get value from Record object. Useful when copying records from one cluster to another.
-	 * Since map/list are converted, this method should only be called when using
-	 * Aerospike 3 servers.
 	 */
 	public static Value getFromRecordObject(Object value) {
 		return Value.get(value);
@@ -1020,7 +1014,6 @@ public abstract class Value {
 	
 	/**
 	 * Value array.
-	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class ValueArray extends Value {
 		private final Value[] array;
@@ -1087,7 +1080,6 @@ public abstract class Value {
 
 	/**
 	 * List value.
-	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class ListValue extends Value {
 		private final List<?> list;
@@ -1154,7 +1146,6 @@ public abstract class Value {
 
 	/**
 	 * Map value.
-	 * Supported by Aerospike 3 servers only.
 	 */
 	public static final class MapValue extends Value {
 		private final Map<?,?> map;

@@ -52,8 +52,7 @@ public final class WritePolicy extends Policy {
 	 * <p>
 	 * Expiration values:
 	 * <ul>
-	 * <li>-1: Never expire. Supported by Aerospike 2 server versions >= 2.7.2 and Aerospike 3 server
-	 * versions >= 3.1.4.</li>
+	 * <li>-1: Never expire. Supported by Aerospike server versions >= 3.1.4.</li>
 	 * <li>0: Default to namespace configuration variable "default-ttl" on the server.</li>
 	 * <li>> 0: Actual expiration in seconds.<br></li>
 	 * </ul>
@@ -78,7 +77,7 @@ public final class WritePolicy extends Policy {
 	/**
 	 * If the transaction results in a record deletion, leave a tombstone for the record.
 	 * This prevents deleted records from reappearing after node failures.
-	 * Valid for Aerospike Server Enterprise Edition 4+ only.
+	 * Valid for Aerospike Server Enterprise Edition 3.10+ only.
 	 * <p>
 	 * Default: false (do not tombstone deleted records).
 	 */
