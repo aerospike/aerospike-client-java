@@ -244,7 +244,7 @@ public class Main implements Log.Callback {
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
-		options.addOption("tls", "tls", true, "Server certificate name when using TLS/SSL sockets");
+		options.addOption("tls", "tls", false, "Server certificate name when using TLS/SSL sockets");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();

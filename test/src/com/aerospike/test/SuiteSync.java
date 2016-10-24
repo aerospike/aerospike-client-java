@@ -22,6 +22,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Host;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -99,7 +100,9 @@ public class SuiteSync {
 		policy.password = args.password;
 		policy.tlsPolicy = args.tlsPolicy;
 		
-		client = new AerospikeClient(policy, args.host, args.port);
+		Host[] hosts = Host.parseHosts(args.host, args.port);
+
+		client = new AerospikeClient(policy, hosts);
 		
 		try {
 			args.setServerSpecific(client);

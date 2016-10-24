@@ -14,6 +14,8 @@ Usage:
     -n,--namespace <arg>  Namespace (default: test)
     -p,--port <arg>       Server port (default: 3000)
     -s,--set <arg>        Set name. Use 'empty' for empty set (default: test)
+    -tls,--tls            Use TLS/SSL sockets
+    -d,--debug            Run in debug mode.
     -u,--usage            Print usage.
 
 Examples:
@@ -21,3 +23,7 @@ Examples:
     mvn test 
     mvn test -Dargs="-h host1"
     mvn test -Dargs="-h host2 -p 3000 -n myns -s myset"
+
+TLS Example:
+
+    mvn test -Djavax.net.ssl.trustStore=KeyStorePath -Djavax.net.ssl.trustStorePassword=KeyStorePassword -DrunSuite="**/SuiteSync.class" -Dargs="-h hostname:tlsname:tlsport -tls"

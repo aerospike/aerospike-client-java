@@ -65,8 +65,19 @@ public class Args {
 			String[] args = argString.split(" ");
 			
 			Options options = new Options();
-			options.addOption("h", "host", true, "Server hostname (default: localhost)");
-			options.addOption("p", "port", true, "Server port (default: 3000)");
+			options.addOption("h", "host", true,
+					"List of seed hosts in format:\n" +
+					"hostname1[:tlsname][:port1],...\n" +
+					"The tlsname is only used when connecting with a secure TLS enabled server. " +
+					"If the port is not specified, the default port is used.\n" +
+					"IPv6 addresses must be enclosed in square brackets.\n" +
+					"Default: localhost\n" + 
+					"Examples:\n" + 
+					"host1\n" + 
+					"host1:3000,host2:3000\n" + 
+					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n" 
+					);
+			options.addOption("p", "port", true, "Server default port (default: 3000)");
 			options.addOption("U", "user", true, "User name");
 			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");

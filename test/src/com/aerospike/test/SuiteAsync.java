@@ -21,6 +21,7 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.Host;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
 import com.aerospike.test.async.TestAsyncBatch;
@@ -56,7 +57,9 @@ public class SuiteAsync {
 		policy.asyncSelectorTimeout = 10;
 		policy.failIfNotConnected = true;
 		
-		client = new AsyncClient(policy, args.host, args.port);
+		Host[] hosts = Host.parseHosts(args.host, args.port);
+
+		client = new AsyncClient(policy, hosts);
 		
 		try {
 			args.setServerSpecific(client);

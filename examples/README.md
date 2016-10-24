@@ -61,11 +61,12 @@ run_examples | Run examples on the command line. | See usage below.
     options:
     -d,--debug            Run in debug mode.
     -g,--gui              Invoke GUI to selectively run tests.
-    -h,--host <arg>       Server hostname (default: localhost)
+    -h,--host <arg>       List of seed hosts in format: hostname1[:tlsname][:port1],...
     -n,--namespace <arg>  Namespace (default: test)
     -P,--password <arg>   Password
-    -p,--port <arg>       Server port (default: 3000)
+    -p,--port <arg>       Server default port (default: 3000)
     -s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
+    -tls,--tls            Use TLS/SSL sockets
     -U,--user <arg>       User name
     -u,--usage            Print usage.
 
@@ -74,3 +75,7 @@ run_examples | Run examples on the command line. | See usage below.
     ./run_examples -h localhost -p 3000 -n test -s demoset all
     ./run_examples -h localhost -p 3000 -n test -s demoset ServerInfo PutGet Generation
     ./run_examples -g -h localhost -p 3000 -n test -s demoset
+
+#### TLS Example
+
+    java -Djavax.net.ssl.trustStore=KeyStorePath -Djavax.net.ssl.trustStorePassword=KeyStorePassword -jar target/aerospike-examples-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tls PutGet
