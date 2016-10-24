@@ -31,9 +31,9 @@ public final class TlsPolicy {
 	 * policy.protocols = new String[] {"TLSv1", "TLSv1.1", "TLSv1.2"};
 	 * }
 	 * </pre>
-	 * Default: null (Allow default protocols defined by JVM)
+	 * Default: TLSv1.2 (Only allow TLSv1.2 protocol)
 	 */
-	public String[] protocols;
+	public String[] protocols = new String[] {"TLSv1.2"};
 	
 	/**
 	 * Allowable TLS ciphers that the client can use for secure connections.
