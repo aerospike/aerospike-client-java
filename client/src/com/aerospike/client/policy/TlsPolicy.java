@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.policy;
 
+import java.math.BigInteger;
+
 /**
  * TLS connection policy.
  * Secure TLS connections are only supported for AerospikeClient synchronous commands.
@@ -42,6 +44,12 @@ public final class TlsPolicy {
 	 * Default: null (Allow default ciphers defined by JVM)
 	 */
 	public String[] ciphers;
+
+	/**
+	 * Reject certificates whose serial numbers match a serial number in this array.
+	 * Default: null (Do not exclude by certificate serial number)
+	 */
+	public BigInteger[] rejectSerialNumbers;
 
 	/**
 	 * Encrypt data on TLS socket only.  Do not authenticate server certificate.

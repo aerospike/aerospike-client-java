@@ -21,6 +21,7 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
@@ -99,7 +100,14 @@ public final class Connection implements Closeable {
 						// Retry functionality will attempt to reconnect later.
 						timeoutMillis = 2000;
 					}
-				
+					
+					/*
+					String[] ciphers = sslSocket.getSupportedCipherSuites();
+					for (String cipher : ciphers) {
+						Log.info("Cipher: " + cipher);
+					}
+					*/
+
 					if (policy.protocols != null) {
 						sslSocket.setEnabledProtocols(policy.protocols);
 					}
@@ -109,7 +117,7 @@ public final class Connection implements Closeable {
 					}
 					
 					if (! policy.encryptOnly) {
-						validateServerCertificateName(sslSocket, tlsName);
+						validateServerCertificateName(policy, sslSocket, tlsName);
 					}
 					
 					in = socket.getInputStream();
@@ -131,25 +139,42 @@ public final class Connection implements Closeable {
 		}
 	}
 	
-	private static void validateServerCertificateName(SSLSocket sslSocket, String tlsName) throws Exception {		
+	private static void validateServerCertificateName(TlsPolicy policy, SSLSocket sslSocket, String tlsName) throws Exception {		
 		if (tlsName == null) {
-			throw new AerospikeException.Connection("Invalid server TLS name: null");							
+			throw new AerospikeException.Connection("Invalid TLS name: null");							
 		}
 		
 		sslSocket.setUseClientMode(true);
 		sslSocket.startHandshake();
 		
 		X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
+		
+		// Exclude certificate serial numbers.
+		if (policy.rejectSerialNumbers != null) {
+			BigInteger serialNumber = cert.getSerialNumber();
+			
+			for (BigInteger sn : policy.rejectSerialNumbers) {
+				if (sn.equals(serialNumber)) {
+					throw new AerospikeException.Connection("Invalid certificate serial number: " + sn);
+				}
+			}
+		}
+		
+		// Search for subject certificate name.
 		String subject = cert.getSubjectX500Principal().getName(X500Principal.RFC2253);
 		LdapName ldapName = new LdapName(subject);
-		String certName = null;
 		
-		// Search for subject certificate name
 		for (Rdn rdn : ldapName.getRdns()) {
 			Attribute cn = rdn.toAttributes().get("CN");
 		    
 			if (cn != null) {
-				certName = (String)cn.get();
+				String certName = (String)cn.get();
+
+				/*
+				if (Log.debugEnabled()) {
+					Log.debug("Cert name: " + certName);
+				}
+				*/
 				
 				if (certName.equals(tlsName)) {
 					return;
@@ -157,12 +182,18 @@ public final class Connection implements Closeable {
 			}
 		}
 		
-		// Search for subject alternative names
+		// Search for subject alternative names.
 		Collection<List<?>> allNames = cert.getSubjectAlternativeNames();
 		
 		if (allNames != null) {
 			for (List<?> list : allNames) {
 				int type = (Integer)list.get(0);
+
+				/*
+				if (Log.debugEnabled()) {
+					Log.debug("SAN " + type + ": " + list.get(1));
+				}
+				*/
 
 				if (type == 2 && list.get(1).equals(tlsName)) {
 					return;
@@ -170,7 +201,7 @@ public final class Connection implements Closeable {
 			}
 		}
 
-		throw new AerospikeException.Connection("Invalid server TLS name: " + certName);
+		throw new AerospikeException.Connection("Invalid TLS name: " + tlsName);
 	}
 	
 	public void write(byte[] buffer, int length) throws IOException {
