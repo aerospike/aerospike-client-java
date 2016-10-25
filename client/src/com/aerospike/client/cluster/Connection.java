@@ -25,6 +25,8 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketException;
 import java.security.cert.X509Certificate;
+import java.util.Collection;
+import java.util.List;
 
 import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
@@ -140,19 +142,35 @@ public final class Connection implements Closeable {
 		X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
 		String subject = cert.getSubjectX500Principal().getName(X500Principal.RFC2253);
 		LdapName ldapName = new LdapName(subject);
+		String certName = null;
 		
+		// Search for subject certificate name
 		for (Rdn rdn : ldapName.getRdns()) {
 			Attribute cn = rdn.toAttributes().get("CN");
 		    
 			if (cn != null) {
-				String certName = (String)cn.get();
-				if (! certName.equals(tlsName)) {
-					throw new AerospikeException.Connection("Invalid server TLS name: " + certName);
+				certName = (String)cn.get();
+				
+				if (certName.equals(tlsName)) {
+					return;
 				}
-				return;
 			}
 		}
-		throw new AerospikeException.Connection("Invalid server TLS name: null");
+		
+		// Search for subject alternative names
+		Collection<List<?>> allNames = cert.getSubjectAlternativeNames();
+		
+		if (allNames != null) {
+			for (List<?> list : allNames) {
+				int type = (Integer)list.get(0);
+
+				if (type == 2 && list.get(1).equals(tlsName)) {
+					return;
+				}
+			}
+		}
+
+		throw new AerospikeException.Connection("Invalid server TLS name: " + certName);
 	}
 	
 	public void write(byte[] buffer, int length) throws IOException {
