@@ -53,8 +53,14 @@ public final class TlsPolicy {
 
 	/**
 	 * Encrypt data on TLS socket only.  Do not authenticate server certificate.
-	 * An anonymous cipher must be enabled on both client and server when encryptOnly is enabled.
-	 * This anonymous cipher will only work with applications running Java 8+.
+	 * If true, an anonymous cipher (like TLS_DH_anon_WITH_AES_128_CBC_SHA256) should be enabled on
+	 * the client.  This anonymous cipher will only work with applications running Java 8+.
+	 * <p>
+	 * The server should also be configured so anonymous ciphers are allowed.
+	 * <pre>
+	 * tls-mode encrypt-only
+	 * tls-cipher-suite aNULL
+	 * </pre>
 	 * Default: false
 	 */
 	public boolean encryptOnly;
