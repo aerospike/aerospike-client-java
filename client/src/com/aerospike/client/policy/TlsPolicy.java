@@ -49,11 +49,12 @@ public final class TlsPolicy {
 	 * Reject certificates whose serial numbers match a serial number in this array.
 	 * Default: null (Do not exclude by certificate serial number)
 	 */
-	public BigInteger[] rejectSerialNumbers;
+	public BigInteger[] revokeCertificates;
 
 	/**
 	 * Encrypt data on TLS socket only.  Do not authenticate server certificate.
 	 * An anonymous cipher must be enabled on both client and server when encryptOnly is enabled.
+	 * This anonymous cipher will only work with applications running Java 8+.
 	 * Default: false
 	 */
 	public boolean encryptOnly;

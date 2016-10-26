@@ -150,10 +150,10 @@ public final class Connection implements Closeable {
 		X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
 		
 		// Exclude certificate serial numbers.
-		if (policy.rejectSerialNumbers != null) {
+		if (policy.revokeCertificates != null) {
 			BigInteger serialNumber = cert.getSerialNumber();
 			
-			for (BigInteger sn : policy.rejectSerialNumbers) {
+			for (BigInteger sn : policy.revokeCertificates) {
 				if (sn.equals(serialNumber)) {
 					throw new AerospikeException.Connection("Invalid certificate serial number: " + sn);
 				}
