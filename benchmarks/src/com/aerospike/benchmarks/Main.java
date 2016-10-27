@@ -18,6 +18,7 @@ package com.aerospike.benchmarks;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -244,7 +245,25 @@ public class Main implements Log.Callback {
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
-		options.addOption("tls", "tls", false, "Use TLS/SSL sockets");
+		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
+		options.addOption("tp", "tlsProtocols", true, 
+				"Allow TLS protocols\n" +
+				"Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
+				"Default: TLSv1.2"
+				);
+		options.addOption("tlsCiphers", "tlsCipherSuite", true, 
+				"Allow TLS cipher suites\n" +
+				"Values:  cipher names defined by JVM separated by comma\n" +
+				"Default: null (default cipher list provided by JVM)"
+				);
+		options.addOption("tr", "tlsRevoke", true, 
+				"Revoke certificates identified by their serial number\n" +
+				"Values:  serial numbers separated by comma\n" +
+				"Default: null (Do not revoke certificates)"
+				);
+		options.addOption("te", "tlsEncryptOnly", false, 
+				"Enable TLS encryption and disable TLS certificate validation"
+				);
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -296,6 +315,32 @@ public class Main implements Log.Callback {
 
         if (line.hasOption("tls")) {
         	clientPolicy.tlsPolicy = new TlsPolicy();
+        	
+			if (line.hasOption("tp")) {
+				String s = line.getOptionValue("tp", "");
+				clientPolicy.tlsPolicy.protocols = s.split(",");
+			}
+			
+			if (line.hasOption("tlsCiphers")) {
+				String s = line.getOptionValue("tlsCiphers", "");
+				clientPolicy.tlsPolicy.ciphers = s.split(",");
+			}
+			
+			if (line.hasOption("tr")) {
+				String s = line.getOptionValue("tr", "");
+				String[] list = s.split(",");
+				int count = 0;
+		
+				clientPolicy.tlsPolicy.revokeCertificates = new BigInteger[list.length];
+				
+				for (String str : list) {
+					clientPolicy.tlsPolicy.revokeCertificates[count++] = new BigInteger(str);
+				}
+			}
+			
+			if (line.hasOption("te")) {
+				clientPolicy.tlsPolicy.encryptOnly = true;
+			}
         }
 
 		clientPolicy.user = line.getOptionValue("user");

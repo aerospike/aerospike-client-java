@@ -102,6 +102,10 @@ public final class Connection implements Closeable {
 					}
 					
 					/*
+					String[] protocols = sslSocket.getSupportedProtocols();
+					for (String protocol : protocols) {
+						Log.info("Protocol: " + protocol);
+					}
 					String[] ciphers = sslSocket.getSupportedCipherSuites();
 					for (String cipher : ciphers) {
 						Log.info("Cipher: " + cipher);

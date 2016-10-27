@@ -18,6 +18,7 @@ package com.aerospike.test.util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigInteger;
 import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
@@ -82,7 +83,25 @@ public class Args {
 			options.addOption("P", "password", true, "Password");
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
-			options.addOption("tls", "tls", false, "Use TLS/SSL sockets");
+			options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
+			options.addOption("tp", "tlsProtocols", true, 
+					"Allow TLS protocols\n" +
+					"Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
+					"Default: TLSv1.2"
+					);
+			options.addOption("tlsCiphers", "tlsCipherSuite", true, 
+					"Allow TLS cipher suites\n" +
+					"Values:  cipher names defined by JVM separated by comma\n" +
+					"Default: null (default cipher list provided by JVM)"
+					);
+			options.addOption("tr", "tlsRevoke", true, 
+					"Revoke certificates identified by their serial number\n" +
+					"Values:  serial numbers separated by comma\n" +
+					"Default: null (Do not revoke certificates)"
+					);
+			options.addOption("te", "tlsEncryptOnly", false, 
+					"Enable TLS encryption and disable TLS certificate validation"
+					);
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -106,6 +125,32 @@ public class Args {
 			
 	        if (cl.hasOption("tls")) {
 	        	tlsPolicy = new TlsPolicy();
+	        	
+				if (cl.hasOption("tp")) {
+					String s = cl.getOptionValue("tp", "");
+					tlsPolicy.protocols = s.split(",");
+				}
+				
+				if (cl.hasOption("tlsCiphers")) {
+					String s = cl.getOptionValue("tlsCiphers", "");
+					tlsPolicy.ciphers = s.split(",");
+				}
+				
+				if (cl.hasOption("tr")) {
+					String s = cl.getOptionValue("tr", "");
+					String[] list = s.split(",");
+					int count = 0;
+			
+					tlsPolicy.revokeCertificates = new BigInteger[list.length];
+					
+					for (String str : list) {
+						tlsPolicy.revokeCertificates[count++] = new BigInteger(str);
+					}
+				}
+				
+				if (cl.hasOption("te")) {
+					tlsPolicy.encryptOnly = true;
+				}
 	        }
 
 	        user = cl.getOptionValue("U");
