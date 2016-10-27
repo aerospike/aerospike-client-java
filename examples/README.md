@@ -66,7 +66,19 @@ run_examples | Run examples on the command line. | See usage below.
     -P,--password <arg>   Password
     -p,--port <arg>       Server default port (default: 3000)
     -s,--set <arg>        Set name. Use 'empty' for empty set (default: demoset)
-    -tls,--tls            Use TLS/SSL sockets
+    -tls,--tlsEnable      Use TLS/SSL sockets
+    -tlsCiphers,--tlsCipherSuite <arg>
+                          Allow TLS cipher suites
+                          Values:  cipher names defined by JVM separated by comma
+                          Default: null (default cipher list provided by JVM)
+    -tp,--tlsProtocols <arg>
+                          Allow TLS protocols
+                          Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma
+                          Default: TLSv1.2
+    -tr,--tlsRevoke <arg> 
+                          Revoke certificates identified by their serial number
+                          Values:  serial numbers separated by comma
+                          Default: null (Do not revoke certificates)
     -U,--user <arg>       User name
     -u,--usage            Print usage.
 
