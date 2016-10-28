@@ -122,6 +122,12 @@ public final class Util {
 			if (s.startsWith("0x")) {
 				bigArray[count] = new BigInteger(s.substring(2), 16);
 			}
+			else if (s.indexOf(':') >= 0) {
+				// Some certificates show serial numbers in hex pairs delimited by colons.
+				// Remove those colons before converting to BigInteger.
+				s = s.replaceAll(":", "");
+				bigArray[count] = new BigInteger(s, 16);				
+			}
 			else {
 				bigArray[count] = new BigInteger(s);
 			}
