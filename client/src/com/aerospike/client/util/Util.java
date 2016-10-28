@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.math.BigInteger;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
@@ -106,6 +107,27 @@ public final class Util {
 		catch (Exception e) {
 			throw new AerospikeException("Failed to read resource " + resourcePath, e);
 		}
+	}
+	
+	/**
+	 * Convert a comma separated array of strings to a BigInteger array.
+	 * Each individual string will be treated as hex if the string prefix is "0x".
+	 */
+	public static BigInteger[] toBigIntegerArray(String str) {
+		String[] strArray = str.split(",");
+		BigInteger[] bigArray = new BigInteger[strArray.length];
+		int count = 0;
+		
+		for (String s : strArray) {
+			if (s.startsWith("0x")) {
+				bigArray[count] = new BigInteger(s.substring(2), 16);
+			}
+			else {
+				bigArray[count] = new BigInteger(s);
+			}
+			count++;
+		}
+		return bigArray;
 	}
 
 	/**

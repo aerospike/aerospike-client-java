@@ -40,6 +40,7 @@ import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -328,14 +329,7 @@ public class Main implements Log.Callback {
 			
 			if (line.hasOption("tr")) {
 				String s = line.getOptionValue("tr", "");
-				String[] list = s.split(",");
-				int count = 0;
-		
-				clientPolicy.tlsPolicy.revokeCertificates = new BigInteger[list.length];
-				
-				for (String str : list) {
-					clientPolicy.tlsPolicy.revokeCertificates[count++] = new BigInteger(str);
-				}
+				clientPolicy.tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
 			}
 			
 			if (line.hasOption("te")) {

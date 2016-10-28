@@ -32,6 +32,7 @@ import org.apache.commons.cli.PosixParser;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.util.Util;
 
 public class Main extends JPanel {
 
@@ -230,14 +231,7 @@ public class Main extends JPanel {
 			
 			if (cl.hasOption("tr")) {
 				String s = cl.getOptionValue("tr", "");
-				String[] list = s.split(",");
-				int count = 0;
-		
-				tlsPolicy.revokeCertificates = new BigInteger[list.length];
-				
-				for (String str : list) {
-					tlsPolicy.revokeCertificates[count++] = new BigInteger(str);
-				}
+				tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
 			}
 			
 			if (cl.hasOption("te")) {
