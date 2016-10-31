@@ -18,7 +18,6 @@ package com.aerospike.test.util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.math.BigInteger;
 import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;

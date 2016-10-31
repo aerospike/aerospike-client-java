@@ -18,7 +18,6 @@ package com.aerospike.benchmarks;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.math.BigInteger;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -34,6 +33,11 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Host;
+import com.aerospike.client.Log;
+import com.aerospike.client.Log.Level;
+import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.AsyncClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
@@ -41,11 +45,6 @@ import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
-import com.aerospike.client.Host;
-import com.aerospike.client.Log;
-import com.aerospike.client.Log.Level;
-import com.aerospike.client.async.AsyncClient;
-import com.aerospike.client.async.AsyncClientPolicy;
 
 public class Main implements Log.Callback {
 	

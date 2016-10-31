@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.math.BigInteger;
 import java.util.ArrayList;
 
 import javax.swing.JPanel;
