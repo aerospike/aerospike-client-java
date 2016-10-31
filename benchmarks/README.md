@@ -33,4 +33,4 @@ Some sample arguments are:
     ./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 100000000 -S 1 -o S:50 -w RU,50 -z 1 -async -asyncMaxCommands 200 -asyncSelectorThreads 4
 
     # Run default benchmarks using TLS secure sockets.
-    java -Djavax.net.ssl.trustStore=KeyStorePath -Djavax.net.ssl.trustStorePassword=KeyStorePassword -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tls
+    java -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tlsEnable

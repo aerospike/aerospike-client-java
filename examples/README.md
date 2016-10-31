@@ -90,4 +90,4 @@ run_examples | Run examples on the command line. | See usage below.
 
 #### TLS Example
 
-    java -Djavax.net.ssl.trustStore=KeyStorePath -Djavax.net.ssl.trustStorePassword=KeyStorePassword -jar target/aerospike-examples-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tls PutGet
+    java -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -jar target/aerospike-examples-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tlsEnable PutGet
