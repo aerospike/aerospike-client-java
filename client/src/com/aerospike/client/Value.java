@@ -52,21 +52,21 @@ public abstract class Value {
 	 * Get string or null value instance.
 	 */
 	public static Value get(String value) {
-		return (value == null)? new NullValue() : new StringValue(value);
+		return (value == null)? NullValue.INSTANCE : new StringValue(value);
 	}
 
 	/**
 	 * Get byte array or null value instance.
 	 */
 	public static Value get(byte[] value) {
-		return (value == null)? new NullValue() : new BytesValue(value);
+		return (value == null)? NullValue.INSTANCE : new BytesValue(value);
 	}
 	
 	/**
 	 * Get byte segment or null value instance.
 	 */
 	public static Value get(byte[] value, int offset, int length) {
-		return (value == null)? new NullValue() : new ByteSegmentValue(value, offset, length);
+		return (value == null)? NullValue.INSTANCE : new ByteSegmentValue(value, offset, length);
 	}
 
 	/**
@@ -108,42 +108,42 @@ public abstract class Value {
 	 * Get list or null value instance.
 	 */
 	public static Value get(List<?> value) {
-		return (value == null)? new NullValue() : new ListValue(value);
+		return (value == null)? NullValue.INSTANCE : new ListValue(value);
 	}
 
 	/**
 	 * Get map or null value instance.
 	 */
 	public static Value get(Map<?,?> value) {
-		return (value == null)? new NullValue() : new MapValue(value);
+		return (value == null)? NullValue.INSTANCE : new MapValue(value);
 	}
 
 	/**
 	 * Get value array instance.
 	 */
 	public static Value get(Value[] value) {
-		return (value == null)? new NullValue() : new ValueArray(value);
+		return (value == null)? NullValue.INSTANCE : new ValueArray(value);
 	}
 
 	/**
 	 * Get blob or null value instance.
 	 */
 	public static Value getAsBlob(Object value) {
-		return (value == null)? new NullValue() : new BlobValue(value);
+		return (value == null)? NullValue.INSTANCE : new BlobValue(value);
 	}
 
 	/**
 	 * Get GeoJSON or null value instance.
 	 */
 	public static Value getAsGeoJSON(String value) {
-		return (value == null)? new NullValue() : new GeoJSONValue(value);
+		return (value == null)? NullValue.INSTANCE : new GeoJSONValue(value);
 	}
 
 	/**
 	 * Get null value instance.
 	 */
 	public static Value getAsNull() {
-		return new NullValue();
+		return NullValue.INSTANCE;
 	}
 	
 	/**
@@ -153,7 +153,7 @@ public abstract class Value {
 	 */
 	public static Value get(Object value) {
 		if (value == null) {
-			return new NullValue();
+			return NullValue.INSTANCE;
 		}
 		
 		if (value instanceof Value) {
@@ -261,6 +261,8 @@ public abstract class Value {
 	 * Empty value.
 	 */
 	public static final class NullValue extends Value {
+		public static final NullValue INSTANCE = new NullValue();
+		
 		@Override
 		public int estimateSize() {
 			return 0;
