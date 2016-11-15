@@ -17,80 +17,18 @@
 package com.aerospike.benchmarks;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
-import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
-import com.aerospike.client.util.RandomShift;
-import com.aerospike.client.util.Util;
 
-public abstract class InsertTask implements Runnable {
+public abstract class InsertTask {
 
 	final Arguments args;
-	final long keyStart;
-	final long keyCount;
 	final CounterStore counters;
 	
-	public InsertTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
+	public InsertTask(Arguments args, CounterStore counters) {
 		this.args = args;
 		this.counters = counters;
-		this.keyStart = keyStart;
-		this.keyCount = keyCount;
 	}
 
-	public void run() {
-		try {			
-			RandomShift random = new RandomShift();
-
-			for (long i = 0; i < keyCount; i++) {
-				try {
-					Key key = new Key(args.namespace, args.setName, keyStart + i);
-					// Use predictable value for 0th bin same as key value
-					Bin[] bins = args.getBins(random, true, keyStart + i);
-					
-					switch (args.storeType) {
-					case KVS:
-						put(key, bins);
-						break;
-						
-					case LLIST:
-						largeListAdd(key, bins[0].value);
-						break;
-
-					case LSTACK:
-						largeStackPush(key, bins[0].value);
-						break;
-					}
-				}
-				catch (AerospikeException ae) {
-					i--;
-					writeFailure(ae);
-				}	
-				catch (Exception e) {
-					i--;
-					writeFailure(e);
-				}
-				
-				// Throttle throughput
-				if (args.throughput > 0) {
-					int transactions = counters.write.count.get();
-					
-					if (transactions > args.throughput) {
-						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
-
-						if (millis > 0) {
-							Util.sleep(millis);
-						}
-					}
-				}
-			}
-		}
-		catch (Exception ex) {
-			System.out.println("Insert task error: " + ex.getMessage());
-			ex.printStackTrace();
-		}
-	}
-	
 	protected void writeFailure(AerospikeException ae) {
 		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
 			counters.write.timeouts.getAndIncrement();
@@ -110,9 +48,5 @@ public abstract class InsertTask implements Runnable {
 		if (args.debug) {
 			e.printStackTrace();
 		}
-	}
-	
-	protected abstract void put(Key key, Bin[] bins) throws AerospikeException;
-	protected abstract void largeListAdd(Key key, Value value) throws AerospikeException;
-	protected abstract void largeStackPush(Key key, Value value) throws AerospikeException;
+	}	
 }

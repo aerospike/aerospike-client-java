@@ -16,8 +16,11 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -25,19 +28,49 @@ import com.aerospike.client.Value;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.WritePolicy;
-
-import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
+import com.aerospike.client.util.RandomShift;
+import com.aerospike.client.util.Util;
 /**
  * Synchronous read/write task.
  */
-public class RWTaskSync extends RWTask {
+public class RWTaskSync extends RWTask implements Runnable {
+
+	private final AerospikeClient client;
 
 	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		super(client, args, counters, keyStart, keyCount);	
+		super(args, counters, keyStart, keyCount);
+		this.client = client;
 	}
-	protected void put(Key key, Bin[] bins, WritePolicy writePolicy) throws AerospikeException {
+	
+	public void run() {
+		RandomShift random = RandomShift.instance();
+		
+		while (valid) {
+			runCommand(random);
+			
+			// Throttle throughput
+			if (args.throughput > 0) {
+				int transactions;
+				if (counters.transaction.latency != null) {
+					// Measure the transactions as per one "business" transaction
+					transactions = counters.transaction.count.get();
+				}
+				else {
+					transactions = counters.write.count.get() + counters.read.count.get();
+				}
+				if (transactions > args.throughput) {
+					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+
+					if (millis > 0) {
+						Util.sleep(millis);
+					}
+				}
+			}
+		}
+	}
+
+	@Override
+	protected void put(WritePolicy writePolicy, Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.put(writePolicy, key, bins);
@@ -49,12 +82,10 @@ public class RWTaskSync extends RWTask {
 			client.put(writePolicy, key, bins);
 			counters.write.count.getAndIncrement();			
 		}
-	}		
-	protected void put(Key key, Bin[] bins) throws AerospikeException {
-		put(key, bins, args.writePolicy);
 	}
 	
-	protected void add(Key key, Bin[] bins) throws AerospikeException {
+	@Override
+	protected void add(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.add(writePolicyGeneration, key, bins);
@@ -68,7 +99,8 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 
-	protected void largeListAdd(Key key, Value value) throws AerospikeException {
+	@Override
+	protected void largeListAdd(Key key, Value value) {
 		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeListAdd(key, value, begin);
@@ -82,7 +114,7 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 
-	private void largeListAdd(Key key, Value value, long timestamp) throws AerospikeException {
+	private void largeListAdd(Key key, Value value, long timestamp) {
 		// Create entry
 		Map<String,Value> entry = new HashMap<String,Value>();
 		entry.put("key", Value.get(timestamp));
@@ -93,7 +125,8 @@ public class RWTaskSync extends RWTask {
 		list.add(Value.get(entry));
 	}
 
-	protected void largeStackPush(Key key, Value value) throws AerospikeException {
+	@Override
+	protected void largeStackPush(Key key, Value value) {
 		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeStackPush(key, value, begin);
@@ -107,7 +140,7 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 
-	private void largeStackPush(Key key, Value value, long timestamp) throws AerospikeException {
+	private void largeStackPush(Key key, Value value, long timestamp) {
 		// Create entry
 		Map<String,Value> entry = new HashMap<String,Value>();
 		entry.put("key", Value.get(timestamp));
@@ -118,7 +151,8 @@ public class RWTaskSync extends RWTask {
 		lstack.push(Value.get(entry));
 	}
 
-	protected void get(Key key, String binName) throws AerospikeException {
+	@Override
+	protected void get(Key key, String binName) {
 		Record record;
 		
 		if (counters.read.latency != null) {
@@ -133,7 +167,8 @@ public class RWTaskSync extends RWTask {
 		processRead(key, record);
 	}
 	
-	protected void get(Key key) throws AerospikeException {
+	@Override
+	protected void get(Key key) {
 		Record record;
 		
 		if (counters.read.latency != null) {
@@ -148,7 +183,8 @@ public class RWTaskSync extends RWTask {
 		processRead(key, record);
 	}
 	
-	protected void get(Key[] keys, String binName) throws AerospikeException {
+	@Override
+	protected void get(Key[] keys, String binName) {
 		Record[] records;
 		
 		if (counters.read.latency != null) {
@@ -166,7 +202,8 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 
-	protected void get(Key[] keys) throws AerospikeException {
+	@Override
+	protected void get(Key[] keys) {
 		Record[] records;
 		
 		if (counters.read.latency != null) {
@@ -184,7 +221,8 @@ public class RWTaskSync extends RWTask {
 		}
 	}
 	
-	protected void largeListGet(Key key) throws AerospikeException {
+	@Override
+	protected void largeListGet(Key key) {
 		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
 		List<?> results;
 		long begin = System.nanoTime();
@@ -199,7 +237,8 @@ public class RWTaskSync extends RWTask {
 		processLargeRead(key, results);
 	}
 
-	protected void largeStackPeek(Key key) throws AerospikeException {
+	@Override
+	protected void largeStackPeek(Key key) {
 		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
 		List<?> results;
 		if (counters.read.latency != null) {
@@ -212,5 +251,14 @@ public class RWTaskSync extends RWTask {
 			results = lstack.peek(1);
 		}
 		processLargeRead(key, results);
+	}
+	
+	private void processLargeRead(Key key, List<?> list) {
+		if ((list == null || list.size() == 0) && args.reportNotFound) {
+			counters.readNotFound.getAndIncrement();	
+		}
+		else {
+			counters.read.count.getAndIncrement();		
+		}
 	}
 }

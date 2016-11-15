@@ -16,70 +16,117 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.util.RandomShift;
 
-public final class InsertTaskAsync extends InsertTask implements WriteListener {
+public final class InsertTaskAsync extends InsertTask {
 	
 	private final AsyncClient client;
+	private final AtomicLong tranCount;
+	private final long maxCommands;
+	private final long keyStart;
+	private final long keyCount;
 	
-	public InsertTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		super(args, counters, keyStart, keyCount);
+	public InsertTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount, long maxCommands) {
+		super(args, counters);
 		this.client = client;
+		this.tranCount = new AtomicLong();
+		
+		if (maxCommands > keyCount) {
+			maxCommands = keyCount;
+		}
+		this.maxCommands = maxCommands;
+		this.keyStart = keyStart + maxCommands;
+		this.keyCount = keyCount - maxCommands;
 	}
 	
-	protected void put(Key key, Bin[] bins) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.write.timeouts.get() > 0) {
-			Thread.yield();
+	public void run() {
+		// Seed selector threads with max commands.
+		RandomShift random = RandomShift.instance();
+			
+		for (long i = keyStart - maxCommands; i < keyStart; i++) {
+			try {
+				runCommand(i, random);
+			}
+			catch (AerospikeException ae) {
+				i--;
+				writeFailure(ae);
+			}	
+			catch (Exception e) {
+				i--;
+				writeFailure(e);
+			}
 		}
+	}
+
+	private void runCommand(long currentKey, RandomShift random) {
+		Key key = new Key(args.namespace, args.setName, currentKey);
+		Bin[] bins = args.getBins(random, true, currentKey);
 		
 		if (counters.write.latency != null) {		
-			client.put(args.writePolicy, new LatencyWriteHandler(), key, bins);
+			client.put(args.writePolicy, new LatencyWriteHandler(currentKey), key, bins);
 		}
 		else {
-			client.put(args.writePolicy, this, key, bins);
+			client.put(args.writePolicy, new WriteHandler(currentKey), key, bins);
 		}
 	}
 
-	@Override
-	public void onSuccess(Key key) {
+	private void writeSuccess() {
 		counters.write.count.getAndIncrement();
-	}
-
-	@Override
-	public void onFailure(AerospikeException ae) {
-		writeFailure(ae);
+		
+		long count = tranCount.getAndIncrement();
+		
+		if (count >= keyCount) {
+			return;
+		}
+		runCommand(keyStart + count, RandomShift.instance());
 	}
 	
 	private final class LatencyWriteHandler implements WriteListener {
+		private long currentKey;
 		private long begin;
 		
-		public LatencyWriteHandler() {
+		public LatencyWriteHandler(long currentKey) {
+			this.currentKey = currentKey;
 			this.begin = System.nanoTime();
 		}
 		
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
+			writeSuccess();
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
+			runCommand(currentKey, RandomShift.instance());
 		}		
 	}
+	
+	private final class WriteHandler implements WriteListener {
+		private long currentKey;
+		
+		public WriteHandler(long currentKey) {
+			this.currentKey = currentKey;
+		}
+		
+		@Override
+		public void onSuccess(Key key) {
+			writeSuccess();
+		}
 
-	protected void largeListAdd(Key key, Value value) throws AerospikeException {
-	}
-
-	protected void largeStackPush(Key key, Value value) throws AerospikeException {
+		@Override
+		public void onFailure(AerospikeException ae) {
+			writeFailure(ae);
+			runCommand(currentKey, RandomShift.instance());
+		}		
 	}
 }

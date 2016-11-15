@@ -52,7 +52,7 @@ public final class WritePolicy extends Policy {
 	 * <p>
 	 * Expiration values:
 	 * <ul>
-	 * <li>-2: Do not change ttl when record is written. Supported by Aerospike server versions >= 3.10.1.</li>
+	 * <li>-2: Do not change ttl when record is updated. Supported by Aerospike server versions >= 3.10.1.</li>
 	 * <li>-1: Never expire. Supported by Aerospike server versions >= 3.1.4.</li>
 	 * <li>0: Default to namespace configuration variable "default-ttl" on the server.</li>
 	 * <li>> 0: Actual ttl in seconds.<br></li>

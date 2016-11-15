@@ -38,6 +38,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.async.MaxCommandAction;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
@@ -216,7 +217,6 @@ public class Main implements Log.Callback {
 			);
 		
 		options.addOption("N", "reportNotFound", false, "Report not found errors. Data should be fully initialized before using this option.");
-		//options.addOption("v", "validate", false, "Validate data.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
 
@@ -243,6 +243,7 @@ public class Main implements Log.Callback {
 		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
 		options.addOption("W", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
 		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
+		options.addOption("X", "asyncMaxCommandAction", true, "BLOCK | REJECT | ACCEPT");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
@@ -294,7 +295,7 @@ public class Main implements Log.Callback {
 		if (line.hasOption("e")) {
 			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
-				throw new Exception("Invalid expiration:"+args.writePolicy.expiration+"It should be >= -1");
+				throw new Exception("Invalid expiration: "+ args.writePolicy.expiration + " It should be >= -1");
 			}
 		}
 
@@ -390,7 +391,6 @@ public class Main implements Log.Callback {
 			}
 			this.nKeys = keyList.size();
 			this.startKey = 0;
-			args.validate = false;
 			
 			if (line.hasOption("keyType")) {
 				String keyType = line.getOptionValue("keyType");
@@ -626,15 +626,6 @@ public class Main implements Log.Callback {
 			args.reportNotFound = true;
 		}
 
-		if (line.hasOption("validate")) {
-			args.validate = true;
-			
-			if (startKey + nKeys > Integer.MAX_VALUE) {
-				throw new Exception("Invalid arguments when validate specified.  startkey " + startKey + 
-									" + keys " + nKeys + " must be <= " + Integer.MAX_VALUE);
-			}
-		}
-
 		if (line.hasOption("debug")) {
 			args.debug = true;
 		}
@@ -680,6 +671,11 @@ public class Main implements Log.Callback {
         	}
         }
         
+        if (line.hasOption("asyncMaxCommandAction")) {
+        	String val = line.getOptionValue("asyncMaxCommandAction").toUpperCase();
+        	this.clientPolicy.asyncMaxCommandAction = MaxCommandAction.valueOf(val);
+        }
+
         if (line.hasOption("latency")) {
 			String[] latencyOpts = line.getOptionValue("latency").split(",");
 			
@@ -872,7 +868,7 @@ public class Main implements Log.Callback {
 
 		for (long i = 0 ; i < ntasks; i++) {
 			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
-			InsertTask it = new InsertTaskSync(client, args, counters, start, keyCount); 			
+			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount); 			
 			es.execute(it);
 			start += keyCount;
 		}	
@@ -881,22 +877,10 @@ public class Main implements Log.Callback {
 	}
 
 	private void doAsyncInserts(AsyncClient client) throws Exception {	
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
-
-		// Create N insert tasks
-		long ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
-		long keysPerTask = this.nKeys / ntasks;
-		long rem = this.nKeys - (keysPerTask * ntasks);
-		long start = this.startKey;
-
-		for (long i = 0 ; i < ntasks; i++) {
-			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
-			InsertTask it = new InsertTaskAsync(client, args, counters, start, keyCount); 			
-			es.execute(it);
-			start += keyCount;
-		}
-		collectInsertStats();
-		es.shutdownNow();
+		InsertTaskAsync task = new InsertTaskAsync(client, args, counters, this.startKey, this.nKeys, clientPolicy.asyncMaxCommands);
+		task.run();
+		Thread.sleep(1000);
+		collectInsertStats();				
 	}
 
 	private void collectInsertStats() throws Exception {	
@@ -930,52 +914,22 @@ public class Main implements Log.Callback {
 		RWTask[] tasks = new RWTask[this.nThreads];
 		
 		for (int i = 0 ; i < this.nThreads; i++) {
-			RWTask rt;
-			if (args.validate) {
-				long tstart = this.startKey + ((long) (this.nKeys*(((float) i)/this.nThreads)));			
-				long tkeys = (long) (this.nKeys*(((float) (i+1))/this.nThreads)) - (long) (this.nKeys*(((float) i)/this.nThreads));
-				rt = new RWTaskSync(client, args, counters, tstart, tkeys);
-			} else {
-				rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
-			}
+			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			tasks[i] = rt;
-			es.execute(rt);                                  
+			es.execute(rt);                       
 		}
-		collectRWStats(tasks, null);
+		collectRWStats(tasks);
 		es.shutdown();
+	}
+		
+	private void doAsyncRWTest(AsyncClient client) throws Exception {	
+		RWTaskAsync task = new RWTaskAsync(client, args, counters, this.startKey, this.nKeys, clientPolicy.asyncMaxCommands);
+		task.run();
+		Thread.sleep(1000);
+		collectRWStats(new RWTask[] {task});				
 	}
 
-	private void doAsyncRWTest(AsyncClient client) throws Exception {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
-		RWTask[] tasks = new RWTask[this.nThreads];
-		
-		for (int i = 0 ; i < this.nThreads; i++) {
-			RWTask rt;
-			if (args.validate) {
-				long tstart = this.startKey + ((long) (this.nKeys*(((float) i)/this.nThreads)));			
-				long tkeys = (long) (this.nKeys*(((float) (i+1))/this.nThreads)) - (long) (this.nKeys*(((float) i)/this.nThreads));
-				rt = new RWTaskAsync(client, args, counters, tstart, tkeys);
-			} else {
-				rt = new RWTaskAsync(client, args, counters, this.startKey, this.nKeys);
-			}
-			tasks[i] = rt;
-			es.execute(rt);
-		}
-		collectRWStats(tasks, client);
-		es.shutdown();
-	}
-	
-	private void collectRWStats(RWTask[] tasks, AsyncClient client) throws Exception {		
-		// wait for all the tasks to finish setting up for validation
-		if (args.validate) {
-			while(counters.loadValuesFinishedTasks.get() < this.nThreads) {
-				Thread.sleep(1000);
-				//System.out.println("tasks done = "+counters.loadValuesFinishedTasks.get()+ ", g_ntasks = "+g_ntasks);
-			}
-			// set flag that everyone is ready - this will allow the individual tasks to go
-			counters.loadValuesFinished.set(true);
-		}
-		
+	private void collectRWStats(RWTask[] tasks) throws Exception {		
 		long transactionTotal = 0;
 
 		while (true) {
@@ -999,9 +953,6 @@ public class Main implements Log.Callback {
 				notFound = this.counters.readNotFound.getAndSet(0);
 			}
 			this.counters.periodBegin.set(time);
-
-			//int used = (client != null)? client.getAsyncConnUsed() : 0;
-			//Node[] nodes = client.getNodes();
 			
 			String date = SimpleDateFormat.format(new Date(time));
 			System.out.print(date.toString());

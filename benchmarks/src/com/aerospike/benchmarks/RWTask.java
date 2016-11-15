@@ -17,10 +17,7 @@
 package com.aerospike.benchmarks;
 
 import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -30,33 +27,26 @@ import com.aerospike.client.Value;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
-import com.aerospike.client.util.Util;
 
 /**
  * Random Read/Write workload task.
  */
-public abstract class RWTask implements Runnable {
+public abstract class RWTask {
 
-	final AerospikeClient client;
 	final Arguments args;
 	final CounterStore counters;
-	final RandomShift random;
 	final WritePolicy writePolicyGeneration;
-	ExpectedValue[] expectedValues;
 	final long keyStart;
 	final long keyCount;
 	volatile boolean valid;
 	
-	public RWTask(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		this.client = client;
+	public RWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.args = args;
 		this.counters = counters;
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		this.valid = true;
 		
-		random = new RandomShift();
-				
 		writePolicyGeneration = new WritePolicy();
 		writePolicyGeneration.timeout = args.writePolicy.timeout;
 		writePolicyGeneration.maxRetries = args.writePolicy.maxRetries;
@@ -65,83 +55,120 @@ public abstract class RWTask implements Runnable {
 		writePolicyGeneration.generation = 0;		
 	}	
 	
-	public void run() {
-		// Load data if we're going to be validating.              
-		if (args.validate) {
-			setupValidation();
-		}
-
-		while (valid) {
-			try {
-				switch (args.workload) {
-				case READ_UPDATE:
-					readUpdate();
-					break;
-					
-				case READ_MODIFY_UPDATE:
-					readModifyUpdate();		
-					break;
-					
-				case READ_MODIFY_INCREMENT:
-					readModifyIncrement();		
-					break;
-					
-				case READ_MODIFY_DECREMENT:
-					readModifyDecrement();		
-					break;
-					
-				case READ_FROM_FILE:
-					readFromFile();	
-					break;
-					
-				case TRANSACTION:
-					runTransaction();
-					break;
-				}
-			} 
-			catch (Exception e) {
-				if (args.debug) {
-					e.printStackTrace();
-				}
-				else {
-					System.out.println("Exception - " + e.toString());
-				}
-			}		 
-
-			// Throttle throughput
-			if (args.throughput > 0) {
-				int transactions;
-				if (counters.transaction.latency != null) {
-					// Measure the transactions as per one "business" transaction
-					transactions = counters.transaction.count.get();
-				}
-				else {
-					transactions = counters.write.count.get() + counters.read.count.get();
-				}
-				if (transactions > args.throughput) {
-					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
-
-					if (millis > 0) {
-						Util.sleep(millis);
-					}
-				}
-			}
-		}
-	}
-	
 	public void stop() {
 		valid = false;
 	}
 	
-	private long[] getKeys(int count) {
-		long[] keys = new long[count];
-		for (int i = 0; i < count; i++) {
-			keys[i] = random.nextLong(keyCount);
-		}
-		return keys;
+	protected void runCommand(RandomShift random) {
+		try {
+			switch (args.workload) {
+			case READ_UPDATE:
+				readUpdate(random);
+				break;
+				
+			case READ_MODIFY_UPDATE:
+				readModifyUpdate(random);		
+				break;
+				
+			case READ_MODIFY_INCREMENT:
+				readModifyIncrement(random);		
+				break;
+				
+			case READ_MODIFY_DECREMENT:
+				readModifyDecrement(random);		
+				break;
+				
+			case READ_FROM_FILE:
+				readFromFile(random);	
+				break;
+				
+			case TRANSACTION:
+				runTransaction(random);
+				break;
+			}
+		} 
+		catch (Exception e) {
+			if (args.debug) {
+				e.printStackTrace();
+			}
+			else {
+				System.out.println("Exception - " + e.toString());
+			}
+		}		 
+	}
+
+	protected void runNextCommand() {
 	}
 	
-	private void runTransaction() {
+	private void readUpdate(RandomShift random) {
+		if (random.nextInt(100) < args.readPct) {
+			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
+			
+			if (args.batchSize <= 1) {
+				long key = random.nextLong(keyCount);
+				doRead(key, isMultiBin);
+			}
+			else {
+				doReadBatch(random, isMultiBin);
+			}
+		}
+		else {
+			boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
+			
+			if (args.batchSize <= 1) {
+				// Single record write.
+				long key = random.nextLong(keyCount);
+				doWrite(random, key, isMultiBin, null);
+			}
+			else {
+				// Batch write is not supported, so write batch size one record at a time.
+				for (int i = 0; i < args.batchSize; i++) {
+					long key = random.nextLong(keyCount);
+					doWrite(random, key, isMultiBin, null);
+				}
+			}
+		}		
+	}
+
+	private void readModifyUpdate(RandomShift random) {
+		long key = random.nextLong(keyCount);
+				
+		// Read all bins.
+		doRead(key, true);
+		// Write one bin.
+		doWrite(random, key, false, null);
+	}
+	
+	private void readModifyIncrement(RandomShift random) {
+		long key = random.nextLong(keyCount);
+
+		// Read all bins.
+		doRead(key, true);
+		// Increment one bin.
+		doIncrement(key, 1);
+	}
+
+	private void readModifyDecrement(RandomShift random) {
+		long key = random.nextLong(keyCount);
+
+		// Read all bins.
+		doRead(key, true);
+		// Decrement one bin.
+		doIncrement(key, -1);
+	}
+	
+	private void readFromFile(RandomShift random) {
+		long key = random.nextLong(keyCount);
+		
+		if (args.keyType == KeyType.STRING) {
+		    doReadString(key, true);
+		}    
+		else if (args.keyType == KeyType.INTEGER) {
+			doReadLong(key, true);
+		}
+	}
+
+	private void runTransaction(RandomShift random) {
 		long key;
 		Iterator<TransactionalItem> iterator = args.transactionalWorkload.iterator(random);
 		long begin = System.nanoTime();
@@ -153,37 +180,35 @@ public abstract class RWTask implements Runnable {
 					doRead(key, true);
 					break;
 				case MULTI_BIN_BATCH_READ:
-					doRead(getKeys(thisItem.getRepetitions()), true);
+					doRead(getKeys(random, thisItem.getRepetitions()), true);
 					break;
 				case MULTI_BIN_REPLACE:
 					key = random.nextLong(keyCount);
-					doWrite(key, true, args.replacePolicy);
+					doWrite(random, key, true, args.replacePolicy);
 					break;
 				case MULTI_BIN_UPDATE:
 					key = random.nextLong(keyCount);
-					doWrite(key, true, args.updatePolicy);
+					doWrite(random, key, true, args.updatePolicy);
 					break;
 				case SINGLE_BIN_INCREMENT:
 					key = random.nextLong(keyCount);
 					// Increment one bin.
 					doIncrement(key, 1);
 					break;
-
 				case SINGLE_BIN_READ:
 					key = random.nextLong(keyCount);
 					doRead(key, false);
 					break;
 				case SINGLE_BIN_BATCH_READ:
-					doRead(getKeys(thisItem.getRepetitions()), false);
+					doRead(getKeys(random, thisItem.getRepetitions()), false);
 					break;
-
 				case SINGLE_BIN_REPLACE:
 					key = random.nextLong(keyCount);
-					doWrite(key, false, args.replacePolicy);
+					doWrite(random, key, false, args.replacePolicy);
 					break;
 				case SINGLE_BIN_UPDATE:
 					key = random.nextLong(keyCount);
-					doWrite(key, false, args.updatePolicy);
+					doWrite(random, key, false, args.updatePolicy);
 					break;
 				default:
 					break;
@@ -197,131 +222,18 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 	
-	private void readUpdate() {
-		if (random.nextInt(100) < args.readPct) {
-			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
-			
-			if (args.batchSize <= 1) {
-				long key = random.nextLong(keyCount);
-				doRead(key, isMultiBin);
-			}
-			else {
-				doReadBatch(isMultiBin);
-			}
+	private long[] getKeys(RandomShift random, int count) {
+		long[] keys = new long[count];
+		for (int i = 0; i < count; i++) {
+			keys[i] = random.nextLong(keyCount);
 		}
-		else {
-			boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
-			
-			if (args.batchSize <= 1) {
-				// Single record write.
-				long key = random.nextLong(keyCount);
-				doWrite(key, isMultiBin);
-			}
-			else {
-				// Batch write is not supported, so write batch size one record at a time.
-				for (int i = 0; i < args.batchSize; i++) {
-					long key = random.nextLong(keyCount);
-					doWrite(key, isMultiBin);
-				}
-			}
-		}		
-	}
-	
-	private void readModifyUpdate() {
-		long key = random.nextLong(keyCount);
-				
-		// Read all bins.
-		doRead(key, true);
-		// Write one bin.
-		doWrite(key, false);
-	}
-	
-	private void readModifyIncrement() {
-		long key = random.nextLong(keyCount);
-
-		// Read all bins.
-		doRead(key, true);
-		// Increment one bin.
-		doIncrement(key, 1);
-	}
-
-	private void readModifyDecrement() {
-		long key = random.nextLong(keyCount);
-
-		// Read all bins.
-		doRead(key, true);
-		// Decrement one bin.
-		doIncrement(key, -1);
-	}
-	
-	private void readFromFile() {
-		long key = random.nextLong(keyCount);
-		
-		if (args.keyType == KeyType.STRING) {
-		    doReadString(key, true);
-		}    
-		else if (args.keyType == KeyType.INTEGER) {
-			doReadLong(key, true);
-		}
-	}
-
-	/**
-	 * Read existing values from the database, save them away in our validation arrays.
-	 */
-	private void setupValidation() {
-		// Warning: validate only works when keyCount < Integer.MAX_VALUE.
-		int keyCapacity = (int)keyCount;
-		expectedValues = new ExpectedValue[keyCapacity];
-		
-		// Load starting values
-		for (int i = 0; i < keyCapacity; i++) {
-			Bin[] bins = null;
-			int generation = 0;
-			
-			try {
-				Key key = new Key(args.namespace, args.setName, keyStart + i);
-				Record record = client.get(args.readPolicy, key);
-				
-				if (record != null && record.bins != null) {
-					Map<String,Object> map = record.bins;
-					int max = map.size();
-					bins = new Bin[max];
-					
-					for (int j = 0; j < max; j++) {
-						String name = Integer.toString(j);
-						bins[j] = new Bin(name, map.get(name));
-					}
-					generation = record.generation;
-				}
-				counters.read.count.getAndIncrement();
-			}
-			catch (Exception e) {				
-				readFailure(e);
-			}
-			expectedValues[i] = new ExpectedValue(bins, generation);
-		}
-
-		// Tell the global counter that this task is finished loading
-		this.counters.loadValuesFinishedTasks.incrementAndGet();
-
-		// Wait for all tasks to be finished loading
-		while (! this.counters.loadValuesFinished.get()) {
-			try {
-				Thread.sleep(10);
-			} catch (Exception e) {
-				System.out.println("Can't sleep while waiting for all values to load");
-			}
-		}
-	}
-	
-	protected void doWrite(long keyIdx, boolean multiBin) {
-		doWrite(keyIdx, multiBin, null);
+		return keys;
 	}
 	
 	/**
 	 * Write the key at the given index
 	 */
-	protected void doWrite(long keyIdx, boolean multiBin, WritePolicy writePolicy) {
+	protected void doWrite(RandomShift random, long keyIdx, boolean multiBin, WritePolicy writePolicy) {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, multiBin, keyStart + keyIdx);
@@ -329,7 +241,7 @@ public abstract class RWTask implements Runnable {
 		try {
 			switch (args.storeType) {
 			case KVS:
-				put(key, bins, writePolicy);
+				put(writePolicy, key, bins);
 				break;
 	
 			case LLIST:
@@ -340,17 +252,14 @@ public abstract class RWTask implements Runnable {
 				largeStackPush(key, bins[0].value);
 				break;
 			}
-			
-			if (args.validate) {
-				// Warning: validate only works when keyIdx < Integer.MAX_VALUE.
-				this.expectedValues[(int)keyIdx].write(bins);
-			}
 		}
 		catch (AerospikeException ae) {
 			writeFailure(ae);
+			runNextCommand();
 		}	
 		catch (Exception e) {
 			writeFailure(e);
+			runNextCommand();
 		}
 	}
 
@@ -362,18 +271,15 @@ public abstract class RWTask implements Runnable {
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
 		
 		try {
-			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
-			
-			if (args.validate) {
-				// Warning: validate only works when keyIdx < Integer.MAX_VALUE.
-				this.expectedValues[(int)keyIdx].add(bins, incrValue);
-			}
+			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);			
 		}
 		catch (AerospikeException ae) {
 			writeFailure(ae);
+			runNextCommand();
 		}
 		catch (Exception e) {
 			writeFailure(e);
+			runNextCommand();
 		}
 	}
 		
@@ -419,9 +325,11 @@ public abstract class RWTask implements Runnable {
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}
 		catch (Exception e) {
 			readFailure(e);
+			runNextCommand();
 		}
 	}
 
@@ -470,16 +378,18 @@ public abstract class RWTask implements Runnable {
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}
 		catch (Exception e) {
 			readFailure(e);
+			runNextCommand();
 		}
 	}
 
 	/**
 	 * Read batch of keys in one call.
 	 */
-	protected void doReadBatch(boolean multiBin) {
+	protected void doReadBatch(RandomShift random, boolean multiBin) {
 		Key[] keys = new Key[args.batchSize];
 		
 		for (int i = 0; i < keys.length; i++) {
@@ -499,9 +409,11 @@ public abstract class RWTask implements Runnable {
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}	
 		catch (Exception e) {
 			readFailure(e);
+			runNextCommand();
 		}	
 	}
 
@@ -524,9 +436,11 @@ public abstract class RWTask implements Runnable {
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}	
 		catch (Exception e) {
 			readFailure(e);
+			runNextCommand();
 		}
 	}
 	
@@ -549,32 +463,16 @@ public abstract class RWTask implements Runnable {
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}	
 		catch (Exception e) {
 			readFailure(e);
-		}
-		
+			runNextCommand();
+		}		
 	}
 	
 	protected void processRead(Key key, Record record) {
 		if (record == null && args.reportNotFound) {
-			counters.readNotFound.getAndIncrement();	
-		}
-		else {
-			counters.read.count.getAndIncrement();		
-		}
-
-		if (args.validate) {
-			int keyIdx = (int)(key.userKey.toLong() - keyStart);
-			
-			if (! this.expectedValues[keyIdx].validate(record)) {
-				this.counters.valueMismatchCnt.incrementAndGet();
-			}
-		}	
-	}
-
-	protected void processLargeRead(Key key, List<?> list) {
-		if ((list == null || list.size() == 0) && args.reportNotFound) {
 			counters.readNotFound.getAndIncrement();	
 		}
 		else {
@@ -624,19 +522,14 @@ public abstract class RWTask implements Runnable {
 		}
 	}
 
-	protected void put(Key key, Bin[] bins) {
-		put(key, bins, args.writePolicy);
-	}
-	protected abstract void put(Key key, Bin[] bins, WritePolicy policy) throws AerospikeException;
-	protected abstract void add(Key key, Bin[] bins) throws AerospikeException;
-	protected abstract void get(Key key, String binName) throws AerospikeException;
-	protected abstract void get(Key key) throws AerospikeException;
-	protected abstract void get(Key[] keys) throws AerospikeException;
-	protected abstract void get(Key[] keys, String binName) throws AerospikeException;
-
-	protected abstract void largeListAdd(Key key, Value value) throws AerospikeException;
-	protected abstract void largeListGet(Key key) throws AerospikeException;
-
-	protected abstract void largeStackPush(Key key, Value value) throws AerospikeException;
-	protected abstract void largeStackPeek(Key key) throws AerospikeException;
+	protected abstract void put(WritePolicy policy, Key key, Bin[] bins);
+	protected abstract void add(Key key, Bin[] bins);
+	protected abstract void get(Key key, String binName);
+	protected abstract void get(Key key);
+	protected abstract void get(Key[] keys);
+	protected abstract void get(Key[] keys, String binName);
+	protected abstract void largeListAdd(Key key, Value value);
+	protected abstract void largeListGet(Key key);
+	protected abstract void largeStackPush(Key key, Value value);
+	protected abstract void largeStackPeek(Key key);
 }

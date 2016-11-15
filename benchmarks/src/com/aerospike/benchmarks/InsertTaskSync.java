@@ -26,18 +26,80 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeStack;
+import com.aerospike.client.util.RandomShift;
+import com.aerospike.client.util.Util;
 
-
-public final class InsertTaskSync extends InsertTask {
+public final class InsertTaskSync extends InsertTask implements Runnable {
 
 	private final AerospikeClient client; 
+	private final long keyStart;
+	private final long keyCount;
 
 	public InsertTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		super(args, counters, keyStart, keyCount);
+		super(args, counters);
 		this.client = client;
+		this.keyStart = keyStart;
+		this.keyCount = keyCount;
 	}
 	
-	protected void put(Key key, Bin[] bins) throws AerospikeException {
+	public void run() {
+		try {			
+			RandomShift random = new RandomShift();
+
+			for (long i = 0; i < keyCount; i++) {
+				try {
+					runCommand(keyStart + i, random);
+				}
+				catch (AerospikeException ae) {
+					i--;
+					writeFailure(ae);
+				}	
+				catch (Exception e) {
+					i--;
+					writeFailure(e);
+				}
+				
+				// Throttle throughput
+				if (args.throughput > 0) {
+					int transactions = counters.write.count.get();
+					
+					if (transactions > args.throughput) {
+						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+
+						if (millis > 0) {
+							Util.sleep(millis);
+						}
+					}
+				}
+			}
+		}
+		catch (Exception ex) {
+			System.out.println("Insert task error: " + ex.getMessage());
+			ex.printStackTrace();
+		}		
+	}
+	
+	private void runCommand(long keyCurrent, RandomShift random) {
+		Key key = new Key(args.namespace, args.setName, keyCurrent);
+		// Use predictable value for 0th bin same as key value
+		Bin[] bins = args.getBins(random, true, keyCurrent);
+		
+		switch (args.storeType) {
+		case KVS:
+			put(key, bins);
+			break;
+			
+		case LLIST:
+			largeListAdd(key, bins[0].value);
+			break;
+
+		case LSTACK:
+			largeStackPush(key, bins[0].value);
+			break;
+		}
+	}
+	
+	private void put(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.put(args.writePolicy, key, bins);
@@ -51,7 +113,7 @@ public final class InsertTaskSync extends InsertTask {
 		}
 	}
 
-	protected void largeListAdd(Key key, Value value) throws AerospikeException {
+	private void largeListAdd(Key key, Value value) {
 		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeListAdd(key, value, begin);
@@ -65,7 +127,7 @@ public final class InsertTaskSync extends InsertTask {
 		}
 	}
 
-	private void largeListAdd(Key key, Value value, long timestamp) throws AerospikeException {
+	private void largeListAdd(Key key, Value value, long timestamp) {
 		// Create entry
 		Map<String,Value> entry = new HashMap<String,Value>();
 		entry.put("key", Value.get(timestamp));
@@ -76,7 +138,7 @@ public final class InsertTaskSync extends InsertTask {
 		list.add(Value.get(entry));
 	}
 		
-	protected void largeStackPush(Key key, Value value) throws AerospikeException {
+	private void largeStackPush(Key key, Value value) {
 		long begin = System.nanoTime();
 		if (counters.write.latency != null) {
 			largeStackPush(key, value, begin);
@@ -90,7 +152,7 @@ public final class InsertTaskSync extends InsertTask {
 		}
 	}
 	
-	private void largeStackPush(Key key, Value value, long timestamp) throws AerospikeException {
+	private void largeStackPush(Key key, Value value, long timestamp) {
 		// Create entry
 		Map<String,Value> entry = new HashMap<String,Value>();
 		entry.put("key", Value.get(timestamp));

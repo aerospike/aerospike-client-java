@@ -19,54 +19,64 @@ package com.aerospike.benchmarks;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.RandomShift;
 
-/**
- * Asynchronous read/write task.
- */
-public class RWTaskAsync extends RWTask {
-
+public final class RWTaskAsync extends RWTask {
+	
 	private final AsyncClient client;
 	private final WriteHandler writeHandler;
 	private final ReadHandler readHandler;
 	private final BatchReadHandler batchReadHandler;
-	
-	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		super(client, args, counters, keyStart, keyCount);
+	private final long maxCommands;
+
+	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount, long maxCommands) {
+		super(args, counters, keyStart, keyCount);
 		this.client = client;
+		
+		if (maxCommands > keyCount) {
+			maxCommands = keyCount;
+		}
+		this.maxCommands = maxCommands;
 		writeHandler = new WriteHandler();
 		readHandler = new ReadHandler();
 		batchReadHandler = new BatchReadHandler();
 	}
-		
-	protected void put(Key key, Bin[] bins, WritePolicy writePolicy) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.write.timeouts.get() > 0) {
-			Thread.yield();
-		}
+	
+	public void run() {
+		// Seed selector threads with max commands.
+		RandomShift random = RandomShift.instance();
+				
+		for (int i = 0; i < maxCommands; i++) {
+			runCommand(random);
+		}		
+	}
 
-		if (counters.write.latency != null) {
-			client.put(writePolicy, new LatencyWriteHandler(), key, bins);	
-		}
-		else {
-			client.put(writePolicy, writeHandler, key, bins);
+	@Override
+	protected void runNextCommand() {
+		if (valid) {
+			runCommand(RandomShift.instance());
 		}
 	}
-		
-	protected void add(Key key, Bin[] bins) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.write.timeouts.get() > 0) {
-			Thread.yield();
+
+	@Override
+	protected void put(WritePolicy policy, Key key, Bin[] bins) {
+		if (counters.write.latency != null) {
+			client.put(policy, new LatencyWriteHandler(), key, bins);	
 		}
-		
+		else {
+			client.put(policy, writeHandler, key, bins);
+		}
+	}
+	
+	@Override
+	protected void add(Key key, Bin[] bins) {		
 		if (counters.write.latency != null) {
 			client.add(writePolicyGeneration, new LatencyWriteHandler(), key, bins);
 		}
@@ -74,14 +84,9 @@ public class RWTaskAsync extends RWTask {
 			client.add(writePolicyGeneration, writeHandler, key, bins);			
 		}
 	}
-	
-	protected void get(Key key, String binName) throws AerospikeException {		
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.read.timeouts.get() > 0) {
-			Thread.yield();
-		}
-		
+
+	@Override
+	protected void get(Key key, String binName) {		
 		if (counters.read.latency != null) {		
 			client.get(args.readPolicy, new LatencyReadHandler(), key, binName);
 		}
@@ -89,14 +94,9 @@ public class RWTaskAsync extends RWTask {
 			client.get(args.readPolicy, readHandler, key, binName);
 		}
 	}
-	
-	protected void get(Key key) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.read.timeouts.get() > 0) {
-			Thread.yield();
-		}
 
+	@Override
+	protected void get(Key key) throws AerospikeException {
 		if (counters.read.latency != null) {	
 			client.get(args.readPolicy, new LatencyReadHandler(), key);
 		}
@@ -104,14 +104,9 @@ public class RWTaskAsync extends RWTask {
 			client.get(args.readPolicy, readHandler, key);
 		}
 	}
-	
-	protected void get(Key[] keys, String binName) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.read.timeouts.get() > 0) {
-			Thread.yield();
-		}
 
+	@Override
+	protected void get(Key[] keys, String binName) throws AerospikeException {
 		if (counters.read.latency != null) {	
 			client.get(args.batchPolicy, new LatencyBatchReadHandler(), keys, binName);
 		}
@@ -120,13 +115,8 @@ public class RWTaskAsync extends RWTask {
 		}
 	}
 
+	@Override
 	protected void get(Key[] keys) throws AerospikeException {
-		// If an error occurred, yield thread to back off throttle.
-		// Fail counters are reset every second.
-		if (counters.read.timeouts.get() > 0) {
-			Thread.yield();
-		}
-
 		if (counters.read.latency != null) {	
 			client.get(args.batchPolicy, new LatencyBatchReadHandler(), keys);
 		}
@@ -135,52 +125,18 @@ public class RWTaskAsync extends RWTask {
 		}
 	}
 
-	private final class WriteHandler implements WriteListener {		
+	private final class WriteHandler implements WriteListener {	
 		@Override
 		public void onSuccess(Key key) {
 			counters.write.count.getAndIncrement();
+			runNextCommand();
 		}
-	
+
 		@Override
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
-		}
-	}
-
-	private final class ReadHandler implements RecordListener {
-		@Override
-		public void onSuccess(Key key, Record record) {
-			if (record == null && args.reportNotFound) {
-				counters.readNotFound.getAndIncrement();	
-			}
-			else {
-				counters.read.count.getAndIncrement();		
-			}
-		}
-
-		@Override
-		public void onFailure(AerospikeException ae) {
-			readFailure(ae);
-		}
-	}
-	
-	private final class BatchReadHandler implements RecordArrayListener {
-		@Override
-		public void onSuccess(Key[] keys, Record[] records) {
-			for (int i = 0; i < records.length; i++) {
-				if (records[i] == null && args.reportNotFound) {
-					counters.readNotFound.getAndIncrement();	
-				}
-				else {
-					counters.read.count.getAndIncrement();		
-				}
-			}
-		}
-
-		@Override
-		public void onFailure(AerospikeException ae) {
-			readFailure(ae);
-		}
+			runNextCommand();
+		}		
 	}
 
 	private final class LatencyWriteHandler implements WriteListener {
@@ -193,14 +149,35 @@ public class RWTaskAsync extends RWTask {
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
 			counters.write.latency.add(elapsed);
+			counters.write.count.getAndIncrement();
+			runNextCommand();
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
+			runNextCommand();
 		}		
+	}
+	
+	private final class ReadHandler implements RecordListener {
+		@Override
+		public void onSuccess(Key key, Record record) {
+			if (record == null && args.reportNotFound) {
+				counters.readNotFound.getAndIncrement();	
+			}
+			else {
+				counters.read.count.getAndIncrement();		
+			}
+			runNextCommand();
+		}
+
+		@Override
+		public void onFailure(AerospikeException ae) {
+			readFailure(ae);
+			runNextCommand();
+		}
 	}
 	
 	private final class LatencyReadHandler implements RecordListener {
@@ -221,12 +198,35 @@ public class RWTaskAsync extends RWTask {
 			else {
 				counters.read.count.getAndIncrement();		
 			}
+			runNextCommand();
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}		
+	}
+	
+	private final class BatchReadHandler implements RecordArrayListener {
+		@Override
+		public void onSuccess(Key[] keys, Record[] records) {
+			for (int i = 0; i < records.length; i++) {
+				if (records[i] == null && args.reportNotFound) {
+					counters.readNotFound.getAndIncrement();	
+				}
+				else {
+					counters.read.count.getAndIncrement();		
+				}
+			}
+			runNextCommand();
+		}
+
+		@Override
+		public void onFailure(AerospikeException ae) {
+			readFailure(ae);
+			runNextCommand();
+		}
 	}
 	
 	private final class LatencyBatchReadHandler implements RecordArrayListener {
@@ -249,44 +249,25 @@ public class RWTaskAsync extends RWTask {
 					counters.read.count.getAndIncrement();		
 				}
 			}
+			runNextCommand();
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
+			runNextCommand();
 		}		
 	}
 	
-	protected void largeListAdd(Key key, Value value) throws AerospikeException {
+	protected void largeListAdd(Key key, Value value) {
 	}
 
-	protected void largeListGet(Key key) throws AerospikeException {
+	protected void largeListGet(Key key) {
 	}
 
-	protected void largeStackPush(Key key, Value value) throws AerospikeException {
+	protected void largeStackPush(Key key, Value value) {
 	}
 
-	protected void largeStackPeek(Key key) throws AerospikeException {
+	protected void largeStackPeek(Key key) {
 	}
-
-	/*
-	private final class ValidateHandler implements RecordListener {
-		
-		private final int keyIdx;
-		
-		public ValidateHandler(int keyIdx) {
-			this.keyIdx = keyIdx;
-		}
-		
-		@Override
-		public void onSuccess(Key key, Record record) {
-			counters.read.count.getAndIncrement();
-			validateRead(keyIdx, record);
-		}
-
-		@Override
-		public void onFailure(AerospikeException ae) {
-			readFailure(ae);
-		}
-	}*/
 }

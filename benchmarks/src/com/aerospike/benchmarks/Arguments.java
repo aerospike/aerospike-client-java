@@ -42,7 +42,6 @@ public class Arguments {
 	public int throughput;
 	public long transactionLimit;
 	public boolean reportNotFound;
-	public boolean validate;
 	public boolean debug;
 	public TransactionalWorkload transactionalWorkload;
 	public KeyType keyType;
