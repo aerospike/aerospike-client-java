@@ -28,6 +28,8 @@ import com.aerospike.client.util.Util;
 
 /**
  * Create and manage a Large Set within a single bin.
+ * <p>
+ * Deprecated: LDT functionality has been deprecated.
  */
 public class LargeSet {
 	private static final String PackageName = "lset";

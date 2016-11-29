@@ -27,6 +27,8 @@ import com.aerospike.client.util.Util;
 
 /**
  * Create and manage a map within a single bin.
+ * <p>
+ * Deprecated: LDT functionality has been deprecated.
  */
 public class LargeMap {
 	private static final String PackageName = "lmap";

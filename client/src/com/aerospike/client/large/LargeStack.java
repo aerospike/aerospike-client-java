@@ -28,6 +28,8 @@ import com.aerospike.client.util.Util;
 
 /**
  * Create and manage a stack within a single bin. A stack is last in/first out (LIFO).
+ * <p>
+ * Deprecated: LDT functionality has been deprecated.
  */
 public class LargeStack {
 	private static final String PackageName = "lstack";

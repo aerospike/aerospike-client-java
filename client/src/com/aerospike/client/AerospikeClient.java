@@ -803,6 +803,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Initialize large list operator.  This operator can be used to create and manage a list 
 	 * within a single bin.
+	 * <p>
+	 * Deprecated: LDT functionality has been deprecated.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -815,6 +817,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Initialize large map operator.  This operator can be used to create and manage a map 
 	 * within a single bin.
+	 * <p>
+	 * Deprecated: LDT functionality has been deprecated.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -828,6 +832,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Initialize large set operator.  This operator can be used to create and manage a set 
 	 * within a single bin.
+	 * <p>
+	 * Deprecated: LDT functionality has been deprecated.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -841,6 +847,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
 	 * within a single bin.
+	 * <p>
+	 * Deprecated: LDT functionality has been deprecated.
 	 * 
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
