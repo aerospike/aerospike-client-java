@@ -16,11 +16,11 @@
  */
 package com.aerospike.client.lua;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Value;
+import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.query.Statement;
 import org.luaj.vm2.Globals;
 import org.luaj.vm2.LoadState;
 import org.luaj.vm2.LuaBoolean;
@@ -44,11 +44,10 @@ import org.luaj.vm2.lib.jse.JseMathLib;
 import org.luaj.vm2.lib.jse.JseOsLib;
 import org.luaj.vm2.lib.jse.LuajavaLib;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Value;
-import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.query.Statement;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public final class LuaInstance {
 	
@@ -120,6 +119,10 @@ public final class LuaInstance {
 		LuaClosure function = new LuaClosure(prototype, globals);
 		function.invoke();
 		loadedTable.set(packageName, LuaValue.TRUE);
+	}
+
+	public void unloadPackage(String packageName) {
+		loadedTable.set(packageName, LuaValue.FALSE);
 	}
 
 	public void load(LibFunction function) {

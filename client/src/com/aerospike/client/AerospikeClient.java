@@ -16,13 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.Closeable;
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
@@ -51,6 +44,7 @@ import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
 import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
+import com.aerospike.client.lua.LuaCache;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ClientPolicy;
@@ -72,6 +66,13 @@ import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
+
+import java.io.Closeable;
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Instantiate an <code>AerospikeClient</code> object to access an Aerospike
@@ -955,6 +956,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String response = Info.request(policy, node, command);
 		
 		if (response.equalsIgnoreCase("ok")) {
+			// Clear LuaCache as it still references the old UDF.
+			LuaCache.clearPackageFromCache(serverPath);
 			return;
 		}
 		
