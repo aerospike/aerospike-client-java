@@ -16,17 +16,16 @@
  */
 package com.aerospike.client.lua;
 
+import com.aerospike.client.AerospikeException;
+import org.luaj.vm2.Prototype;
+import org.luaj.vm2.compiler.LuaC;
+
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-
-import org.luaj.vm2.Prototype;
-import org.luaj.vm2.compiler.LuaC;
-
-import com.aerospike.client.AerospikeException;
 
 public final class LuaCache {
 	private static final ArrayBlockingQueue<LuaInstance> InstanceQueue = new ArrayBlockingQueue<LuaInstance>(LuaConfig.InstancePoolSize);
@@ -78,6 +77,19 @@ public final class LuaCache {
 		}
 		return prototype;
 	}
+
+	public static final Prototype clearPackageFromCache(String serverPath) throws AerospikeException {
+		String packageName = serverPath.replace(LuaConfig.SourceDirectory, "").replace(".lua", "");
+		Prototype prototype = Packages.get(packageName);
+
+		if (prototype != null) {
+			Packages.remove(packageName);
+			for(final LuaInstance luaInstance : InstanceQueue){
+				luaInstance.unloadPackage(packageName);
+			}
+		}
+		return prototype;
+	}
 		
 	private static Prototype compile(String packageName, InputStream is) throws AerospikeException {
 		try {
@@ -96,6 +108,7 @@ public final class LuaCache {
 	}
 
 	public static final void clearPackages() {
+		InstanceQueue.clear();
 		Packages.clear();
 	}
 }
