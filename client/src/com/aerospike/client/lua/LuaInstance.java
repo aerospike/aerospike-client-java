@@ -122,6 +122,11 @@ public final class LuaInstance {
 		loadedTable.set(packageName, LuaValue.TRUE);
 	}
 
+	public void unloadPackage(String packageName) {
+		// Force package reload the next time the package is referenced.
+		loadedTable.set(packageName, LuaValue.FALSE);
+	}
+
 	public void load(LibFunction function) {
 		globals.load(function);
 	}

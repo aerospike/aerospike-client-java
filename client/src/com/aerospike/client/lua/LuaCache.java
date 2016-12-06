@@ -32,15 +32,26 @@ public final class LuaCache {
 	private static final ArrayBlockingQueue<LuaInstance> InstanceQueue = new ArrayBlockingQueue<LuaInstance>(LuaConfig.InstancePoolSize);
 	private static final ConcurrentHashMap<String,Prototype> Packages = new ConcurrentHashMap<String,Prototype>();
 	
+	/**
+	 * Return lua instance from a pool.  If a lua instance is not available,
+	 * a new instance will be created. 
+	 */
 	public static final LuaInstance getInstance() throws AerospikeException {
 		LuaInstance instance = InstanceQueue.poll();
 		return (instance != null)? instance : new LuaInstance();
 	}
-			
+	
+	/**
+	 * Put lua instance back into pool if pool size (LuaConfig.InstancePoolSize)
+	 * would not be exceeded.
+	 */
 	public static final void putInstance(LuaInstance instance) {
 		InstanceQueue.offer(instance);
 	}
 	
+	/**
+	 * Load lua package from a file.
+	 */
 	public static final Prototype loadPackageFromFile(String packageName) throws AerospikeException {
 		Prototype prototype = Packages.get(packageName);
 		
@@ -59,6 +70,9 @@ public final class LuaCache {
 		return prototype;
 	}
 	
+	/**
+	 * Load lua package from a resource.
+	 */
 	public static final Prototype loadPackageFromResource(ClassLoader resourceLoader, String resourcePath, String packageName) throws AerospikeException {
 		Prototype prototype = Packages.get(packageName);
 		
@@ -95,7 +109,29 @@ public final class LuaCache {
 		}
 	}
 
+	/**
+	 * Remove lua package from cache and unload package from non-active
+	 * lua instances.  This method assumes lua instances are not running
+	 * concurrently with this call. Active lua instances will not have
+	 * their packages unloaded.
+	 */
+	public static final void clearPackage(String packageName) {
+		Prototype prototype = Packages.remove(packageName);
+
+		if (prototype != null) {
+			for (final LuaInstance luaInstance : InstanceQueue){
+				luaInstance.unloadPackage(packageName);
+			}
+		}
+	}
+
+	/**
+	 * Remove all lua packages and non-active lua instances from cache.  
+	 * This method assumes lua instances are not running concurrently
+	 * with this call.  Active lua instances will not be removed.
+	 */
 	public static final void clearPackages() {
+		InstanceQueue.clear();
 		Packages.clear();
 	}
 }
