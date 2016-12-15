@@ -723,7 +723,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
-		
+
+		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);			
+		}
+
 		Node[] nodes = cluster.getNodes();		
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
@@ -790,6 +794,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
+
+		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);			
+		}
+
 		long taskId = RandomShift.instance().nextLong();
 
 		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId);
