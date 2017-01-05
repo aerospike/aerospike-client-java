@@ -98,6 +98,21 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis);
+
+				if (cluster.user != null) {
+					try {
+						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+						command.authenticate(tendConnection, cluster.user, cluster.password);
+					}
+					catch (AerospikeException ae) {
+						tendConnection.close();
+						throw ae;
+					}
+					catch (Exception e) {
+						tendConnection.close();
+						throw new AerospikeException(e);
+					}
+				}
 			}
 	
 			if (peers.usePeers) {
