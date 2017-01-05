@@ -60,9 +60,13 @@ public final class AsyncCluster extends Cluster {
 		try {
 			initTendThread(policy.failIfNotConnected);
 		}
+		catch (AerospikeException ae) {
+			selectorManagers.close();
+			throw ae;
+		}
 		catch (Exception e) {
 			selectorManagers.close();
-			throw e;
+			throw new AerospikeException(e);
 		}
 	}
 	
