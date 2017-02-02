@@ -143,7 +143,7 @@ public class QueryRegionFilter extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.geoWithinRegion(binName1, rgnsb.toString()));
+		stmt.setFilter(Filter.geoWithinRegion(binName1, rgnsb.toString()));
 		stmt.setAggregateFunction("geo_filter_example", "match_amenity", Value.get(amenStr));
 
 		ResultSet rs = client.queryAggregate(null, stmt);

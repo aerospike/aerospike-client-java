@@ -74,7 +74,7 @@ public class TestQueryExecute extends TestSync {
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
-		stmt.setFilters(Filter.range(binName1, begin, end));
+		stmt.setFilter(Filter.range(binName1, begin, end));
 		
 		ExecuteTask task = client.execute(null, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 		task.waitTillComplete();
@@ -88,7 +88,7 @@ public class TestQueryExecute extends TestSync {
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
-		stmt.setFilters(Filter.range(binName1, begin, end));
+		stmt.setFilter(Filter.range(binName1, begin, end));
 		
 		RecordSet rs = client.query(null, stmt);
 		

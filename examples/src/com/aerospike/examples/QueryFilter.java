@@ -122,7 +122,7 @@ public class QueryFilter extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.equal(binName, nameFilter));
+		stmt.setFilter(Filter.equal(binName, nameFilter));
 		stmt.setAggregateFunction("filter_example", "profile_filter", Value.get(passFilter));
 		
 		// passFilter will be applied in filter_example.lua.

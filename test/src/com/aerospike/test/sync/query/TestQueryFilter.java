@@ -79,7 +79,7 @@ public class TestQueryFilter extends TestSync {
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
-		stmt.setFilters(Filter.equal(binName, nameFilter));
+		stmt.setFilter(Filter.equal(binName, nameFilter));
 		stmt.setAggregateFunction(TestQueryFilter.class.getClassLoader(), "udf/filter_example.lua", "filter_example", "profile_filter", Value.get(passFilter));
 		
 		// passFilter will be applied in filter_example.lua.

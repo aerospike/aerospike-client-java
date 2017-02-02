@@ -71,7 +71,7 @@ public class TestQueryKey extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		
 		RecordSet rs = client.query(null, stmt);
 		

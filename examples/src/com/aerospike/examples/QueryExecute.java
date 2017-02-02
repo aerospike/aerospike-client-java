@@ -115,7 +115,7 @@ public class QueryExecute extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.range(binName1, begin, end));
+		stmt.setFilter(Filter.range(binName1, begin, end));
 		
 		ExecuteTask task = client.execute(params.writePolicy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 		task.waitTillComplete();
@@ -137,7 +137,7 @@ public class QueryExecute extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.range(binName1, begin, end));
+		stmt.setFilter(Filter.range(binName1, begin, end));
 		
 		RecordSet rs = client.query(null, stmt);
 		

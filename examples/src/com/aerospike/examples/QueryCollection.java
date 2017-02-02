@@ -124,7 +124,7 @@ public class QueryCollection extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.contains(binName, IndexCollectionType.MAPKEYS, queryMapKey ));
+		stmt.setFilter(Filter.contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
 		
 		RecordSet rs = client.query(null, stmt);
 		

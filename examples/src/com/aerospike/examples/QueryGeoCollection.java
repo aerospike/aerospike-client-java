@@ -243,7 +243,7 @@ public class QueryGeoCollection extends Example {
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setFilters(Filter.geoWithinRegion(binName, indexType, rgnsb.toString()) );
+		stmt.setFilter(Filter.geoWithinRegion(binName, indexType, rgnsb.toString()));
 	
 		RecordSet rs = client.query(null, stmt);
 		

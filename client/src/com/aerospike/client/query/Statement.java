@@ -29,7 +29,7 @@ public final class Statement {
 	String setName;
 	String indexName;
 	String[] binNames;
-	Filter[] filters;
+	Filter filter;
 	ClassLoader resourceLoader;
 	String resourcePath;
 	String packageName;
@@ -96,26 +96,44 @@ public final class Statement {
 	}
 
 	/**
-	 * Set optional query filters.
+	 * Set optional query index filters.
 	 * Currently, only one filter is allowed by the server on a secondary index lookup.
 	 * If multiple filters are necessary, see QueryFilter example for a workaround.
 	 * QueryFilter demonstrates how to add additional filters in an user-defined 
-	 * aggregation function. 
+	 * aggregation function.
+	 * <p>
+	 * This method is obsolete. Use {@link com.aerospike.client.query.Statement#setFilter(Filter)} instead.
 	 */
 	public void setFilters(Filter... filters) {
 		if (filters.length > 1) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
 		}
-		this.filters = filters;
+		this.filter = filters[0];
+	}
+	
+	/**
+	 * Return query filters.
+	 * <p>
+	 * This method is obsolete. Use {@link com.aerospike.client.query.Statement#getFilter()} instead.
+	 */
+	public Filter[] getFilters() {
+		return new Filter[] {filter};
 	}
 
 	/**
-	 * Return query filters.
+	 * Set optional query index filter.  This filter is applied to the secondary index.
 	 */
-	public Filter[] getFilters() {
-		return filters;
+	public void setFilter(Filter filter) {
+		this.filter = filter;
 	}
-
+	
+	/**
+	 * Return query index filter.
+	 */
+	public Filter getFilter() {
+		return filter;
+	}
+	
 	/**
 	 * Set optional query task id.
 	 */
@@ -219,6 +237,6 @@ public final class Statement {
 	 * Return if full namespace/set scan is specified.
 	 */
 	public boolean isScan() {
-		return filters == null;
+		return filter == null;
 	}
 }

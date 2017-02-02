@@ -105,7 +105,7 @@ public class StoreKey extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		
 		RecordSet rs = client.query(null, stmt);
 		

@@ -74,7 +74,7 @@ public class TestQuerySum extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setAggregateFunction(TestQuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
 		
 		ResultSet rs = client.queryAggregate(null, stmt);

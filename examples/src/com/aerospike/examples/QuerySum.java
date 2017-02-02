@@ -113,7 +113,7 @@ public class QuerySum extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setAggregateFunction("sum_example", "sum_single_bin", Value.get(binName));
 		// Alternately load aggregate function from resource
 		// stmt.setAggregateFunction(QuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));

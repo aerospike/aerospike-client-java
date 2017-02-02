@@ -107,7 +107,7 @@ public class QueryString extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.equal(binName, filter));
+		stmt.setFilter(Filter.equal(binName, filter));
 		
 		RecordSet rs = client.query(null, stmt);
 		

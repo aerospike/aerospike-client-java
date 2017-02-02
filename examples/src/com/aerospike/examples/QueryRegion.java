@@ -122,7 +122,7 @@ public class QueryRegion extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.geoWithinRegion(binName, rgnsb.toString()));
+		stmt.setFilter(Filter.geoWithinRegion(binName, rgnsb.toString()));
 		
 		RecordSet rs = client.query(null, stmt);
 		
@@ -166,7 +166,7 @@ public class QueryRegion extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.geoWithinRadius(binName, lon, lat, radius));
+		stmt.setFilter(Filter.geoWithinRadius(binName, lon, lat, radius));
 		
 		RecordSet rs = client.query(null, stmt);
 		

@@ -86,7 +86,7 @@ public class TestAsyncQuery extends TestAsync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		
 		final AtomicInteger count = new AtomicInteger();
 		

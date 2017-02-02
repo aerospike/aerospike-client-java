@@ -70,7 +70,7 @@ public class TestQueryAverage extends TestSync {
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
-		stmt.setFilters(Filter.range(binName, 0, 1000));
+		stmt.setFilter(Filter.range(binName, 0, 1000));
 		stmt.setAggregateFunction(TestQueryAverage.class.getClassLoader(), "udf/average_example.lua", "average_example", "average");
 		
 		ResultSet rs = client.queryAggregate(null, stmt);

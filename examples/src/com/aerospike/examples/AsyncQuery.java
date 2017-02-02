@@ -118,7 +118,7 @@ public class AsyncQuery extends AsyncExample {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
-		stmt.setFilters(Filter.range(binName, begin, end));
+		stmt.setFilter(Filter.range(binName, begin, end));
 		
 		final AtomicInteger count = new AtomicInteger();
 		

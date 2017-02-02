@@ -599,25 +599,21 @@ public abstract class Command {
 		dataOffset += 8 + FIELD_HEADER_SIZE;
 		fieldCount++;
 		
-		Filter[] filters = statement.getFilters();
+		Filter filter = statement.getFilter();
 		String[] binNames = statement.getBinNames();
 		
-		if (filters != null) {
-			if (filters.length >= 1) {
-				IndexCollectionType type = filters[0].getCollectionType();
+		if (filter != null) {
+			IndexCollectionType type = filter.getCollectionType();
 				
-				if (type != IndexCollectionType.DEFAULT) {
-					dataOffset += FIELD_HEADER_SIZE + 1;
-					fieldCount++;				
-				}
+			if (type != IndexCollectionType.DEFAULT) {
+				dataOffset += FIELD_HEADER_SIZE + 1;
+				fieldCount++;				
 			}			
 			
 			dataOffset += FIELD_HEADER_SIZE;
-			filterSize++;  // num filters
-			
-			for (Filter filter : filters) {
-				filterSize += filter.estimateSize();
-			}
+			filterSize++;  // num filters		
+			filterSize += filter.estimateSize();
+	
 			dataOffset += filterSize;
 			fieldCount++;
 			
@@ -655,7 +651,7 @@ public abstract class Command {
 			fieldCount += 4;
 		}
 
-		if (filters == null) {
+		if (filter == null) {
 			if (binNames != null) {
 				for (String binName : binNames) {
 					estimateOperationSize(binName);
@@ -665,7 +661,7 @@ public abstract class Command {
 
 		sizeBuffer();
 		
-		int operationCount = (filters == null && binNames != null)? binNames.length : 0;
+		int operationCount = (filter == null && binNames != null)? binNames.length : 0;
 		
 		if (write) {
 			writeHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
@@ -691,22 +687,17 @@ public abstract class Command {
 		Buffer.longToBytes(statement.getTaskId(), dataBuffer, dataOffset);
 		dataOffset += 8;
 		
-		if (filters != null) {
-			if (filters.length >= 1) {
-				IndexCollectionType type = filters[0].getCollectionType();
-				
-				if (type != IndexCollectionType.DEFAULT) {
-					writeFieldHeader(1, FieldType.INDEX_TYPE);
-			        dataBuffer[dataOffset++] = (byte)type.ordinal();
-				}
-			}			
+		if (filter != null) {
+			IndexCollectionType type = filter.getCollectionType();
+			
+			if (type != IndexCollectionType.DEFAULT) {
+				writeFieldHeader(1, FieldType.INDEX_TYPE);
+		        dataBuffer[dataOffset++] = (byte)type.ordinal();
+			}
 
 			writeFieldHeader(filterSize, FieldType.INDEX_RANGE);
-	        dataBuffer[dataOffset++] = (byte)filters.length;
-			
-			for (Filter filter : filters) {
-				dataOffset = filter.write(dataBuffer, dataOffset);
-			}
+	        dataBuffer[dataOffset++] = (byte)1;			
+			dataOffset = filter.write(dataBuffer, dataOffset);
 
 			// Query bin names are specified as a field (Scan bin names are specified later as operations)
 			if (binNames != null) {
@@ -738,7 +729,7 @@ public abstract class Command {
 		}
 		
 		// Scan bin names are specified after all fields.
-		if (filters == null) {
+		if (filter == null) {
 			if (binNames != null) {
 				for (String binName : binNames) {
 					writeOperation(binName, Operation.Type.READ);
