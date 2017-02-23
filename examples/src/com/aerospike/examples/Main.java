@@ -66,6 +66,7 @@ public class Main extends JPanel {
 		"QuerySum",
 		"QueryAverage",
 		"QueryCollection",
+		"QueryPredExp",
 		"QueryRegion",
 		"QueryRegionFilter",
 		"QueryGeoCollection",

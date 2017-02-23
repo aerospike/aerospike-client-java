@@ -30,6 +30,7 @@ public final class Statement {
 	String indexName;
 	String[] binNames;
 	Filter filter;
+	PredExp[] predExp;
 	ClassLoader resourceLoader;
 	String resourcePath;
 	String packageName;
@@ -121,7 +122,8 @@ public final class Statement {
 	}
 
 	/**
-	 * Set optional query index filter.  This filter is applied to the secondary index.
+	 * Set optional query index filter.  This filter is applied to the secondary index on query.
+	 * Query index filters must reference a bin which has a secondary index defined.
 	 */
 	public void setFilter(Filter filter) {
 		this.filter = filter;
@@ -134,6 +136,54 @@ public final class Statement {
 		return filter;
 	}
 	
+	/**
+	 * Set optional predicate expression filters in postfix notation.
+	 * Predicate expression filters are applied on the query results on the server.
+	 * Predicate expression filters may occur on any bin in the record.
+	 * <p>
+	 * Postfix notation is described here:
+	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+	 * <p>
+	 * Example:
+	 * <pre>
+	 * // (c >= 11 and c <= 20) or (d > 3 and (d < 5)
+     * stmt.setPredExp(
+     *   PredExp.integerValue(11),
+     *   PredExp.integerBin("c"),
+     *   PredExp.integerGreaterEq(),
+     *   PredExp.integerValue(20),
+     *   PredExp.integerBin("c"),
+     *   PredExp.integerLessEq(),
+     *   PredExp.and(2),
+     *   PredExp.integerValue(3),
+     *   PredExp.integerBin("d"),
+     *   PredExp.integerGreater(),
+     *   PredExp.integerValue(5),
+     *   PredExp.integerBin("d"),
+     *   PredExp.integerLess(),
+     *   PredExp.and(2),
+     *   PredExp.or(2)
+     * );
+     * 
+	 * // Record last update time > 2017-01-15
+	 * stmt.setPredExp(
+	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
+	 *   PredExp.lastUpdate(),
+	 *   PredExp.integerGreater(),
+	 * ); 
+     * </pre>
+	 */
+	public void setPredExp(PredExp... predExp) {
+		this.predExp = predExp;
+	}
+	
+	/**
+	 * Return predicate expression filters.
+	 */
+	public PredExp[] getPredExp() {
+		return predExp;
+	}
+
 	/**
 	 * Set optional query task id.
 	 */

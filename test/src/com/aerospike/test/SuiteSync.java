@@ -51,6 +51,7 @@ import com.aerospike.test.sync.query.TestQueryExecute;
 import com.aerospike.test.sync.query.TestQueryFilter;
 import com.aerospike.test.sync.query.TestQueryInteger;
 import com.aerospike.test.sync.query.TestQueryKey;
+import com.aerospike.test.sync.query.TestQueryPredExp;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.util.Args;
@@ -85,6 +86,7 @@ import com.aerospike.test.util.Args;
 	TestQueryAverage.class,
 	TestQueryExecute.class,
 	TestQueryCollection.class,
+	TestQueryPredExp.class,
 	TestQueryKey.class
 })
 public class SuiteSync {

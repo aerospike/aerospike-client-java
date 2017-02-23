@@ -20,9 +20,7 @@ public final class FieldType {
 	public static final int NAMESPACE = 0;
 	public static final int TABLE = 1;
 	public static final int KEY = 2;
-	//public static final int BIN = 3;
 	public static final int DIGEST_RIPE = 4;
-	//public static final int GU_TID = 5;
 	public static final int DIGEST_RIPE_ARRAY = 6;	
 	public final static int TRAN_ID = 7;	// user supplied transaction id, which is simply passed back
 	public final static int SCAN_OPTIONS = 8;
@@ -39,4 +37,5 @@ public final class FieldType {
 	public final static int QUERY_BINLIST = 40;
 	public final static int BATCH_INDEX = 41;
 	public final static int BATCH_INDEX_WITH_SET = 42;
+	public final static int PREDEXP = 43;
 }

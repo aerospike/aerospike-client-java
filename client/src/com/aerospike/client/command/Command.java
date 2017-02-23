@@ -38,6 +38,7 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.ThreadLocalData;
@@ -636,6 +637,16 @@ public abstract class Command {
 			fieldCount++;
 		}
 		
+		PredExp[] predExp = statement.getPredExp();
+		int predSize = 0;
+		
+		if (predExp != null) {
+			dataOffset += FIELD_HEADER_SIZE;
+			predSize = PredExp.estimateSize(predExp);
+			dataOffset += predSize;
+			fieldCount++;
+		}
+
 		if (statement.getFunctionName() != null) {
 			dataOffset += FIELD_HEADER_SIZE + 1;  // udf type
 			dataOffset += Buffer.estimateSizeUtf8(statement.getPackageName()) + FIELD_HEADER_SIZE;
@@ -718,6 +729,11 @@ public abstract class Command {
 			priority <<= 4;			
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)100;			
+		}
+
+		if (predExp != null) {
+			writeFieldHeader(predSize, FieldType.PREDEXP);
+			dataOffset = PredExp.write(predExp, dataBuffer, dataOffset);
 		}
 
 		if (statement.getFunctionName() != null) {
