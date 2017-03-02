@@ -102,22 +102,22 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));	
 		stmt.setPredExp(
+			PredExp.integerBin("bin2"),
 			PredExp.integerValue(40),
-			PredExp.integerBin("bin2"),
 			PredExp.integerGreater(),
-			PredExp.integerValue(44),
 			PredExp.integerBin("bin2"),
+			PredExp.integerValue(44),
 			PredExp.integerLess(),
 			PredExp.and(2),
+			PredExp.integerBin("bin2"),
 			PredExp.integerValue(22),
-			PredExp.integerBin("bin2"),
 			PredExp.integerEqual(),
-			PredExp.integerValue(9),
 			PredExp.integerBin("bin2"),
+			PredExp.integerValue(9),
 			PredExp.integerEqual(),
 			PredExp.or(3),
-			PredExp.integerBin("bin2"),
 			PredExp.integerBin(binName),
+			PredExp.integerBin("bin2"),
 			PredExp.integerEqual(),
 			PredExp.and(2)
 			);
@@ -158,11 +158,11 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
+			PredExp.integerBin("bin2"),
 			PredExp.integerValue(15),
-			PredExp.integerBin("bin2"),
 			PredExp.integerGreaterEq(),
-			PredExp.integerValue(42),
 			PredExp.integerBin("bin2"),
+			PredExp.integerValue(42),
 			PredExp.integerLessEq(),
 			PredExp.and(2),
 			PredExp.not()
@@ -201,8 +201,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
+			PredExp.recLastUpdate(),
 			PredExp.integerValue(System.currentTimeMillis() * 1000000L + 100),
-			PredExp.lastUpdate(),
 			PredExp.integerGreater()
 			);
 		
@@ -239,8 +239,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.integerValue(4),
 			PredExp.integerVar("x"),
+			PredExp.integerValue(4),
 			PredExp.integerEqual(),
 			PredExp.listBin("listbin"),
 			PredExp.listIterateOr("x")
@@ -278,8 +278,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.integerValue(5),
 			PredExp.integerVar("x"),
+			PredExp.integerValue(5),
 			PredExp.integerUnequal(),
 			PredExp.listBin("listbin"),
 			PredExp.listIterateAnd("x")
@@ -317,8 +317,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.stringValue("B"),
 			PredExp.stringVar("x"),
+			PredExp.stringValue("B"),
 			PredExp.stringEqual(),
 			PredExp.mapBin("mapbin"),
 			PredExp.mapKeyIterateOr("x")
@@ -356,8 +356,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.stringValue("BBB"),
 			PredExp.stringVar("x"),
+			PredExp.stringValue("BBB"),
 			PredExp.stringEqual(),
 			PredExp.mapBin("mapbin"),
 			PredExp.mapValIterateOr("x")
@@ -395,8 +395,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.stringValue("D"),
 			PredExp.stringVar("x"),
+			PredExp.stringValue("D"),
 			PredExp.stringUnequal(),
 			PredExp.mapBin("mapbin"),
 			PredExp.mapKeyIterateAnd("x")
@@ -434,8 +434,8 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
-			PredExp.stringValue("AAA"),
 			PredExp.stringVar("x"),
+			PredExp.stringValue("AAA"),
 			PredExp.stringUnequal(),
 			PredExp.mapBin("mapbin"),
 			PredExp.mapValIterateAnd("x")

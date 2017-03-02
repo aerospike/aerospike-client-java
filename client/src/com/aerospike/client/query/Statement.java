@@ -148,18 +148,18 @@ public final class Statement {
 	 * <pre>
 	 * // (c >= 11 and c <= 20) or (d > 3 and (d < 5)
      * stmt.setPredExp(
+     *   PredExp.integerBin("c"),
      *   PredExp.integerValue(11),
-     *   PredExp.integerBin("c"),
      *   PredExp.integerGreaterEq(),
-     *   PredExp.integerValue(20),
      *   PredExp.integerBin("c"),
+     *   PredExp.integerValue(20),
      *   PredExp.integerLessEq(),
      *   PredExp.and(2),
+     *   PredExp.integerBin("d"),
      *   PredExp.integerValue(3),
-     *   PredExp.integerBin("d"),
      *   PredExp.integerGreater(),
-     *   PredExp.integerValue(5),
      *   PredExp.integerBin("d"),
+     *   PredExp.integerValue(5),
      *   PredExp.integerLess(),
      *   PredExp.and(2),
      *   PredExp.or(2)
@@ -167,8 +167,8 @@ public final class Statement {
      * 
 	 * // Record last update time > 2017-01-15
 	 * stmt.setPredExp(
+	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
-	 *   PredExp.lastUpdate(),
 	 *   PredExp.integerGreater(),
 	 * ); 
      * </pre>

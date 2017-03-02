@@ -110,15 +110,15 @@ public class QueryPredExp extends Example {
 		console.info("Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
 		
 		stmt.setPredExp(
+			PredExp.integerBin("bin2"),
 			PredExp.integerValue(126),
-			PredExp.integerBin("bin2"),
 			PredExp.integerGreater(),
-			PredExp.integerValue(140),
 			PredExp.integerBin("bin2"),
+			PredExp.integerValue(140),
 			PredExp.integerLessEq(),
 			PredExp.and(2),
-			PredExp.integerValue(360),
 			PredExp.integerBin("bin2"),
+			PredExp.integerValue(360),
 			PredExp.integerEqual(),
 			PredExp.or(2)
 			);

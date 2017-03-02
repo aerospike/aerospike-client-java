@@ -136,9 +136,9 @@ public abstract class PredExp {
 	}
 
 	/**
-	 * Create record size predicate.
+	 * Create record size on disk predicate.
 	 */	
-	public static PredExp recSize() {
+	public static PredExp recDeviceSize() {
 		return new Op(RECSIZE);
 	}
 	
@@ -147,12 +147,12 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Record last update time >= 2017-01-15
+	 * PredExp.recLastUpdate()
 	 * PredExp.integerValue(new GregorianCalendar(2017, 0, 15))
-	 * PredExp.lastUpdate()
 	 * PredExp.integerGreaterEq()
      * </pre>
 	 */	
-	public static PredExp lastUpdate() {
+	public static PredExp recLastUpdate() {
 		return new Op(LAST_UPDATE);	
 	}
 
@@ -161,16 +161,16 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Record expires on 2020-01-01
+	 * PredExp.recVoidTime()
 	 * PredExp.integerValue(new GregorianCalendar(2020, 0, 1))
-	 * PredExp.voidTime()
 	 * PredExp.integerGreaterEq()
+	 * PredExp.recVoidTime()
 	 * PredExp.integerValue(new GregorianCalendar(2020, 0, 2))
-	 * PredExp.voidTime()
 	 * PredExp.integerLess()
 	 * PredExp.and(2)
      * </pre>
 	 */	
-	public static PredExp voidTime() {
+	public static PredExp recVoidTime() {
 		return new Op(VOID_TIME);	
 	}
 
@@ -261,8 +261,8 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Find records where any list item v = "hello" in list bin x.  
-	 * PredExp.stringValue("hello")
 	 * PredExp.stringVar("v")
+	 * PredExp.stringValue("hello")
 	 * PredExp.stringEqual()
 	 * PredExp.listBin("x")
 	 * PredExp.listIterateOr("v")
@@ -277,8 +277,8 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Find records where all list elements v != "goodbye" in list bin x.  
-	 * PredExp.stringValue("goodbye")
 	 * PredExp.stringVar("v")
+	 * PredExp.stringValue("goodbye")
 	 * PredExp.stringUnequal()
 	 * PredExp.listBin("x")
 	 * PredExp.listIterateAnd("v")
@@ -293,8 +293,8 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Find records where any map key k = 7 in map bin m.  
-	 * PredExp.integerValue(7)
 	 * PredExp.integerVar("k")
+	 * PredExp.integerValue(7)
 	 * PredExp.integerEqual()
 	 * PredExp.mapBin("m")
 	 * PredExp.mapKeyIterateOr("k")
@@ -309,8 +309,8 @@ public abstract class PredExp {
 	 * Example:
 	 * <pre>
 	 * // Find records where all map keys k < 5 in map bin m.  
-	 * PredExp.integerValue(5)
 	 * PredExp.integerVar("k")
+	 * PredExp.integerValue(5)
 	 * PredExp.integerLess()
 	 * PredExp.mapBin("m")
 	 * PredExp.mapKeyIterateAnd("k")
@@ -324,8 +324,8 @@ public abstract class PredExp {
 	 * Create map predicate where expression matches for any map value.
 	 * <pre>
 	 * // Find records where any map value v > 100 in map bin m.  
-	 * PredExp.integerValue(100)
 	 * PredExp.integerVar("v")
+	 * PredExp.integerValue(100)
 	 * PredExp.integerGreater()
 	 * PredExp.mapBin("m")
 	 * PredExp.mapValIterateOr("v")
@@ -339,9 +339,9 @@ public abstract class PredExp {
 	 * Create map predicate where expression matches for all map values.
 	 * Example:
 	 * <pre>
-	 * // Find records where all map values k > 500 in map bin m.  
-	 * PredExp.integerValue(500)
+	 * // Find records where all map values v > 500 in map bin m.  
 	 * PredExp.integerVar("v")
+	 * PredExp.integerValue(500)
 	 * PredExp.integerGreater()
 	 * PredExp.mapBin("m")
 	 * PredExp.mapKeyIterateAnd("v")
