@@ -87,6 +87,9 @@ public class Cluster implements Runnable, Closeable {
 	// Size of node's synchronous connection pool.
 	protected final int connectionQueueSize;
 	
+	// Sync connection pools per node. 
+	protected final int connPoolsPerNode;
+
 	// Initial connection timeout.
 	private final int connectionTimeout;
 
@@ -149,6 +152,7 @@ public class Cluster implements Runnable, Closeable {
 		
 		tlsPolicy = policy.tlsPolicy;
 		connectionQueueSize = policy.maxConnsPerNode;
+		connPoolsPerNode = policy.connPoolsPerNode;
 		connectionTimeout = policy.timeout;
 		maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;

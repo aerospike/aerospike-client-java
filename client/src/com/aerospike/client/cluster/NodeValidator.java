@@ -137,7 +137,7 @@ public final class NodeValidator {
 	
 	private void validateAlias(Cluster cluster, Host alias) throws Exception {
 		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-		Connection conn = new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis);
+		Connection conn = new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis, null);
 		
 		try {			
 			if (cluster.user != null) {

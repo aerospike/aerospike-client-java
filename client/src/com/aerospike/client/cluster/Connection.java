@@ -48,15 +48,17 @@ public final class Connection implements Closeable {
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
+	protected final Pool pool;
 	private final long maxSocketIdleMillis;
 	private volatile long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(null, null, address, timeoutMillis, 55000);
+		this(null, null, address, timeoutMillis, 55000, null);
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis) throws AerospikeException.Connection {
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis, Pool pool) throws AerospikeException.Connection {
 		this.maxSocketIdleMillis = maxSocketIdleMillis;
+		this.pool = pool;
 
 		try {
 			if (policy == null) {

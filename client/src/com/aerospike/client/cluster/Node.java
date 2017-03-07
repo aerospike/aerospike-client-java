@@ -20,8 +20,6 @@ import java.io.Closeable;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -53,9 +51,9 @@ public class Node implements Closeable {
 	private final Host host;
 	protected final List<Host> aliases;
 	protected final InetSocketAddress address;
-	private final ArrayBlockingQueue<Connection> connectionQueue;
-	private final AtomicInteger connectionCount;
+	private final Pool[] connectionPools;
 	private Connection tendConnection;
+	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
 	protected int peersCount;
@@ -79,9 +77,15 @@ public class Node implements Closeable {
 		this.address = nv.primaryAddress;
 		this.tendConnection = nv.conn;
 		this.features = nv.features;
-				
-		connectionQueue = new ArrayBlockingQueue<Connection>(cluster.connectionQueueSize);
-		connectionCount = new AtomicInteger();
+		
+		connectionPools = new Pool[cluster.connPoolsPerNode];
+		int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
+		int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
+		
+		for (int i = 0; i < connectionPools.length; i++) {
+			int capacity = i < rem ? max + 1 : max;
+			connectionPools[i] = new Pool(capacity);
+		}
 		peersGeneration = -1;
 		partitionGeneration = -1;
 		active = true;
@@ -97,7 +101,7 @@ public class Node implements Closeable {
 		
 		try {
 			if (tendConnection.isClosed()) {
-				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis);
+				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis, null);
 
 				if (cluster.user != null) {
 					try {
@@ -394,56 +398,101 @@ public class Node implements Closeable {
 	 * @throws AerospikeException	if a connection could not be provided 
 	 */
 	public final Connection getConnection(int timeoutMillis) throws AerospikeException {
-		Connection conn;
+		int max = cluster.connPoolsPerNode;
+		int initialIndex;
+		boolean backward;
 		
-		while ((conn = connectionQueue.poll()) != null) {		
-			if (conn.isValid()) {
-				try {
-					conn.setTimeout(timeoutMillis);
-					return conn;
-				}
-				catch (Exception e) {
-					// Set timeout failed. Something is probably wrong with timeout
-					// value itself, so don't empty queue retrying.  Just get out.
-					closeConnection(conn);
-					throw new AerospikeException.Connection(e);
-				}
-			}
-			closeConnection(conn);
-		}
-		
-		if (connectionCount.getAndIncrement() < cluster.connectionQueueSize) {
-			try {
-				conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleMillis);
-			}
-			catch (RuntimeException re) {
-				connectionCount.getAndDecrement();
-				throw re;
-			}
-			
-			if (cluster.user != null) {
-				try {
-					AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-					command.authenticate(conn, cluster.user, cluster.password);
-				}
-				catch (AerospikeException ae) {
-					// Socket not authenticated.  Do not put back into pool.
-					closeConnection(conn);
-					throw ae;
-				}
-				catch (Exception e) {
-					// Socket not authenticated.  Do not put back into pool.
-					closeConnection(conn);
-					throw new AerospikeException(e);
-				}
-			}
-			return conn;		
+		if (max == 1) {
+			initialIndex = 0;
+			backward = false;			
 		}
 		else {
-			connectionCount.getAndDecrement();
-			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS, 
-				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+			int iter = connectionIter++; // not atomic by design
+			initialIndex = iter % max;
+			if (initialIndex < 0) {
+				initialIndex += max;
+			}
+			backward = true;			
 		}
+		
+		Pool pool = connectionPools[initialIndex];
+		int queueIndex = initialIndex;
+		Connection conn;
+		
+		while (true) {
+			conn = pool.queue.poll();
+			
+			if (conn != null) {			
+				// Found socket.
+				// Verify that socket is active and receive buffer is empty.
+				if (conn.isValid()) {
+					try {
+						conn.setTimeout(timeoutMillis);
+						return conn;
+					}
+					catch (Exception e) {
+						// Set timeout failed. Something is probably wrong with timeout
+						// value itself, so don't empty queue retrying.  Just get out.
+						closeConnection(conn);
+						throw new AerospikeException.Connection(e);
+					}
+				}
+				closeConnection(conn);
+			}
+			else if (pool.total.getAndIncrement() < pool.capacity) {
+				// Socket not found and queue has available slot.
+				// Create new connection.
+				try {
+					conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleMillis, pool);
+				}
+				catch (RuntimeException re) {
+					pool.total.getAndDecrement();
+					throw re;
+				}
+				
+				if (cluster.user != null) {
+					try {
+						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+						command.authenticate(conn, cluster.user, cluster.password);
+					}
+					catch (AerospikeException ae) {
+						// Socket not authenticated.  Do not put back into pool.
+						closeConnection(conn);
+						throw ae;
+					}
+					catch (Exception e) {
+						// Socket not authenticated.  Do not put back into pool.
+						closeConnection(conn);
+						throw new AerospikeException(e);
+					}
+				}					
+				return conn;		
+			}
+			else {
+				// Socket not found and queue is full.  Try another queue.
+				pool.total.getAndDecrement();
+				
+				if (backward) {
+					if (queueIndex > 0) {
+						queueIndex--;
+					}
+					else {
+						queueIndex = initialIndex;
+
+						if (++queueIndex >= max) {
+							break;
+						}
+						backward = false;
+					}
+				}
+				else if (++queueIndex >= max) {
+					break;
+				}
+				pool = connectionPools[queueIndex];
+			}
+		}
+		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS, 
+				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 	}
 	
 	/**
@@ -454,7 +503,7 @@ public class Node implements Closeable {
 	public final void putConnection(Connection conn) {
 		conn.updateLastUsed();
 		
-		if (! active || ! connectionQueue.offer(conn)) {
+		if (! active || ! conn.pool.queue.offer(conn)) {
 			closeConnection(conn);
 		}
 	}
@@ -463,7 +512,7 @@ public class Node implements Closeable {
 	 * Close connection and decrement connection count.
 	 */
 	public final void closeConnection(Connection conn) {
-		connectionCount.getAndDecrement();
+		conn.pool.total.getAndDecrement();
 		conn.close();
 	}
 
@@ -567,9 +616,12 @@ public class Node implements Closeable {
 		Connection conn = tendConnection;
 		conn.close();
 		
-		// Empty connection pool.
-		while ((conn = connectionQueue.poll()) != null) {			
-			conn.close();
-		}		
+		// Empty connection pools.
+		for (Pool pool : connectionPools) {
+			//Log.debug("Close node " + this + " connection pool count " + pool.total.get());
+			while ((conn = pool.queue.poll()) != null) {			
+				conn.close();
+			}
+		}
 	}	
 }

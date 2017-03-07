@@ -196,6 +196,9 @@ public class Main implements Log.Callback {
 				"Values:  all | master.  Default: all"	
 				);
 
+		options.addOption("Y", "connPoolsPerNode", true, 
+				"Number of synchronous connection pools per node.  Default 1."
+				);	
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. " + 
 			"It is not recommended to use a value greater than 125."
@@ -611,6 +614,10 @@ public class Main implements Log.Callback {
 			}
 		}
 		
+		if (line.hasOption("connPoolsPerNode")) {
+			clientPolicy.connPoolsPerNode = Integer.parseInt(line.getOptionValue("connPoolsPerNode"));
+		}
+	
 		if (line.hasOption("threads")) {
 			this.nThreads = Integer.parseInt(line.getOptionValue("threads"));
 			
@@ -756,6 +763,8 @@ public class Main implements Log.Callback {
 				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
 		}
 		
+		System.out.println("Conn pools per node: " + clientPolicy.connPoolsPerNode);
+
 		if (this.asyncEnabled) {
 			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
 			System.out.println("Async: MaxConnTotal " +  clientPolicy.asyncMaxCommands
