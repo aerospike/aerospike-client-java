@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import java.io.Closeable;
+import java.util.Calendar;
 import java.util.List;
 
 import com.aerospike.client.admin.Privilege;
@@ -179,6 +180,24 @@ public interface IAerospikeClient extends Closeable {
 	 * @throws AerospikeException	if delete fails
 	 */
 	public boolean delete(WritePolicy policy, Key key) throws AerospikeException;
+
+	/**
+	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
+	 * faster than deleting records one at a time.  Works with Aerospike Server versions >= 3.12.
+	 * <p>
+	 * This asynchronous server call may return before the command is complete.  The user can still
+	 * write new records after the server call returns because new records will have last update times
+	 * greater than the truncate cutoff (set at the time of truncate call).
+	 * 
+	 * @param policy				info command configuration parameters, pass in null for defaults
+	 * @param ns					required namespace
+	 * @param set					optional set name.  Pass in null to delete all sets in namespace.
+	 * @param beforeLastUpdate		optional delete records before record last update time.
+	 * 								If specified, value must be before the current time.
+	 * 								Pass in null to delete all records in namespace/set.
+	 * @throws AerospikeException	if truncate fails
+	 */
+	public void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Touch Operations

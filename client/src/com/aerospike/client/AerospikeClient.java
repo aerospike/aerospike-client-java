@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
 
@@ -424,6 +425,50 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		DeleteCommand command = new DeleteCommand(cluster, policy, key);
 		command.execute();
 		return command.existed();
+	}
+	
+	/**
+	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
+	 * faster than deleting records one at a time.  Works with Aerospike Server versions >= 3.12.
+	 * <p>
+	 * This asynchronous server call may return before the truncation is complete.  The user can still
+	 * write new records after the server call returns because new records will have last update times
+	 * greater than the truncate cutoff (set at the time of truncate call).
+	 * 
+	 * @param policy				info command configuration parameters, pass in null for defaults
+	 * @param ns					required namespace
+	 * @param set					optional set name.  Pass in null to delete all sets in namespace.
+	 * @param beforeLastUpdate		optional delete records before record last update time.
+	 * 								If specified, value must be before the current time.
+	 * 								Pass in null to delete all records in namespace/set.
+	 * @throws AerospikeException	if truncate fails
+	 */
+	public final void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) throws AerospikeException {
+		if (policy == null) {
+			policy = infoPolicyDefault;
+		}	
+		StringBuilder sb = new StringBuilder(200);
+		sb.append("truncate:namespace=");
+		sb.append(ns);
+		
+		if (set != null && set.length() > 0) {			
+			sb.append(";set=");
+			sb.append(set);
+		}
+		
+		if (beforeLastUpdate != null) {
+			sb.append(";lut=");
+			// convert to nanoseconds since unix epoch (1970-01-01)
+			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);  
+		}
+		
+		// Send truncate command to one node. That node will distribute the command to other nodes.
+		Node node = cluster.getRandomNode();		
+		String response = Info.request(policy, node, sb.toString());
+		
+		if (! response.equalsIgnoreCase("ok")) {
+			throw new AerospikeException("Truncate failed: " + response);			
+		}
 	}
 
 	//-------------------------------------------------------
