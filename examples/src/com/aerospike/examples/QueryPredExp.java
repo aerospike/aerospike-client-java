@@ -16,6 +16,9 @@
  */
 package com.aerospike.examples;
 
+import java.util.Calendar;
+import java.util.GregorianCalendar;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -25,6 +28,7 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.RegexFlag;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
@@ -50,7 +54,9 @@ public class QueryPredExp extends Example {
 
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, binName, size);
-		runQuery(client, params, indexName, binName);
+		runQuery1(client, params, binName);
+		runQuery2(client, params, binName);
+		runQuery3(client, params, binName);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
 	}
 	
@@ -81,22 +87,31 @@ public class QueryPredExp extends Example {
 			Key key = new Key(params.namespace, params.set, i);
 			Bin bin1 = new Bin(binName, i);	
 			Bin bin2 = new Bin("bin2", i * 10);
-			client.put(params.writePolicy, key, bin1, bin2);
+			Bin bin3;
+			
+			if (i % 4 == 0) {				
+				bin3 = new Bin("bin3", "prefix-" + i + "-suffix");
+			}
+			else if (i % 2 == 0) {				
+				bin3 = new Bin("bin3", "prefix-" + i + "-SUFFIX");
+			}
+			else {
+				bin3 = new Bin("bin3", "pre-" + i + "-suf");
+			}
+			client.put(params.writePolicy, key, bin1, bin2, bin3);
 		}
 	}
 
-	private void runQuery(
+	private void runQuery1(
 		AerospikeClient client,
 		Parameters params,
-		String indexName,
 		String binName
 	) throws Exception {
 		
 		int begin = 10;
 		int end = 40;
 		
-		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);			
+		console.info("Query Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
 		
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
@@ -107,8 +122,6 @@ public class QueryPredExp extends Example {
 		
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
-		console.info("Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
-		
 		stmt.setPredExp(
 			PredExp.integerBin("bin2"),
 			PredExp.integerValue(126),
@@ -123,13 +136,80 @@ public class QueryPredExp extends Example {
 			PredExp.or(2)
 			);
 		
-		/*
-		stmt.setPredicate(
-			Predicate.bin("bin2").greaterThan(126).and(Predicate.bin("bin2").lessThanOrEqual(140))
-			.or(Predicate.bin("bin2").equal(360))
-			);
-		*/
+		RecordSet rs = client.query(null, stmt);
 		
+		try {
+			while (rs.next()) {
+				Record record = rs.getRecord();				
+				console.info("Record: " + record.toString());			
+			}			
+		}
+		finally {
+			rs.close();
+		}
+	}
+	
+	private void runQuery2(
+		AerospikeClient client,
+		Parameters params,
+		String binName
+	) throws Exception {
+		
+		int begin = 10;
+		int end = 40;
+		
+		console.info("Query Predicate: Record updated on 2017-01-15");
+		Calendar beginTime = new GregorianCalendar(2017, 0, 15);
+		Calendar endTime = new GregorianCalendar(2017, 0, 16);
+		
+		Statement stmt = new Statement();
+		stmt.setNamespace(params.namespace);
+		stmt.setSetName(params.set);		
+		stmt.setFilter(Filter.range(binName, begin, end));
+		stmt.setPredExp(
+			PredExp.recLastUpdate(),
+			PredExp.integerValue(beginTime),
+			PredExp.integerGreaterEq(),
+			PredExp.recLastUpdate(),
+			PredExp.integerValue(endTime),
+			PredExp.integerLess(),
+			PredExp.and(2)
+			);
+				
+		RecordSet rs = client.query(null, stmt);
+		
+		try {
+			while (rs.next()) {
+				Record record = rs.getRecord();				
+				console.info("Record: " + record.toString());			
+			}			
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	private void runQuery3(
+		AerospikeClient client,
+		Parameters params,
+		String binName
+	) throws Exception {
+		
+		int begin = 20;
+		int end = 30;
+		
+		console.info("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
+		
+		Statement stmt = new Statement();
+		stmt.setNamespace(params.namespace);
+		stmt.setSetName(params.set);		
+		stmt.setFilter(Filter.range(binName, begin, end));
+		stmt.setPredExp(
+			PredExp.stringBin("bin3"),
+			PredExp.stringValue("prefix.*suffix"),
+			PredExp.stringRegex(RegexFlag.ICASE | RegexFlag.NEWLINE)
+			);
+
 		RecordSet rs = client.query(null, stmt);
 		
 		try {
