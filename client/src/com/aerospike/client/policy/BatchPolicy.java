@@ -24,7 +24,7 @@ public final class BatchPolicy extends Policy {
 	 * Maximum number of concurrent batch request threads to server nodes at any point in time.
 	 * If there are 16 node/namespace combinations requested and maxConcurrentThreads is 8, 
 	 * then batch requests will be made for 8 node/namespace combinations in parallel threads.
-	 * When a request completes, a new request will be issued until all 16 threads are complete.
+	 * When a request completes, a new request will be issued until all 16 requests are complete.
 	 * <p>
 	 * Values:
 	 * <ul>
@@ -41,7 +41,7 @@ public final class BatchPolicy extends Policy {
 	 * </li>
 	 * <li>
 	 * > 0: Issue up to maxConcurrentThreads batch requests in parallel threads.  When a request
-	 * completes, a new request will be issued until all threads are complete.  This mode
+	 * completes, a new request will be issued until all requests are complete.  This mode
 	 * prevents too many parallel threads being created for large cluster implementations.
 	 * The downside is extra threads will still need to be created (or taken from a thread pool).
 	 * </li>
