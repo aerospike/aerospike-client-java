@@ -140,6 +140,7 @@ public final class Statement {
 	 * Set optional predicate expression filters in postfix notation.
 	 * Predicate expression filters are applied on the query results on the server.
 	 * Predicate expression filters may occur on any bin in the record.
+	 * Requires Aerospike Server versions >= 3.12
 	 * <p>
 	 * Postfix notation is described here:
 	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
