@@ -175,6 +175,23 @@ public abstract class PredExp {
 	}
 
 	/**
+	 * Create a digest modulo record metadata value predicate expression.
+	 * The digest modulo expression assumes the value of 4 bytes of the
+	 * record's key digest modulo it's argument.
+	 * <p>
+	 * For example, the following sequence of predicate expressions
+	 * selects records that have digest(key) % 3 == 1):
+	 * <pre>
+	 * PredExp.recDigestModulo(3)
+	 * PredExp.integerValue(1)
+	 * PredExp.integerEqual()
+	 * </pre>
+	 */
+	public static PredExp recDigestModulo(int mod) {
+		return new OpInt(DIGEST_MODULO, mod);	
+	}
+
+	/**
 	 * Create 64 bit integer "=" operation predicate.
 	 */	
 	public static PredExp integerEqual() {
@@ -239,7 +256,7 @@ public abstract class PredExp {
 	 * @param flags	regular expression bit flags. See {@link com.aerospike.client.query.RegexFlag}
 	 */	
 	public static PredExp stringRegex(int flags) {
-		return new Regex(STRING_REGEX, flags);
+		return new OpInt(STRING_REGEX, flags);
 	}
 
 	/**
@@ -368,6 +385,7 @@ public abstract class PredExp {
 	private static final int RECSIZE = 150;
 	private static final int LAST_UPDATE = 151;
 	private static final int VOID_TIME = 152;
+	private static final int DIGEST_MODULO = 153;
 	private static final int INTEGER_EQUAL = 200;
 	private static final int INTEGER_UNEQUAL = 201;
 	private static final int INTEGER_GREATER = 202;
@@ -531,13 +549,13 @@ public abstract class PredExp {
 		}
 	}
 
-	private static class Regex extends PredExp {
+	private static class OpInt extends PredExp {
 		private final int op;
-		private final int cflags;
+		private final int flags;
 		
-		private Regex(int op, int cflags) {
+		private OpInt(int op, int flags) {
 			this.op = op;
-			this.cflags = cflags; 
+			this.flags = flags; 
 		}
 		
 		public int estimateSize() {
@@ -554,7 +572,7 @@ public abstract class PredExp {
 			offset += 4;		
 
 			// Write predicate count
-			Buffer.intToBytes(cflags, buf, offset);
+			Buffer.intToBytes(flags, buf, offset);
 			offset += 4;
 			return offset;
 		}
