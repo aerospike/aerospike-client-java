@@ -38,6 +38,15 @@ public final class ScanPolicy extends Policy {
 	public int maxConcurrentNodes;
 
 	/**
+	 * Maximum time in milliseconds to wait when polling socket for availability prior to
+	 * performing an operation on the socket on the server side.  Zero means there is no
+	 * socket timeout. 
+	 * <p>
+	 * Default: 10000 ms
+	 */
+	public int socketTimeout = 10000;
+
+	/**
 	 * Issue scan requests in parallel or serially. 
 	 */
 	public boolean concurrentNodes = true;
@@ -60,7 +69,7 @@ public final class ScanPolicy extends Policy {
 	 * Terminate scan if cluster in fluctuating state.
 	 */
 	public boolean failOnClusterChange;
-	
+
 	/**
 	 * Default constructor.
 	 */

@@ -517,6 +517,10 @@ public abstract class Command {
 		dataOffset += 2 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
+		// Estimate scan timeout size.
+		dataOffset += 4 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
 		// Estimate taskId size.
 		dataOffset += 8 + FIELD_HEADER_SIZE;
 		fieldCount++;
@@ -560,6 +564,11 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
+		// Write scan timeout
+		writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
+		Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
+		dataOffset += 4;
+
 		// Write taskId field
 		writeFieldHeader(8, FieldType.TRAN_ID);
 		Buffer.longToBytes(taskId, dataBuffer, dataOffset);
