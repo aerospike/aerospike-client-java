@@ -123,7 +123,7 @@ public class ReadCommand extends SyncCommand {
                   
         if (opCount == 0) {
         	// Bin data was not returned.
-        	record = new Record(null, generation, expiration);
+        	record = new Record(null, null, generation, expiration);
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);            
@@ -165,7 +165,9 @@ public class ReadCommand extends SyncCommand {
 	) throws AerospikeException {
 		Map<String,Object> bins = null;
 	    int receiveOffset = 0;
-	
+
+		Map<String,Integer> schema = null;
+
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		if (fieldCount > 0) {
@@ -191,8 +193,15 @@ public class ReadCommand extends SyncCommand {
 				bins = new HashMap<String,Object>();
 			}
 			addBin(bins, name, value);
+			
+			if (schema == null) {
+				schema = new HashMap<String,Integer>();
+			}
+			int particle = particleType;
+			schema.put(name, particle);
+
 	    }	
-	    return new Record(bins, generation, expiration);
+	    return new Record(bins, schema, generation, expiration);
 	}
 	
 	protected void addBin(Map<String,Object> bins, String name, Object value) {

@@ -67,7 +67,7 @@ public class ReadHeaderCommand extends SyncCommand {
         if (resultCode == 0) {
     		int generation = Buffer.bytesToInt(dataBuffer, 14);
     		int expiration = Buffer.bytesToInt(dataBuffer, 18);
-        	record = new Record(null, generation, expiration);       	
+        	record = new Record(null, null, generation, expiration);       	
         }
         else {
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {

@@ -28,6 +28,10 @@ public final class Record {
 	 * Map of requested name/value bins.
 	 */
 	public final Map<String,Object> bins;
+	/**
+	 * Schema of Bins as a map of Particle types
+	 */
+	public final Map<String, Integer> schema;
 	
 	/**
 	 * Record modification count.
@@ -44,10 +48,12 @@ public final class Record {
 	 */
 	public Record(
 		Map<String,Object> bins,
+		Map<String, Integer> schema,
 		int generation,
 		int expiration
 	) {
 		this.bins = bins;
+		this.schema = schema;
 		this.generation = generation;
 		this.expiration = expiration;
 	}

@@ -217,6 +217,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	
 	protected Record parseRecord() throws AerospikeException {		
 		Map<String,Object> bins = null;
+		Map<String, Integer> schema = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
@@ -233,8 +234,14 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 				bins = new HashMap<String,Object>();
 			}
 			bins.put(name, value);
+			
+			if (schema == null) {
+				schema = new HashMap<String,Integer>();
+			}
+			int particle = particleType;
+			schema.put(name, particle);
 	    }
-	    return new Record(bins, generation, expiration);	    
+	    return new Record(bins, schema, generation, expiration);	    
 	}
 	
 	protected void stop() {
