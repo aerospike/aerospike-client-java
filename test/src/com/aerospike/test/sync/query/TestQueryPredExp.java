@@ -486,7 +486,7 @@ public class TestQueryPredExp extends TestSync {
 			int count = 0;
 			
 			while (rs.next()) {
-				System.out.println(rs.getRecord().toString());
+				//System.out.println(rs.getRecord().toString());
 				count++;
 			}
 			assertEquals(2, count);
