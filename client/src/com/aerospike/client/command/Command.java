@@ -164,11 +164,12 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
+	public final boolean setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 		int readAttr = 0;
 		int writeAttr = 0;
+		boolean hasWrite = false;
 		boolean readBin = false;
 		boolean readHeader = false;
 		boolean respondAllOps = policy.respondAllOps;
@@ -201,6 +202,7 @@ public abstract class Command {
 				// Fall through to write.
 			default:
 				writeAttr = Command.INFO2_WRITE;
+				hasWrite = true;
 				break;				
 			}
 			estimateOperationSize(operation);
@@ -222,6 +224,7 @@ public abstract class Command {
 			writeOperation(operation);
 		}
 		end();
+		return hasWrite;
 	}
 
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 

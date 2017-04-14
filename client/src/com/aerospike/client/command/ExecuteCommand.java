@@ -53,4 +53,9 @@ public final class ExecuteCommand extends ReadCommand {
 	protected Node getNode() {
 		return cluster.getMasterNode(partition);
 	}
+
+	@Override
+	protected void handleNotFound(int resultCode) {
+    	throw new AerospikeException(resultCode);
+	}
 }

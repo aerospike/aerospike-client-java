@@ -110,6 +110,7 @@ public class ReadCommand extends SyncCommand {
         
         if (resultCode != 0) {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND) {
+        		handleNotFound(resultCode);
         		return;
         	}
         	
@@ -127,6 +128,10 @@ public class ReadCommand extends SyncCommand {
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);            
+	}
+	
+	protected void handleNotFound(int resultCode) {
+		// Do nothing in default case. Record will be null.
 	}
 	
 	private void handleUdfError(int resultCode) throws AerospikeException {	

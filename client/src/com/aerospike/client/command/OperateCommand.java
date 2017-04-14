@@ -19,6 +19,7 @@ package com.aerospike.client.command;
 import java.util.ArrayList;
 import java.util.Map;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
@@ -28,6 +29,7 @@ import com.aerospike.client.policy.WritePolicy;
 public final class OperateCommand extends ReadCommand {
 	private final WritePolicy writePolicy;
 	private final Operation[] operations;
+	private boolean hasWrite;
 
 	public OperateCommand(Cluster cluster, WritePolicy policy, Key key, Operation[] operations) {
 		super(cluster, policy, key, null);
@@ -37,7 +39,7 @@ public final class OperateCommand extends ReadCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setOperate(writePolicy, key, operations);
+		hasWrite = setOperate(writePolicy, key, operations);
 	}
 	
 	@Override
@@ -45,6 +47,15 @@ public final class OperateCommand extends ReadCommand {
 		return cluster.getMasterNode(partition);
 	}
 	
+	@Override
+	protected void handleNotFound(int resultCode) {
+		// Only throw not found exception for command with write operations.
+		// Read-only command operations return a null record.
+		if (hasWrite) {
+	    	throw new AerospikeException(resultCode);
+		}
+	}
+
 	@Override
 	protected void addBin(Map<String,Object> bins, String name, Object value) {
 		if (bins.containsKey(name)) {
