@@ -99,14 +99,18 @@ public class AsyncRead extends AsyncSingleCommand {
         }
         else {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-        		record = null;
+        		handleNotFound(resultCode);
         	}
         	else {
         		throw new AerospikeException(resultCode);
         	}
         }
 	}
-		
+
+	protected void handleNotFound(int resultCode) {
+		// Do nothing in default case. Record will be null.
+	}
+
 	private final Record parseRecord(
 		int opCount, 
 		int fieldCount, 
