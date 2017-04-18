@@ -126,6 +126,12 @@ public class ClientPolicy {
 	 * Default: null (Use normal sockets)
 	 */
 	public TlsPolicy tlsPolicy;
+	
+	/**
+	 * Client level RateLimitPolicy limits the traffix to a node per client.
+	 * Default: null (no rateLimitting)
+	 */
+	public RateLimitPolicy rateLimitPolicy = new RateLimitPolicy();
 
 	/**
 	 * A IP translation table is used in cases where different clients use different server 

@@ -21,6 +21,13 @@ package com.aerospike.client;
  * side file proto.h.
  */
 public final class ResultCode {
+  
+  /**
+   * 
+   */
+  
+  public static final int RATE_LIMITER_REJECTION = -100;
+  
 	/**
 	 * Max connections would be exceeded.  There are no more available connections.
 	 */

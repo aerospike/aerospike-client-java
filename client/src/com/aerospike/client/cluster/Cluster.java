@@ -39,6 +39,7 @@ import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
+import com.google.common.util.concurrent.RateLimiter;
 
 public class Cluster implements Runnable, Closeable {
 	private static final int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
@@ -108,6 +109,7 @@ public class Cluster implements Runnable, Closeable {
 
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
+	protected final Integer maxQPSperNodeForClient;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.clusterName = policy.clusterName;
@@ -170,7 +172,14 @@ public class Cluster implements Runnable, Closeable {
 		partitionMap = new HashMap<String,AtomicReferenceArray<Node>[]>();		
 		nodeIndex = new AtomicInteger();
 		replicaIndex = new AtomicInteger();
+		
+		if(policy.rateLimitPolicy != null && policy.rateLimitPolicy.maxQPSperNodeForClient != null) {
+		  maxQPSperNodeForClient = policy.rateLimitPolicy.maxQPSperNodeForClient;
+		} else {
+		  maxQPSperNodeForClient = null;
+		}
 	}
+	
 	
 	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {		
 		// Tend cluster until all nodes identified.

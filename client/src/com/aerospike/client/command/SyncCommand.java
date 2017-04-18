@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
@@ -41,6 +42,10 @@ public abstract class SyncCommand extends Command {
 		while (true) {
 			try {		
 				node = getNode();
+				//Putting this check only in SYNC command for now, as we don't use Async for now.
+				if(!node.tryAcquirePermit())
+				  throw new AerospikeException(ResultCode.RATE_LIMITER_REJECTION);
+				
 				Connection conn = node.getConnection(remainingMillis);
 				
 				try {
