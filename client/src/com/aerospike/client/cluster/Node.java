@@ -286,14 +286,17 @@ public class Node implements Closeable {
 				Log.debug("Update peers for node " + this);
 			}
 			PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
-			peersGeneration = parser.generation;
 			peersCount = peers.peers.size();
 		
+			boolean peersValidated = true;
+			
 			for (Peer peer : peers.peers) {		
 				if (findPeerNode(cluster, peers, peer.nodeName)) {
 					// Node already exists. Do not even try to connect to hosts.				
 					continue;
 				}
+				
+				boolean nodeValidated = false;
 	
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
@@ -311,6 +314,7 @@ public class Node implements Closeable {
 							if (findPeerNode(cluster, peers, nv.name)) {
 								// Node already exists. Do not even try to connect to hosts.				
 								nv.conn.close();
+								nodeValidated = true;
 								break;
 							}
 						}
@@ -318,6 +322,7 @@ public class Node implements Closeable {
 						// Create new node.
 						Node node = cluster.createNode(nv);
 						peers.nodes.put(nv.name, node);
+						nodeValidated = true;
 						break;
 					}
 					catch (Exception e) {
@@ -326,6 +331,15 @@ public class Node implements Closeable {
 						}
 					}
 				}
+				
+				if (! nodeValidated) {
+					peersValidated = false;
+				}
+			}
+			
+			// Only set new peers generation if all referenced peers are added to the cluster.
+			if (peersValidated) {
+				peersGeneration = parser.generation;
 			}
 			peers.refreshCount++;
 		}
