@@ -44,14 +44,14 @@ public final class NettyEventLoops implements EventLoops {
     private int eventIter;
 
     /**
-     * Construct Aerospike event loop wrappers from netty event loops with defaults.
+     * Create Aerospike event loop wrappers from given netty event loops.
      */
 	public NettyEventLoops(EventLoopGroup group) {
 		this(new EventPolicy(), group);
 	}
 
     /**
-     * Construct Aerospike event loop wrappers from netty event loops with policy.
+     * Create Aerospike event loop wrappers from given netty event loops.
      */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group) {
 		if (policy.minTimeout < 5) {

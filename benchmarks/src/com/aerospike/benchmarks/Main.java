@@ -825,7 +825,7 @@ public class Main implements Log.Callback {
 
 	public void runBenchmarks() throws Exception {
 		if (this.asyncEnabled) {
-			EventPolicy eventPolicy = new EventPolicy(this.eventLoopSize);
+			EventPolicy eventPolicy = new EventPolicy();
 			
 			if (args.readPolicy.timeout > 0 && args.readPolicy.timeout < eventPolicy.minTimeout) {
 				eventPolicy.minTimeout = args.readPolicy.timeout;
@@ -840,7 +840,7 @@ public class Main implements Log.Callback {
 				eventLoops = new NettyEventLoops(eventPolicy, group);
 			}
 			else {
-				eventLoops = new NioEventLoops(eventPolicy);
+				eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
 			}
 			
 			try {

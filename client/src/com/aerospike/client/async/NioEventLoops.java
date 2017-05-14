@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.channels.spi.SelectorProvider;
 
@@ -27,16 +26,43 @@ import com.aerospike.client.util.Util;
 /**
  * Asynchronous event loops.
  */
-public final class NioEventLoops implements EventLoops, Closeable {
+public final class NioEventLoops implements EventLoops {
 
 	final NioEventLoop[] eventLoops;
     private int eventIter;
 	
-    /**
-     * Construct event loops from given policy.
-     */
-	public NioEventLoops(EventPolicy policy) throws AerospikeException {
-		eventLoops = new NioEventLoop[policy.eventLoopSize];
+	/**
+	 * Create direct NIO event loops, one per CPU core.
+	 */
+	public NioEventLoops() throws AerospikeException {
+		this(0);
+	}
+
+	/**
+	 * Create direct NIO event loops.
+	 * 
+	 * @param size		number of event loops to create
+	 */
+	public NioEventLoops(int size) throws AerospikeException {
+		this(new EventPolicy(), size);
+	}
+
+	/**
+	 * Create direct NIO event loops.
+	 * 
+	 * @param policy	event loop policy
+	 * @param size		number of event loops to create
+	 */
+	public NioEventLoops(EventPolicy policy, int size) throws AerospikeException {
+		if (size <= 0) {
+			// Default to all available CPU cores.
+			size = Runtime.getRuntime().availableProcessors();
+			
+			if (size <= 0) {
+				size = 1;
+			}
+		}
+		eventLoops = new NioEventLoop[size];
 		
 		SelectorProvider provider = SelectorProvider.provider();
 		

@@ -189,13 +189,12 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		this.asyncBatchPolicyDefault = policy.asyncBatchPolicyDefault;
 
 		EventPolicy eventPolicy = new EventPolicy();
-		eventPolicy.eventLoopSize = policy.asyncSelectorThreads;
 		
 		if (policy.asyncSelectorTimeout > 0) {
 			eventPolicy.minTimeout = policy.asyncSelectorTimeout;			
 		}
 
-		eventLoops = new NioEventLoops(eventPolicy);
+		eventLoops = new NioEventLoops(eventPolicy, policy.asyncSelectorThreads);
 		policy.eventLoops = eventLoops;
 
 		try {
@@ -207,7 +206,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			
 			if (policy.asyncMaxCommandAction == MaxCommandAction.BLOCK) {
 				throttle = new Throttle(policy.asyncMaxCommands);
-				maxCommandsPerEventLoop = policy.asyncMaxCommands / eventPolicy.eventLoopSize;				
+				maxCommandsPerEventLoop = policy.asyncMaxCommands / eventLoops.getSize();				
 			}
 			else {
 				throttle = null;

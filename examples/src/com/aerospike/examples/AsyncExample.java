@@ -26,7 +26,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
@@ -45,8 +44,7 @@ public abstract class AsyncExample {
 			eventLoops = new NettyEventLoops(group);
 		}
 		else {
-			EventPolicy eventPolicy = new EventPolicy(1);		
-			eventLoops = new NioEventLoops(eventPolicy);			
+			eventLoops = new NioEventLoops(1);			
 		}
 
 		try {			

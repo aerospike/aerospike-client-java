@@ -21,19 +21,6 @@ package com.aerospike.client.async;
  */
 public final class EventPolicy {
 	/**
-	 * Number of event loop threads used to process asynchronous network events.
-	 * This value should not exceed to the number of available CPU cores on the
-	 * executing machine.
-	 * <p>
-	 * This field only applies to direct NIO configurations.
-	 * Netty event loop size is defined by Netty library methods.
-	 * <p>
-	 * Default: Half of the available CPU cores which is usually the number of
-	 * of real cores on Intel CPUs with hyper-threading.
-	 */
-	public int eventLoopSize;
-
-	/**
 	 * Minimum command timeout in milliseconds that will be specified for this event loop group.
 	 * If command timeouts are less than minTimeout, the actual command timeout will be minTimeout.
 	 * The absolute minimum timeout value is 5ms.
@@ -64,26 +51,4 @@ public final class EventPolicy {
 	 * Default: 256
 	 */
 	public int commandsPerEventLoop = 256;
-
-	/**
-	 * Event loop policy constructor with event loop count argument.
-	 */
-	public EventPolicy(int eventLoopSize) {
-		this.eventLoopSize = eventLoopSize;
-		
-		if (this.eventLoopSize <= 0) {
-			this.eventLoopSize = 1;
-		}
-	}
-
-	/**
-	 * Event loop policy default constructor.
-	 */
-	public EventPolicy() {
-		this.eventLoopSize = Runtime.getRuntime().availableProcessors() / 2;
-		
-		if (this.eventLoopSize <= 0) {
-			this.eventLoopSize = 1;
-		}
-	}
 }

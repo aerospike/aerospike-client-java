@@ -16,12 +16,14 @@
  */
 package com.aerospike.client.async;
 
+import java.io.Closeable;
+
 import com.aerospike.client.policy.TlsPolicy;
 
 /**
  * Aerospike event loops interface.
  */
-public interface EventLoops {
+public interface EventLoops extends Closeable {
     /**
      * Return array of Aerospike event loops.
      */
