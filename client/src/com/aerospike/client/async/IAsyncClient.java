@@ -44,6 +44,11 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Statement;
 
 /**
+ * THIS CLASS IS OBSOLETE.
+ * <p>
+ * The new efficient asynchronous API is located directly in IAerospikeClient.
+ * This class exists solely to provide compatibility with legacy applications.
+ * <p>
  * This interface's sole purpose is to allow mock frameworks to operate on
  * AsyncClient without being constrained by final methods.
  */

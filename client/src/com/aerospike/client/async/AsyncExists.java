@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
@@ -26,29 +24,17 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
 
-public final class AsyncExists extends AsyncSingleCommand {
+public final class AsyncExists extends AsyncCommand implements AsyncSingleCommand {
 	private final ExistsListener listener;
 	private final Key key;
 	private final Partition partition;
 	private boolean exists;
 	
-	public AsyncExists(AsyncCluster cluster, Policy policy, ExistsListener listener, Key key) {
-		super(cluster, policy);
+	public AsyncExists(ExistsListener listener, Policy policy, Key key) {
+		super(policy, true, false);
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
-	}
-		
-	public AsyncExists(AsyncExists other) {
-		super(other);
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncExists(this);
 	}
 
 	@Override
@@ -62,9 +48,7 @@ public final class AsyncExists extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected void parseResult(ByteBuffer byteBuffer) {
-		int resultCode = byteBuffer.get(5) & 0xFF;
-		        
+	public void parseResult() {
         if (resultCode == 0) {
         	exists = true;
         }

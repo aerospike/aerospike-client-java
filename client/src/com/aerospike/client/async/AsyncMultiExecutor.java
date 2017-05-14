@@ -20,20 +20,28 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.cluster.Cluster;
 
 public abstract class AsyncMultiExecutor {
 
+	private final EventLoop eventLoop;
+	private final Cluster cluster;
 	private final AtomicInteger completedCount = new AtomicInteger();
     private final AtomicBoolean done = new AtomicBoolean();
 	private AsyncMultiCommand[] commands;
 	private int maxConcurrent;
+	
+	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
+		this.eventLoop = eventLoop;
+		this.cluster = cluster;
+	}
 	
 	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {	
 		this.commands = commands;
 		this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.length) ? commands.length : maxConcurrent;
 		
 		for (int i = 0; i < this.maxConcurrent; i++) {
-			commands[i].execute();
+			eventLoop.execute(cluster, commands[i]);
 		}
 	}
 	
@@ -46,7 +54,7 @@ public abstract class AsyncMultiExecutor {
 			// Determine if a new command needs to be started.
 			if (nextThread < commands.length && ! done.get()) {
 				// Start new command.
-				commands[nextThread].execute();
+				eventLoop.execute(cluster, commands[nextThread]);
 			}
 		}
 		else {

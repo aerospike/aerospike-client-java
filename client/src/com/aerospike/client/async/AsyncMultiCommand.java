@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,114 +32,34 @@ import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	
-	private final AsyncMultiExecutor parent;
-	protected final AsyncNode node;
-	protected byte[] receiveBuffer;
-	protected int receiveSize;
-	protected int receiveOffset;
-	protected int resultCode;
-	protected int generation;
-	protected int expiration;
-	protected int batchIndex;
-	protected int fieldCount;
-	protected int opCount;
-	private final boolean stopOnNotFound;
-	protected volatile boolean valid = true;
+	final AsyncMultiExecutor parent;
+	final Node node;
+	int groups;
+	int resultCode;
+	int generation;
+	int expiration;
+	int batchIndex;
+	int fieldCount;
+	int opCount;
+	final boolean stopOnNotFound;
 		
-	public AsyncMultiCommand(AsyncMultiExecutor parent, AsyncCluster cluster, AsyncNode node, Policy policy, boolean stopOnNotFound) {
-		super(cluster, policy);
+	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean stopOnNotFound) {
+		super(policy, false, true);
 		this.parent = parent;
 		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
-	}
-
-	protected final AsyncCommand cloneCommand() {
-		// Retry not allowed for async batch, scan and query.
-		return null;
 	}
 
 	protected final Node getNode() {	
 		return node;
 	}
 
-	protected final void read() throws AerospikeException, IOException {
-		int groups = 0;
-		
-		while (true) {
-			if (inHeader) {
-				if (! conn.read(byteBuffer)) {
-					return;
-				}
-	
-				byteBuffer.position(0);
-				receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
-				
-		        if (receiveSize <= 0) {
-		        	return;
-		        }
-		        
-		        if (receiveBuffer == null || receiveSize > receiveBuffer.length) {
-		        	receiveBuffer = new byte[receiveSize];
-		        }
-				byteBuffer.clear();
-	
-				if (receiveSize < byteBuffer.capacity()) {
-					byteBuffer.limit(receiveSize);
-				}
-				inHeader = false;
-				
-				// In the interest of fairness, only one group of records should be read at a time.
-				// There is, however, one exception.  The server returns the end code in a separate
-				// group that only has one dummy record header.  Therefore, we continue to read
-				// this small group in order to avoid having to wait one more async iteration just
-				// to find out the batch/scan/query has already ended.
-		        if (groups > 0 && receiveSize != MSG_REMAINING_HEADER_SIZE) {
-		        	return;
-		        }
-			}
-	
-			if (! conn.read(byteBuffer)) {
-				return;
-			}
-	
-			if (inAuthenticate) {
-				processAuthenticate();
-				return;
-			}
-
-			// Copy byteBuffer to byte[].
-			byteBuffer.position(0);
-			byteBuffer.get(receiveBuffer, receiveOffset, byteBuffer.limit());
-			receiveOffset += byteBuffer.limit();
-			byteBuffer.clear();
-			
-			if (receiveOffset >= receiveSize) {
-				if (parseGroup()) {
-					finish();
-					return;
-				}
-				// Prepare for next group.
-				byteBuffer.limit(8);
-				receiveOffset = 0;
-				inHeader = true;
-				groups++;
-			}
-			else {
-				int remaining = receiveSize - receiveOffset;
-					
-				if (remaining < byteBuffer.capacity()) {
-					byteBuffer.limit(remaining);
-				}
-			}
-		}
-	}
-		
-	private final boolean parseGroup() throws AerospikeException {
+	final boolean parseGroup(int receiveSize) {
 		// Parse each message response and add it to the result array
-		receiveOffset = 0;
+		dataOffset = 0;
 		
-		while (receiveOffset < receiveSize) {
-			resultCode = receiveBuffer[receiveOffset + 5] & 0xFF;
+		while (dataOffset < receiveSize) {
+			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
@@ -154,80 +73,77 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 
 			// If this is the end marker of the response, do not proceed further
-			if ((receiveBuffer[receiveOffset + 3] & Command.INFO3_LAST) != 0) {
+			if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0) {
 				return true;
 			}			
-			generation = Buffer.bytesToInt(receiveBuffer, receiveOffset + 6);
-			expiration = Buffer.bytesToInt(receiveBuffer, receiveOffset + 10);
-			batchIndex = Buffer.bytesToInt(receiveBuffer, receiveOffset + 14);
-			fieldCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 18);
-			opCount = Buffer.bytesToShort(receiveBuffer, receiveOffset + 20);
+			generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
+			expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
+			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset + 14);
+			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset + 18);
+			opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
 
-			receiveOffset += Command.MSG_REMAINING_HEADER_SIZE;
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 			
-			if (! valid) {
-				throw new AerospikeException.QueryTerminated();
-			}
 			Key key = parseKey();	
 			parseRow(key);			
 		}
 		return false;
 	}
 
-	protected final Key parseKey() throws AerospikeException {
+	private final Key parseKey() {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;
 		Value userKey = null;
 		
 		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			receiveOffset += 4;
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
 			
-			int fieldtype = receiveBuffer[receiveOffset++];
+			int fieldtype = dataBuffer[dataOffset++];
 			int size = fieldlen - 1;
 			
 			switch (fieldtype) {
 			case FieldType.DIGEST_RIPE:
 				digest = new byte[size];
-				System.arraycopy(receiveBuffer, receiveOffset, digest, 0, size);
-				receiveOffset += size;
+				System.arraycopy(dataBuffer, dataOffset, digest, 0, size);
+				dataOffset += size;
 				break;
 			
 			case FieldType.NAMESPACE:
-				namespace = Buffer.utf8ToString(receiveBuffer, receiveOffset, size);
-				receiveOffset += size;
+				namespace = Buffer.utf8ToString(dataBuffer, dataOffset, size);
+				dataOffset += size;
 				break;
 				
 			case FieldType.TABLE:
-				setName = Buffer.utf8ToString(receiveBuffer, receiveOffset, size);
-				receiveOffset += size;
+				setName = Buffer.utf8ToString(dataBuffer, dataOffset, size);
+				dataOffset += size;
 				break;
 
 			case FieldType.KEY:
-				int type = receiveBuffer[receiveOffset++];
+				int type = dataBuffer[dataOffset++];
 				size--;
-				userKey = Buffer.bytesToKeyValue(type, receiveBuffer, receiveOffset, size);
-				receiveOffset += size;
+				userKey = Buffer.bytesToKeyValue(type, dataBuffer, dataOffset, size);
+				dataOffset += size;
 				break;
 			}
 		}
 		return new Key(namespace, digest, setName, userKey);		
 	}
 	
-	protected Record parseRecord() throws AerospikeException {		
+	protected final Record parseRecord() {		
 		Map<String,Object> bins = null;
 		
 		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(receiveBuffer, receiveOffset);
-			byte particleType = receiveBuffer[receiveOffset+5];
-			byte nameSize = receiveBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(receiveBuffer, receiveOffset+8, nameSize);
-			receiveOffset += 4 + 4 + nameSize;
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			byte particleType = dataBuffer[dataOffset+5];
+			byte nameSize = dataBuffer[dataOffset+7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
+			dataOffset += 4 + 4 + nameSize;
 	
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
-	        Object value = Buffer.bytesToParticle(particleType, receiveBuffer, receiveOffset, particleBytesSize);
-			receiveOffset += particleBytesSize;
+	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 
 			if (bins == null) {
 				bins = new HashMap<String,Object>();
@@ -237,19 +153,15 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	    return new Record(bins, generation, expiration);	    
 	}
 	
-	protected void stop() {
-		valid = false;
-	}
-
 	@Override
-	protected void onSuccess() {
+	protected final void onSuccess() {
 		parent.childSuccess();
 	}
 
 	@Override
-	protected void onFailure(AerospikeException e) {
+	protected final void onFailure(AerospikeException e) {
 		parent.childFailure(e);
 	}
 
-	protected abstract void parseRow(Key key) throws AerospikeException;
+	protected abstract void parseRow(Key key);
 }

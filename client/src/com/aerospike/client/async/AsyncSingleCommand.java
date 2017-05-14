@@ -16,53 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.policy.Policy;
-
-public abstract class AsyncSingleCommand extends AsyncCommand {
-	protected int receiveSize;
-	
-	public AsyncSingleCommand(AsyncCluster cluster, Policy policy) {
-		super(cluster, policy);
-	}
-	
-	public AsyncSingleCommand(AsyncSingleCommand other) {
-		super(other);
-	}
-
-	protected final void read() throws AerospikeException, IOException {
-		if (inHeader) {
-			if (! conn.read(byteBuffer)) {
-				return;
-			}
-			byteBuffer.position(0);
-			receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
-				        
-			if (receiveSize <= byteBuffer.capacity()) {
-				byteBuffer.clear();
-				byteBuffer.limit(receiveSize);
-			}
-			else {
-				byteBuffer = ByteBuffer.allocateDirect(receiveSize);
-			}
-			inHeader = false;
-		}
-
-		if (! conn.read(byteBuffer)) {
-			return;
-		}
-		
-		if (inAuthenticate) {
-			processAuthenticate();
-			return;	
-		}
-		
-		parseResult(byteBuffer);
-		finish();
-	}
-			
-	protected abstract void parseResult(ByteBuffer byteBuffer) throws AerospikeException;
+public interface AsyncSingleCommand {	
+	void parseResult();
 }

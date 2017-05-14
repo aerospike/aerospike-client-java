@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -27,39 +25,24 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncWrite extends AsyncSingleCommand {
-	private final WritePolicy writePolicy;
+public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand {
 	private final WriteListener listener;
+	private final WritePolicy writePolicy;
 	private final Key key;
 	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 		
-	public AsyncWrite(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key, Bin[] bins, Operation.Type operation) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
+	public AsyncWrite(WriteListener listener, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
+		super(writePolicy, true, false);
 		this.listener = listener;
+		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = new Partition(key);
 		this.bins = bins;
 		this.operation = operation;
 	}
 	
-	public AsyncWrite(AsyncWrite other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-		this.bins = other.bins;
-		this.operation = other.operation;
-	}
-	
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncWrite(this);
-	}
-
 	@Override
 	protected void writeBuffer() {
 		setWrite(writePolicy, operation, key, bins);
@@ -71,9 +54,7 @@ public final class AsyncWrite extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected void parseResult(ByteBuffer byteBuffer) {
-		int resultCode = byteBuffer.get(5) & 0xFF;
-		
+	public void parseResult() {
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}

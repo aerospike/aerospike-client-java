@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,34 +29,20 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.ThreadLocalData;
 
-public class AsyncRead extends AsyncSingleCommand {
+public class AsyncRead extends AsyncCommand implements AsyncSingleCommand {
 	private final RecordListener listener;
 	protected final Key key;
 	protected final Partition partition;
 	private final String[] binNames;
 	protected Record record;
 	
-	public AsyncRead(AsyncCluster cluster, Policy policy, RecordListener listener, Key key, String[] binNames) {
-		super(cluster, policy);
+	public AsyncRead(RecordListener listener, Policy policy, Key key, String[] binNames) {
+		super(policy, true, true);
 		this.listener = listener;
 		this.key = key;
 		this.partition = new Partition(key);
 		this.binNames = binNames;
-	}
-
-	public AsyncRead(AsyncRead other) {
-		super(other);
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-		this.binNames = other.binNames;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncRead(this);
 	}
 
 	@Override
@@ -71,16 +56,7 @@ public class AsyncRead extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected final void parseResult(ByteBuffer byteBuffer) {
-		dataBuffer = ThreadLocalData.getBuffer();
-		
-		if (receiveSize > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(receiveSize);
-		}
-		// Copy entire message to dataBuffer.
-		byteBuffer.position(0);
-		byteBuffer.get(dataBuffer, 0, receiveSize);
-			
+	public final void parseResult() {
 		int resultCode = dataBuffer[5] & 0xFF;
 		int generation = Buffer.bytesToInt(dataBuffer, 6);
 		int expiration = Buffer.bytesToInt(dataBuffer, 10);

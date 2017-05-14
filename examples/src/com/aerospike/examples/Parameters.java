@@ -38,6 +38,7 @@ public class Parameters {
 	TlsPolicy tlsPolicy;
 	WritePolicy writePolicy;
 	Policy policy;
+	boolean useNetty;
 	boolean singleBin;
 	boolean hasGeo;
 	boolean hasUdf;

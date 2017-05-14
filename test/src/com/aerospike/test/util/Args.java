@@ -45,6 +45,7 @@ public class Args {
 	public String namespace;
 	public String set;
 	public TlsPolicy tlsPolicy;
+	public boolean useNetty;
 	public boolean hasUdf;
 	public boolean hasMap;
 	public boolean singleBin;
@@ -102,6 +103,7 @@ public class Args {
 			options.addOption("te", "tlsEncryptOnly", false, 
 					"Enable TLS encryption and disable TLS certificate validation"
 					);
+			options.addOption("netty", "netty", false, "Use netty for async tests");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -144,6 +146,10 @@ public class Args {
 				if (cl.hasOption("te")) {
 					tlsPolicy.encryptOnly = true;
 				}
+	        }
+	        
+	        if (cl.hasOption("netty")) {
+	        	useNetty = true;
 	        }
 
 	        user = cl.getOptionValue("U");

@@ -19,10 +19,17 @@ package com.aerospike.client.policy;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
+import com.aerospike.client.async.EventLoops;
+
 /**
  * Container object for client policy Command.
  */
 public class ClientPolicy {
+	/**
+	 * Optional event loops to use in asynchronous commands.
+	 */
+	public EventLoops eventLoops;
+	
 	/**
 	 * User authentication to cluster.  Leave null for clusters running without restricted access.
 	 */
@@ -49,17 +56,13 @@ public class ClientPolicy {
 	public int timeout = 1000;
 
 	/**
-	 * Maximum number of connections allowed per server node.  Synchronous transactions
-	 * will go through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS"
-	 * if the maximum number of connections would be exceeded.
+	 * Maximum number of connections allowed per server node.  Transactions will go through retry
+	 * logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum number of
+	 * connections would be exceeded.
 	 * <p>
-	 * The number of connections used per node depends on how many concurrent threads issue
-	 * database commands plus sub-threads used for parallel multi-node commands (batch, scan,
-	 * and query). One connection will be used for each thread.
-	 * <p>
-	 * This field is ignored by asynchronous transactions since these transactions are already
-	 * bound by asyncMaxCommands by default. Each async command has a one-to-one relationship with
-	 * a connection.
+	 * The number of connections used per node depends on concurrent commands in progress
+	 * plus sub-commands used for parallel multi-node commands (batch, scan, and query).
+	 * One connection will be used for each command.
 	 * <p>
 	 * Default: 300
 	 */

@@ -60,7 +60,7 @@ public class TestAsyncBatch extends TestAsync {
 		for (int i = 1; i <= size; i++) {
 			Key key = sendKeys[i-1];
 			Bin bin = new Bin(binName, valuePrefix + i);			
-			client.put(policy, handler, key, bin);
+			client.put(eventLoop, handler, policy, key, bin);
 		}
 		monitor.waitTillComplete();
 	}
@@ -79,60 +79,60 @@ public class TestAsyncBatch extends TestAsync {
 			int rows = count.incrementAndGet();
 			
 			if (rows == max) {
-				monitor.notifyCompleted();
+				monitor.notifyComplete();
 			}
 		}
 		
 		public void onFailure(AerospikeException e) {
 			monitor.setError(e);
-			monitor.notifyCompleted();
+			monitor.notifyComplete();
 		}
 	}
 	
 	@Test
 	public void asyncBatchExistsArray() {
-		client.exists(null, new ExistsArrayListener() {
+		client.exists(eventLoop, new ExistsArrayListener() {
 			public void onSuccess(Key[] keys, boolean[] existsArray) {
 				for (int i = 0; i < existsArray.length; i++) {
 					if (! assertEquals(true, existsArray[i])) {
 						break;
 					}
 		        }
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
 		
 		waitTillComplete();
    }
 	
 	@Test
 	public void asyncBatchExistsSequence() throws Exception {
-		client.exists(null, new ExistsSequenceListener() {
+		client.exists(eventLoop, new ExistsSequenceListener() {
 			public void onExists(Key key, boolean exists) {
 				assertEquals(true, exists);
 			}
 
 			public void onSuccess() {
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
 		
 		waitTillComplete();
    }
 
 	@Test
 	public void asyncBatchGetArray() throws Exception {
-		client.get(null, new RecordArrayListener() {
+		client.get(eventLoop, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				if (assertEquals(size, records.length)) {
 					for (int i = 0; i < records.length; i++) {
@@ -141,21 +141,21 @@ public class TestAsyncBatch extends TestAsync {
 						}						
 			        }
 				}				
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
 		
 		waitTillComplete();
    }
 
 	@Test
 	public void asyncBatchGetSequence() throws Exception {
-		client.get(null, new RecordSequenceListener() {
+		client.get(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) {
 				if (assertRecordFound(key, record))  {
 					Object value = record.getValue(binName);
@@ -164,21 +164,21 @@ public class TestAsyncBatch extends TestAsync {
 			}
 			
 			public void onSuccess() {				
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
 		
 		waitTillComplete();
    }
 
 	@Test
 	public void asyncBatchGetHeaders() throws Exception {
-		client.getHeader(null, new RecordArrayListener() {
+		client.getHeader(eventLoop, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				if (assertEquals(size, records.length)) {
 					for (int i = 0; i < records.length; i++) {
@@ -197,14 +197,14 @@ public class TestAsyncBatch extends TestAsync {
 						}
 			        }
 				}				
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
 		
 		waitTillComplete();
    }
@@ -230,7 +230,7 @@ public class TestAsyncBatch extends TestAsync {
 		records.add(new BatchRead(new Key(args.namespace, args.set, "keynotfound"), bins));
 		
 		// Execute batch.
-		client.get(null, new BatchListListener() {
+		client.get(eventLoop, new BatchListListener() {
 			public void onSuccess(List<BatchRead> records) {	
 				// Show results.
 				int found = 0;
@@ -246,13 +246,13 @@ public class TestAsyncBatch extends TestAsync {
 					
 						if (count != 4 && count <= 7) {
 							if (!assertEquals(valuePrefix + count, value)) {					
-								notifyCompleted();
+								notifyComplete();
 								return;
 							}
 						}
 						else {
 							if (!assertNull(value)) {
-								notifyCompleted();
+								notifyComplete();
 								return;
 							}
 						}
@@ -260,14 +260,14 @@ public class TestAsyncBatch extends TestAsync {
 				}
 				
 				assertEquals(8, found);
-				notifyCompleted();
+				notifyComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}
-		}, records);
+		}, null, records);
 		
 		waitTillComplete();
 	}

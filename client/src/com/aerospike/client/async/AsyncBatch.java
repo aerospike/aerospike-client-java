@@ -25,10 +25,11 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.command.BatchNode.BatchNamespace;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -48,11 +49,13 @@ public final class AsyncBatch {
 		private final List<BatchRead> records;
 
 		public ReadListExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			BatchListListener listener,
 			List<BatchRead> records
 		) {
+			super(eventLoop, cluster);
 			this.listener = listener;
 			this.records = records;
 			
@@ -65,10 +68,10 @@ public final class AsyncBatch {
 				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}
-				tasks[count++] = new ReadListCommand(this, cluster, batchNode, policy, records);
+				tasks[count++] = new ReadListCommand(this, batchNode, policy, records);
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		protected void onSuccess() {
@@ -87,12 +90,11 @@ public final class AsyncBatch {
 		
 		public ReadListCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			List<BatchRead> records
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
@@ -126,11 +128,13 @@ public final class AsyncBatch {
 		private final BatchSequenceListener listener;
 
 		public ReadSequenceExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
+			super(eventLoop, cluster);
 			this.listener = listener;
 			
 			// Create commands.
@@ -142,10 +146,10 @@ public final class AsyncBatch {
 				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
 				}
-				tasks[count++] = new ReadSequenceCommand(this, cluster, batchNode, policy, listener, records);
+				tasks[count++] = new ReadSequenceCommand(this, batchNode, policy, listener, records);
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		protected void onSuccess() {
@@ -165,13 +169,12 @@ public final class AsyncBatch {
 		
 		public ReadSequenceCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.listener = listener;
@@ -208,14 +211,15 @@ public final class AsyncBatch {
 		private final Record[] recordArray;
 
 		public GetArrayExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			RecordArrayListener listener,
 			Key[] keys,
 			String[] binNames,
 			int readAttr
 		) {
-			super(cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys);
 			this.recordArray = new Record[keys.length];
 			this.listener = listener;
 			
@@ -226,17 +230,17 @@ public final class AsyncBatch {
 			for (BatchNode batchNode : batchNodes) {			
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
-					tasks[count++] = new GetArrayCommand(this, cluster, batchNode, policy, keys, binNames, recordArray, readAttr);
+					tasks[count++] = new GetArrayCommand(this, batchNode, policy, keys, binNames, recordArray, readAttr);
 				}
 				else {
 					// Old batch only allows one namespace per call.
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {				
-						tasks[count++] = new GetArrayDirect(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
+						tasks[count++] = new GetArrayDirect(this, batchNode.node, batchNamespace, policy, keys, binNames, recordArray, readAttr);
 					}
 				}
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		protected void onSuccess() {
@@ -258,7 +262,6 @@ public final class AsyncBatch {
 		
 		public GetArrayCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -266,7 +269,7 @@ public final class AsyncBatch {
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -304,8 +307,7 @@ public final class AsyncBatch {
 		
 		public GetArrayDirect(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
-			AsyncNode node,
+			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
@@ -313,7 +315,7 @@ public final class AsyncBatch {
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, cluster, node, policy, false);
+			super(parent, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -350,14 +352,15 @@ public final class AsyncBatch {
 		private final RecordSequenceListener listener;
 
 		public GetSequenceExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			RecordSequenceListener listener,
 			Key[] keys,
 			String[] binNames,
 			int readAttr
 		) {
-			super(cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys);
 			this.listener = listener;
 
 			// Create commands.
@@ -367,17 +370,17 @@ public final class AsyncBatch {
 			for (BatchNode batchNode : batchNodes) {			
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
-					tasks[count++] = new GetSequenceCommand(this, cluster, batchNode, policy, keys, binNames, listener, readAttr);
+					tasks[count++] = new GetSequenceCommand(this, batchNode, policy, keys, binNames, listener, readAttr);
 				}
 				else {
 					// Old batch only allows one namespace per call.
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-						tasks[count++] = new GetSequenceDirect(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
+						tasks[count++] = new GetSequenceDirect(this, batchNode.node, batchNamespace, policy, keys, binNames, listener, readAttr);
 					}
 				}
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		@Override
@@ -401,7 +404,6 @@ public final class AsyncBatch {
 		
 		public GetSequenceCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -409,7 +411,7 @@ public final class AsyncBatch {
 			RecordSequenceListener listener,
 			int readAttr
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -453,8 +455,7 @@ public final class AsyncBatch {
 		
 		public GetSequenceDirect(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
-			AsyncNode node,
+			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
@@ -462,7 +463,7 @@ public final class AsyncBatch {
 			RecordSequenceListener listener,
 			int readAttr
 		) {
-			super(parent, cluster, node, policy, false);
+			super(parent, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -505,12 +506,13 @@ public final class AsyncBatch {
 		private final boolean[] existsArray;
 
 		public ExistsArrayExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			Key[] keys,
 			ExistsArrayListener listener
 		) {
-			super(cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys);
 			this.existsArray = new boolean[keys.length];
 			this.listener = listener;
 			
@@ -521,17 +523,17 @@ public final class AsyncBatch {
 			for (BatchNode batchNode : batchNodes) {
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
-					tasks[count++] = new ExistsArrayCommand(this, cluster, batchNode, policy, keys, existsArray);
+					tasks[count++] = new ExistsArrayCommand(this, batchNode, policy, keys, existsArray);
 				}
 				else {
 					// Old batch only allows one namespace per call.
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-						tasks[count++] = new ExistsArrayDirect(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, existsArray);
+						tasks[count++] = new ExistsArrayDirect(this, batchNode.node, batchNamespace, policy, keys, existsArray);
 					}
 				}
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		protected void onSuccess() {
@@ -551,13 +553,12 @@ public final class AsyncBatch {
 		
 		public ExistsArrayCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -593,14 +594,13 @@ public final class AsyncBatch {
 		
 		public ExistsArrayDirect(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
-			AsyncNode node,
+			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, cluster, node, policy, false);
+			super(parent, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -637,12 +637,13 @@ public final class AsyncBatch {
 		private final ExistsSequenceListener listener;
 
 		public ExistsSequenceExecutor(
-			AsyncCluster cluster,
+			EventLoop eventLoop,
+			Cluster cluster,
 			BatchPolicy policy, 
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys);
 			this.listener = listener;
 			
 			// Create commands.
@@ -652,17 +653,17 @@ public final class AsyncBatch {
 			for (BatchNode batchNode : batchNodes) {			
 				if (batchNode.node.useNewBatch(policy)) {
 					// New batch
-					tasks[count++] = new ExistsSequenceCommand(this, cluster, batchNode, policy, keys, listener);
+					tasks[count++] = new ExistsSequenceCommand(this, batchNode, policy, keys, listener);
 				}
 				else {
 					// Old batch only allows one namespace per call.
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
-						tasks[count++] = new ExistsSequenceDirect(this, cluster, (AsyncNode)batchNode.node, batchNamespace, policy, keys, listener);
+						tasks[count++] = new ExistsSequenceDirect(this, batchNode.node, batchNamespace, policy, keys, listener);
 					}
 				}
 			}
 			// Dispatch commands to nodes.
-			execute(tasks, policy.maxConcurrentThreads);
+			execute(tasks, 0);
 		}
 		
 		protected void onSuccess() {
@@ -682,13 +683,12 @@ public final class AsyncBatch {
 		
 		public ExistsSequenceCommand(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, cluster, (AsyncNode)batch.node, policy, false);
+			super(parent, batch.node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -726,14 +726,13 @@ public final class AsyncBatch {
 		
 		public ExistsSequenceDirect(
 			AsyncMultiExecutor parent,
-			AsyncCluster cluster,
-			AsyncNode node,
+			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, cluster, node, policy, false);
+			super(parent, node, policy, false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -772,7 +771,8 @@ public final class AsyncBatch {
 		protected final List<BatchNode> batchNodes;
 		protected final int taskSize;
 
-		public BaseExecutor(Cluster cluster, BatchPolicy policy, Key[] keys) {
+		public BaseExecutor(EventLoop eventLoop, Cluster cluster, BatchPolicy policy, Key[] keys) {
+			super(eventLoop, cluster);
 			this.keys = keys;	
 			this.batchNodes = BatchNode.generateList(cluster, policy, keys);
 			

@@ -21,7 +21,7 @@ package com.aerospike.client.policy;
  */
 public final class BatchPolicy extends Policy {
 	/**
-	 * Maximum number of concurrent batch request threads to server nodes at any point in time.
+	 * Maximum number of concurrent synchronous batch request threads to server nodes at any point in time.
 	 * If there are 16 node/namespace combinations requested and maxConcurrentThreads is 8, 
 	 * then batch requests will be made for 8 node/namespace combinations in parallel threads.
 	 * When a request completes, a new request will be issued until all 16 requests are complete.
@@ -46,6 +46,7 @@ public final class BatchPolicy extends Policy {
 	 * The downside is extra threads will still need to be created (or taken from a thread pool).
 	 * </li>
 	 * </ul>
+	 * Asynchronous batch requests ignore this field and always issue all node requests in parallel. 
 	 */
 	public int maxConcurrentThreads = 1;
 	

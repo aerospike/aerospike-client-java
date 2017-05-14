@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -33,6 +34,9 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.admin.AdminCommand;
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventState;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Replica;
@@ -81,8 +85,14 @@ public class Cluster implements Runnable, Closeable {
 	// Random partition replica index. 
 	private final AtomicInteger replicaIndex;
 
-	// Thread pool used in batch, scan and query commands.
+	// Thread pool used in synchronous batch, scan and query commands.
 	private final ExecutorService threadPool;
+	
+	// Optional event loops for async mode.
+	public final EventLoops eventLoops;
+	
+	// Extra event loop state for this cluster.
+	public final EventState[] eventState;
 	
 	// Size of node's synchronous connection pool.
 	protected final int connectionQueueSize;
@@ -94,7 +104,7 @@ public class Cluster implements Runnable, Closeable {
 	private final int connectionTimeout;
 
 	// Maximum socket idle in milliseconds.
-	protected final int maxSocketIdleMillis;
+	public final int maxSocketIdleMillis;
 
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
@@ -111,6 +121,8 @@ public class Cluster implements Runnable, Closeable {
 
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
+
+	private boolean asyncComplete;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.clusterName = policy.clusterName;
@@ -167,13 +179,31 @@ public class Cluster implements Runnable, Closeable {
 		sharedThreadPool = policy.sharedThreadPool;
 		requestProleReplicas = policy.requestProleReplicas;
 		useServicesAlternate = policy.useServicesAlternate;
-		
+
 		aliases = new HashMap<Host,Node>();
 		nodesMap = new HashMap<String,Node>();
 		nodes = new Node[0];	
 		partitionMap = new HashMap<String,AtomicReferenceArray<Node>[]>();		
 		nodeIndex = new AtomicInteger();
 		replicaIndex = new AtomicInteger();
+
+		eventLoops = policy.eventLoops;
+		
+		if (eventLoops != null) {
+			EventLoop[] loops = eventLoops.getArray();
+			eventState = new EventState[loops.length];
+			
+			for (int i = 0; i < loops.length; i++) {
+				eventState[i] = loops[i].createState();
+			}
+			
+			if (policy.tlsPolicy != null) {
+				eventLoops.initTlsContext(policy.tlsPolicy);
+			}
+		}
+		else {
+			eventState = null;
+		}
 	}
 	
 	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {		
@@ -755,20 +785,89 @@ public class Cluster implements Runnable, Closeable {
 	public final byte[] getPassword() {
 		return password;
 	}
-
+	
 	public void close() {
 		if (! sharedThreadPool) {
+			// Shutdown synchronous thread pool.
 			threadPool.shutdown();
 		}
 		
+		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
 		
-		// Must copy array reference for copy on write semantics to work.
+		if (eventLoops == null) {
+			// Close synchronous node connections.
+			Node[] nodeArray = nodes;
+			for (Node node : nodeArray) {
+				node.closeSyncConnections();
+			}
+		}
+		else {
+			// Send cluster close notification to async event loops.
+			final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
+			
+			// Send close node notification to async event loops.
+			for (final EventState state : eventState) {
+				state.eventLoop.execute(new Runnable() {
+					public void run() {
+						if (state.pending < 0) {
+							// Cluster's event loop connections are already closed.
+							return;
+						}
+						
+						if (state.pending > 0) {
+							// Cluster has pending commands.
+							// Check again in 200ms.
+							state.eventLoop.schedule(this, 200, TimeUnit.MILLISECONDS);
+							return;
+						}
+
+						// Cluster's event loop connections can now be closed.
+						closeEventLoop(eventLoopCount, state);
+					}
+				});
+			}			
+			waitAsyncComplete();
+		}
+	}
+
+	/**
+	 * Wait until all event loops have finished processing pending cluster commands.
+	 * Must be called from an event loop thread.
+	 */
+	private final void closeEventLoop(AtomicInteger eventLoopCount, EventState state) {		
+		// Prevent future cluster commands on this event loop.
+		state.pending = -1;
+
+		// Close asynchronous node connections for single event loop.
 		Node[] nodeArray = nodes;
-		
 		for (Node node : nodeArray) {
-			node.close();
-		}	
+			node.closeAsyncConnections(state.index);
+		}
+		
+		if (eventLoopCount.decrementAndGet() == 0) {
+			// All event loops have reported.
+			// Close synchronous node connections.
+			for (Node node : nodeArray) {
+				node.closeSyncConnections();
+			}
+			notifyAsyncComplete();
+		}
+	}
+
+	private synchronized void waitAsyncComplete() {
+		while (! asyncComplete) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
+		}
+	}
+
+	private synchronized void notifyAsyncComplete() {
+		asyncComplete = true;
+		super.notify();
 	}
 }

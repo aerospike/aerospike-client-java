@@ -22,53 +22,45 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Value;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.task.RegisterTask;
 
-public class AsyncUserDefinedFunction extends AsyncExample {
-		
-	private boolean completed;
-
-	public AsyncUserDefinedFunction(Console console) {
-		super(console);
-	}
-
+public class AsyncUserDefinedFunction extends AsyncExample {		
 	/**
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AsyncClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		if (! params.hasUdf) {
 			console.info("Execute functions are not supported by the connected Aerospike server.");
 			return;
 		}
 		
-		register(client, params);
-		writeUsingUdfAsync(client, params);
+		register(client);
+		writeUsingUdfAsync(client, eventLoop);
 		waitTillComplete();
-		completed = false;
 	}
 	
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(AerospikeClient client) {
 		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void writeUsingUdfAsync(final AsyncClient client, final Parameters params) {
+	private void writeUsingUdfAsync(final AerospikeClient client, final EventLoop eventLoop) {
 		final Key key = new Key(params.namespace, params.set, "audfkey1");
 		final Bin bin = new Bin(params.getBinName("audfbin1"), "string value");		
 		
 		console.info("Write with udf: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 
-		client.execute(params.writePolicy, new ExecuteListener() {
+		client.execute(eventLoop, new ExecuteListener() {
 			
 			public void onSuccess(final Key key, final Object obj) {
 				try {
 					// Write succeeded.  Now call read using udf.
 					console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 
-					client.execute(params.writePolicy, new ExecuteListener() {
+					client.execute(eventLoop, new ExecuteListener() {
 						
 						public void onSuccess(final Key key, final Object received) {
 							Object expected = bin.value.getObject();	
@@ -80,15 +72,15 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 							else {
 								console.error("Data mismatch: Expected %s. Received %s.", expected, received);
 							}
-							notifyCompleted();
+							notifyComplete();
 						}
 						
 						public void onFailure(AerospikeException e) {
 							console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-							notifyCompleted();
+							notifyComplete();
 						}
 						
-					}, key, "record_example", "readBin", Value.get(bin.name));
+					}, writePolicy, key, "record_example", "readBin", Value.get(bin.name));
 				}
 				catch (Exception e) {				
 					console.error("Failed to read: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
@@ -97,24 +89,9 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Failed to write: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-				notifyCompleted();
+				notifyComplete();
 			}
 		
-		}, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
+		}, writePolicy, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
 	}	
-
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyCompleted() {
-		completed = true;
-		super.notify();
-	}
 }

@@ -26,41 +26,26 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncExecute extends AsyncRead {
-	private final WritePolicy writePolicy;
 	private final ExecuteListener executeListener;
+	private final WritePolicy writePolicy;
 	private final String packageName;
 	private final String functionName;
 	private final Value[] args;
 		
 	public AsyncExecute(
-		AsyncCluster cluster,
-		WritePolicy writePolicy,
 		ExecuteListener listener,
+		WritePolicy writePolicy,
 		Key key,
 		String packageName,
 		String functionName,
 		Value[] args
 	) {
-		super(cluster, writePolicy, null, key, null);
-		this.writePolicy = writePolicy;
+		super(null, writePolicy, key, null);
 		this.executeListener = listener;
+		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.args = args;
-	}
-	
-	public AsyncExecute(AsyncExecute other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.executeListener = other.executeListener;
-		this.packageName = other.packageName;
-		this.functionName = other.functionName;
-		this.args = other.args;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncExecute(this);
 	}
 
 	@Override

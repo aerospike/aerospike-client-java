@@ -16,56 +16,85 @@
  */
 package com.aerospike.examples;
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+
 import java.lang.reflect.Constructor;
 import java.util.List;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
-import com.aerospike.client.async.AsyncClient;
-import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventPolicy;
+import com.aerospike.client.async.NettyEventLoops;
+import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 
 public abstract class AsyncExample {
 	/**
 	 * Connect and run one or more asynchronous client examples.
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
-		AsyncClientPolicy policy = new AsyncClientPolicy();
-		policy.user = params.user;
-		policy.password = params.password;
-		policy.asyncMaxCommands = 300;
-		policy.asyncSelectorThreads = 1;
-		policy.asyncSelectorTimeout = 10;
-		policy.failIfNotConnected = true;
+		EventLoops eventLoops;
 		
-		params.policy = policy.asyncReadPolicyDefault;
-		params.writePolicy = policy.asyncWritePolicyDefault;
-		
-		Host[] hosts = Host.parseHosts(params.host, params.port);
-		
-		AsyncClient client = new AsyncClient(policy, hosts);
+		if (params.useNetty) {			
+			EventLoopGroup group = new NioEventLoopGroup(1);
+			eventLoops = new NettyEventLoops(group);
+		}
+		else {
+			EventPolicy eventPolicy = new EventPolicy(1);		
+			eventLoops = new NioEventLoops(eventPolicy);			
+		}
 
-		try {
-			params.setServerSpecific(client);
+		try {			
+			ClientPolicy policy = new ClientPolicy();		
+			policy.eventLoops = eventLoops;
+			policy.user = params.user;
+			policy.password = params.password;
+			policy.tlsPolicy = params.tlsPolicy;
+			
+			params.policy = policy.readPolicyDefault;
+			params.writePolicy = policy.writePolicyDefault;
+			
+			Host[] hosts = Host.parseHosts(params.host, params.port);
+			
+			AerospikeClient client = new AerospikeClient(policy, hosts);
 
-			for (String exampleName : examples) {
-				runExample(exampleName, client, params, console);
+			try {
+				EventLoop eventLoop = eventLoops.get(0);
+				params.setServerSpecific(client);
+
+				for (String exampleName : examples) {
+					runExample(exampleName, client, eventLoop, params, console);
+				}
+			}
+			finally {
+				client.close();
 			}
 		}
 		finally {
-			client.close();
+			eventLoops.close();
 		}
 	}
 	
 	/**
 	 * Run asynchronous client example.
 	 */
-	public static void runExample(String exampleName, AsyncClient client, Parameters params, Console console) throws Exception {
+	public static void runExample(String exampleName, AerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
 		String fullName = "com.aerospike.examples." + exampleName;
 		Class<?> cls = Class.forName(fullName);
 
 		if (AsyncExample.class.isAssignableFrom(cls)) {
-			Constructor<?> ctor = cls.getDeclaredConstructor(Console.class);
-			AsyncExample example = (AsyncExample)ctor.newInstance(console);
-			example.run(client, params);
+			Constructor<?> ctor = cls.getConstructor();
+			AsyncExample example = (AsyncExample)ctor.newInstance();
+			example.console = console;
+			example.params = params;
+			example.writePolicy = client.writePolicyDefault;
+			example.policy = client.readPolicyDefault;
+			example.run(client, eventLoop);
 		}
 		else {
 			console.error("Invalid example: " + exampleName);
@@ -73,16 +102,35 @@ public abstract class AsyncExample {
 	}
 
 	protected Console console;
-
-	public AsyncExample(Console console) {
-		this.console = console;
-	}
-
-	public void run(AsyncClient client, Parameters params) throws Exception {
+	protected Parameters params;
+	protected WritePolicy writePolicy;
+	protected Policy policy;
+	private boolean completed;
+	
+	public void run(AerospikeClient client, EventLoop eventLoop) {
 		console.info(this.getClass().getSimpleName() + " Begin");
-		runExample(client, params);
+		runExample(client, eventLoop);
 		console.info(this.getClass().getSimpleName() + " End");
 	}
+	
+	protected void resetComplete() {
+		completed = false;
+	}
 
-	public abstract void runExample(AsyncClient client, Parameters params) throws Exception;
+	protected synchronized void waitTillComplete() {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
+		}
+	}
+
+	protected synchronized void notifyComplete() {
+		completed = true;
+		super.notify();
+	}
+
+	public abstract void runExample(AerospikeClient client, EventLoop eventLoop);
 }

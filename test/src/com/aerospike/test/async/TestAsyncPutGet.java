@@ -21,11 +21,11 @@ import java.net.ConnectException;
 
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.AsyncClient;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.Policy;
@@ -39,33 +39,33 @@ public class TestAsyncPutGet extends TestAsync {
 		final Key key = new Key(args.namespace, args.set, "putgetkey1");
 		final Bin bin = new Bin(binName, "value");
 		
-		client.put(null, new WriteListener() {
+		client.put(eventLoop, new WriteListener() {
 			public void onSuccess(final Key key) {
 				try {
 					// Write succeeded.  Now call read.
-					client.get(null, new RecordListener() {
+					client.get(eventLoop, new RecordListener() {
 						public void onSuccess(final Key key, final Record record) {
 							assertBinEqual(key, record, bin);
-							notifyCompleted();
+							notifyComplete();
 						}
 						
 						public void onFailure(AerospikeException e) {
 							setError(e);
-							notifyCompleted();
+							notifyComplete();
 						}
-					}, key);
+					}, null, key);
 				}
 				catch (Exception e) {
 					setError(e);
-					notifyCompleted();
+					notifyComplete();
 				}
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}
-		}, key, bin);
+		}, null, key, bin);
 		
 		waitTillComplete();
 	}
@@ -74,18 +74,18 @@ public class TestAsyncPutGet extends TestAsync {
 	public void asyncPutGetWithRetry() {
 		final Key key = new Key(args.namespace, args.set, "putgetkey2");
 		final Bin bin = new Bin(binName, "value");
-		client.put(null, new WriteHandler(client, null, key, bin), key, bin);
+		client.put(eventLoop, new WriteHandler(client, null, key, bin), null, key, bin);
 		waitTillComplete();
 	}
 	
 	private class WriteHandler implements WriteListener {
-		private final AsyncClient client;
+		private final AerospikeClient client;
 		private final WritePolicy policy;
 		private final Key key;
 		private final Bin bin;
     	private int failCount = 0;
 		
-		public WriteHandler(AsyncClient client, WritePolicy policy, Key key, Bin bin) {
+		public WriteHandler(AerospikeClient client, WritePolicy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
@@ -96,11 +96,11 @@ public class TestAsyncPutGet extends TestAsync {
 		public void onSuccess(Key key) {
 			try {
 				// Write succeeded.  Now call read.
-				client.get(policy, new ReadHandler(client, policy, key, bin), key);
+				client.get(eventLoop, new ReadHandler(client, policy, key, bin), policy, key);
 			}
 			catch (Exception e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}
 		}
 		
@@ -113,7 +113,7 @@ public class TestAsyncPutGet extends TestAsync {
             	// Check for common socket errors.
             	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
                     try {
-                    	client.put(policy, this, key, bin);
+                    	client.put(eventLoop, this, policy, key, bin);
                         return;
                     }
                     catch (Exception ex) {
@@ -122,18 +122,18 @@ public class TestAsyncPutGet extends TestAsync {
             	}
         	}
 			setError(e);
-			notifyCompleted();
+			notifyComplete();
 		}
 	}
 
 	private class ReadHandler implements RecordListener {
-		private final AsyncClient client;
+		private final AerospikeClient client;
 		private final Policy policy;
 		private final Key key;
 		private final Bin bin;
     	private int failCount = 0;
 		
-		public ReadHandler(AsyncClient client, Policy policy, Key key, Bin bin) {
+		public ReadHandler(AerospikeClient client, Policy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
@@ -144,7 +144,7 @@ public class TestAsyncPutGet extends TestAsync {
 		public void onSuccess(Key key, Record record) {
 			// Verify received bin value is what was written.
 			assertBinEqual(key, record, bin);
-			notifyCompleted();
+			notifyComplete();
 		}
 
 		// Error callback.
@@ -156,7 +156,7 @@ public class TestAsyncPutGet extends TestAsync {
             	// Check for common socket errors.
             	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
                     try {
-                    	client.get(policy, this, key);
+                    	client.get(eventLoop, this, policy, key);
                         return;
                     }
                     catch (Exception ex) {
@@ -165,7 +165,7 @@ public class TestAsyncPutGet extends TestAsync {
             	}
         	}
 			setError(e);
-			notifyCompleted();
+			notifyComplete();
 		}
 	}
 }

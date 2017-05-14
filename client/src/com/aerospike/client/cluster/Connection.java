@@ -123,7 +123,10 @@ public final class Connection implements Closeable {
 					}
 					
 					if (! policy.encryptOnly) {
-						validateServerCertificateName(policy, sslSocket, tlsName);
+						sslSocket.setUseClientMode(true);
+						sslSocket.startHandshake();		
+						X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
+						validateServerCertificate(policy, tlsName, cert);
 					}
 					
 					in = socket.getInputStream();
@@ -137,7 +140,7 @@ public final class Connection implements Closeable {
 				}
 			}
 		}
-		catch (AerospikeException.Connection ae) {
+		catch (AerospikeException ae) {
 			throw ae;
 		}
 		catch (Exception e) {
@@ -145,23 +148,20 @@ public final class Connection implements Closeable {
 		}
 	}
 	
-	private static void validateServerCertificateName(TlsPolicy policy, SSLSocket sslSocket, String tlsName) throws Exception {		
+	public static void validateServerCertificate(TlsPolicy policy, String tlsName, X509Certificate cert) throws Exception {
 		if (tlsName == null) {
-			throw new AerospikeException.Connection("Invalid TLS name: null");							
+			// Do not throw AerospikeException.Connection because that exception will be retried.
+			// We don't want to retry on TLS errors. Throw standard AerospikeException instead.
+			throw new AerospikeException("Invalid TLS name: null");							
 		}
-		
-		sslSocket.setUseClientMode(true);
-		sslSocket.startHandshake();
-		
-		X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
-		
+
 		// Exclude certificate serial numbers.
 		if (policy.revokeCertificates != null) {
 			BigInteger serialNumber = cert.getSerialNumber();
 			
 			for (BigInteger sn : policy.revokeCertificates) {
 				if (sn.equals(serialNumber)) {
-					throw new AerospikeException.Connection("Invalid certificate serial number: " + sn);
+					throw new AerospikeException("Invalid certificate serial number: " + sn);
 				}
 			}
 		}
@@ -207,7 +207,7 @@ public final class Connection implements Closeable {
 			}
 		}
 
-		throw new AerospikeException.Connection("Invalid TLS name: " + tlsName);
+		throw new AerospikeException("Invalid TLS name: " + tlsName);
 	}
 	
 	public void write(byte[] buffer, int length) throws IOException {

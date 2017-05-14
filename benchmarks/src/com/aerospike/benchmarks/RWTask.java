@@ -38,7 +38,7 @@ public abstract class RWTask {
 	final WritePolicy writePolicyGeneration;
 	final long keyStart;
 	final long keyCount;
-	volatile boolean valid;
+	boolean valid;
 	
 	public RWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.args = args;

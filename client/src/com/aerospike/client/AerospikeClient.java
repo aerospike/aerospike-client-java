@@ -28,6 +28,18 @@ import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
+import com.aerospike.client.async.AsyncBatch;
+import com.aerospike.client.async.AsyncDelete;
+import com.aerospike.client.async.AsyncExecute;
+import com.aerospike.client.async.AsyncExists;
+import com.aerospike.client.async.AsyncOperate;
+import com.aerospike.client.async.AsyncQueryExecutor;
+import com.aerospike.client.async.AsyncRead;
+import com.aerospike.client.async.AsyncReadHeader;
+import com.aerospike.client.async.AsyncScanExecutor;
+import com.aerospike.client.async.AsyncTouch;
+import com.aerospike.client.async.AsyncWrite;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -52,6 +64,17 @@ import com.aerospike.client.large.LargeList;
 import com.aerospike.client.large.LargeMap;
 import com.aerospike.client.large.LargeSet;
 import com.aerospike.client.large.LargeStack;
+import com.aerospike.client.listener.BatchListListener;
+import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.DeleteListener;
+import com.aerospike.client.listener.ExecuteListener;
+import com.aerospike.client.listener.ExistsArrayListener;
+import com.aerospike.client.listener.ExistsListener;
+import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.RecordArrayListener;
+import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ClientPolicy;
@@ -270,8 +293,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		
 	/**
 	 * Close all client connections to database server nodes.
+	 * The client will wait until pending async commands complete
+	 * before closing.
 	 */
-	public final void close() {
+	public void close() {
 		cluster.close();
 	}
 
@@ -287,8 +312,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return array of active server nodes in the cluster.
-	 * 
-	 * @return	array of active nodes
 	 */
 	public final Node[] getNodes() {
 		return cluster.getNodes();
@@ -296,8 +319,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Return list of active server node names in the cluster.
-	 * 
-	 * @return	list of active node names
 	 */
 	public final List<String> getNodeNames() {
 		Node[] nodes = cluster.getNodes();		
@@ -311,13 +332,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	
 	/**
 	 * Return node given its name.
-	 * 
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
 	 */
 	public final Node getNode(String nodeName) throws AerospikeException.InvalidNode {
 		return cluster.getNode(nodeName);
 	}
-
+	
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
@@ -338,6 +358,29 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
+	}
+
+	/**
+	 * Asynchronously write record bin(s). 
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * handled when the record already exists.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param bins					array of bin name/value pairs
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void put(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.WRITE);
+		eventLoop.execute(cluster, command);
 	}
 
 	//-------------------------------------------------------
@@ -364,6 +407,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 	
 	/**
+	 * Asynchronously append bin string values to existing record bin values.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * handled when the record already exists.
+	 * This call only works for string values. 
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param bins					array of bin name/value pairs
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.APPEND);
+		eventLoop.execute(cluster, command);
+	}
+
+	/**
 	 * Prepend bin string values to existing record bin values.
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
@@ -380,6 +447,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 		command.execute();
+	}
+
+	/**
+	 * Asynchronously prepend bin string values to existing record bin values.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * handled when the record already exists.
+	 * This call only works for string values. 
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param bins					array of bin name/value pairs
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.PREPEND);
+		eventLoop.execute(cluster, command);
 	}
 
 	//-------------------------------------------------------
@@ -405,6 +496,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		command.execute();
 	}
 
+	/**
+	 * Asynchronously add integer bin values to existing record bin values.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy specifies the transaction timeout, record expiration and how the transaction is
+	 * handled when the record already exists.
+	 * This call only works for integer values. 
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param bins					array of bin name/value pairs
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.ADD);
+		eventLoop.execute(cluster, command);
+	}
+
 	//-------------------------------------------------------
 	// Delete Operations
 	//-------------------------------------------------------
@@ -427,6 +542,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return command.existed();
 	}
 	
+	/**
+	 * Asynchronously delete record for specified key.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy specifies the transaction timeout.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncDelete command = new AsyncDelete(listener, policy, key);
+		eventLoop.execute(cluster, command);
+	}
+
 	/**
 	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
 	 * faster than deleting records one at a time.  Works with Aerospike Server versions >= 3.12.
@@ -491,6 +627,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		command.execute();
 	}
 
+	/**
+	 * Asynchronously reset record's time to expiration using the policy's expiration.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Fail if the record does not exist.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncTouch command = new AsyncTouch(listener, policy, key);
+		eventLoop.execute(cluster, command);
+	}
+
 	//-------------------------------------------------------
 	// Existence-Check Operations
 	//-------------------------------------------------------
@@ -514,9 +671,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously determine if a record key exists.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		AsyncExists command = new AsyncExists(listener, policy, key);
+		eventLoop.execute(cluster, command);
+	}
+
+	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
-	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * The policy can be used to specify timeouts and maximum concurrent nodes.
 	 *  
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -530,6 +708,54 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		boolean[] existsArray = new boolean[keys.length];
 		BatchExecutor.execute(cluster, policy, keys, existsArray, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return existsArray;
+	}
+
+	/**
+	 * Asynchronously check if multiple record keys exist in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The returned boolean array is in positional order with the original key array order.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new boolean[0]);
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.ExistsArrayExecutor(eventLoop, cluster, policy, keys, listener);		
+	}
+
+	/**
+	 * Asynchronously check if multiple record keys exist in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each key's result is returned in separate onExists() calls.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.ExistsSequenceExecutor(eventLoop, cluster, policy, keys, listener);		
 	}
 
 	//-------------------------------------------------------
@@ -555,6 +781,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously read entire record for specified key.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		AsyncRead command = new AsyncRead(listener, policy, key, null);
+		eventLoop.execute(cluster, command);
+	}
+
+	/**
 	 * Read record header and bins for specified key.
 	 * The policy can be used to specify timeouts.
 	 * 
@@ -574,6 +821,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously read record header and bins for specified key.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binNames				bins to retrieve
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames) throws AerospikeException {	
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		AsyncRead command = new AsyncRead(listener, policy, key, binNames);
+		eventLoop.execute(cluster, command);
+	}
+
+	/**
 	 * Read record generation and expiration only for specified key.  Bins are not read.
 	 * The policy can be used to specify timeouts.
 	 * 
@@ -589,6 +858,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
 		command.execute();
 		return command.getRecord();
+	}
+
+	/**
+	 * Asynchronously read record generation and expiration only for specified key.  Bins are not read.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		AsyncReadHeader command = new AsyncReadHeader(listener, policy, key);
+		eventLoop.execute(cluster, command);
 	}
 
 	//-------------------------------------------------------
@@ -651,6 +941,62 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously read multiple records for specified batch keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
+	 * The returned records are located in the same list.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param records				list of unique record identifiers and the bins to retrieve.
+	 *                              The returned records are located in the same list.
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
+		if (records.size() == 0) {
+			listener.onSuccess(records);
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.ReadListExecutor(eventLoop, cluster, policy, listener, records);
+	}
+
+	/**
+	 * Asynchronously read multiple records for specified batch keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
+	 * Each record result is returned in separate onRecord() calls.
+	 * If the BatchRead key field is not found, the corresponding record field will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param records				list of unique record identifiers and the bins to retrieve.
+	 *                              The returned records are located in the same list.
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
+		if (records.size() == 0) {
+			listener.onSuccess();
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.ReadSequenceExecutor(eventLoop, cluster, policy, listener, records);
+	}
+
+	/**
 	 * Read multiple records for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
@@ -671,6 +1017,58 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously read multiple records for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetArrayExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
+	}
+
+	/**
+	 * Asynchronously read multiple records for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetSequenceExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);		
+	}
+
+	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
@@ -682,14 +1080,67 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record[] get(BatchPolicy policy, Key[] keys, String... binNames) 
-		throws AerospikeException {
+	public final Record[] get(BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException {
 		if (policy == null) {
 			policy = batchPolicyDefault;
 		}
 		Record[] records = new Record[keys.length];
 		BatchExecutor.execute(cluster, policy, keys, null, records, binNames, Command.INFO1_READ);
 		return records;
+	}
+
+	/**
+	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetArrayExecutor(eventLoop, cluster, policy, listener, keys, binNames, Command.INFO1_READ);
+	}
+
+	/**
+	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @param binNames				array of bins to retrieve
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetSequenceExecutor(eventLoop, cluster, policy, listener, keys, binNames, Command.INFO1_READ);
 	}
 
 	/**
@@ -710,6 +1161,58 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Record[] records = new Record[keys.length];
 		BatchExecutor.execute(cluster, policy, keys, null, records, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		return records;
+	}
+
+	/**
+	 * Asynchronously read multiple record header data for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The returned records are in positional order with the original key array order.
+	 * If a key is not found, the positional record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetArrayExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+	}
+
+	/**
+	 * Asynchronously read multiple record header data for specified keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * If a key is not found, the record will be null.
+	 * The policy can be used to specify timeouts.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param keys					array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException {
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		new AsyncBatch.GetSequenceExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 	}
 
 	//-------------------------------------------------------
@@ -733,8 +1236,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						record if there is a read in the operations list
 	 * @throws AerospikeException	if command fails
 	 */
-	public final Record operate(WritePolicy policy, Key key, Operation... operations) 
-		throws AerospikeException {		
+	public final Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
@@ -743,12 +1245,41 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return command.getRecord();
 	}
 
+	/**
+	 * Asynchronously perform multiple read/write operations on a single key in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * An example would be to add an integer value to an existing record and then
+	 * read the result, all in one database call.
+	 * <p>
+	 * Write operations are always performed first, regardless of operation order 
+	 * relative to read operations.
+	 * <p>
+	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
+	 * can be performed in same call.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param operations			database operations to perform
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		AsyncOperate command = new AsyncOperate(listener, policy, key, operations);
+		eventLoop.execute(cluster, command);
+	}
+
 	//-------------------------------------------------------
 	// Scan Operations
 	//-------------------------------------------------------
 	
 	/**
-	 * Read all records in specified namespace and set.  If the policy's 
+	 * Read all records in specified namespace and set.  If the policy's
 	 * <code>concurrentNodes</code> is specified, each server node will be read in
 	 * parallel.  Otherwise, server nodes are read in series.
 	 * <p>
@@ -795,6 +1326,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				scanNode(policy, node, namespace, setName, callback, binNames);
 			}
 		}
+	}
+
+	/**
+	 * Asynchronously read all records in specified namespace and set.  If the policy's
+	 * <code>concurrentNodes</code> is specified, each server node will be read in
+	 * parallel.  Otherwise, server nodes are read in series.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * 								Aerospike 2 servers ignore this parameter.
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames) throws AerospikeException {
+		if (policy == null) {
+			policy = scanPolicyDefault;
+		}	
+		new AsyncScanExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames);
 	}
 
 	/**
@@ -1038,16 +1593,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param key					unique record identifier
 	 * @param packageName			server package name where user defined function resides
 	 * @param functionName			user defined function
-	 * @param args					arguments passed in to user defined function
+	 * @param functionArgs			arguments passed in to user defined function
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) 
+	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs) 
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, args);
+		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, functionArgs);
 		command.execute();
 		
 		Record record = command.getRecord();
@@ -1075,6 +1630,41 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			throw new AerospikeException(obj.toString());
 		}
 		throw new AerospikeException("Invalid UDF return value");
+	}
+
+	/**
+	 * Asynchronously execute user defined function on server.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The function operates on a single record.
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * udf file = <server udf dir>/<package name>.lua
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param packageName			server package name where user defined function resides
+	 * @param functionName			user defined function
+	 * @param functionArgs			arguments passed in to user defined function
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void execute(
+		EventLoop eventLoop,
+		ExecuteListener listener,
+		WritePolicy policy,
+		Key key,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}	
+		AsyncExecute command = new AsyncExecute(listener, policy, key, packageName, functionName, functionArgs);
+		eventLoop.execute(cluster, command);
 	}
 
 	//----------------------------------------------------------
@@ -1133,7 +1723,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * records on a queue in separate threads.  The calling thread concurrently pops records off 
 	 * the queue through the record iterator.
 	 * 
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
@@ -1147,6 +1737,26 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return executor.getRecordSet();
 	}
 	
+	/**
+	 * Asynchronously execute query on all server nodes.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * 
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				database query command
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}	
+		new AsyncQueryExecutor(eventLoop, listener, cluster, policy, statement);
+	}
+
 	/**
 	 * Execute query on a single server node and return record iterator.  The query executor puts
 	 * records on a queue in a separate thread.  The calling thread concurrently pops records off 

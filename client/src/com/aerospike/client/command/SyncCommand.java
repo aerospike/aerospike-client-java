@@ -23,6 +23,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {
@@ -134,6 +135,21 @@ public abstract class SyncCommand extends Command {
 		throw (RuntimeException)exception;
 	}
 
+	@Override
+	protected final void sizeBuffer() {
+		dataBuffer = ThreadLocalData.getBuffer();
+		
+		if (dataOffset > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
+		}
+	}
+	
+	protected final void sizeBuffer(int size) {
+		if (size > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(size);
+		}
+	}
+
 	protected final void emptySocket(Connection conn) throws IOException
 	{
 		// There should not be any more bytes.
@@ -151,5 +167,7 @@ public abstract class SyncCommand extends Command {
 	}
 
 	protected abstract Policy getPolicy();
+	protected abstract Node getNode() throws AerospikeException.InvalidNode;
+	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 }

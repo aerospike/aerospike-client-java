@@ -31,21 +31,10 @@ public final class AsyncOperate extends AsyncRead {
 	private final Operation[] operations;
 	private boolean hasWrite;
 	
-	public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations) {
-		super(cluster, writePolicy, listener, key, null);
+	public AsyncOperate(RecordListener listener, WritePolicy writePolicy, Key key, Operation[] operations) {
+		super(listener, writePolicy, key, null);
 		this.writePolicy = writePolicy;
 		this.operations = operations;
-	}
-
-	public AsyncOperate(AsyncOperate other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.operations = other.operations;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncOperate(this);
 	}
 
 	@Override

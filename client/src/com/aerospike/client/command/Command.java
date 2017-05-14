@@ -41,7 +41,6 @@ import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
-import com.aerospike.client.util.ThreadLocalData;
 
 public abstract class Command {		
 	// Flags commented out are not supported by this client.
@@ -73,9 +72,9 @@ public abstract class Command {
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
 
-	protected byte[] dataBuffer;
-	protected int dataOffset;
-	protected int sequence;
+	public byte[] dataBuffer;
+	public int dataOffset;
+	private int sequence;
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -997,20 +996,6 @@ public abstract class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	protected final void sizeBuffer() {
-		dataBuffer = ThreadLocalData.getBuffer();
-		
-		if (dataOffset > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
-		}
-	}
-	
-	protected final void sizeBuffer(int size) {
-		if (size > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(size);
-		}
-	}
-
 	protected final void end() {
 		// Write total size of message which is the current offset.
 		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
@@ -1056,6 +1041,5 @@ public abstract class Command {
 		return cluster.getRandomNode();		
 	}
 	
-	protected abstract Node getNode() throws AerospikeException.InvalidNode;
-	protected abstract void writeBuffer() throws AerospikeException;
+	protected abstract void sizeBuffer();
 }

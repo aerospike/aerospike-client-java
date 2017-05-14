@@ -16,12 +16,13 @@
  */
 package com.aerospike.benchmarks;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.WriteListener;
@@ -30,99 +31,73 @@ import com.aerospike.client.util.RandomShift;
 
 public final class RWTaskAsync extends RWTask {
 	
-	private final AsyncClient client;
-	private final WriteHandler writeHandler;
-	private final ReadHandler readHandler;
-	private final BatchReadHandler batchReadHandler;
-	private final long maxCommands;
+	private final AerospikeClient client;
+	private final EventLoop eventLoop;
+	private final RandomShift random;
+	private final WriteListener writeListener;
+	private final RecordListener recordListener;
+	private final RecordArrayListener recordArrayListener;
 
-	public RWTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount, long maxCommands) {
+	public RWTaskAsync(
+		AerospikeClient client,
+		EventLoop eventLoop,
+		Arguments args,
+		CounterStore counters,
+		long keyStart,
+		long keyCount
+	) {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
+		this.eventLoop = eventLoop;
+		this.random = new RandomShift();
 		
-		if (maxCommands > keyCount) {
-			maxCommands = keyCount;
+		if (counters.write.latency != null) {
+			writeListener = new LatencyWriteHandler();
+			recordListener = new LatencyReadHandler();
+			recordArrayListener = new LatencyBatchReadHandler();
 		}
-		this.maxCommands = maxCommands;
-		writeHandler = new WriteHandler();
-		readHandler = new ReadHandler();
-		batchReadHandler = new BatchReadHandler();
-	}
-	
-	public void run() {
-		// Seed selector threads with max commands.
-		RandomShift random = RandomShift.instance();
-				
-		for (int i = 0; i < maxCommands; i++) {
-			runCommand(random);
-		}		
+		else {
+			writeListener = new WriteHandler();
+			recordListener = new ReadHandler();
+			recordArrayListener = new BatchReadHandler();
+		}
 	}
 
 	@Override
 	protected void runNextCommand() {
 		if (valid) {
-			runCommand(RandomShift.instance());
+			runCommand(random);
 		}
 	}
 
 	@Override
 	protected void put(WritePolicy policy, Key key, Bin[] bins) {
-		if (counters.write.latency != null) {
-			client.put(policy, new LatencyWriteHandler(), key, bins);	
-		}
-		else {
-			client.put(policy, writeHandler, key, bins);
-		}
+		client.put(eventLoop, writeListener, policy, key, bins);	
 	}
 	
 	@Override
 	protected void add(Key key, Bin[] bins) {		
-		if (counters.write.latency != null) {
-			client.add(writePolicyGeneration, new LatencyWriteHandler(), key, bins);
-		}
-		else {
-			client.add(writePolicyGeneration, writeHandler, key, bins);			
-		}
+		client.add(eventLoop, writeListener, writePolicyGeneration, key, bins);			
 	}
 
 	@Override
 	protected void get(Key key, String binName) {		
-		if (counters.read.latency != null) {		
-			client.get(args.readPolicy, new LatencyReadHandler(), key, binName);
-		}
-		else {			
-			client.get(args.readPolicy, readHandler, key, binName);
-		}
+		client.get(eventLoop, recordListener, args.readPolicy, key, binName);
 	}
 
 	@Override
 	protected void get(Key key) throws AerospikeException {
-		if (counters.read.latency != null) {	
-			client.get(args.readPolicy, new LatencyReadHandler(), key);
-		}
-		else {			
-			client.get(args.readPolicy, readHandler, key);
-		}
+		client.get(eventLoop, recordListener, args.readPolicy, key);
 	}
 
 	@Override
 	protected void get(Key[] keys, String binName) throws AerospikeException {
-		if (counters.read.latency != null) {	
-			client.get(args.batchPolicy, new LatencyBatchReadHandler(), keys, binName);
-		}
-		else {
-			client.get(args.batchPolicy, batchReadHandler, keys, binName);
-		}
+		client.get(eventLoop, recordArrayListener, args.batchPolicy, keys, binName);
 	}
 
 	@Override
 	protected void get(Key[] keys) throws AerospikeException {
-		if (counters.read.latency != null) {	
-			client.get(args.batchPolicy, new LatencyBatchReadHandler(), keys);
-		}
-		else {
-			client.get(args.batchPolicy, batchReadHandler, keys);
-		}
+		client.get(eventLoop, recordArrayListener, args.batchPolicy, keys);
 	}
 
 	private final class WriteHandler implements WriteListener {	

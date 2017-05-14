@@ -61,7 +61,7 @@ public class TestAsyncQuery extends TestAsync {
 			final Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
 			
-			client.put(null, new WriteListener() {				
+			client.put(eventLoop, new WriteListener() {				
 				public void onSuccess(final Key key) {
 					if (count.incrementAndGet() == size) {
 						runQuery();
@@ -70,9 +70,9 @@ public class TestAsyncQuery extends TestAsync {
 				
 				public void onFailure(AerospikeException e) {
 					setError(e);
-					notifyCompleted();
+					notifyComplete();
 				}
-			}, key, bin);		
+			}, null, key, bin);		
 		}
 		
 		waitTillComplete();
@@ -90,7 +90,7 @@ public class TestAsyncQuery extends TestAsync {
 		
 		final AtomicInteger count = new AtomicInteger();
 		
-		client.query(null, new RecordSequenceListener() {
+		client.query(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) throws AerospikeException {
 				int result = record.getInt(binName);
 				assertBetween(26, 34, result);
@@ -100,14 +100,14 @@ public class TestAsyncQuery extends TestAsync {
 			public void onSuccess() {
 				int size = count.get();
 				assertEquals(9, size);				
-				notifyCompleted();
+				notifyComplete();
 			}
 
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			} 
 			
-		}, stmt);	
+		}, null, stmt);	
 	}
 }

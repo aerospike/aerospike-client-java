@@ -36,6 +36,7 @@ Examples:
     mvn test -Dargs="-h host1"
     mvn test -Dargs="-h host2 -p 3000 -n myns -s myset"
 
-TLS Example:
+TLS Examples:
 
-    mvn test -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteSync.class" -Dargs="-h hostname:tlsname:tlsport -tlsEnable"
+    mvn test -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteSync.class" -Dargs="-h hostname:tlsname:tlsport -tls"
+    mvn test -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteAsync.class" -Dargs="-h hostname:tlsname:tlsport -tls -netty"

@@ -11,6 +11,22 @@
 
   <dependencies>
     <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>4.1.11.Final</version>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+      <version>4.1.11.Final</version>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
       <groupId>org.gnu</groupId>
       <artifactId>gnu-crypto</artifactId>
       <version>2.0.1</version>
@@ -88,9 +104,18 @@
             <include>com/aerospike/client/admin/User.java</include>
             <include>com/aerospike/client/async/AsyncClient.java</include>
             <include>com/aerospike/client/async/AsyncClientPolicy.java</include>
-            <include>com/aerospike/client/async/AsyncNode.java</include>
+            <include>com/aerospike/client/async/EventLoop.java</include>
+            <include>com/aerospike/client/async/EventLoops.java</include>
+            <include>com/aerospike/client/async/EventPolicy.java</include>
             <include>com/aerospike/client/async/IAsyncClient.java</include>
             <include>com/aerospike/client/async/MaxCommandAction.java</include>
+            <include>com/aerospike/client/async/Monitor.java</include>
+            <include>com/aerospike/client/async/NettyEventLoop.java</include>
+            <include>com/aerospike/client/async/NettyEventLoops.java</include>
+            <include>com/aerospike/client/async/NioEventLoop.java</include>
+            <include>com/aerospike/client/async/NioEventLoops.java</include>
+            <include>com/aerospike/client/async/Throttle.java</include>
+            <include>com/aerospike/client/async/Throttles.java</include>
             <include>com/aerospike/client/cluster/Node.java</include>
             <include>com/aerospike/client/cluster/ThreadDaemonFactory.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>

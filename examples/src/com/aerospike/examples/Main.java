@@ -122,6 +122,7 @@ public class Main extends JPanel {
 			options.addOption("te", "tlsEncryptOnly", false, 
 					"Enable TLS encryption and disable TLS certificate validation"
 					);
+			options.addOption("netty", "netty", false, "Use netty for async examples");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -147,6 +148,10 @@ public class Main extends JPanel {
 					exampleNames = ExampleNames;
 					break;
 				}
+			}
+			
+			if (cl.hasOption("netty")) {
+				params.useNetty = true;
 			}
 			
 			if (cl.hasOption("d")) {				

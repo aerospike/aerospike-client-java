@@ -18,6 +18,7 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
@@ -27,13 +28,15 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 	private final RecordSequenceListener listener;
 
 	public AsyncScanExecutor(
-		AsyncCluster cluster,
+		EventLoop eventLoop,
+		Cluster cluster,
 		ScanPolicy policy,
 		RecordSequenceListener listener,
 		String namespace,
 		String setName,
 		String[] binNames
 	) throws AerospikeException {
+		super(eventLoop, cluster);
 		this.listener = listener;
 
 		Node[] nodes = cluster.getNodes();
@@ -48,7 +51,7 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 		int count = 0;
 
 		for (Node node : nodes) {			
-			tasks[count++] = new AsyncScan(this, cluster, (AsyncNode)node, policy, listener, namespace, setName, binNames, taskId);
+			tasks[count++] = new AsyncScan(this, node, policy, listener, namespace, setName, binNames, taskId);
 		}
 		// Dispatch commands to nodes.
 		execute(tasks, policy.maxConcurrentNodes);

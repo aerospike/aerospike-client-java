@@ -18,11 +18,12 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
@@ -33,19 +34,12 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.util.Util;
 
-public class AsyncQuery extends AsyncExample {
-		
-	private boolean completed;
-
-	public AsyncQuery(Console console) {
-		super(console);
-	}
-
+public class AsyncQuery extends AsyncExample {		
 	/**
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AsyncClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		if (! params.hasUdf) {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
@@ -56,18 +50,17 @@ public class AsyncQuery extends AsyncExample {
 		String binName = params.getBinName("asqbin");  
 		int size = 50;
 
-		createIndex(client, params, indexName, binName);
-		runQueryExample(client, params, keyPrefix, binName, size);
+		createIndex(client, indexName, binName);
+		runQueryExample(client, eventLoop, keyPrefix, binName, size);
 		waitTillComplete();
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(policy, params.namespace, params.set, indexName);		
 	}
 	
 	private void createIndex(
-		AsyncClient client,
-		Parameters params,
+		AerospikeClient client,
 		String indexName,
 		String binName
-	) throws Exception {
+	) {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
 			params.namespace, params.set, indexName, binName);			
 		
@@ -78,12 +71,12 @@ public class AsyncQuery extends AsyncExample {
 	}
 
 	private void runQueryExample(
-		final AsyncClient client,
-		final Parameters params,
+		final AerospikeClient client,
+		final EventLoop eventLoop,
 		final String keyPrefix,
 		final String binName,
 		final int size
-	) throws Exception {
+	) {
 		console.info("Write " + size + " records.");
 
 		final AtomicInteger count = new AtomicInteger();
@@ -92,10 +85,10 @@ public class AsyncQuery extends AsyncExample {
 			final Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
 			
-			client.put(params.writePolicy, new WriteListener() {				
+			client.put(eventLoop, new WriteListener() {				
 				public void onSuccess(final Key key) {
 					if (count.incrementAndGet() == size) {
-						runQuery(client, params, binName);
+						runQuery(client, eventLoop, binName);
 					}
 				}
 				
@@ -103,11 +96,11 @@ public class AsyncQuery extends AsyncExample {
 					console.error("Failed to put: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 					notifyComplete();
 				}
-			}, key, bin);		
+			}, writePolicy, key, bin);		
 		}
 	}
 
-	private void runQuery(AsyncClient client, Parameters params, final String binName) {
+	private void runQuery(AerospikeClient client, EventLoop eventLoop, final String binName) {
 		int begin = 26;
 		int end = 34;
 		
@@ -122,7 +115,7 @@ public class AsyncQuery extends AsyncExample {
 		
 		final AtomicInteger count = new AtomicInteger();
 		
-		client.query(null, new RecordSequenceListener() {
+		client.query(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) throws AerospikeException {
 				int result = record.getInt(binName);
 				
@@ -146,21 +139,6 @@ public class AsyncQuery extends AsyncExample {
 				notifyComplete();
 			} 
 			
-		}, stmt);	
-	}
-
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyComplete() {
-		completed = true;
-		super.notify();
+		}, null, stmt);	
 	}
 }

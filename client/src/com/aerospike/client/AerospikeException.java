@@ -31,7 +31,7 @@ public class AerospikeException extends RuntimeException {
 		this.resultCode = resultCode;
 	}
 
-	public AerospikeException(int resultCode, Exception e) {
+	public AerospikeException(int resultCode, Throwable e) {
 		super(e);
 		this.resultCode = resultCode;
 	}
@@ -41,7 +41,7 @@ public class AerospikeException extends RuntimeException {
 		this.resultCode = resultCode;
 	}
 	
-	public AerospikeException(String message, Exception e) {
+	public AerospikeException(String message, Throwable e) {
 		super(message, e);
 	}
 
