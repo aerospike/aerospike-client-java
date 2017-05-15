@@ -58,12 +58,12 @@ public final class ExecuteTask extends Task {
 			String response = Info.request(policy, node, command);
 			
 			if (response.startsWith("ERROR:2")) {
-				// Task not found. This could mean task already completed or
-				// task not started yet.  We are going to have to assume that
-				// the task already completed...
-				continue;
+				// Task not found. This could mean task already completed and
+				// the listing was removed or the task has not started yet.
+				// We are going to have to assume that the task has not started yet...
+				return false;
 			}
-			
+
 			if (response.startsWith("ERROR:")) {
 				// Mark done and quit immediately.
 				throw new DoneException(command + " failed: " + response);
