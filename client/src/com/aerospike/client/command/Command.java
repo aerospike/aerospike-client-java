@@ -287,6 +287,13 @@ public abstract class Command {
 		}
 		sizeBuffer();
 
+		int readAttr = Command.INFO1_READ;
+		
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
+
+		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
@@ -323,7 +330,7 @@ public abstract class Command {
 		    	dataBuffer[dataOffset++] = 0;  // do not repeat
 		    	
 				if (binNames != null && binNames.length != 0) {
-			    	dataBuffer[dataOffset++] = Command.INFO1_READ;
+			    	dataBuffer[dataOffset++] = (byte)readAttr;
 					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
@@ -339,7 +346,7 @@ public abstract class Command {
 					}
 				}
 				else {
-			    	dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
+			    	dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
 					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					Buffer.shortToBytes(0, dataBuffer, dataOffset);
@@ -406,6 +413,10 @@ public abstract class Command {
 		}
 	    
 		sizeBuffer();
+
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
 
 		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 		int fieldSizeOffset = dataOffset;
