@@ -516,8 +516,9 @@ public abstract class PredExp {
 			Buffer.shortToBytes(this.type, buf, offset);
 			offset += 2;
 			
-			Buffer.intToBytes(1 + 2 + Buffer.estimateSizeUtf8(this.value),
-							  buf, offset);
+			// Write value
+			int len = Buffer.stringToUtf8(value, buf, offset + 4 + 1 + 2);
+			Buffer.intToBytes(len + 1 + 2, buf, offset);
 			offset += 4;
 
 			buf[offset] = 0; // flags
@@ -526,9 +527,7 @@ public abstract class PredExp {
 			Buffer.shortToBytes(0, buf, offset); // ncells
 			offset += 2;
 
-			int len = Buffer.stringToUtf8(this.value, buf, offset);
-			offset += len;
-			
+			offset += len;			
 			return offset;
 		}
 	}
