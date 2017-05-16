@@ -496,6 +496,7 @@ public class TestQueryPredExp extends TestSync {
 		}
 	}
 
+	/* Use this test only after servers have been patched.
 	@Test
 	public void queryPredicateAER5650() {
 		double lon = -122.0;
@@ -527,5 +528,5 @@ public class TestQueryPredExp extends TestSync {
 		finally {
 			rs.close();
 		}
-	}
+	}*/
 }
