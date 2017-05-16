@@ -76,7 +76,7 @@ public abstract class PredExp {
 	 * Create geospatial json string value.
 	 */	
 	public static PredExp geoJSONValue(String val) {
-		return new StringValue(val, GEOJSON_VALUE);
+		return new GeoJSONValue(val, GEOJSON_VALUE);
 	}
 
 	/**
@@ -493,6 +493,42 @@ public abstract class PredExp {
 			int len = Buffer.stringToUtf8(value, buf, offset + 4);
 			Buffer.intToBytes(len, buf, offset);
 			offset += 4 + len;			
+			return offset;
+		}
+	}
+	
+	private static class GeoJSONValue extends PredExp {
+		private final String value;
+		private final int type;
+		
+		public GeoJSONValue(String value, int type) {
+			this.value = value;
+			this.type = type;
+		}
+
+		public int estimateSize() {
+			// type + len + flags + ncells + jsonstr
+			return 2 + 4 + 1 + 2 + Buffer.estimateSizeUtf8(this.value);
+		}
+
+		public int write(byte[] buf, int offset) {
+			// Write value type
+			Buffer.shortToBytes(this.type, buf, offset);
+			offset += 2;
+			
+			Buffer.intToBytes(1 + 2 + Buffer.estimateSizeUtf8(this.value),
+							  buf, offset);
+			offset += 4;
+
+			buf[offset] = 0; // flags
+			offset += 1;
+			
+			Buffer.shortToBytes(0, buf, offset); // ncells
+			offset += 2;
+
+			int len = Buffer.stringToUtf8(this.value, buf, offset);
+			offset += len;
+			
 			return offset;
 		}
 	}
