@@ -22,7 +22,6 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -32,7 +31,7 @@ public final class AsyncOperate extends AsyncRead {
 	private boolean hasWrite;
 	
 	public AsyncOperate(RecordListener listener, WritePolicy writePolicy, Key key, Operation[] operations) {
-		super(listener, writePolicy, key, null);
+		super(listener, writePolicy, key, null, false);
 		this.writePolicy = writePolicy;
 		this.operations = operations;
 	}
@@ -40,11 +39,6 @@ public final class AsyncOperate extends AsyncRead {
 	@Override
 	protected void writeBuffer() {
 		hasWrite = setOperate(writePolicy, key, operations);
-	}
-	
-	@Override
-	protected Node getNode() {	
-		return cluster.getMasterNode(partition);
 	}
 	
 	@Override

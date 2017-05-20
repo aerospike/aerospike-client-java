@@ -20,7 +20,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordListener;
@@ -29,24 +28,17 @@ import com.aerospike.client.policy.Policy;
 public class AsyncReadHeader extends AsyncCommand implements AsyncSingleCommand {
 	private final RecordListener listener;
 	private final Key key;
-	private final Partition partition;
 	private Record record;
 	
 	public AsyncReadHeader(RecordListener listener, Policy policy, Key key) {
-		super(policy, true, true);
+		super(policy, new Partition(key), null, true, true);
 		this.listener = listener;
 		this.key = key;
-		this.partition = new Partition(key);
 	}
 
 	@Override
 	protected void writeBuffer() {
 		setReadHeader(policy, key);
-	}
-
-	@Override
-	protected Node getNode() {
-		return getReadNode(cluster, partition, policy.replica);
 	}
 
 	@Override

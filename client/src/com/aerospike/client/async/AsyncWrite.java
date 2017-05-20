@@ -20,7 +20,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
@@ -29,16 +28,14 @@ public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand
 	private final WriteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;
-	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 		
 	public AsyncWrite(WriteListener listener, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
-		super(writePolicy, true, false);
+		super(writePolicy, new Partition(key), null, false, false);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
-		this.partition = new Partition(key);
 		this.bins = bins;
 		this.operation = operation;
 	}
@@ -46,11 +43,6 @@ public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand
 	@Override
 	protected void writeBuffer() {
 		setWrite(writePolicy, operation, key, bins);
-	}
-
-	@Override
-	protected Node getNode() {	
-		return cluster.getMasterNode(partition);
 	}
 
 	@Override

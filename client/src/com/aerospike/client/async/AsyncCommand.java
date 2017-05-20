@@ -21,6 +21,7 @@ import java.util.ArrayDeque;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 
@@ -38,18 +39,28 @@ public abstract class AsyncCommand extends Command {
 	static final int COMMAND_READ_BODY = 7;
 	static final int COMPLETE = 8;
 	
-	Cluster cluster;
 	final Policy policy;
+	final Partition partition;
+	Node node;
 	ArrayDeque<byte[]> bufferQueue;
 	int resultCode;
-	final boolean single;
+	final boolean isRead;
 	final boolean readAll;
 	boolean valid = true;
 
-	public AsyncCommand(Policy policy, boolean single, boolean readAll) {
+	public AsyncCommand(Policy policy, Partition partition, Node node, boolean isRead, boolean readAll) {
 		this.policy = policy;
-		this.single = single;
+		this.partition = partition;
+		this.node = node;
+		this.isRead = isRead;
 		this.readAll = readAll;
+	}
+
+	final Node getNode(Cluster cluster) {		
+		if (partition != null) {
+			node = getNode(cluster, partition, policy.replica, isRead);
+		}
+		return node;
 	}
 	
 	final void initBuffer() {
@@ -115,7 +126,6 @@ public abstract class AsyncCommand extends Command {
 		valid = false;
 	}
 
-	protected abstract Node getNode() throws AerospikeException.InvalidNode;
 	protected abstract void writeBuffer();
 	protected abstract void onSuccess();
 	protected abstract void onFailure(AerospikeException ae);

@@ -37,6 +37,8 @@ public final class RWTaskAsync extends RWTask {
 	private final WriteListener writeListener;
 	private final RecordListener recordListener;
 	private final RecordArrayListener recordArrayListener;
+	private long begin;
+	private final boolean useLatency;
 
 	public RWTaskAsync(
 		AerospikeClient client,
@@ -49,9 +51,10 @@ public final class RWTaskAsync extends RWTask {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 		this.eventLoop = eventLoop;
-		this.random = new RandomShift();
-		
-		if (counters.write.latency != null) {
+		this.random = new RandomShift();	
+		this.useLatency = counters.write.latency != null;
+
+		if (useLatency) {
 			writeListener = new LatencyWriteHandler();
 			recordListener = new LatencyReadHandler();
 			recordArrayListener = new LatencyBatchReadHandler();
@@ -72,31 +75,49 @@ public final class RWTaskAsync extends RWTask {
 
 	@Override
 	protected void put(WritePolicy policy, Key key, Bin[] bins) {
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.put(eventLoop, writeListener, policy, key, bins);	
 	}
 	
 	@Override
 	protected void add(Key key, Bin[] bins) {		
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.add(eventLoop, writeListener, writePolicyGeneration, key, bins);			
 	}
 
 	@Override
 	protected void get(Key key, String binName) {		
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.get(eventLoop, recordListener, args.readPolicy, key, binName);
 	}
 
 	@Override
 	protected void get(Key key) throws AerospikeException {
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.get(eventLoop, recordListener, args.readPolicy, key);
 	}
 
 	@Override
 	protected void get(Key[] keys, String binName) throws AerospikeException {
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.get(eventLoop, recordArrayListener, args.batchPolicy, keys, binName);
 	}
 
 	@Override
 	protected void get(Key[] keys) throws AerospikeException {
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.get(eventLoop, recordArrayListener, args.batchPolicy, keys);
 	}
 
@@ -115,12 +136,6 @@ public final class RWTaskAsync extends RWTask {
 	}
 
 	private final class LatencyWriteHandler implements WriteListener {
-		private long begin;
-		
-		public LatencyWriteHandler() {
-			this.begin = System.nanoTime();
-		}
-		
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
@@ -156,12 +171,6 @@ public final class RWTaskAsync extends RWTask {
 	}
 	
 	private final class LatencyReadHandler implements RecordListener {
-		private long begin;
-		
-		public LatencyReadHandler() {
-			this.begin = System.nanoTime();
-		}
-		
 		@Override
 		public void onSuccess(Key key, Record record) {
 			long elapsed = System.nanoTime() - begin;
@@ -205,12 +214,6 @@ public final class RWTaskAsync extends RWTask {
 	}
 	
 	private final class LatencyBatchReadHandler implements RecordArrayListener {
-		private long begin;
-		
-		public LatencyBatchReadHandler() {
-			this.begin = System.nanoTime();
-		}
-		
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
 			long elapsed = System.nanoTime() - begin;

@@ -107,21 +107,17 @@ public class AerospikeException extends RuntimeException {
 		public Node node;
 		public int timeout;
 		public int iterations;
-		public int failedNodes;
-		public int failedConns;
 		
 		public Timeout() {
 			super(ResultCode.TIMEOUT);
 			this.timeout = -1;
 		}
 		
-		public Timeout(Node node, int timeout, int iterations, int failedNodes, int failedConns) {
+		public Timeout(Node node, int timeout, int iterations) {
 			super(ResultCode.TIMEOUT);
 			this.node = node;
 			this.timeout = timeout;
 			this.iterations = iterations;
-			this.failedNodes = failedNodes;
-			this.failedConns = failedConns;
 		}
 		
 		@Override
@@ -130,7 +126,6 @@ public class AerospikeException extends RuntimeException {
 				return super.getMessage();
 			}
 			return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns +
 				" lastNode=" + node;
 		}
 	}

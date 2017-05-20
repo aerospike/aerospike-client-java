@@ -124,7 +124,7 @@ public class Node implements Closeable {
 		
 		try {
 			if (tendConnection.isClosed()) {
-				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleMillis, null);
+				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleNanos, null);
 
 				if (cluster.user != null) {
 					try {
@@ -481,7 +481,7 @@ public class Node implements Closeable {
 				// Socket not found and queue has available slot.
 				// Create new connection.
 				try {
-					conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleMillis, pool);
+					conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool);
 				}
 				catch (RuntimeException re) {
 					pool.total.getAndDecrement();

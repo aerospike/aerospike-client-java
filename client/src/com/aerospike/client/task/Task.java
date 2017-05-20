@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.task;
 
+import java.util.concurrent.TimeUnit;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.InfoPolicy;
@@ -91,7 +93,7 @@ public abstract class Task {
 			return;
 		}
 		
-		long deadline = (policy.timeout > 0)? System.currentTimeMillis() + policy.timeout : 0L;
+		long deadline = (policy.timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.timeout) : 0L;
 
 		do {
 			// Sleep first to give task a chance to complete and help avoid case
@@ -104,13 +106,13 @@ public abstract class Task {
 			// (especially for background query execute), so "NOT_FOUND" can 
 			// really mean complete. If not found and timeout not defined,
 			// consider task complete.
-			if (status == COMPLETE || (status == NOT_FOUND && deadline == 0)) {
+			if (status == COMPLETE || (status == NOT_FOUND && policy.timeout == 0)) {
 				done = true;
 				return;
 			}
 			
 			// Check for timeout.
-			if (deadline > 0 && System.currentTimeMillis() + sleepInterval > deadline) {
+			if (policy.timeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
 				// Timeout has been reached or will be reached after next sleep.
 				throw new AerospikeException.Timeout();				
 			}		

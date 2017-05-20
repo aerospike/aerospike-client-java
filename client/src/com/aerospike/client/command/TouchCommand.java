@@ -20,39 +20,21 @@ import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class TouchCommand extends SyncCommand {
-	private final Cluster cluster;
 	private final WritePolicy policy;
 	private final Key key;
-	private final Partition partition;
 
-	public TouchCommand(Cluster cluster, WritePolicy policy, Key key) {
-		this.cluster = cluster;
+	public TouchCommand(WritePolicy policy, Key key) {
 		this.policy = policy;
 		this.key = key;
-		this.partition = new Partition(key);
 	}
 	
 	@Override
-	protected Policy getPolicy() {
-		return policy;
-	}
-
-	@Override
 	protected void writeBuffer() {
 		setTouch(policy, key);
-	}
-
-	@Override
-	protected Node getNode() {
-		return cluster.getMasterNode(partition);
 	}
 
 	@Override

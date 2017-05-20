@@ -33,7 +33,6 @@ import com.aerospike.client.policy.Policy;
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	
 	final AsyncMultiExecutor parent;
-	final Node node;
 	int groups;
 	int resultCode;
 	int generation;
@@ -44,14 +43,9 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	final boolean stopOnNotFound;
 		
 	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean stopOnNotFound) {
-		super(policy, false, true);
+		super(policy, null, node, true, true);
 		this.parent = parent;
-		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
-	}
-
-	protected final Node getNode() {	
-		return node;
 	}
 
 	final boolean parseGroup(int receiveSize) {

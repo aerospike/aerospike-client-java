@@ -39,8 +39,8 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	}
 	
 	@Override
-	protected MultiCommand createCommand(Node node) {
-		return new QueryRecordCommand(node, policy, statement, recordSet);
+	protected MultiCommand createCommand() {
+		return new QueryRecordCommand(policy, statement, recordSet);
 	}
 	
 	@Override

@@ -111,8 +111,8 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	}
 	
 	@Override
-	protected MultiCommand createCommand(Node node) {
-		return new QueryAggregateCommand(node, policy, statement, lua, inputQueue);
+	protected MultiCommand createCommand() {
+		return new QueryAggregateCommand(policy, statement, lua, inputQueue);
 	}
 	
 	@Override

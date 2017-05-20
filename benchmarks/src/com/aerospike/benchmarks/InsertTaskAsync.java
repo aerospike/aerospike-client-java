@@ -33,6 +33,8 @@ public final class InsertTaskAsync extends InsertTask {
 	private final long keyStart;
 	private final long keyMax;
 	private long keyCount;
+	private long begin;
+	private final boolean useLatency;
 	
 	public InsertTaskAsync(
 		AerospikeClient client,
@@ -48,8 +50,9 @@ public final class InsertTaskAsync extends InsertTask {
 		this.random = new RandomShift();
 		this.keyStart = keyStart;
 		this.keyMax = keyMax;
+		this.useLatency = counters.write.latency != null;
 		
-		if (counters.write.latency != null) {
+		if (useLatency) {
 			listener = new LatencyWriteHandler();
 		}
 		else {
@@ -61,16 +64,14 @@ public final class InsertTaskAsync extends InsertTask {
 		long currentKey = keyStart + keyCount;
 		Key key = new Key(args.namespace, args.setName, currentKey);
 		Bin[] bins = args.getBins(random, true, currentKey);
+		
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
 		client.put(eventLoop, listener, args.writePolicy, key, bins);		
 	}
 	
 	private final class LatencyWriteHandler implements WriteListener {
-		private long begin;
-		
-		public LatencyWriteHandler() {
-			this.begin = System.nanoTime();
-		}
-		
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
@@ -80,7 +81,6 @@ public final class InsertTaskAsync extends InsertTask {
 					
 			if (keyCount < keyMax) {
 				// Try next command.
-				begin = System.nanoTime();
 				runCommand();
 			}
 		}

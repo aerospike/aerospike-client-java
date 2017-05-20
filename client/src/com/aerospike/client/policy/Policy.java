@@ -35,26 +35,49 @@ public class Policy {
 	public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
 	/**
-	 * Send read commands to the node containing the key's partition replica type.
-	 * Write commands are not affected by this setting, because all writes are directed 
-	 * to the node containing the key's master partition.
+	 * Replica algorithm used to determine the target node for a single record command.
+	 * Batch, scan and query are not affected by replica algorithms.
 	 * <p>
-	 * Default: {@link Replica#MASTER}
+	 * Default: {@link Replica#SEQUENCE}
 	 */
-	public Replica replica = Replica.MASTER;
+	public Replica replica = Replica.SEQUENCE;
 	
 	/**
-	 * Total transaction timeout in milliseconds for both client and server.
+	 * Total transaction timeout in milliseconds.
+	 * <p>
+	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
+	 * completes, the transaction will abort with
+	 * {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * If totalTimeout is zero, there will be no time limit and the transaction will retry
+	 * on network errors until maxRetries is exceeded.  If maxRetries is exceeded, the
+	 * transaction also aborts with {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * Default: 0 (no time limit and rely on maxRetries).
+	 */
+	public int totalTimeout;
+
+	/**
+	 * Transaction timeout for each attempt in milliseconds.
 	 * The timeout is tracked on the client and also sent to the server along 
 	 * with the transaction in the wire protocol.  The client will most likely
-	 * timeout first, but the server has the capability to timeout the transaction
-	 * as well.
+	 * timeout first, but the server has the capability to timeout the transaction.
 	 * <p>
-	 * The timeout is also used as a socket timeout.
-	 * Default: 0 (no timeout).
+	 * If timeout is not zero and timeout is reached before an attempt completes,
+	 * the totalTimeout is checked.  If totalTimeout is not exceeded, the transaction
+	 * is retried.  If both timeout and totalTimeout are non-zero, timeout must be less
+	 * than or equal to totalTimeout.
+	 * <p>
+	 * If timeout is zero, there will be no time limit per attempt.  If the transaction
+	 * fails on a network error, the totalTimeout still applies.
+	 * <p>
+	 * For synchronous methods, the timeout is the socket timeout.  For asynchronous
+	 * methods, the timeout is implemented using a HashedWheelTimer.
+	 * <p>
+	 * Default: 0 (no timeout for each attempt).
 	 */
 	public int timeout;
-	
+
 	/**
 	 * Delay milliseconds after transaction timeout before closing socket in async mode only.
 	 * When a transaction is stopped prematurely, the socket must be closed and not placed back
@@ -79,37 +102,31 @@ public class Policy {
 
 	/**
 	 * Maximum number of retries before aborting the current transaction.
-	 * A retry may be attempted when there is a network error.  
-	 * If maxRetries is exceeded, the abort will occur even if the timeout 
-	 * has not yet been exceeded.
+	 * The initial attempt is not counted as a retry.
 	 * <p>
-	 * Default: 1
+	 * If totalTimeout is zero and maxRetries is exceeded, the abort will
+	 * occur with a {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * if totalTimeout is not zero, maxRetries is ignored.
+	 * <p>
+	 * Default: 2 (initial attempt + 2 retries = 3 attempts)
 	 */
-	public int maxRetries = 1;
+	public int maxRetries = 2;
 
 	/**
 	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
 	 * This field is ignored in async mode.
 	 * <p>
-	 * Default: 500ms
+	 * Reads do not have to sleep when a node goes down because the cluster
+	 * does not shut out reads during cluster reformation.  The default for 
+	 * reads is zero.
+	 * <p>
+	 * Writes need to wait for the cluster to reform when a node goes down.
+	 * Immediate write retries on node failure have been shown to result in
+	 * the same error. The default for writes is 500ms.  This default is 
+	 * implemented in {@link com.aerospike.client.policy.ClientPolicy#ClientPolicy()})
 	 */
-	public int sleepBetweenRetries = 500;
-	
-	/**
-	 * Should the client retry a command if the timeout is reached.
-	 * <p>
-	 * If false, throw timeout exception when the timeout has been reached.  Note that
-	 * retries can still occur if a command fails on a network error before the timeout
-	 * has been reached.
-	 * <p>
-	 * If true, retry command with same timeout when the timeout has been reached.
-	 * The maximum number of retries is defined by maxRetries.  Note that retries in 
-	 * async mode can only be made if timeoutDelay is zero. Otherwise, deadlock would 
-	 * have been possible.
-	 * <p>
-	 * Default: false
-	 */
-	public boolean retryOnTimeout;
+	public int sleepBetweenRetries;
 
 	/**
 	 * Send user defined key in addition to hash digest on both reads and writes.
@@ -129,7 +146,6 @@ public class Policy {
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
-		this.retryOnTimeout = other.retryOnTimeout;
 		this.sendKey = other.sendKey;
 	}
 	

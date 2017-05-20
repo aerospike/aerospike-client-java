@@ -94,6 +94,9 @@ public class Cluster implements Runnable, Closeable {
 	// Extra event loop state for this cluster.
 	public final EventState[] eventState;
 	
+	// Maximum socket idle in nanoseconds.
+	public final long maxSocketIdleNanos;
+
 	// Size of node's synchronous connection pool.
 	protected final int connectionQueueSize;
 	
@@ -102,9 +105,6 @@ public class Cluster implements Runnable, Closeable {
 
 	// Initial connection timeout.
 	private final int connectionTimeout;
-
-	// Maximum socket idle in milliseconds.
-	public final int maxSocketIdleMillis;
 
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
@@ -166,7 +166,7 @@ public class Cluster implements Runnable, Closeable {
 		connectionQueueSize = policy.maxConnsPerNode;
 		connPoolsPerNode = policy.connPoolsPerNode;
 		connectionTimeout = policy.timeout;
-		maxSocketIdleMillis = 1000 * ((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
+		maxSocketIdleNanos = TimeUnit.SECONDS.toNanos((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		
@@ -294,7 +294,7 @@ public class Cluster implements Runnable, Closeable {
      * database requests may still succeed.
      */
     private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
-		long limit = System.currentTimeMillis() + connectionTimeout;
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(connectionTimeout);
 		int count = -1;
 		
 		do {
@@ -307,7 +307,7 @@ public class Cluster implements Runnable, Closeable {
 			
 			Util.sleep(1);			
 			count = nodes.length;
-		} while (System.currentTimeMillis() < limit);
+		} while (System.nanoTime() < deadline);
     }
     	
 	public final void run() {

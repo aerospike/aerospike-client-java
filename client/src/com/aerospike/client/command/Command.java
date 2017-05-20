@@ -74,7 +74,7 @@ public abstract class Command {
 
 	public byte[] dataBuffer;
 	public int dataOffset;
-	private int sequence;
+	public int sequence;
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -1011,28 +1011,26 @@ public abstract class Command {
 		// Write total size of message which is the current offset.
 		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(size, dataBuffer, 0);
-	}
+	}	
 	
-	public final Node getReadNode(Cluster cluster, Partition partition, Replica replica)
+	public final Node getNode(Cluster cluster, Partition partition, Replica replica, boolean isRead)
 	{
-		switch (replica)
-		{
-			case MASTER:
-				return cluster.getMasterNode(partition);
-
-			case MASTER_PROLES:
-				return cluster.getMasterProlesNode(partition);
-
-			case SEQUENCE:
-				return getSequenceNode(cluster, partition);
-
-			default:
-			case RANDOM:
-				return cluster.getRandomNode();
+		// Handle default case first.
+		if (replica == Replica.SEQUENCE) {
+			return getSequenceNode(cluster, partition);			
 		}
+		
+		if (replica == Replica.MASTER || ! isRead) {
+			return cluster.getMasterNode(partition);
+		}
+
+		if (replica == Replica.MASTER_PROLES) {
+			return cluster.getMasterProlesNode(partition);			
+		}
+		return cluster.getRandomNode();
 	}
 
-	public final Node getSequenceNode(Cluster cluster, Partition partition)
+	private final Node getSequenceNode(Cluster cluster, Partition partition)
 	{
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,AtomicReferenceArray<Node>[]> map = cluster.partitionMap;
@@ -1041,12 +1039,12 @@ public abstract class Command {
 		if (replicaArray != null) {
 			for (int i = 0; i < replicaArray.length; i++) {
 				int index = Math.abs(sequence % replicaArray.length);						
-				sequence++;
 				Node node = replicaArray[index].get(partition.partitionId);
 				
 				if (node != null && node.isActive()) {
 					return node;
-				}				
+				}			
+				sequence++;
 			}
 		}
 		return cluster.getRandomNode();		

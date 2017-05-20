@@ -22,8 +22,6 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateCommand extends ReadCommand {
@@ -31,8 +29,8 @@ public final class OperateCommand extends ReadCommand {
 	private final Operation[] operations;
 	private boolean hasWrite;
 
-	public OperateCommand(Cluster cluster, WritePolicy policy, Key key, Operation[] operations) {
-		super(cluster, policy, key, null);
+	public OperateCommand(WritePolicy policy, Key key, Operation[] operations) {
+		super(policy, key, null);
 		this.writePolicy = policy;
 		this.operations = operations;
 	}
@@ -40,11 +38,6 @@ public final class OperateCommand extends ReadCommand {
 	@Override
 	protected void writeBuffer() {
 		hasWrite = setOperate(writePolicy, key, operations);
-	}
-	
-	@Override
-	protected Node getNode() {
-		return cluster.getMasterNode(partition);
 	}
 	
 	@Override

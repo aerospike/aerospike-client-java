@@ -178,10 +178,14 @@ public class Main implements Log.Callback {
 			"The default is to run indefinitely."
 			);
 		
-		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
-		options.addOption("readTimeout", true, "Set read transaction timeout in milliseconds.");
-		options.addOption("writeTimeout", true, "Set write transaction timeout in milliseconds.");
+		options.addOption("T", "timeout", true, "Set read and write transaction attempt timeout in milliseconds.");
+		options.addOption("readTimeout", true, "Set read transaction attempt timeout in milliseconds.");
+		options.addOption("writeTimeout", true, "Set write transaction attempt timeout in milliseconds.");
 	
+		options.addOption("totalTimeout", true, "Set read and write transaction total timeout in milliseconds.");
+		options.addOption("readTotalTimeout", true, "Set read transaction total timeout in milliseconds.");
+		options.addOption("writeTotalTimeout", true, "Set write transaction total timeout in milliseconds.");
+
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true, 
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
@@ -552,6 +556,23 @@ public class Main implements Log.Callback {
 			args.writePolicy.timeout = Integer.parseInt(line.getOptionValue("writeTimeout"));
 		}			 
 
+		if (line.hasOption("totalTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("totalTimeout"));
+			args.readPolicy.totalTimeout = timeout;
+			args.writePolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
+		}			 
+
+		if (line.hasOption("readTotalTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("readTotalTimeout"));
+			args.readPolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
+		}			 
+
+		if (line.hasOption("writeTotalTimeout")) {
+			args.writePolicy.totalTimeout = Integer.parseInt(line.getOptionValue("writeTotalTimeout"));
+		}
+
 		if (line.hasOption("maxRetries")) {
 			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
 			args.readPolicy.maxRetries = maxRetries;
@@ -578,7 +599,6 @@ public class Main implements Log.Callback {
 			}
 			else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
-				args.readPolicy.retryOnTimeout = true;
 				clientPolicy.requestProleReplicas = true;
 			}
 			else {
@@ -735,19 +755,30 @@ public class Main implements Log.Callback {
 			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps")));
 	
 		if (args.workload != Workload.INITIALIZE) {
-			System.out.println("read policy: timeout: " + args.readPolicy.timeout
-				+ ", maxRetries: " + args.readPolicy.maxRetries 
-				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
-				+ ", consistencyLevel: " + args.readPolicy.consistencyLevel
-				+ ", replica: " + args.readPolicy.replica
-				+ ", reportNotFound: " + args.reportNotFound);
+			System.out.println("read policy:");
+			System.out.println(
+					"    timeout: " + args.readPolicy.timeout
+					+ ", totalTimeout: " + args.readPolicy.totalTimeout 
+					+ ", maxRetries: " + args.readPolicy.maxRetries 
+					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
+					);
+
+			System.out.println(
+					"    consistencyLevel: " + args.readPolicy.consistencyLevel
+					+ ", replica: " + args.readPolicy.replica
+					+ ", reportNotFound: " + args.reportNotFound);
 		}
 
-		System.out.println("write policy: timeout: " + args.writePolicy.timeout
+		System.out.println("write policy:");
+		System.out.println(
+			"    write policy: timeout: " + args.writePolicy.timeout
+			+ ", totalTimeout: " + args.writePolicy.totalTimeout 
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
-			+ ", commitLevel: " + args.writePolicy.commitLevel);
+			);
 		
+		System.out.println("    commitLevel: " + args.writePolicy.commitLevel);
+
 		if (args.batchSize > 1) {		
 			System.out.println("batch size: " + args.batchSize
 				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
@@ -790,27 +821,12 @@ public class Main implements Log.Callback {
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
 		Log.setCallback(this);		
-		args.updatePolicy = cloneWritePolicy(args.writePolicy);
+		args.updatePolicy = new WritePolicy(args.writePolicy);
 		args.updatePolicy.recordExistsAction = RecordExistsAction.UPDATE;
-		args.replacePolicy = cloneWritePolicy(args.writePolicy);
+		args.replacePolicy = new WritePolicy(args.writePolicy);
 		args.replacePolicy.recordExistsAction = RecordExistsAction.REPLACE;
 
 		clientPolicy.failIfNotConnected = true;
-	}
-	
-	private WritePolicy cloneWritePolicy(WritePolicy writePolicy) {
-		WritePolicy result = new WritePolicy();
-		result.commitLevel = writePolicy.commitLevel;
-		result.consistencyLevel = writePolicy.consistencyLevel;
-		result.expiration = writePolicy.expiration;
-		result.generationPolicy = writePolicy.generationPolicy;
-		result.maxRetries = writePolicy.maxRetries;
-		result.priority = writePolicy.priority;
-		result.recordExistsAction = writePolicy.recordExistsAction;
-		result.sendKey = writePolicy.sendKey;
-		result.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
-		result.timeout = writePolicy.timeout;
-		return result;
 	}
 	
 	private static void logUsage(Options options) {

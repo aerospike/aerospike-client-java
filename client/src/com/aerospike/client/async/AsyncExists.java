@@ -19,7 +19,6 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
@@ -27,24 +26,17 @@ import com.aerospike.client.policy.Policy;
 public final class AsyncExists extends AsyncCommand implements AsyncSingleCommand {
 	private final ExistsListener listener;
 	private final Key key;
-	private final Partition partition;
 	private boolean exists;
 	
 	public AsyncExists(ExistsListener listener, Policy policy, Key key) {
-		super(policy, true, false);
+		super(policy, new Partition(key), null, true, false);
 		this.listener = listener;
 		this.key = key;
-		this.partition = new Partition(key);
 	}
 
 	@Override
 	protected void writeBuffer() {
 		setExists(policy, key);
-	}
-
-	@Override
-	protected Node getNode() {
-		return getReadNode(cluster, partition, policy.replica);
 	}
 
 	@Override

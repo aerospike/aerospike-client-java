@@ -32,32 +32,34 @@ import com.aerospike.client.util.Util;
 public class NioCommand implements Runnable, TimerTask {
 
 	final NioEventLoop eventLoop;
+	final Cluster cluster;
 	final AsyncCommand command;
 	final EventState eventState;
-	Node node;
 	NioConnection conn;
 	ByteBuffer byteBuffer;
 	HashedWheelTimeout timeoutTask;
 	long deadline;
 	int state;
-	int iterations;
+	int iteration;
 	int receiveSize;
+	final boolean hasTotalTimeout;
 	boolean timeoutDelay;
-	boolean isClose;
 
 	public NioCommand(NioEventLoop eventLoop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = eventLoop;
+		this.cluster = cluster;
 		this.eventState = cluster.eventState[eventLoop.index];		
 		this.command = command;
-		command.cluster = cluster;
 		command.bufferQueue = eventLoop.bufferQueue;
+		hasTotalTimeout = command.policy.totalTimeout > 0;
 		
-		int timeout = command.policy.timeout;
-		deadline = (timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeout) : 0;
-		
+		if (hasTotalTimeout) {				
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
+		}
+
 		if (eventLoop == Thread.currentThread() && eventLoop.errors < 5) {
 			// We are already in event loop thread, so start processing.
-			run();		
+			run();
 		}
 		else {
 			// Send command through queue so it can be executed in event loop thread.
@@ -75,9 +77,25 @@ public class NioCommand implements Runnable, TimerTask {
 			notifyFailure(new AerospikeException("Cluster has been closed"));
 			return;
 		}
-
-		if (deadline > 0) {
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
+		
+		if (state == AsyncCommand.REGISTERED && hasTotalTimeout) {
+			// Command was queued to event loop thread. Check if timed out.
+			long currentTime = System.nanoTime();
+			
+			if (currentTime >= deadline) {
+				eventState.pending--;
+				eventState.errors++;
+				state = AsyncCommand.COMPLETE;
+				notifyFailure(new AerospikeException.Timeout(null, command.policy.totalTimeout, iteration));
+				return;
+			}
+			
+			if (command.policy.timeout > 0) {
+				timeoutTask = eventLoop.timer.addTimeout(this, currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout));			
+			}
+		}
+		else if (command.policy.timeout > 0) {
+			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout));
 		}
 
 		executeCommand();
@@ -85,7 +103,7 @@ public class NioCommand implements Runnable, TimerTask {
 
 	protected final void executeCommand() {
 		try {
-			node = command.getNode();
+			Node node = command.getNode(cluster);
 			byteBuffer = eventLoop.getByteBuffer();
 			conn = (NioConnection)node.getAsyncConnection(eventLoop.index, byteBuffer);
 			
@@ -103,7 +121,7 @@ public class NioCommand implements Runnable, TimerTask {
 				throw e;
 			}
 		
-			state = (command.cluster.getUser() != null) ? AsyncCommand.AUTH_WRITE : AsyncCommand.COMMAND_WRITE;
+			state = (cluster.getUser() != null) ? AsyncCommand.AUTH_WRITE : AsyncCommand.COMMAND_WRITE;
 			conn.registerConnect(this);
 			eventLoop.errors = 0;
 		}
@@ -118,7 +136,7 @@ public class NioCommand implements Runnable, TimerTask {
 		catch (Exception e) {
 			// Fail without retry on unknown errors.
 			eventLoop.errors++;
-			cleanup();
+			fail();
 			notifyFailure(new AerospikeException(e));
 		}
 	}
@@ -138,7 +156,7 @@ public class NioCommand implements Runnable, TimerTask {
 		command.initBuffer();
 		
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(command.cluster.getUser(), command.cluster.getPassword());
+		command.dataOffset = admin.setAuthenticate(cluster.getUser(), cluster.getPassword());
 		byteBuffer.clear();
 		byteBuffer.put(command.dataBuffer, 0, command.dataOffset);
 		byteBuffer.flip();
@@ -205,7 +223,7 @@ public class NioCommand implements Runnable, TimerTask {
 			break;
 			
 		case AsyncCommand.COMMAND_READ_HEADER:
-			if (command.single) {
+			if (command.partition != null) {
 				readSingleHeader();
 			}
 			else {
@@ -214,7 +232,7 @@ public class NioCommand implements Runnable, TimerTask {
 			break;
 			
 		case AsyncCommand.COMMAND_READ_BODY:
-			if (command.single) {
+			if (command.partition != null) {
 				readSingleBody();
 			}
 			else {
@@ -390,42 +408,76 @@ public class NioCommand implements Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
+
+		if (timeoutDelay) {
+			// Transaction has been delayed long enough.
+			// User has already been notified.
+			// timeoutTask has already been removed, so set to null to avoid cancel.
+			timeoutTask = null;
+			fail();
+			return;
+		}
+		iteration++;
+
+		// Check total timeout.
+		long currentTime = 0;
 		
-		// Command has timed out.
-		iterations++;
+		if (hasTotalTimeout) {
+			currentTime = System.nanoTime();
+			
+			if (currentTime >= deadline) {
+				totalTimeout();
+				return;
+			}
+		}
+		else {
+			if (iteration > command.policy.maxRetries) {
+				totalTimeout();
+				return;		
+			}
+		}
 		
 		// Attempt retry.
-		if (command.policy.retryOnTimeout && iterations <= command.policy.maxRetries) {
-			closeConnection();
-			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout);
+		closeConnection();
+		
+		if (command.isRead) {
+			// Read commands shift to prole node on timeout.
+			command.sequence++;
+		}
+
+		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.timeout);
+		
+		if (hasTotalTimeout) {
+			long remaining = deadline - currentTime;
+			
+			if (remaining < timeout) {
+				timeout = remaining;
+			}
+		}
+		else {
+			currentTime = System.nanoTime();
+		}
+			
+		timeoutTask = eventLoop.timer.addTimeout(this, currentTime + timeout);
+		executeCommand();
+	}
+	
+	private final void totalTimeout() {
+		// Attempt timeout delay.
+		if (command.policy.timeoutDelay > 0) {
+			// Notify user of timeout, but allow transaction to continue in hope of reusing the socket.
+			timeoutDelay = true;
+			notifyFailure(new AerospikeException.Timeout(command.node, command.policy.timeout, iteration));
+			
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
 			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-			executeCommand();
 			return;
 		}
 
-		// Attempt timeout delay.
-		if (command.policy.timeoutDelay > 0) {
-			if (timeoutDelay) {
-				// Transaction has been delayed long enough.
-				// timeoutTask has already been removed, so set to null to avoid cancel.
-				timeoutTask = null;
-				cleanup();
-			}
-			else {
-				// Notify user of timeout, but allow transaction to continue
-				// in hope of reusing the socket.
-				timeoutDelay = true;
-				deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
-				timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-				notifyFailure(new AerospikeException.Timeout(node, command.policy.timeout, iterations, 0, 0));
-			}
-			return;		
-		}
-		
 		// Perform timeout.
 		timeoutTask = null;
-		cleanup();
-		notifyFailure(new AerospikeException.Timeout(node, command.policy.timeout, iterations, 0, 0));
+		fail();
+		notifyFailure(new AerospikeException.Timeout(command.node, command.policy.timeout, iteration));
 	}
 	
 	protected final void finish() {
@@ -445,31 +497,75 @@ public class NioCommand implements Runnable, TimerTask {
 	}
 
 	protected final void onNetworkError(AerospikeException ae) {
+		closeConnection();
+		command.sequence++;
+		retry(ae);
+	}
+	
+	protected final void onServerTimeout(AerospikeException ae) {
+		conn.unregister();
+		command.node.putAsyncConnection(conn, eventLoop.index);
+
+		if (command.isRead) {
+			// Read commands shift to prole node on timeout.
+			command.sequence++;
+		}
+		retry(ae);
+	}
+
+	private final void retry(AerospikeException ae) {
 		if (timeoutDelay) {
 			// User has already been notified.
-			cleanup();
+			close();
 			return;
+		}
+		iteration++;
+		
+		// Check if should retry.
+		long currentTime = 0;
+		
+		if (hasTotalTimeout) {
+			currentTime = System.nanoTime();
+			
+			if (currentTime >= deadline) {
+				// Fail command.
+				close();
+				notifyFailure(ae);
+				return;
+			}
+		}
+		else {
+			if (iteration > command.policy.maxRetries) {
+				// Fail command.
+				close();
+				notifyFailure(ae);
+				return;				
+			}
 		}
 		
 		// Attempt retry.
-		if (iterations < command.policy.maxRetries && (command.policy.retryOnTimeout || deadline == 0 || System.nanoTime() < deadline)) {
-			closeConnection();
-			iterations++;
-			
-			if (command.policy.retryOnTimeout && deadline > 0) {
-				deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout);
-				timeoutTask.cancel();
-				timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-			}
-			executeCommand();
-			return;
-		}
+		long timeout = command.policy.timeout;
 		
-		// Fail command.
-		cleanup();
-		notifyFailure(ae);		
+		if (timeout > 0) {
+			timeoutTask.cancel();
+			timeout = TimeUnit.MILLISECONDS.toNanos(timeout);
+			
+			if (hasTotalTimeout) {
+				long remaining = deadline - currentTime;
+				
+				if (remaining < timeout) {
+					timeout = remaining;
+				}
+			}
+			else {
+				currentTime = System.nanoTime();
+			}
+			
+			timeoutTask = eventLoop.timer.addTimeout(this, currentTime + timeout);
+		}
+		executeCommand();
 	}
-	
+
 	protected final void onApplicationError(AerospikeException ae) {
 		if (ae.keepConnection()) {
 			// Put connection back in pool.
@@ -477,7 +573,7 @@ public class NioCommand implements Runnable, TimerTask {
 		}
 		else {
 			// Close socket to flush out possible garbage.
-			cleanup();
+			fail();
 		}
 		
 		if (! timeoutDelay) {			
@@ -495,22 +591,27 @@ public class NioCommand implements Runnable, TimerTask {
 	}
 
 	private final void complete() {		
-		if (timeoutTask != null) {
-			timeoutTask.cancel();
-		}
 		conn.unregister();
-		node.putAsyncConnection(conn, eventLoop.index);
-		eventLoop.putByteBuffer(byteBuffer);
-		command.putBuffer();
-		eventState.pending--;
-		state = AsyncCommand.COMPLETE;
+		command.node.putAsyncConnection(conn, eventLoop.index);
+		close();		
 	}
 
-	private final void cleanup() {
+	private final void fail() {
+		closeConnection();
+		close();		
+	}
+
+	private final void closeConnection() {
+		if (conn != null) {
+			command.node.closeAsyncConnection(conn, eventLoop.index);
+			conn = null;
+		}
+	}
+
+	private final void close() {
 		if (timeoutTask != null) {
 			timeoutTask.cancel();
 		}
-		closeConnection();
 		
 		if (byteBuffer != null) {
 			eventLoop.putByteBuffer(byteBuffer);
@@ -518,12 +619,5 @@ public class NioCommand implements Runnable, TimerTask {
 		command.putBuffer();
 		eventState.pending--;
 		state = AsyncCommand.COMPLETE;
-	}
-
-	private final void closeConnection() {
-		if (conn != null) {
-			node.closeAsyncConnection(conn, eventLoop.index);
-			conn = null;
-		}
 	}
 }

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.util.Util;
 
@@ -257,7 +258,13 @@ public final class NioEventLoop extends Thread implements EventLoop {
         	command.onNetworkError(ac);
         }
         catch (AerospikeException ae) {
-			command.onApplicationError(ae);
+        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
+        		// Go through retry logic on server timeout
+        		command.onServerTimeout(ae);
+        	}
+        	else {
+        		command.onApplicationError(ae);
+        	}
         }
         catch (IOException ioe) {
         	command.onNetworkError(new AerospikeException(ioe));
@@ -267,14 +274,14 @@ public final class NioEventLoop extends Thread implements EventLoop {
         }
     }
 
-	public void close() {   	
+	public void close() {
 		try {
 			selector.close();
-		} 
+		}
 		catch (Exception e) {
 		}
 	}
-    
+
 	static class CloseException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 	}

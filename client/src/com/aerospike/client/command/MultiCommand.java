@@ -28,13 +28,11 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
 
 public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 10;  // 10 MB
 	
 	private BufferedInputStream bis;
-	protected final Node node;
 	protected int resultCode;
 	protected int generation;
 	protected int expiration;
@@ -44,15 +42,10 @@ public abstract class MultiCommand extends SyncCommand {
 	private final boolean stopOnNotFound;
 	protected volatile boolean valid = true;
 	
-	protected MultiCommand(Node node, boolean stopOnNotFound) {
-		this.node = node;
+	protected MultiCommand(boolean stopOnNotFound) {
 		this.stopOnNotFound = stopOnNotFound;
 	}
 	
-	protected final Node getNode() { 
-		return node;
-	}
-
 	protected final void parseResult(Connection conn) throws IOException {	
 		// Read socket into receive buffer one record at a time.  Do not read entire receive size
 		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
