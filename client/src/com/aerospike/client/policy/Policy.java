@@ -115,6 +115,11 @@ public class Policy {
 
 	/**
 	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
+	 * <p>
+	 * The sleep only occurs on connection errors and server timeouts
+	 * which suggest a node is down and the cluster is reforming.
+	 * The sleep does not occur when the client's socketTimeout expires.
+	 * <p>
 	 * This field is ignored in async mode.
 	 * <p>
 	 * Reads do not have to sleep when a node goes down because the cluster

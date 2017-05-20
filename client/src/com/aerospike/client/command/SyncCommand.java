@@ -41,6 +41,7 @@ public abstract class SyncCommand extends Command {
 		Exception exception = null;
 		int timeout = policy.socketTimeout;
 		int iteration = 0;
+		boolean isClientTimeout;
 	
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
@@ -91,6 +92,7 @@ public abstract class SyncCommand extends Command {
 						// Go through retry logic on server timeout.
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = ae;
+						isClientTimeout = false;
 						
 						if (isRead) {
 							super.sequence++;
@@ -113,6 +115,7 @@ public abstract class SyncCommand extends Command {
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					exception = ste;
+					isClientTimeout = true;
 
 					if (isRead) {
 						super.sequence++;
@@ -123,6 +126,7 @@ public abstract class SyncCommand extends Command {
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					exception = new AerospikeException(ioe);
+					isClientTimeout = false;
 					super.sequence++;
 				}
 			}
@@ -130,6 +134,7 @@ public abstract class SyncCommand extends Command {
 				// Socket connection error has occurred. Retry.				
 				// Log.info("Connection error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 				exception = ce;
+				isClientTimeout = false;
 				super.sequence++;
 			}
 			
@@ -157,7 +162,7 @@ public abstract class SyncCommand extends Command {
 				}
 			}
 			
-			if (policy.sleepBetweenRetries > 0) {
+			if (!isClientTimeout && policy.sleepBetweenRetries > 0) {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
@@ -167,7 +172,7 @@ public abstract class SyncCommand extends Command {
 		}
 
 		// Retries have been exhausted.  Throw last exception.
-		if (exception instanceof SocketTimeoutException) {
+		if (isClientTimeout) {
 			// Log.info("SocketTimeoutException: " + tranId + ',' + sequence + ',' + iteration);
 			throw new AerospikeException.Timeout(node, policy.totalTimeout, iteration);
 		}
