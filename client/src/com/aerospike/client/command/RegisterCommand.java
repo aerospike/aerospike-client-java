@@ -48,7 +48,7 @@ public final class RegisterCommand {
 		// Send UDF to one node. That node will distribute the UDF to other nodes.
 		String command = sb.toString();
 		Node node = cluster.getRandomNode();
-		Connection conn = node.getConnection(policy.timeout);
+		Connection conn = node.getConnection(policy.socketTimeout);
 		
 		try {			
 			Info info = new Info(conn, command);

@@ -110,12 +110,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 			
-			if (command.policy.timeout > 0) {
-				timeoutTask = eventLoop.timer.addTimeout(this, currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout));			
+			if (command.policy.socketTimeout > 0) {
+				timeoutTask = eventLoop.timer.addTimeout(this, currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));			
 			}
 		}
-		else if (command.policy.timeout > 0) {
-			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeout));
+		else if (command.policy.socketTimeout > 0) {
+			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));
 		}
 
 		executeCommand();		
@@ -481,7 +481,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			command.sequence++;
 		}
 
-		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.timeout);
+		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 		
 		if (hasTotalTimeout) {
 			long remaining = deadline - currentTime;
@@ -503,7 +503,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (command.policy.timeoutDelay > 0) {
 			// Notify user of timeout, but allow transaction to continue in hope of reusing the socket.
 			timeoutDelay = true;
-			notifyFailure(new AerospikeException.Timeout(command.node, command.policy.timeout, iteration));
+			notifyFailure(new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration));
 			
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
 			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
@@ -513,7 +513,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		// Perform timeout.
 		timeoutTask = null;
 		fail();
-		notifyFailure(new AerospikeException.Timeout(command.node, command.policy.timeout, iteration));
+		notifyFailure(new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration));
 	}
 
 	protected final void finish() {
@@ -588,7 +588,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Attempt retry.
-		long timeout = command.policy.timeout;
+		long timeout = command.policy.socketTimeout;
 		
 		if (timeout > 0) {
 			timeoutTask.cancel();

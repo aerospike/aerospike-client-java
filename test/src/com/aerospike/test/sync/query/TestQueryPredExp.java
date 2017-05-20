@@ -48,7 +48,7 @@ public class TestQueryPredExp extends TestSync {
 	@BeforeClass
 	public static void prepare() {
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask task = client.createIndex(policy, args.namespace, setName, indexName, binName, IndexType.NUMERIC);
 		task.waitTillComplete();
 

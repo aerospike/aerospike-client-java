@@ -43,7 +43,7 @@ public class TestAsyncQuery extends TestAsync {
 	@BeforeClass
 	public static void initialize() {
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 		task.waitTillComplete();
 	}

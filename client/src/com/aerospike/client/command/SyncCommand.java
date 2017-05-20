@@ -39,7 +39,7 @@ public abstract class SyncCommand extends Command {
 		final long deadline = (policy.totalTimeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout) : 0L;
 		final Partition partition = (key != null)? new Partition(key) : null;
 		Exception exception = null;
-		int timeout = policy.timeout;
+		int timeout = policy.socketTimeout;
 		int iteration = 0;
 	
 		// Execute command until successful, timed out or maximum iterations have been reached.
@@ -60,7 +60,7 @@ public abstract class SyncCommand extends Command {
 					writeBuffer();
 
 					// Check if timeout needs to be changed in send buffer.
-					if (timeout != policy.timeout) {
+					if (timeout != policy.socketTimeout) {
 						// Reset timeout in send buffer (destined for server) and socket.
 						Buffer.intToBytes(timeout, dataBuffer, 22);
 					}

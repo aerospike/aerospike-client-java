@@ -274,7 +274,7 @@ public final class Info {
 	 * @param name		name of variable to retrieve
 	 */
 	public static String request(InfoPolicy policy, Node node, String name) throws AerospikeException {
-		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.socketTimeout;
 		Connection conn = node.getConnection(timeout);
 
 		try {
@@ -297,7 +297,7 @@ public final class Info {
 	 * @param names		names of variables to retrieve
 	 */
 	public static Map<String,String> request(InfoPolicy policy, Node node, String... names) throws AerospikeException {
-		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.socketTimeout;
 		Connection conn = node.getConnection(timeout);
 
 		try {
@@ -319,7 +319,7 @@ public final class Info {
 	 * @param node		server node
 	 */
 	public static Map<String,String> request(InfoPolicy policy, Node node) throws AerospikeException {
-		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.timeout;
+		int timeout = (policy == null) ? DEFAULT_TIMEOUT : policy.socketTimeout;
 		Connection conn = node.getConnection(timeout);
 
 		try {

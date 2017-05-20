@@ -47,10 +47,7 @@ public abstract class RWTask {
 		this.keyCount = keyCount;
 		this.valid = true;
 		
-		writePolicyGeneration = new WritePolicy();
-		writePolicyGeneration.timeout = args.writePolicy.timeout;
-		writePolicyGeneration.maxRetries = args.writePolicy.maxRetries;
-		writePolicyGeneration.sleepBetweenRetries = args.writePolicy.sleepBetweenRetries;
+		writePolicyGeneration = new WritePolicy(args.writePolicy);
 		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
 	}	

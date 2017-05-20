@@ -49,7 +49,7 @@ public class TestQueryAverage extends TestSync {
 		rtask.waitTillComplete();
 
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 		itask.waitTillComplete();
 

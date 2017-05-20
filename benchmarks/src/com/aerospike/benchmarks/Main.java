@@ -178,9 +178,9 @@ public class Main implements Log.Callback {
 			"The default is to run indefinitely."
 			);
 		
-		options.addOption("T", "timeout", true, "Set read and write transaction attempt timeout in milliseconds.");
-		options.addOption("readTimeout", true, "Set read transaction attempt timeout in milliseconds.");
-		options.addOption("writeTimeout", true, "Set write transaction attempt timeout in milliseconds.");
+		options.addOption("T", "socketTimeout", true, "Set read and write socket timeout in milliseconds.");
+		options.addOption("readSocketTimeout", true, "Set read socket timeout in milliseconds.");
+		options.addOption("writeSocketTimeout", true, "Set write socket timeout in milliseconds.");
 	
 		options.addOption("totalTimeout", true, "Set read and write transaction total timeout in milliseconds.");
 		options.addOption("readTotalTimeout", true, "Set read transaction total timeout in milliseconds.");
@@ -539,21 +539,21 @@ public class Main implements Log.Callback {
 			args.transactionLimit = Long.parseLong(line.getOptionValue("transactions"));
 		}
 
-		if (line.hasOption("timeout")) {
-			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
-			args.readPolicy.timeout = timeout;
-			args.writePolicy.timeout = timeout;
-			args.batchPolicy.timeout = timeout;
+		if (line.hasOption("socketTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("socketTimeout"));
+			args.readPolicy.socketTimeout = timeout;
+			args.writePolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
 
-		if (line.hasOption("readTimeout")) {
-			int timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
-			args.readPolicy.timeout = timeout;
-			args.batchPolicy.timeout = timeout;
+		if (line.hasOption("readSocketTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("readSocketTimeout"));
+			args.readPolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
 
-		if (line.hasOption("writeTimeout")) {
-			args.writePolicy.timeout = Integer.parseInt(line.getOptionValue("writeTimeout"));
+		if (line.hasOption("writeSocketTimeout")) {
+			args.writePolicy.socketTimeout = Integer.parseInt(line.getOptionValue("writeSocketTimeout"));
 		}			 
 
 		if (line.hasOption("totalTimeout")) {
@@ -757,7 +757,7 @@ public class Main implements Log.Callback {
 		if (args.workload != Workload.INITIALIZE) {
 			System.out.println("read policy:");
 			System.out.println(
-					"    timeout: " + args.readPolicy.timeout
+					"    socketTimeout: " + args.readPolicy.socketTimeout
 					+ ", totalTimeout: " + args.readPolicy.totalTimeout 
 					+ ", maxRetries: " + args.readPolicy.maxRetries 
 					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
@@ -771,7 +771,7 @@ public class Main implements Log.Callback {
 
 		System.out.println("write policy:");
 		System.out.println(
-			"    write policy: timeout: " + args.writePolicy.timeout
+			"    socketTimeout: " + args.writePolicy.socketTimeout
 			+ ", totalTimeout: " + args.writePolicy.totalTimeout 
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
@@ -843,12 +843,12 @@ public class Main implements Log.Callback {
 		if (this.asyncEnabled) {
 			EventPolicy eventPolicy = new EventPolicy();
 			
-			if (args.readPolicy.timeout > 0 && args.readPolicy.timeout < eventPolicy.minTimeout) {
-				eventPolicy.minTimeout = args.readPolicy.timeout;
+			if (args.readPolicy.socketTimeout > 0 && args.readPolicy.socketTimeout < eventPolicy.minTimeout) {
+				eventPolicy.minTimeout = args.readPolicy.socketTimeout;
 			}
 			
-			if (args.writePolicy.timeout > 0 &&  args.writePolicy.timeout < eventPolicy.minTimeout) {
-				eventPolicy.minTimeout = args.writePolicy.timeout;
+			if (args.writePolicy.socketTimeout > 0 &&  args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
+				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
 			}
 
 			if (this.useNetty) {

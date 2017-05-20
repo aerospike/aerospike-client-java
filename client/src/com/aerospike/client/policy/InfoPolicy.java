@@ -24,26 +24,26 @@ public final class InfoPolicy {
 	 * Info command socket timeout in milliseconds.
 	 * Default is one second timeout.
 	 */
-	public int timeout;
+	public int socketTimeout;
 	
 	/**
 	 * Copy timeout from other InfoPolicy.
 	 */
 	public InfoPolicy(InfoPolicy other) {
-		this.timeout = other.timeout;
+		this.socketTimeout = other.socketTimeout;
 	}
 
 	/**
 	 * Copy timeout from generic Policy to InfoPolicy.
 	 */
 	public InfoPolicy(Policy other) {
-		this.timeout = other.timeout;
+		this.socketTimeout = other.socketTimeout;
 	}
 	
 	/**
 	 * Default constructor.  Default is one second timeout.
 	 */
 	public InfoPolicy() {
-		timeout = 1000;
+		socketTimeout = 1000;
 	}
 }

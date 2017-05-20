@@ -110,7 +110,7 @@ public class QueryGeoCollection extends Example {
 			indexType, params.namespace, params.set, indexName, binName);			
 		
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask task = client.createIndex(policy, params.namespace, params.set,
 				indexName, binName, IndexType.GEO2DSPHERE, indexType);
 		task.waitTillComplete();

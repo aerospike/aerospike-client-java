@@ -79,7 +79,7 @@ public abstract class Task {
 	 */
 	public final void waitTillComplete(int sleepInterval, int timeout) {
 		policy = new InfoPolicy();
-		policy.timeout = timeout;
+		policy.socketTimeout = timeout;
 		taskWait(sleepInterval);
 	}
 
@@ -93,7 +93,7 @@ public abstract class Task {
 			return;
 		}
 		
-		long deadline = (policy.timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.timeout) : 0L;
+		long deadline = (policy.socketTimeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.socketTimeout) : 0L;
 
 		do {
 			// Sleep first to give task a chance to complete and help avoid case
@@ -106,13 +106,13 @@ public abstract class Task {
 			// (especially for background query execute), so "NOT_FOUND" can 
 			// really mean complete. If not found and timeout not defined,
 			// consider task complete.
-			if (status == COMPLETE || (status == NOT_FOUND && policy.timeout == 0)) {
+			if (status == COMPLETE || (status == NOT_FOUND && policy.socketTimeout == 0)) {
 				done = true;
 				return;
 			}
 			
 			// Check for timeout.
-			if (policy.timeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
+			if (policy.socketTimeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
 				// Timeout has been reached or will be reached after next sleep.
 				throw new AerospikeException.Timeout();				
 			}		

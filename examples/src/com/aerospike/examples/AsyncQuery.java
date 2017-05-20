@@ -65,7 +65,7 @@ public class AsyncQuery extends AsyncExample {
 			params.namespace, params.set, indexName, binName);			
 		
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 		task.waitTillComplete();
 	}

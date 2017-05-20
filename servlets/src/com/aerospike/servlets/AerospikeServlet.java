@@ -227,7 +227,7 @@ public class AerospikeServlet extends HttpServlet {
             }
 
             Policy policy = new Policy();
-            policy.timeout = timeout;
+            policy.socketTimeout = timeout;
 
             if (method.equals("GET")) {
                 Record record;
@@ -295,7 +295,7 @@ public class AerospikeServlet extends HttpServlet {
                 }
                 
                 WritePolicy writePolicy = new WritePolicy();
-                writePolicy.timeout = timeout;
+                writePolicy.socketTimeout = timeout;
                 writePolicy.expiration = expiration;
                 if (generation != 0) {
                 	writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
@@ -339,7 +339,7 @@ public class AerospikeServlet extends HttpServlet {
                 }
             } else if (method.equals("DELETE")) {
                 WritePolicy writePolicy = new WritePolicy();
-                writePolicy.timeout = timeout;
+                writePolicy.socketTimeout = timeout;
                 if (generation != 0) {
                 	writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
                     writePolicy.generation = generation;

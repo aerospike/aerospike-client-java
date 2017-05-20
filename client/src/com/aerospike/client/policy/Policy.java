@@ -53,30 +53,30 @@ public class Policy {
 	 * on network errors until maxRetries is exceeded.  If maxRetries is exceeded, the
 	 * transaction also aborts with {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
-	 * Default: 0 (no time limit and rely on maxRetries).
+	 * Default: 0 (no time limit and use maxRetries).
 	 */
 	public int totalTimeout;
 
 	/**
-	 * Transaction timeout for each attempt in milliseconds.
-	 * The timeout is tracked on the client and also sent to the server along 
+	 * Socket timeout for each transaction attempt in milliseconds.
+	 * The socketTimeout is tracked on the client and also sent to the server along 
 	 * with the transaction in the wire protocol.  The client will most likely
-	 * timeout first, but the server has the capability to timeout the transaction.
+	 * timeout first, but the server also has the capability to timeout the transaction.
 	 * <p>
-	 * If timeout is not zero and timeout is reached before an attempt completes,
+	 * If socketTimeout is not zero and timeout is reached before an attempt completes,
 	 * the totalTimeout is checked.  If totalTimeout is not exceeded, the transaction
-	 * is retried.  If both timeout and totalTimeout are non-zero, timeout must be less
-	 * than or equal to totalTimeout.
+	 * is retried.  If both socketTimeout and totalTimeout are non-zero, socketTimeout 
+	 * must be less than or equal to totalTimeout.
 	 * <p>
-	 * If timeout is zero, there will be no time limit per attempt.  If the transaction
-	 * fails on a network error, the totalTimeout still applies.
+	 * If socketTimeout is zero, there will be no time limit per attempt.  If the transaction
+	 * fails on a network error, totalTimeout still applies.
 	 * <p>
-	 * For synchronous methods, the timeout is the socket timeout.  For asynchronous
-	 * methods, the timeout is implemented using a HashedWheelTimer.
+	 * For synchronous methods, socketTimeout is the socket timeout.  For asynchronous
+	 * methods, the socketTimeout is implemented using a HashedWheelTimer.
 	 * <p>
-	 * Default: 0 (no timeout for each attempt).
+	 * Default: 0 (no time limit for each attempt).
 	 */
-	public int timeout;
+	public int socketTimeout;
 
 	/**
 	 * Delay milliseconds after transaction timeout before closing socket in async mode only.
@@ -142,7 +142,7 @@ public class Policy {
 		this.priority = other.priority;
 		this.consistencyLevel = other.consistencyLevel;
 		this.replica = other.replica;
-		this.timeout = other.timeout;
+		this.socketTimeout = other.socketTimeout;
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
