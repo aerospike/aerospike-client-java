@@ -1082,8 +1082,15 @@ public class Main implements Log.Callback {
 	@Override
 	public void log(Level level, String message) {
 		String date = SimpleDateFormat.format(new Date());
-		System.out.println(date.toString() + ' ' + level.toString() + 
-			" Thread " + Thread.currentThread().getId() + ' ' + message);		
+		Thread thread = Thread.currentThread();	
+		String name = thread.getName();
+		
+		if (name == null) {
+			name = Long.toString(thread.getId());
+		}
+		
+		System.out.println(date.toString() + ' ' + level.toString() +
+			" Thread " + name + ' ' + message);
 	}
 	
 	private static class UsageException extends Exception {
