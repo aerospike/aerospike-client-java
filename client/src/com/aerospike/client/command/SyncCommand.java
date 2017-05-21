@@ -36,13 +36,23 @@ public abstract class SyncCommand extends Command {
 
 	public final void execute(Cluster cluster, Policy policy, Key key, Node node, boolean isRead) {
 		//final long tranId = TranCounter.getAndIncrement();
-		final long deadline = (policy.totalTimeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout) : 0L;
 		final Partition partition = (key != null)? new Partition(key) : null;
 		Exception exception = null;
-		int timeout = policy.socketTimeout;
+		final long deadline;
+		int socketTimeout = policy.socketTimeout;
 		int iteration = 0;
 		boolean isClientTimeout;
-	
+		
+		if (policy.totalTimeout > 0) {
+			if (socketTimeout == 0 || socketTimeout > policy.totalTimeout) {
+				throw new AerospikeException("socketTimeout > totalTimeout");
+			}
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);		
+		}
+		else {
+			deadline = 0;
+		}
+		
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
 			try {
@@ -54,16 +64,16 @@ public abstract class SyncCommand extends Command {
 					//	Log.info("Retry: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					//}
 				}
-				Connection conn = node.getConnection(timeout);
+				Connection conn = node.getConnection(socketTimeout);
 				
 				try {
 					// Set command buffer.
 					writeBuffer();
 
 					// Check if timeout needs to be changed in send buffer.
-					if (timeout != policy.socketTimeout) {
+					if (socketTimeout != policy.socketTimeout) {
 						// Reset timeout in send buffer (destined for server) and socket.
-						Buffer.intToBytes(timeout, dataBuffer, 22);
+						Buffer.intToBytes(socketTimeout, dataBuffer, 22);
 					}
 					
 					// Send command.
@@ -157,8 +167,8 @@ public abstract class SyncCommand extends Command {
 				// Convert back to milliseconds for remaining check.
 				remaining = TimeUnit.NANOSECONDS.toMillis(remaining);
 
-				if (remaining < timeout) {
-					timeout = (int)remaining;
+				if (remaining < socketTimeout) {
+					socketTimeout = (int)remaining;
 				}
 			}
 			

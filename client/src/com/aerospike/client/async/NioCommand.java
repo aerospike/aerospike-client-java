@@ -53,7 +53,10 @@ public class NioCommand implements Runnable, TimerTask {
 		command.bufferQueue = eventLoop.bufferQueue;
 		hasTotalTimeout = command.policy.totalTimeout > 0;
 		
-		if (hasTotalTimeout) {				
+		if (hasTotalTimeout) {
+			if (command.policy.socketTimeout == 0 || command.policy.socketTimeout > command.policy.totalTimeout) {
+				throw new AerospikeException("socketTimeout > totalTimeout");
+			}
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
 		}
 
