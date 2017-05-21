@@ -84,7 +84,6 @@ public class Main implements Log.Callback {
 	private long startKey;
 	private int nThreads;
 	private int asyncMaxCommands = 200;
-	private int asyncSelectorTimeout = 0;
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
 	private boolean useNetty;
@@ -254,8 +253,7 @@ public class Main implements Log.Callback {
 
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
-		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
-		options.addOption("W", "asyncSelectorThreads", true, "Number of event loop threads when running in asynchronous mode.");
+		options.addOption("W", "eventLoops", true, "Number of event loop threads when running in asynchronous mode.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
@@ -541,36 +539,38 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("socketTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("socketTimeout"));
-			args.readPolicy.socketTimeout = timeout;
-			args.writePolicy.socketTimeout = timeout;
-			args.batchPolicy.socketTimeout = timeout;
+			args.readPolicy.setSocketTimeout(timeout);
+			args.writePolicy.setSocketTimeout(timeout);
+			args.batchPolicy.setSocketTimeout(timeout);
 		}			 
 
 		if (line.hasOption("readSocketTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("readSocketTimeout"));
-			args.readPolicy.socketTimeout = timeout;
-			args.batchPolicy.socketTimeout = timeout;
+			args.readPolicy.setSocketTimeout(timeout);
+			args.batchPolicy.setSocketTimeout(timeout);
 		}			 
 
 		if (line.hasOption("writeSocketTimeout")) {
-			args.writePolicy.socketTimeout = Integer.parseInt(line.getOptionValue("writeSocketTimeout"));
+			int timeout = Integer.parseInt(line.getOptionValue("writeSocketTimeout"));
+			args.writePolicy.setSocketTimeout(timeout);
 		}			 
 
 		if (line.hasOption("totalTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("totalTimeout"));
-			args.readPolicy.totalTimeout = timeout;
-			args.writePolicy.totalTimeout = timeout;
-			args.batchPolicy.totalTimeout = timeout;
+			args.readPolicy.setTotalTimeout(timeout);
+			args.writePolicy.setTotalTimeout(timeout);
+			args.batchPolicy.setTotalTimeout(timeout);
 		}			 
 
 		if (line.hasOption("readTotalTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("readTotalTimeout"));
-			args.readPolicy.totalTimeout = timeout;
-			args.batchPolicy.totalTimeout = timeout;
+			args.readPolicy.setTotalTimeout(timeout);
+			args.batchPolicy.setTotalTimeout(timeout);
 		}			 
 
 		if (line.hasOption("writeTotalTimeout")) {
-			args.writePolicy.totalTimeout = Integer.parseInt(line.getOptionValue("writeTotalTimeout"));
+			int timeout = Integer.parseInt(line.getOptionValue("writeTotalTimeout"));
+			args.writePolicy.setTotalTimeout(timeout);
 		}
 
 		if (line.hasOption("maxRetries")) {
@@ -681,12 +681,8 @@ public class Main implements Log.Callback {
         	this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
         }
         
-        if (line.hasOption("asyncSelectorTimeout")) {
-        	this.asyncSelectorTimeout =  Integer.parseInt(line.getOptionValue("asyncSelectorTimeout"));
-        }
-
-        if (line.hasOption("asyncSelectorThreads")) {
-        	this.eventLoopSize =  Integer.parseInt(line.getOptionValue("asyncSelectorThreads"));
+        if (line.hasOption("eventLoops")) {
+        	this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
         }
         
         if (line.hasOption("latency")) {
@@ -787,7 +783,6 @@ public class Main implements Log.Callback {
 		if (this.asyncEnabled) {
 			String asyncType = this.useNetty ? "netty" : "nio";
 			System.out.println("Async " + asyncType + ": MaxCommands " +  this.asyncMaxCommands
-				+ ", SelectorTimeout: " + this.asyncSelectorTimeout
 				+ ", EventLoops: " + this.eventLoopSize
 				);
 		}

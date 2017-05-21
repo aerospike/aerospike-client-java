@@ -159,4 +159,30 @@ public class Policy {
 	 */
 	public Policy() {
 	}
+	
+	/**
+	 * Set totalTimeout.
+	 * If socketTimeout greater than totalTimeout, set socketTimeout to totalTimeout.
+	 */
+	public void setTotalTimeout(int timeout) {
+		totalTimeout = timeout;
+		
+		// If socketTimeout > totalTimeout, set socketTimeout to totalTimeout. 
+		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
+			socketTimeout = totalTimeout;
+		}
+	}
+
+	/**
+	 * Set socketTimeout.
+	 * If socketTimeout greater than totalTimeout, set socketTimeout to totalTimeout.
+	 */
+	public void setSocketTimeout(int timeout) {
+		socketTimeout = timeout;
+		
+		// If socketTimeout > totalTimeout, set socketTimeout to totalTimeout. 
+		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
+			socketTimeout = totalTimeout;
+		}
+	}
 }

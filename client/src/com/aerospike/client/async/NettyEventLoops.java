@@ -55,7 +55,7 @@ public final class NettyEventLoops implements EventLoops {
      */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group) {
 		if (policy.minTimeout < 5) {
-			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5.");
+			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
 		}
 		this.group = group;
 		

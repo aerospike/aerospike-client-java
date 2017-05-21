@@ -54,6 +54,10 @@ public final class NioEventLoops implements EventLoops {
 	 * @param size		number of event loops to create
 	 */
 	public NioEventLoops(EventPolicy policy, int size) throws AerospikeException {
+		if (policy.minTimeout < 5) {
+			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
+		}
+
 		if (size <= 0) {
 			// Default to all available CPU cores.
 			size = Runtime.getRuntime().availableProcessors();
