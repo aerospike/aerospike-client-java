@@ -210,8 +210,7 @@ public class Main implements Log.Callback {
 				"Number of synchronous connection pools per node.  Default 1."
 				);	
 		options.addOption("z", "threads", true, 
-			"Set the number of threads the client will use to generate load. " + 
-			"It is not recommended to use a value greater than 125."
+			"Set the number of threads the client will use to generate load. "
 			);	
 		options.addOption("latency", true, 
 			"\"ycsb\"[,warmup count] or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
