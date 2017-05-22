@@ -181,9 +181,9 @@ public class Main implements Log.Callback {
 		options.addOption("socketTimeout", true, "Set read and write socketTimeout in milliseconds.");
 		options.addOption("readSocketTimeout", true, "Set read socketTimeout in milliseconds.");
 		options.addOption("writeSocketTimeout", true, "Set write socketTimeout in milliseconds.");
-		options.addOption("totalTimeout", true, "Set read and write transaction totalTimeout in milliseconds.");
-		options.addOption("readTotalTimeout", true, "Set read transaction totalTimeout in milliseconds.");
-		options.addOption("writeTotalTimeout", true, "Set write transaction totalTimeout in milliseconds.");
+		options.addOption("totalTimeout", true, "Set read and write totalTimeout in milliseconds.");
+		options.addOption("readTotalTimeout", true, "Set read totalTimeout in milliseconds.");
+		options.addOption("writeTotalTimeout", true, "Set write totalTimeout in milliseconds.");
 
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true, 
