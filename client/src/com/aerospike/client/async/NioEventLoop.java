@@ -260,7 +260,7 @@ public final class NioEventLoop extends Thread implements EventLoop {
         catch (AerospikeException ae) {
         	if (ae.getResultCode() == ResultCode.TIMEOUT) {
         		// Go through retry logic on server timeout
-        		command.onServerTimeout(ae);
+        		command.onServerTimeout();
         	}
         	else {
         		command.onApplicationError(ae);

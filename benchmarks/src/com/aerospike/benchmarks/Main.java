@@ -177,13 +177,13 @@ public class Main implements Log.Callback {
 			"The default is to run indefinitely."
 			);
 		
-		options.addOption("T", "socketTimeout", true, "Set read and write socket timeout in milliseconds.");
-		options.addOption("readSocketTimeout", true, "Set read socket timeout in milliseconds.");
-		options.addOption("writeSocketTimeout", true, "Set write socket timeout in milliseconds.");
-	
-		options.addOption("totalTimeout", true, "Set read and write transaction total timeout in milliseconds.");
-		options.addOption("readTotalTimeout", true, "Set read transaction total timeout in milliseconds.");
-		options.addOption("writeTotalTimeout", true, "Set write transaction total timeout in milliseconds.");
+		options.addOption("T", "timeout", true, "Set read and write socketTimeout and totalTimeout to the same timeout in milliseconds.");
+		options.addOption("socketTimeout", true, "Set read and write socketTimeout in milliseconds.");
+		options.addOption("readSocketTimeout", true, "Set read socketTimeout in milliseconds.");
+		options.addOption("writeSocketTimeout", true, "Set write socketTimeout in milliseconds.");
+		options.addOption("totalTimeout", true, "Set read and write transaction totalTimeout in milliseconds.");
+		options.addOption("readTotalTimeout", true, "Set read transaction totalTimeout in milliseconds.");
+		options.addOption("writeTotalTimeout", true, "Set write transaction totalTimeout in milliseconds.");
 
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true, 
@@ -536,40 +536,50 @@ public class Main implements Log.Callback {
 			args.transactionLimit = Long.parseLong(line.getOptionValue("transactions"));
 		}
 
+		if (line.hasOption("timeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
+			args.readPolicy.socketTimeout = timeout;
+			args.readPolicy.totalTimeout = timeout;
+			args.writePolicy.socketTimeout = timeout;
+			args.writePolicy.totalTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
+		}			 
+
 		if (line.hasOption("socketTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("socketTimeout"));
-			args.readPolicy.setSocketTimeout(timeout);
-			args.writePolicy.setSocketTimeout(timeout);
-			args.batchPolicy.setSocketTimeout(timeout);
+			args.readPolicy.socketTimeout = timeout;
+			args.writePolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
 
 		if (line.hasOption("readSocketTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("readSocketTimeout"));
-			args.readPolicy.setSocketTimeout(timeout);
-			args.batchPolicy.setSocketTimeout(timeout);
+			args.readPolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
 
 		if (line.hasOption("writeSocketTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("writeSocketTimeout"));
-			args.writePolicy.setSocketTimeout(timeout);
+			args.writePolicy.socketTimeout = timeout;
 		}			 
 
 		if (line.hasOption("totalTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("totalTimeout"));
-			args.readPolicy.setTotalTimeout(timeout);
-			args.writePolicy.setTotalTimeout(timeout);
-			args.batchPolicy.setTotalTimeout(timeout);
+			args.readPolicy.totalTimeout = timeout;
+			args.writePolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
 		}			 
 
 		if (line.hasOption("readTotalTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("readTotalTimeout"));
-			args.readPolicy.setTotalTimeout(timeout);
-			args.batchPolicy.setTotalTimeout(timeout);
+			args.readPolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
 		}			 
 
 		if (line.hasOption("writeTotalTimeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("writeTotalTimeout"));
-			args.writePolicy.setTotalTimeout(timeout);
+			args.writePolicy.totalTimeout = timeout;
 		}
 
 		if (line.hasOption("maxRetries")) {

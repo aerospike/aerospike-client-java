@@ -107,17 +107,20 @@ public class AerospikeException extends RuntimeException {
 		public Node node;
 		public int timeout;
 		public int iterations;
+		public boolean client;
 		
 		public Timeout() {
 			super(ResultCode.TIMEOUT);
 			this.timeout = -1;
+			this.client = true;
 		}
 		
-		public Timeout(Node node, int timeout, int iterations) {
+		public Timeout(Node node, int timeout, int iterations, boolean client) {
 			super(ResultCode.TIMEOUT);
 			this.node = node;
 			this.timeout = timeout;
 			this.iterations = iterations;
+			this.client = client;
 		}
 		
 		@Override

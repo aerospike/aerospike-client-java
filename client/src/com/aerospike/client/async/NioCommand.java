@@ -55,7 +55,7 @@ public class NioCommand implements Runnable, TimerTask {
 		
 		if (hasTotalTimeout) {
 			if (command.policy.socketTimeout == 0 || command.policy.socketTimeout > command.policy.totalTimeout) {
-				throw new AerospikeException("socketTimeout > totalTimeout");
+				command.policy.socketTimeout = command.policy.totalTimeout;
 			}
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
 		}
@@ -89,7 +89,7 @@ public class NioCommand implements Runnable, TimerTask {
 				eventState.pending--;
 				eventState.errors++;
 				state = AsyncCommand.COMPLETE;
-				notifyFailure(new AerospikeException.Timeout(null, command.policy.totalTimeout, iteration));
+				notifyFailure(new AerospikeException.Timeout(null, command.policy.totalTimeout, iteration, true));
 				return;
 			}
 			
@@ -466,12 +466,13 @@ public class NioCommand implements Runnable, TimerTask {
 	}
 	
 	private final void totalTimeout() {
+		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration, true);
+		
 		// Attempt timeout delay.
 		if (command.policy.timeoutDelay > 0) {
 			// Notify user of timeout, but allow transaction to continue in hope of reusing the socket.
 			timeoutDelay = true;
-			notifyFailure(new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration));
-			
+			notifyFailure(ae);		
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
 			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
 			return;
@@ -480,7 +481,7 @@ public class NioCommand implements Runnable, TimerTask {
 		// Perform timeout.
 		timeoutTask = null;
 		fail();
-		notifyFailure(new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration));
+		notifyFailure(ae);
 	}
 	
 	protected final void finish() {
@@ -505,7 +506,7 @@ public class NioCommand implements Runnable, TimerTask {
 		retry(ae);
 	}
 	
-	protected final void onServerTimeout(AerospikeException ae) {
+	protected final void onServerTimeout() {
 		conn.unregister();
 		command.node.putAsyncConnection(conn, eventLoop.index);
 
@@ -513,6 +514,8 @@ public class NioCommand implements Runnable, TimerTask {
 			// Read commands shift to prole node on timeout.
 			command.sequence++;
 		}
+		
+		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration, false);
 		retry(ae);
 	}
 

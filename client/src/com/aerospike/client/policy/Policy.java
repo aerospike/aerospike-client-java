@@ -65,8 +65,10 @@ public class Policy {
 	 * <p>
 	 * If socketTimeout is not zero and timeout is reached before an attempt completes,
 	 * the totalTimeout is checked.  If totalTimeout is not exceeded, the transaction
-	 * is retried.  If both socketTimeout and totalTimeout are non-zero, socketTimeout 
-	 * must be less than or equal to totalTimeout.
+	 * is retried.
+	 * <p>
+	 * If both socketTimeout and totalTimeout are non-zero and 
+	 * socketTimeout > totalTimeout, then socketTimeout will be set to totalTimeout. 
 	 * <p>
 	 * If socketTimeout is zero, there will be no time limit per attempt.  If the transaction
 	 * fails on a network error, totalTimeout still applies.
@@ -109,6 +111,12 @@ public class Policy {
 	 * <p>
 	 * if totalTimeout is not zero, maxRetries is ignored.
 	 * <p>
+	 * WARNING: Database writes that are not idempotent (such as add()) 
+	 * should not be retried because the write operation may be performed 
+	 * multiple times if the client timed out previous transaction attempts.
+	 * It's important to use a distinct WritePolicy for non-idempotent 
+	 * writes which sets maxRetries = 0;
+	 * <p>
 	 * Default: 2 (initial attempt + 2 retries = 3 attempts)
 	 */
 	public int maxRetries = 2;
@@ -127,8 +135,8 @@ public class Policy {
 	 * reads is zero.
 	 * <p>
 	 * Writes need to wait for the cluster to reform when a node goes down.
-	 * Immediate write retries on node failure have been shown to result in
-	 * the same error. The default for writes is 500ms.  This default is 
+	 * Immediate write retries on node failure have been shown to consistently
+	 * result in errors. The default for writes is 500ms.  This default is 
 	 * implemented in {@link com.aerospike.client.policy.ClientPolicy#ClientPolicy()})
 	 */
 	public int sleepBetweenRetries;
@@ -161,28 +169,25 @@ public class Policy {
 	}
 	
 	/**
-	 * Set totalTimeout.
-	 * If socketTimeout greater than totalTimeout, set socketTimeout to totalTimeout.
+	 * Create a single timeout by setting socketTimeout and totalTimeout
+	 * to the same value.
 	 */
-	public void setTotalTimeout(int timeout) {
-		totalTimeout = timeout;
-		
-		// If socketTimeout > totalTimeout, set socketTimeout to totalTimeout. 
-		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
-			socketTimeout = totalTimeout;
-		}
+	public void setTimeout(int timeout) {
+		this.socketTimeout = timeout;
+		this.totalTimeout = timeout;
 	}
 
 	/**
-	 * Set socketTimeout.
-	 * If socketTimeout greater than totalTimeout, set socketTimeout to totalTimeout.
+	 * Set socketTimeout and totalTimeout.  If totalTimeout defined and
+	 * socketTimeout greater than totalTimeout, set socketTimeout to
+	 * totalTimeout.
 	 */
-	public void setSocketTimeout(int timeout) {
-		socketTimeout = timeout;
+	public void setTimeouts(int socketTimeout, int totalTimeout) {
+		this.socketTimeout = socketTimeout;
+		this.totalTimeout = totalTimeout;
 		
-		// If socketTimeout > totalTimeout, set socketTimeout to totalTimeout. 
 		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
-			socketTimeout = totalTimeout;
+			this.socketTimeout = totalTimeout;
 		}
 	}
 }
