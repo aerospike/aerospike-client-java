@@ -43,21 +43,6 @@ public class Policy {
 	public Replica replica = Replica.SEQUENCE;
 	
 	/**
-	 * Total transaction timeout in milliseconds.
-	 * <p>
-	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
-	 * completes, the transaction will abort with
-	 * {@link com.aerospike.client.AerospikeException.Timeout}.
-	 * <p>
-	 * If totalTimeout is zero, there will be no time limit and the transaction will retry
-	 * on network errors until maxRetries is exceeded.  If maxRetries is exceeded, the
-	 * transaction also aborts with {@link com.aerospike.client.AerospikeException.Timeout}.
-	 * <p>
-	 * Default: 0 (no time limit and use maxRetries).
-	 */
-	public int totalTimeout;
-
-	/**
 	 * Socket timeout for each transaction attempt in milliseconds.
 	 * The socketTimeout is tracked on the client and also sent to the server along 
 	 * with the transaction in the wire protocol.  The client will most likely
@@ -79,6 +64,21 @@ public class Policy {
 	 * Default: 0 (no time limit for each attempt).
 	 */
 	public int socketTimeout;
+
+	/**
+	 * Total transaction timeout in milliseconds.
+	 * <p>
+	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
+	 * completes, the transaction will abort with
+	 * {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * If totalTimeout is zero, there will be no time limit and the transaction will retry
+	 * on network errors until maxRetries is exceeded.  If maxRetries is exceeded, the
+	 * transaction also aborts with {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * Default: 0 (no time limit and use maxRetries).
+	 */
+	public int totalTimeout;
 
 	/**
 	 * Delay milliseconds after transaction timeout before closing socket in async mode only.
