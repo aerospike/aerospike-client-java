@@ -17,6 +17,7 @@
 package com.aerospike.client.async;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.EventExecutor;
@@ -42,6 +43,7 @@ public final class NettyEventLoops implements EventLoops {
 	TlsPolicy tlsPolicy;
 	SslContext sslContext;
     private int eventIter;
+    final boolean isEpoll;
 
     /**
      * Create Aerospike event loop wrappers from given netty event loops.
@@ -58,7 +60,8 @@ public final class NettyEventLoops implements EventLoops {
 			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
 		}
 		this.group = group;
-		
+		this.isEpoll = (group instanceof EpollEventLoopGroup);
+
 		ArrayList<NettyEventLoop> list = new ArrayList<NettyEventLoop>();
 		Iterator<EventExecutor> iter = group.iterator();
 		int count = 0;

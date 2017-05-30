@@ -17,6 +17,7 @@
 package com.aerospike.test;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 
 import org.junit.AfterClass;
@@ -58,12 +59,24 @@ public class SuiteAsync {
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
 		
-		if (args.useNetty) {			
-			EventLoopGroup group = new NioEventLoopGroup(1);
-			eventLoops = new NettyEventLoops(group);
-		}
-		else {
-			eventLoops = new NioEventLoops(1);			
+		switch (args.eventLoopType) {
+			default:
+			case DIRECT_NIO: {
+				eventLoops = new NioEventLoops(1);			
+				break;
+			}
+				
+			case NETTY_NIO: {
+				EventLoopGroup group = new NioEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(group);
+				break;
+			}
+				
+			case NETTY_EPOLL: {
+				EventLoopGroup group = new EpollEventLoopGroup(1);				
+				eventLoops = new NettyEventLoops(group);
+				break;
+			}
 		}
 
 		try {

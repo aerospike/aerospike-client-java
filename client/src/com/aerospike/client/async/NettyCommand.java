@@ -26,6 +26,8 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
@@ -142,13 +144,19 @@ public final class NettyCommand implements Runnable, TimerTask {
 				
 				Bootstrap b = new Bootstrap();
 				b.group(eventLoop.eventLoop);
-				b.channel(NioSocketChannel.class);
+
+				if (eventLoop.parent.isEpoll) {
+					b.channel(EpollSocketChannel.class);
+				}
+				else {
+					b.channel(NioSocketChannel.class);
+				}
 				b.option(ChannelOption.TCP_NODELAY, true);
 				b.option(ChannelOption.AUTO_READ, false);
 
-				b.handler(new ChannelInitializer<NioSocketChannel>() {
+				b.handler(new ChannelInitializer<SocketChannel>() {
 					@Override
-					public void initChannel(NioSocketChannel ch) {
+					public void initChannel(SocketChannel ch) {
 						conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
 						ChannelPipeline p = ch.pipeline();
 						

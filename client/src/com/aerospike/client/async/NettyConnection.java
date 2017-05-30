@@ -16,7 +16,7 @@
  */
 package com.aerospike.client.async;
 
-import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.channel.socket.SocketChannel;
 
 import java.nio.ByteBuffer;
 
@@ -26,14 +26,14 @@ import java.nio.ByteBuffer;
  */
 public final class NettyConnection implements AsyncConnection {
 
-	final NioSocketChannel channel;
+	final SocketChannel channel;
 	private final long maxSocketIdle;
 	private long lastUsed;
 
     /**
      * Construct Aerospike channel wrapper from netty channel.
      */
-	public NettyConnection(NioSocketChannel channel, long maxSocketIdle) {
+	public NettyConnection(SocketChannel channel, long maxSocketIdle) {
 		this.channel = channel;
 		this.maxSocketIdle = maxSocketIdle;
 	}

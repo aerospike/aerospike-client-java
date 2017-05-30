@@ -24,6 +24,13 @@
 
     <dependency>
       <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+      <classifier>linux-x86_64</classifier>
+      <version>4.1.11.Final</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
       <artifactId>netty-handler</artifactId>
       <version>4.1.11.Final</version>
     </dependency>

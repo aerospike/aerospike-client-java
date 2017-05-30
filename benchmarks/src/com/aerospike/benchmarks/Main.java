@@ -17,6 +17,7 @@
 package com.aerospike.benchmarks;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 
 import java.io.PrintWriter;
@@ -40,6 +41,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
@@ -79,6 +81,7 @@ public class Main implements Log.Callback {
 
 	private Arguments args = new Arguments();
 	private Host[] hosts;
+	private EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	private int port = 3000;
 	private long nKeys;
 	private long startKey;
@@ -86,7 +89,6 @@ public class Main implements Log.Callback {
 	private int asyncMaxCommands = 200;
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
-	private boolean useNetty;
 	private boolean initialize;
 	private String filepath;
 
@@ -274,7 +276,8 @@ public class Main implements Log.Callback {
 		options.addOption("te", "tlsEncryptOnly", false, 
 				"Enable TLS encryption and disable TLS certificate validation"
 				);
-		options.addOption("netty", "netty", false, "Use netty for async benchmarks");
+		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
+		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -733,7 +736,11 @@ public class Main implements Log.Callback {
 		}
 		
 		if (line.hasOption("netty")) {
-			this.useNetty = true;
+			this.eventLoopType = EventLoopType.NETTY_NIO;
+		}
+
+		if (line.hasOption("nettyEpoll")) {
+			this.eventLoopType = EventLoopType.NETTY_EPOLL;
 		}
 
 		System.out.println("Benchmark: " + this.hosts[0] 
@@ -790,8 +797,7 @@ public class Main implements Log.Callback {
 		}
 		
 		if (this.asyncEnabled) {
-			String asyncType = this.useNetty ? "netty" : "nio";
-			System.out.println("Async " + asyncType + ": MaxCommands " +  this.asyncMaxCommands
+			System.out.println("Async " + this.eventLoopType + ": MaxCommands " +  this.asyncMaxCommands
 				+ ", EventLoops: " + this.eventLoopSize
 				);
 		}
@@ -854,13 +860,25 @@ public class Main implements Log.Callback {
 			if (args.writePolicy.socketTimeout > 0 &&  args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
 				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
 			}
-
-			if (this.useNetty) {
-				EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);				
-				eventLoops = new NettyEventLoops(eventPolicy, group);
-			}
-			else {
-				eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
+			
+			switch (this.eventLoopType) {
+				default:
+				case DIRECT_NIO: {
+					eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
+					break;
+				}
+					
+				case NETTY_NIO: {
+					EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);				
+					eventLoops = new NettyEventLoops(eventPolicy, group);
+					break;
+				}
+					
+				case NETTY_EPOLL: {
+					EventLoopGroup group = new EpollEventLoopGroup(this.eventLoopSize);				
+					eventLoops = new NettyEventLoops(eventPolicy, group);
+					break;
+				}
 			}
 			
 			try {

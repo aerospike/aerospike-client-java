@@ -20,6 +20,7 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Info;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.TlsPolicy;
@@ -38,7 +39,7 @@ public class Parameters {
 	TlsPolicy tlsPolicy;
 	WritePolicy writePolicy;
 	Policy policy;
-	boolean useNetty;
+	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	boolean singleBin;
 	boolean hasGeo;
 	boolean hasUdf;
