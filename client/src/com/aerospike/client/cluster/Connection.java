@@ -79,6 +79,7 @@ public final class Connection implements Closeable {
 					socket.connect(address, timeoutMillis);
 					in = socket.getInputStream();
 					out = socket.getOutputStream();
+					lastUsed = System.nanoTime();
 				}
 				catch (Exception e) {
 					// socket.close() will close input/output streams according to doc.
@@ -131,6 +132,7 @@ public final class Connection implements Closeable {
 					
 					in = socket.getInputStream();
 					out = socket.getOutputStream();
+					lastUsed = System.nanoTime();
 				}
 				catch (Exception e) {
 					// socket.close() will close input/output streams according to doc.
