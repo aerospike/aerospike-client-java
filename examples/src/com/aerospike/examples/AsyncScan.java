@@ -56,19 +56,14 @@ public class AsyncScan extends AsyncExample {
 				console.info("Total records returned: " + recordCount);
 				console.info("Elapsed time: " + seconds + " seconds");
 				double performance = Math.round((double)recordCount / seconds);
-				console.info("Records/second: " + performance);
-				
-				notifyComplete();
+				console.info("Records/second: " + performance);		
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
 				console.error("Scan failed: " + Util.getErrorMessage(e));
-				notifyComplete();
 			} 
 			
-		}, policy, params.namespace, params.set);
-		
-		waitTillComplete();
+		}, policy, params.namespace, params.set);		
 	}	
 }

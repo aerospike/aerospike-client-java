@@ -119,9 +119,15 @@ public abstract class AsyncExample {
 	private boolean completed;
 	
 	public void run(AerospikeClient client, EventLoop eventLoop) {
-		console.info(this.getClass().getSimpleName() + " Begin");
+		// Most async examples no longer wait for completion, so
+		// these examples are run in parallel with intertwined log 
+		// messages.  It's done that way because most applications
+		// should be written this way for performance reasons.
+		// 
+		// Fortunately, AerospikeClient.close() now waits for pending
+		// async commands to complete before closing.
+		console.info("Example: " + this.getClass().getSimpleName());
 		runExample(client, eventLoop);
-		console.info(this.getClass().getSimpleName() + " End");
 	}
 	
 	protected void resetComplete() {

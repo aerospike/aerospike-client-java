@@ -52,6 +52,8 @@ public class AsyncQuery extends AsyncExample {
 
 		createIndex(client, indexName, binName);
 		runQueryExample(client, eventLoop, keyPrefix, binName, size);
+		
+		// Wait until query finishes before dropping index.
 		waitTillComplete();
 		client.dropIndex(policy, params.namespace, params.set, indexName);		
 	}

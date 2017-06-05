@@ -38,32 +38,27 @@ public class AsyncPutGet extends AsyncExample {
 		Bin bin = new Bin(params.getBinName("putgetbin"), "value");
 
 		runPutGetInline(client, eventLoop, key, bin);
-		waitTillComplete();
-		resetComplete();
 		runPutGetWithRetry(client, eventLoop, key, bin);
-		waitTillComplete();
 	}
 	
 	// Inline asynchronous put/get calls.
 	private void runPutGetInline(final AerospikeClient client, final EventLoop eventLoop, final Key key, final Bin bin) {
 		
-		console.info("Put: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
+		console.info("Put inline: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 		
 		client.put(eventLoop, new WriteListener() {
 			public void onSuccess(final Key key) {
 				try {
 					// Write succeeded.  Now call read.
-					console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
+					console.info("Get inline: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 
 					client.get(eventLoop, new RecordListener() {
 						public void onSuccess(final Key key, final Record record) {
-							validateBin(key, bin, record);
-							notifyComplete();
+							validateBin(key, bin, record, "inline");
 						}
 						
 						public void onFailure(AerospikeException e) {
 							console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-							notifyComplete();
 						}
 					}, policy, key);
 				}
@@ -74,14 +69,13 @@ public class AsyncPutGet extends AsyncExample {
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Failed to put: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-				notifyComplete();
 			}
 		}, writePolicy, key, bin);		
 	}	
 
 	// Asynchronous put/get calls with retry.
 	private void runPutGetWithRetry(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
-		console.info("Put: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
+		console.info("Put with retry: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 		client.put(eventLoop, new WriteHandler(client, eventLoop, key, bin), writePolicy, key, bin);
 	}
 	
@@ -103,7 +97,7 @@ public class AsyncPutGet extends AsyncExample {
 		public void onSuccess(Key key) {
 			try {
 				// Write succeeded.  Now call read.
-				console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
+				console.info("Get with retry: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 				client.get(eventLoop, new ReadHandler(client, eventLoop, key, bin), policy, key);
 			}
 			catch (Exception e) {				
@@ -130,7 +124,6 @@ public class AsyncPutGet extends AsyncExample {
             	}
         	}
 			console.error("Put failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-			notifyComplete();
 		}
 	}
 
@@ -151,8 +144,7 @@ public class AsyncPutGet extends AsyncExample {
 		// Read success callback.
 		public void onSuccess(Key key, Record record) {
 			// Verify received bin value is what was written.
-			validateBin(key, bin, record);
-			notifyComplete();
+			validateBin(key, bin, record, "with retry");
 		}
 
 		// Error callback.
@@ -174,17 +166,16 @@ public class AsyncPutGet extends AsyncExample {
             	}
         	}
 			console.error("Get failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-			notifyComplete();
 		}
 	}
 
-	private void validateBin(Key key, Bin bin, Record record) {
+	private void validateBin(Key key, Bin bin, Record record, String id) {
 		Object received = (record == null)? null : record.getValue(bin.name);
 		String expected = bin.value.toString();
 		
 		if (received != null && received.equals(expected)) {
-			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s", 
-				key.namespace, key.setName, key.userKey, bin.name, received);
+			console.info("Bin matched %s: snamespace=%s set=%s key=%s bin=%s value=%s", 
+				id, key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
 			console.error("Put/Get mismatch: Expected %s. Received %s.", expected, received);

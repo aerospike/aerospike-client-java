@@ -39,7 +39,6 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 		
 		register(client);
 		writeUsingUdfAsync(client, eventLoop);
-		waitTillComplete();
 	}
 	
 	private void register(AerospikeClient client) {
@@ -72,12 +71,10 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 							else {
 								console.error("Data mismatch: Expected %s. Received %s.", expected, received);
 							}
-							notifyComplete();
 						}
 						
 						public void onFailure(AerospikeException e) {
 							console.error("Failed to get: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-							notifyComplete();
 						}
 						
 					}, writePolicy, key, "record_example", "readBin", Value.get(bin.name));
@@ -89,7 +86,6 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Failed to write: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-				notifyComplete();
 			}
 		
 		}, writePolicy, key, "record_example", "writeBin", Value.get(bin.name), bin.value);

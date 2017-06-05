@@ -46,8 +46,6 @@ public class AsyncBatch extends AsyncExample {
 	private Key[] sendKeys;
 	private String binName;  
 	private final int size = 8;
-	private final AtomicInteger taskCount = new AtomicInteger();
-	private int taskSize;
 	
 	/**
 	 * Asynchronous batch examples.
@@ -60,7 +58,6 @@ public class AsyncBatch extends AsyncExample {
 		
 		initializeKeys();
 		writeRecords();
-		waitTillComplete();
 	}
 
 	private void initializeKeys() throws AerospikeException {		
@@ -102,7 +99,6 @@ public class AsyncBatch extends AsyncExample {
 			if (rows == max) {
 				try {
 					// All writes succeeded. Run batch queries in parallel.
-					taskSize = 6;
 					batchExistsArray();
 					batchExistsSequence();
 					batchGetArray();
@@ -112,14 +108,12 @@ public class AsyncBatch extends AsyncExample {
 				}
 				catch (Exception e) {				
 					console.error("Batch failed: " + e.getMessage());
-					notifyComplete();
 				}
 			}
 		}
 		
 		public void onFailure(AerospikeException e) {
 			console.error("Put failed: " + e.getMessage());
-			notifyComplete();
 		}
 	}
 	
@@ -135,12 +129,10 @@ public class AsyncBatch extends AsyncExample {
 		            console.info("Record: ns=%s set=%s key=%s exists=%s",
 		            	key.namespace, key.setName, key.userKey, exists);                        	
 		        }
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch exists array failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
 		}, null, sendKeys);
     }
@@ -156,12 +148,10 @@ public class AsyncBatch extends AsyncExample {
 			}
 
 			public void onSuccess() {
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch exists sequence failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
 		}, null, sendKeys);
     }
@@ -189,12 +179,10 @@ public class AsyncBatch extends AsyncExample {
 				if (records.length != size) {
 		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get array failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
 		}, null, sendKeys);
     }
@@ -217,12 +205,10 @@ public class AsyncBatch extends AsyncExample {
 			}
 			
 			public void onSuccess() {				
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get sequence failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
 		}, null, sendKeys);
     }
@@ -252,12 +238,10 @@ public class AsyncBatch extends AsyncExample {
 				if (records.length != size) {
 		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get headers failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
 		}, null, sendKeys);
     }
@@ -308,19 +292,11 @@ public class AsyncBatch extends AsyncExample {
 				if (found != 8) {
 					console.error("Records found mismatch. Expected %d. Received %d.", 8, found);
 				}		
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch read complex failed: " + Util.getErrorMessage(e));
-				taskComplete();				
 			}
 		}, null, records);	
-	}
-	
-	private void taskComplete() {
-		if (taskCount.incrementAndGet() >= taskSize) {
-			notifyComplete();
-		}
-	}
+	}	
 }
