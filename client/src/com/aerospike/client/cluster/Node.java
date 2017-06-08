@@ -162,7 +162,9 @@ public class Node implements Closeable {
 			failures = 0;
 		}
 		catch (Exception e) {
-			peers.genChanged = true;
+			if (peers.usePeers) {
+				peers.genChanged = true;
+			}
 			refreshFailed(e);
 		}
 	}
