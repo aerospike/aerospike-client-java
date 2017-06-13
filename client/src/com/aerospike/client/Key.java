@@ -226,6 +226,8 @@ public final class Key {
 	 * @param userKey				optional original user key (not hash digest).
 	 */
 	public Key(String namespace, byte[] digest, String setName, Value userKey) {
+		// Some value types can't be used as keys (jblob, list, map, null).  Verify key type.
+		userKey.validateKeyType();	
 		this.namespace = namespace;
 		this.digest = digest;
 		this.setName = setName;

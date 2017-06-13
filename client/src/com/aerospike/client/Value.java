@@ -1063,6 +1063,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJson");
+		}		
+
+		@Override
 		public int getType() {
 			return ParticleType.GEOJSON;
 		}
