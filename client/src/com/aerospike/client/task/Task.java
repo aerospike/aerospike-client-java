@@ -114,7 +114,18 @@ public abstract class Task {
 			// Check for timeout.
 			if (policy.timeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
 				// Timeout has been reached or will be reached after next sleep.
-				throw new AerospikeException.Timeout();				
+				// Do not throw timeout exception when status is "NOT_FOUND" because the server will drop 
+				// background query execute task listings immediately after completion (which makes client
+				// polling worthless).  This should be fixed by having server take an extra argument to query
+				// execute command that says if server should wait till command is complete before responding 
+				// to client.
+				if (status == NOT_FOUND) {
+					done = true;
+					return;
+				}
+				else {
+					throw new AerospikeException.Timeout();	
+				}
 			}		
 		} while (true);		
 	}
