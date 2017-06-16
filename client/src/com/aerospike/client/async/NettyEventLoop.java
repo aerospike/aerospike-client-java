@@ -92,8 +92,15 @@ public final class NettyEventLoop implements EventLoop {
 	public int getIndex() {
 		return index;
 	}
-	
-    /**
+
+	/**
+	 * Is current thread the event loop thread.
+=	 */
+	public boolean inEventLoop() {
+		return eventLoop.inEventLoop();
+	}
+
+	/**
      * For internal use only.
      */
 	@Override

@@ -128,6 +128,13 @@ public final class NioEventLoop extends Thread implements EventLoop {
 	}
 
 	/**
+	 * Is current thread the event loop thread.
+	 */
+	public boolean inEventLoop() {
+		return this == Thread.currentThread();
+	}
+
+	/**
      * For internal use only.
      */
 	@Override

@@ -86,7 +86,7 @@ public final class NioEventLoops implements EventLoops {
 		
 		for (NioEventLoop eventLoop : eventLoops) {
 			eventLoop.setName("event" + count);
-			eventLoop.setDaemon(true);
+			eventLoop.setDaemon(false);
 			eventLoop.start();
 			count++;
 		}
@@ -150,7 +150,7 @@ public final class NioEventLoops implements EventLoops {
 				}
 			});
 		}
-		
+
 		// Join with event loop threads.
 		for (NioEventLoop eventLoop : eventLoops) {
 			try {

@@ -290,11 +290,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Cluster Connection Management
 	//-------------------------------------------------------
-		
+
 	/**
 	 * Close all client connections to database server nodes.
-	 * The client will wait until pending async commands complete
-	 * before closing.
+	 * <p>
+	 * If event loops are defined, the client will send a cluster close signal
+	 * to these event loops.  The client instance does not initiate shutdown
+	 * until the pending async commands complete.  The close() method, however,
+	 * will return before shutdown completes if close() is called from an
+	 * event loop thread.  This is done in order to prevent deadlock.
+	 * <p>
+	 * This close() method will wait for shutdown if the current thread is not 
+	 * an event loop thread.  It's recommended to call close() from a non event 
+	 * loop thread for this reason.
 	 */
 	public void close() {
 		cluster.close();

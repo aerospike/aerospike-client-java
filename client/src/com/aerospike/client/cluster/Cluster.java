@@ -806,9 +806,14 @@ public class Cluster implements Runnable, Closeable {
 		else {
 			// Send cluster close notification to async event loops.
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
+			boolean inEventLoop = false;
 			
 			// Send close node notification to async event loops.
 			for (final EventState state : eventState) {
+				if (state.eventLoop.inEventLoop()) {
+					inEventLoop = true;
+				}
+				
 				state.eventLoop.execute(new Runnable() {
 					public void run() {
 						if (state.pending < 0) {
@@ -827,8 +832,13 @@ public class Cluster implements Runnable, Closeable {
 						closeEventLoop(eventLoopCount, state);
 					}
 				});
-			}			
-			waitAsyncComplete();
+			}		
+			
+			// Deadlock would occur if we wait from an event loop thread. 
+			// Only wait when not in event loop thread.
+			if (! inEventLoop) {
+				waitAsyncComplete();
+			}
 		}
 	}
 

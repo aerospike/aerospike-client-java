@@ -52,6 +52,11 @@ public interface EventLoop {
 	public int getIndex();
 	
 	/**
+	 * Is current thread the event loop thread.
+=	 */
+	public boolean inEventLoop();
+	
+	/**
 	 * For internal use only.
 	 */
 	public EventState createState();
