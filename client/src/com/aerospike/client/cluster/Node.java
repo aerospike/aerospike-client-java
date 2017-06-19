@@ -565,7 +565,7 @@ public class Node implements Closeable {
 			if (conn.isValid(byteBuffer)) {
 				return conn;
 			}
-			conn.close();
+			closeAsyncConnection(conn, index);
 		}
 		
 		if (pool.total >= pool.capacity) {
