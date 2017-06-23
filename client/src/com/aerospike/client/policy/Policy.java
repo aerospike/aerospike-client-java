@@ -143,6 +143,8 @@ public class Policy {
 
 	/**
 	 * Send user defined key in addition to hash digest on both reads and writes.
+	 * If the key is sent on a write, the key will be stored with the record on 
+	 * the server.
 	 * <p>
 	 * Default: false (do not send the user defined key)
 	 */
