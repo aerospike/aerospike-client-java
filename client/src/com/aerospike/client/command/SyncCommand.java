@@ -176,9 +176,6 @@ public abstract class SyncCommand extends Command {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
-			
-			// Reset node reference and try again.
-			node = null;
 		}
 
 		// Retries have been exhausted.  Throw last exception.
