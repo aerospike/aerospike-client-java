@@ -109,6 +109,21 @@ public final class HashedWheelTimer implements Runnable {
 		return timeout;
 	}
 
+	public void restoreTimeout(HashedWheelTimeout timeout, long deadline) {
+		timeout.deadline = deadline - startTime;
+		timeout.next = null;
+		timeout.prev = null;
+		
+		long calculated = timeout.deadline / tickDuration;
+		timeout.remainingRounds = (calculated - tick) / wheel.length;
+		
+		final long ticks = Math.max(calculated, tick);
+		int stopIndex = (int) (ticks & mask);
+		
+		HashedWheelBucket bucket = wheel[stopIndex];
+		bucket.addTimeout(timeout);
+	}
+
 	public void run() {
 		long currentTime = System.nanoTime() - startTime;
 		long expectTime = tickDuration * (tick + 1);
@@ -124,7 +139,7 @@ public final class HashedWheelTimer implements Runnable {
 
     public static final class HashedWheelTimeout {
 		private final TimerTask task;
-		private final long deadline;
+		private long deadline;
 		private long remainingRounds;
 		private HashedWheelTimeout next;
 		private HashedWheelTimeout prev;

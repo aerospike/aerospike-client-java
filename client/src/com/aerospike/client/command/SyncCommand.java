@@ -38,21 +38,20 @@ public abstract class SyncCommand extends Command {
 		//final long tranId = TranCounter.getAndIncrement();
 		final Partition partition = (key != null)? new Partition(key) : null;
 		Exception exception = null;
-		final long deadline;
+		long deadline = 0;
 		int socketTimeout = policy.socketTimeout;
+		int totalTimeout = policy.totalTimeout;
 		int iteration = 0;
 		boolean isClientTimeout;
-		
-		if (policy.totalTimeout > 0) {
-			if (socketTimeout == 0 || socketTimeout > policy.totalTimeout) {
-				socketTimeout = policy.socketTimeout = policy.totalTimeout;
+
+		if (totalTimeout > 0) {
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
+
+			if (socketTimeout > totalTimeout) {
+				socketTimeout = totalTimeout;
 			}
-			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);		
 		}
-		else {
-			deadline = 0;
-		}
-		
+
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
 			try {
@@ -70,10 +69,10 @@ public abstract class SyncCommand extends Command {
 					// Set command buffer.
 					writeBuffer();
 
-					// Check if timeout needs to be changed in send buffer.
-					if (socketTimeout != policy.socketTimeout) {
+					// Check if total timeout needs to be changed in send buffer.
+					if (totalTimeout != policy.totalTimeout) {
 						// Reset timeout in send buffer (destined for server) and socket.
-						Buffer.intToBytes(socketTimeout, dataBuffer, 22);
+						Buffer.intToBytes(totalTimeout, dataBuffer, 22);
 					}
 					
 					// Send command.
@@ -101,7 +100,7 @@ public abstract class SyncCommand extends Command {
 					if (ae.getResultCode() == ResultCode.TIMEOUT) {
 						// Go through retry logic on server timeout.
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-						exception = new AerospikeException.Timeout(node, policy.totalTimeout, iteration + 1, false);
+						exception = new AerospikeException.Timeout(node, policy, iteration + 1, false);
 						isClientTimeout = false;
 						
 						if (isRead) {
@@ -150,13 +149,7 @@ public abstract class SyncCommand extends Command {
 			
 			iteration++;
 
-			if (policy.totalTimeout == 0) {
-				// No timeout defined.  Check maxRetries.
-				if (iteration > policy.maxRetries) {
-					break;
-				}
-			}
-			else {
+			if (policy.totalTimeout > 0) {
 				// Check for total timeout.
 				long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
 
@@ -167,11 +160,21 @@ public abstract class SyncCommand extends Command {
 				// Convert back to milliseconds for remaining check.
 				remaining = TimeUnit.NANOSECONDS.toMillis(remaining);
 
-				if (remaining < socketTimeout) {
-					socketTimeout = (int)remaining;
+				if (remaining < totalTimeout) {
+					totalTimeout = (int)remaining;
+					
+					if (socketTimeout > totalTimeout) {
+						socketTimeout = totalTimeout;
+					}
+				}				
+			}
+			else {
+				// Total timeout not defined.  Check maxRetries.
+				if (iteration > policy.maxRetries) {
+					break;
 				}
 			}
-			
+
 			if (!isClientTimeout && policy.sleepBetweenRetries > 0) {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
@@ -181,7 +184,7 @@ public abstract class SyncCommand extends Command {
 		// Retries have been exhausted.  Throw last exception.
 		if (isClientTimeout) {
 			// Log.info("SocketTimeoutException: " + tranId + ',' + sequence + ',' + iteration);
-			throw new AerospikeException.Timeout(node, policy.totalTimeout, iteration, true);
+			throw new AerospikeException.Timeout(node, policy, iteration, true);
 		}
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
 		throw (RuntimeException)exception;

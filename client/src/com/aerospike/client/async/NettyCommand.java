@@ -62,11 +62,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final EventState eventState;
 	NettyConnection conn;
 	HashedWheelTimeout timeoutTask;
-	long deadline;
+	long totalDeadline;
 	int state;
 	int iteration;
 	int receiveSize;
 	final boolean hasTotalTimeout;
+	boolean usingTotalDeadline;
+	boolean eventReceived;
 	boolean timeoutDelay;
 	
 	public NettyCommand(NettyEventLoop loop, Cluster cluster, AsyncCommand command) {
@@ -76,19 +78,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.command = command;
 		command.bufferQueue = loop.bufferQueue;
 		hasTotalTimeout = command.policy.totalTimeout > 0;
-		
-		if (hasTotalTimeout) {				
-			if (command.policy.socketTimeout == 0 || command.policy.socketTimeout > command.policy.totalTimeout) {
-				command.policy.socketTimeout = command.policy.totalTimeout;
-			}
-			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
-		}
 
 		if (eventLoop.eventLoop.inEventLoop() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
 			run();			
 		}
 		else {
+			if (hasTotalTimeout) {
+				totalDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
+			}
 			state = AsyncCommand.REGISTERED;
 			eventLoop.execute(this);
 		}
@@ -103,24 +101,42 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 
-		if (state == AsyncCommand.REGISTERED && hasTotalTimeout) {
-			// Command was queued to event loop thread. Check if timed out.
+		if (hasTotalTimeout) {
 			long currentTime = System.nanoTime();
 			
-			if (currentTime >= deadline) {
-				eventState.pending--;
-				eventState.errors++;
-				state = AsyncCommand.COMPLETE;
-				notifyFailure(new AerospikeException.Timeout(null, command.policy.totalTimeout, iteration, true));
-				return;
+			if (state == AsyncCommand.REGISTERED) {
+				// Command was queued to event loop thread.
+				if (currentTime >= totalDeadline) {
+					// Command already timed out.
+					eventState.pending--;
+					eventState.errors++;
+					state = AsyncCommand.COMPLETE;
+					notifyFailure(new AerospikeException.Timeout(null, command.policy, iteration, true));
+					return;
+				}
 			}
-			
+			else {
+				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);			
+			}
+
+			long deadline;
+
 			if (command.policy.socketTimeout > 0) {
-				timeoutTask = eventLoop.timer.addTimeout(this, currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));			
+				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+				
+				if (deadline >= totalDeadline) {
+					deadline = totalDeadline;
+					usingTotalDeadline = true;
+				}
 			}
+			else {
+				deadline = totalDeadline;
+				usingTotalDeadline = true;
+			}
+			timeoutTask = eventLoop.timer.addTimeout(this, deadline);								
 		}
-		else if (command.policy.socketTimeout > 0) {
-			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));
+		else if (command.policy.socketTimeout > 0) {		
+			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));								
 		}
 
 		executeCommand();		
@@ -223,12 +239,20 @@ public final class NettyCommand implements Runnable, TimerTask {
 			public void operationComplete(ChannelFuture future) {
 				state = (state == AsyncCommand.COMMAND_WRITE)? AsyncCommand.COMMAND_READ_HEADER : AsyncCommand.AUTH_READ_HEADER;
 				command.dataOffset = 0;
+				// Socket timeout applies only to read events.
+				// Reset event received because we are switching from a write to a read state.
+				// This handles case where write succeeds and read event does not occur.  If we didn't reset,
+				// the socket timeout would go through two iterations (double the timeout) because a write
+				// event occurred in the first timeout period.
+				eventReceived = false;
 				conn.channel.config().setAutoRead(true);
 			}
 		});
 	}
 
 	private void read(ByteBuf byteBuffer) {
+		eventReceived = true;
+
 		try {
 			switch (state) {
 			case AsyncCommand.AUTH_READ_HEADER:
@@ -464,24 +488,53 @@ public final class NettyCommand implements Runnable, TimerTask {
 			fail();
 			return;
 		}
-		iteration++;
 
-		// Check total timeout.
 		long currentTime = 0;
 		
 		if (hasTotalTimeout) {
+			// Check total timeout.		
 			currentTime = System.nanoTime();
 			
-			if (currentTime >= deadline) {
+			if (currentTime >= totalDeadline) {
+				iteration++;
 				totalTimeout();
 				return;
 			}
+			
+			if (! usingTotalDeadline) {
+				// Socket idle timeout is in effect.
+				if (eventReceived) {
+					// Event(s) received within socket timeout period.
+					eventReceived = false;
+
+					long socketDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+					
+					if (socketDeadline >= totalDeadline) {
+						// Transition to total timeout.
+						socketDeadline = totalDeadline;
+						usingTotalDeadline = true;
+					}
+					eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+					return;
+				}
+			}
+			iteration++;
 		}
 		else {
-			if (iteration > command.policy.maxRetries) {
+			// Check socket timeout.
+			if (eventReceived) {
+				// Event(s) received within socket timeout period.
+				eventReceived = false;
+
+				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);			
+				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+				return;
+			}			
+
+			if (++iteration > command.policy.maxRetries) {
 				totalTimeout();
 				return;		
-			}
+			}			
 		}
 		
 		// Attempt retry.
@@ -491,26 +544,27 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// Read commands shift to prole node on timeout.
 			command.sequence++;
 		}
-
+		
 		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 		
 		if (hasTotalTimeout) {
-			long remaining = deadline - currentTime;
+			long remaining = totalDeadline - currentTime;
 			
 			if (remaining < timeout) {
 				timeout = remaining;
+				usingTotalDeadline = true;
 			}
 		}
 		else {
 			currentTime = System.nanoTime();
 		}
 			
-		timeoutTask = eventLoop.timer.addTimeout(this, currentTime + timeout);
-		executeCommand();
+		eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
+		executeCommand();					
 	}
 	
 	private final void totalTimeout() {
-		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration, true);
+		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, true);
 
 		// Attempt timeout delay.
 		if (command.policy.timeoutDelay > 0) {
@@ -518,8 +572,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 			timeoutDelay = true;
 			notifyFailure(ae);
 			
-			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
+			totalDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
+			eventLoop.timer.restoreTimeout(timeoutTask, totalDeadline);
 			return;
 		}
 
@@ -567,7 +621,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			command.sequence++;
 		}
 
-		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy.socketTimeout, iteration, false);
+		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, false);
 		retry(ae);
 	}
 
@@ -586,7 +640,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (hasTotalTimeout) {
 			currentTime = System.nanoTime();
 			
-			if (currentTime >= deadline) {
+			if (currentTime >= totalDeadline) {
 				// Fail command.
 				close();
 				notifyFailure(ae);
@@ -603,25 +657,25 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Attempt retry.
-		long timeout = command.policy.socketTimeout;
-		
-		if (timeout > 0) {
-			timeoutTask.cancel();
-			timeout = TimeUnit.MILLISECONDS.toNanos(timeout);
+		if (! usingTotalDeadline) {
+			// Socket timeout in effect.
+			timeoutTask.cancel();		
+			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 			
 			if (hasTotalTimeout) {
-				long remaining = deadline - currentTime;
+				long remaining = totalDeadline - currentTime;
 				
 				if (remaining < timeout) {
 					timeout = remaining;
+					usingTotalDeadline = true;
 				}
 			}
 			else {
 				currentTime = System.nanoTime();
 			}
 			
-			timeoutTask = eventLoop.timer.addTimeout(this, currentTime + timeout);
-		}
+			eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
+		}		
 		executeCommand();
 	}
 

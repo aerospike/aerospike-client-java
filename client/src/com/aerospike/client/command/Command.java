@@ -577,7 +577,7 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
-		// Write scan timeout
+		// Write scan socket idle timeout.
 		writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
 		Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
 		dataOffset += 4;
@@ -885,7 +885,7 @@ public abstract class Command {
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
-		Buffer.intToBytes(policy.socketTimeout, dataBuffer, 22);
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);		
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -907,7 +907,7 @@ public abstract class Command {
 		for (int i = 11; i < 22; i++) {
 			dataBuffer[i] = 0;
 		}
-		Buffer.intToBytes(policy.socketTimeout, dataBuffer, 22);
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;

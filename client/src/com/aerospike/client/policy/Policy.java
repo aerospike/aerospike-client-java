@@ -43,30 +43,31 @@ public class Policy {
 	public Replica replica = Replica.SEQUENCE;
 	
 	/**
-	 * Socket timeout for each transaction attempt in milliseconds.
-	 * The socketTimeout is tracked on the client and also sent to the server along 
-	 * with the transaction in the wire protocol.  The client will most likely
-	 * timeout first, but the server also has the capability to timeout the transaction.
+	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
-	 * If socketTimeout is not zero and timeout is reached before an attempt completes,
+	 * If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
 	 * the totalTimeout is checked.  If totalTimeout is not exceeded, the transaction
 	 * is retried.
 	 * <p>
-	 * If both socketTimeout and totalTimeout are non-zero and 
-	 * socketTimeout > totalTimeout, then socketTimeout will be set to totalTimeout. 
+	 * If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
+	 * then socketTimeout will be set to totalTimeout. 
 	 * <p>
-	 * If socketTimeout is zero, there will be no time limit per attempt.  If the transaction
-	 * fails on a network error, totalTimeout still applies.
+	 * If socketTimeout is zero, there will be no socket idle limit, but the totalTimeout
+	 * still applies.
 	 * <p>
-	 * For synchronous methods, socketTimeout is the socket timeout.  For asynchronous
-	 * methods, the socketTimeout is implemented using a HashedWheelTimer.
+	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
+	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
 	 * <p>
-	 * Default: 0 (no time limit for each attempt).
+	 * Default: 0 (no socket idle time limit).
 	 */
 	public int socketTimeout;
 
 	/**
 	 * Total transaction timeout in milliseconds.
+	 * <p>
+	 * The totalTimeout is tracked on the client and sent to the server along with 
+	 * the transaction in the wire protocol.  The client will most likely timeout
+	 * first, but the server also has the capability to timeout the transaction.
 	 * <p>
 	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
 	 * completes, the transaction will abort with

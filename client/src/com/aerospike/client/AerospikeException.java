@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Aerospike exceptions that can be thrown from the client.
@@ -105,7 +106,8 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 		
 		public Node node;
-		public int timeout;
+		public int socketTimeout;
+		public int timeout;  // totalTimeout
 		public int iterations;
 		public boolean client;
 		
@@ -115,10 +117,11 @@ public class AerospikeException extends RuntimeException {
 			this.client = true;
 		}
 		
-		public Timeout(Node node, int timeout, int iterations, boolean client) {
+		public Timeout(Node node, Policy policy, int iterations, boolean client) {
 			super(ResultCode.TIMEOUT);
 			this.node = node;
-			this.timeout = timeout;
+			this.socketTimeout = policy.socketTimeout;
+			this.timeout = policy.totalTimeout;
 			this.iterations = iterations;
 			this.client = client;
 		}
@@ -128,7 +131,7 @@ public class AerospikeException extends RuntimeException {
 			if (timeout == -1) {
 				return super.getMessage();
 			}
-			return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
+			return "Client timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
 				" lastNode=" + node;
 		}
 	}
