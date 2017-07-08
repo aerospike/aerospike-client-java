@@ -29,7 +29,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.util.Util;
 
-public class NioCommand implements Runnable, TimerTask {
+public final class NioCommand implements Runnable, TimerTask {
 
 	final NioEventLoop eventLoop;
 	final Cluster cluster;
@@ -55,7 +55,7 @@ public class NioCommand implements Runnable, TimerTask {
 		command.bufferQueue = eventLoop.bufferQueue;
 		hasTotalTimeout = command.policy.totalTimeout > 0;
 		
-		if (eventLoop == Thread.currentThread() && eventLoop.errors < 5) {
+		if (eventLoop == Thread.currentThread() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
 			run();
 		}
@@ -142,19 +142,19 @@ public class NioCommand implements Runnable, TimerTask {
 		
 			state = (cluster.getUser() != null) ? AsyncCommand.AUTH_WRITE : AsyncCommand.COMMAND_WRITE;
 			conn.registerConnect(this);
-			eventLoop.errors = 0;
+			eventState.errors = 0;
 		}
 		catch (AerospikeException.Connection ac) {
-			eventLoop.errors++;
-			onNetworkError(ac);
+			eventState.errors++;
+			onNetworkError(ac, true);
 		}
 		catch (IOException ioe) {
-			eventLoop.errors++;
-			onNetworkError(new AerospikeException(ioe));
+			eventState.errors++;
+			onNetworkError(new AerospikeException(ioe), true);
 		}
 		catch (Exception e) {
 			// Fail without retry on unknown errors.
-			eventLoop.errors++;
+			eventState.errors++;
 			fail();
 			notifyFailure(new AerospikeException(e));
 		}
@@ -559,10 +559,10 @@ public class NioCommand implements Runnable, TimerTask {
 		}
 	}
 
-	protected final void onNetworkError(AerospikeException ae) {
+	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
 		closeConnection();
 		command.sequence++;
-		retry(ae);
+		retry(ae, queueCommand);
 	}
 	
 	protected final void onServerTimeout() {
@@ -575,10 +575,10 @@ public class NioCommand implements Runnable, TimerTask {
 		}
 		
 		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, false);
-		retry(ae);
+		retry(ae, false);
 	}
 
-	private final void retry(AerospikeException ae) {
+	private final void retry(AerospikeException ae, boolean queueCommand) {
 		if (timeoutDelay) {
 			// User has already been notified.
 			close();
@@ -609,7 +609,7 @@ public class NioCommand implements Runnable, TimerTask {
 		}
 		
 		// Attempt retry.
-		if (! usingTotalDeadline) {
+		if (timeoutTask != null && ! usingTotalDeadline) {
 			// Socket timeout in effect.
 			timeoutTask.cancel();		
 			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
@@ -627,8 +627,31 @@ public class NioCommand implements Runnable, TimerTask {
 			}
 			
 			eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
-		}		
-		executeCommand();
+		}
+
+		if (queueCommand) {
+			// Retry command at the end of the queue so other commands have a
+			// chance to run first.
+			eventLoop.execute(new Runnable() {				
+				@Override
+				public void run() {
+					if (state == AsyncCommand.COMPLETE) {
+						return;
+					}
+
+					if (timeoutDelay) {
+						// User has already been notified.
+						close();
+						return;
+					}
+					executeCommand();
+				}
+			});
+		}
+		else {
+			// Retry command immediately.
+			executeCommand();
+		}
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {

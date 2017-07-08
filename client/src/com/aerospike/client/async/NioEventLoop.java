@@ -45,7 +45,6 @@ public final class NioEventLoop extends Thread implements EventLoop {
 	final AtomicBoolean awakened = new AtomicBoolean();
 	final long selectorTimeout;
 	final int index;
-	int errors;
     
 	public NioEventLoop(EventPolicy policy, SelectorProvider provider, int index) throws IOException {
 		commandQueue = new ConcurrentLinkedDeque<Runnable>();
@@ -262,7 +261,7 @@ public final class NioEventLoop extends Thread implements EventLoop {
         	}
         }
         catch (AerospikeException.Connection ac) {
-        	command.onNetworkError(ac);
+        	command.onNetworkError(ac, false);
         }
         catch (AerospikeException ae) {
         	if (ae.getResultCode() == ResultCode.TIMEOUT) {
@@ -274,7 +273,7 @@ public final class NioEventLoop extends Thread implements EventLoop {
         	}
         }
         catch (IOException ioe) {
-        	command.onNetworkError(new AerospikeException(ioe));
+        	command.onNetworkError(new AerospikeException(ioe), false);
         }
         catch (Exception e) {
 			command.onApplicationError(new AerospikeException(e));

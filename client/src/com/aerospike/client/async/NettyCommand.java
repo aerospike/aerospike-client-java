@@ -606,7 +606,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		closeConnection();
 		command.sequence++;
-		retry(ae);
+		retry(ae, true);
 	}
 	
 	protected final void onServerTimeout() {
@@ -622,10 +622,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, false);
-		retry(ae);
+		retry(ae, false);
 	}
 
-	private final void retry(AerospikeException ae) {
+	private final void retry(AerospikeException ae, boolean queueCommand) {
 		if (timeoutDelay) {
 			// User has already been notified.
 			close();
@@ -657,7 +657,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Attempt retry.
-		if (! usingTotalDeadline) {
+		if (timeoutTask != null && ! usingTotalDeadline) {
 			// Socket timeout in effect.
 			timeoutTask.cancel();		
 			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
@@ -675,8 +675,31 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 			
 			eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
-		}		
-		executeCommand();
+		}
+
+		if (queueCommand) {
+			// Retry command at the end of the queue so other commands have a
+			// chance to run first.
+			eventLoop.execute(new Runnable() {
+				@Override
+				public void run() {
+					if (state == AsyncCommand.COMPLETE) {
+						return;
+					}
+
+					if (timeoutDelay) {
+						// User has already been notified.
+						close();
+						return;
+					}
+					executeCommand();
+				}
+			});
+		}
+		else {
+			// Retry command immediately.
+			executeCommand();
+		}
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {
