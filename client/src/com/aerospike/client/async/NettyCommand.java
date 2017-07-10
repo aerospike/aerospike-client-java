@@ -67,7 +67,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	int iteration;
 	int receiveSize;
 	final boolean hasTotalTimeout;
-	boolean usingTotalDeadline;
+	boolean usingSocketTimeout;
 	boolean eventReceived;
 	boolean timeoutDelay;
 	
@@ -124,18 +124,20 @@ public final class NettyCommand implements Runnable, TimerTask {
 			if (command.policy.socketTimeout > 0) {
 				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 				
-				if (deadline >= totalDeadline) {
+				if (deadline < totalDeadline) {
+					usingSocketTimeout = true;					
+				}
+				else {
 					deadline = totalDeadline;
-					usingTotalDeadline = true;
 				}
 			}
 			else {
 				deadline = totalDeadline;
-				usingTotalDeadline = true;
 			}
 			timeoutTask = eventLoop.timer.addTimeout(this, deadline);								
 		}
 		else if (command.policy.socketTimeout > 0) {		
+			usingSocketTimeout = true;
 			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));								
 		}
 
@@ -501,20 +503,20 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 			
-			if (! usingTotalDeadline) {
+			if (usingSocketTimeout) {
 				// Socket idle timeout is in effect.
 				if (eventReceived) {
 					// Event(s) received within socket timeout period.
 					eventReceived = false;
 
-					long socketDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+					long deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 					
-					if (socketDeadline >= totalDeadline) {
+					if (deadline >= totalDeadline) {
 						// Transition to total timeout.
-						socketDeadline = totalDeadline;
-						usingTotalDeadline = true;
+						deadline = totalDeadline;
+						usingSocketTimeout = false;
 					}
-					eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+					eventLoop.timer.restoreTimeout(timeoutTask, deadline);
 					return;
 				}
 			}
@@ -550,9 +552,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (hasTotalTimeout) {
 			long remaining = totalDeadline - currentTime;
 			
-			if (remaining < timeout) {
+			if (remaining <= timeout) {
+				// Transition to total timeout.
 				timeout = remaining;
-				usingTotalDeadline = true;
+				usingSocketTimeout = false;
 			}
 		}
 		else {
@@ -657,7 +660,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Attempt retry.
-		if (timeoutTask != null && ! usingTotalDeadline) {
+		if (usingSocketTimeout) {
 			// Socket timeout in effect.
 			timeoutTask.cancel();		
 			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
@@ -665,9 +668,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 			if (hasTotalTimeout) {
 				long remaining = totalDeadline - currentTime;
 				
-				if (remaining < timeout) {
+				if (remaining <= timeout) {
+					// Transition to total timeout.
 					timeout = remaining;
-					usingTotalDeadline = true;
+					usingSocketTimeout = false;
 				}
 			}
 			else {
