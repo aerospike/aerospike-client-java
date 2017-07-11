@@ -46,14 +46,13 @@ public class Policy {
 	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
 	 * If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
-	 * the totalTimeout is checked.  If totalTimeout is not exceeded, the transaction
-	 * is retried.
+	 * both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
+	 * exceeded, the transaction is retried.
 	 * <p>
 	 * If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
 	 * then socketTimeout will be set to totalTimeout. 
 	 * <p>
-	 * If socketTimeout is zero, there will be no socket idle limit, but the totalTimeout
-	 * still applies.
+	 * If socketTimeout is zero, there will be no socket idle limit.
 	 * <p>
 	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
 	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
@@ -73,11 +72,9 @@ public class Policy {
 	 * completes, the transaction will abort with
 	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
-	 * If totalTimeout is zero, there will be no time limit and the transaction will retry
-	 * on network errors until maxRetries is exceeded.  If maxRetries is exceeded, the
-	 * transaction also aborts with {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * If totalTimeout is zero, there will be no total time limit.
 	 * <p>
-	 * Default: 0 (no time limit and use maxRetries).
+	 * Default: 0 (no time limit).
 	 */
 	public int totalTimeout;
 
@@ -107,10 +104,8 @@ public class Policy {
 	 * Maximum number of retries before aborting the current transaction.
 	 * The initial attempt is not counted as a retry.
 	 * <p>
-	 * If totalTimeout is zero and maxRetries is exceeded, the abort will
-	 * occur with a {@link com.aerospike.client.AerospikeException.Timeout}.
-	 * <p>
-	 * if totalTimeout is not zero, maxRetries is ignored.
+	 * If maxRetries is exceeded, the abort will occur with a
+	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
 	 * WARNING: Database writes that are not idempotent (such as add()) 
 	 * should not be retried because the write operation may be performed 

@@ -149,6 +149,11 @@ public abstract class SyncCommand extends Command {
 			
 			iteration++;
 
+			// Check maxRetries.
+			if (iteration > policy.maxRetries) {
+				break;
+			}
+
 			if (policy.totalTimeout > 0) {
 				// Check for total timeout.
 				long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
@@ -167,12 +172,6 @@ public abstract class SyncCommand extends Command {
 						socketTimeout = totalTimeout;
 					}
 				}				
-			}
-			else {
-				// Total timeout not defined.  Check maxRetries.
-				if (iteration > policy.maxRetries) {
-					break;
-				}
 			}
 
 			if (!isClientTimeout && policy.sleepBetweenRetries > 0) {

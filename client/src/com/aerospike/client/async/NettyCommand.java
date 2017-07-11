@@ -520,7 +520,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 					return;
 				}
 			}
-			iteration++;
 		}
 		else {
 			// Check socket timeout.
@@ -531,14 +530,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);			
 				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
 				return;
-			}			
-
-			if (++iteration > command.policy.maxRetries) {
-				totalTimeout();
-				return;		
-			}			
+			}
 		}
 		
+		// Check maxRetries.
+		if (++iteration > command.policy.maxRetries) {
+			totalTimeout();
+			return;		
+		}			
+
 		// Attempt retry.
 		closeConnection();
 		
@@ -635,11 +635,17 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 		
-		iteration++;
+		// Check maxRetries.
+		if (++iteration > command.policy.maxRetries) {
+			// Fail command.
+			close();
+			notifyFailure(ae);
+			return;				
+		}
 		
-		// Check if should retry.
 		long currentTime = 0;
 		
+		// Check total timeout.
 		if (hasTotalTimeout) {
 			currentTime = System.nanoTime();
 			
@@ -648,14 +654,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 				close();
 				notifyFailure(ae);
 				return;
-			}
-		}
-		else {
-			if (iteration > command.policy.maxRetries) {
-				// Fail command.
-				close();
-				notifyFailure(ae);
-				return;				
 			}
 		}
 		
