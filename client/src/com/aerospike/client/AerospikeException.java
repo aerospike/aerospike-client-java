@@ -131,7 +131,8 @@ public class AerospikeException extends RuntimeException {
 			if (timeout == -1) {
 				return super.getMessage();
 			}
-			return "Client timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
+			String type = client ? "Client" : "Server";
+			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
 				" lastNode=" + node;
 		}
 	}

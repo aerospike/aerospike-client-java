@@ -147,10 +147,8 @@ public abstract class SyncCommand extends Command {
 				super.sequence++;
 			}
 			
-			iteration++;
-
 			// Check maxRetries.
-			if (iteration > policy.maxRetries) {
+			if (++iteration > policy.maxRetries) {
 				break;
 			}
 
