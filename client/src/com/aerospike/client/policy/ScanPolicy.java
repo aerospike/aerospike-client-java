@@ -43,7 +43,8 @@ public final class ScanPolicy extends Policy {
 	public boolean concurrentNodes = true;
 	
 	/**
-	 * Indicates if bin data is retrieved. If false, only record digests are retrieved.
+	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
+	 * if stored on the server) are retrieved.
 	 */
 	public boolean includeBinData = true;
 	

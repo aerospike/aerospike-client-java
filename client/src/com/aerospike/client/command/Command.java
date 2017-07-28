@@ -33,6 +33,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -700,7 +701,9 @@ public abstract class Command {
 			writeHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 		else {
-			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);			
+			QueryPolicy qp = (QueryPolicy)policy;
+			int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
+			writeHeader(policy, readAttr, 0, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
