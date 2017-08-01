@@ -136,6 +136,7 @@
             <include>com/aerospike/client/query/RecordSet.java</include>
             <include>com/aerospike/client/query/ResultSet.java</include>
             <include>com/aerospike/client/query/Statement.java</include>
+            <include>com/aerospike/client/util/ThreadLocalData.java</include>
           </sourceFileIncludes>
         </configuration>
       </plugin>
