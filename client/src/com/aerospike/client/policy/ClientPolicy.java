@@ -185,7 +185,7 @@ public class ClientPolicy {
 	 * This option is required if there is a need to distribute reads across proles
 	 * ({@link com.aerospike.client.policy.Policy#replica} == 
 	 *  {@link com.aerospike.client.policy.Replica#MASTER_PROLES} or
-	 *  {@link com.aerospike.client.policy.Replica#SEQUENCE})
+	 *  {@link com.aerospike.client.policy.Replica#SEQUENCE}).
 	 * <p> 
 	 * If requestProleReplicas is enabled, all prole partition maps will be cached on the client which results in 
 	 * extra storage multiplied by the replication factor.

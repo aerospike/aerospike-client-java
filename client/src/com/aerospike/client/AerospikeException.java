@@ -105,15 +105,35 @@ public class AerospikeException extends RuntimeException {
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 		
+		/**
+		 * Last node used before timeout.
+		 */
 		public Node node;
+		
+		/**
+		 * Socket idle timeout in milliseconds.
+		 */
 		public int socketTimeout;
-		public int timeout;  // totalTimeout
+		
+		/**
+		 * Total timeout in milliseconds.
+		 */
+		public int timeout;
+		
+		/**
+		 * Number of attempts before failing.
+		 */
 		public int iterations;
+		
+		/**
+		 * If true, client initiated timeout.  If false, server initiated timeout.
+		 */
 		public boolean client;
 		
-		public Timeout() {
+		public Timeout(int totalTimeout) {
 			super(ResultCode.TIMEOUT);
-			this.timeout = -1;
+			this.timeout = totalTimeout;
+			this.iterations = -1;
 			this.client = true;
 		}
 		
@@ -128,8 +148,8 @@ public class AerospikeException extends RuntimeException {
 		
 		@Override
 		public String getMessage() {
-			if (timeout == -1) {
-				return super.getMessage();
+			if (iterations == -1) {
+				return "Client timeout: " + timeout;
 			}
 			String type = client ? "Client" : "Server";
 			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 

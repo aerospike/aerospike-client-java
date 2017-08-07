@@ -39,7 +39,7 @@ public enum Replica {
 	/**
 	 * Try node containing master partition first.
 	 * If connection fails, all commands try nodes containing replicated partitions.
-	 * If timeout is reached, reads also try nodes containing replicated partitions, 
+	 * If socketTimeout is reached, reads also try nodes containing replicated partitions, 
 	 * but writes remain on master node.
 	 * <p>
 	 * This option requires {@link ClientPolicy#requestProleReplicas} to be enabled

@@ -17,12 +17,12 @@
 package com.aerospike.client.policy;
 
 /**
- * Container object for transaction policy attributes used in all database
- * operation calls.
+ * Transaction policy attributes used in all database commands.
  */
 public class Policy {
 	/**
-	 * Transaction policy attributes used in all database commands.
+	 * Priority of request relative to other transactions.
+	 * Currently, only used for scans.
 	 */
 	public Priority priority = Priority.DEFAULT;
 	
@@ -104,7 +104,7 @@ public class Policy {
 	 * Maximum number of retries before aborting the current transaction.
 	 * The initial attempt is not counted as a retry.
 	 * <p>
-	 * If maxRetries is exceeded, the abort will occur with a
+	 * If maxRetries is exceeded, the transaction will abort with
 	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
 	 * WARNING: Database writes that are not idempotent (such as add()) 
@@ -154,6 +154,7 @@ public class Policy {
 		this.consistencyLevel = other.consistencyLevel;
 		this.replica = other.replica;
 		this.socketTimeout = other.socketTimeout;
+		this.totalTimeout = other.totalTimeout;
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
@@ -170,7 +171,7 @@ public class Policy {
 	 * Create a single timeout by setting socketTimeout and totalTimeout
 	 * to the same value.
 	 */
-	public void setTimeout(int timeout) {
+	public final void setTimeout(int timeout) {
 		this.socketTimeout = timeout;
 		this.totalTimeout = timeout;
 	}
@@ -180,7 +181,7 @@ public class Policy {
 	 * socketTimeout greater than totalTimeout, set socketTimeout to
 	 * totalTimeout.
 	 */
-	public void setTimeouts(int socketTimeout, int totalTimeout) {
+	public final void setTimeouts(int socketTimeout, int totalTimeout) {
 		this.socketTimeout = socketTimeout;
 		this.totalTimeout = totalTimeout;
 		
