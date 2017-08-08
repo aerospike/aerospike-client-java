@@ -432,7 +432,7 @@ public class Cluster implements Runnable, Closeable {
 				sb.append(seedArray[i]);
 				sb.append(' ');
 
-				Exception ex = exceptions[i];
+				Exception ex = exceptions == null ? null : exceptions[i];
 
 				if (ex != null)
 				{
