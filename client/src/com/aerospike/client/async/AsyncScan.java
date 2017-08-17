@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
 
@@ -32,8 +33,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 	
 	public AsyncScan(
 		AsyncMultiExecutor parent,
-		AsyncCluster cluster,
-		AsyncNode node,
+		Node node,
 		ScanPolicy policy,
 		RecordSequenceListener listener,
 		String namespace,
@@ -41,7 +41,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 		String[] binNames,
 		long taskId
 	) {
-		super(parent, cluster, node, policy, true);
+		super(parent, node, policy, true);
 		this.policy = policy;
 		this.listener = listener;
 		this.namespace = namespace;

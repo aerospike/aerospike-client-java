@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.task;
 
+import java.util.concurrent.TimeUnit;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.InfoPolicy;
@@ -26,6 +28,10 @@ import com.aerospike.client.util.Util;
  * Task used to poll for server task completion.
  */
 public abstract class Task {
+	public static final int NOT_FOUND = 0;
+	public static final int IN_PROGRESS = 1;
+	public static final int COMPLETE = 2;
+	
 	protected final Cluster cluster;
 	protected InfoPolicy policy;
 	private boolean done;
@@ -83,40 +89,45 @@ public abstract class Task {
 	 * an exception is thrown.  Do not timeout if policy timeout set to zero.
 	 */
 	private final void taskWait(int sleepInterval) {
-		long deadline = 0;
-		RuntimeException exception = null;
-		
-		while (! done) {
-			// Only check for timeout on successive iterations.
-			if (deadline == 0) {
-				deadline = System.currentTimeMillis() + policy.timeout;
-			}
-			else {
-				if (policy.timeout != 0 && System.currentTimeMillis() + sleepInterval > deadline) {
-					if (exception != null) {
-						// Use last exception received from queryIfDone().
-						throw exception;
-					}
-					else {
-						throw new AerospikeException.Timeout();
-					}
-				}
-			}
-			Util.sleep(sleepInterval);
-			
-			try {
-				done = queryIfDone();			
-			}
-			catch (DoneException de) {
-				// Throw exception immediately.
-				throw de;
-			}
-			catch (RuntimeException re) {
-				// Some tasks may initially give errors and then eventually succeed.
-				// Store exception and continue till timeout. 
-				exception = re;
-			}
+		if (done) {
+			return;
 		}
+		
+		long deadline = (policy.timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.timeout) : 0L;
+
+		do {
+			// Sleep first to give task a chance to complete and help avoid case
+			// where task hasn't started yet.
+			Util.sleep(sleepInterval);
+
+			int status = queryStatus();
+			
+			// The server can remove task listings immediately after completion
+			// (especially for background query execute), so "NOT_FOUND" can 
+			// really mean complete. If not found and timeout not defined,
+			// consider task complete.
+			if (status == COMPLETE || (status == NOT_FOUND && policy.timeout == 0)) {
+				done = true;
+				return;
+			}
+			
+			// Check for timeout.
+			if (policy.timeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
+				// Timeout has been reached or will be reached after next sleep.
+				// Do not throw timeout exception when status is "NOT_FOUND" because the server will drop 
+				// background query execute task listings immediately after completion (which makes client
+				// polling worthless).  This should be fixed by having server take an extra argument to query
+				// execute command that says if server should wait till command is complete before responding 
+				// to client.
+				if (status == NOT_FOUND) {
+					done = true;
+					return;
+				}
+				else {
+					throw new AerospikeException.Timeout(policy.timeout);	
+				}
+			}		
+		} while (true);		
 	}
 
 	/**
@@ -126,20 +137,24 @@ public abstract class Task {
 		if (done) {
 			return true;
 		}
-		done = queryIfDone();
+		
+		int status = queryStatus();
+		
+		if (status == NOT_FOUND) {
+			// The task may have not started yet.  Re-request status after a delay.
+			Util.sleep(1000);
+			status = queryStatus();
+		}
+
+		// The server can remove task listings immediately after completion
+		// (especially for background query execute), so we must assume a 
+		// "not found" status means the task is complete.
+		done = status != IN_PROGRESS;
 		return done;
 	}
-	
+
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	protected abstract boolean queryIfDone();
-	
-	public static class DoneException extends AerospikeException {
-		private static final long serialVersionUID = 1L;
-		
-		public DoneException(String message) {
-			super(message);
-		}
-	}	
+	public abstract int queryStatus();	
 }

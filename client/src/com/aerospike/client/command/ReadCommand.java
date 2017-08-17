@@ -24,41 +24,24 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
-	protected final Cluster cluster;
 	private final Policy policy;
 	protected final Key key;
-	protected final Partition partition;
 	private final String[] binNames;
 	private Record record;
 
-	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
-		this.cluster = cluster;
+	public ReadCommand(Policy policy, Key key, String[] binNames) {
 		this.policy = policy;
 		this.key = key;
-		this.partition = new Partition(key);
 		this.binNames = binNames;
 	}
 	
 	@Override
-	protected Policy getPolicy() {
-		return policy;
-	}
-
-	@Override
 	protected void writeBuffer() {
 		setRead(policy, key, binNames);
-	}
-
-	@Override
-	protected Node getNode() {
-		return getReadNode(cluster, partition, policy.replica);
 	}
 
 	@Override
@@ -110,6 +93,7 @@ public class ReadCommand extends SyncCommand {
         
         if (resultCode != 0) {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND) {
+        		handleNotFound(resultCode);
         		return;
         	}
         	
@@ -127,6 +111,10 @@ public class ReadCommand extends SyncCommand {
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);            
+	}
+	
+	protected void handleNotFound(int resultCode) {
+		// Do nothing in default case. Record will be null.
 	}
 	
 	private void handleUdfError(int resultCode) throws AerospikeException {	

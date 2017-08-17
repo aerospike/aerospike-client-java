@@ -70,7 +70,7 @@ public class AdminCommand {
 	private int dataOffset;
 
 	public AdminCommand() {
-		this.dataBuffer = new byte[8096];
+		this.dataBuffer = new byte[8192];
 		dataOffset = 8;
 	}
 

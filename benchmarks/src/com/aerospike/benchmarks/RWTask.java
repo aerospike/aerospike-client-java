@@ -38,7 +38,7 @@ public abstract class RWTask {
 	final WritePolicy writePolicyGeneration;
 	final long keyStart;
 	final long keyCount;
-	volatile boolean valid;
+	boolean valid;
 	
 	public RWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.args = args;
@@ -47,10 +47,7 @@ public abstract class RWTask {
 		this.keyCount = keyCount;
 		this.valid = true;
 		
-		writePolicyGeneration = new WritePolicy();
-		writePolicyGeneration.timeout = args.writePolicy.timeout;
-		writePolicyGeneration.maxRetries = args.writePolicy.maxRetries;
-		writePolicyGeneration.sleepBetweenRetries = args.writePolicy.sleepBetweenRetries;
+		writePolicyGeneration = new WritePolicy(args.writePolicy);
 		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
 		writePolicyGeneration.generation = 0;		
 	}	

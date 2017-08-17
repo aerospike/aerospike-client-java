@@ -24,7 +24,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 
@@ -39,15 +38,10 @@ public final class Batch {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
-			super(batch.node, false);
+			super(false);
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
-		}
-
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -90,18 +84,13 @@ public final class Batch {
 			Record[] records,
 			int readAttr
 		) {
-			super(batch.node, false);
+			super(false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
-		}
-
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -132,7 +121,6 @@ public final class Batch {
 		private int index;
 
 		public GetArrayDirect(
-			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,		
 			Key[] keys,
@@ -140,18 +128,13 @@ public final class Batch {
 			Record[] records,
 			int readAttr
 		) {
-			super(node, false);
+			super(false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
 			this.readAttr = readAttr;
-		}
-
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -190,16 +173,11 @@ public final class Batch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(batch.node, false);
+			super(false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
-		}
-		
-		@Override
-		protected Policy getPolicy() {
-			return policy;
 		}
 
 		@Override
@@ -230,24 +208,18 @@ public final class Batch {
 		private int index;
 
 		public ExistsArrayDirect(
-			Node node,
 			BatchNode.BatchNamespace batch,
 			Policy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(node, false);
+			super(false);
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 		
-		@Override
-		protected Policy getPolicy() {
-			return policy;
-		}
-
 		@Override
 		protected void writeBuffer() {
 			setBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);

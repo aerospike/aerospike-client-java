@@ -16,117 +16,100 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.concurrent.atomic.AtomicLong;
-
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.util.RandomShift;
 
 public final class InsertTaskAsync extends InsertTask {
 	
-	private final AsyncClient client;
-	private final AtomicLong tranCount;
-	private final long maxCommands;
+	private final AerospikeClient client;
+	private final EventLoop eventLoop;
+	private final RandomShift random;
+	private final WriteListener listener;
 	private final long keyStart;
-	private final long keyCount;
+	private final long keyMax;
+	private long keyCount;
+	private long begin;
+	private final boolean useLatency;
 	
-	public InsertTaskAsync(AsyncClient client, Arguments args, CounterStore counters, long keyStart, long keyCount, long maxCommands) {
+	public InsertTaskAsync(
+		AerospikeClient client,
+		EventLoop eventLoop,
+		Arguments args,
+		CounterStore counters,
+		long keyStart,
+		long keyMax
+	) {
 		super(args, counters);
-		this.client = client;
-		this.tranCount = new AtomicLong();
+		this.client = client;		
+		this.eventLoop = eventLoop;
+		this.random = new RandomShift();
+		this.keyStart = keyStart;
+		this.keyMax = keyMax;
+		this.useLatency = counters.write.latency != null;
 		
-		if (maxCommands > keyCount) {
-			maxCommands = keyCount;
+		if (useLatency) {
+			listener = new LatencyWriteHandler();
 		}
-		this.maxCommands = maxCommands;
-		this.keyStart = keyStart + maxCommands;
-		this.keyCount = keyCount - maxCommands;
+		else {
+			listener = new WriteHandler();		
+		}
 	}
 	
-	public void run() {
-		// Seed selector threads with max commands.
-		RandomShift random = RandomShift.instance();
-			
-		for (long i = keyStart - maxCommands; i < keyStart; i++) {
-			try {
-				runCommand(i, random);
-			}
-			catch (AerospikeException ae) {
-				i--;
-				writeFailure(ae);
-			}	
-			catch (Exception e) {
-				i--;
-				writeFailure(e);
-			}
-		}
-	}
-
-	private void runCommand(long currentKey, RandomShift random) {
+	public void runCommand() {
+		long currentKey = keyStart + keyCount;
 		Key key = new Key(args.namespace, args.setName, currentKey);
 		Bin[] bins = args.getBins(random, true, currentKey);
 		
-		if (counters.write.latency != null) {		
-			client.put(args.writePolicy, new LatencyWriteHandler(currentKey), key, bins);
+		if (useLatency) {
+			begin = System.nanoTime();
 		}
-		else {
-			client.put(args.writePolicy, new WriteHandler(currentKey), key, bins);
-		}
-	}
-
-	private void writeSuccess() {
-		counters.write.count.getAndIncrement();
-		
-		long count = tranCount.getAndIncrement();
-		
-		if (count >= keyCount) {
-			return;
-		}
-		runCommand(keyStart + count, RandomShift.instance());
+		client.put(eventLoop, listener, args.writePolicy, key, bins);		
 	}
 	
 	private final class LatencyWriteHandler implements WriteListener {
-		private long currentKey;
-		private long begin;
-		
-		public LatencyWriteHandler(long currentKey) {
-			this.currentKey = currentKey;
-			this.begin = System.nanoTime();
-		}
-		
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
 			counters.write.latency.add(elapsed);
-			writeSuccess();
+			counters.write.count.getAndIncrement();	
+			keyCount++;
+					
+			if (keyCount < keyMax) {
+				// Try next command.
+				runCommand();
+			}
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
-			runCommand(currentKey, RandomShift.instance());
-		}		
-	}
-	
-	private final class WriteHandler implements WriteListener {
-		private long currentKey;
-		
-		public WriteHandler(long currentKey) {
-			this.currentKey = currentKey;
+			// Retry command with same key.
+			runCommand();
 		}
-		
+	}
+
+	private final class WriteHandler implements WriteListener {		
 		@Override
 		public void onSuccess(Key key) {
-			writeSuccess();
+			counters.write.count.getAndIncrement();	
+			keyCount++;
+					
+			if (keyCount < keyMax) {
+				// Try next command.
+				runCommand();
+			}
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
-			runCommand(currentKey, RandomShift.instance());
-		}		
+			// Retry command with same key.
+			runCommand();
+		}
 	}
 }

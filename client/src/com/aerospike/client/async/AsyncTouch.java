@@ -16,40 +16,22 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncTouch extends AsyncSingleCommand {
-	private final WritePolicy writePolicy;
+public final class AsyncTouch extends AsyncCommand implements AsyncSingleCommand {
 	private final WriteListener listener;
+	private final WritePolicy writePolicy;
 	private final Key key;
-	private final Partition partition;
 		
-	public AsyncTouch(AsyncCluster cluster, WritePolicy writePolicy, WriteListener listener, Key key) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
+	public AsyncTouch(WriteListener listener, WritePolicy writePolicy, Key key) {
+		super(writePolicy, new Partition(key), null, false, false);
 		this.listener = listener;
+		this.writePolicy = writePolicy;
 		this.key = key;
-		this.partition = new Partition(key);
-	}
-
-	public AsyncTouch(AsyncTouch other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncTouch(this);
 	}
 
 	@Override
@@ -58,14 +40,7 @@ public final class AsyncTouch extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected Node getNode() {	
-		return cluster.getMasterNode(partition);
-	}
-
-	@Override
-	protected void parseResult(ByteBuffer byteBuffer) {
-		int resultCode = byteBuffer.get(5) & 0xFF;
-		
+	public void parseResult() {
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}

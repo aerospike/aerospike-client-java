@@ -16,58 +16,33 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncDelete extends AsyncSingleCommand {
-	private final WritePolicy writePolicy;
+public final class AsyncDelete extends AsyncCommand implements AsyncSingleCommand {
 	private final DeleteListener listener;
+	private final WritePolicy writePolicy;
 	private final Key key;
-	private final Partition partition;
 	private boolean existed;
 		
-	public AsyncDelete(AsyncCluster cluster, WritePolicy writePolicy, DeleteListener listener, Key key) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
+	public AsyncDelete(DeleteListener listener, WritePolicy writePolicy, Key key) {
+		super(writePolicy, new Partition(key), null, false, false);
 		this.listener = listener;
+		this.writePolicy = writePolicy;
 		this.key = key;
-		this.partition = new Partition(key);
 	}
 	
-	public AsyncDelete(AsyncDelete other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncDelete(this);
-	}
-
 	@Override
 	protected void writeBuffer() {
 		setDelete(writePolicy, key);
 	}
 
 	@Override
-	protected Node getNode() {	
-		return cluster.getMasterNode(partition);
-	}
-
-	@Override
-	protected void parseResult(ByteBuffer byteBuffer) {
-		int resultCode = byteBuffer.get(5) & 0xFF;
-		        
+	public void parseResult() {
         if (resultCode == 0) {
         	existed = true;
         }

@@ -20,13 +20,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -38,33 +39,25 @@ import com.aerospike.client.util.Util;
 
 public class AsyncBatch extends AsyncExample {
 	
-	private AsyncClient client;
-	private Parameters params;
+	private AerospikeClient client;
+	private EventLoop eventLoop;
 	private final String keyPrefix = "batchkey";
 	private final String valuePrefix = "batchvalue";
 	private Key[] sendKeys;
 	private String binName;  
 	private final int size = 8;
-	private final AtomicInteger taskCount = new AtomicInteger();
-	private int taskSize;
-	private boolean completed;
 	
-	public AsyncBatch(Console console) {
-		super(console);
-	}
-
 	/**
 	 * Asynchronous batch examples.
 	 */
 	@Override
-	public void runExample(AsyncClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		this.client = client;
-		this.params = params;
+		this.eventLoop = eventLoop;
 		this.binName = params.getBinName("batchbin");
 		
 		initializeKeys();
 		writeRecords();
-		waitTillComplete();
 	}
 
 	private void initializeKeys() throws AerospikeException {		
@@ -78,7 +71,7 @@ public class AsyncBatch extends AsyncExample {
 	/**
 	 * Write records individually.
 	 */
-	private void writeRecords() throws Exception {		
+	private void writeRecords() {		
 		WriteHandler handler = new WriteHandler(size);
 		
 		for (int i = 1; i <= size; i++) {
@@ -88,7 +81,7 @@ public class AsyncBatch extends AsyncExample {
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
 			
-			client.put(params.writePolicy, handler, key, bin);
+			client.put(eventLoop, handler, params.writePolicy, key, bin);
 		}
 	}
 
@@ -106,7 +99,6 @@ public class AsyncBatch extends AsyncExample {
 			if (rows == max) {
 				try {
 					// All writes succeeded. Run batch queries in parallel.
-					taskSize = 6;
 					batchExistsArray();
 					batchExistsSequence();
 					batchGetArray();
@@ -116,14 +108,12 @@ public class AsyncBatch extends AsyncExample {
 				}
 				catch (Exception e) {				
 					console.error("Batch failed: " + e.getMessage());
-					allTasksComplete();
 				}
 			}
 		}
 		
 		public void onFailure(AerospikeException e) {
 			console.error("Put failed: " + e.getMessage());
-			allTasksComplete();
 		}
 	}
 	
@@ -131,7 +121,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Check existence of records in one batch, receive in one array.
 	 */
 	private void batchExistsArray() throws Exception {
-		client.exists(null, new ExistsArrayListener() {
+		client.exists(eventLoop, new ExistsArrayListener() {
 			public void onSuccess(Key[] keys, boolean[] existsArray) {
 				for (int i = 0; i < existsArray.length; i++) {
 					Key key = keys[i];
@@ -139,42 +129,38 @@ public class AsyncBatch extends AsyncExample {
 		            console.info("Record: ns=%s set=%s key=%s exists=%s",
 		            	key.namespace, key.setName, key.userKey, exists);                        	
 		        }
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch exists array failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
     }
 	
 	/**
 	 * Check existence of records in one batch, receive one record at a time.
 	 */
 	private void batchExistsSequence() throws Exception {
-		client.exists(null, new ExistsSequenceListener() {
+		client.exists(eventLoop, new ExistsSequenceListener() {
 			public void onExists(Key key, boolean exists) {
 		        console.info("Record: ns=%s set=%s digest=%s exists=%s",
 		            	key.namespace, key.setName, Buffer.bytesToHexString(key.digest), exists);
 			}
 
 			public void onSuccess() {
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch exists sequence failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
     }
 
 	/**
 	 * Read records in one batch, receive in array.
 	 */
 	private void batchGetArray() throws Exception {
-		client.get(null, new RecordArrayListener() {
+		client.get(eventLoop, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				for (int i = 0; i < records.length; i++) {
 					Key key = keys[i];
@@ -193,21 +179,19 @@ public class AsyncBatch extends AsyncExample {
 				if (records.length != size) {
 		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get array failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
     }
 
 	/**
 	 * Read records in one batch call, receive one record at a time.
 	 */
 	private void batchGetSequence() throws Exception {
-		client.get(null, new RecordSequenceListener() {
+		client.get(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) {
 				Level level = Level.ERROR;
 				Object value = null;
@@ -221,21 +205,19 @@ public class AsyncBatch extends AsyncExample {
 			}
 			
 			public void onSuccess() {				
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get sequence failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
     }
 
 	/**
 	 * Read record headers in one batch, receive in an array.
 	 */
 	private void batchGetHeaders() throws Exception {
-		client.getHeader(null, new RecordArrayListener() {
+		client.getHeader(eventLoop, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				for (int i = 0; i < records.length; i++) {
 					Key key = keys[i];
@@ -256,14 +238,12 @@ public class AsyncBatch extends AsyncExample {
 				if (records.length != size) {
 		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch get headers failed: " + Util.getErrorMessage(e));
-				taskComplete();
 			}			
-		}, sendKeys);
+		}, null, sendKeys);
     }
 
 	/**
@@ -290,7 +270,7 @@ public class AsyncBatch extends AsyncExample {
 		records.add(new BatchRead(new Key(params.namespace, params.set, "keynotfound"), bins));
 		
 		// Execute batch.
-		client.get(null, new BatchListListener() {
+		client.get(eventLoop, new BatchListListener() {
 			public void onSuccess(List<BatchRead> records) {			
 				// Show results.
 				int found = 0;	
@@ -312,34 +292,11 @@ public class AsyncBatch extends AsyncExample {
 				if (found != 8) {
 					console.error("Records found mismatch. Expected %d. Received %d.", 8, found);
 				}		
-				taskComplete();
 			}
 			
 			public void onFailure(AerospikeException e) {
 				console.error("Batch read complex failed: " + Util.getErrorMessage(e));
-				taskComplete();				
 			}
-		}, records);	
-	}
-	
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private void taskComplete() {
-		if (taskCount.incrementAndGet() >= taskSize) {
-			allTasksComplete();
-		}
-	}
-
-	private synchronized void allTasksComplete() {
-		completed = true;
-		super.notify();
-	}
+		}, null, records);	
+	}	
 }

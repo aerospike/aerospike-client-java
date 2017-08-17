@@ -31,6 +31,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
@@ -45,6 +46,7 @@ public class Args {
 	public String namespace;
 	public String set;
 	public TlsPolicy tlsPolicy;
+	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public boolean hasUdf;
 	public boolean hasMap;
 	public boolean singleBin;
@@ -102,6 +104,8 @@ public class Args {
 			options.addOption("te", "tlsEncryptOnly", false, 
 					"Enable TLS encryption and disable TLS certificate validation"
 					);
+			options.addOption("netty", false, "Use Netty NIO event loops for async tests");
+			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async tests (Linux only)");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -145,6 +149,14 @@ public class Args {
 					tlsPolicy.encryptOnly = true;
 				}
 	        }
+	        
+			if (cl.hasOption("netty")) {
+				eventLoopType = EventLoopType.NETTY_NIO;
+			}
+			
+			if (cl.hasOption("nettyEpoll")) {
+				eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
 
 	        user = cl.getOptionValue("U");
 			password = cl.getOptionValue("P");

@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Aerospike exceptions that can be thrown from the client.
@@ -31,7 +32,7 @@ public class AerospikeException extends RuntimeException {
 		this.resultCode = resultCode;
 	}
 
-	public AerospikeException(int resultCode, Exception e) {
+	public AerospikeException(int resultCode, Throwable e) {
 		super(e);
 		this.resultCode = resultCode;
 	}
@@ -41,7 +42,7 @@ public class AerospikeException extends RuntimeException {
 		this.resultCode = resultCode;
 	}
 	
-	public AerospikeException(String message, Exception e) {
+	public AerospikeException(String message, Throwable e) {
 		super(message, e);
 	}
 
@@ -104,33 +105,54 @@ public class AerospikeException extends RuntimeException {
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 		
+		/**
+		 * Last node used before timeout.
+		 */
 		public Node node;
-		public int timeout;
-		public int iterations;
-		public int failedNodes;
-		public int failedConns;
 		
-		public Timeout() {
+		/**
+		 * Socket idle timeout in milliseconds.
+		 */
+		public int socketTimeout;
+		
+		/**
+		 * Total timeout in milliseconds.
+		 */
+		public int timeout;
+		
+		/**
+		 * Number of attempts before failing.
+		 */
+		public int iterations;
+		
+		/**
+		 * If true, client initiated timeout.  If false, server initiated timeout.
+		 */
+		public boolean client;
+		
+		public Timeout(int totalTimeout) {
 			super(ResultCode.TIMEOUT);
-			this.timeout = -1;
+			this.timeout = totalTimeout;
+			this.iterations = -1;
+			this.client = true;
 		}
 		
-		public Timeout(Node node, int timeout, int iterations, int failedNodes, int failedConns) {
+		public Timeout(Node node, Policy policy, int iterations, boolean client) {
 			super(ResultCode.TIMEOUT);
 			this.node = node;
-			this.timeout = timeout;
+			this.socketTimeout = policy.socketTimeout;
+			this.timeout = policy.totalTimeout;
 			this.iterations = iterations;
-			this.failedNodes = failedNodes;
-			this.failedConns = failedConns;
+			this.client = client;
 		}
 		
 		@Override
 		public String getMessage() {
-			if (timeout == -1) {
-				return super.getMessage();
+			if (iterations == -1) {
+				return "Client timeout: " + timeout;
 			}
-			return "Client timeout: timeout=" + timeout + " iterations=" + iterations + 
-				" failedNodes=" + failedNodes + " failedConns=" + failedConns +
+			String type = client ? "Client" : "Server";
+			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
 				" lastNode=" + node;
 		}
 	}

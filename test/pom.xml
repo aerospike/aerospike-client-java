@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-client-test</artifactId>
-  <version>3.3.4</version>
+  <version>4.0.7</version>
   <packaging>jar</packaging>
 
   <name>aerospike-client-test</name>
@@ -13,7 +13,26 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>3.3.4</version>
+      <version>4.0.7</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport</artifactId>
+      <version>4.1.11.Final</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-epoll</artifactId>
+      <classifier>linux-x86_64</classifier>
+      <version>4.1.11.Final</version>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
+      <artifactId>netty-handler</artifactId>
+      <version>4.1.11.Final</version>
     </dependency>
 
     <dependency>

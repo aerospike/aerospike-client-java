@@ -70,6 +70,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get byte value instance.
+	 */
+	public static Value get(byte value) {
+		return new ByteValue(value);
+	}
+
+	/**
 	 * Get integer value instance.
 	 */
 	public static Value get(int value) {
@@ -188,6 +195,10 @@ public abstract class Value {
         	return new BooleanValue((Boolean)value);
 		}
 		
+		if (value instanceof Byte) {
+        	return new ByteValue((byte)value);
+		}
+
 		if (value instanceof List<?>) {
         	return new ListValue((List<?>)value);
 		}
@@ -470,6 +481,76 @@ public abstract class Value {
 
 		public int getLength() {
 			return length;
+		}
+	}
+
+	/**
+	 * Byte value.  
+	 */
+	public static final class ByteValue extends Value {		
+		private final byte value;
+
+		public ByteValue(byte value) {
+			this.value = value;
+		}
+		
+		@Override
+		public int estimateSize() {
+			return 8;
+		}
+		
+		@Override
+		public int write(byte[] buffer, int offset) {
+			Buffer.longToBytes(value, buffer, offset);
+			return 8;
+		}
+		
+		@Override
+		public void pack(Packer packer) {
+			packer.packByte(value);
+		}
+
+		@Override
+		public int getType() {
+			// The server does not natively handle one byte, so store as long (8 byte integer).
+			return ParticleType.INTEGER;
+		}
+		
+		@Override
+		public Object getObject() {
+			return value;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaInteger.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Byte.toString(value);
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((ByteValue)other).value);
+		}
+
+		@Override
+		public int hashCode() {
+	        return value;
+		}	
+
+		@Override
+		public int toInteger() {
+			return value;
+		}
+
+		@Override
+		public long toLong() {
+			return value;
 		}
 	}
 
@@ -980,6 +1061,11 @@ public abstract class Value {
 		public void pack(Packer packer) {
 			packer.packGeoJSON(value);
 		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJson");
+		}		
 
 		@Override
 		public int getType() {

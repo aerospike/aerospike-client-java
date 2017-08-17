@@ -24,8 +24,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
 
 public final class Executor {
+	private final Cluster cluster;
+	private final Policy policy;
 	private final List<ExecutorThread> threads;
 	private final ExecutorService threadPool;
 	private volatile Exception exception;
@@ -34,15 +38,17 @@ public final class Executor {
 	private int maxConcurrentThreads;
 	private boolean completed;
 
-	public Executor(Cluster cluster, int capacity) {
+	public Executor(Cluster cluster, Policy policy, int capacity) {
+		this.cluster = cluster;
+		this.policy = policy;
 		threads = new ArrayList<ExecutorThread>(capacity);
 		threadPool = cluster.getThreadPool();
 		done = new AtomicBoolean();
 		completedCount = new AtomicInteger();
 	}
 
-	public void addCommand(MultiCommand command) {
-		threads.add(new ExecutorThread(command));
+	public void addCommand(Node node, MultiCommand command) {
+		threads.add(new ExecutorThread(node, command));
 	}
 
 	public void execute(int maxConcurrent) throws AerospikeException {
@@ -115,16 +121,18 @@ public final class Executor {
 	}
 	
     private final class ExecutorThread implements Runnable {
+		private final Node node;
 		private final MultiCommand command;
 
-		public ExecutorThread(MultiCommand command) {
+		public ExecutorThread(Node node, MultiCommand command) {
+			this.node = node;
 			this.command = command;
 		}
 		
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute();
+					command.execute(cluster, policy, null, node, true);
 				}
 				threadCompleted();
 			}

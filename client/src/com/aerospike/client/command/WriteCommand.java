@@ -22,43 +22,25 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class WriteCommand extends SyncCommand {
-	private final Cluster cluster;
 	private final WritePolicy policy;
 	private final Key key;
-	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 
-	public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
-		this.cluster = cluster;
+	public WriteCommand(WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
 		this.policy = policy;
 		this.key = key;
-		this.partition = new Partition(key);
 		this.bins = bins;
 		this.operation = operation;
 	}
 
 	@Override
-	protected Policy getPolicy() {
-		return policy;
-	}
-
-	@Override
 	protected void writeBuffer() {
 		setWrite(policy, operation, key, bins);
-	}
-
-	@Override
-	protected Node getNode() {
-		return cluster.getMasterNode(partition);
 	}
 
 	@Override

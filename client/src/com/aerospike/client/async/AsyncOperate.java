@@ -19,43 +19,37 @@ package com.aerospike.client.async;
 import java.util.ArrayList;
 import java.util.Map;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncOperate extends AsyncRead {
 	private final WritePolicy writePolicy;
 	private final Operation[] operations;
+	private boolean hasWrite;
 	
-	public AsyncOperate(AsyncCluster cluster, WritePolicy writePolicy, RecordListener listener, Key key, Operation[] operations) {
-		super(cluster, writePolicy, listener, key, null);
+	public AsyncOperate(RecordListener listener, WritePolicy writePolicy, Key key, Operation[] operations) {
+		super(listener, writePolicy, key, null, false);
 		this.writePolicy = writePolicy;
 		this.operations = operations;
 	}
 
-	public AsyncOperate(AsyncOperate other) {
-		super(other);
-		this.writePolicy = other.writePolicy;
-		this.operations = other.operations;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncOperate(this);
-	}
-
 	@Override
 	protected void writeBuffer() {
-		setOperate(writePolicy, key, operations);
+		hasWrite = setOperate(writePolicy, key, operations);
 	}
 	
 	@Override
-	protected Node getNode() {	
-		return cluster.getMasterNode(partition);
+	protected void handleNotFound(int resultCode) {
+		// Only throw not found exception for command with write operations.
+		// Read-only command operations return a null record.
+		if (hasWrite) {
+	    	throw new AerospikeException(resultCode);
+		}
 	}
-	
+
 	@Override
 	protected void addBin(Map<String,Object> bins, String name, Object value) {
 		if (bins.containsKey(name)) {

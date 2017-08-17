@@ -26,6 +26,11 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 
 /**
+ * THIS CLASS IS OBSOLETE.
+ * <p>
+ * This class is not used by the new efficient asynchronous client.
+ * This class exists solely to provide compatibility with legacy applications.
+ * <p>
  * Container object for client policy Command.
  */
 public final class AsyncClientPolicy extends ClientPolicy {	

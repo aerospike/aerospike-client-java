@@ -16,14 +16,22 @@
  */
 package com.aerospike.test;
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
-import com.aerospike.client.async.AsyncClient;
-import com.aerospike.client.async.AsyncClientPolicy;
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.NettyEventLoops;
+import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
@@ -42,39 +50,70 @@ import com.aerospike.test.util.Args;
 	TestAsyncUDF.class
 })
 public class SuiteAsync {
-	public static AsyncClient client = null;
+	public static AerospikeClient client = null;
+	public static EventLoops eventLoops = null;
+	public static EventLoop eventLoop = null;
 
 	@BeforeClass
 	public static void init() {
-		System.out.println("Begin AsyncClient");
+		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
 		
-		AsyncClientPolicy policy = new AsyncClientPolicy();
-		policy.user = args.user;
-		policy.password = args.password;
-		policy.asyncMaxCommands = 300;
-		policy.asyncSelectorThreads = 1;
-		policy.asyncSelectorTimeout = 10;
-		policy.failIfNotConnected = true;
-		
-		Host[] hosts = Host.parseHosts(args.host, args.port);
-
-		client = new AsyncClient(policy, hosts);
-		
-		try {
-			args.setServerSpecific(client);
+		switch (args.eventLoopType) {
+			default:
+			case DIRECT_NIO: {
+				eventLoops = new NioEventLoops(1);			
+				break;
+			}
+				
+			case NETTY_NIO: {
+				EventLoopGroup group = new NioEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(group);
+				break;
+			}
+				
+			case NETTY_EPOLL: {
+				EventLoopGroup group = new EpollEventLoopGroup(1);				
+				eventLoops = new NettyEventLoops(group);
+				break;
+			}
 		}
-		catch (RuntimeException re) {
-			client.close();
-			throw re;
+
+		try {
+			ClientPolicy policy = new ClientPolicy();
+			policy.eventLoops = eventLoops;			
+			policy.user = args.user;
+			policy.password = args.password;
+			policy.tlsPolicy = args.tlsPolicy;
+			
+			Host[] hosts = Host.parseHosts(args.host, args.port);
+
+			eventLoop = eventLoops.get(0);
+			client = new AerospikeClient(policy, hosts);
+			
+			try {
+				args.setServerSpecific(client);
+			}
+			catch (RuntimeException re) {
+				client.close();
+				throw re;
+			}
+		}
+		catch (Exception e) {
+			eventLoops.close();
+			throw e;
 		}
 	}
 	
 	@AfterClass
 	public static void destroy() {
-		System.out.println("End AsyncClient");
+		System.out.println("End AerospikeClient");
 		if (client != null) {
 			client.close();
+		}
+
+		if (eventLoops != null) {
+			eventLoops.close();
 		}
 	}
 }

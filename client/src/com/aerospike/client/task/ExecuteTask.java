@@ -43,12 +43,12 @@ public final class ExecuteTask extends Task {
 	 * Query all nodes for task completion status.
 	 */
 	@Override
-	protected boolean queryIfDone() throws AerospikeException {
+	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with complete to be considered done.
 		Node[] nodes = cluster.getNodes();
 		
 		if (nodes.length == 0) {
-			return false;
+			throw new AerospikeException("Cluster is empty");
 		}
 
 		String module = (scan) ? "scan" : "query";
@@ -58,15 +58,12 @@ public final class ExecuteTask extends Task {
 			String response = Info.request(policy, node, command);
 			
 			if (response.startsWith("ERROR:2")) {
-				// Task not found. This could mean task already completed or
-				// task not started yet.  We are going to have to assume that
-				// the task already completed...
-				continue;
+				return Task.NOT_FOUND;
 			}
-			
+
 			if (response.startsWith("ERROR:")) {
-				// Mark done and quit immediately.
-				throw new DoneException(command + " failed: " + response);
+				// Throw exception immediately.
+				throw new AerospikeException(command + " failed: " + response);
 			}
 			
 			String find = "status=";
@@ -83,7 +80,7 @@ public final class ExecuteTask extends Task {
 			
 			// Newer servers use "done" while older servers use "DONE"
 			if (! (status.startsWith("done") || status.startsWith("DONE"))) {
-				return false;				
+				return Task.IN_PROGRESS;				
 			}
 
 			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
@@ -91,6 +88,6 @@ public final class ExecuteTask extends Task {
 			//	return false;
 			//}
 		}
-		return true;
+		return Task.COMPLETE;
 	}
 }

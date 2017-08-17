@@ -17,24 +17,31 @@
 package com.aerospike.client.policy;
 
 /**
- * Defines type of node partition targeted by read commands.
+ * Defines algorithm used to determine the target node for a command.
+ * The replica algorithm only affects single record commands.
+ * Batch, scan and query are not affected by replica algorithm.
  */
 public enum Replica {
 	/**
-	 * Read from node containing key's master partition.  This is the default behavior.
+	 * Use node containing key's master partition.
 	 */
 	MASTER,
-
-	/**
-	 * Distribute reads across nodes containing key's master and replicated partitions
-	 * in round-robin fashion.  This option requires {@link ClientPolicy#requestProleReplicas}
-	 * to be enabled in order to function properly.
-	 */
-	MASTER_PROLES,
 	
 	/**
-	 * Always try node containing master partition first. If connection fails and
-	 * {@link Policy#retryOnTimeout} is true, try nodes containing prole partition.
+	 * Distribute reads across nodes containing key's master and replicated partitions
+	 * in round-robin fashion.  Writes always use node containing key's master partition.
+	 * <p>
+	 * This option requires {@link ClientPolicy#requestProleReplicas} to be enabled
+	 * in order to function properly.
+	 */
+	MASTER_PROLES,
+
+	/**
+	 * Try node containing master partition first.
+	 * If connection fails, all commands try nodes containing replicated partitions.
+	 * If socketTimeout is reached, reads also try nodes containing replicated partitions, 
+	 * but writes remain on master node.
+	 * <p>
 	 * This option requires {@link ClientPolicy#requestProleReplicas} to be enabled
 	 * in order to function properly.
 	 */
@@ -42,6 +49,8 @@ public enum Replica {
 
 	/**
 	 * Distribute reads across all nodes in cluster in round-robin fashion.
+	 * Writes always use node containing key's master partition.
+	 * <p>
 	 * This option is useful when the replication factor equals the number
 	 * of nodes in the cluster and the overhead of requesting proles is not desired.
 	 */

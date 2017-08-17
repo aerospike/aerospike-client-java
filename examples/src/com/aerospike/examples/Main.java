@@ -30,6 +30,7 @@ import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -122,6 +123,8 @@ public class Main extends JPanel {
 			options.addOption("te", "tlsEncryptOnly", false, 
 					"Enable TLS encryption and disable TLS certificate validation"
 					);
+			options.addOption("netty", false, "Use Netty NIO event loops for async examples");
+			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async examples (Linux only)");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -149,6 +152,14 @@ public class Main extends JPanel {
 				}
 			}
 			
+			if (cl.hasOption("netty")) {
+				params.eventLoopType = EventLoopType.NETTY_NIO;
+			}
+			
+			if (cl.hasOption("nettyEpoll")) {
+				params.eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
+
 			if (cl.hasOption("d")) {				
 				Log.setLevel(Level.DEBUG);
 			}

@@ -33,6 +33,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -41,7 +42,6 @@ import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
-import com.aerospike.client.util.ThreadLocalData;
 
 public abstract class Command {		
 	// Flags commented out are not supported by this client.
@@ -73,9 +73,9 @@ public abstract class Command {
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
 
-	protected byte[] dataBuffer;
-	protected int dataOffset;
-	protected int sequence;
+	public byte[] dataBuffer;
+	public int dataOffset;
+	public int sequence;
 	
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -164,11 +164,12 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
+	public final boolean setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 		int readAttr = 0;
 		int writeAttr = 0;
+		boolean hasWrite = false;
 		boolean readBin = false;
 		boolean readHeader = false;
 		boolean respondAllOps = policy.respondAllOps;
@@ -201,6 +202,7 @@ public abstract class Command {
 				// Fall through to write.
 			default:
 				writeAttr = Command.INFO2_WRITE;
+				hasWrite = true;
 				break;				
 			}
 			estimateOperationSize(operation);
@@ -222,6 +224,7 @@ public abstract class Command {
 			writeOperation(operation);
 		}
 		end();
+		return hasWrite;
 	}
 
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 
@@ -285,6 +288,13 @@ public abstract class Command {
 		}
 		sizeBuffer();
 
+		int readAttr = Command.INFO1_READ;
+		
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
+
+		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
@@ -321,7 +331,7 @@ public abstract class Command {
 		    	dataBuffer[dataOffset++] = 0;  // do not repeat
 		    	
 				if (binNames != null && binNames.length != 0) {
-			    	dataBuffer[dataOffset++] = Command.INFO1_READ;
+			    	dataBuffer[dataOffset++] = (byte)readAttr;
 					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
@@ -337,7 +347,7 @@ public abstract class Command {
 					}
 				}
 				else {
-			    	dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
+			    	dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
 					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
 				    dataOffset += 2;		    
 					Buffer.shortToBytes(0, dataBuffer, dataOffset);
@@ -404,6 +414,10 @@ public abstract class Command {
 		}
 	    
 		sizeBuffer();
+
+		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
+			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		}
 
 		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
 		int fieldSizeOffset = dataOffset;
@@ -564,7 +578,7 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		
-		// Write scan timeout
+		// Write scan socket idle timeout.
 		writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
 		Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
 		dataOffset += 4;
@@ -687,7 +701,9 @@ public abstract class Command {
 			writeHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 		else {
-			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, operationCount);			
+			QueryPolicy qp = (QueryPolicy)policy;
+			int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
+			writeHeader(policy, readAttr, 0, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
@@ -872,7 +888,7 @@ public abstract class Command {
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
-		Buffer.intToBytes(policy.timeout, dataBuffer, 22);
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);		
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -894,7 +910,7 @@ public abstract class Command {
 		for (int i = 11; i < 22; i++) {
 			dataBuffer[i] = 0;
 		}
-		Buffer.intToBytes(policy.timeout, dataBuffer, 22);
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -994,46 +1010,30 @@ public abstract class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	protected final void sizeBuffer() {
-		dataBuffer = ThreadLocalData.getBuffer();
-		
-		if (dataOffset > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
-		}
-	}
-	
-	protected final void sizeBuffer(int size) {
-		if (size > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(size);
-		}
-	}
-
 	protected final void end() {
 		// Write total size of message which is the current offset.
 		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(size, dataBuffer, 0);
-	}
+	}	
 	
-	public final Node getReadNode(Cluster cluster, Partition partition, Replica replica)
+	public final Node getNode(Cluster cluster, Partition partition, Replica replica, boolean isRead)
 	{
-		switch (replica)
-		{
-			case MASTER:
-				return cluster.getMasterNode(partition);
-
-			case MASTER_PROLES:
-				return cluster.getMasterProlesNode(partition);
-
-			case SEQUENCE:
-				return getSequenceNode(cluster, partition);
-
-			default:
-			case RANDOM:
-				return cluster.getRandomNode();
+		// Handle default case first.
+		if (replica == Replica.SEQUENCE) {
+			return getSequenceNode(cluster, partition);			
 		}
+		
+		if (replica == Replica.MASTER || ! isRead) {
+			return cluster.getMasterNode(partition);
+		}
+
+		if (replica == Replica.MASTER_PROLES) {
+			return cluster.getMasterProlesNode(partition);			
+		}
+		return cluster.getRandomNode();
 	}
 
-	public final Node getSequenceNode(Cluster cluster, Partition partition)
+	private final Node getSequenceNode(Cluster cluster, Partition partition)
 	{
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,AtomicReferenceArray<Node>[]> map = cluster.partitionMap;
@@ -1042,17 +1042,16 @@ public abstract class Command {
 		if (replicaArray != null) {
 			for (int i = 0; i < replicaArray.length; i++) {
 				int index = Math.abs(sequence % replicaArray.length);						
-				sequence++;
 				Node node = replicaArray[index].get(partition.partitionId);
 				
 				if (node != null && node.isActive()) {
 					return node;
-				}				
+				}			
+				sequence++;
 			}
 		}
 		return cluster.getRandomNode();		
 	}
 	
-	protected abstract Node getNode() throws AerospikeException.InvalidNode;
-	protected abstract void writeBuffer() throws AerospikeException;
+	protected abstract void sizeBuffer();
 }

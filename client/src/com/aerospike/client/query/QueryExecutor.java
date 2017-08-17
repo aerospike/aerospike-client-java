@@ -29,6 +29,7 @@ import com.aerospike.client.policy.QueryPolicy;
 
 public abstract class QueryExecutor {
 	
+	private final Cluster cluster;
 	protected final QueryPolicy policy;
 	protected final Statement statement;
 	private final Node[] nodes;
@@ -40,6 +41,7 @@ public abstract class QueryExecutor {
 	private final int maxConcurrentNodes;
 	
 	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
+		this.cluster = cluster;
 		this.policy = policy;
 		this.statement = statement;
 		this.completedCount = new AtomicInteger();
@@ -66,8 +68,8 @@ public abstract class QueryExecutor {
 	protected final void initializeThreads() {
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
-			MultiCommand command = createCommand(nodes[i]);
-			threads[i] = new QueryThread(command);
+			MultiCommand command = createCommand();
+			threads[i] = new QueryThread(nodes[i], command);
 		}
 	}
 
@@ -125,16 +127,18 @@ public abstract class QueryExecutor {
 	}
 
 	private final class QueryThread implements Runnable {
+		private final Node node;
 		private final MultiCommand command;
 
-		public QueryThread(MultiCommand command) {
+		public QueryThread(Node node, MultiCommand command) {
+			this.node = node;
 			this.command = command;
 		}
 
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute();
+					command.execute(cluster, policy, null, node, true);
 				}
 				threadCompleted();
 			}
@@ -152,7 +156,7 @@ public abstract class QueryExecutor {
 		}		
 	}
 	
-	protected abstract MultiCommand createCommand(Node node);
+	protected abstract MultiCommand createCommand();
 	protected abstract void sendCancel();
 	protected abstract void sendCompleted();
 }

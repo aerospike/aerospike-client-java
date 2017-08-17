@@ -48,11 +48,11 @@ public final class BatchExecutor {
 					// New batch
 					if (records != null) {
 						MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
-						command.execute();
+						command.execute(cluster, policy, null, batchNode.node, true);
 					}
 					else {
 						MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
-						command.execute();						
+						command.execute(cluster, policy, null, batchNode.node, true);
 					}
 				}
 				else {
@@ -61,12 +61,12 @@ public final class BatchExecutor {
 					
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
 						if (records != null) {
-							MultiCommand command = new Batch.GetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
-							command.execute();
+							MultiCommand command = new Batch.GetArrayDirect(batchNamespace, policy, keys, binNames, records, readAttr);
+							command.execute(cluster, policy, null, batchNode.node, true);
 						}
 						else {
-							MultiCommand command = new Batch.ExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
-							command.execute();
+							MultiCommand command = new Batch.ExistsArrayDirect(batchNamespace, policy, keys, existsArray);
+							command.execute(cluster, policy, null, batchNode.node, true);
 						}
 					}
 				}
@@ -80,7 +80,7 @@ public final class BatchExecutor {
 			// This should not be necessary here because it happens in Executor which does a 
 			// volatile write (completedCount.incrementAndGet()) at the end of write threads
 			// and a synchronized waitTillComplete() in this thread.
-			Executor executor = new Executor(cluster, batchNodes.size() * 2);
+			Executor executor = new Executor(cluster, policy, batchNodes.size() * 2);
 
 			// Initialize threads.  
 			for (BatchNode batchNode : batchNodes) {
@@ -88,11 +88,11 @@ public final class BatchExecutor {
 					// New batch
 					if (records != null) {
 						MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
-						executor.addCommand(command);
+						executor.addCommand(batchNode.node, command);
 					}
 					else {
 						MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
-						executor.addCommand(command);
+						executor.addCommand(batchNode.node, command);
 					}
 				}
 				else {
@@ -103,12 +103,12 @@ public final class BatchExecutor {
 
 					for (BatchNamespace batchNamespace : batchNode.batchNamespaces) {
 						if (records != null) {
-							MultiCommand command = new Batch.GetArrayDirect(batchNode.node, batchNamespace, policy, keys, binNames, records, readAttr);
-							executor.addCommand(command);
+							MultiCommand command = new Batch.GetArrayDirect(batchNamespace, policy, keys, binNames, records, readAttr);
+							executor.addCommand(batchNode.node, command);
 						}
 						else {
-							MultiCommand command = new Batch.ExistsArrayDirect(batchNode.node, batchNamespace, policy, keys, existsArray);
-							executor.addCommand(command);
+							MultiCommand command = new Batch.ExistsArrayDirect(batchNamespace, policy, keys, existsArray);
+							executor.addCommand(batchNode.node, command);
 						}
 					}
 				}

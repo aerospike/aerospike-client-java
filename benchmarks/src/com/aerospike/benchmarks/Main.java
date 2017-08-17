@@ -16,6 +16,10 @@
  */
 package com.aerospike.benchmarks;
 
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
@@ -36,9 +40,13 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
-import com.aerospike.client.async.AsyncClient;
-import com.aerospike.client.async.AsyncClientPolicy;
-import com.aerospike.client.async.MaxCommandAction;
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoopType;
+import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventPolicy;
+import com.aerospike.client.async.NettyEventLoops;
+import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.RecordExistsAction;
@@ -67,25 +75,25 @@ public class Main implements Log.Callback {
 		}
 		catch (Exception e) {		
 			System.out.println("Error: " + e.getMessage());
-			
-			if (program != null && program.args.debug) {
-				e.printStackTrace();
-			}
+			e.printStackTrace();
 		}
 	}
 
 	private Arguments args = new Arguments();
 	private Host[] hosts;
+	private EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	private int port = 3000;
 	private long nKeys;
 	private long startKey;
 	private int nThreads;
-	private int asyncTaskThreads;
+	private int asyncMaxCommands = 200;
+	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
 	private boolean initialize;
 	private String filepath;
 
-	private AsyncClientPolicy clientPolicy = new AsyncClientPolicy();
+	private EventLoops eventLoops;
+	private ClientPolicy clientPolicy = new ClientPolicy();
 	private CounterStore counters = new CounterStore();
 
 	public Main(String[] commandLineArgs) throws Exception {
@@ -171,10 +179,14 @@ public class Main implements Log.Callback {
 			"The default is to run indefinitely."
 			);
 		
-		options.addOption("T", "timeout", true, "Set read and write transaction timeout in milliseconds.");
-		options.addOption("readTimeout", true, "Set read transaction timeout in milliseconds.");
-		options.addOption("writeTimeout", true, "Set write transaction timeout in milliseconds.");
-	
+		options.addOption("T", "timeout", true, "Set read and write socketTimeout and totalTimeout to the same timeout in milliseconds.");
+		options.addOption("socketTimeout", true, "Set read and write socketTimeout in milliseconds.");
+		options.addOption("readSocketTimeout", true, "Set read socketTimeout in milliseconds.");
+		options.addOption("writeSocketTimeout", true, "Set write socketTimeout in milliseconds.");
+		options.addOption("totalTimeout", true, "Set read and write totalTimeout in milliseconds.");
+		options.addOption("readTotalTimeout", true, "Set read totalTimeout in milliseconds.");
+		options.addOption("writeTotalTimeout", true, "Set write totalTimeout in milliseconds.");
+
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true, 
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
@@ -200,8 +212,7 @@ public class Main implements Log.Callback {
 				"Number of synchronous connection pools per node.  Default 1."
 				);	
 		options.addOption("z", "threads", true, 
-			"Set the number of threads the client will use to generate load. " + 
-			"It is not recommended to use a value greater than 125."
+			"Set the number of threads the client will use to generate load. "
 			);	
 		options.addOption("latency", true, 
 			"\"ycsb\"[,warmup count] or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
@@ -243,10 +254,7 @@ public class Main implements Log.Callback {
 
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
-		options.addOption("E", "asyncSelectorTimeout", true, "Asynchronous select() timeout in milliseconds.");
-		options.addOption("W", "asyncSelectorThreads", true, "Number of selector threads when running in asynchronous mode.");
-		options.addOption("V", "asyncTaskThreads", true, "Number of asynchronous tasks. Use zero for unbounded thread pool.");
-		options.addOption("X", "asyncMaxCommandAction", true, "BLOCK | REJECT | ACCEPT");
+		options.addOption("W", "eventLoops", true, "Number of event loop threads when running in asynchronous mode.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
@@ -268,6 +276,8 @@ public class Main implements Log.Callback {
 		options.addOption("te", "tlsEncryptOnly", false, 
 				"Enable TLS encryption and disable TLS certificate validation"
 				);
+		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
+		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -285,17 +295,13 @@ public class Main implements Log.Callback {
 		
         if (line.hasOption("async")) {
         	this.asyncEnabled = true;
-        	args.readPolicy = clientPolicy.asyncReadPolicyDefault;
-        	args.writePolicy = clientPolicy.asyncWritePolicyDefault;
-        	args.batchPolicy = clientPolicy.batchPolicyDefault;  // async does not need batch policy.
-        }
-        else {
-        	args.readPolicy = clientPolicy.readPolicyDefault;
-        	args.writePolicy = clientPolicy.writePolicyDefault;
-        	args.batchPolicy = clientPolicy.batchPolicyDefault;
         }
         
-		if (line.hasOption("e")) {
+    	args.readPolicy = clientPolicy.readPolicyDefault;
+    	args.writePolicy = clientPolicy.writePolicyDefault;
+    	args.batchPolicy = clientPolicy.batchPolicyDefault;
+
+    	if (line.hasOption("e")) {
 			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
 				throw new Exception("Invalid expiration: "+ args.writePolicy.expiration + " It should be >= -1");
@@ -535,20 +541,49 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("timeout")) {
 			int timeout = Integer.parseInt(line.getOptionValue("timeout"));
-			args.readPolicy.timeout = timeout;
-			args.writePolicy.timeout = timeout;
-			args.batchPolicy.timeout = timeout;
+			args.readPolicy.socketTimeout = timeout;
+			args.readPolicy.totalTimeout = timeout;
+			args.writePolicy.socketTimeout = timeout;
+			args.writePolicy.totalTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
 		}			 
 
-		if (line.hasOption("readTimeout")) {
-			int timeout = Integer.parseInt(line.getOptionValue("readTimeout"));
-			args.readPolicy.timeout = timeout;
-			args.batchPolicy.timeout = timeout;
+		if (line.hasOption("socketTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("socketTimeout"));
+			args.readPolicy.socketTimeout = timeout;
+			args.writePolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
 
-		if (line.hasOption("writeTimeout")) {
-			args.writePolicy.timeout = Integer.parseInt(line.getOptionValue("writeTimeout"));
+		if (line.hasOption("readSocketTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("readSocketTimeout"));
+			args.readPolicy.socketTimeout = timeout;
+			args.batchPolicy.socketTimeout = timeout;
 		}			 
+
+		if (line.hasOption("writeSocketTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("writeSocketTimeout"));
+			args.writePolicy.socketTimeout = timeout;
+		}			 
+
+		if (line.hasOption("totalTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("totalTimeout"));
+			args.readPolicy.totalTimeout = timeout;
+			args.writePolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
+		}			 
+
+		if (line.hasOption("readTotalTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("readTotalTimeout"));
+			args.readPolicy.totalTimeout = timeout;
+			args.batchPolicy.totalTimeout = timeout;
+		}			 
+
+		if (line.hasOption("writeTotalTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("writeTotalTimeout"));
+			args.writePolicy.totalTimeout = timeout;
+		}
 
 		if (line.hasOption("maxRetries")) {
 			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
@@ -576,7 +611,6 @@ public class Main implements Log.Callback {
 			}
 			else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
-				args.readPolicy.retryOnTimeout = true;
 				clientPolicy.requestProleReplicas = true;
 			}
 			else {
@@ -656,33 +690,13 @@ public class Main implements Log.Callback {
 		}			 
 
 		if (line.hasOption("asyncMaxCommands")) {
-        	this.clientPolicy.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
+        	this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
         }
         
-        if (line.hasOption("asyncSelectorTimeout")) {
-        	this.clientPolicy.asyncSelectorTimeout =  Integer.parseInt(line.getOptionValue("asyncSelectorTimeout"));
-        }
-
-        if (line.hasOption("asyncSelectorThreads")) {
-        	this.clientPolicy.asyncSelectorThreads =  Integer.parseInt(line.getOptionValue("asyncSelectorThreads"));
+        if (line.hasOption("eventLoops")) {
+        	this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
         }
         
-        if (line.hasOption("asyncTaskThreads")) {
-        	this.asyncTaskThreads = Integer.parseInt(line.getOptionValue("asyncTaskThreads"));
-        	
-        	if (asyncTaskThreads == 0) {
-        		this.clientPolicy.asyncTaskThreadPool = Executors.newCachedThreadPool();
-        	}
-        	else {           		
-        		this.clientPolicy.asyncTaskThreadPool = Executors.newFixedThreadPool(asyncTaskThreads);
-        	}
-        }
-        
-        if (line.hasOption("asyncMaxCommandAction")) {
-        	String val = line.getOptionValue("asyncMaxCommandAction").toUpperCase();
-        	this.clientPolicy.asyncMaxCommandAction = MaxCommandAction.valueOf(val);
-        }
-
         if (line.hasOption("latency")) {
 			String[] latencyOpts = line.getOptionValue("latency").split(",");
 			
@@ -720,6 +734,14 @@ public class Main implements Log.Callback {
 		if (! line.hasOption("random")) {
 			args.setFixedBins();
 		}
+		
+		if (line.hasOption("netty")) {
+			this.eventLoopType = EventLoopType.NETTY_NIO;
+		}
+
+		if (line.hasOption("nettyEpoll")) {
+			this.eventLoopType = EventLoopType.NETTY_EPOLL;
+		}
 
 		System.out.println("Benchmark: " + this.hosts[0] 
 			+ ", namespace: " + args.namespace 
@@ -745,33 +767,42 @@ public class Main implements Log.Callback {
 			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps")));
 	
 		if (args.workload != Workload.INITIALIZE) {
-			System.out.println("read policy: timeout: " + args.readPolicy.timeout
-				+ ", maxRetries: " + args.readPolicy.maxRetries 
-				+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
-				+ ", consistencyLevel: " + args.readPolicy.consistencyLevel
-				+ ", replica: " + args.readPolicy.replica
-				+ ", reportNotFound: " + args.reportNotFound);
+			System.out.println("read policy:");
+			System.out.println(
+					"    socketTimeout: " + args.readPolicy.socketTimeout
+					+ ", totalTimeout: " + args.readPolicy.totalTimeout 
+					+ ", maxRetries: " + args.readPolicy.maxRetries 
+					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
+					);
+
+			System.out.println(
+					"    consistencyLevel: " + args.readPolicy.consistencyLevel
+					+ ", replica: " + args.readPolicy.replica
+					+ ", reportNotFound: " + args.reportNotFound);
 		}
 
-		System.out.println("write policy: timeout: " + args.writePolicy.timeout
+		System.out.println("write policy:");
+		System.out.println(
+			"    socketTimeout: " + args.writePolicy.socketTimeout
+			+ ", totalTimeout: " + args.writePolicy.totalTimeout 
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
-			+ ", commitLevel: " + args.writePolicy.commitLevel);
+			);
 		
+		System.out.println("    commitLevel: " + args.writePolicy.commitLevel);
+
 		if (args.batchSize > 1) {		
 			System.out.println("batch size: " + args.batchSize
 				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
 		}
 		
-		System.out.println("Conn pools per node: " + clientPolicy.connPoolsPerNode);
-
 		if (this.asyncEnabled) {
-			String threadPoolName = (clientPolicy.asyncTaskThreadPool == null)? "none" : clientPolicy.asyncTaskThreadPool.getClass().getName();
-			System.out.println("Async: MaxConnTotal " +  clientPolicy.asyncMaxCommands
-				+ ", MaxConnAction: " + clientPolicy.asyncMaxCommandAction
-				+ ", SelectorTimeout: " + clientPolicy.asyncSelectorTimeout
-				+ ", SelectorThreads: " + clientPolicy.asyncSelectorThreads
-				+ ", TaskThreadPool: " + threadPoolName);
+			System.out.println("Async " + this.eventLoopType + ": MaxCommands " +  this.asyncMaxCommands
+				+ ", EventLoops: " + this.eventLoopSize
+				);
+		}
+		else {
+			System.out.println("Sync: connPoolsPerNode: " + clientPolicy.connPoolsPerNode);
 		}
 
 		int binCount = 0;
@@ -800,27 +831,12 @@ public class Main implements Log.Callback {
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
 		Log.setCallback(this);		
-		args.updatePolicy = cloneWritePolicy(args.writePolicy);
+		args.updatePolicy = new WritePolicy(args.writePolicy);
 		args.updatePolicy.recordExistsAction = RecordExistsAction.UPDATE;
-		args.replacePolicy = cloneWritePolicy(args.writePolicy);
+		args.replacePolicy = new WritePolicy(args.writePolicy);
 		args.replacePolicy.recordExistsAction = RecordExistsAction.REPLACE;
 
 		clientPolicy.failIfNotConnected = true;
-	}
-	
-	private WritePolicy cloneWritePolicy(WritePolicy writePolicy) {
-		WritePolicy result = new WritePolicy();
-		result.commitLevel = writePolicy.commitLevel;
-		result.consistencyLevel = writePolicy.consistencyLevel;
-		result.expiration = writePolicy.expiration;
-		result.generationPolicy = writePolicy.generationPolicy;
-		result.maxRetries = writePolicy.maxRetries;
-		result.priority = writePolicy.priority;
-		result.recordExistsAction = writePolicy.recordExistsAction;
-		result.sendKey = writePolicy.sendKey;
-		result.sleepBetweenRetries = writePolicy.sleepBetweenRetries;
-		result.timeout = writePolicy.timeout;
-		return result;
 	}
 	
 	private static void logUsage(Options options) {
@@ -835,19 +851,59 @@ public class Main implements Log.Callback {
 
 	public void runBenchmarks() throws Exception {
 		if (this.asyncEnabled) {
-			AsyncClient client = new AsyncClient(clientPolicy, hosts);		
-
+			EventPolicy eventPolicy = new EventPolicy();
+			
+			if (args.readPolicy.socketTimeout > 0 && args.readPolicy.socketTimeout < eventPolicy.minTimeout) {
+				eventPolicy.minTimeout = args.readPolicy.socketTimeout;
+			}
+			
+			if (args.writePolicy.socketTimeout > 0 &&  args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
+				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
+			}
+			
+			switch (this.eventLoopType) {
+				default:
+				case DIRECT_NIO: {
+					eventLoops = new NioEventLoops(eventPolicy, this.eventLoopSize);
+					break;
+				}
+					
+				case NETTY_NIO: {
+					EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);				
+					eventLoops = new NettyEventLoops(eventPolicy, group);
+					break;
+				}
+					
+				case NETTY_EPOLL: {
+					EventLoopGroup group = new EpollEventLoopGroup(this.eventLoopSize);				
+					eventLoops = new NettyEventLoops(eventPolicy, group);
+					break;
+				}
+			}
+			
 			try {
-				if (initialize) {
-					doAsyncInserts(client); 
-				} 
-				else {
-					doAsyncRWTest(client); 
+				clientPolicy.eventLoops = eventLoops;
+				
+				if (clientPolicy.maxConnsPerNode < this.asyncMaxCommands) {
+					clientPolicy.maxConnsPerNode = this.asyncMaxCommands;
+				}
+				AerospikeClient client = new AerospikeClient(clientPolicy, hosts);		
+	
+				try {
+					if (initialize) {
+						doAsyncInserts(client); 
+					} 
+					else {
+						doAsyncRWTest(client); 
+					}
+				}
+				finally {
+					client.close();
 				}
 			}
 			finally {
-				client.close();
-			}			
+				eventLoops.close();
+			}
 		}
 		else {			
 			AerospikeClient client = new AerospikeClient(clientPolicy, hosts);		
@@ -881,14 +937,37 @@ public class Main implements Log.Callback {
 			es.execute(it);
 			start += keyCount;
 		}	
+		Thread.sleep(900);
 		collectInsertStats();
 		es.shutdownNow();
 	}
 
-	private void doAsyncInserts(AsyncClient client) throws Exception {	
-		InsertTaskAsync task = new InsertTaskAsync(client, args, counters, this.startKey, this.nKeys, clientPolicy.asyncMaxCommands);
-		task.run();
-		Thread.sleep(1000);
+	private void doAsyncInserts(AerospikeClient client) throws Exception {
+		// Generate asyncMaxCommand writes to seed the event loops.
+		// Then start a new command in each command callback.
+		// This effectively throttles new command generation, by only allowing
+		// asyncMaxCommands at any point in time.
+		long maxConcurrentCommands = this.asyncMaxCommands;
+		
+		if (maxConcurrentCommands > this.nKeys) {
+			maxConcurrentCommands = this.nKeys;
+		}
+
+		long keysPerCommand = this.nKeys / maxConcurrentCommands;
+		long keysRem = this.nKeys - (keysPerCommand * maxConcurrentCommands);
+		long keyStart = this.startKey;
+		
+		for (int i = 0; i < maxConcurrentCommands; i++) {
+			// Allocate separate tasks for each seed command and reuse them in callbacks.
+			long keyCount = (i < keysRem)? keysPerCommand + 1 : keysPerCommand;
+			
+			// Start seed commands on random event loops.
+			EventLoop eventLoop = this.eventLoops.next();
+			InsertTaskAsync task = new InsertTaskAsync(client, eventLoop, args, counters, keyStart, keyCount);
+			task.runCommand();
+			keyStart += keyCount;
+		}
+		Thread.sleep(900);
 		collectInsertStats();				
 	}
 
@@ -927,15 +1006,32 @@ public class Main implements Log.Callback {
 			tasks[i] = rt;
 			es.execute(rt);                       
 		}
+		Thread.sleep(900);
 		collectRWStats(tasks);
 		es.shutdown();
 	}
 		
-	private void doAsyncRWTest(AsyncClient client) throws Exception {	
-		RWTaskAsync task = new RWTaskAsync(client, args, counters, this.startKey, this.nKeys, clientPolicy.asyncMaxCommands);
-		task.run();
-		Thread.sleep(1000);
-		collectRWStats(new RWTask[] {task});				
+	private void doAsyncRWTest(AerospikeClient client) throws Exception {	
+		// Generate asyncMaxCommand commands to seed the event loops.
+		// Then start a new command in each command callback.
+		// This effectively throttles new command generation, by only allowing
+		// asyncMaxCommands at any point in time.
+		int maxConcurrentCommands = this.asyncMaxCommands;
+		
+		if (maxConcurrentCommands > this.nKeys) {
+			maxConcurrentCommands = (int)this.nKeys;
+		}
+
+		RWTask[] tasks = new RWTask[maxConcurrentCommands];
+
+		for (int i = 0; i < maxConcurrentCommands; i++) {
+			// Start seed commands on random event loops.
+			EventLoop eventLoop = this.clientPolicy.eventLoops.next();
+			RWTaskAsync task = new RWTaskAsync(client, eventLoop, args, counters, this.startKey, this.nKeys);
+			task.runNextCommand();
+		}
+		Thread.sleep(900);
+		collectRWStats(tasks);
 	}
 
 	private void collectRWStats(RWTask[] tasks) throws Exception {		
@@ -1008,8 +1104,15 @@ public class Main implements Log.Callback {
 	@Override
 	public void log(Level level, String message) {
 		String date = SimpleDateFormat.format(new Date());
-		System.out.println(date.toString() + ' ' + level.toString() + 
-			" Thread " + Thread.currentThread().getId() + ' ' + message);		
+		Thread thread = Thread.currentThread();	
+		String name = thread.getName();
+		
+		if (name == null) {
+			name = Long.toString(thread.getId());
+		}
+		
+		System.out.println(date.toString() + ' ' + level.toString() +
+			" Thread " + name + ' ' + message);
 	}
 	
 	private static class UsageException extends Exception {

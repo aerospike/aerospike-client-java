@@ -229,6 +229,7 @@ public final class Key {
 		this.namespace = namespace;
 		this.digest = digest;
 		this.setName = setName;
+		// Do not try to validate userKey type because it is most likely null.
 		this.userKey = userKey;
 	}
 

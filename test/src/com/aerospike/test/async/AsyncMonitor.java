@@ -45,7 +45,7 @@ public final class AsyncMonitor {
 		}
 	}
 
-	public synchronized void notifyCompleted() {
+	public synchronized void notifyComplete() {
 		completed = true;
 		super.notify();
 	}

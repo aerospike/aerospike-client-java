@@ -41,12 +41,12 @@ public class TestAsyncUDF extends TestAsync {
 		final Key key = new Key(args.namespace, args.set, "audfkey1");
 		final Bin bin = new Bin(binName, "string value");		
 		
-		client.execute(null, new ExecuteListener() {
+		client.execute(eventLoop, new ExecuteListener() {
 			
 			public void onSuccess(final Key key, final Object obj) {
 				try {
 					// Write succeeded.  Now call read using udf.
-					client.execute(null, new ExecuteListener() {
+					client.execute(eventLoop, new ExecuteListener() {
 						
 						public void onSuccess(final Key key, final Object received) {
 							Object expected = bin.value.getObject();	
@@ -54,28 +54,28 @@ public class TestAsyncUDF extends TestAsync {
 							if (assertNotNull(received)) {
 								assertEquals(expected, received);
 							}							
-							notifyCompleted();
+							notifyComplete();
 						}
 						
 						public void onFailure(AerospikeException e) {
 							setError(e);
-							notifyCompleted();
+							notifyComplete();
 						}
 						
-					}, key, "record_example", "readBin", Value.get(bin.name));
+					}, null, key, "record_example", "readBin", Value.get(bin.name));
 				}
 				catch (Exception e) {				
 					setError(e);
-					notifyCompleted();
+					notifyComplete();
 				}
 			}
 			
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			}
 		
-		}, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
+		}, null, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
 
 		waitTillComplete();
 	}

@@ -36,8 +36,10 @@ import java.util.Map;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.large.LargeList;
 import com.aerospike.client.task.RegisterTask;
@@ -82,8 +84,13 @@ public class TestLargeList extends TestSync {
 		
 		// Test record not found.
 		LargeList nflist = client.getLargeList(null, new Key(args.namespace, args.set, "sfdfdqw"), binName);
-		b = nflist.exists(Value.get(orig2));
-		assertFalse(b);
+		try {
+			b = nflist.exists(Value.get(orig2));
+			assertFalse(b);
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, ae.getResultCode());
+		}
 
 		List<Value> klist = new ArrayList<Value>();
 		klist.add(Value.get(orig2));
@@ -95,10 +102,15 @@ public class TestLargeList extends TestSync {
 		assertFalse(blist.get(2));
 		
 		// Test record not found.
-		List<Boolean> blist2 = nflist.exists(klist);
-		assertFalse(blist2.get(0));
-		assertFalse(blist2.get(1));
-		assertFalse(blist2.get(2));
+		try {
+			List<Boolean> blist2 = nflist.exists(klist);
+			assertFalse(blist2.get(0));
+			assertFalse(blist2.get(1));
+			assertFalse(blist2.get(2));
+		}
+		catch (AerospikeException ae) {
+			assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, ae.getResultCode());
+		}
 
 		// Perform a Range Query -- look for "llistValue2" to "llistValue3"
 		List<?> rangeList = llist.range(Value.get(orig2), Value.get(orig3));

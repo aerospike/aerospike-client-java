@@ -16,40 +16,24 @@
  */
 package com.aerospike.client.async;
 
-import java.nio.ByteBuffer;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
-public class AsyncReadHeader extends AsyncSingleCommand {
+public class AsyncReadHeader extends AsyncCommand implements AsyncSingleCommand {
 	private final RecordListener listener;
 	private final Key key;
-	private final Partition partition;
 	private Record record;
 	
-	public AsyncReadHeader(AsyncCluster cluster, Policy policy, RecordListener listener, Key key) {
-		super(cluster, policy);
+	public AsyncReadHeader(RecordListener listener, Policy policy, Key key) {
+		super(policy, new Partition(key), null, true, true);
 		this.listener = listener;
 		this.key = key;
-		this.partition = new Partition(key);
-	}
-
-	public AsyncReadHeader(AsyncReadHeader other) {
-		super(other);
-		this.listener = other.listener;
-		this.key = other.key;
-		this.partition = other.partition;
-	}
-
-	@Override
-	protected AsyncCommand cloneCommand() {
-		return new AsyncReadHeader(this);
 	}
 
 	@Override
@@ -58,17 +42,10 @@ public class AsyncReadHeader extends AsyncSingleCommand {
 	}
 
 	@Override
-	protected Node getNode() {
-		return getReadNode(cluster, partition, policy.replica);
-	}
-
-	@Override
-	protected final void parseResult(ByteBuffer byteBuffer) {
-		int resultCode = byteBuffer.get(5) & 0xFF;
-
+	public final void parseResult() {
         if (resultCode == 0) {
-        	int generation = byteBuffer.getInt(6);
-    		int expiration = byteBuffer.getInt(10);
+        	int generation = Buffer.bytesToInt(dataBuffer, 6);
+    		int expiration = Buffer.bytesToInt(dataBuffer, 10);
     		record = new Record(null, generation, expiration);
         }
         else {
@@ -78,7 +55,7 @@ public class AsyncReadHeader extends AsyncSingleCommand {
         	else {
         		throw new AerospikeException(resultCode);
         	}
-        }		        
+        }
 	}
 
 	@Override

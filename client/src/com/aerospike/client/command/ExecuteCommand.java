@@ -19,8 +19,6 @@ package com.aerospike.client.command;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class ExecuteCommand extends ReadCommand {
@@ -30,14 +28,13 @@ public final class ExecuteCommand extends ReadCommand {
 	private final Value[] args;
 
 	public ExecuteCommand(
-		Cluster cluster, 
 		WritePolicy writePolicy,
 		Key key,
 		String packageName,
 		String functionName,
 		Value[] args
 	) {
-		super(cluster, writePolicy, key, null);
+		super(writePolicy, key, null);
 		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
@@ -50,7 +47,7 @@ public final class ExecuteCommand extends ReadCommand {
 	}
 
 	@Override
-	protected Node getNode() {
-		return cluster.getMasterNode(partition);
+	protected void handleNotFound(int resultCode) {
+    	throw new AerospikeException(resultCode);
 	}
 }

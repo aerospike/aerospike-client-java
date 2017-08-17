@@ -38,6 +38,12 @@ public class QueryPolicy extends Policy {
 	public int recordQueueSize = 5000;
 	
 	/**
+	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
+	 * if stored on the server) are retrieved.
+	 */
+	public boolean includeBinData = true;
+
+	/**
 	 * Default constructor.
 	 */
 	public QueryPolicy() {

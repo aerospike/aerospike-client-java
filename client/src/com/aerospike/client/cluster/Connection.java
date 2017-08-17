@@ -28,6 +28,7 @@ import java.net.SocketException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
@@ -49,15 +50,15 @@ public final class Connection implements Closeable {
 	private final InputStream in;
 	private final OutputStream out;
 	protected final Pool pool;
-	private final long maxSocketIdleMillis;
+	private final long maxSocketIdle;
 	private volatile long lastUsed;
 	
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(null, null, address, timeoutMillis, 55000, null);
+		this(null, null, address, timeoutMillis, TimeUnit.SECONDS.toNanos(55), null);
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, int maxSocketIdleMillis, Pool pool) throws AerospikeException.Connection {
-		this.maxSocketIdleMillis = maxSocketIdleMillis;
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
+		this.maxSocketIdle = maxSocketIdle;
 		this.pool = pool;
 
 		try {
@@ -78,7 +79,7 @@ public final class Connection implements Closeable {
 					socket.connect(address, timeoutMillis);
 					in = socket.getInputStream();
 					out = socket.getOutputStream();
-					lastUsed = System.currentTimeMillis();
+					lastUsed = System.nanoTime();
 				}
 				catch (Exception e) {
 					// socket.close() will close input/output streams according to doc.
@@ -123,12 +124,15 @@ public final class Connection implements Closeable {
 					}
 					
 					if (! policy.encryptOnly) {
-						validateServerCertificateName(policy, sslSocket, tlsName);
+						sslSocket.setUseClientMode(true);
+						sslSocket.startHandshake();		
+						X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
+						validateServerCertificate(policy, tlsName, cert);
 					}
 					
 					in = socket.getInputStream();
 					out = socket.getOutputStream();
-					lastUsed = System.currentTimeMillis();
+					lastUsed = System.nanoTime();
 				}
 				catch (Exception e) {
 					// socket.close() will close input/output streams according to doc.
@@ -137,7 +141,7 @@ public final class Connection implements Closeable {
 				}
 			}
 		}
-		catch (AerospikeException.Connection ae) {
+		catch (AerospikeException ae) {
 			throw ae;
 		}
 		catch (Exception e) {
@@ -145,23 +149,20 @@ public final class Connection implements Closeable {
 		}
 	}
 	
-	private static void validateServerCertificateName(TlsPolicy policy, SSLSocket sslSocket, String tlsName) throws Exception {		
+	public static void validateServerCertificate(TlsPolicy policy, String tlsName, X509Certificate cert) throws Exception {
 		if (tlsName == null) {
-			throw new AerospikeException.Connection("Invalid TLS name: null");							
+			// Do not throw AerospikeException.Connection because that exception will be retried.
+			// We don't want to retry on TLS errors. Throw standard AerospikeException instead.
+			throw new AerospikeException("Invalid TLS name: null");							
 		}
-		
-		sslSocket.setUseClientMode(true);
-		sslSocket.startHandshake();
-		
-		X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
-		
+
 		// Exclude certificate serial numbers.
 		if (policy.revokeCertificates != null) {
 			BigInteger serialNumber = cert.getSerialNumber();
 			
 			for (BigInteger sn : policy.revokeCertificates) {
 				if (sn.equals(serialNumber)) {
-					throw new AerospikeException.Connection("Invalid certificate serial number: " + sn);
+					throw new AerospikeException("Invalid certificate serial number: " + sn);
 				}
 			}
 		}
@@ -207,7 +208,7 @@ public final class Connection implements Closeable {
 			}
 		}
 
-		throw new AerospikeException.Connection("Invalid TLS name: " + tlsName);
+		throw new AerospikeException("Invalid TLS name: " + tlsName);
 	}
 	
 	public void write(byte[] buffer, int length) throws IOException {
@@ -245,7 +246,7 @@ public final class Connection implements Closeable {
 	 * Is socket connected and used within specified limits.
 	 */
 	public boolean isValid() {
-		return (System.currentTimeMillis() - lastUsed) <= maxSocketIdleMillis;
+		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
 	}
 	
 	/**
@@ -264,7 +265,7 @@ public final class Connection implements Closeable {
 	}
 			
 	public void updateLastUsed() {
-		lastUsed = System.currentTimeMillis();
+		lastUsed = System.nanoTime();
 	}
 	
 	/**

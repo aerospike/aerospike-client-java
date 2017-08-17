@@ -31,7 +31,7 @@ public class TestAsyncScan extends TestAsync {
 	public void asyncScan() {
 		recordCount = 0;
 		ScanPolicy policy = new ScanPolicy();
-		client.scanAll(policy, new RecordSequenceListener() {
+		client.scanAll(eventLoop, new RecordSequenceListener() {
 
 			@Override
 			public void onRecord(Key key, Record record) throws AerospikeException {
@@ -44,16 +44,16 @@ public class TestAsyncScan extends TestAsync {
 
 			@Override
 			public void onSuccess() {				
-				notifyCompleted();
+				notifyComplete();
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
 				setError(e);
-				notifyCompleted();
+				notifyComplete();
 			} 
 			
-		}, args.namespace, args.set);
+		}, policy, args.namespace, args.set);
 		
 		waitTillComplete();
    }	

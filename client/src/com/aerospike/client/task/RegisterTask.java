@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.task;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -38,12 +39,12 @@ public final class RegisterTask extends Task {
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	protected boolean queryIfDone() {
+	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with package to be considered done.
 		Node[] nodes = cluster.getNodes();
 		
 		if (nodes.length == 0) {
-			return false;
+			throw new AerospikeException("Cluster is empty");
 		}
 
 		String command = "udf-list";
@@ -54,9 +55,9 @@ public final class RegisterTask extends Task {
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				return false;
+				return Task.IN_PROGRESS;
 			}
 		}
-		return true;
+		return Task.COMPLETE;
 	}
 }

@@ -466,7 +466,7 @@ public final class Packer {
     	buffer[offset++] = (byte)0xc0;
     }
 
-    private void packByte(int val) {
+    public void packByte(int val) {
     	if (offset >= buffer.length) {
     		resize(1);
     	}

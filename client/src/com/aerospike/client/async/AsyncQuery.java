@@ -19,26 +19,26 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Statement;
 
 public final class AsyncQuery extends AsyncMultiCommand {
-	private final QueryPolicy policy;
 	private final RecordSequenceListener listener;
+	private final QueryPolicy policy;
 	private final Statement statement;
 	
 	public AsyncQuery(
 		AsyncMultiExecutor parent,
-		AsyncCluster cluster,
-		AsyncNode node,
-		QueryPolicy policy,
+		Node node,
 		RecordSequenceListener listener,
+		QueryPolicy policy,
 		Statement statement
 	) {
-		super(parent, cluster, node, policy, true);
-		this.policy = policy;
+		super(parent, node, policy, true);
 		this.listener = listener;
+		this.policy = policy;
 		this.statement = statement;
 	}
 

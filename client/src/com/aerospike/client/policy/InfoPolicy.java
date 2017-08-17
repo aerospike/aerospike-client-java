@@ -37,7 +37,7 @@ public final class InfoPolicy {
 	 * Copy timeout from generic Policy to InfoPolicy.
 	 */
 	public InfoPolicy(Policy other) {
-		this.timeout = other.timeout;
+		this.timeout = other.socketTimeout;
 	}
 	
 	/**

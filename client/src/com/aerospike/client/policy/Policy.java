@@ -17,12 +17,12 @@
 package com.aerospike.client.policy;
 
 /**
- * Container object for transaction policy attributes used in all database
- * operation calls.
+ * Transaction policy attributes used in all database commands.
  */
 public class Policy {
 	/**
-	 * Transaction policy attributes used in all database commands.
+	 * Priority of request relative to other transactions.
+	 * Currently, only used for scans.
 	 */
 	public Priority priority = Priority.DEFAULT;
 	
@@ -35,26 +35,49 @@ public class Policy {
 	public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
 
 	/**
-	 * Send read commands to the node containing the key's partition replica type.
-	 * Write commands are not affected by this setting, because all writes are directed 
-	 * to the node containing the key's master partition.
+	 * Replica algorithm used to determine the target node for a single record command.
+	 * Batch, scan and query are not affected by replica algorithms.
 	 * <p>
-	 * Default: {@link Replica#MASTER}
+	 * Default: {@link Replica#SEQUENCE}
 	 */
-	public Replica replica = Replica.MASTER;
+	public Replica replica = Replica.SEQUENCE;
 	
 	/**
-	 * Total transaction timeout in milliseconds for both client and server.
-	 * The timeout is tracked on the client and also sent to the server along 
-	 * with the transaction in the wire protocol.  The client will most likely
-	 * timeout first, but the server has the capability to timeout the transaction
-	 * as well.
+	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
-	 * The timeout is also used as a socket timeout.
-	 * Default: 0 (no timeout).
+	 * If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
+	 * both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
+	 * exceeded, the transaction is retried.
+	 * <p>
+	 * If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
+	 * then socketTimeout will be set to totalTimeout. 
+	 * <p>
+	 * If socketTimeout is zero, there will be no socket idle limit.
+	 * <p>
+	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
+	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
+	 * <p>
+	 * Default: 0 (no socket idle time limit).
 	 */
-	public int timeout;
-	
+	public int socketTimeout;
+
+	/**
+	 * Total transaction timeout in milliseconds.
+	 * <p>
+	 * The totalTimeout is tracked on the client and sent to the server along with 
+	 * the transaction in the wire protocol.  The client will most likely timeout
+	 * first, but the server also has the capability to timeout the transaction.
+	 * <p>
+	 * If totalTimeout is not zero and totalTimeout is reached before the transaction
+	 * completes, the transaction will abort with
+	 * {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * If totalTimeout is zero, there will be no total time limit.
+	 * <p>
+	 * Default: 0 (no time limit).
+	 */
+	public int totalTimeout;
+
 	/**
 	 * Delay milliseconds after transaction timeout before closing socket in async mode only.
 	 * When a transaction is stopped prematurely, the socket must be closed and not placed back
@@ -79,40 +102,45 @@ public class Policy {
 
 	/**
 	 * Maximum number of retries before aborting the current transaction.
-	 * A retry may be attempted when there is a network error.  
-	 * If maxRetries is exceeded, the abort will occur even if the timeout 
-	 * has not yet been exceeded.
+	 * The initial attempt is not counted as a retry.
 	 * <p>
-	 * Default: 1
+	 * If maxRetries is exceeded, the transaction will abort with
+	 * {@link com.aerospike.client.AerospikeException.Timeout}.
+	 * <p>
+	 * WARNING: Database writes that are not idempotent (such as add()) 
+	 * should not be retried because the write operation may be performed 
+	 * multiple times if the client timed out previous transaction attempts.
+	 * It's important to use a distinct WritePolicy for non-idempotent 
+	 * writes which sets maxRetries = 0;
+	 * <p>
+	 * Default: 2 (initial attempt + 2 retries = 3 attempts)
 	 */
-	public int maxRetries = 1;
+	public int maxRetries = 2;
 
 	/**
 	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
+	 * <p>
+	 * The sleep only occurs on connection errors and server timeouts
+	 * which suggest a node is down and the cluster is reforming.
+	 * The sleep does not occur when the client's socketTimeout expires.
+	 * <p>
 	 * This field is ignored in async mode.
 	 * <p>
-	 * Default: 500ms
+	 * Reads do not have to sleep when a node goes down because the cluster
+	 * does not shut out reads during cluster reformation.  The default for 
+	 * reads is zero.
+	 * <p>
+	 * Writes need to wait for the cluster to reform when a node goes down.
+	 * Immediate write retries on node failure have been shown to consistently
+	 * result in errors. The default for writes is 500ms.  This default is 
+	 * implemented in {@link com.aerospike.client.policy.ClientPolicy#ClientPolicy()})
 	 */
-	public int sleepBetweenRetries = 500;
-	
-	/**
-	 * Should the client retry a command if the timeout is reached.
-	 * <p>
-	 * If false, throw timeout exception when the timeout has been reached.  Note that
-	 * retries can still occur if a command fails on a network error before the timeout
-	 * has been reached.
-	 * <p>
-	 * If true, retry command with same timeout when the timeout has been reached.
-	 * The maximum number of retries is defined by maxRetries.  Note that retries in 
-	 * async mode can only be made if timeoutDelay is zero. Otherwise, deadlock would 
-	 * have been possible.
-	 * <p>
-	 * Default: false
-	 */
-	public boolean retryOnTimeout;
+	public int sleepBetweenRetries;
 
 	/**
 	 * Send user defined key in addition to hash digest on both reads and writes.
+	 * If the key is sent on a write, the key will be stored with the record on 
+	 * the server.
 	 * <p>
 	 * Default: false (do not send the user defined key)
 	 */
@@ -125,11 +153,11 @@ public class Policy {
 		this.priority = other.priority;
 		this.consistencyLevel = other.consistencyLevel;
 		this.replica = other.replica;
-		this.timeout = other.timeout;
+		this.socketTimeout = other.socketTimeout;
+		this.totalTimeout = other.totalTimeout;
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
-		this.retryOnTimeout = other.retryOnTimeout;
 		this.sendKey = other.sendKey;
 	}
 	
@@ -137,5 +165,28 @@ public class Policy {
 	 * Default constructor.
 	 */
 	public Policy() {
+	}
+	
+	/**
+	 * Create a single timeout by setting socketTimeout and totalTimeout
+	 * to the same value.
+	 */
+	public final void setTimeout(int timeout) {
+		this.socketTimeout = timeout;
+		this.totalTimeout = timeout;
+	}
+
+	/**
+	 * Set socketTimeout and totalTimeout.  If totalTimeout defined and
+	 * socketTimeout greater than totalTimeout, set socketTimeout to
+	 * totalTimeout.
+	 */
+	public final void setTimeouts(int socketTimeout, int totalTimeout) {
+		this.socketTimeout = socketTimeout;
+		this.totalTimeout = totalTimeout;
+		
+		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
+			this.socketTimeout = totalTimeout;
+		}
 	}
 }

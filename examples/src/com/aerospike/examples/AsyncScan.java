@@ -16,10 +16,11 @@
  */
 package com.aerospike.examples;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.async.AsyncClient;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.util.Util;
@@ -27,22 +28,17 @@ import com.aerospike.client.util.Util;
 public class AsyncScan extends AsyncExample {
 		
 	private int recordCount = 0;
-	private boolean completed;
-
-	public AsyncScan(Console console) {
-		super(console);
-	}
 
 	/**
 	 * Asynchronous scan example.
 	 */
 	@Override
-	public void runExample(AsyncClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		console.info("Asynchronous scan: namespace=" + params.namespace + " set=" + params.set);
 		recordCount = 0;
 		final long begin = System.currentTimeMillis();
 		ScanPolicy policy = new ScanPolicy();
-		client.scanAll(policy, new RecordSequenceListener() {
+		client.scanAll(eventLoop, new RecordSequenceListener() {
 
 			@Override
 			public void onRecord(Key key, Record record) throws AerospikeException {
@@ -60,34 +56,14 @@ public class AsyncScan extends AsyncExample {
 				console.info("Total records returned: " + recordCount);
 				console.info("Elapsed time: " + seconds + " seconds");
 				double performance = Math.round((double)recordCount / seconds);
-				console.info("Records/second: " + performance);
-				
-				notifyComplete();
+				console.info("Records/second: " + performance);		
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
 				console.error("Scan failed: " + Util.getErrorMessage(e));
-				notifyComplete();
 			} 
 			
-		}, params.namespace, params.set);
-		
-		waitTillComplete();
-	}
-	
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyComplete() {
-		completed = true;
-		super.notify();
-	}
+		}, policy, params.namespace, params.set);		
+	}	
 }

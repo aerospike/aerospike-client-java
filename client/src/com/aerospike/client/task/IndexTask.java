@@ -50,12 +50,12 @@ public final class IndexTask extends Task {
 	 * Query all nodes for task completion status.
 	 */
 	@Override
-	protected boolean queryIfDone() {
+	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with load_pct of 100 to be considered done.
 		Node[] nodes = cluster.getNodes();
 		
 		if (nodes.length == 0) {
-			return false;
+			throw new AerospikeException("Cluster is empty");
 		}
 		
 		String command = "sindex/" + namespace + '/' + indexName;
@@ -67,13 +67,12 @@ public final class IndexTask extends Task {
 
 			if (index < 0) {
 				if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
-					// Index not found or not readable.  Keep waiting because create index may not
-					// have been started yet.
-					throw new AerospikeException(command + " failed: " + response);				
+					// Index not found or not readable.
+					return Task.NOT_FOUND;
 				}
 				else {
-					// Mark done and throw exception immediately.
-					throw new DoneException(command + " failed: " + response);				
+					// Throw exception immediately.
+					throw new AerospikeException(command + " failed: " + response);				
 				}
 			}
 
@@ -83,9 +82,9 @@ public final class IndexTask extends Task {
 			int pct = Integer.parseInt(str);
 			
 			if (pct != 100) {				
-				return false;
+				return Task.IN_PROGRESS;
 			}
 		}
-		return true;
+		return Task.COMPLETE;
 	}
 }

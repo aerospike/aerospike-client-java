@@ -48,7 +48,7 @@ public class TestQueryPredExp extends TestSync {
 	@BeforeClass
 	public static void prepare() {
 		Policy policy = new Policy();
-		policy.timeout = 0; // Do not timeout on index create.
+		policy.socketTimeout = 0; // Do not timeout on index create.
 		IndexTask task = client.createIndex(policy, args.namespace, setName, indexName, binName, IndexType.NUMERIC);
 		task.waitTillComplete();
 
@@ -486,7 +486,7 @@ public class TestQueryPredExp extends TestSync {
 			int count = 0;
 			
 			while (rs.next()) {
-				System.out.println(rs.getRecord().toString());
+				//System.out.println(rs.getRecord().toString());
 				count++;
 			}
 			assertEquals(2, count);
@@ -495,4 +495,38 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
+
+	/* Use this test only after servers have been patched.
+	@Test
+	public void queryPredicateAER5650() {
+		double lon = -122.0;
+		double lat = 37.5;
+		double radius = 50000.0;
+		String rgnstr =
+			String.format("{ \"type\": \"AeroCircle\", "
+						  + "\"coordinates\": [[%.8f, %.8f], %f] }",
+						  lon, lat, radius);
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		PredExp[] predexps = new PredExp[3];
+		predexps[0] = PredExp.geoJSONBin(binName);
+		predexps[1] = PredExp.geoJSONValue(rgnstr);
+		predexps[2] = PredExp.geoJSONWithin();
+		stmt.setPredExp(predexps);
+		RecordSet rs = client.query(null, stmt);
+		
+		try {
+			int count = 0;
+			
+			while (rs.next()) {
+				//System.out.println(rs.getRecord().toString());
+				count++;
+			}
+			assertEquals(0, count);
+		}
+		finally {
+			rs.close();
+		}
+	}*/
 }
