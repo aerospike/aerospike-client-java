@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import com.aerospike.client.Value.GeoJSONValue;
+
 /**
  * Container object for records.  Records are equivalent to rows.
  */
@@ -141,10 +143,24 @@ public final class Record {
 	}
 
 	/**
-	 * Get bin value as GeoJSON.
+	 * Get bin value as GeoJSON (backward compatibility).
 	 */
 	public String getGeoJSON(String name) {
-		return (String)getValue(name);
+		return getGeoJSONString(name);
+	}
+	
+	/**
+	 * Get bin value as GeoJSON String.
+	 */
+	public String getGeoJSONString(String name) {
+		return getValue(name).toString();
+	}
+	
+	/**
+	 * Get bin value as GeoJSON Value.
+	 */
+	public GeoJSONValue getGeoJSONValue(String name) {
+		return (GeoJSONValue) getValue(name);
 	}
 	
 	/**
