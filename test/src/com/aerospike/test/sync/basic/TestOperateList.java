@@ -398,4 +398,42 @@ public class TestOperateList extends TestSync {
 		str = (String)results.get(i++);	
 		assertEquals("s3333333", str);
 	}
+	
+	@Test
+	public void operateList8() {
+		// Test increment.
+		Key key = new Key(args.namespace, args.set, "oplkey8");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(1));
+		itemList.add(Value.get(2));
+		itemList.add(Value.get(3));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(binName, itemList),
+				ListOperation.increment(binName, 2),
+				ListOperation.increment(binName, 1, Value.get(7)),
+				ListOperation.get(binName, 0)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+				
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(3, size);
+
+		long val = (Long)results.get(i++);	
+		assertEquals(4, val);
+		
+		val = (Long)results.get(i++);	
+		assertEquals(9, val);
+		
+		val = (Long)results.get(i++);	
+		assertEquals(1, val);
+	}
 }

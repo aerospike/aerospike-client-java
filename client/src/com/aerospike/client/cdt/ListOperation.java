@@ -53,6 +53,7 @@ public class ListOperation {
 	private static final int SET = 9;
 	private static final int TRIM = 10;
 	private static final int CLEAR = 11;
+	private static final int INCREMENT = 12;
 	private static final int SIZE = 16;
 	private static final int GET = 17;
 	private static final int GET_RANGE = 18;
@@ -239,6 +240,36 @@ public class ListOperation {
 		Packer packer = new Packer();
 		packer.packRawShort(CLEAR);
 		//packer.packArrayBegin(0);
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create list increment operation.
+	 * Server increments list[index] by 1.
+	 * Server returns list[index] after incrementing.
+	 */
+	public static Operation increment(String binName, int index) {
+		Packer packer = new Packer();
+		packer.packRawShort(INCREMENT);
+		packer.packArrayBegin(1);
+		packer.packInt(index);
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create list increment operation.
+	 * Server increments list[index] by value.
+	 * Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
+	 * Server returns list[index] after incrementing.
+	 */
+	public static Operation increment(String binName, int index, Value value) {
+		Packer packer = new Packer();
+		packer.packRawShort(INCREMENT);
+		packer.packArrayBegin(2);
+		packer.packInt(index);
+		value.pack(packer);
 		byte[] bytes = packer.toByteArray();
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
 	}
