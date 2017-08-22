@@ -459,43 +459,29 @@ public class Cluster implements Runnable, Closeable {
 				continue;
 			}
 			
-			switch (nodes.length) {
-			case 1:
-				// Single node clusters rely on whether it responded to info requests.
-				if (node.failures >= 5) {
-					// 5 consecutive info requests failed.
-					// Remove node.  Seeds will be tried in next cluster tend iteration.
-					removeList.add(node);
-				}
-				break;
-				
-			case 2:
-				// Two node clusters require at least one successful refresh before removing.
-				if (refreshCount == 1 && node.referenceCount == 0 && node.failures > 0) {
-					// Node is not referenced nor did it respond.
-					removeList.add(node);
-				}
-				break;
-				
-			default:
-				// Multi-node clusters require at least one successful refresh before removing.
-				if (refreshCount >= 1 && node.referenceCount == 0) {
-					// Node is not referenced by other nodes.
-					// Check if node responded to info request.
-					if (node.failures == 0) {
-						// Node is alive, but not referenced by other nodes.  Check if mapped.
-						if (! findNodeInPartitionMap(node)) {
-							// Node doesn't have any partitions mapped to it.
-							// There is no point in keeping it in the cluster.
-							removeList.add(node);							
-						}
+			if (refreshCount == 0 && node.failures >= 5) {
+				// All node info requests failed and this node had 5 consecutive failures.
+				// Remove node.  If no nodes are left, seeds will be tried in next cluster
+				// tend iteration.
+				removeList.add(node);
+				continue;
+			}
+
+			if (refreshCount >= 1 && node.referenceCount == 0) {
+				// Node is not referenced by other nodes.
+				// Check if node responded to info request.
+				if (node.failures == 0) {
+					// Node is alive, but not referenced by other nodes.  Check if mapped.
+					if (! findNodeInPartitionMap(node)) {
+						// Node doesn't have any partitions mapped to it.
+						// There is no point in keeping it in the cluster.
+						removeList.add(node);							
 					}
-					else {
-						// Node not responding. Remove it.
-						removeList.add(node);
-					}		
 				}
-				break;
+				else {
+					// Node not responding. Remove it.
+					removeList.add(node);
+				}		
 			}
 		}
 		return removeList;
