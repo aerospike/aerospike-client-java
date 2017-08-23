@@ -64,4 +64,20 @@ public final class TlsPolicy {
 	 * Default: false
 	 */
 	public boolean encryptOnly;
+	
+	/**
+	 * Copy TLS policy from another TLS policy.
+	 */
+	public TlsPolicy(TlsPolicy other) {
+		this.protocols = other.protocols;
+		this.ciphers = other.ciphers;
+		this.revokeCertificates = other.revokeCertificates;
+		this.encryptOnly = other.encryptOnly;
+	}
+
+	/**
+	 * Default constructor.
+	 */
+	public TlsPolicy() {
+	}
 }

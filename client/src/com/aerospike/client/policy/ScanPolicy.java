@@ -63,6 +63,19 @@ public final class ScanPolicy extends Policy {
 	public boolean failOnClusterChange;
 
 	/**
+	 * Copy scan policy from another scan policy.
+	 */
+	public ScanPolicy(ScanPolicy other) {
+		super(other);
+		this.scanPercent = other.scanPercent;
+		this.maxConcurrentNodes = other.maxConcurrentNodes;
+		this.concurrentNodes = other.concurrentNodes;
+		this.includeBinData = other.includeBinData;
+		this.includeLDT = other.includeLDT;
+		this.failOnClusterChange = other.failOnClusterChange;
+	}
+
+	/**
 	 * Default constructor.
 	 */
 	public ScanPolicy() {

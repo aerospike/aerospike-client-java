@@ -23,7 +23,19 @@ public final class AdminPolicy {
 
 	/**
 	 * User administration command socket timeout in milliseconds.
-	 * Default is one second timeout.
 	 */
-	public int timeout = 0;
+	public int timeout;
+
+	/**
+	 * Copy admin policy from another admin policy.
+	 */
+	public AdminPolicy(AdminPolicy other) {
+		this.timeout = other.timeout;
+	}
+	
+	/**
+	 * Default constructor.
+	 */
+	public AdminPolicy() {
+	}
 }

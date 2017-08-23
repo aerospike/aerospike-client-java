@@ -44,6 +44,16 @@ public class QueryPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
+	 * Copy query policy from another query policy.
+	 */
+	public QueryPolicy(QueryPolicy other) {
+		super(other);
+		this.maxConcurrentNodes = other.maxConcurrentNodes;
+		this.recordQueueSize = other.recordQueueSize;
+		this.includeBinData = other.includeBinData;
+	}
+
+	/**
 	 * Default constructor.
 	 */
 	public QueryPolicy() {
