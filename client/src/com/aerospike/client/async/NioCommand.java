@@ -306,11 +306,11 @@ public final class NioCommand implements Runnable, TimerTask {
 
 		if (receiveSize <= byteBuffer.capacity()) {
 			byteBuffer.clear();
-			byteBuffer.limit(receiveSize);
 		}
 		else {
 			byteBuffer = NioEventLoop.createByteBuffer(receiveSize);
 		}		
+		byteBuffer.limit(receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;
 
 		if (conn.read(byteBuffer)) {
