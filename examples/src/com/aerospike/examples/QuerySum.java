@@ -17,9 +17,11 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
@@ -74,8 +76,16 @@ public class QuerySum extends Example {
 		
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-		task.waitTillComplete();
+		
+		try {
+			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				throw ae;
+			}
+		}
 	}
 
 	private void writeRecords(

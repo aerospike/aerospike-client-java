@@ -1948,12 +1948,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			return new IndexTask(cluster, policy, namespace, indexName);
 		}
 		
-		if (response.startsWith("FAIL:200")) {
-			// Index has already been created.  Do not need to poll for completion.
-			return new IndexTask();
-		}
-			
-		throw new AerospikeException("Create index failed: " + response);
+		parseInfoError("Create index failed", response);
+		return null;
 	}
 
 	/**
@@ -1991,14 +1987,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (response.equalsIgnoreCase("OK")) {
 			return;
-		}
+		}		
 		
-		if (response.startsWith("FAIL:201")) {
-			// Index did not previously exist. Return without error.
-			return;
-		}
-			
-		throw new AerospikeException("Drop index failed: " + response);
+		parseInfoError("Drop index failed", response);
 	}
 	
 	//-------------------------------------------------------
@@ -2188,7 +2179,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	// Internal Methods
 	//-------------------------------------------------------
 	
-	private String sendInfoCommand(Policy policy, String command) throws AerospikeException {		
+	private String sendInfoCommand(Policy policy, String command) {		
 		Node node = cluster.getRandomNode();
 		Connection conn = node.getConnection(policy.socketTimeout);
 		Info info;
@@ -2202,5 +2193,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			throw re;
 		}
 		return info.getValue();
+	}
+
+	private void parseInfoError(String prefix, String response) {
+		String message = prefix + ": " + response;
+		String[] list = response.split(":");
+		
+		if (list.length >= 2 && list[0].equals("FAIL")) {
+			int code = 0;
+			
+			try {
+				code = Integer.parseInt(list[1]);
+			}
+			catch (Exception ex) {
+			}			
+			throw new AerospikeException(code, message);
+		}
+		throw new AerospikeException(message);
 	}
 }

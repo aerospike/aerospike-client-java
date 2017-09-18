@@ -22,8 +22,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
@@ -33,17 +35,25 @@ import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryInteger extends TestSync {
-	private static final String indexName = "queryindexint";
-	private static final String keyPrefix = "querykeyint";
-	private static final String binName = args.getBinName("querybinint");
+	private static final String indexName = "testindexint";
+	private static final String keyPrefix = "testkeyint";
+	private static final String binName = args.getBinName("testbinint");
 	private static final int size = 50;
 
 	@BeforeClass
 	public static void prepare() {
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
-		task.waitTillComplete();
+		
+		try {
+			IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				throw ae;
+			}
+		}
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);

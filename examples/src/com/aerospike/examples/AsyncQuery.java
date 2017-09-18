@@ -23,6 +23,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -68,8 +69,16 @@ public class AsyncQuery extends AsyncExample {
 		
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-		task.waitTillComplete();
+		
+		try {
+			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				throw ae;
+			}
+		}
 	}
 
 	private void runQueryExample(

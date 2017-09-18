@@ -25,9 +25,11 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
@@ -50,8 +52,16 @@ public class TestQueryFilter extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.STRING);
-		itask.waitTillComplete();
+		
+		try {
+			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.STRING);
+			itask.waitTillComplete();
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				throw ae;
+			}
+		}
 
 		writeRecord(keyPrefix + 1, "Charlie", "cpass");
 		writeRecord(keyPrefix + 2, "Bill", "hknfpkj");

@@ -302,7 +302,8 @@ public final class ResultCode {
 	/**
 	 * Secondary index already exists.
 	 */
-	public static final int INDEX_FOUND = 200;
+	public static final int INDEX_ALREADY_EXISTS = 200;
+	public static final int INDEX_FOUND = 200;  // For legacy reasons.
 	
 	/**
 	 * Requested secondary index does not exist.
@@ -546,7 +547,7 @@ public final class ResultCode {
 		case BATCH_QUEUES_FULL:
 			return "All batch queues are full";
 			
-		case INDEX_FOUND:
+		case INDEX_ALREADY_EXISTS:
 			return "Index already exists";
 			
 		case INDEX_NOTFOUND:
