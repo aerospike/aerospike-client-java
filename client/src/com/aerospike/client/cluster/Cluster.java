@@ -206,7 +206,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 	
-	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {		
+	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {
 		// Tend cluster until all nodes identified.
 		waitTillStabilized(failIfNotConnected);
 		
@@ -284,30 +284,44 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 	
-    /**
-     * Tend the cluster until it has stabilized and return control.
-     * This helps avoid initial database request timeout issues when
-     * a large number of threads are initiated at client startup.
-     * 
-     * If the cluster has not stabilized by the timeout, return
-     * control as well.  Do not return an error since future 
-     * database requests may still succeed.
-     */
+	/**
+	 * Tend the cluster until it has stabilized and return control.
+	 * This helps avoid initial database request timeout issues when
+	 * a large number of threads are initiated at client startup.
+	 *
+	 * At least two cluster tends are necessary. The first cluster
+	 * tend finds a seed node and obtains the seed's partition maps 
+	 * and peer nodes.  The second cluster tend requests partition 
+	 * maps for the peer nodes.
+	 *
+	 * A third cluster tend is allowed if some peers nodes can't
+	 * be contacted.  If peer nodes are still unreachable, an
+	 * exception is thrown.
+	 */
     private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(connectionTimeout);
 		int count = -1;
-		
-		do {
+
+		for (int i = 0; i < 3; i++) {
 			tend(failIfNotConnected);
-		
+
 			// Check to see if cluster has changed since the last Tend().
 			// If not, assume cluster has stabilized and return.
-			if (count == nodes.length)
+			if (count == nodes.length) {
 				return;
-			
-			Util.sleep(1);			
+			}
+
+			Util.sleep(1);
 			count = nodes.length;
-		} while (System.nanoTime() < deadline);
+		}
+
+		String message = "Cluster not stabilized after multiple tend attempts";
+
+		if (failIfNotConnected) {
+			throw new AerospikeException(message);
+		}
+		else {
+			Log.warn(message);
+		}
     }
     	
 	public final void run() {
