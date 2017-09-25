@@ -28,12 +28,12 @@ public interface WriteListener {
 	 * 
 	 * @param key					unique record identifier
 	 */
-	public void onSuccess(Key key);
+	void onSuccess(Key key);
 	
 	/**
 	 * This method is called when an asynchronous write command fails.
 	 * 
 	 * @param exception				error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

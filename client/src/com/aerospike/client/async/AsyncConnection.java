@@ -25,10 +25,10 @@ public interface AsyncConnection {
 	/**
 	 * Is connection ready for another command.
 	 */
-	public boolean isValid(ByteBuffer byteBuffer);
+	boolean isValid(ByteBuffer byteBuffer);
 	
 	/**
 	 * Close connection.
 	 */
-	public void close();
+	void close();
 }

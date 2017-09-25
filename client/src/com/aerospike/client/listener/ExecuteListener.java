@@ -29,12 +29,12 @@ public interface ExecuteListener {
 	 * @param key			unique record identifier
 	 * @param obj			returned object
 	 */
-	public void onSuccess(Key key, Object obj);
+	void onSuccess(Key key, Object obj);
 	
 	/**
 	 * This method is called when an asynchronous execute command fails.
 	 * 
 	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

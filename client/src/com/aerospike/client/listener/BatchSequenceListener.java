@@ -38,17 +38,17 @@ public interface BatchSequenceListener {
 	 *						will be null if the key is not found
 	 * @throws AerospikeException	if error occurs or batch should be terminated.
 	 */
-	public void onRecord(BatchRead record);
+	void onRecord(BatchRead record);
 	
 	/**
 	 * This method is called when the asynchronous batch get command completes.
 	 */
-	public void onSuccess();
+	void onSuccess();
 
 	/**
 	 * This method is called when an asynchronous batch get command fails.
 	 * 
 	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

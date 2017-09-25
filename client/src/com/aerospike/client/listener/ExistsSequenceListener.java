@@ -31,17 +31,17 @@ public interface ExistsSequenceListener {
 	 * @param key				unique record identifier
 	 * @param exists			whether key exists on server
 	 */
-	public void onExists(Key key, boolean exists);
+	void onExists(Key key, boolean exists);
 	
 	/**
 	 * This method is called when the asynchronous batch exists command completes.
 	 */
-	public void onSuccess();
+	void onSuccess();
 	
 	/**
 	 * This method is called when an asynchronous batch exists command fails.
 	 * 
 	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

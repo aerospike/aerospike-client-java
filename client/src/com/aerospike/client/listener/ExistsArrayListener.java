@@ -31,12 +31,12 @@ public interface ExistsArrayListener {
 	 * @param keys				unique record identifiers
 	 * @param exists			whether keys exists on server
 	 */
-	public void onSuccess(Key[] keys, boolean[] exists);
+	void onSuccess(Key[] keys, boolean[] exists);
 	
 	/**
 	 * This method is called when an asynchronous exists command fails.
 	 * 
 	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

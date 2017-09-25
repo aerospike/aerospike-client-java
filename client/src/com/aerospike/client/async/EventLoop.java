@@ -28,36 +28,36 @@ public interface EventLoop {
 	 * Execute async command.  Execute immediately if in event loop.
 	 * Otherwise, place command on event loop queue.
 	 */
-	public void execute(Cluster cluster, AsyncCommand command);
+	void execute(Cluster cluster, AsyncCommand command);
 	
 	/**
 	 * Schedule execution of runnable command on event loop.
 	 * Command is placed on event loop queue and is never executed directly.
 	 */
-	public void execute(Runnable command);
+	void execute(Runnable command);
 	
 	/**
 	 * Schedule execution of runnable command with delay.
 	 */
-	public void schedule(Runnable command, long delay, TimeUnit unit);
+	void schedule(Runnable command, long delay, TimeUnit unit);
 
 	/**
 	 * Schedule execution with a reusable ScheduleTask.
 	 */
-	public void schedule(ScheduleTask task, long delay, TimeUnit unit);
+	void schedule(ScheduleTask task, long delay, TimeUnit unit);
 
 	/**
 	 * Return event loop array index.
 	 */	
-	public int getIndex();
+	int getIndex();
 	
 	/**
 	 * Is current thread the event loop thread.
 =	 */
-	public boolean inEventLoop();
+	boolean inEventLoop();
 	
 	/**
 	 * For internal use only.
 	 */
-	public EventState createState();
+	EventState createState();
 }

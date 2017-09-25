@@ -39,17 +39,17 @@ public interface RecordSequenceListener {
 	 * @param record				record instance, will be null if the key is not found
 	 * @throws AerospikeException	if error occurs or scan should be terminated.
 	 */
-	public void onRecord(Key key, Record record) throws AerospikeException;
+	void onRecord(Key key, Record record) throws AerospikeException;
 	
 	/**
 	 * This method is called when the asynchronous batch get or scan command completes.
 	 */
-	public void onSuccess();
+	void onSuccess();
 	
 	/**
 	 * This method is called when an asynchronous batch get or scan command fails.
 	 * 
 	 * @param exception				error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

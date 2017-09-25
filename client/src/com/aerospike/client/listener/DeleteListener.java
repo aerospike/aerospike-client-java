@@ -29,12 +29,12 @@ public interface DeleteListener {
 	 * @param key				unique record identifier
 	 * @param existed			whether record existed on server before deletion
 	 */
-	public void onSuccess(Key key, boolean existed);
+	void onSuccess(Key key, boolean existed);
 	
 	/**
 	 * This method is called when an asynchronous delete command fails.
 	 * 
 	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

@@ -17,5 +17,5 @@
 package com.aerospike.client.lua;
 
 public interface LuaData {
-	public Object luaToObject();
+	Object luaToObject();
 }
