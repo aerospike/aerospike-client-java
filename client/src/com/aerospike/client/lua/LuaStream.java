@@ -19,9 +19,9 @@ package com.aerospike.client.lua;
 import org.luaj.vm2.LuaValue;
 
 public interface LuaStream {
-	public LuaValue read();
-	public void write(LuaValue value);
-	public boolean readable();
-	public boolean writeable();
-	public LuaValue toLuaString();
+	LuaValue read();
+	void write(LuaValue value);
+	boolean readable();
+	boolean writeable();
+	LuaValue toLuaString();
 }

@@ -32,12 +32,12 @@ public interface BatchListListener {
 	 * @param records		record instances, {@link com.aerospike.client.BatchRead#record}
 	 *						will be null if the key is not found
 	 */
-	public void onSuccess(List<BatchRead> records);
+	void onSuccess(List<BatchRead> records);
 	
 	/**
 	 * This method is called when an asynchronous batch get command fails.
 	 * 
 	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

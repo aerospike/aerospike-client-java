@@ -35,5 +35,5 @@ public interface ScanCallback {
 	 * @param record				container for bins and record meta-data
 	 * @throws AerospikeException	if error occurs or scan should be terminated.
 	 */
-	public void scanCallback(Key key, Record record) throws AerospikeException;
+	void scanCallback(Key key, Record record) throws AerospikeException;
 }

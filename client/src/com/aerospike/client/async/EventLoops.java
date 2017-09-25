@@ -27,7 +27,7 @@ public interface EventLoops extends Closeable {
     /**
      * Return array of Aerospike event loops.
      */
-	public EventLoop[] getArray();
+	EventLoop[] getArray();
 	
     /**
      * Return number of event loops in this group.
@@ -37,20 +37,20 @@ public interface EventLoops extends Closeable {
 	/**
 	 * Return Aerospike event loop given array index..
 	 */
-	public EventLoop get(int index);
+	EventLoop get(int index);
 
 	/**
 	 * Return next Aerospike event loop in round-robin fashion.
 	 */
-	public EventLoop next();
+	EventLoop next();
 	
 	/**
 	 * Close event loops.
 	 */
-	public void close();
+	void close();
 	
 	/**
 	 * Initialize TLS context. For internal use only.
 	 */
-	public void initTlsContext(TlsPolicy policy);
+	void initTlsContext(TlsPolicy policy);
 }

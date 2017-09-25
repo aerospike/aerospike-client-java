@@ -57,15 +57,15 @@ public interface IAsyncClient extends IAerospikeClient {
 	// Default Policies
 	//-------------------------------------------------------
 
-	public Policy getAsyncReadPolicyDefault();
+	Policy getAsyncReadPolicyDefault();
 
-	public WritePolicy getAsyncWritePolicyDefault();
+	WritePolicy getAsyncWritePolicyDefault();
 
-	public ScanPolicy getAsyncScanPolicyDefault();
+	ScanPolicy getAsyncScanPolicyDefault();
 
-	public QueryPolicy getAsyncQueryPolicyDefault();
+	QueryPolicy getAsyncQueryPolicyDefault();
 
-	public BatchPolicy getAsyncBatchPolicyDefault();
+	BatchPolicy getAsyncBatchPolicyDefault();
 
 	//-------------------------------------------------------
 	// Write Record Operations
@@ -85,7 +85,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
+	void put(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -107,7 +107,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
+	void append(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
 		throws AerospikeException;
 	
 	/**
@@ -125,7 +125,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
+	void prepend(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -147,7 +147,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
+	void add(WritePolicy policy, WriteListener listener, Key key, Bin... bins)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -166,7 +166,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void delete(WritePolicy policy, DeleteListener listener, Key key)
+	void delete(WritePolicy policy, DeleteListener listener, Key key)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -185,7 +185,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void touch(WritePolicy policy, WriteListener listener, Key key)
+	void touch(WritePolicy policy, WriteListener listener, Key key)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -204,7 +204,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void exists(Policy policy, ExistsListener listener, Key key)
+	void exists(Policy policy, ExistsListener listener, Key key)
 		throws AerospikeException;
 
 	/**
@@ -219,7 +219,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
+	void exists(BatchPolicy policy, ExistsArrayListener listener, Key[] keys)
 		throws AerospikeException;
 
 	/**
@@ -234,7 +234,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
+	void exists(BatchPolicy policy, ExistsSequenceListener listener, Key[] keys)
 		throws AerospikeException;
 	
 	//-------------------------------------------------------
@@ -253,7 +253,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */	
-	public void get(Policy policy, RecordListener listener, Key key)
+	void get(Policy policy, RecordListener listener, Key key)
 		throws AerospikeException;
 	
 	/**
@@ -269,7 +269,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param binNames				bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void get(Policy policy, RecordListener listener, Key key, String... binNames)
+	void get(Policy policy, RecordListener listener, Key key, String... binNames)
 		throws AerospikeException;
 
 	/**
@@ -284,7 +284,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void getHeader(Policy policy, RecordListener listener, Key key)
+	void getHeader(Policy policy, RecordListener listener, Key key)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -306,7 +306,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
+	void get(BatchPolicy policy, BatchListListener listener, List<BatchRead> records)
 		throws AerospikeException;
 
 	/**
@@ -324,7 +324,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
+	void get(BatchPolicy policy, BatchSequenceListener listener, List<BatchRead> records)
 		throws AerospikeException;
 
 	/**
@@ -340,7 +340,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
+	void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		throws AerospikeException;
 
 	/**
@@ -356,7 +356,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
+	void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		throws AerospikeException;
 
 	/**
@@ -373,7 +373,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, String... binNames) 
+	void get(BatchPolicy policy, RecordArrayListener listener, Key[] keys, String... binNames)
 		throws AerospikeException;
 
 	/**
@@ -390,7 +390,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, String... binNames) 
+	void get(BatchPolicy policy, RecordSequenceListener listener, Key[] keys, String... binNames)
 		throws AerospikeException;
 
 	/**
@@ -406,7 +406,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void getHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
+	void getHeader(BatchPolicy policy, RecordArrayListener listener, Key[] keys)
 		throws AerospikeException;
 
 	/**
@@ -422,7 +422,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void getHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
+	void getHeader(BatchPolicy policy, RecordSequenceListener listener, Key[] keys)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -443,7 +443,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param operations			database operations to perform
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations)
+	void operate(WritePolicy policy, RecordListener listener, Key key, Operation... operations)
 		throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -466,7 +466,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if queue is full
 	 */
-	public void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
+	void scanAll(ScanPolicy policy, RecordSequenceListener listener, String namespace, String setName, String... binNames)
 		throws AerospikeException;
 
 	//---------------------------------------------------------------
@@ -491,7 +491,7 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param functionArgs			arguments passed in to user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public void execute(
+	void execute(
 		WritePolicy policy,
 		ExecuteListener listener,
 		Key key,
@@ -517,6 +517,6 @@ public interface IAsyncClient extends IAerospikeClient {
 	 * @param statement				database query command parameters
 	 * @throws AerospikeException	if query fails
 	 */
-	public void query(QueryPolicy policy, RecordSequenceListener listener, Statement statement) 
+	void query(QueryPolicy policy, RecordSequenceListener listener, Statement statement)
 		throws AerospikeException;
 }

@@ -30,12 +30,12 @@ public interface RecordListener {
 	 * @param key			unique record identifier
 	 * @param record		record instance if found, otherwise null
 	 */
-	public void onSuccess(Key key, Record record);
+	void onSuccess(Key key, Record record);
 
 	/**
 	 * This method is called when an asynchronous get or operate command fails.
 	 * 
 	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

@@ -29,12 +29,12 @@ public interface ExistsListener {
 	 * @param key				unique record identifier
 	 * @param exists			whether key exists on server
 	 */
-	public void onSuccess(Key key, boolean exists);
+	void onSuccess(Key key, boolean exists);
 	
 	/**
 	 * This method is called when an asynchronous exists command fails.
 	 * 
 	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

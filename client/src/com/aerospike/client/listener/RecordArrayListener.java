@@ -32,12 +32,12 @@ public interface RecordArrayListener {
 	 * @param keys			unique record identifiers
 	 * @param records		record instances, an instance will be null if the key is not found
 	 */
-	public void onSuccess(Key[] keys, Record[] records);
+	void onSuccess(Key[] keys, Record[] records);
 	
 	/**
 	 * This method is called when an asynchronous batch get command fails.
 	 * 
 	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	void onFailure(AerospikeException exception);
 }

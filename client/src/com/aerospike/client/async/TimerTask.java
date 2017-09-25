@@ -17,5 +17,5 @@
 package com.aerospike.client.async;
 
 public interface TimerTask {	
-	public void timeout();
+	void timeout();
 }
