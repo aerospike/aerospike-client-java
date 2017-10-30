@@ -109,9 +109,9 @@ public final class ResultCode {
 	public static final int TIMEOUT = 9;
 
 	/**
-	 * XDS product is not available.
+	 * Operation not allowed in current configuration.
 	 */
-	public static final int NO_XDS = 10;
+	public static final int ALWAYS_FORBIDDEN = 10;
 
 	/**
 	 * Server is not accepting requests.
@@ -433,8 +433,8 @@ public final class ResultCode {
 		case TIMEOUT:
 			return "Timeout";
 		
-		case NO_XDS:
-			return "XDS not available";
+		case ALWAYS_FORBIDDEN:
+			return "Operation not allowed";
 		
 		case SERVER_NOT_AVAILABLE:
 			return "Server not available";
