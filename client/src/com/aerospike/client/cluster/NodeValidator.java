@@ -149,10 +149,10 @@ public final class NodeValidator {
 			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
 			
 			if (hasClusterName) {
-				map = Info.request(conn, "node", "features", "cluster-name");			
+				map = Info.request(conn, "node", "partition-generation", "features", "cluster-name");			
 			}
 			else {
-				map = Info.request(conn, "node", "features");
+				map = Info.request(conn, "node", "partition-generation", "features");
 			}
 			
 			String nodeName = map.get("node");
@@ -161,6 +161,20 @@ public final class NodeValidator {
 				throw new AerospikeException.InvalidNode();				
 			}
 			
+			String genString = map.get("partition-generation");
+			int gen;
+			
+			try {
+				gen = Integer.parseInt(genString);
+			}
+			catch (Exception ex) {
+				throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);												
+			}
+						
+			if (gen == -1) {
+				throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + " is not yet fully initialized");
+			}
+
 			if (hasClusterName) {
 				String id = map.get("cluster-name");
 				
@@ -205,6 +219,9 @@ public final class NodeValidator {
 				}
 				else if (featuresString.regionMatches(begin, "batch-index", 0, len)) {
 					this.features |= Node.HAS_BATCH_INDEX;
+				}
+				else if (featuresString.regionMatches(begin, "replicas", 0, len)) {
+					this.features |= Node.HAS_REPLICAS;
 				}
 				else if (featuresString.regionMatches(begin, "replicas-all", 0, len)) {
 					this.features |= Node.HAS_REPLICAS_ALL;

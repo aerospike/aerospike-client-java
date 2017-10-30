@@ -33,8 +33,9 @@ public final class PartitionParser {
 	static final String PartitionGeneration = "partition-generation";
 	static final String ReplicasMaster = "replicas-master";
 	static final String ReplicasAll = "replicas-all";
+	static final String Replicas = "replicas";
 
-	private HashMap<String,AtomicReferenceArray<Node>[]> map;
+	private HashMap<String,Partitions> map;
 	private final StringBuilder sb;
 	private final byte[] buffer;
 	private final int partitionCount;
@@ -43,13 +44,24 @@ public final class PartitionParser {
 	private int offset;
 	private boolean copied;
 	
-	public PartitionParser(Connection conn, Node node, HashMap<String,AtomicReferenceArray<Node>[]> map, int partitionCount, boolean requestProleReplicas) {
-		// Send format 1:  partition-generation\nreplicas-master\n
+	public PartitionParser(Connection conn, Node node, HashMap<String,Partitions> map, int partitionCount, boolean requestProleReplicas) {
+		// Send format 1:  partition-generation\nreplicas\n
 		// Send format 2:  partition-generation\nreplicas-all\n
+		// Send format 3:  partition-generation\nreplicas-master\n
 		this.partitionCount = partitionCount;
 		this.map = map;
 		
-		String command = (requestProleReplicas)? ReplicasAll : ReplicasMaster;
+		String command;
+		if (node.hasReplicas()) {
+			command = Replicas;
+		}
+		else if (requestProleReplicas) {
+			command = ReplicasAll;			
+		}
+		else {
+			command = ReplicasMaster;					
+		}
+
 		Info info = new Info(conn, PartitionGeneration, command);
 		this.length = info.length;
 
@@ -63,8 +75,11 @@ public final class PartitionParser {
 		
 		generation = parseGeneration();
 		
-		if (requestProleReplicas) {
-			parseReplicasAll(node);
+		if (node.hasReplicas()) {
+			parseReplicasAll(node, command);	
+		}
+		else if (requestProleReplicas) {
+			parseReplicasAll(node, command);
 		}
 		else {
 			parseReplicasMaster(node);		
@@ -79,7 +94,7 @@ public final class PartitionParser {
 		return copied;
 	}
 	
-	public HashMap<String,AtomicReferenceArray<Node>[]> getPartitionMap() {
+	public HashMap<String,Partitions> getPartitionMap() {
 		return map;	
 	}
 	
@@ -99,7 +114,6 @@ public final class PartitionParser {
 		throw new AerospikeException.Parse("Failed to find partition-generation value");
 	}
 
-	@SuppressWarnings("unchecked")
 	private void parseReplicasMaster(Node node) {
 		// Use low-level info methods and parse byte array directly for maximum performance.
 		// Receive format: replicas-master\t<ns1>:<base 64 encoded bitmap1>;<ns2>:<base 64 encoded bitmap2>...\n
@@ -135,17 +149,17 @@ public final class PartitionParser {
 						namespace + ". Response=" + response);										
 				}
 
-				AtomicReferenceArray<Node>[] replicaArray = map.get(namespace);
+				Partitions partitions = map.get(namespace);
 
-				if (replicaArray == null) {
-					replicaArray = new AtomicReferenceArray[1];
-					replicaArray[0] = new AtomicReferenceArray<Node>(partitionCount);
+				if (partitions == null) {
+					// Create new replica array.
+					partitions = new Partitions(partitionCount, 1, false);
 					copyPartitionMap();
-					map.put(namespace, replicaArray);
+					map.put(namespace, partitions);
 				}
 
 				// Log.info("Map: " + namespace + "[0] " + node);
-				decodeBitmap(node, replicaArray[0], begin);
+				decodeBitmap(node, partitions, 0, 0, begin);
 				begin = ++offset;
 			}
 			else {
@@ -154,15 +168,15 @@ public final class PartitionParser {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private void parseReplicasAll(Node node) throws AerospikeException {
+	private void parseReplicasAll(Node node, String command) throws AerospikeException {
 		// Use low-level info methods and parse byte array directly for maximum performance.
 		// Receive format: replicas-all\t
-		//                 <ns1>:<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
-		//                 <ns2>:<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
-		expectName(ReplicasAll);
+		//                 <ns1>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
+		//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
+		expectName(command);
 		
 		int begin = offset;
+		int regime = 0;
 		
 		while (offset < length) {
 			if (buffer[offset] == ':') {
@@ -176,6 +190,20 @@ public final class PartitionParser {
 				}
 				begin = ++offset;
 				
+				// Parse regime.
+				if (command == Replicas) {
+					while (offset < length) {
+						byte b = buffer[offset];
+						
+						if (b == ',') {
+							break;
+						}
+						offset++;
+					}
+					regime = Integer.parseInt(new String(buffer, begin, offset - begin));
+					begin = ++offset;					
+				}
+				
 				// Parse replica count.
 				while (offset < length) {
 					byte b = buffer[offset];
@@ -187,51 +215,26 @@ public final class PartitionParser {
 				}
 				int replicaCount = Integer.parseInt(new String(buffer, begin, offset - begin));
 
-				// Ensure replicaArray is correct size.
-				AtomicReferenceArray<Node>[] replicaArray = map.get(namespace);
+				// Ensure replicaCount is uniform.
+				Partitions partitions = map.get(namespace);
 
-				if (replicaArray == null) {
-					// Create new replica array. 
-					replicaArray = new AtomicReferenceArray[replicaCount];
-					
-					for (int i = 0; i < replicaCount; i++) {
-						replicaArray[i] = new AtomicReferenceArray<Node>(partitionCount);
-					}
-
+				if (partitions == null) {
+					// Create new replica array.
+					partitions = new Partitions(partitionCount, replicaCount, regime != 0);
 					copyPartitionMap();
-					map.put(namespace, replicaArray);					
+					map.put(namespace, partitions);					
 				}
-				else if (replicaArray.length != replicaCount) {
+				else if (partitions.replicas.length != replicaCount) {
 					if (Log.infoEnabled()) {
-						Log.info("Namespace " + namespace + " replication factor changed from " + replicaArray.length + " to " + replicaCount);
+						Log.info("Namespace " + namespace + " replication factor changed from " + partitions.replicas.length + " to " + replicaCount);
 					}
 					
-					// Resize replica array. 
-					AtomicReferenceArray<Node>[] replicaTarget = new AtomicReferenceArray[replicaCount];
-					
-					if (replicaArray.length < replicaCount) {
-						int i = 0;
-						
-						// Copy existing entries.
-						for (; i < replicaArray.length; i++) {
-							replicaTarget[i] = replicaArray[i];
-						}
-
-						// Create new entries.
-						for (; i < replicaCount; i++) {
-							replicaTarget[i] = new AtomicReferenceArray<Node>(partitionCount);
-						}
-					}
-					else {
-						// Copy existing entries.
-						for (int i = 0; i < replicaCount; i++) {
-							replicaTarget[i] = replicaArray[i];
-						}
-					}
+					// Resize partition map. 
+					Partitions tmp = new Partitions(partitions, replicaCount);
 					
 					copyPartitionMap();
-					replicaArray = replicaTarget;
-					map.put(namespace, replicaArray);				
+					partitions = tmp;
+					map.put(namespace, partitions);				
 				}
 				
 				// Parse partition bitmaps.
@@ -255,7 +258,7 @@ public final class PartitionParser {
 					}
 					
 					// Log.info("Map: " + namespace + '[' + i + "] " + node);
-					decodeBitmap(node, replicaArray[i], begin);
+					decodeBitmap(node, partitions, i, regime, begin);
 				}
 				begin = ++offset;
 			}
@@ -265,7 +268,9 @@ public final class PartitionParser {
 		}
 	}
 	
-	private void decodeBitmap(Node node, AtomicReferenceArray<Node> nodeArray, int begin) {
+	private void decodeBitmap(Node node, Partitions partitions, int index, int regime, int begin) {
+		AtomicReferenceArray<Node> nodeArray = partitions.replicas[index];
+		int[] regimes = partitions.regimes;
 		byte[] restoreBuffer = Base64.decode(buffer, begin, offset - begin);
 	
 		for (int i = 0; i < partitionCount; i++) {
@@ -273,17 +278,25 @@ public final class PartitionParser {
 			
 			if ((restoreBuffer[i >> 3] & (0x80 >> (i & 7))) != 0) {
 				// Node owns this partition.
-				// Log.info("Map: " + i);
-				if (nodeOld != null && nodeOld != node) {
-					// Force previously mapped node to refresh it's partition map on next cluster tend.
-					nodeOld.partitionGeneration = -1;
-				}
+				int regimeOld = regimes[i];
 				
-				// Use lazy set because there is only one producer thread. In addition,
-				// there is a one second delay due to the cluster tend polling interval.  
-				// An extra millisecond for a node change will not make a difference and 
-				// overall performance is improved.
-				nodeArray.lazySet(i, node);
+				if (regime == 0 || regime >= regimeOld) {
+					// Log.info("Map: " + i);
+					if (regime > regimeOld) {
+						regimes[i] = regime;
+					}
+
+					if (nodeOld != null && nodeOld != node) {
+						// Force previously mapped node to refresh it's partition map on next cluster tend.
+						nodeOld.partitionGeneration = -1;
+					}
+					
+					// Use lazy set because there is only one producer thread. In addition,
+					// there is a one second delay due to the cluster tend polling interval.  
+					// An extra millisecond for a node change will not make a difference and 
+					// overall performance is improved.
+					nodeArray.lazySet(i, node);				
+				}
 			}
 			else {
 				// Node does not own partition.
@@ -298,7 +311,7 @@ public final class PartitionParser {
 	private void copyPartitionMap() {
 		if (! copied) {
 			// Make shallow copy of map.
-			map = new HashMap<String,AtomicReferenceArray<Node>[]>(map);
+			map = new HashMap<String,Partitions>(map);
 			copied = true;
 		}
 	}

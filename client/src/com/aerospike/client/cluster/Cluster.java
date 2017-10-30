@@ -39,7 +39,6 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
@@ -65,7 +64,7 @@ public class Cluster implements Runnable, Closeable {
 	private volatile Node[] nodes;	
 
 	// Hints for best node for a partition
-	public volatile HashMap<String,AtomicReferenceArray<Node>[]> partitionMap;
+	public volatile HashMap<String,Partitions> partitionMap;
 	
 	// IP translations.
 	protected final Map<String,String> ipMap;
@@ -183,7 +182,7 @@ public class Cluster implements Runnable, Closeable {
 		aliases = new HashMap<Host,Node>();
 		nodesMap = new HashMap<String,Node>();
 		nodes = new Node[0];	
-		partitionMap = new HashMap<String,AtomicReferenceArray<Node>[]>();		
+		partitionMap = new HashMap<String,Partitions>();		
 		nodeIndex = new AtomicInteger();
 		replicaIndex = new AtomicInteger();
 
@@ -502,8 +501,8 @@ public class Cluster implements Runnable, Closeable {
 	}
 	
 	private final boolean findNodeInPartitionMap(Node filter) {
-		for (AtomicReferenceArray<Node>[] replicasArray : partitionMap.values()) {
-			for (AtomicReferenceArray<Node> nodeArray : replicasArray) {
+		for (Partitions partitions : partitionMap.values()) {
+			for (AtomicReferenceArray<Node> nodeArray : partitions.replicas) {
 				int max = nodeArray.length();
 				
 				for (int i = 0; i < max; i++) {
@@ -638,63 +637,49 @@ public class Cluster implements Runnable, Closeable {
 		}
 		return false;
 	}
-	
-	public final Node getReadNode(Partition partition, Replica replica) throws AerospikeException.InvalidNode {
-		// This method should only be called by batch.
-		switch (replica) {
-		default:
-		case SEQUENCE:  // Use Command.getReadNode() to really use sequence mode.
-		case MASTER:
-			return getMasterNode(partition);
-			
-		case MASTER_PROLES:
-			return getMasterProlesNode(partition);			
-		
-		case RANDOM:
-			return getRandomNode();			
-		}
-	}
 
 	public final Node getMasterNode(Partition partition) throws AerospikeException.InvalidNode {		
 		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,AtomicReferenceArray<Node>[]> map = partitionMap;
-		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
+		HashMap<String,Partitions> map = partitionMap;
+		Partitions partitions  = map.get(partition.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+		}
+
+		Node node = partitions.replicas[0].get(partition.partitionId);
 		
-		if (replicaArray != null) {
-			Node node = replicaArray[0].get(partition.partitionId);
-			
-			if (node != null && node.isActive()) {
-				return node;
-			}
+		if (node != null && node.isActive()) {
+			return node;
 		}
-		/*
-		if (Log.debugEnabled()) {
-			Log.debug("Choose random node for " + partition);
-		}
-		*/
-		return getRandomNode();
+		
+		// When master only specified, both AP and CP modes should never get random nodes.
+		throw new AerospikeException.InvalidNode();
 	}
 
 	public final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {		
 		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,AtomicReferenceArray<Node>[]> map = partitionMap;
-		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
-		
-		if (replicaArray != null) {
-			for (int i = 0; i < replicaArray.length; i++) {
-				int index = Math.abs(replicaIndex.getAndIncrement() % replicaArray.length);						
-				Node node = replicaArray[index].get(partition.partitionId);
-				
-				if (node != null && node.isActive()) {
-					return node;
-				}				
+		HashMap<String,Partitions> map = partitionMap;
+		Partitions partitions  = map.get(partition.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+		}
+
+		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+
+		for (int i = 0; i < replicas.length; i++) {
+			int index = Math.abs(replicaIndex.getAndIncrement() % replicas.length);						
+			Node node = replicas[index].get(partition.partitionId);
+
+			if (node != null && node.isActive()) {
+				return node;
 			}
 		}
-		/*
-		if (Log.debugEnabled()) {
-			Log.debug("Choose random node for " + partition);
+
+		if (partitions.cpMode) {
+			throw new AerospikeException.InvalidNode();
 		}
-		*/
 		return getRandomNode();
 	}
 
@@ -745,12 +730,13 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	public final void printPartitionMap() {
-		for (Entry<String,AtomicReferenceArray<Node>[]> entry : partitionMap.entrySet()) {
+		for (Entry<String,Partitions> entry : partitionMap.entrySet()) {
 			String namespace = entry.getKey();
-			AtomicReferenceArray<Node>[] replicaArray = entry.getValue();
+			Partitions partitions = entry.getValue();
+			AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 			
-			for (int i = 0; i < replicaArray.length; i++) {
-				AtomicReferenceArray<Node> nodeArray = replicaArray[i];
+			for (int i = 0; i < replicas.length; i++) {
+				AtomicReferenceArray<Node> nodeArray = replicas[i];
 				int max = nodeArray.length();
 				
 				for (int j = 0; j < max; j++) {

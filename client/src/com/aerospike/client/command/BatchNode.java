@@ -51,7 +51,7 @@ public final class BatchNode {
 				
 		for (int i = 0; i < keys.length; i++) {
 			Partition partition = new Partition(keys[i]);						
-			Node node = cluster.getReadNode(partition, policy.replica);
+			Node node = cluster.getMasterNode(partition);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 			
 			if (batchNode == null) {
@@ -86,7 +86,7 @@ public final class BatchNode {
 				
 		for (int i = 0; i < max; i++) {
 			Partition partition = new Partition(records.get(i).key);						
-			Node node = cluster.getReadNode(partition, policy.replica);
+			Node node = cluster.getMasterNode(partition);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 			
 			if (batchNode == null) {

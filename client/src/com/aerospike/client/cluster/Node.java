@@ -50,6 +50,7 @@ public class Node implements Closeable {
 	public static final int HAS_BATCH_INDEX	= (1 << 2);
 	public static final int HAS_REPLICAS_ALL = (1 << 3);
 	public static final int HAS_PEERS = (1 << 4);
+	public static final int HAS_REPLICAS = (1 << 5);
 
 	protected final Cluster cluster;
 	private final String name;
@@ -633,6 +634,13 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasDouble() {
 		return (features & HAS_DOUBLE) != 0;
+	}
+
+	/**
+	 * Does server support replicas info command.
+	 */
+	public final boolean hasReplicas() {
+		return (features & HAS_REPLICAS) != 0;
 	}
 
 	/**

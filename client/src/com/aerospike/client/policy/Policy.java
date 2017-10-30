@@ -147,6 +147,13 @@ public class Policy {
 	public boolean sendKey;
 	
 	/**
+	 * Force reads to be linearized for server namespaces that support CP mode.
+	 * <p>
+	 * Default: false
+	 */
+	public boolean linearizeRead;
+
+	/**
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
@@ -159,6 +166,7 @@ public class Policy {
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
 		this.sendKey = other.sendKey;
+		this.linearizeRead = other.linearizeRead;
 	}
 	
 	/**

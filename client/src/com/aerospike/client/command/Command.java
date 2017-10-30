@@ -29,6 +29,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
@@ -64,6 +65,7 @@ public abstract class Command {
 	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
 	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
 	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
+	public static final int INFO3_LINEARIZE_READ	= (1 << 6); // Linearize read when in CP mode.
 	
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
@@ -867,6 +869,10 @@ public abstract class Command {
     		infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
 		
+		if (policy.linearizeRead) {
+			infoAttr |= Command.INFO3_LINEARIZE_READ;
+		}
+
 		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
 			readAttr |= Command.INFO1_CONSISTENCY_ALL;
 		}
@@ -894,16 +900,23 @@ public abstract class Command {
 	 * Generic header write.
 	 */
 	protected final void writeHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {		
+		int infoAttr = 0;
+
+		if (policy.linearizeRead) {
+			infoAttr |= Command.INFO3_LINEARIZE_READ;
+		}
+
 		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
 			readAttr |= Command.INFO1_CONSISTENCY_ALL;
 		}
-
+		
 		// Write all header data except total size which must be written last. 
 		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
+		dataBuffer[11] = (byte)infoAttr;
 		
-		for (int i = 11; i < 22; i++) {
+		for (int i = 12; i < 22; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
@@ -1032,21 +1045,29 @@ public abstract class Command {
 	private final Node getSequenceNode(Cluster cluster, Partition partition)
 	{
 		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,AtomicReferenceArray<Node>[]> map = cluster.partitionMap;
-		AtomicReferenceArray<Node>[] replicaArray = map.get(partition.namespace);
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(partition.namespace);
 		
-		if (replicaArray != null) {
-			for (int i = 0; i < replicaArray.length; i++) {
-				int index = Math.abs(sequence % replicaArray.length);						
-				Node node = replicaArray[index].get(partition.partitionId);
-				
-				if (node != null && node.isActive()) {
-					return node;
-				}			
-				sequence++;
-			}
+		if (partitions == null) {
+			throw new AerospikeException("Invalid namespace: " + partition.namespace);
 		}
-		return cluster.getRandomNode();		
+
+		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+		
+		for (int i = 0; i < replicas.length; i++) {
+			int index = Math.abs(sequence % replicas.length);						
+			Node node = replicas[index].get(partition.partitionId);
+			
+			if (node != null && node.isActive()) {
+				return node;
+			}			
+			sequence++;
+		}
+
+		if (partitions.cpMode) {
+			throw new AerospikeException.InvalidNode();
+		}
+		return cluster.getRandomNode();
 	}
 	
 	protected abstract void sizeBuffer();
