@@ -25,10 +25,6 @@ import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.large.LargeList;
-import com.aerospike.client.large.LargeMap;
-import com.aerospike.client.large.LargeSet;
-import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -804,53 +800,6 @@ public interface IAerospikeClient extends Closeable {
 	 */
 	public void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
 		throws AerospikeException;
-
-	//-------------------------------------------------------------------
-	// Large collection functions
-	//-------------------------------------------------------------------
-
-	/**
-	 * Initialize large list operator.  This operator can be used to create and manage a list 
-	 * within a single bin.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 */
-	public LargeList getLargeList(WritePolicy policy, Key key, String binName);
-
-	/**
-	 * Initialize large map operator.  This operator can be used to create and manage a map 
-	 * within a single bin.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeMap getLargeMap(WritePolicy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large set operator.  This operator can be used to create and manage a set 
-	 * within a single bin.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeSet getLargeSet(WritePolicy policy, Key key, String binName, String userModule);
-
-	/**
-	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
-	 * within a single bin.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule);
 
 	//---------------------------------------------------------------
 	// User defined functions

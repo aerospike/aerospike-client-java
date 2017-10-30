@@ -39,6 +39,5 @@ public final class ParticleType {
 	//public static final int LUA_BLOB = 18;
 	public static final int MAP = 19;
 	public static final int LIST = 20;
-	public static final int LDT = 21;
 	public static final int GEOJSON = 23;
 }

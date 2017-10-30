@@ -43,7 +43,6 @@ public class Parameters {
 	boolean singleBin;
 	boolean hasGeo;
 	boolean hasUdf;
-	boolean hasLargeDataTypes;
 	boolean hasCDTList;
 	boolean hasCDTMap;
 	
@@ -100,7 +99,6 @@ public class Parameters {
 		}
 
 		singleBin = parseBoolean(namespaceTokens, "single-bin");
-		hasLargeDataTypes = parseBoolean(namespaceTokens, "ldt-enabled");
 	}
 	
 	private static boolean parseBoolean(String namespaceTokens, String name) {

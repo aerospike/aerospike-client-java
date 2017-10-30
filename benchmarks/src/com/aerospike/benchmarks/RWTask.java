@@ -23,7 +23,6 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
@@ -236,19 +235,7 @@ public abstract class RWTask {
 		Bin[] bins = args.getBins(random, multiBin, keyStart + keyIdx);
 		
 		try {
-			switch (args.storeType) {
-			case KVS:
-				put(writePolicy, key, bins);
-				break;
-	
-			case LLIST:
-				largeListAdd(key, bins[0].value);
-				break;
-
-			case LSTACK:
-				largeStackPush(key, bins[0].value);
-				break;
-			}
+			put(writePolicy, key, bins);
 		}
 		catch (AerospikeException ae) {
 			writeFailure(ae);
@@ -288,36 +275,12 @@ public abstract class RWTask {
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 			
 			if (multiBin) {
-				switch (args.storeType) {
-				case KVS:
-					// Read all bins, maybe validate
-					get(key);			
-					break;
-					
-				case LLIST:
-					largeListGet(key);
-					break;
-
-				case LSTACK:
-					largeStackPeek(key);
-					break;
-				}
+				// Read all bins, maybe validate
+				get(key);			
 			} 
 			else {
-				switch (args.storeType) {
-				case KVS:
-					// Read one bin, maybe validate
-					get(key, "0");
-					break;
-					
-				case LLIST:
-					largeListGet(key);
-					break;
-
-				case LSTACK:
-					largeStackPeek(key);
-					break;
-				}
+				// Read one bin, maybe validate
+				get(key, "0");
 			}
 		}
 		catch (AerospikeException ae) {
@@ -341,36 +304,12 @@ public abstract class RWTask {
 			}
 			
 			if (multiBin) {
-				switch (args.storeType) {
-				case KVS:
-					// Read all bins, maybe validate
-					get(keys);			
-					break;
-					
-				case LLIST:
-					largeListGet(keys[0]);
-					break;
-
-				case LSTACK:
-					largeStackPeek(keys[0]);
-					break;
-				}
+				// Read all bins, maybe validate
+				get(keys);			
 			} 
 			else {
-				switch (args.storeType) {
-				case KVS:
-					// Read one bin, maybe validate
-					get(keys, "0");
-					break;
-					
-				case LLIST:
-					largeListGet(keys[0]);
-					break;
-
-				case LSTACK:
-					largeStackPeek(keys[0]);
-					break;
-				}
+				// Read one bin, maybe validate
+				get(keys, "0");
 			}
 		}
 		catch (AerospikeException ae) {
@@ -525,8 +464,4 @@ public abstract class RWTask {
 	protected abstract void get(Key key);
 	protected abstract void get(Key[] keys);
 	protected abstract void get(Key[] keys, String binName);
-	protected abstract void largeListAdd(Key key, Value value);
-	protected abstract void largeListGet(Key key);
-	protected abstract void largeStackPush(Key key, Value value);
-	protected abstract void largeStackPeek(Key key);
 }

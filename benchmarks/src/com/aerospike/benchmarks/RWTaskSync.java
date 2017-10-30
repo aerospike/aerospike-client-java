@@ -16,17 +16,10 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.Value;
-import com.aerospike.client.large.LargeList;
-import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
@@ -100,58 +93,6 @@ public class RWTaskSync extends RWTask implements Runnable {
 	}
 
 	@Override
-	protected void largeListAdd(Key key, Value value) {
-		long begin = System.nanoTime();
-		if (counters.write.latency != null) {
-			largeListAdd(key, value, begin);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
-			counters.write.latency.add(elapsed);
-		}
-		else {
-			largeListAdd(key, value, begin);
-			counters.write.count.getAndIncrement();			
-		}
-	}
-
-	private void largeListAdd(Key key, Value value, long timestamp) {
-		// Create entry
-		Map<String,Value> entry = new HashMap<String,Value>();
-		entry.put("key", Value.get(timestamp));
-		entry.put("log", value);
-
-		// Add entry
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
-		list.add(Value.get(entry));
-	}
-
-	@Override
-	protected void largeStackPush(Key key, Value value) {
-		long begin = System.nanoTime();
-		if (counters.write.latency != null) {
-			largeStackPush(key, value, begin);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
-			counters.write.latency.add(elapsed);
-		}
-		else {
-			largeStackPush(key, value, begin);
-			counters.write.count.getAndIncrement();			
-		}
-	}
-
-	private void largeStackPush(Key key, Value value, long timestamp) {
-		// Create entry
-		Map<String,Value> entry = new HashMap<String,Value>();
-		entry.put("key", Value.get(timestamp));
-		entry.put("log", value);
-
-		// Push entry
-		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
-		lstack.push(Value.get(entry));
-	}
-
-	@Override
 	protected void get(Key key, String binName) {
 		Record record;
 		
@@ -219,46 +160,5 @@ public class RWTaskSync extends RWTask implements Runnable {
 		for (int i = 0; i < keys.length; i++) {
 			processRead(keys[i], records[i]);
 		}
-	}
-	
-	@Override
-	protected void largeListGet(Key key) {
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
-		List<?> results;
-		long begin = System.nanoTime();
-		if (counters.read.latency != null) {
-			results = list.range(Value.get(1000), Value.get(begin));
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		}
-		else {
-			results = list.range(Value.get(1000), Value.get(begin));
-		}
-		processLargeRead(key, results);
-	}
-
-	@Override
-	protected void largeStackPeek(Key key) {
-		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
-		List<?> results;
-		if (counters.read.latency != null) {
-			long begin = System.nanoTime();
-			results = lstack.peek(1);
-			long elapsed = System.nanoTime() - begin;
-			counters.read.latency.add(elapsed);
-		}
-		else {
-			results = lstack.peek(1);
-		}
-		processLargeRead(key, results);
-	}
-	
-	private void processLargeRead(Key key, List<?> list) {
-		if ((list == null || list.size() == 0) && args.reportNotFound) {
-			counters.readNotFound.getAndIncrement();	
-		}
-		else {
-			counters.read.count.getAndIncrement();		
-		}
-	}
+	}	
 }

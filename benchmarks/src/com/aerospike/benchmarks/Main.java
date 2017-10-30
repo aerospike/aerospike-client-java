@@ -239,10 +239,6 @@ public class Main implements Log.Callback {
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
 
-		options.addOption("ST", "storeType", true, 
-			"Defines data store type to run. Values:  KVS | LLIST | LSTACK" 
-			);
-
 		options.addOption("BT", "batchThreads", true,
 			"Maximum number of concurrent batch sub-threads for each batch command.\n" + 
 			"1   : Run each batch node command sequentially.\n" +
@@ -675,16 +671,6 @@ public class Main implements Log.Callback {
         	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
         }
 
-		args.storeType = StorageType.KVS;
-        if (line.hasOption("storeType")) {
-        	String storetype = line.getOptionValue("storeType");
-			if (storetype.equals("LLIST")) {
-				args.storeType = StorageType.LLIST;
-			} else if (storetype.equals("LSTACK")) {
-				args.storeType = StorageType.LSTACK;
-			}
-        }
-        
 		if (line.hasOption("batchThreads")) {
 			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
 		}			 

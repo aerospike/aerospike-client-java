@@ -77,9 +77,6 @@ public final class Buffer {
 		case ParticleType.MAP:
 			return Unpacker.unpackObjectMap(buf, offset, len);
 		
-		case ParticleType.LDT:
-			return Unpacker.unpackObject(buf, offset, len);
-			
 		default:
 			return null;
 		}

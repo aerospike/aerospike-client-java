@@ -103,7 +103,6 @@
           <sourceFileIncludes>
             <include>com/aerospike/client/*</include>
             <include>com/aerospike/client/cdt/*</include>
-            <include>com/aerospike/client/large/*</include>
             <include>com/aerospike/client/listener/*</include>
             <include>com/aerospike/client/policy/*</include>
             <include>com/aerospike/client/task/*</include>

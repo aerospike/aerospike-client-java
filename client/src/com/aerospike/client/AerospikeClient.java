@@ -60,10 +60,6 @@ import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanCommand;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
-import com.aerospike.client.large.LargeList;
-import com.aerospike.client.large.LargeMap;
-import com.aerospike.client.large.LargeSet;
-import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -1411,69 +1407,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		ScanCommand command = new ScanCommand(policy, namespace, setName, callback, binNames, taskId);
 		command.execute(cluster, policy, null, node, true);
-	}
-
-	//-------------------------------------------------------------------
-	// Large collection functions
-	//-------------------------------------------------------------------
-
-	/**
-	 * Initialize large list operator.  This operator can be used to create and manage a list 
-	 * within a single bin.
-	 * <p>
-	 * Deprecated: LDT functionality has been deprecated.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 */
-	public final LargeList getLargeList(WritePolicy policy, Key key, String binName) {
-		return new LargeList(this, policy, key, binName);
-	}
-
-	/**
-	 * Initialize large map operator.  This operator can be used to create and manage a map 
-	 * within a single bin.
-	 * <p>
-	 * Deprecated: LDT functionality has been deprecated.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public final LargeMap getLargeMap(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeMap(this, policy, key, binName, userModule);
-	}
-
-	/**
-	 * Initialize large set operator.  This operator can be used to create and manage a set 
-	 * within a single bin.
-	 * <p>
-	 * Deprecated: LDT functionality has been deprecated.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public final LargeSet getLargeSet(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeSet(this, policy, key, binName, userModule);
-	}
-
-	/**
-	 * Initialize large stack operator.  This operator can be used to create and manage a stack 
-	 * within a single bin.
-	 * <p>
-	 * Deprecated: LDT functionality has been deprecated.
-	 * 
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param key					unique record identifier
-	 * @param binName				bin name
-	 * @param userModule			Lua function name that initializes list configuration parameters, pass null for default
-	 */
-	public final LargeStack getLargeStack(WritePolicy policy, Key key, String binName, String userModule) {
-		return new LargeStack(this, policy, key, binName, userModule);
 	}
 
 	//---------------------------------------------------------------

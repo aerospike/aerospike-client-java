@@ -16,16 +16,10 @@
  */
 package com.aerospike.benchmarks;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
-import com.aerospike.client.large.LargeList;
-import com.aerospike.client.large.LargeStack;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
@@ -83,20 +77,7 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 		Key key = new Key(args.namespace, args.setName, keyCurrent);
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, true, keyCurrent);
-		
-		switch (args.storeType) {
-		case KVS:
-			put(key, bins);
-			break;
-			
-		case LLIST:
-			largeListAdd(key, bins[0].value);
-			break;
-
-		case LSTACK:
-			largeStackPush(key, bins[0].value);
-			break;
-		}
+		put(key, bins);		
 	}
 	
 	private void put(Key key, Bin[] bins) {
@@ -111,55 +92,5 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 			client.put(args.writePolicy, key, bins);
 			counters.write.count.getAndIncrement();			
 		}
-	}
-
-	private void largeListAdd(Key key, Value value) {
-		long begin = System.nanoTime();
-		if (counters.write.latency != null) {
-			largeListAdd(key, value, begin);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
-			counters.write.latency.add(elapsed);
-		}
-		else {
-			largeListAdd(key, value, begin);
-			counters.write.count.getAndIncrement();			
-		}
-	}
-
-	private void largeListAdd(Key key, Value value, long timestamp) {
-		// Create entry
-		Map<String,Value> entry = new HashMap<String,Value>();
-		entry.put("key", Value.get(timestamp));
-		entry.put("log", value);
-
-		// Add entry
-		LargeList list = client.getLargeList(args.writePolicy, key, "listltracker");
-		list.add(Value.get(entry));
-	}
-		
-	private void largeStackPush(Key key, Value value) {
-		long begin = System.nanoTime();
-		if (counters.write.latency != null) {
-			largeStackPush(key, value, begin);
-			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
-			counters.write.latency.add(elapsed);
-		}
-		else {
-			largeStackPush(key, value, begin);
-			counters.write.count.getAndIncrement();			
-		}
-	}
-	
-	private void largeStackPush(Key key, Value value, long timestamp) {
-		// Create entry
-		Map<String,Value> entry = new HashMap<String,Value>();
-		entry.put("key", Value.get(timestamp));
-		entry.put("log", value);
-
-		// Push entry
-		LargeStack lstack = client.getLargeStack(args.writePolicy, key, "stackltracker", null);
-		lstack.push(Value.get(entry));
-	}
+	}		
 }

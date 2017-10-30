@@ -41,10 +41,6 @@ import com.aerospike.test.sync.basic.TestSerialize;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestUDF;
-import com.aerospike.test.sync.large.TestLargeList;
-import com.aerospike.test.sync.large.TestLargeMap;
-import com.aerospike.test.sync.large.TestLargeSet;
-import com.aerospike.test.sync.large.TestLargeStack;
 import com.aerospike.test.sync.query.TestQueryAverage;
 import com.aerospike.test.sync.query.TestQueryCollection;
 import com.aerospike.test.sync.query.TestQueryExecute;
@@ -75,10 +71,6 @@ import com.aerospike.test.util.Args;
 	TestScan.class,
 	TestListMap.class,
 	TestUDF.class,
-	TestLargeList.class,
-	TestLargeMap.class,
-	TestLargeSet.class,
-	TestLargeStack.class,
 	TestQueryInteger.class,
 	TestQueryString.class,
 	TestQueryFilter.class,

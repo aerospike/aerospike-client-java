@@ -50,7 +50,6 @@ public class Args {
 	public boolean hasUdf;
 	public boolean hasMap;
 	public boolean singleBin;
-	public boolean hasLargeDataTypes;
 	
 	public Args() {
 		host = "127.0.0.1";
@@ -228,7 +227,6 @@ public class Args {
 		}
 
 		singleBin = parseBoolean(namespaceTokens, "single-bin");
-		hasLargeDataTypes = parseBoolean(namespaceTokens, "ldt-enabled");
 	}
 	
 	private static boolean parseBoolean(String namespaceTokens, String name) {
@@ -253,14 +251,6 @@ public class Args {
 	public String getBinName(String name) {
 		// Single bin servers don't need a bin name.
 		return singleBin ? "" : name;
-	}
-
-	public boolean validateLDT() {
-		if (! hasLargeDataTypes) {
-			System.out.println("Skip test because LDT not enabled on server");
-			return false;
-		}
-		return true;
 	}
 	
 	public boolean validateMap() {
