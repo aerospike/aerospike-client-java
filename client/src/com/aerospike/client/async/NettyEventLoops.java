@@ -18,6 +18,13 @@ package com.aerospike.client.async;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.handler.ssl.ApplicationProtocolConfig;
+import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
+import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
+import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
+import io.netty.handler.ssl.CipherSuiteFilter;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.EventExecutor;
@@ -26,6 +33,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Set;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.TlsPolicy;
@@ -35,7 +44,7 @@ import com.aerospike.client.util.Util;
  * Aerospike wrapper around netty event loops.
  * Implements the Aerospike EventLoops interface.
  */
-public final class NettyEventLoops implements EventLoops {
+public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
 	private final HashMap<EventExecutor,NettyEventLoop> eventLoopMap;
 	private final NettyEventLoop[] eventLoopArray;
@@ -87,8 +96,19 @@ public final class NettyEventLoops implements EventLoops {
 			// Already initialized.
 			return;
 		}
-
+		
 		this.tlsPolicy = policy;
+
+		if (policy.context != null) {
+			ApplicationProtocolConfig apc = new ApplicationProtocolConfig(
+					Protocol.NPN_AND_ALPN,
+					SelectorFailureBehavior.FATAL_ALERT,
+					SelectedListenerFailureBehavior.FATAL_ALERT,
+					policy.protocols
+					);
+			sslContext = new JdkSslContext(policy.context, true, Arrays.asList(policy.ciphers), this, apc, ClientAuth.OPTIONAL);
+			return;
+		}
 		
 		try {
 			SslContextBuilder builder = SslContextBuilder.forClient();
@@ -105,6 +125,14 @@ public final class NettyEventLoops implements EventLoops {
 		catch (Exception e) {
 			throw new AerospikeException("Failed to init netty TLS: " + Util.getErrorMessage(e));
 		}
+	}
+
+	/**
+	 * Filter cipher suites.  For internal use only.
+	 */
+	@Override
+	public String[] filterCipherSuites(Iterable<String> ciphers, List<String> defaultCiphers, Set<String> supportedCiphers) {
+		return tlsPolicy.ciphers;
 	}
 
 	/**

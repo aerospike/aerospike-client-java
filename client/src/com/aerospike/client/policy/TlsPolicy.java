@@ -17,12 +17,20 @@
 package com.aerospike.client.policy;
 
 import java.math.BigInteger;
+import javax.net.ssl.SSLContext;
 
 /**
  * TLS connection policy.
  * Secure TLS connections are only supported for AerospikeClient synchronous commands.
  */
 public final class TlsPolicy {
+	/**
+	 * Optional SSLContext configuration instead using default SSLContext. 
+	 * <p>
+	 * Default: null (use default SSLContext). 
+	 */
+	public SSLContext context;
+	
 	/**
 	 * Allowable TLS protocols that the client can use for secure connections.
 	 * Available cipher names can be obtained by {@link javax.net.ssl.SSLSocket#getSupportedProtocols()}
@@ -69,6 +77,7 @@ public final class TlsPolicy {
 	 * Copy TLS policy from another TLS policy.
 	 */
 	public TlsPolicy(TlsPolicy other) {
+		this.context = other.context;
 		this.protocols = other.protocols;
 		this.ciphers = other.ciphers;
 		this.revokeCertificates = other.revokeCertificates;

@@ -88,7 +88,9 @@ public final class Connection implements Closeable {
 				}
 			}
 			else {				
-	            SSLSocketFactory sslsocketfactory = (SSLSocketFactory)SSLSocketFactory.getDefault();
+	            SSLSocketFactory sslsocketfactory = (policy.context != null) ?
+	            		policy.context.getSocketFactory() :
+	            		(SSLSocketFactory)SSLSocketFactory.getDefault();
 	            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket(address.getAddress(), address.getPort());
 				socket = sslSocket;
 				
