@@ -127,7 +127,7 @@ public class Cluster implements Runnable, Closeable {
 		this.clusterName = policy.clusterName;
 
 		// Default TLS names when TLS enabled.
-		if (policy.tlsPolicy != null && ! policy.tlsPolicy.encryptOnly) {
+		if (policy.tlsPolicy != null) {
 			boolean useClusterName = clusterName != null && clusterName.length() > 0;
 			
 			for (int i = 0; i < hosts.length; i++) {

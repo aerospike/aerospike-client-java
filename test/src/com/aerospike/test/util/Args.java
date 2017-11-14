@@ -100,9 +100,6 @@ public class Args {
 					"Values:  serial numbers separated by comma\n" +
 					"Default: null (Do not revoke certificates)"
 					);
-			options.addOption("te", "tlsEncryptOnly", false, 
-					"Enable TLS encryption and disable TLS certificate validation"
-					);
 			options.addOption("netty", false, "Use Netty NIO event loops for async tests");
 			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async tests (Linux only)");
 			options.addOption("d", "debug", false, "Run in debug mode.");
@@ -142,11 +139,7 @@ public class Args {
 				if (cl.hasOption("tr")) {
 					String s = cl.getOptionValue("tr", "");
 					tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-				}
-				
-				if (cl.hasOption("te")) {
-					tlsPolicy.encryptOnly = true;
-				}
+				}				
 	        }
 	        
 			if (cl.hasOption("netty")) {

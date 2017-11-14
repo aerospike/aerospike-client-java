@@ -269,9 +269,6 @@ public class Main implements Log.Callback {
 				"Values:  serial numbers separated by comma\n" +
 				"Default: null (Do not revoke certificates)"
 				);
-		options.addOption("te", "tlsEncryptOnly", false, 
-				"Enable TLS encryption and disable TLS certificate validation"
-				);
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 
@@ -335,11 +332,7 @@ public class Main implements Log.Callback {
 			if (line.hasOption("tr")) {
 				String s = line.getOptionValue("tr", "");
 				clientPolicy.tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-			}
-			
-			if (line.hasOption("te")) {
-				clientPolicy.tlsPolicy.encryptOnly = true;
-			}
+			}			
         }
 
 		clientPolicy.user = line.getOptionValue("user");

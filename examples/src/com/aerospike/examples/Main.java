@@ -116,9 +116,6 @@ public class Main extends JPanel {
 					"Values:  serial numbers separated by comma\n" +
 					"Default: null (Do not revoke certificates)"
 					);
-			options.addOption("te", "tlsEncryptOnly", false, 
-					"Enable TLS encryption and disable TLS certificate validation"
-					);
 			options.addOption("netty", false, "Use Netty NIO event loops for async examples");
 			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async examples (Linux only)");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
@@ -239,11 +236,7 @@ public class Main extends JPanel {
 			if (cl.hasOption("tr")) {
 				String s = cl.getOptionValue("tr", "");
 				tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-			}
-			
-			if (cl.hasOption("te")) {
-				tlsPolicy.encryptOnly = true;
-			}
+			}			
 		}
 		return new Parameters(tlsPolicy, host, port, user, password, namespace, set);
 	}

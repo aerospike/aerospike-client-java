@@ -791,11 +791,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 	
 			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
-	
-			if (tlsPolicy.encryptOnly) {
-				return;
-			}
-	
+		
 			String tlsName = command.command.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];

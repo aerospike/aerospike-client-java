@@ -125,12 +125,10 @@ public final class Connection implements Closeable {
 						sslSocket.setEnabledCipherSuites(policy.ciphers);
 					}
 					
-					if (! policy.encryptOnly) {
-						sslSocket.setUseClientMode(true);
-						sslSocket.startHandshake();		
-						X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
-						validateServerCertificate(policy, tlsName, cert);
-					}
+					sslSocket.setUseClientMode(true);
+					sslSocket.startHandshake();		
+					X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
+					validateServerCertificate(policy, tlsName, cert);
 					
 					in = socket.getInputStream();
 					out = socket.getOutputStream();

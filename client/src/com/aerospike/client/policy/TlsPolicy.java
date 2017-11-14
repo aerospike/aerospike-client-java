@@ -58,20 +58,6 @@ public final class TlsPolicy {
 	 * Default: null (Do not exclude by certificate serial number)
 	 */
 	public BigInteger[] revokeCertificates;
-
-	/**
-	 * Encrypt data on TLS socket only.  Do not authenticate server certificate.
-	 * If true, an anonymous cipher (like TLS_DH_anon_WITH_AES_128_CBC_SHA256) should be enabled on
-	 * the client.  This anonymous cipher will only work with applications running Java 8+.
-	 * <p>
-	 * The server should also be configured so anonymous ciphers are allowed.
-	 * <pre>
-	 * tls-mode encrypt-only
-	 * tls-cipher-suite aNULL
-	 * </pre>
-	 * Default: false
-	 */
-	public boolean encryptOnly;
 	
 	/**
 	 * Copy TLS policy from another TLS policy.
@@ -81,7 +67,6 @@ public final class TlsPolicy {
 		this.protocols = other.protocols;
 		this.ciphers = other.ciphers;
 		this.revokeCertificates = other.revokeCertificates;
-		this.encryptOnly = other.encryptOnly;
 	}
 
 	/**
