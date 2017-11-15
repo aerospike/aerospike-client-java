@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Server is not accepting requests.
+	 */
+	public static final int SERVER_NOT_AVAILABLE = -8;
+
+	/**
 	 * Max connections would be exceeded.  There are no more available connections.
 	 */
 	public static final int NO_MORE_CONNECTIONS = -7;
@@ -116,7 +121,7 @@ public final class ResultCode {
 	/**
 	 * Server is not accepting requests.
 	 */
-	public static final int SERVER_NOT_AVAILABLE = 11;
+	public static final int PARTITION_UNAVAILABLE = 11;
 
 	/**
 	 * Operation is not supported with configured bin type (single-bin or
@@ -382,6 +387,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case SERVER_NOT_AVAILABLE:
+			return "Server not available";
+
 		case NO_MORE_CONNECTIONS:
 			return "No more available connections";
 			
@@ -436,8 +444,8 @@ public final class ResultCode {
 		case ALWAYS_FORBIDDEN:
 			return "Operation not allowed";
 		
-		case SERVER_NOT_AVAILABLE:
-			return "Server not available";
+		case PARTITION_UNAVAILABLE:
+			return "Partition unavailable";
 		
 		case BIN_TYPE_ERROR:
 			return "Bin type error";
