@@ -174,7 +174,7 @@ public class AsyncPutGet extends AsyncExample {
 		String expected = bin.value.toString();
 		
 		if (received != null && received.equals(expected)) {
-			console.info("Bin matched %s: snamespace=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Bin matched %s: namespace=%s set=%s key=%s bin=%s value=%s", 
 				id, key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {

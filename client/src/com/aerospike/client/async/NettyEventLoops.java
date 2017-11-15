@@ -18,10 +18,6 @@ package com.aerospike.client.async;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.handler.ssl.ApplicationProtocolConfig;
-import io.netty.handler.ssl.ApplicationProtocolConfig.Protocol;
-import io.netty.handler.ssl.ApplicationProtocolConfig.SelectedListenerFailureBehavior;
-import io.netty.handler.ssl.ApplicationProtocolConfig.SelectorFailureBehavior;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.JdkSslContext;
@@ -100,19 +96,23 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		this.tlsPolicy = policy;
 
 		if (policy.context != null) {
-			ApplicationProtocolConfig apc = new ApplicationProtocolConfig(
-					Protocol.NPN_AND_ALPN,
-					SelectorFailureBehavior.FATAL_ALERT,
-					SelectedListenerFailureBehavior.FATAL_ALERT,
-					policy.protocols
-					);
-			sslContext = new JdkSslContext(policy.context, true, Arrays.asList(policy.ciphers), this, apc, ClientAuth.OPTIONAL);
+			// Netty does not allow protocols to be filtered further when using existing SSLContext.
+			// All Protocol types (NONE, NPN, ALPN) in ApplicationProtocolConfig constructor will fail!
+			// I assume the real protocol used is defined by SSLContext.getProtocol().
+			if (policy.ciphers == null) {
+				sslContext = new JdkSslContext(policy.context, true, ClientAuth.NONE);
+			}
+			else {
+				// Ciphers are filtered in filterCipherSuites().
+				// Use null for ApplicationProtocolConfig argument.
+				sslContext = new JdkSslContext(policy.context, true, null, this, null, ClientAuth.NONE);
+			}
 			return;
 		}
 		
 		try {
 			SslContextBuilder builder = SslContextBuilder.forClient();
-			
+
 			if (policy.protocols != null) {
 				builder.protocols(policy.protocols);
 			}
@@ -132,7 +132,10 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	 */
 	@Override
 	public String[] filterCipherSuites(Iterable<String> ciphers, List<String> defaultCiphers, Set<String> supportedCiphers) {
-		return tlsPolicy.ciphers;
+		if (tlsPolicy.ciphers != null) {
+			return tlsPolicy.ciphers;
+		}
+		return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();		
 	}
 
 	/**

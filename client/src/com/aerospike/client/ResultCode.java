@@ -119,7 +119,7 @@ public final class ResultCode {
 	public static final int ALWAYS_FORBIDDEN = 10;
 
 	/**
-	 * Server is not accepting requests.
+	 * Partition is unavailable.
 	 */
 	public static final int PARTITION_UNAVAILABLE = 11;
 
