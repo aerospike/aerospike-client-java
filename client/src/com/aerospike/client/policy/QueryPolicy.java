@@ -59,5 +59,6 @@ public class QueryPolicy extends Policy {
 	public QueryPolicy() {
 		// Queries should not retry.
 		super.maxRetries = 0;
+		super.socketTimeout = 10000;
 	}
 }

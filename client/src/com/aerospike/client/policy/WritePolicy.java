@@ -109,5 +109,7 @@ public final class WritePolicy extends Policy {
 	 * Default constructor.
 	 */
 	public WritePolicy() {
+		// Writes are not retried by default.
+		super.maxRetries = 0;
 	}
 }

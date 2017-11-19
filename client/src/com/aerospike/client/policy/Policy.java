@@ -113,27 +113,33 @@ public class Policy {
 	 * It's important to use a distinct WritePolicy for non-idempotent 
 	 * writes which sets maxRetries = 0;
 	 * <p>
-	 * Default: 2 (initial attempt + 2 retries = 3 attempts)
+	 * Default for read: 2 (initial attempt + 2 retries = 3 attempts)
+	 * <p>
+	 * Default for write/query/scan: 0 (no retries)
 	 */
 	public int maxRetries = 2;
 
 	/**
 	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
+	 * This field is ignored when maxRetries is zero.  
+	 * This field is also ignored in async mode.
 	 * <p>
 	 * The sleep only occurs on connection errors and server timeouts
 	 * which suggest a node is down and the cluster is reforming.
 	 * The sleep does not occur when the client's socketTimeout expires.
 	 * <p>
-	 * This field is ignored in async mode.
-	 * <p>
 	 * Reads do not have to sleep when a node goes down because the cluster
-	 * does not shut out reads during cluster reformation.  The default for 
+	 * does not shut out reads during cluster reformation.  The default for
 	 * reads is zero.
 	 * <p>
+	 * The default for writes is also zero because writes are not retried by default.
 	 * Writes need to wait for the cluster to reform when a node goes down.
 	 * Immediate write retries on node failure have been shown to consistently
-	 * result in errors. The default for writes is 500ms.  This default is 
-	 * implemented in {@link com.aerospike.client.policy.ClientPolicy#ClientPolicy()})
+	 * result in errors.  If maxRetries is greater than zero on a write, then
+	 * sleepBetweenRetries should be set high enough to allow the cluster to
+	 * reform (>= 500ms).
+	 * <p>
+	 * Default: 0 (do not sleep between retries).
 	 */
 	public int sleepBetweenRetries;
 
