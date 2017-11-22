@@ -39,6 +39,12 @@ public class ReadCommand extends SyncCommand {
 		this.binNames = binNames;
 	}
 	
+	public ReadCommand(Key key) {
+		this.policy = null;
+		this.key = key;
+		this.binNames = null;
+	}
+
 	@Override
 	protected void writeBuffer() {
 		setRead(policy, key, binNames);

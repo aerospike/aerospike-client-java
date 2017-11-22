@@ -25,26 +25,30 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateCommand extends ReadCommand {
-	private final WritePolicy writePolicy;
 	private final Operation[] operations;
-	private boolean hasWrite;
+	private WritePolicy writePolicy;
+	private OperateArgs args;
 
-	public OperateCommand(WritePolicy policy, Key key, Operation[] operations) {
-		super(policy, key, null);
-		this.writePolicy = policy;
+	public OperateCommand(Key key, Operation[] operations) {
+		super(key);
 		this.operations = operations;
 	}
-
+	
+	public void setArgs(WritePolicy writePolicy, OperateArgs args) {
+		this.writePolicy = writePolicy;
+		this.args = args;
+	}
+	
 	@Override
 	protected void writeBuffer() {
-		hasWrite = setOperate(writePolicy, key, operations);
+		setOperate(writePolicy, key, operations, args);
 	}
 	
 	@Override
 	protected void handleNotFound(int resultCode) {
 		// Only throw not found exception for command with write operations.
 		// Read-only command operations return a null record.
-		if (hasWrite) {
+		if (args.hasWrite) {
 	    	throw new AerospikeException(resultCode);
 		}
 	}

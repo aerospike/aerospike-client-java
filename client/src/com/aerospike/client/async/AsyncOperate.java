@@ -22,30 +22,36 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncOperate extends AsyncRead {
-	private final WritePolicy writePolicy;
 	private final Operation[] operations;
-	private boolean hasWrite;
+	private WritePolicy writePolicy;
+	private OperateArgs args;
 	
-	public AsyncOperate(RecordListener listener, WritePolicy writePolicy, Key key, Operation[] operations) {
-		super(listener, writePolicy, key, null, false);
-		this.writePolicy = writePolicy;
+	public AsyncOperate(RecordListener listener, Key key, Operation[] operations) {
+		super(listener, null, key, null, false);
 		this.operations = operations;
+	}
+
+	public void setArgs(WritePolicy writePolicy, OperateArgs args) {
+		super.policy = writePolicy;
+		this.writePolicy = writePolicy;
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		hasWrite = setOperate(writePolicy, key, operations);
+		setOperate(writePolicy, key, operations, args);
 	}
 	
 	@Override
 	protected void handleNotFound(int resultCode) {
 		// Only throw not found exception for command with write operations.
 		// Read-only command operations return a null record.
-		if (hasWrite) {
+		if (args.hasWrite) {
 	    	throw new AerospikeException(resultCode);
 		}
 	}

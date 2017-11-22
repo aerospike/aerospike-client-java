@@ -53,6 +53,7 @@ import com.aerospike.client.command.ExecuteCommand;
 import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
@@ -146,6 +147,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final InfoPolicy infoPolicyDefault;
 
+	private final WritePolicy operatePolicyReadDefault;
+
 	//-------------------------------------------------------
 	// Constructors
 	//-------------------------------------------------------
@@ -224,6 +227,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.queryPolicyDefault = policy.queryPolicyDefault;
 		this.batchPolicyDefault = policy.batchPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
+		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		
 		cluster = new Cluster(policy, hosts);
 		cluster.initTendThread(policy.failIfNotConnected);
@@ -244,6 +248,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.queryPolicyDefault = policy.queryPolicyDefault;
 			this.batchPolicyDefault = policy.batchPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
+			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 		else {
 			this.readPolicyDefault = new Policy();
@@ -252,6 +257,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.queryPolicyDefault = new QueryPolicy();
 			this.batchPolicyDefault = new BatchPolicy();
 			this.infoPolicyDefault = new InfoPolicy();
+			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
 	}
 
@@ -1242,10 +1248,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
+		OperateArgs args = new OperateArgs();
+		OperateCommand command = new OperateCommand(key, operations);
+		command.estimateOperate(operations, args);
+
 		if (policy == null) {
-			policy = writePolicyDefault;
+			if (args.hasWrite) {
+				policy = writePolicyDefault;
+			}
+			else {
+				policy = operatePolicyReadDefault;
+			}
 		}
-		OperateCommand command = new OperateCommand(policy, key, operations);
+		
+		if (policy.respondAllOps) {
+			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+		}
+		command.setArgs(policy, args);
 		command.execute(cluster, policy, key, null, false);
 		return command.getRecord();
 	}
@@ -1272,10 +1291,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
+		OperateArgs args = new OperateArgs();
+		AsyncOperate command = new AsyncOperate(listener, key, operations);
+		command.estimateOperate(operations, args);
+
 		if (policy == null) {
-			policy = writePolicyDefault;
+			if (args.hasWrite) {
+				policy = writePolicyDefault;
+			}
+			else {
+				policy = operatePolicyReadDefault;
+			}
 		}
-		AsyncOperate command = new AsyncOperate(listener, policy, key, operations);
+		
+		if (policy.respondAllOps) {
+			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+		}
+		command.setArgs(policy, args);
 		eventLoop.execute(cluster, command);
 	}
 

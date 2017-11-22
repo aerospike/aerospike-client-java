@@ -166,15 +166,10 @@ public abstract class Command {
 		end();
 	}
 
-	public final boolean setOperate(WritePolicy policy, Key key, Operation[] operations) throws AerospikeException {
-		begin();
-		int fieldCount = estimateKeySize(policy, key);
-		int readAttr = 0;
-		int writeAttr = 0;
-		boolean hasWrite = false;
+	public final void estimateOperate(Operation[] operations, OperateArgs args) {		
 		boolean readBin = false;
 		boolean readHeader = false;
-		boolean respondAllOps = policy.respondAllOps;
+		boolean respondAllOps = false;
 					
 		for (Operation operation : operations) {
 			switch (operation.type) {
@@ -184,17 +179,17 @@ public abstract class Command {
 				// Fall through to read.
 			case CDT_READ:
 			case READ:
-				readAttr |= Command.INFO1_READ;
+				args.readAttr |= Command.INFO1_READ;
 				
 				// Read all bins if no bin is specified.
 				if (operation.binName == null) {
-					readAttr |= Command.INFO1_GET_ALL;
+					args.readAttr |= Command.INFO1_GET_ALL;
 				}
 				readBin = true;
 				break;
 				
 			case READ_HEADER:
-				readAttr |= Command.INFO1_READ;
+				args.readAttr |= Command.INFO1_READ;
 				readHeader = true;
 				break;
 	
@@ -203,30 +198,36 @@ public abstract class Command {
 				respondAllOps = true; 
 				// Fall through to write.
 			default:
-				writeAttr = Command.INFO2_WRITE;
-				hasWrite = true;
-				break;				
+				args.writeAttr = Command.INFO2_WRITE;
+				args.hasWrite = true;
+				break;		
 			}
 			estimateOperationSize(operation);
 		}
-		sizeBuffer();
+		args.size = dataOffset;
 		
 		if (readHeader && ! readBin) {
-			readAttr |= Command.INFO1_NOBINDATA;
+			args.readAttr |= Command.INFO1_NOBINDATA;
 		}
 		
 		if (respondAllOps) {
-			writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-		}
-		
-		writeHeader(policy, readAttr, writeAttr, fieldCount, operations.length);
+			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
+		}	
+	}
+
+	public final void setOperate(WritePolicy policy, Key key, Operation[] operations, OperateArgs args) {
+		begin();
+		int fieldCount = estimateKeySize(policy, key);
+		dataOffset += args.size;					
+		sizeBuffer();
+				
+		writeHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.length);
 		writeKey(policy, key);
 
 		for (Operation operation : operations) {
 			writeOperation(operation);
 		}
 		end();
-		return hasWrite;
 	}
 
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) 

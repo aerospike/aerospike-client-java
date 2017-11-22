@@ -39,7 +39,7 @@ public abstract class AsyncCommand extends Command {
 	static final int COMMAND_READ_BODY = 7;
 	static final int COMPLETE = 8;
 	
-	final Policy policy;
+	Policy policy;
 	final Partition partition;
 	Node node;
 	ArrayDeque<byte[]> bufferQueue;

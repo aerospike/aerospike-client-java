@@ -34,7 +34,7 @@ public final class ExecuteCommand extends ReadCommand {
 		String functionName,
 		Value[] args
 	) {
-		super(writePolicy, key, null);
+		super(key);
 		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
