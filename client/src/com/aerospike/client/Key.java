@@ -67,6 +67,20 @@ public final class Key {
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
+	 * <p>
+	 * The key is converted to bytes to compute the digest.  The key's byte size is
+	 * limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * following:
+	 * <ul>
+	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
+	 * <li>Or for every key:
+	 * <pre>
+	 * {@code int len = key.length() + setName.length() + 1;
+	 * if (len > ThreadLocalData.getBuffer().length))
+	 *     ThreadLocalData.resizeBuffer(len);}
+	 * </pre>
+	 * </li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -90,6 +104,19 @@ public final class Key {
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
+	 * <p>
+	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * following:
+	 * <ul>
+	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
+	 * <li>Or for every key:
+	 * <pre>
+	 * {@code int len = key.length + setName.length() + 1;
+	 * if (len > ThreadLocalData.getBuffer().length))
+	 *     ThreadLocalData.resizeBuffer(len);}
+	 * </pre>
+	 * </li>
+	 * </ul>
 	 * 
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
@@ -112,6 +139,19 @@ public final class Key {
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
+	 * </ul>
+	 * <p>
+	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * following:
+	 * <ul>
+	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
+	 * <li>Or for every key:
+	 * <pre>
+	 * {@code int len = length + setName.length() + 1;
+	 * if (len > ThreadLocalData.getBuffer().length))
+	 *     ThreadLocalData.resizeBuffer(len);}
+	 * </pre>
+	 * </li>
 	 * </ul>
 	 * 
 	 * @param namespace				namespace
