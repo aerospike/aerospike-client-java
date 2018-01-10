@@ -203,6 +203,58 @@ public class Cluster implements Runnable, Closeable {
 		else {
 			eventState = null;
 		}
+
+		if (policy.forceSingleNode) {
+			// Communicate with the first seed node only.
+			// Do not run cluster tend thread.
+			try {
+				forceSingleNode();
+			}
+			catch (RuntimeException e) {
+				close();
+				throw e;
+			}
+		}
+		else {
+			initTendThread(policy.failIfNotConnected);
+		}
+	}
+	
+	public void forceSingleNode() {
+		// Initialize tendThread, but do not start it.
+		tendValid = true;
+		tendThread = new Thread(this);
+		
+		// Validate first seed.
+		Host seed = seeds[0];
+		NodeValidator nv = new NodeValidator();
+		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>();
+		
+		try {
+			nv.seedNodes(this, seed, nodesToAdd);
+		}
+		catch (Exception e) {
+			throw new AerospikeException(e.getMessage(), e);
+		}
+		
+		// Add seed node to nodes.
+		addNodes(nodesToAdd);
+		Node node = nodes[0];
+		
+		// Initialize partitionMaps.
+		Peers peers = new Peers(nodes.length + 16, 16);
+		node.refreshPartitions(peers);
+		
+		// Set partition maps for all namespaces to point to same node.
+		for (Partitions partitions : partitionMap.values()) {
+			for (AtomicReferenceArray<Node> nodeArray : partitions.replicas) {
+				int max = nodeArray.length();
+				
+				for (int i = 0; i < max; i++) {
+					nodeArray.set(i, node);
+				}
+			}
+		}
 	}
 	
 	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {

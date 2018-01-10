@@ -205,6 +205,17 @@ public class ClientPolicy {
 	public boolean useServicesAlternate;
 	
 	/**
+	 * For testing purposes only.  Do not modify.
+	 * <p>
+	 * Should the AerospikeClient instance communicate with the first seed node only
+	 * instead of using the data partition map to determine which node to send the
+	 * database command.  
+	 * <p>
+	 * Default: false
+	 */
+	public boolean forceSingleNode;
+	
+	/**
 	 * Copy client policy from another client policy.
 	 */
 	public ClientPolicy(ClientPolicy other) {
@@ -230,6 +241,7 @@ public class ClientPolicy {
 		this.sharedThreadPool = (other.threadPool != null);
 		this.requestProleReplicas = other.requestProleReplicas;
 		this.useServicesAlternate = other.useServicesAlternate;
+		this.forceSingleNode = other.forceSingleNode;
 	}
 
 	/**

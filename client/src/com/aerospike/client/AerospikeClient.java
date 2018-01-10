@@ -229,8 +229,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		
-		cluster = new Cluster(policy, hosts);
-		cluster.initTendThread(policy.failIfNotConnected);
+		cluster = new Cluster(policy, hosts);		
 	}
 
 	//-------------------------------------------------------

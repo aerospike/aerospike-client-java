@@ -214,7 +214,6 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			}
 
 			super.cluster = new Cluster(policy, hosts);
-			super.cluster.initTendThread(policy.failIfNotConnected);
 		}
 		catch (Exception e) {
 			eventLoops.close();
