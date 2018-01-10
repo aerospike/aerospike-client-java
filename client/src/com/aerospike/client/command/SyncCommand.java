@@ -37,11 +37,12 @@ public abstract class SyncCommand extends Command {
 	public final void execute(Cluster cluster, Policy policy, Key key, Node node, boolean isRead) {
 		//final long tranId = TranCounter.getAndIncrement();
 		final Partition partition = (key != null)? new Partition(key) : null;
-		Exception exception = null;
+		AerospikeException exception = null;
 		long deadline = 0;
 		int socketTimeout = policy.socketTimeout;
 		int totalTimeout = policy.totalTimeout;
 		int iteration = 0;
+		int commandSentCounter = 0;
 		boolean isClientTimeout;
 
 		if (totalTimeout > 0) {
@@ -77,6 +78,7 @@ public abstract class SyncCommand extends Command {
 					
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
+					commandSentCounter++;
 					
 					// Parse results.
 					parseResult(conn);
@@ -109,6 +111,7 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+						ae.setInDoubt(isRead, commandSentCounter);
 						throw ae;
 					}
 				}
@@ -123,7 +126,6 @@ public abstract class SyncCommand extends Command {
 					// Full timeout has been reached.
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
-					exception = ste;
 					isClientTimeout = true;
 
 					if (isRead) {
@@ -181,10 +183,12 @@ public abstract class SyncCommand extends Command {
 		// Retries have been exhausted.  Throw last exception.
 		if (isClientTimeout) {
 			// Log.info("SocketTimeoutException: " + tranId + ',' + sequence + ',' + iteration);
-			throw new AerospikeException.Timeout(node, policy, iteration, true);
+			exception = new AerospikeException.Timeout(node, policy, iteration, true);
 		}
+				
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
-		throw (RuntimeException)exception;
+		exception.setInDoubt(isRead, commandSentCounter);
+		throw exception;
 	}
 
 	@Override

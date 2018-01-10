@@ -124,7 +124,7 @@ public abstract class Task {
 					return;
 				}
 				else {
-					throw new AerospikeException.Timeout(policy.timeout);	
+					throw new AerospikeException.Timeout(policy.timeout, true);	
 				}
 			}		
 		} while (true);		

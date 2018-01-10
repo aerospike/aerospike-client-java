@@ -42,6 +42,7 @@ public final class NioCommand implements Runnable, TimerTask {
 	int state;
 	int iteration;
 	int receiveSize;
+	int commandSentCounter;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
@@ -217,6 +218,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			byteBuffer.clear();
 			byteBuffer.limit(8);
 			state = AsyncCommand.COMMAND_READ_HEADER;
+			commandSentCounter++;
 			eventReceived = false;
 			conn.registerRead();
 		}
@@ -230,7 +232,14 @@ public final class NioCommand implements Runnable, TimerTask {
 		if (conn.write(byteBuffer)) {
 			byteBuffer.clear();
 			byteBuffer.limit(8);
-			state = (state == AsyncCommand.COMMAND_WRITE)? AsyncCommand.COMMAND_READ_HEADER : AsyncCommand.AUTH_READ_HEADER; 
+			
+			if (state == AsyncCommand.COMMAND_WRITE) {
+				state = AsyncCommand.COMMAND_READ_HEADER;
+				commandSentCounter++;
+			}
+			else {
+				state = AsyncCommand.AUTH_READ_HEADER;
+			}
 			eventReceived = false;
 			conn.registerRead();
 		}
@@ -674,6 +683,7 @@ public final class NioCommand implements Runnable, TimerTask {
 	
 	private final void notifyFailure(AerospikeException ae) {
 		try {
+			ae.setInDoubt(command.isRead, commandSentCounter);
 			command.onFailure(ae);
 		}
 		catch (Exception e) {

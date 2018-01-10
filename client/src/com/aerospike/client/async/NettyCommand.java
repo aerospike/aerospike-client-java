@@ -66,6 +66,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	int state;
 	int iteration;
 	int receiveSize;
+	int commandSentCounter;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
@@ -239,7 +240,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
-				state = (state == AsyncCommand.COMMAND_WRITE)? AsyncCommand.COMMAND_READ_HEADER : AsyncCommand.AUTH_READ_HEADER;
+				if (state == AsyncCommand.COMMAND_WRITE) {
+					state = AsyncCommand.COMMAND_READ_HEADER;
+					commandSentCounter++;
+				}
+				else {
+					state = AsyncCommand.AUTH_READ_HEADER;
+				}				
 				command.dataOffset = 0;
 				// Socket timeout applies only to read events.
 				// Reset event received because we are switching from a write to a read state.
@@ -724,6 +731,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	
 	private final void notifyFailure(AerospikeException ae) {
 		try {
+			ae.setInDoubt(command.isRead, commandSentCounter);
 			command.onFailure(ae);
 		}
 		catch (Exception e) {

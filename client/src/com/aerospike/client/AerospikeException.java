@@ -26,6 +26,7 @@ public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
 	private int resultCode;
+	private boolean inDoubt;
 	
 	public AerospikeException(int resultCode, String message) {
 		super(message);
@@ -41,7 +42,13 @@ public class AerospikeException extends RuntimeException {
 		super();
 		this.resultCode = resultCode;
 	}
-	
+
+	public AerospikeException(int resultCode, boolean inDoubt) {
+		super();
+		this.resultCode = resultCode;
+		this.inDoubt = inDoubt;
+	}
+
 	public AerospikeException(String message, Throwable e) {
 		super(message, e);
 	}
@@ -65,6 +72,10 @@ public class AerospikeException extends RuntimeException {
 		if (resultCode != 0) {
 			sb.append("Error Code ");
 			sb.append(resultCode);
+			
+			if (inDoubt) {
+				sb.append("(inDoubt)");
+			}
 			sb.append(": ");
 
 			if (message != null) {
@@ -100,6 +111,24 @@ public class AerospikeException extends RuntimeException {
 	}
 	
 	/**
+	 * Is it possible that write transaction may have completed.
+	 */
+	public final boolean getInDoubt() {
+		return inDoubt;
+	}
+
+	/**
+	 * Set whether it is possible that the write transaction may have completed
+	 * even though this exception was generated.  This may be the case when a 
+	 * client error occurs (like timeout) after the command was sent to the server.
+	 */
+	public final void setInDoubt(boolean isRead, int commandSentCounter) {
+		if (!isRead && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0)))) {
+			this.inDoubt = true;
+		}
+	}
+
+	/**
 	 * Exception thrown when database request expires before completing.
 	 */
 	public static final class Timeout extends AerospikeException {
@@ -130,8 +159,8 @@ public class AerospikeException extends RuntimeException {
 		 */
 		public boolean client;
 		
-		public Timeout(int totalTimeout) {
-			super(ResultCode.TIMEOUT);
+		public Timeout(int totalTimeout, boolean inDoubt) {
+			super(ResultCode.TIMEOUT, inDoubt);
 			this.timeout = totalTimeout;
 			this.iterations = -1;
 			this.client = true;
@@ -153,7 +182,7 @@ public class AerospikeException extends RuntimeException {
 			}
 			String type = client ? "Client" : "Server";
 			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
-				" lastNode=" + node;
+				" lastNode=" + node + " inDoubt=" + getInDoubt();
 		}
 	}
 
