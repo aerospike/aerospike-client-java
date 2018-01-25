@@ -1106,6 +1106,9 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Delete secondary index.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1113,7 +1116,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param indexName				name of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
-	public void dropIndex(
+	public IndexTask dropIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 

@@ -1911,7 +1911,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		
 		if (response.equalsIgnoreCase("OK")) {
 			// Return task that could optionally be polled for completion.
-			return new IndexTask(cluster, policy, namespace, indexName);
+			return new IndexTask(cluster, policy, namespace, indexName, true);
 		}
 		
 		parseInfoError("Create index failed", response);
@@ -1920,6 +1920,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Delete secondary index.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
 	 * 
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1927,7 +1930,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param indexName				name of secondary index
 	 * @throws AerospikeException	if index create fails
 	 */
-	public final void dropIndex(
+	public final IndexTask dropIndex(
 		Policy policy, 
 		String namespace, 
 		String setName, 
@@ -1952,10 +1955,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String response = sendInfoCommand(policy, sb.toString());
 
 		if (response.equalsIgnoreCase("OK")) {
-			return;
+			return new IndexTask(cluster, policy, namespace, indexName, false);
 		}		
 		
 		parseInfoError("Drop index failed", response);
+		return null;
 	}
 	
 	//-------------------------------------------------------

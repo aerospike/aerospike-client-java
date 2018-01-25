@@ -28,22 +28,16 @@ import com.aerospike.client.policy.Policy;
 public final class IndexTask extends Task {
 	private final String namespace;
 	private final String indexName;
+	private final boolean isCreate;
 
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public IndexTask(Cluster cluster, Policy policy, String namespace, String indexName) {
+	public IndexTask(Cluster cluster, Policy policy, String namespace, String indexName, boolean isCreate) {
 		super(cluster, policy);
 		this.namespace = namespace;
 		this.indexName = indexName;
-	}
-
-	/**
-	 * Initialize task with fields needed to query server nodes.
-	 */
-	public IndexTask() {
-		namespace = null;
-		indexName = null;
+		this.isCreate = isCreate;
 	}
 
 	/**
@@ -62,27 +56,38 @@ public final class IndexTask extends Task {
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
-			String find = "load_pct=";
-			int index = response.indexOf(find);
-
-			if (index < 0) {
-				if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
-					// Index not found or not readable.
-					return Task.NOT_FOUND;
+			
+			if (isCreate) {
+				// Check if index has been created.
+				String find = "load_pct=";
+				int index = response.indexOf(find);
+	
+				if (index < 0) {
+					if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
+						// Index not found or not readable.
+						return Task.NOT_FOUND;
+					}
+					else {
+						// Throw exception immediately.
+						throw new AerospikeException(command + " failed: " + response);				
+					}
 				}
-				else {
-					// Throw exception immediately.
-					throw new AerospikeException(command + " failed: " + response);				
+	
+				int begin = index + find.length();
+				int end = response.indexOf(';', begin);
+				String str = response.substring(begin, end);
+				int pct = Integer.parseInt(str);
+				
+				if (pct != 100) {				
+					return Task.IN_PROGRESS;
 				}
 			}
-
-			int begin = index + find.length();
-			int end = response.indexOf(';', begin);
-			String str = response.substring(begin, end);
-			int pct = Integer.parseInt(str);
-			
-			if (pct != 100) {				
-				return Task.IN_PROGRESS;
+			else {
+				// Check if index has been dropped.
+				if (response.indexOf("FAIL:201") < 0) {
+					// Index still exists.
+					return Task.IN_PROGRESS;
+				}
 			}
 		}
 		return Task.COMPLETE;
