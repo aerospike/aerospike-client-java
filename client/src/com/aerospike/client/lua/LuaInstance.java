@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.lua;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -50,7 +51,7 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.query.Statement;
 
-public final class LuaInstance {
+public final class LuaInstance implements Serializable {
 	
 	private final Globals globals = new Globals();
 	private final LuaTable loadedTable;

@@ -19,6 +19,7 @@ package com.aerospike.client;
 import gnu.crypto.util.Base64;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
 import java.util.Map;
@@ -40,7 +41,7 @@ import com.aerospike.client.util.ThreadLocalData;
  * <p>
  * 
  */
-public final class Info {	
+public final class Info implements Serializable {
 	//-------------------------------------------------------
 	// Static variables.
 	//-------------------------------------------------------

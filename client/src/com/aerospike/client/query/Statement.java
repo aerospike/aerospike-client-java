@@ -21,10 +21,12 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
+import java.io.Serializable;
+
 /**
  * Query statement parameters.
  */
-public final class Statement {	
+public final class Statement implements Serializable {
 	String namespace;
 	String setName;
 	String indexName;

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client;
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -25,7 +26,7 @@ import com.aerospike.client.Value.GeoJSONValue;
 /**
  * Container object for records.  Records are equivalent to rows.
  */
-public final class Record {
+public final class Record implements Serializable {
 	/**
 	 * Map of requested name/value bins.
 	 */

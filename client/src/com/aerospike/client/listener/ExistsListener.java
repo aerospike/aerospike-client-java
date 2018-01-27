@@ -19,10 +19,12 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
+import java.io.Serializable;
+
 /**
  * Asynchronous result notifications for exists commands.
  */
-public interface ExistsListener {
+public interface ExistsListener extends Serializable {
 	/**
 	 * This method is called when an asynchronous exists command completes successfully.
 	 * 

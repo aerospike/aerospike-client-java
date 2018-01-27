@@ -16,10 +16,12 @@
  */
 package com.aerospike.client.policy;
 
+import java.io.Serializable;
+
 /**
  * Policy attributes used for info commands.
  */
-public final class InfoPolicy {
+public final class InfoPolicy implements Serializable {
 	/**
 	 * Info command socket timeout in milliseconds.
 	 * Default is one second timeout.

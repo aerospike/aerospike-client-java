@@ -19,6 +19,7 @@ package com.aerospike.client.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +35,7 @@ import com.aerospike.client.command.ParticleType;
  * 
  * https://github.com/msgpack/msgpack/blob/master/spec.md
  */
-public final class Packer {
+public final class Packer implements Serializable {
 	
 	public static byte[] pack(Value[] val) throws AerospikeException {
 		try {

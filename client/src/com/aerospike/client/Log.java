@@ -16,11 +16,13 @@
  */
 package com.aerospike.client;
 
+import java.io.Serializable;
+
 /**
  * Aerospike client logging facility. Logs can be filtered and message callbacks 
  * can be defined to control how log messages are written.
  */
-public final class Log {
+public final class Log implements Serializable {
 	/**
 	 * Log escalation level.
 	 */

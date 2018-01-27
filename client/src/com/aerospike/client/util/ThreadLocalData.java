@@ -18,10 +18,12 @@ package com.aerospike.client.util;
 
 import com.aerospike.client.Log;
 
+import java.io.Serializable;
+
 /**
  * Thread local buffer storage.
  */
-public final class ThreadLocalData {
+public final class ThreadLocalData implements Serializable {
 	/**
 	 * Initial buffer size on first use of thread local buffer.
 	 */

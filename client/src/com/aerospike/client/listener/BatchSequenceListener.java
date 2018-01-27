@@ -19,11 +19,13 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 
+import java.io.Serializable;
+
 /**
  * Asynchronous result notifications for batch get commands with variable bins per key.
  * The results are sent one batch record at a time.
  */
-public interface BatchSequenceListener {
+public interface BatchSequenceListener extends Serializable {
 	/**
 	 * This method is called when an asynchronous batch record is received from the server.
 	 * The receive sequence is not ordered.

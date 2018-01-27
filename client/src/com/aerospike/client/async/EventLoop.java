@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.cluster.Cluster;
@@ -23,7 +24,7 @@ import com.aerospike.client.cluster.Cluster;
 /**
  * Aerospike event loop interface.
  */
-public interface EventLoop {	
+public interface EventLoop extends Serializable {
 	/**
 	 * Execute async command.  Execute immediately if in event loop.
 	 * Otherwise, place command on event loop queue.

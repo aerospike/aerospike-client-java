@@ -18,6 +18,7 @@ package com.aerospike.client.command;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
+import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.Arrays;
@@ -26,7 +27,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.Unpacker;
 
-public final class Buffer {
+public final class Buffer implements Serializable {
 
 	public static Value bytesToKeyValue(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {

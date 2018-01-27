@@ -20,11 +20,13 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
+import java.io.Serializable;
+
 /**
  * Asynchronous result notifications for batch get and scan commands.
  * The results are sent one record at a time.
  */
-public interface RecordSequenceListener {
+public interface RecordSequenceListener extends Serializable {
 	/**
 	 * This method is called when an asynchronous record is received from the server.
 	 * The receive sequence is not ordered.
