@@ -16,12 +16,13 @@
  */
 package com.aerospike.client.admin;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
  * Role definition.
  */
-public final class Role {
+public final class Role implements Serializable {
 	/**
 	 * Manage users their roles.
 	 */

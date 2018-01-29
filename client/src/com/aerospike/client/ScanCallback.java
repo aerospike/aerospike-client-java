@@ -16,11 +16,13 @@
  */
 package com.aerospike.client;
 
+import java.io.Serializable;
+
 /**
  * An object implementing this interface is passed in <code>scan()</code> calls, so the caller can
  * be notified with scan results.
  */
-public interface ScanCallback {
+public interface ScanCallback extends Serializable {
 	/**
 	 * This method will be called for each record returned from a scan. The user may throw a 
 	 * {@link com.aerospike.client.AerospikeException.ScanTerminated AerospikeException.ScanTerminated} 

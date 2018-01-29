@@ -16,11 +16,13 @@
  */
 package com.aerospike.client;
 
+import java.io.Serializable;
+
 /**
  * Database operation error codes.  The positive numbers align with the server
  * side file proto.h.
  */
-public final class ResultCode {
+public final class ResultCode implements Serializable {
 	/**
 	 * Server is not accepting requests.
 	 */

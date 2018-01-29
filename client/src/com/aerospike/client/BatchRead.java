@@ -16,12 +16,13 @@
  */
 package com.aerospike.client;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 /**
  * Key and bin names used in batch read commands where variables bins are needed for each key.
  */
-public final class BatchRead {
+public final class BatchRead implements Serializable {
 	/**
 	 * Key.
 	 */

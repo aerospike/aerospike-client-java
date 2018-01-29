@@ -19,10 +19,12 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
+import java.io.Serializable;
+
 /**
  * Asynchronous result notifications for put, append, prepend, add, delete and touch commands.
  */
-public interface WriteListener {
+public interface WriteListener extends Serializable {
 	/**
 	 * This method is called when an asynchronous write command completes successfully.
 	 * 

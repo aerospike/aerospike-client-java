@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import gnu.crypto.hash.RipeMD160;
 
+import java.io.Serializable;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
@@ -29,7 +30,7 @@ import com.aerospike.client.util.ThreadLocalData;
  * Records can also be identified by namespace/digest which is the combination used 
  * on the server.
  */
-public final class Key {
+public final class Key implements Serializable {
 	/**
 	 * Namespace. Equivalent to database name.
 	 */
