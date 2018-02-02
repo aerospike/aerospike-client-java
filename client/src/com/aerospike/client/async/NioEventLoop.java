@@ -34,27 +34,34 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.util.Util;
 
-public final class NioEventLoop extends Thread implements EventLoop {
+/**
+ * Aerospike wrapper around NIO Selector.
+ * Implements the Aerospike EventLoop interface.
+ */
+public final class NioEventLoop extends EventLoopBase implements Runnable {
 
 	final ConcurrentLinkedDeque<Runnable> commandQueue;
 	final ArrayDeque<ScheduleTask> scheduleQueue;
 	final ArrayDeque<ByteBuffer> byteBufferQueue;
-	final ArrayDeque<byte[]> bufferQueue;
-	final HashedWheelTimer timer;
 	final Selector selector;
 	final AtomicBoolean awakened = new AtomicBoolean();
+	final Thread thread;
 	final long selectorTimeout;
-	final int index;
-    
+
+    /**
+     * Construct Aerospike event loop wrapper from NIO Selector.
+     */
 	public NioEventLoop(EventPolicy policy, SelectorProvider provider, int index) throws IOException {
-		commandQueue = new ConcurrentLinkedDeque<Runnable>();
+		super(policy, index);
+
+		commandQueue = new ConcurrentLinkedDeque<Runnable>();		
 		scheduleQueue = new ArrayDeque<ScheduleTask>(8);
 		byteBufferQueue = new ArrayDeque<ByteBuffer>(policy.commandsPerEventLoop);
-		bufferQueue = new ArrayDeque<byte[]>(policy.commandsPerEventLoop);
-		timer = new HashedWheelTimer(this, policy.minTimeout, TimeUnit.MILLISECONDS, policy.ticksPerWheel);		
 		selectorTimeout = policy.minTimeout;
 		selector = provider.openSelector();
-		this.index = index;
+
+		thread = new Thread(this, "event" + index);
+		thread.setDaemon(false);
 	}
 
 	/**
@@ -86,7 +93,7 @@ public final class NioEventLoop extends Thread implements EventLoop {
 	public void schedule(Runnable command, long delay, TimeUnit unit) {
 		final ScheduleTask task = new ScheduleTask(command, delay, unit);
 		
-		if (this == Thread.currentThread()) {
+		if (thread == Thread.currentThread()) {
 			scheduleQueue.offer(task);
 		}
 		else {
@@ -106,7 +113,7 @@ public final class NioEventLoop extends Thread implements EventLoop {
 	public void schedule(final ScheduleTask task, long delay, TimeUnit unit) {
 		task.setDeadline(delay, unit);
 
-		if (this == Thread.currentThread()) {
+		if (thread == Thread.currentThread()) {
 			scheduleQueue.offer(task);
 		}
 		else {
@@ -119,26 +126,10 @@ public final class NioEventLoop extends Thread implements EventLoop {
 	}
 
 	/**
-	 * Return event loop array index.
-	 */
-	@Override
-	public int getIndex() {
-		return index;
-	}
-
-	/**
 	 * Is current thread the event loop thread.
 	 */
 	public boolean inEventLoop() {
-		return this == Thread.currentThread();
-	}
-
-	/**
-     * For internal use only.
-     */
-	@Override
-	public EventState createState() {
-		return new EventState(this, index);
+		return thread == Thread.currentThread();
 	}
 
 	public static ByteBuffer createByteBuffer(int size) {

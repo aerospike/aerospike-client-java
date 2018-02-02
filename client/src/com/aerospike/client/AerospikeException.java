@@ -271,16 +271,16 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.QUERY_TERMINATED, e);
 		}
 	}
-	
+
 	/**
-	 * Exception thrown when asynchronous command was rejected because the 
-	 * max concurrent database commands have been exceeded.
+	 * Exception thrown when async command was rejected because the 
+	 * async delay queue is full.
 	 */
-	public static final class CommandRejected extends AerospikeException {
+	public static final class AsyncQueueFull extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
-		public CommandRejected() {
-			super(ResultCode.COMMAND_REJECTED);
+		public AsyncQueueFull() {
+			super(ResultCode.ASYNC_QUEUE_FULL);
 		}
 	}
 }

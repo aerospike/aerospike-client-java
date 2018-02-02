@@ -24,6 +24,11 @@ import java.io.Serializable;
  */
 public final class ResultCode implements Serializable {
 	/**
+	 * Async delay queue is full.
+	 */
+	public static final int ASYNC_QUEUE_FULL = -9;
+
+	/**
 	 * Server is not accepting requests.
 	 */
 	public static final int SERVER_NOT_AVAILABLE = -8;
@@ -389,6 +394,10 @@ public final class ResultCode implements Serializable {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+
+		case ASYNC_QUEUE_FULL:
+			return "Async delay queue is full";
+
 		case SERVER_NOT_AVAILABLE:
 			return "Server not available";
 

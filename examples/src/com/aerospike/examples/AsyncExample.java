@@ -27,6 +27,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
@@ -38,24 +39,28 @@ public abstract class AsyncExample {
 	 * Connect and run one or more asynchronous client examples.
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
+		EventPolicy eventPolicy = new EventPolicy();
+		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
+		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
+		
 		EventLoops eventLoops;
 		
 		switch (params.eventLoopType) {
 			default:
 			case DIRECT_NIO: {
-				eventLoops = new NioEventLoops(1);			
+				eventLoops = new NioEventLoops(eventPolicy, 1);			
 				break;
 			}
 				
 			case NETTY_NIO: {
 				EventLoopGroup group = new NioEventLoopGroup(1);
-				eventLoops = new NettyEventLoops(group);
+				eventLoops = new NettyEventLoops(eventPolicy, group);
 				break;
 			}
 				
 			case NETTY_EPOLL: {
 				EventLoopGroup group = new EpollEventLoopGroup(1);				
-				eventLoops = new NettyEventLoops(group);
+				eventLoops = new NettyEventLoops(eventPolicy, group);
 				break;
 			}
 		}

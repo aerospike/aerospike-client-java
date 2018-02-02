@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.ArrayDeque;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.cluster.Cluster;
@@ -25,23 +24,19 @@ import com.aerospike.client.cluster.Cluster;
  * Aerospike wrapper around netty event loop.
  * Implements the Aerospike EventLoop interface.
  */
-public final class NettyEventLoop implements EventLoop {
+public final class NettyEventLoop extends EventLoopBase {
 
 	final io.netty.channel.EventLoop eventLoop;
-	final ArrayDeque<byte[]> bufferQueue;
-	final HashedWheelTimer timer;
 	final NettyEventLoops parent;
-	final int index;
 
     /**
      * Construct Aerospike event loop wrapper from netty event loop.
      */
 	public NettyEventLoop(EventPolicy policy, io.netty.channel.EventLoop eventLoop, NettyEventLoops parent, int index) {
+		super(policy, index);
+		
 		this.eventLoop = eventLoop;
 		this.parent = parent;
-		this.index = index;
-		this.bufferQueue = new ArrayDeque<byte[]>(policy.commandsPerEventLoop);
-		this.timer = new HashedWheelTimer(this, policy.minTimeout, TimeUnit.MILLISECONDS, policy.ticksPerWheel);
 	}
 
 	/**
@@ -86,25 +81,9 @@ public final class NettyEventLoop implements EventLoop {
 	}
 
 	/**
-	 * Return event loop array index.
-	 */
-	@Override
-	public int getIndex() {
-		return index;
-	}
-
-	/**
 	 * Is current thread the event loop thread.
 =	 */
 	public boolean inEventLoop() {
 		return eventLoop.inEventLoop();
-	}
-
-	/**
-     * For internal use only.
-     */
-	@Override
-	public EventState createState() {
-		return new EventState(this, index);
 	}
 }

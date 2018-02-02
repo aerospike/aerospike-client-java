@@ -40,6 +40,8 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
+	int maxCommandsInProcess;
+	int maxCommandsInQueue;
 	boolean singleBin;
 	boolean hasGeo;
 	boolean hasUdf;

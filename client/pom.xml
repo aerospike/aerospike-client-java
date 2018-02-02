@@ -113,6 +113,7 @@
             <include>com/aerospike/client/async/AsyncClient.java</include>
             <include>com/aerospike/client/async/AsyncClientPolicy.java</include>
             <include>com/aerospike/client/async/EventLoop.java</include>
+            <include>com/aerospike/client/async/EventLoopBase.java</include>
             <include>com/aerospike/client/async/EventLoops.java</include>
             <include>com/aerospike/client/async/EventPolicy.java</include>
             <include>com/aerospike/client/async/IAsyncClient.java</include>

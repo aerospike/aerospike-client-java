@@ -21,6 +21,49 @@ package com.aerospike.client.async;
  */
 public final class EventPolicy {
 	/**
+	 * Maximum number of async commands that can be processed in each event loop at any point in
+	 * time. Each executing async command requires a socket connection.  Consuming too
+	 * many sockets can negatively affect application reliability and performance.  If the user does
+	 * not limit async command count in their application, this field should be used to enforce a
+	 * limit internally in the client.
+	 * <p>
+	 * If this limit is reached, the next async command will be placed on the event loop's delay
+	 * queue for later execution.  If this limit is zero, all async commands will be executed
+	 * immediately and the delay queue will not be used.
+	 * <p>
+	 * If defined, a reasonable value is 40.  The optimal value will depend on cpu count, cpu speed,
+	 * network bandwitdh and the number of event loops employed.
+	 * <p>
+	 * Default: 0 (execute all async commands immediately)
+	 */
+	public int maxCommandsInProcess;
+
+	/**
+	 * Maximum number of async commands that can be stored in each event loop's delay queue for
+	 * later execution.  Queued commands consume memory, but they do not consume sockets. This
+	 * limit should be defined when it's possible that the application executes so many async
+	 * commands that memory could be exhausted.
+	 * <p>
+	 * If this limit is reached, the next async command will be rejected with exception 
+	 * {@link com.aerospike.client.AerospikeException.AsyncQueueFull}.
+	 * If this limit is zero, all async commands will be accepted into the delay queue.
+	 * <p>
+	 * The optimal value will depend on your application's magnitude of command bursts and the
+	 * amount of memory available to store commands.
+	 * <p>
+	 * Default: 0 (no delay queue limit)
+	 */
+	public int maxCommandsInQueue;
+
+	/**
+	 * Initial capacity of each event loop's delay queue.  The delay queue can resize beyond this
+	 * initial capacity.
+	 * <p>
+	 * Default: 256 (if delay queue is used)
+	 */
+	public int queueInitialCapacity = 256;
+
+	/**
 	 * Minimum command timeout in milliseconds that will be specified for this event loop group.
 	 * If command timeouts are less than minTimeout, the actual command timeout will be minTimeout.
 	 * The absolute minimum timeout value is 5ms.

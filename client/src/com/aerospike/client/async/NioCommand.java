@@ -56,7 +56,7 @@ public final class NioCommand implements Runnable, TimerTask {
 		command.bufferQueue = eventLoop.bufferQueue;
 		hasTotalTimeout = command.policy.totalTimeout > 0;
 		
-		if (eventLoop == Thread.currentThread() && eventState.errors < 5) {
+		if (eventLoop.thread == Thread.currentThread() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
 			run();
 		}
@@ -80,24 +80,46 @@ public final class NioCommand implements Runnable, TimerTask {
 			return;
 		}
 
+		long currentTime = 0;
+		
 		if (hasTotalTimeout) {
-			long currentTime = System.nanoTime();
+			currentTime = System.nanoTime();
 			
 			if (state == AsyncCommand.REGISTERED) {
 				// Command was queued to event loop thread.
 				if (currentTime >= totalDeadline) {
 					// Command already timed out.
-					eventState.pending--;
-					eventState.errors++;
-					state = AsyncCommand.COMPLETE;
-					notifyFailure(new AerospikeException.Timeout(null, command.policy, iteration, true));
+					queueError(new AerospikeException.Timeout(null, command.policy, iteration, true));
 					return;
 				}
 			}
 			else {
 				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);			
 			}
-
+		}
+		
+		if (eventLoop.maxCommandsInProcess > 0) {
+			// Delay queue takes precedence over new commands.
+			executeFromDelayQueue();
+			
+			// Handle new command.
+			if (eventLoop.pending >= eventLoop.maxCommandsInProcess) {
+				// Pending queue full. Append new command to delay queue.
+				if (eventLoop.maxCommandsInQueue > 0 && eventLoop.delayQueue.size() >= eventLoop.maxCommandsInQueue) {
+					queueError(new AerospikeException.AsyncQueueFull());
+					return;
+				}
+				eventLoop.delayQueue.addLast(this);
+				
+				if (hasTotalTimeout) {
+					timeoutTask = eventLoop.timer.addTimeout(this, totalDeadline);								
+				}
+				state = AsyncCommand.DELAY_QUEUE;
+				return;
+			}
+		}
+		
+		if (hasTotalTimeout) {
 			long deadline;
 
 			if (command.policy.socketTimeout > 0) {
@@ -120,10 +142,69 @@ public final class NioCommand implements Runnable, TimerTask {
  			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));								
 		}
 
+		eventLoop.pending++;
+		executeCommand();
+	}
+	
+	private final void queueError(AerospikeException ae) {		
+		eventState.pending--;
+		eventState.errors++;
+		state = AsyncCommand.COMPLETE;
+		notifyFailure(ae);
+	}
+
+	private final void tryDelayQueue() {
+		if (eventLoop.maxCommandsInProcess > 0 && !eventLoop.usingDelayQueue) {
+			// Try executing commands from the delay queue.
+			executeFromDelayQueue();
+		}
+	}
+
+	private final void executeFromDelayQueue() {
+		eventLoop.usingDelayQueue = true;
+
+		try {
+			NioCommand cmd;
+			while (eventLoop.pending < eventLoop.maxCommandsInProcess && (cmd = (NioCommand)eventLoop.delayQueue.pollFirst()) != null) {
+				if (cmd.state == AsyncCommand.COMPLETE) {
+					// Command timed out and user has already been notified.
+					continue;
+				}
+				cmd.executeCommandFromDelayQueue();
+			}
+		}
+		catch (Exception e) {
+			Log.error("Unexpected async error: " + Util.getErrorMessage(e));
+		}
+		finally {
+			eventLoop.usingDelayQueue = false;
+		}
+	}
+	
+	private final void executeCommandFromDelayQueue() {
+		if (command.policy.socketTimeout > 0) {
+			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+
+			if (hasTotalTimeout) {
+				if (socketDeadline < totalDeadline) {
+					// Transition from total timer to socket timer.
+					timeoutTask.cancel();
+					usingSocketTimeout = true;
+					eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+				}
+			}
+			else {
+				usingSocketTimeout = true;
+				timeoutTask = eventLoop.timer.addTimeout(this, socketDeadline);
+			}
+		}
+		eventLoop.pending++;
 		executeCommand();
 	}
 
 	protected final void executeCommand() {
+		state = AsyncCommand.CONNECT;
+
 		try {
 			Node node = command.getNode(cluster);
 			byteBuffer = eventLoop.getByteBuffer();
@@ -160,6 +241,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			eventState.errors++;
 			fail();
 			notifyFailure(new AerospikeException(e));
+			tryDelayQueue();
 		}
 	}
 	
@@ -458,6 +540,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			// timeoutTask has already been removed, so set to null to avoid cancel.
 			timeoutTask = null;
 			fail();
+			tryDelayQueue();
 			return;
 		}
 		
@@ -538,7 +621,14 @@ public final class NioCommand implements Runnable, TimerTask {
 	
 	private final void totalTimeout() {
 		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, true);
-		
+	
+		if (state == AsyncCommand.DELAY_QUEUE) {
+			// Command timed out in delay queue.
+			closeFromDelayQueue();
+			notifyFailure(ae);
+			return;
+		}
+
 		// Attempt timeout delay.
 		if (command.policy.timeoutDelay > 0) {
 			// Notify user of timeout, but allow transaction to continue in hope of reusing the socket.
@@ -553,22 +643,22 @@ public final class NioCommand implements Runnable, TimerTask {
 		timeoutTask = null;
 		fail();
 		notifyFailure(ae);
+		tryDelayQueue();
 	}
 	
 	protected final void finish() {
 		complete();
 		
-		if (timeoutDelay) {
-			// User has already been notified.
-			return;
+		if (! timeoutDelay) {
+			try {
+				command.onSuccess();
+			}
+			catch (Exception e) {
+				Log.error("onSuccess() error: " + Util.getErrorMessage(e));
+			}
 		}
 
-		try {
-			command.onSuccess();
-		}
-		catch (Exception e) {
-			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
-		}
+		tryDelayQueue();
 	}
 
 	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
@@ -594,6 +684,7 @@ public final class NioCommand implements Runnable, TimerTask {
 		if (timeoutDelay) {
 			// User has already been notified.
 			close();
+			tryDelayQueue();
 			return;
 		}
 		
@@ -602,6 +693,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			// Fail command.
 			close();
 			notifyFailure(ae);
+			tryDelayQueue();
 			return;				
 		}
 
@@ -615,6 +707,7 @@ public final class NioCommand implements Runnable, TimerTask {
 				// Fail command.
 				close();
 				notifyFailure(ae);
+				tryDelayQueue();
 				return;
 			}
 		}
@@ -654,6 +747,7 @@ public final class NioCommand implements Runnable, TimerTask {
 					if (timeoutDelay) {
 						// User has already been notified.
 						close();
+						tryDelayQueue();
 						return;
 					}
 					executeCommand();
@@ -679,6 +773,7 @@ public final class NioCommand implements Runnable, TimerTask {
 		if (! timeoutDelay) {			
 			notifyFailure(ae);
 		}		
+		tryDelayQueue();
 	}
 	
 	private final void notifyFailure(AerospikeException ae) {
@@ -701,12 +796,21 @@ public final class NioCommand implements Runnable, TimerTask {
 		closeConnection();
 		close();		
 	}
-
+	
 	private final void closeConnection() {
 		if (conn != null) {
 			command.node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}
+	}
+
+	private final void closeFromDelayQueue() {
+		if (byteBuffer != null) {
+			eventLoop.putByteBuffer(byteBuffer);
+		}
+		command.putBuffer();
+		state = AsyncCommand.COMPLETE;
+		eventState.pending--;
 	}
 
 	private final void close() {
@@ -718,7 +822,8 @@ public final class NioCommand implements Runnable, TimerTask {
 			eventLoop.putByteBuffer(byteBuffer);
 		}
 		command.putBuffer();
-		eventState.pending--;
 		state = AsyncCommand.COMPLETE;
+		eventState.pending--;
+		eventLoop.pending--;
 	}
 }
