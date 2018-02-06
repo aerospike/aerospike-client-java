@@ -280,7 +280,7 @@ public final class PartitionParser {
 				// Node owns this partition.
 				int regimeOld = regimes[i];
 				
-				if (regime == 0 || regime >= regimeOld) {
+				if (regime >= regimeOld) {
 					// Log.info("Map: " + i);
 					if (regime > regimeOld) {
 						regimes[i] = regime;
