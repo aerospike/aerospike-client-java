@@ -240,14 +240,10 @@ public class TestOperateMap extends TestSync {
 		assertEquals(4, size);
 		
 		List<?> list = (List<?>)results.get(i++);
-		Entry<?,?> entry = (Entry<?,?>)list.get(0);
-		assertEquals(3L, entry.getKey());
-		assertEquals(3L, entry.getValue());
+		assertEquals(1, list.size());
 
 		list = (List<?>)results.get(i++);
 		assertEquals(4, list.size());
-		entry = (Entry<?,?>)list.get(1);
-		assertEquals(2L, entry.getKey());
 		
 		record = client.operate(null, key,
 				MapOperation.setMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE), binName),
@@ -270,7 +266,7 @@ public class TestOperateMap extends TestSync {
 		
 		list = (List<?>)results.get(i++);
 		assertEquals(1, list.size());
-		entry = (Entry<?,?>)list.get(0);
+		Entry<?,?> entry = (Entry<?,?>)list.get(0);
 		assertEquals(1L, entry.getValue());
 
 		list = (List<?>)results.get(i++);
