@@ -34,6 +34,10 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListOrder;
+import com.aerospike.client.cdt.ListPolicy;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.cdt.ListSortFlags;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
@@ -435,5 +439,250 @@ public class TestOperateList extends TestSync {
 		
 		val = (Long)results.get(i++);	
 		assertEquals(1, val);
+	}
+
+	@Test
+	public void operateListSwitchSort() {
+		Key key = new Key(args.namespace, args.set, "oplkey9");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(3));
+		itemList.add(Value.get(1));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(2));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.getByIndex(binName, 3, ListReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(5L, size);
+
+		long val = (Long)results.get(i++);	
+		assertEquals(5L, val);
+		
+		List<Value> valueList = new ArrayList<Value>();
+		valueList.add(Value.get(4));
+		valueList.add(Value.get(2));
+		
+		// Sort list.
+		record = client.operate(null, key,
+				ListOperation.setOrder(binName, ListOrder.ORDERED),
+				ListOperation.getByValue(binName, Value.get(3), ListReturnType.INDEX),
+				ListOperation.getByValueRange(binName, Value.get(-1), Value.get(3), ListReturnType.COUNT),
+				ListOperation.getByValueList(binName, valueList, ListReturnType.RANK),
+				ListOperation.getByIndex(binName, 3, ListReturnType.VALUE),
+				ListOperation.getByIndexRange(binName, -2, 2, ListReturnType.VALUE),
+				ListOperation.getByRank(binName, 0, ListReturnType.VALUE),
+				ListOperation.getByRankRange(binName, 2, 3, ListReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		results = record.getList(binName);
+		i = 0;
+		
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(2L, list.get(0));
+		
+		val = (Long)results.get(i++);	
+		assertEquals(2L, val);
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(3L, list.get(0));
+		assertEquals(1L, list.get(1));
+		
+		val = (Long)results.get(i++);	
+		assertEquals(4L, val);
+	
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(5L, list.get(1));
+		
+		val = (Long)results.get(i++);	
+		assertEquals(1L, val);
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(3L, list.get(0));
+		assertEquals(4L, list.get(1));
+		assertEquals(5L, list.get(2));
+	}
+
+	@Test
+	public void operateListSort() {
+		Key key = new Key(args.namespace, args.set, "oplkey10");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(-44));
+		itemList.add(Value.get(33));
+		itemList.add(Value.get(-1));
+		itemList.add(Value.get(33));
+		itemList.add(Value.get(-2));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.sort(binName, ListSortFlags.DROP_DUPLICATES),
+				ListOperation.size(binName)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(5L, size);
+
+		long val = (Long)results.get(i++);	
+		assertEquals(4L, val);
+	}
+
+	@Test
+	public void operateListRemove() {
+		Key key = new Key(args.namespace, args.set, "oplkey11");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(-44));
+		itemList.add(Value.get(33));
+		itemList.add(Value.get(-1));
+		itemList.add(Value.get(33));
+		itemList.add(Value.get(-2));
+		itemList.add(Value.get(0));
+		itemList.add(Value.get(22));
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(14));
+		itemList.add(Value.get(6));
+
+		List<Value> valueList = new ArrayList<Value>();
+		valueList.add(Value.get(-45));
+		valueList.add(Value.get(14));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.removeByValue(binName, Value.get(0), ListReturnType.INDEX),
+				ListOperation.removeByValueList(binName, valueList, ListReturnType.VALUE),
+				ListOperation.removeByValueRange(binName, Value.get(33), Value.get(100), ListReturnType.VALUE),
+				ListOperation.removeByIndex(binName, 1, ListReturnType.VALUE),
+				ListOperation.removeByIndexRange(binName, 100, 101, ListReturnType.VALUE),
+				ListOperation.removeByRank(binName, 0, ListReturnType.VALUE),
+				ListOperation.removeByRankRange(binName, 3, 1, ListReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(10L, size);
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(5L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(14L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(33L, list.get(0));
+		assertEquals(33L, list.get(1));
+
+		long val = (Long)results.get(i++);	
+		assertEquals(-1L, val);
+
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+		
+		val = (Long)results.get(i++);	
+		assertEquals(-44L, val);
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(22L, list.get(0));
+	}
+
+	@Test
+	public void operateListInverted() {
+		Key key = new Key(args.namespace, args.set, "oplkey12");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(3));
+		itemList.add(Value.get(1));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(2));
+
+		List<Value> valueList = new ArrayList<Value>();
+		valueList.add(Value.get(4));
+		valueList.add(Value.get(2));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(ListPolicy.Default, binName, itemList),
+				ListOperation.getByValue(binName, Value.get(3), ListReturnType.INDEX | ListReturnType.INVERTED),
+				ListOperation.getByValueRange(binName, Value.get(-1), Value.get(3), ListReturnType.COUNT | ListReturnType.INVERTED),
+				ListOperation.getByValueList(binName, valueList, ListReturnType.RANK | ListReturnType.INVERTED),
+				ListOperation.getByIndexRange(binName, -2, 2, ListReturnType.VALUE | ListReturnType.INVERTED),
+				ListOperation.getByRankRange(binName, 2, 3, ListReturnType.VALUE | ListReturnType.INVERTED)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(5L, size);
+		
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		assertEquals(0L, list.get(0));
+		assertEquals(2L, list.get(1));
+		assertEquals(3L, list.get(2));
+		assertEquals(4L, list.get(3));
+		
+		long val = (Long)results.get(i++);	
+		assertEquals(3L, val);
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(0L, list.get(0));
+		assertEquals(2L, list.get(1));
+		assertEquals(4L, list.get(2));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(3L, list.get(1));
+		assertEquals(1L, list.get(2));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(1L, list.get(0));
+		assertEquals(2L, list.get(1));
 	}
 }

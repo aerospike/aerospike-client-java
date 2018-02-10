@@ -17,16 +17,16 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map return type. Type of data to return when selecting or removing items from the map.
+ * List return type. Type of data to return when selecting or removing items from the list.
  */
-public final class MapReturnType {
+public final class ListReturnType {
 	/**
 	 * Do not return a result.
 	 */
 	public static final int NONE = 0;
 	
 	/**
-	 * Return key index order.
+	 * Return index offset order.
 	 * <ul>
 	 * <li>0 = first key</li>
 	 * <li>N = Nth key</li>
@@ -36,7 +36,7 @@ public final class MapReturnType {
 	public static final int INDEX = 1;
 	
 	/**
-	 * Return reverse key order.
+	 * Return reverse index offset order.
 	 * <ul>
 	 * <li>0 = last key</li>
 	 * <li>-1 = first key</li>
@@ -70,33 +70,18 @@ public final class MapReturnType {
 	public static final int COUNT = 5;
 
 	/**
-	 * Return key for single key read and key list for range read.
-	 */
-	public static final int KEY = 6;
-
-	/**
 	 * Return value for single key read and value list for range read.
 	 */
 	public static final int VALUE = 7;
-	
-	/**
-	 * Return key/value items. The possible return types are:
-	 * <ul>
-	 * <li>HashMap : Returned for unordered maps</li>
-	 * <li>TreeMap : Returned for key ordered maps</li>
-	 * <li>List&lt;Entry&gt; : Returned for range results where range order needs to be preserved.</li>
-	 * </ul>
-	 */
-	public static final int KEY_VALUE = 8;
 
 	/**
-	 * Invert meaning of map command and return values.  For example:
-	 * <pre>{@code MapOperation.getByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);}</pre>
-	 * With the INVERTED flag enabled, the keys outside of the specified key range will be returned.
+	 * Invert meaning of list command and return values.  For example:
+	 * <pre>{@code ListOperation.getByIndexRange(binName, index, count, ListReturnType.INDEX | ListReturnType.INVERTED);}</pre>
+	 * With the INVERTED flag enabled, the items outside of the specified index range will be returned.
 	 * <p>
-	 * The meaning of the map command can also be inverted.  For example:
-	 * <pre>{@code MapOperation.removeByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);}</pre>
-	 * With the INVERTED flag enabled, the keys outside of the specified key range will be removed and returned.
+	 * The meaning of the list command can also be inverted.  For example:
+	 * <pre>{@code ListOperation.removeByIndexRange(binName, index, count, ListReturnType.INDEX | ListReturnType.INVERTED);}</pre>
+	 * With the INVERTED flag enabled, the items outside of the specified index range will be removed and returned.
 	 */
 	public static final int INVERTED = 0x10000;
 }

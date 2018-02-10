@@ -590,4 +590,61 @@ public class TestOperateMap extends TestSync {
 		s = (String)list.get(2);
 		assertEquals("meher", s);
 	}
+
+	@Test
+	public void operateMapGetByList() {
+		// Test rank.
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey11");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("Charlie"), Value.get(55));
+		inputMap.put(Value.get("Jim"), Value.get(98));
+		inputMap.put(Value.get("John"), Value.get(76));
+		inputMap.put(Value.get("Harry"), Value.get(82));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<Value> keyList = new ArrayList<Value>();
+		keyList.add(Value.get("Harry"));
+		keyList.add(Value.get("Jim"));
+		
+		List<Value> valueList = new ArrayList<Value>();
+		valueList.add(Value.get(76));
+		valueList.add(Value.get(50));
+
+		record = client.operate(null, key,
+				MapOperation.getByKeyList(binName, keyList, MapReturnType.KEY_VALUE),
+				MapOperation.getByValueList(binName, valueList, MapReturnType.KEY_VALUE)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		List<?> list = (List<?>)results.get(0);
+		assertEquals(2L, list.size());
+		Entry<?,?> entry = (Entry<?,?>)list.get(0);
+		assertEquals("Harry", entry.getKey());
+		assertEquals(82L, entry.getValue());
+		entry = (Entry<?,?>)list.get(1);
+		assertEquals("Jim", entry.getKey());
+		assertEquals(98L, entry.getValue());
+
+		list = (List<?>)results.get(1);
+		assertEquals(1L, list.size());
+		entry = (Entry<?,?>)list.get(0);
+		assertEquals("John", entry.getKey());
+		assertEquals(76L, entry.getValue());
+	}
 }

@@ -17,32 +17,32 @@
 package com.aerospike.client.cdt;
 
 /**
- * Unique key map write type.
+ * List policy directives when creating a list and writing list items.
  */
-public enum MapWriteMode {
+public final class ListPolicy {
 	/**
-	 * If the key already exists, the item will be overwritten.
-	 * If the key does not exist, a new item will be created.
+	 * Default unordered list with normal write semantics.
 	 */
-	UPDATE (MapOperation.PUT, MapOperation.PUT_ITEMS),
+	public static final ListPolicy Default = new ListPolicy();
 	
-	/**
-	 * If the key already exists, the item will be overwritten.
-	 * If the key does not exist, the write will fail.
-	 */
-	UPDATE_ONLY (MapOperation.REPLACE, MapOperation.REPLACE_ITEMS),
+	protected final int attributes;
+	protected final int flags;
 	
 	/**
-	 * If the key already exists, the write will fail.
-	 * If the key does not exist, a new item will be created.
+	 * Default constructor.  
+	 * Create unordered list when list does not exist.
+	 * Use normal update mode when writing list items.
 	 */
-	CREATE_ONLY (MapOperation.ADD, MapOperation.ADD_ITEMS);
-	
-	protected final int itemCommand;
-	protected final int itemsCommand;
-	
-	private MapWriteMode(int itemCommand, int itemsCommand) {
-		this.itemCommand = itemCommand;
-		this.itemsCommand = itemsCommand;
+	public ListPolicy() {
+		this(ListOrder.UNORDERED, ListWriteFlags.DEFAULT);
+	}
+
+	/**
+	 * Create list with specified order when list does not exist.
+	 * Use specified write flags when writing list items.
+	 */
+	public ListPolicy(ListOrder order, int flags) {
+		this.attributes = order.attributes;
+		this.flags = flags;
 	}
 }

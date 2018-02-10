@@ -17,32 +17,22 @@
 package com.aerospike.client.cdt;
 
 /**
- * Unique key map write type.
+ * List storage order.
  */
-public enum MapWriteMode {
+public enum ListOrder {
 	/**
-	 * If the key already exists, the item will be overwritten.
-	 * If the key does not exist, a new item will be created.
+	 * List is not ordered.  This is the default.
 	 */
-	UPDATE (MapOperation.PUT, MapOperation.PUT_ITEMS),
-	
-	/**
-	 * If the key already exists, the item will be overwritten.
-	 * If the key does not exist, the write will fail.
-	 */
-	UPDATE_ONLY (MapOperation.REPLACE, MapOperation.REPLACE_ITEMS),
+	UNORDERED(0),
 	
 	/**
-	 * If the key already exists, the write will fail.
-	 * If the key does not exist, a new item will be created.
+	 * List is ordered.
 	 */
-	CREATE_ONLY (MapOperation.ADD, MapOperation.ADD_ITEMS);
+	ORDERED(1);
+		
+	public final int attributes;
 	
-	protected final int itemCommand;
-	protected final int itemsCommand;
-	
-	private MapWriteMode(int itemCommand, int itemsCommand) {
-		this.itemCommand = itemCommand;
-		this.itemsCommand = itemsCommand;
+	private ListOrder(int attributes) {
+		this.attributes = attributes;
 	}
 }
