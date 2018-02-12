@@ -6,8 +6,7 @@
   <artifactId>aerospike-benchmarks</artifactId>
   <version>4.1.2</version>
   <packaging>jar</packaging>
-
-  <name>aerospike-benchmarks</name>
+  <name>Aerospike Benchmarks</name>
 
   <dependencies>
     <dependency>
@@ -85,6 +84,12 @@
         </executions>
       </plugin>
     </plugins>
+  	<resources>
+	  <resource>
+		  <directory>resources</directory>
+		  <filtering>true</filtering>
+	  </resource>
+  	</resources>
   </build>
     
   <properties>
