@@ -91,10 +91,6 @@ public final class MapReturnType {
 
 	/**
 	 * Invert meaning of map command and return values.  For example:
-	 * <pre>{@code MapOperation.getByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);}</pre>
-	 * With the INVERTED flag enabled, the keys outside of the specified key range will be returned.
-	 * <p>
-	 * The meaning of the map command can also be inverted.  For example:
 	 * <pre>{@code MapOperation.removeByKeyRange(binName, keyBegin, keyEnd, MapReturnType.KEY | MapReturnType.INVERTED);}</pre>
 	 * With the INVERTED flag enabled, the keys outside of the specified key range will be removed and returned.
 	 */
