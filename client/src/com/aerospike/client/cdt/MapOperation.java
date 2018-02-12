@@ -77,7 +77,7 @@ public class MapOperation {
 	private static final int GET_BY_KEY = 97;
 	private static final int GET_BY_INDEX = 98;
 	private static final int GET_BY_RANK = 100;
-	private static final int GET_BY_VALUE = 102;
+	private static final int GET_BY_VALUE = 102;  // GET_ALL_BY_VALUE on server.
 	private static final int GET_BY_KEY_INTERVAL = 103;
 	private static final int GET_BY_INDEX_RANGE = 104;
 	private static final int GET_BY_VALUE_INTERVAL = 105;

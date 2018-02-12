@@ -61,7 +61,7 @@ public class ListOperation {
 	private static final int GET_RANGE = 18;
 	private static final int GET_BY_INDEX = 19;
 	private static final int GET_BY_RANK = 21;
-	private static final int GET_BY_VALUE = 22;
+	private static final int GET_BY_VALUE = 22;  // GET_ALL_BY_VALUE on server.
 	private static final int GET_BY_VALUE_LIST = 23;
 	private static final int GET_BY_INDEX_RANGE = 24;
 	private static final int GET_BY_VALUE_INTERVAL = 25;

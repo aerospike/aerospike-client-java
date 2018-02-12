@@ -593,7 +593,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapGetByList() {
-		// Test rank.
 		if (! args.validateMap()) {
 			return;
 		}
@@ -646,5 +645,82 @@ public class TestOperateMap extends TestSync {
 		entry = (Entry<?,?>)list.get(0);
 		assertEquals("John", entry.getKey());
 		assertEquals(76L, entry.getValue());
+	}
+
+	@Test
+	public void operateMapInverted() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey12");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("Charlie"), Value.get(55));
+		inputMap.put(Value.get("Jim"), Value.get(98));
+		inputMap.put(Value.get("John"), Value.get(76));
+		inputMap.put(Value.get("Harry"), Value.get(82));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		List<Value> valueList = new ArrayList<Value>();
+		valueList.add(Value.get(76));
+		valueList.add(Value.get(55));
+		valueList.add(Value.get(98));
+		valueList.add(Value.get(50));
+
+		record = client.operate(null, key,
+				MapOperation.getByValue(binName, Value.get(81), MapReturnType.RANK | MapReturnType.INVERTED),
+				MapOperation.getByValue(binName, Value.get(82), MapReturnType.RANK | MapReturnType.INVERTED),
+				MapOperation.getByValueRange(binName, Value.get(90), Value.get(95), MapReturnType.RANK | MapReturnType.INVERTED),
+				MapOperation.getByValueRange(binName, Value.get(90), Value.get(100), MapReturnType.RANK | MapReturnType.INVERTED),
+				MapOperation.getByValueList(binName, valueList, MapReturnType.KEY_VALUE | MapReturnType.INVERTED),
+				MapOperation.getByRankRange(binName, -2, 2, MapReturnType.KEY | MapReturnType.INVERTED ),
+				MapOperation.getByRankRange(binName, 0, 3, MapReturnType.KEY_VALUE | MapReturnType.INVERTED)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(0L, list.get(0));
+		assertEquals(1L, list.get(1));
+		assertEquals(2L, list.get(2));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		Entry<?,?> entry = (Entry<?,?>)list.get(0);
+		assertEquals("Harry", entry.getKey());
+		assertEquals(82L, entry.getValue());
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals("Charlie", list.get(0));
+		assertEquals("John", list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		entry = (Entry<?,?>)list.get(0);
+		assertEquals("Jim", entry.getKey());
+		assertEquals(98L, entry.getValue());
 	}
 }
