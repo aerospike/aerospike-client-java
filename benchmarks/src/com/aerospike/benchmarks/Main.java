@@ -26,6 +26,7 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -233,6 +234,7 @@ public class Main implements Log.Callback {
 		options.addOption("N", "reportNotFound", false, "Report not found errors. Data should be fully initialized before using this option.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
+		options.addOption("V", "version", false, "Print version.");
 
 		options.addOption("B", "batchSize", true, 
 			"Enable batch mode with number of records to process in each batch get call. " + 
@@ -281,6 +283,12 @@ public class Main implements Log.Callback {
 			logUsage(options);
 			throw new UsageException();
 		}
+
+		if (line.hasOption("V")) {
+			printVersion();
+			throw new UsageException();
+		}
+
 		
 		if (extra.length > 0) {
 			throw new Exception("Unexpected arguments: " + Arrays.toString(extra));
@@ -1096,5 +1104,18 @@ public class Main implements Log.Callback {
 	
 	private static class UsageException extends Exception {
 		private static final long serialVersionUID = 1L;
+	}
+
+	private static void printVersion()
+	{
+		final Properties properties = new Properties();
+		try {
+			properties.load(Main.class.getClassLoader().getResourceAsStream("project.properties"));
+		} catch (Exception e) {
+			System.out.println("None");
+		} finally {
+			System.out.println(properties.getProperty("name"));
+			System.out.println("Version " + properties.getProperty("version"));
+		}
 	}
 }
