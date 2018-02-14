@@ -17,19 +17,21 @@
 package com.aerospike.benchmarks;
 
 import java.io.PrintStream;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class LatencyManagerAerospike implements LatencyManager {
+public class LatencyManagerAlternate implements LatencyManager {
 	private static final long NS_TO_MS = 1000000;
 	private static final long NS_TO_US = 1000;
-	
+
 	private final Bucket[] buckets;
 	private final int lastBucket;
 	private final int bitShift;
 	private final boolean showMicroSeconds;
-	private String header;
-	
-	public LatencyManagerAerospike(int columns, int bitShift, boolean showMicroSeconds) {
+	private final DecimalFormat format;
+
+	public LatencyManagerAlternate(int columns, int bitShift, boolean showMicroSeconds) {
 		this.lastBucket = columns - 1;
 		this.bitShift = bitShift;
 		this.showMicroSeconds = showMicroSeconds;
@@ -38,20 +40,25 @@ public class LatencyManagerAerospike implements LatencyManager {
 		for (int i = 0; i < columns; i++) {
 			buckets[i] = new Bucket();
 		}
-		formHeader();
-	}
-	
-	private void formHeader() {
-		int limit = 1;
+		
 		String units = showMicroSeconds ? "us" : "ms";
-		StringBuilder s = new StringBuilder(64);
-		s.append("      <=1").append(units).append(" >1").append(units);
+		StringBuilder sb = new StringBuilder(64);
+		
+		buckets[0].header = sb.append("<=1").append(units).toString();
+		
+		sb.setLength(0);
+		buckets[1].header = sb.append(">1").append(units).toString();
+		
+		int limit = 1;
 		
 		for (int i = 2; i < buckets.length; i++) {			
 			limit <<= bitShift;
-			s.append(" >").append(limit).append(units);
+			sb.setLength(0);
+			buckets[i].header = sb.append(">").append(limit).append(units).toString();
 		}
-		header = s.toString();
+		
+		format = new DecimalFormat("#.####");
+		format.setRoundingMode(RoundingMode.HALF_UP);
 	}
 	
 	public void add(long elapsed) {
@@ -77,7 +84,6 @@ public class LatencyManagerAerospike implements LatencyManager {
 	}
 	
 	public void printHeader(PrintStream stream) {	
-		stream.println(header);
 	}
 	
 	/**
@@ -105,10 +111,9 @@ public class LatencyManagerAerospike implements LatencyManager {
 		sum += count;
 		
 		// Print cumulative results.
+		stream.print("  ");
 		stream.print(prefix);
-	//		stream.print(' ' );
-	//		stream.print(sum);
-	    int spaces = 6 - prefix.length();
+	    int spaces = 5 - prefix.length();
 	
 	    for (int j = 0; j < spaces; j++) {
 	    	stream.print(' ');
@@ -117,21 +122,24 @@ public class LatencyManagerAerospike implements LatencyManager {
 	    double sumDouble = (double)sum;
 	    int limit = 1;
 	
-	    printColumn(stream, limit, sumDouble, array[0]);
-	    printColumn(stream, limit, sumDouble, array[1]);
+	    printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
+	    printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
 	
 	    for (int i = 2; i < array.length; i++) {
 	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, array[i]);
+	        printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
 	    }
+		stream.print(" total(");        
+		stream.print(sum);        
+		stream.print(')');        
 		stream.println();        
 	}
 	
 	public void printSummaryHeader(PrintStream stream) {
 		stream.println("Latency Summary");		
 	}
-	
-	public void printSummary(PrintStream stream, String prefix) {
+
+	public void printSummary(PrintStream stream, String prefix) {	
 		int[] array = new int[buckets.length];
 		int sum = 0;
 		int count;
@@ -147,9 +155,10 @@ public class LatencyManagerAerospike implements LatencyManager {
 		sum += count;
 		
 		// Print cumulative results.
+		stream.print("  ");
 		stream.print(prefix);
-	    int spaces = 6 - prefix.length();
-		
+	    int spaces = 5 - prefix.length();
+	
 	    for (int j = 0; j < spaces; j++) {
 	    	stream.print(' ');
 	    }
@@ -157,33 +166,36 @@ public class LatencyManagerAerospike implements LatencyManager {
 	    double sumDouble = (double)sum;
 	    int limit = 1;
 	
-	    printColumn(stream, limit, sumDouble, array[0]);
-	    printColumn(stream, limit, sumDouble, array[1]);
+	    printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
+	    printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
 	
 	    for (int i = 2; i < array.length; i++) {
 	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, array[i]);
+	        printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
 	    }
+		stream.print(" total(");     
+		stream.print(sum);        
+		stream.print(')');        
 		stream.println();        
 	}
-	
-	private void printColumn(PrintStream stream, int limit, double sum, int value) {
-	    long percent = 0;
-	
-	    if (value > 0) {
-	        percent = Math.round((double)value * 100.0 / sum);
-	    }
-	    String percentString = Long.toString(percent) + "%";      
-	    int spaces = Integer.toString(limit).length() + 4 - percentString.length();
-	
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
-	    stream.print(percentString);
+
+	private void printColumn(PrintStream stream, int limit, double sum, String header, int count) {
+		stream.print(' ');
+		stream.print(header);
+		stream.print('(');
+		stream.print(count);
+		stream.print(':');
+		
+	    double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
+	    
+	    stream.print(format.format(percent));
+	    stream.print('%');
+		stream.print(')');
 	}
 	
 	private static final class Bucket {
 		final AtomicInteger count = new AtomicInteger();
+		String header;
 		int sum = 0;
 		
 		private int reset() {

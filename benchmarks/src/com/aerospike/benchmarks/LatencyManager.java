@@ -33,4 +33,8 @@ public interface LatencyManager {
 	 * (ie. no double counting).
 	 */
 	public void printResults(PrintStream stream, String prefix);
+	
+	public void printSummaryHeader(PrintStream stream);
+	
+	public void printSummary(PrintStream stream, String prefix);
 }

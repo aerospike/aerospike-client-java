@@ -215,12 +215,13 @@ public class Main implements Log.Callback {
 		options.addOption("z", "threads", true, 
 			"Set the number of threads the client will use to generate load. "
 			);	
-		options.addOption("latency", true, 
-			"\"ycsb\"[,warmup count] or <number of latency columns>,<range shift increment>[,(ms|us)]\n" +
-			"ycsb: show the timings in ycsb format\n" +
-			"Show transaction latency percentages using elapsed time ranges.\n" +
-			"<number of latency columns>: Number of elapsed time ranges.\n" +
-			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n"+
+		options.addOption("latency", true,
+			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
+			"ycsb: Show the timings in ycsb format.\n" +
+			"alt: Show both count and pecentage in each elapsed time bucket.\n" +
+			"default: Show pecentage in each elapsed time bucket.\n" +
+			"<columns>: Number of elapsed time ranges.\n" +
+			"<range shift increment>: Power of 2 multiple between each range starting at column 3.\n" +
 			"(ms|us): display times in milliseconds (ms, default) or microseconds (us)\n\n" + 
 			"A latency definition of '-latency 7,1' results in this layout:\n" +
 			"    <=1ms >1ms >2ms >4ms >8ms >16ms >32ms\n" +
@@ -685,9 +686,18 @@ public class Main implements Log.Callback {
         }
         
         if (line.hasOption("latency")) {
-			String[] latencyOpts = line.getOptionValue("latency").split(",");
+        	String latencyString = line.getOptionValue("latency");
+			String[] latencyOpts = latencyString.split(",");
 			
-			if (latencyOpts.length >= 1 && "ycsb".equalsIgnoreCase(latencyOpts[0])) {
+			if (latencyOpts.length < 1) {
+				throw new Exception(getLatencyUsage(latencyString));
+			}
+			
+			if ("ycsb".equalsIgnoreCase(latencyOpts[0])) {
+				if (latencyOpts.length > 2) {
+					throw new Exception(getLatencyUsage(latencyString));
+				}
+				
 				int warmupCount = 0;
 				if (latencyOpts.length == 2) {
 					warmupCount = Integer.parseInt(latencyOpts[1]);
@@ -698,22 +708,44 @@ public class Main implements Log.Callback {
 					counters.transaction.latency = new LatencyManagerYcsb(" txns", warmupCount);
 				}
 			}
-			else if (latencyOpts.length != 2 && latencyOpts.length != 3) {
-				throw new Exception("Latency expects either \"ycsb\" or 2 or 3 arguments. Received: " + latencyOpts.length);
-			}
 			else {
-				int columns = Integer.parseInt(latencyOpts[0]);
-				int bitShift = Integer.parseInt(latencyOpts[1]);
+				boolean alt = false;
+				int index = 0;
+				
+				if ("alt".equalsIgnoreCase(latencyOpts[index])) {
+					if (latencyOpts.length > 4) {
+						throw new Exception(getLatencyUsage(latencyString));
+					}
+					alt = true;
+					index++;
+				}
+				else {
+					if (latencyOpts.length > 3) {
+						throw new Exception(getLatencyUsage(latencyString));
+					}				
+				}
+				int columns = Integer.parseInt(latencyOpts[index++]);
+				int bitShift = Integer.parseInt(latencyOpts[index++]);
 				boolean showMicroSeconds = false;
-				if (latencyOpts.length == 3) {
-					if ("us".equalsIgnoreCase(latencyOpts[2])) {
+				if (index < latencyOpts.length) {
+					if ("us".equalsIgnoreCase(latencyOpts[index])) {
 						showMicroSeconds = true;
 					}
 				}
-				counters.read.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
-				counters.write.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds); 
-				if (hasTxns) {
-					counters.transaction.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+				
+				if (alt) {				
+					counters.read.latency = new LatencyManagerAlternate(columns, bitShift, showMicroSeconds);
+					counters.write.latency = new LatencyManagerAlternate(columns, bitShift, showMicroSeconds); 
+					if (hasTxns) {
+						counters.transaction.latency = new LatencyManagerAlternate(columns, bitShift, showMicroSeconds);
+					}
+				}
+				else {
+					counters.read.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+					counters.write.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds); 
+					if (hasTxns) {
+						counters.transaction.latency = new LatencyManagerAerospike(columns, bitShift, showMicroSeconds);
+					}
 				}
 			}
         }
@@ -834,6 +866,10 @@ public class Main implements Log.Callback {
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
 
 		System.out.println(sw.toString());
+	}
+
+	private static String getLatencyUsage(String latencyString) {
+		return "Latency usage: ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]  Received: " + latencyString;
 	}
 
 	public void runBenchmarks() throws Exception {
@@ -982,6 +1018,11 @@ public class Main implements Log.Callback {
 
 			Thread.sleep(1000);
 		}
+		
+		if (this.counters.write.latency != null) {
+			this.counters.write.latency.printSummaryHeader(System.out);
+			this.counters.write.latency.printSummary(System.out, "write");
+		}
 	}
 
 	private void doRWTest(AerospikeClient client) throws Exception {
@@ -1079,6 +1120,16 @@ public class Main implements Log.Callback {
 					for (RWTask task : tasks) {
 						task.stop();
 					}
+
+					if (this.counters.write.latency != null) {
+						this.counters.write.latency.printSummaryHeader(System.out);
+						this.counters.write.latency.printSummary(System.out, "write");
+						this.counters.read.latency.printSummary(System.out, "read");
+						if (this.counters.transaction != null && this.counters.transaction.latency != null) {
+							this.counters.transaction.latency.printSummary(System.out, "txn");
+						}
+					}
+
 					System.out.println("Transaction limit reached: " + args.transactionLimit + ". Exiting.");
 					break;
 				}
