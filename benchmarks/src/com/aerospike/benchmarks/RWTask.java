@@ -111,18 +111,9 @@ public abstract class RWTask {
 		else {
 			boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
 			
-			if (args.batchSize <= 1) {
-				// Single record write.
-				long key = random.nextLong(keyCount);
-				doWrite(random, key, isMultiBin, null);
-			}
-			else {
-				// Batch write is not supported, so write batch size one record at a time.
-				for (int i = 0; i < args.batchSize; i++) {
-					long key = random.nextLong(keyCount);
-					doWrite(random, key, isMultiBin, null);
-				}
-			}
+			// Perform Single record write even if in batch mode.
+			long key = random.nextLong(keyCount);
+			doWrite(random, key, isMultiBin, null);
 		}		
 	}
 
@@ -414,6 +405,10 @@ public abstract class RWTask {
 		else {
 			counters.read.count.getAndIncrement();		
 		}
+	}
+
+	protected void processBatchRead() {
+		counters.read.count.getAndIncrement();
 	}
 
 	protected void writeFailure(AerospikeException ae) {

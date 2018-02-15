@@ -137,10 +137,11 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			records = client.get(args.batchPolicy, keys, binName);
 		}
-	
-		for (int i = 0; i < keys.length; i++) {
-			processRead(keys[i], records[i]);
+
+		if (records == null) {
+			System.out.println("Batch records returned is null");
 		}
+		processBatchRead();
 	}
 
 	@Override
@@ -157,8 +158,9 @@ public class RWTaskSync extends RWTask implements Runnable {
 			records = client.get(args.batchPolicy, keys);
 		}
 	
-		for (int i = 0; i < keys.length; i++) {
-			processRead(keys[i], records[i]);
+		if (records == null) {
+			System.out.println("Batch records returned is null");
 		}
+		processBatchRead();
 	}	
 }

@@ -129,6 +129,7 @@ public class LatencyManagerAerospike implements LatencyManager {
 	
 	public void printSummaryHeader(PrintStream stream) {
 		stream.println("Latency Summary");		
+		stream.println(header);
 	}
 	
 	public void printSummary(PrintStream stream, String prefix) {

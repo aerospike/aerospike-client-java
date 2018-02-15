@@ -194,14 +194,7 @@ public final class RWTaskAsync extends RWTask {
 	private final class BatchReadHandler implements RecordArrayListener {
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
-			for (int i = 0; i < records.length; i++) {
-				if (records[i] == null && args.reportNotFound) {
-					counters.readNotFound.getAndIncrement();	
-				}
-				else {
-					counters.read.count.getAndIncrement();		
-				}
-			}
+			counters.read.count.getAndIncrement();		
 			runNextCommand();
 		}
 
@@ -217,15 +210,7 @@ public final class RWTaskAsync extends RWTask {
 		public void onSuccess(Key[] keys, Record[] records) {
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-			
-			for (int i = 0; i < records.length; i++) {
-				if (records[i] == null && args.reportNotFound) {
-					counters.readNotFound.getAndIncrement();	
-				}
-				else {
-					counters.read.count.getAndIncrement();		
-				}
-			}
+			counters.read.count.getAndIncrement();			
 			runNextCommand();
 		}
 
