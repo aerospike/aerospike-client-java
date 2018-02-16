@@ -32,7 +32,7 @@ public final class EventPolicy {
 	 * immediately and the delay queue will not be used.
 	 * <p>
 	 * If defined, a reasonable value is 40.  The optimal value will depend on cpu count, cpu speed,
-	 * network bandwitdh and the number of event loops employed.
+	 * network bandwidth and the number of event loops employed.
 	 * <p>
 	 * Default: 0 (execute all async commands immediately)
 	 */
