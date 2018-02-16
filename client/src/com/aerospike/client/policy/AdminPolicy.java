@@ -16,12 +16,10 @@
  */
 package com.aerospike.client.policy;
 
-import java.io.Serializable;
-
 /**
  * Policy attributes used for user administration commands.
  */
-public final class AdminPolicy implements Serializable {
+public final class AdminPolicy {
 
 	/**
 	 * User administration command socket timeout in milliseconds.

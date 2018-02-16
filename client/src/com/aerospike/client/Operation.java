@@ -16,12 +16,10 @@
  */
 package com.aerospike.client;
 
-import java.io.Serializable;
-
 /**
  * Database operation definition.  The class is used in client's operate() method. 
  */
-public final class Operation implements Serializable {
+public final class Operation {	
 	/**
 	 * Create read bin database operation.
 	 */

@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.listener;
 
-import java.io.Serializable;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -26,7 +25,7 @@ import com.aerospike.client.BatchRead;
  * Asynchronous result notifications for batch get commands with variable bins per key.
  * The result is sent in a single list.
  */
-public interface BatchListListener extends Serializable {
+public interface BatchListListener {
 	/**
 	 * This method is called when an asynchronous batch get command completes successfully.
 	 * 

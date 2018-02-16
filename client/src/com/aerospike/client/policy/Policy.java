@@ -16,12 +16,10 @@
  */
 package com.aerospike.client.policy;
 
-import java.io.Serializable;
-
 /**
  * Transaction policy attributes used in all database commands.
  */
-public class Policy implements Serializable {
+public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
 	 * Currently, only used for scans.

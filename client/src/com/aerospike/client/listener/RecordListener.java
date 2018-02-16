@@ -20,12 +20,10 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
-import java.io.Serializable;
-
 /**
  * Asynchronous result notifications for get or operate commands.
  */
-public interface RecordListener extends Serializable {
+public interface RecordListener {
 	/**
 	 * This method is called when an asynchronous get or operate command completes successfully.
 	 * 

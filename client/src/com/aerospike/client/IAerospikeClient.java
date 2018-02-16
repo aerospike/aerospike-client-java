@@ -17,38 +17,37 @@
 package com.aerospike.client;
 
 import java.io.Closeable;
-import java.io.Serializable;
 import java.util.Calendar;
 import java.util.List;
 
-import com.aerospike.client.admin.Privilege; 
-import com.aerospike.client.admin.Role; 
+import com.aerospike.client.admin.Privilege;
+import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
-import com.aerospike.client.async.EventLoop; 
-import com.aerospike.client.cluster.Node; 
-import com.aerospike.client.listener.BatchListListener; 
-import com.aerospike.client.listener.BatchSequenceListener; 
-import com.aerospike.client.listener.DeleteListener; 
-import com.aerospike.client.listener.ExecuteListener; 
-import com.aerospike.client.listener.ExistsArrayListener; 
-import com.aerospike.client.listener.ExistsListener; 
-import com.aerospike.client.listener.ExistsSequenceListener; 
-import com.aerospike.client.listener.RecordArrayListener; 
-import com.aerospike.client.listener.RecordListener; 
-import com.aerospike.client.listener.RecordSequenceListener; 
-import com.aerospike.client.listener.WriteListener; 
-import com.aerospike.client.policy.AdminPolicy; 
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.listener.BatchListListener;
+import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.DeleteListener;
+import com.aerospike.client.listener.ExecuteListener;
+import com.aerospike.client.listener.ExistsArrayListener;
+import com.aerospike.client.listener.ExistsListener;
+import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.RecordArrayListener;
+import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchPolicy;
-import com.aerospike.client.policy.InfoPolicy; 
-import com.aerospike.client.policy.Policy; 
+import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.RecordSet; 
-import com.aerospike.client.query.ResultSet; 
-import com.aerospike.client.query.Statement; 
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.ResultSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
@@ -57,7 +56,7 @@ import com.aerospike.client.task.RegisterTask;
  * This interface's sole purpose is to allow mock frameworks to operate on
  * AerospikeClient without being constrained by final methods.
  */
-public interface IAerospikeClient extends Closeable, Serializable {
+public interface IAerospikeClient extends Closeable {
 	//-------------------------------------------------------
 	// Default Policies
 	//-------------------------------------------------------

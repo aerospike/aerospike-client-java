@@ -16,13 +16,12 @@
  */
 package com.aerospike.client;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 
 /**
  * Host name/port of database server. 
  */
-public final class Host implements Serializable {
+public final class Host {
 	/**
 	 * Host name or IP address of database server.
 	 */

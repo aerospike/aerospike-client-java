@@ -17,7 +17,6 @@
 package com.aerospike.client.query;
 
 import java.io.Closeable;
-import java.io.Serializable;
 import java.util.Iterator;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -30,7 +29,7 @@ import com.aerospike.client.Log;
  * Multiple threads will retrieve results from the server nodes and put these results on the queue.
  * The single user thread consumes these results from the queue.
  */
-public final class ResultSet implements Iterable<Object>, Closeable, Serializable {
+public final class ResultSet implements Iterable<Object>, Closeable {
 	public static final Integer END = new Integer(-1);
 	
 	private final QueryAggregateExecutor executor;

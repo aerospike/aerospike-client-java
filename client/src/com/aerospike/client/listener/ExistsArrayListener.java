@@ -19,13 +19,11 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
-import java.io.Serializable;
-
 /**
  * Asynchronous result notifications for batch exists commands.
  * The result is sent in a single array.
  */
-public interface ExistsArrayListener extends Serializable {
+public interface ExistsArrayListener {
 	/**
 	 * This method is called when an asynchronous batch exists command completes successfully.
 	 * The returned boolean array is in positional order with the original key array order.

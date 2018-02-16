@@ -16,13 +16,11 @@
  */
 package com.aerospike.client;
 
-import java.io.Serializable;
-
 /**
  * Database operation error codes.  The positive numbers align with the server
  * side file proto.h.
  */
-public final class ResultCode implements Serializable {
+public final class ResultCode {
 	/**
 	 * Async delay queue is full.
 	 */

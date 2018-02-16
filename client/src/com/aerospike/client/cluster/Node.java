@@ -17,7 +17,6 @@
 package com.aerospike.client.cluster;
 
 import java.io.Closeable;
-import java.io.Serializable;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -40,7 +39,7 @@ import com.aerospike.client.util.Util;
 /**
  * Server node representation.  This class manages server node connections and health status.
  */
-public class Node implements Closeable, Serializable {
+public class Node implements Closeable {
 	/**
 	 * Number of partitions for each namespace.
 	 */

@@ -18,7 +18,6 @@ package com.aerospike.client;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -39,7 +38,7 @@ import com.aerospike.client.util.Packer;
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
  */
-public abstract class Value implements Serializable {
+public abstract class Value {
 	/**
 	 * Should the client use the new double floating point particle type supported by Aerospike
 	 * server versions >= 3.6.0.  It's important that all server nodes and XDR be upgraded before

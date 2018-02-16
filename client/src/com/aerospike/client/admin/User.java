@@ -16,13 +16,12 @@
  */
 package com.aerospike.client.admin;
 
-import java.io.Serializable;
 import java.util.List;
 
 /**
  * User and assigned roles.
  */
-public final class User implements Serializable {
+public final class User {
 	/**
 	 * User name.
 	 */

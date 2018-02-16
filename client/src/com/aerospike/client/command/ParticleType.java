@@ -16,9 +16,7 @@
  */
 package com.aerospike.client.command;
 
-import java.io.Serializable;
-
-public final class ParticleType implements Serializable {
+public final class ParticleType {
 	// Server particle types. Unsupported types are commented out.
 	public static final int NULL = 0;
 	public static final int INTEGER = 1;

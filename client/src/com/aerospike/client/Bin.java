@@ -16,7 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +23,7 @@ import java.util.Map;
 /**
  * Column name/value pair. 
  */
-public final class Bin implements Serializable {
+public final class Bin {
 	/**
 	 * Bin name. Current limit is 14 characters.
 	 */

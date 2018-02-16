@@ -19,12 +19,10 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
-import java.io.Serializable;
-
 /**
  * Asynchronous result notifications for execute commands.
  */
-public interface ExecuteListener extends Serializable {
+public interface ExecuteListener {
 	/**
 	 * This method is called when an asynchronous execute command completes successfully.
 	 * 

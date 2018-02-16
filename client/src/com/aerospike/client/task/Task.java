@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.task;
 
-import java.io.Serializable;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
@@ -28,7 +27,7 @@ import com.aerospike.client.util.Util;
 /**
  * Task used to poll for server task completion.
  */
-public abstract class Task implements Serializable {
+public abstract class Task {
 	public static final int NOT_FOUND = 0;
 	public static final int IN_PROGRESS = 1;
 	public static final int COMPLETE = 2;

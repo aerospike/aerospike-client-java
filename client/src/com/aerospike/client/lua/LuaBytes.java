@@ -20,9 +20,7 @@ import org.luaj.vm2.LuaUserdata;
 
 import com.aerospike.client.command.Buffer;
 
-import java.io.Serializable;
-
-public final class LuaBytes extends LuaUserdata implements LuaData, Serializable {
+public final class LuaBytes extends LuaUserdata implements LuaData {
 
 	private LuaInstance instance;
 	private byte[] bytes;

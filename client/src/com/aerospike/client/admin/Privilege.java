@@ -16,12 +16,10 @@
  */
 package com.aerospike.client.admin;
 
-import java.io.Serializable;
-
 /**
  * User privilege.
  */
-public final class Privilege implements Serializable {
+public final class Privilege {
 	/**
 	 * Privilege code.
 	 */

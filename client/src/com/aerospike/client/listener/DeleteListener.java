@@ -19,12 +19,10 @@ package com.aerospike.client.listener;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
-import java.io.Serializable;
-
 /**
  * Asynchronous result notifications for delete commands.
  */
-public interface DeleteListener extends Serializable {
+public interface DeleteListener {
 	/**
 	 * This method is called when an asynchronous delete command completes successfully.
 	 * 
