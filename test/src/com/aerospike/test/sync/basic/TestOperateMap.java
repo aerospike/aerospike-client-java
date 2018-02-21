@@ -741,8 +741,12 @@ public class TestOperateMap extends TestSync {
 		Key key = new Key(args.namespace, args.set, "opmkey13");
 
 		expectedException.expect(AerospikeException.class);
-		//TODO: as soon as aerospike server 3.16.0.1 is release change this check to not found error
-		expectedException.expectMessage("Error Code 12: Bin type error");
+		
+		// Server versions < 3.16.0.1 receive a bin type error.
+		//expectedException.expectMessage("Error Code 12: Bin type error");
+		
+		// Server versions >= 3.16.0.1 receive a key not found error.
+		expectedException.expectMessage("Error Code 2: Key not found");
 
 		client.operate(null, key,
 				MapOperation.removeByKeyList(binName, singletonList(Value.get("key-1")), MapReturnType.VALUE));
