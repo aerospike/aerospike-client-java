@@ -76,7 +76,7 @@ public final class ListReturnType {
 
 	/**
 	 * Invert meaning of list command and return values.  For example:
-	 * <pre>{@code ListOperation.removeByIndexRange(binName, index, count, ListReturnType.INDEX | ListReturnType.INVERTED);}</pre>
+	 * <pre>{@code ListOperation.removeByIndexRange(binName, index, count, ListReturnType.VALUE | ListReturnType.INVERTED);}</pre>
 	 * With the INVERTED flag enabled, the items outside of the specified index range will be removed and returned.
 	 */
 	public static final int INVERTED = 0x10000;
