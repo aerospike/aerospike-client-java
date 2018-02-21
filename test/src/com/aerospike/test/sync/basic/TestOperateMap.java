@@ -16,6 +16,7 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
@@ -25,8 +26,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
@@ -40,6 +44,10 @@ import com.aerospike.client.cdt.MapWriteMode;
 import com.aerospike.test.sync.TestSync;
 
 public class TestOperateMap extends TestSync {
+
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
+
 	private static final String binName = "opmapbin";
 	
 	@Test
@@ -722,5 +730,21 @@ public class TestOperateMap extends TestSync {
 		entry = (Entry<?,?>)list.get(0);
 		assertEquals("Jim", entry.getKey());
 		assertEquals(98L, entry.getValue());
+	}
+
+	@Test
+	public void operateMapRemoveByKeyListForNonExistingKey() throws Exception {
+		if (!args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey13");
+
+		expectedException.expect(AerospikeException.class);
+		//TODO: as soon as aerospike server 3.16.0.1 is release change this check to not found error
+		expectedException.expectMessage("Error Code 12: Bin type error");
+
+		client.operate(null, key,
+				MapOperation.removeByKeyList(binName, singletonList(Value.get("key-1")), MapReturnType.VALUE));
 	}
 }
