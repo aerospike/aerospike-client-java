@@ -260,7 +260,7 @@ public final class NioCommand implements Runnable, TimerTask {
 		command.initBuffer();
 		
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster.getUser(), cluster.getPassword());
+		command.dataOffset = admin.setAuthenticate(cluster, command.node);
 		byteBuffer.clear();
 		byteBuffer.put(command.dataBuffer, 0, command.dataOffset);
 		byteBuffer.flip();

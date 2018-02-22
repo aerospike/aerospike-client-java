@@ -1995,7 +1995,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Change user's password.  Clear-text password will be hashed using bcrypt before sending to server.
+	 * Change user's password.
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
@@ -2007,9 +2007,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			throw new AerospikeException("Invalid user");
 		}
 
-		String hash = AdminCommand.hashPassword(password);
-		AdminCommand command = new AdminCommand();
 		byte[] userBytes = Buffer.stringToUtf8(user);
+		byte[] passwordBytes = Buffer.stringToUtf8(password);
+
+		String hash = AdminCommand.hashPassword(password);
+		byte[] hashBytes = Buffer.stringToUtf8(hash);
+				
+		AdminCommand command = new AdminCommand();
 
 		if (Arrays.equals(userBytes, cluster.getUser())) {
 			// Change own password.
@@ -2019,7 +2023,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			// Change other user's password by user admin.
 			command.setPassword(cluster, policy, userBytes, hash);
 		}
-		cluster.changePassword(userBytes, hash);
+		cluster.changePassword(userBytes, passwordBytes, hashBytes);
 	}
 
 	/**

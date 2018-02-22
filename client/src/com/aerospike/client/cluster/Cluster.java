@@ -75,8 +75,11 @@ public class Cluster implements Runnable, Closeable {
     // User name in UTF-8 encoded bytes.
 	protected final byte[] user;
 
-	// Password in hashed format in bytes.
+	// Password in UTF-8 encoded bytes.
 	protected byte[] password;
+
+	// Password in hashed format in bytes.
+	protected byte[] passwordHash;
 
 	// Random node index.
 	private final AtomicInteger nodeIndex;
@@ -143,6 +146,7 @@ public class Cluster implements Runnable, Closeable {
 		
 		if (policy.user != null && policy.user.length() > 0) {
 			this.user = Buffer.stringToUtf8(policy.user);
+			this.password = Buffer.stringToUtf8(policy.password);
 
 			String pass = policy.password;
 
@@ -155,7 +159,7 @@ public class Cluster implements Runnable, Closeable {
 			{
 				pass = AdminCommand.hashPassword(pass);
 			}
-			this.password = Buffer.stringToUtf8(pass);
+			this.passwordHash = Buffer.stringToUtf8(pass);
 		}
 		else {
 			this.user = null;
@@ -802,9 +806,10 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	public void changePassword(byte[] user, String password) {
+	public void changePassword(byte[] user, byte[] password, byte[] passwordHash) {
 		if (this.user != null && Arrays.equals(user, this.user)) {
-			this.password = Buffer.stringToUtf8(password);
+			this.password = password;
+			this.passwordHash = passwordHash;
 		}
 	}
 
@@ -824,6 +829,10 @@ public class Cluster implements Runnable, Closeable {
 		return password;
 	}
 	
+	public final byte[] getPasswordHash() {
+		return passwordHash;
+	}
+
 	public void close() {
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.

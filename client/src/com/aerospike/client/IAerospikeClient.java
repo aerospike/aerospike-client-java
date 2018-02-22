@@ -1151,7 +1151,7 @@ public interface IAerospikeClient extends Closeable {
 	public void dropUser(AdminPolicy policy, String user) throws AerospikeException;
 
 	/**
-	 * Change user's password.  Clear-text password will be hashed using bcrypt before sending to server.
+	 * Change user's password.
 	 * 
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name

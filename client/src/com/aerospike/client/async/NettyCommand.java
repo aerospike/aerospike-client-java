@@ -303,7 +303,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.initBuffer();
 				
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster.getUser(), cluster.getPassword());		
+		command.dataOffset = admin.setAuthenticate(cluster, command.node);
 		writeByteBuffer();
 	}
 	

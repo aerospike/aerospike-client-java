@@ -37,8 +37,9 @@ public final class NodeValidator {
 	Host primaryHost;
 	InetSocketAddress primaryAddress;
 	Connection conn;
+	byte[] sessionToken;
 	int features;
-	
+
 	/**
 	 * Add node(s) referenced by seed host aliases. In most cases, aliases reference
 	 * a single node.  If round robin DNS configuration is used, the seed host may have 
@@ -139,12 +140,12 @@ public final class NodeValidator {
 		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
 		Connection conn = new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleNanos, null);
 		
-		try {			
+		try {
 			if (cluster.user != null) {
 				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-				command.authenticate(conn, cluster.user, cluster.password);
+				sessionToken = command.login(cluster, conn, alias);
 			}
-			
+
 			HashMap<String,String> map;
 			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
 			

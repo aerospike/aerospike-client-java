@@ -60,6 +60,7 @@ public class Node implements Closeable {
 	private final Pool[] connectionPools;
 	private final AsyncPool[] asyncConnectionPools;
 	private Connection tendConnection;
+	private final byte[] sessionToken;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
@@ -83,6 +84,7 @@ public class Node implements Closeable {
 		this.host = nv.primaryHost;
 		this.address = nv.primaryAddress;
 		this.tendConnection = nv.conn;
+		this.sessionToken = nv.sessionToken;
 		this.features = nv.features;
 		
 		// Create sync connection pools.
@@ -130,7 +132,7 @@ public class Node implements Closeable {
 				if (cluster.user != null) {
 					try {
 						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						command.authenticate(tendConnection, cluster.user, cluster.password);
+						command.authenticate(cluster, this, tendConnection);
 					}
 					catch (AerospikeException ae) {
 						tendConnection.close();
@@ -494,7 +496,7 @@ public class Node implements Closeable {
 				if (cluster.user != null) {
 					try {
 						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						command.authenticate(conn, cluster.user, cluster.password);
+						command.authenticate(cluster, this, conn);
 					}
 					catch (AerospikeException ae) {
 						// Socket not authenticated.  Do not put back into pool.
@@ -611,8 +613,18 @@ public class Node implements Closeable {
 		return name;
 	}
 	
+	/**
+	 * Return node IP address.
+	 */
 	public final InetSocketAddress getAddress() {
 		return address;
+	}
+	
+	/**
+	 * Return node session token.
+	 */
+	public final byte[] getSessionToken() {
+		return sessionToken;
 	}
 	
 	/**
