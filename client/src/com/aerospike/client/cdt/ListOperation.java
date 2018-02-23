@@ -153,7 +153,7 @@ public class ListOperation {
 	 * Server returns list size.
 	 */
 	public static Operation insert(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 	}
 
 	/**
@@ -178,10 +178,9 @@ public class ListOperation {
 	public static Operation insertItems(ListPolicy policy, String binName, int index, List<Value> list) {
 		Packer packer = new Packer();
 		packer.packRawShort(INSERT_ITEMS);
-		packer.packArrayBegin(4);
+		packer.packArrayBegin(3);
 		packer.packInt(index);
 		packer.packValueList(list);
-		packer.packInt(policy.attributes);
 		packer.packInt(policy.flags);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
@@ -201,7 +200,7 @@ public class ListOperation {
 	 * Server returns list[index] after incrementing.
 	 */
 	public static Operation increment(ListPolicy policy, String binName, int index) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.attributes, policy.flags);
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.flags);
 	}
 
 	/**
@@ -221,7 +220,7 @@ public class ListOperation {
 	 * Server returns list[index] after incrementing.
 	 */
 	public static Operation increment(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 	}
 
 	/**
@@ -283,6 +282,15 @@ public class ListOperation {
 	 */
 	public static Operation set(String binName, int index, Value value) {
 		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value);
+	}
+
+	/**
+	 * Create list set operation with policy.
+	 * Server sets item value at specified index in list bin.
+	 * Server does not return a result by default.
+	 */
+	public static Operation set(ListPolicy policy, String binName, int index, Value value) {
+		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
 	}
 
 	/**

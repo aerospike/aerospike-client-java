@@ -66,14 +66,13 @@ public abstract class CDT {
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 	
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2, int v3, int v4) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2, int v3) {
 		Packer packer = new Packer();
 		packer.packRawShort(command);
-		packer.packArrayBegin(4);
+		packer.packArrayBegin(3);
 		packer.packInt(v1);
 		v2.pack(packer);
 		packer.packInt(v3);
-		packer.packInt(v4);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
