@@ -418,7 +418,9 @@ public class TestOperateList extends TestSync {
 		Record record = client.operate(null, key,
 				ListOperation.appendItems(binName, itemList),
 				ListOperation.increment(binName, 2),
+				ListOperation.increment(ListPolicy.Default, binName, 2),
 				ListOperation.increment(binName, 1, Value.get(7)),
+				ListOperation.increment(ListPolicy.Default, binName, 1, Value.get(7)),
 				ListOperation.get(binName, 0)
 				);
 		
@@ -435,8 +437,14 @@ public class TestOperateList extends TestSync {
 		assertEquals(4, val);
 		
 		val = (Long)results.get(i++);	
+		assertEquals(5, val);
+
+		val = (Long)results.get(i++);	
 		assertEquals(9, val);
 		
+		val = (Long)results.get(i++);	
+		assertEquals(16, val);
+
 		val = (Long)results.get(i++);	
 		assertEquals(1, val);
 	}

@@ -200,7 +200,7 @@ public class ListOperation {
 	 * Server returns list[index] after incrementing.
 	 */
 	public static Operation increment(ListPolicy policy, String binName, int index) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, policy.flags);
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, Value.get(1), policy.attributes, policy.flags);
 	}
 
 	/**
@@ -220,7 +220,7 @@ public class ListOperation {
 	 * Server returns list[index] after incrementing.
 	 */
 	public static Operation increment(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
 	}
 
 	/**
