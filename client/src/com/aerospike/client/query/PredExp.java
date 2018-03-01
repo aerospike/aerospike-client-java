@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.query;
 
+import java.io.Serializable;
 import java.util.Calendar;
 
 import com.aerospike.client.command.Buffer;
@@ -25,7 +26,9 @@ import com.aerospike.client.command.Buffer;
  * Predicate expression filters are applied on the query results on the server.
  * Predicate expression filters may occur on any bin in the record.
  */
-public abstract class PredExp {
+public abstract class PredExp implements Serializable {
+	private static final long serialVersionUID = 8867524802639112680L;
+
 	/**
 	 * Create "and" expression.
 	 * 
@@ -442,7 +445,9 @@ public abstract class PredExp {
 	 */
 	public abstract int write(byte[] buf, int offset);
 
-	private static class IntegerValue extends PredExp {
+	private static final class IntegerValue extends PredExp {
+		private static final long serialVersionUID = 8550700351598958079L;
+
 		private final long value;
 		private final int type;
 		
@@ -471,7 +476,9 @@ public abstract class PredExp {
 		}
 	}
 	
-	private static class StringValue extends PredExp {
+	private static final class StringValue extends PredExp {
+		private static final long serialVersionUID = -3524085980377177985L;
+
 		private final String value;
 		private final int type;
 		
@@ -497,7 +504,9 @@ public abstract class PredExp {
 		}
 	}
 	
-	private static class GeoJSONValue extends PredExp {
+	private static final class GeoJSONValue extends PredExp {
+		private static final long serialVersionUID = 4455928732518557753L;
+
 		private final String value;
 		private final int type;
 		
@@ -532,7 +541,9 @@ public abstract class PredExp {
 		}
 	}
 	
-	private static class AndOr extends PredExp {
+	private static final class AndOr extends PredExp {
+		private static final long serialVersionUID = 8758581924470272519L;
+
 		private final int op;
 		private final int nexp;
 		
@@ -561,7 +572,9 @@ public abstract class PredExp {
 		}
 	}
 
-	private static class Op extends PredExp {
+	private static final class Op extends PredExp {
+		private static final long serialVersionUID = 6679095249949169203L;
+
 		private final int op;
 		
 		private Op(int op) {
@@ -584,7 +597,9 @@ public abstract class PredExp {
 		}
 	}
 
-	private static class OpInt extends PredExp {
+	private static final class OpInt extends PredExp {
+		private static final long serialVersionUID = -6215457665264383104L;
+
 		private final int op;
 		private final int flags;
 		
