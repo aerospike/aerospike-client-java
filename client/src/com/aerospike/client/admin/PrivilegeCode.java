@@ -85,6 +85,9 @@ public enum PrivilegeCode {
 		case 1:
 			return SYS_ADMIN;
 		
+		case 2:
+			return DATA_ADMIN;
+
 		case 10:
 			return READ;
 						
