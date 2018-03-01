@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.query;
 
+import java.io.Serializable;
 import java.util.Calendar;
 
 import com.aerospike.client.command.Buffer;
@@ -25,7 +26,7 @@ import com.aerospike.client.command.Buffer;
  * Predicate expression filters are applied on the query results on the server.
  * Predicate expression filters may occur on any bin in the record.
  */
-public abstract class PredExp {
+public abstract class PredExp implements Serializable {
 	/**
 	 * Create "and" expression.
 	 * 
