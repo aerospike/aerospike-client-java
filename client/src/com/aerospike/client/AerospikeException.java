@@ -51,17 +51,21 @@ public class AerospikeException extends RuntimeException {
 
 	public AerospikeException(String message, Throwable e) {
 		super(message, e);
+		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	public AerospikeException(String message) {
 		super(message);
+		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	public AerospikeException(Throwable e) {
 		super(e);
+		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 	
 	public AerospikeException() {
+		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	@Override

@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Client serialization error.
+	 */
+	public static final int SERIALIZE_ERROR = -10;
+
+	/**
 	 * Async delay queue is full.
 	 */
 	public static final int ASYNC_QUEUE_FULL = -9;
@@ -62,9 +67,9 @@ public final class ResultCode {
 	public static final int PARSE_ERROR = -2;
 
 	/**
-	 * Client serialization error.
+	 * Generic client error.
 	 */
-	public static final int SERIALIZE_ERROR = -1;
+	public static final int CLIENT_ERROR = -1;
 
 	/**
 	 * Operation was successful.
@@ -373,6 +378,7 @@ public final class ResultCode {
 		// close socket.  Also, client timeout code path does not call this method. 
 		switch (resultCode) {
 		case 0: // Exception did not originate on server.
+		case CLIENT_ERROR:
 		case QUERY_TERMINATED:
 		case SCAN_TERMINATED:
 		case PARSE_ERROR:
@@ -392,6 +398,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+
+		case SERIALIZE_ERROR:
+			return "Serialize error";
 
 		case ASYNC_QUEUE_FULL:
 			return "Async delay queue is full";
@@ -417,8 +426,8 @@ public final class ResultCode {
 		case PARSE_ERROR:
 			return "Parse error";
 
-		case SERIALIZE_ERROR:
-			return "Serialize error";
+		case CLIENT_ERROR:
+			return "Client error";
 
 		case OK:
 			return "ok";
