@@ -153,7 +153,7 @@ public class Policy {
 	public boolean sendKey;
 	
 	/**
-	 * Force reads to be linearized for server namespaces that support CP mode.
+	 * Force reads to be linearized for server namespaces that support strong consistency mode.
 	 * <p>
 	 * Default: false
 	 */
