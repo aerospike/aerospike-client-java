@@ -36,8 +36,12 @@ import com.aerospike.client.util.Util;
 public final class NioConnection implements AsyncConnection, Closeable {
 	private final SocketChannel socketChannel;
 	private SelectionKey key;
+	private final long maxSocketIdle;
+	private long lastUsed;
 	
-	public NioConnection(InetSocketAddress address) {		
+	public NioConnection(InetSocketAddress address, long maxSocketIdle) {		
+		this.maxSocketIdle = maxSocketIdle;
+
 		try {
 			socketChannel = SocketChannel.open();
 		}
@@ -121,6 +125,10 @@ public final class NioConnection implements AsyncConnection, Closeable {
 	 */
 	@Override
 	public boolean isValid(ByteBuffer byteBuffer) {
+		if ((System.nanoTime() - lastUsed) > maxSocketIdle) {
+			return false;
+		}
+
 		// Do not use socketChannel.isOpen() or socketChannel.isConnected() because
 		// they do not take server actions on socket into account.
 		byteBuffer.position(0);
@@ -139,6 +147,7 @@ public final class NioConnection implements AsyncConnection, Closeable {
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);
+		lastUsed = System.nanoTime();
 	}
 	
 	/**
