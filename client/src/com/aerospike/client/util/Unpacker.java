@@ -81,14 +81,37 @@ public abstract class Unpacker<T> {
 	}
 
 	private T unpackList(int count) throws IOException, ClassNotFoundException {
-		ArrayList<T> out = new ArrayList<T>(count);
+		if (count <= 0) {
+			return getList(new ArrayList<T>(0));
+		}
+
+		// Extract first object.
+		int mark = offset;
+		int size = count;
+		T val = unpackObject();
 		
-		for (int i = 0; i < count; i++) {
+		if (val == null) {
+			// Determine if null value is because of an extension type.
+			int type = buffer[mark] & 0xff;
+			
+			if (type != 0xc0) {  // not nil type
+				// Ignore extension type.
+				size--;
+			}
+		}
+
+		ArrayList<T> out = new ArrayList<T>(size);
+		
+		if (size == count) {
+			out.add(val);
+		}
+		
+		for (int i = 1; i < count; i++) {			
 			out.add(unpackObject());
 		}
 		return getList(out);
 	}
-	
+
 	public final T unpackMap() throws AerospikeException {
 		if (length <= 0) {
 			return getMap(new HashMap<T,T>(0));
