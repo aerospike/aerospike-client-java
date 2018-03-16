@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-benchmarks</artifactId>
-  <version>4.1.4</version>
+  <version>4.1.5</version>
   <packaging>jar</packaging>
   <name>Aerospike Benchmarks</name>
 
@@ -12,7 +12,7 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>4.1.4</version>
+      <version>4.1.5</version>
     </dependency>
 
     <dependency>
