@@ -23,7 +23,6 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 
-import java.util.List;
 
 public class Arguments {
 	public String namespace;
