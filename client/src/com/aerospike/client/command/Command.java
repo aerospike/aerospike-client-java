@@ -657,6 +657,10 @@ public abstract class Command {
 			// Estimate scan options size.
 			dataOffset += 2 + FIELD_HEADER_SIZE;
 			fieldCount++;
+
+			// Estimate scan timeout size.
+			dataOffset += 4 + FIELD_HEADER_SIZE;
+			fieldCount++;
 		}
 		
 		PredExp[] predExp = statement.getPredExp();
@@ -752,7 +756,12 @@ public abstract class Command {
 			byte priority = (byte)policy.priority.ordinal();
 			priority <<= 4;			
 			dataBuffer[dataOffset++] = priority;
-			dataBuffer[dataOffset++] = (byte)100;			
+			dataBuffer[dataOffset++] = (byte)100;
+
+			// Write scan socket idle timeout.
+			writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
+			Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
+			dataOffset += 4;
 		}
 
 		if (predExp != null) {
