@@ -25,7 +25,6 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
-import java.util.List;
 
 /**
  * Synchronous read/write task.

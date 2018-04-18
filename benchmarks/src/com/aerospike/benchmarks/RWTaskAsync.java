@@ -107,7 +107,7 @@ public final class RWTaskAsync extends RWTask {
 
 	@Override
 	protected void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues) {
-
+		// Udfs for async is not implemented
 	}
 
 	@Override
