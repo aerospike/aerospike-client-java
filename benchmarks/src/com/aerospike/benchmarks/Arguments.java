@@ -23,6 +23,8 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 
+import java.util.List;
+
 public class Arguments {
 	public String namespace;
 	public String setName;
@@ -46,6 +48,9 @@ public class Arguments {
 	public KeyType keyType;
 	public Bin[] fixedBins;
 	public Bin[] fixedBin;
+	public String udfPackageName;
+	public String udfFunctionName;
+	public Value[] udfValues;
 
 	public void setFixedBins() {
 		// Fixed values are used when the extra random call overhead is not wanted

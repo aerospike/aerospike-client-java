@@ -21,6 +21,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
@@ -102,6 +103,11 @@ public final class RWTaskAsync extends RWTask {
 			begin = System.nanoTime();
 		}
 		client.get(eventLoop, recordListener, args.readPolicy, key);
+	}
+
+	@Override
+	protected void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues) {
+
 	}
 
 	@Override
