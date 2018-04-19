@@ -20,9 +20,12 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
+
+
 /**
  * Synchronous read/write task.
  */
@@ -123,7 +126,23 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}	
 		processRead(key, record);
 	}
-	
+
+	@Override
+	protected void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues) {
+		Object udfReturnObj;
+
+		if (counters.read.latency != null) {
+			long begin = System.nanoTime();
+			udfReturnObj = client.execute(args.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
+			long elapsed = System.nanoTime() - begin;
+			counters.read.latency.add(elapsed);
+		}
+		else {
+			udfReturnObj = client.execute(args.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
+		}
+		processRead(key, udfReturnObj);
+	}
+
 	@Override
 	protected void get(Key[] keys, String binName) {
 		Record[] records;

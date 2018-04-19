@@ -16,6 +16,7 @@
  */
 package com.aerospike.benchmarks;
 
+import com.aerospike.client.Value;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -274,6 +275,10 @@ public class Main implements Log.Callback {
 				);
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
+		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
+		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
+		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
+
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -762,6 +767,34 @@ public class Main implements Log.Callback {
 			this.eventLoopType = EventLoopType.NETTY_EPOLL;
 		}
 
+		if(line.hasOption("udfPackageName")){
+			args.udfPackageName = line.getOptionValue("udfPackageName");
+		}
+
+		if(line.hasOption("udfFunctionName")){
+			if(args.udfPackageName == null){
+				throw new Exception("Udf Package name missing");
+			}
+			args.udfFunctionName = line.getOptionValue("udfFunctionName");
+		}
+
+		if(line.hasOption("udfFunctionValues")){
+			Object[] udfVals = line.getOptionValue("udfFunctionValues").split(",");
+			if(args.udfPackageName == null){
+				throw new Exception("Udf Package name missing");
+			}
+
+			if(args.udfFunctionName == null){
+				throw new Exception("Udf Function name missing");
+			}
+			Value[] udfValues = new Value[udfVals.length];
+			int index = 0;
+			for(Object value : udfVals){
+				udfValues[index++] = Value.get(value);
+			}
+			args.udfValues = udfValues;
+		}
+
 		System.out.println("Benchmark: " + this.hosts[0] 
 			+ ", namespace: " + args.namespace 
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
@@ -1156,6 +1189,7 @@ public class Main implements Log.Callback {
 	private static class UsageException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
+
 
 	private static void printVersion()
 	{
