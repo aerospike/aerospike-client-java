@@ -97,7 +97,6 @@ public abstract class RWTask {
 	protected void runNextCommand() {
 	}
 
-
 	private void readUpdate(RandomShift random) {
 		if (random.nextInt(100) < args.readPct) {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
@@ -268,12 +267,10 @@ public abstract class RWTask {
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 
 			// if udf has been chosen call udf
-			if(args.udfValues!=null){
+			if (args.udfValues != null) {
 				get(key,args.udfPackageName,args.udfFunctionName,args.udfValues);
 			}
-
 			else if (multiBin) {
-
 				// Read all bins, maybe validate
 				get(key);			
 			} 
@@ -361,12 +358,10 @@ public abstract class RWTask {
 
 
 		try {
-
 			// if udf has been chosen call udf
-			if(args.udfValues!=null){
+			if (args.udfValues != null) {
 				get(new Key(args.namespace, args.setName, numKey),args.udfPackageName,args.udfFunctionName,args.udfValues);
 			}
-
 			else if (multiBin) {
 				// Read all bins, maybe validate
 				get(new Key(args.namespace, args.setName, numKey));			
@@ -394,11 +389,9 @@ public abstract class RWTask {
 		String strKey = Main.keyList.get((int)(keyStart+keyIdx));
 
 		try {
-
-			if(args.udfValues!=null){
+			if (args.udfValues != null) {
 				get(new Key(args.namespace, args.setName, strKey),args.udfPackageName,args.udfFunctionName,args.udfValues);
 			}
-
 			else if (multiBin) {
 				// Read all bins, maybe validate
 				get(new Key(args.namespace, args.setName, strKey));			
@@ -426,7 +419,6 @@ public abstract class RWTask {
 			counters.read.count.getAndIncrement();		
 		}
 	}
-
 
 	protected void processRead(Key key, Object udfReturnValue) {
 		if (udfReturnValue == null && args.reportNotFound) {

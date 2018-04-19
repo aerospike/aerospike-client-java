@@ -16,7 +16,6 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.Value;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -42,6 +41,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.Value;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
@@ -278,7 +278,6 @@ public class Main implements Log.Callback {
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
-
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -1189,7 +1188,6 @@ public class Main implements Log.Callback {
 	private static class UsageException extends Exception {
 		private static final long serialVersionUID = 1L;
 	}
-
 
 	private static void printVersion()
 	{
