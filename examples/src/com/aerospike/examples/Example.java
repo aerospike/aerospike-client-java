@@ -34,6 +34,7 @@ public abstract class Example {
 		ClientPolicy policy = new ClientPolicy();
 		policy.user = params.user;
 		policy.password = params.password;
+		policy.authMode = params.authMode;
 		policy.tlsPolicy = params.tlsPolicy;
 		
 		params.policy = policy.readPolicyDefault;

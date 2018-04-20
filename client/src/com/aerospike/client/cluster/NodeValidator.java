@@ -28,6 +28,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
+import com.aerospike.client.admin.AdminCommand.LoginCommand;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -36,8 +37,9 @@ public final class NodeValidator {
 	List<Host> aliases;
 	Host primaryHost;
 	InetSocketAddress primaryAddress;
-	Connection conn;
+	Connection primaryConn;
 	byte[] sessionToken;
+	long sessionExpiration;
 	int features;
 
 	/**
@@ -63,7 +65,7 @@ public final class NodeValidator {
 				}
 				else {
 					// Node already referenced. Close connection.
-					conn.close();
+					primaryConn.close();
 				}
 			}
 			catch (Exception e) {
@@ -138,12 +140,25 @@ public final class NodeValidator {
 	
 	private void validateAlias(Cluster cluster, Host alias) throws Exception {
 		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
-		Connection conn = new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleNanos, null);
+		Connection conn = (cluster.tlsPolicy != null) ?
+			new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
+			new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
 		
 		try {
 			if (cluster.user != null) {
-				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-				sessionToken = command.login(cluster, conn, alias);
+				// Login
+				LoginCommand admin = new LoginCommand(cluster, conn, alias);
+				sessionToken = admin.sessionToken;
+				sessionExpiration = admin.sessionExpiration;
+				
+				if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly) {
+					// Switch to using non-TLS socket.
+					SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
+					conn.close();
+					alias = sc.clearHost;
+					address = sc.clearAddress;
+					conn = sc.clearConn;
+				}
 			}
 
 			HashMap<String,String> map;
@@ -188,7 +203,7 @@ public final class NodeValidator {
 			this.name = nodeName;
 			this.primaryHost = alias;
 			this.primaryAddress = address;
-			this.conn = conn;
+			this.primaryConn = conn;
 			setFeatures(map);
 		}
 		catch (Exception e) {
@@ -196,7 +211,7 @@ public final class NodeValidator {
 			throw e;
 		}
 	}
-	
+
 	private void setFeatures(HashMap<String,String> map) {
 		try {
 			String featuresString = map.get("features");
@@ -236,5 +251,61 @@ public final class NodeValidator {
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.
 		}
-	}	
+	}
+	
+	private static final class SwitchClear {
+		private Host clearHost;
+		private InetSocketAddress clearAddress;
+		private Connection clearConn;
+		
+		// Switch from TLS connection to non-TLS connection.
+		private SwitchClear(Cluster cluster, Connection conn, byte[] sessionToken) throws Exception {
+			// Obtain non-TLS addresses.
+			String command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+			String result = Info.request(conn, command);
+			List<Host> hosts = Host.parseServiceHosts(result);
+
+			// Find first valid non-TLS host.
+			for (Host host : hosts) {
+				try {
+					clearHost = host;
+
+					if (cluster.ipMap != null) {
+						String alternativeHost = cluster.ipMap.get(clearHost.name);
+						
+						if (alternativeHost != null) {
+							clearHost = new Host(alternativeHost, clearHost.port);
+						}				
+					}
+					
+					InetAddress[] addresses = InetAddress.getAllByName(clearHost.name);
+					
+					for (InetAddress ia : addresses) {
+						try {
+							clearAddress = new InetSocketAddress(ia, clearHost.port);						
+							clearConn = new Connection(clearAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
+							
+							try {
+								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
+								if (! admin.authenticate(cluster, clearConn, sessionToken)) {
+									throw new AerospikeException("Authentication failed");
+								}
+								return;  // Authenticated clear connection.
+							}
+							catch (Exception e) {
+								clearConn.close();
+							}
+						}
+						catch (Exception e) {
+							// Try next address.
+						}						
+					}			
+				}
+				catch (Exception e) {
+					// Try next host.
+				}
+			}
+			throw new AerospikeException("Invalid non-TLS address: " + result);
+		}
+	}
 }

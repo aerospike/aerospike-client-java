@@ -48,6 +48,7 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
@@ -273,6 +274,8 @@ public class Main implements Log.Callback {
 				"Values:  serial numbers separated by comma\n" +
 				"Default: null (Do not revoke certificates)"
 				);
+		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
+		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
@@ -345,8 +348,16 @@ public class Main implements Log.Callback {
 			if (line.hasOption("tr")) {
 				String s = line.getOptionValue("tr", "");
 				clientPolicy.tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-			}			
+			}
+
+			if (line.hasOption("tlsLoginOnly")) {
+				clientPolicy.tlsPolicy.forLoginOnly = true;
+			}
         }
+
+		if (line.hasOption("auth")) {
+			clientPolicy.authMode = AuthMode.valueOf(line.getOptionValue("auth", ""));
+		}				
 
 		clientPolicy.user = line.getOptionValue("user");
 		clientPolicy.password = line.getOptionValue("password");

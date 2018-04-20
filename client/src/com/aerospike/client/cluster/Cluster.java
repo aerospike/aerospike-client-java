@@ -38,6 +38,7 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Environment;
@@ -72,14 +73,17 @@ public class Cluster implements Runnable, Closeable {
     // TLS connection policy.
 	protected final TlsPolicy tlsPolicy;
 
+    // Authentication mode.
+	public final AuthMode authMode;
+
     // User name in UTF-8 encoded bytes.
 	protected final byte[] user;
 
 	// Password in UTF-8 encoded bytes.
-	protected byte[] password;
+	private byte[] password;
 
 	// Password in hashed format in bytes.
-	protected byte[] passwordHash;
+	private byte[] passwordHash;
 
 	// Random node index.
 	private final AtomicInteger nodeIndex;
@@ -106,7 +110,10 @@ public class Cluster implements Runnable, Closeable {
 	protected final int connPoolsPerNode;
 
 	// Initial connection timeout.
-	private final int connectionTimeout;
+	public final int connectionTimeout;
+
+	// Login timeout.
+	public final int loginTimeout;
 
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
@@ -128,9 +135,11 @@ public class Cluster implements Runnable, Closeable {
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
 		this.clusterName = policy.clusterName;
+		this.tlsPolicy = policy.tlsPolicy;
+		this.authMode = policy.authMode;
 
 		// Default TLS names when TLS enabled.
-		if (policy.tlsPolicy != null) {
+		if (tlsPolicy != null) {
 			boolean useClusterName = clusterName != null && clusterName.length() > 0;
 			
 			for (int i = 0; i < hosts.length; i++) {
@@ -142,11 +151,21 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 		}
+		else {
+			if (authMode == AuthMode.EXTERNAL) {
+				throw new AerospikeException("TLS is required for authentication mode: " + authMode);		
+			}
+		}
+		
 		this.seeds = hosts;
 		
 		if (policy.user != null && policy.user.length() > 0) {
 			this.user = Buffer.stringToUtf8(policy.user);
-			this.password = Buffer.stringToUtf8(policy.password);
+			
+			// Only store clear text password if external authentication is used.
+			if (authMode != AuthMode.INTERNAL) {
+				this.password = Buffer.stringToUtf8(policy.password);
+			}
 
 			String pass = policy.password;
 
@@ -164,11 +183,11 @@ public class Cluster implements Runnable, Closeable {
 		else {
 			this.user = null;
 		}
-		
-		tlsPolicy = policy.tlsPolicy;
+
 		connectionQueueSize = policy.maxConnsPerNode;
 		connPoolsPerNode = policy.connPoolsPerNode;
 		connectionTimeout = policy.timeout;
+		loginTimeout = policy.loginTimeout;
 		maxSocketIdleNanos = TimeUnit.SECONDS.toNanos((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
@@ -785,6 +804,11 @@ public class Cluster implements Runnable, Closeable {
 		return null;
 	}
 
+	public final void interruptTendSleep() {
+		// Interrupt tendThread's sleep(), so node refreshes will be performed sooner.
+		tendThread.interrupt();
+	}
+
 	public final void printPartitionMap() {
 		for (Entry<String,Partitions> entry : partitionMap.entrySet()) {
 			String namespace = entry.getKey();
@@ -808,17 +832,17 @@ public class Cluster implements Runnable, Closeable {
 
 	public void changePassword(byte[] user, byte[] password, byte[] passwordHash) {
 		if (this.user != null && Arrays.equals(user, this.user)) {
-			this.password = password;
 			this.passwordHash = passwordHash;
+
+			// Only store clear text password if external authentication is used.
+			if (authMode != AuthMode.INTERNAL) {
+				this.password = password;
+			}
 		}
 	}
 
 	public final ExecutorService getThreadPool() {
 		return threadPool;
-	}
-
-	public final int getConnectionTimeout() {
-		return connectionTimeout;
 	}
 
 	public final byte[] getUser() {

@@ -20,17 +20,20 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import org.mindrot.jbcrypt.BCrypt;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AdminPolicy;
+import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.util.ThreadLocalData;
 
 public class AdminCommand {
@@ -57,6 +60,7 @@ public class AdminCommand {
 	private static final byte CREDENTIAL = 3;
 	private static final byte CLEAR_PASSWORD = 4;
 	private static final byte SESSION_TOKEN = 5;
+	private static final byte SESSION_TTL = 6;
 	private static final byte ROLES = 10;
 	private static final byte ROLE = 11;
 	private static final byte PRIVILEGES = 12;
@@ -73,8 +77,8 @@ public class AdminCommand {
 	// Result Codes
 	private static final int INVALID_COMMAND = 54;
 
-	private byte[] dataBuffer;
-	private int dataOffset;
+	byte[] dataBuffer;
+	int dataOffset;
 
 	public AdminCommand() {
 		this.dataBuffer = new byte[8192];
@@ -86,78 +90,115 @@ public class AdminCommand {
 		dataOffset = 8;
 	}
 
-	public byte[] login(Cluster cluster, Connection conn, Host host) 
-		throws AerospikeException, IOException {
+	public static class LoginCommand extends AdminCommand {
+		public byte[] sessionToken = null;
+		public long sessionExpiration = 0;
+		
+		public LoginCommand(Cluster cluster, Connection conn, Host host) throws IOException {
+			super(ThreadLocalData.getBuffer());
 
-		writeHeader(LOGIN, 3);
-		writeField(USER, cluster.getUser());
-		writeField(CREDENTIAL, cluster.getPasswordHash());
-		writeField(CLEAR_PASSWORD, cluster.getPassword());
-		writeSize();
-		conn.write(dataBuffer, dataOffset);
-		conn.readFully(dataBuffer, HEADER_SIZE);
-
-		int result = dataBuffer[RESULT_CODE];
-	
-		if (result != 0) {
-			if (result == INVALID_COMMAND) {
-				// New login not supported.  Try old authentication.
-				authenticateOld(cluster, conn);
-				return null;
+			if (Log.debugEnabled()) {
+				Log.debug("Login " + host);
 			}
+
+			conn.setTimeout(cluster.loginTimeout);
 			
-			// login failed.
-			throw new AerospikeException(result, "Node " + host + " login failed");
+			try {
+				login(cluster, conn, host);
+			}
+			finally {
+				conn.setTimeout(cluster.connectionTimeout);
+			}
 		}
-		
-		// Read session token.
-		long size = Buffer.bytesToLong(dataBuffer, 0);
-		int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
-		int fieldCount = dataBuffer[11];
 
-		if (receiveSize <= 0 || receiveSize > dataBuffer.length || fieldCount <= 0) {
-			throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");			
-		}
-		
-		conn.readFully(dataBuffer, receiveSize);
-		dataOffset = 0;
-
-		for (int i = 0; i < fieldCount; i++) {
-			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-			int id = dataBuffer[dataOffset++];
-			len--;
-
-			if (id == SESSION_TOKEN) {
-				return Arrays.copyOfRange(dataBuffer, dataOffset, dataOffset + len);				
+		public void login(Cluster cluster, Connection conn, Host host) throws IOException {			
+			if (cluster.authMode == AuthMode.INTERNAL) {
+				writeHeader(LOGIN, 2);
+				writeField(USER, cluster.getUser());
+				writeField(CREDENTIAL, cluster.getPasswordHash());
 			}
 			else {
+				writeHeader(LOGIN, 3);
+				writeField(USER, cluster.getUser());
+				writeField(CREDENTIAL, cluster.getPasswordHash());
+				writeField(CLEAR_PASSWORD, cluster.getPassword());
+			}
+			writeSize();
+			conn.write(dataBuffer, dataOffset);
+			conn.readFully(dataBuffer, HEADER_SIZE);
+
+			int result = dataBuffer[RESULT_CODE] & 0xFF;
+		
+			if (result != 0) {
+				if (result == INVALID_COMMAND) {
+					// New login not supported.  Try old authentication.
+					authenticateOld(cluster, conn);
+					return;
+				}
+				
+				// login failed.
+				throw new AerospikeException(result, "Node " + host + " login failed");
+			}
+			
+			// Read session token.
+			long size = Buffer.bytesToLong(dataBuffer, 0);
+			int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
+			int fieldCount = dataBuffer[11] & 0xFF;
+
+			if (receiveSize <= 0 || receiveSize > dataBuffer.length || fieldCount <= 0) {
+				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");			
+			}
+			
+			conn.readFully(dataBuffer, receiveSize);
+			dataOffset = 0;
+			
+			for (int i = 0; i < fieldCount; i++) {
+				int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4;
+				int id = dataBuffer[dataOffset++];
+				len--;
+
+				if (id == SESSION_TOKEN) {
+					sessionToken = Arrays.copyOfRange(dataBuffer, dataOffset, dataOffset + len);				
+				}
+				else if (id == SESSION_TTL) {
+					// Subtract 60 seconds from ttl so client session expires before server session.
+					long seconds = Buffer.bigUnsigned32ToLong(dataBuffer, dataOffset) - 60;
+					
+					if (seconds > 0) {
+						sessionExpiration = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
+					}
+					else {
+						Log.warn("Invalid session TTL: " + seconds);
+					}
+				}
 				dataOffset += len;
 			}
-		}
-		throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");			
-	}
 
-	public void authenticate(Cluster cluster, Node node, Connection conn) 
+			if (sessionToken == null) {
+				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+			}
+		}
+	}
+	
+	public boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken) 
 		throws AerospikeException, IOException {
 		
-		setAuthenticate(cluster, node);
+		dataOffset = 8;
+		setAuthenticate(cluster, sessionToken);
 		conn.write(dataBuffer, dataOffset);
 		conn.readFully(dataBuffer, HEADER_SIZE);
 
-		int result = dataBuffer[RESULT_CODE];
-		if (result != 0) {
-			throw new AerospikeException(result, "Authentication failed");
-		}
+		return (dataBuffer[RESULT_CODE] & 0xFF) == 0;
 	}
 
-	public int setAuthenticate(Cluster cluster, Node node) {
+	public int setAuthenticate(Cluster cluster, byte[] sessionToken) {
 		writeHeader(AUTHENTICATE, 2);
 		writeField(USER, cluster.getUser());
 		
-		if (node.getSessionToken() != null) {
+		if (sessionToken != null) {
 			// New authentication.
-			writeField(SESSION_TOKEN, node.getSessionToken());	
+			writeField(SESSION_TOKEN, sessionToken);	
 		}
 		else {
 			// Old authentication.
@@ -307,13 +348,13 @@ public class AdminCommand {
 		dataOffset = offset;
 	}
 
-	private void writeSize() {
+	final void writeSize() {
 		// Write total size of message which is the current offset.
 		long size = ((long)dataOffset - 8) | (MSG_VERSION << 56) | (MSG_TYPE << 48);
 		Buffer.longToBytes(size, dataBuffer, 0);
 	}
 
-	private void writeHeader(byte command, int fieldCount) {
+	final void writeHeader(byte command, int fieldCount) {
 		// Authenticate header is almost all zeros
 		Arrays.fill(dataBuffer, dataOffset, dataOffset + 16, (byte)0);
 		dataBuffer[dataOffset + 2] = command;
@@ -327,7 +368,7 @@ public class AdminCommand {
 		dataOffset += len;
 	}
 
-	private void writeField(byte id, byte[] bytes) {
+	final void writeField(byte id, byte[] bytes) {
 		System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
 		writeFieldHeader(id, bytes.length);
 		dataOffset += bytes.length;

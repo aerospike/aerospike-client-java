@@ -57,7 +57,9 @@ public class Policy {
 	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
 	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
 	 * <p>
-	 * Default: 0 (no socket idle time limit).
+	 * Default for everything but scan/query: 0 (no socket idle time limit)
+	 * <p>
+	 * Default for scan/query: 10000ms
 	 */
 	public int socketTimeout;
 
@@ -74,7 +76,7 @@ public class Policy {
 	 * <p>
 	 * If totalTimeout is zero, there will be no total time limit.
 	 * <p>
-	 * Default: 0 (no time limit).
+	 * Default: 0 (no time limit)
 	 */
 	public int totalTimeout;
 
@@ -139,7 +141,7 @@ public class Policy {
 	 * sleepBetweenRetries should be set high enough to allow the cluster to
 	 * reform (>= 500ms).
 	 * <p>
-	 * Default: 0 (do not sleep between retries).
+	 * Default: 0 (do not sleep between retries)
 	 */
 	public int sleepBetweenRetries;
 

@@ -260,7 +260,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 						conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
 						ChannelPipeline p = ch.pipeline();
 						
-						if (eventLoop.parent.sslContext != null) {
+						if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
 							//InetSocketAddress address = node.getAddress();
 							//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
 							p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
@@ -303,7 +303,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.initBuffer();
 				
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster, command.node);
+		command.dataOffset = admin.setAuthenticate(cluster, command.node.getSessionToken());
 		writeByteBuffer();
 	}
 	
@@ -425,6 +425,16 @@ public final class NettyCommand implements Runnable, TimerTask {
 		int resultCode = command.dataBuffer[1] & 0xFF;
 	
 		if (resultCode != 0) {
+			// Authentication failed. Session token probably expired.
+			// Signal tend thread to perform node login, so future 
+			// transactions do not fail.
+			command.node.signalLogin();	
+			
+			// This is a rare event because the client tracks session
+			// expiration and will relogin before session expiration.
+			// Do not try to login on same socket because login can take
+			// a long time and thousands of simultaneous logins could
+			// overwhelm server.
 			throw new AerospikeException(resultCode);
 		}
 		writeCommand();

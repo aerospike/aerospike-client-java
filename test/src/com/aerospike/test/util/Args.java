@@ -18,6 +18,7 @@ package com.aerospike.test.util;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Arrays;
 import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
@@ -33,6 +34,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -41,6 +43,7 @@ public class Args {
 	
 	public String host;
 	public int port;
+	public AuthMode authMode = AuthMode.INTERNAL;
 	public String user;
 	public String password;
 	public String namespace;
@@ -100,6 +103,8 @@ public class Args {
 					"Values:  serial numbers separated by comma\n" +
 					"Default: null (Do not revoke certificates)"
 					);
+			options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
+			options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 			options.addOption("netty", false, "Use Netty NIO event loops for async tests");
 			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async tests (Linux only)");
 			options.addOption("d", "debug", false, "Run in debug mode.");
@@ -139,8 +144,16 @@ public class Args {
 				if (cl.hasOption("tr")) {
 					String s = cl.getOptionValue("tr", "");
 					tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-				}				
+				}
+
+				if (cl.hasOption("tlsLoginOnly")) {
+					tlsPolicy.forLoginOnly = true;
+				}
 	        }
+	        
+			if (cl.hasOption("auth")) {
+				authMode = AuthMode.valueOf(cl.getOptionValue("auth", ""));
+			}				
 	        
 			if (cl.hasOption("netty")) {
 				eventLoopType = EventLoopType.NETTY_NIO;
