@@ -250,7 +250,7 @@ public class Main extends JPanel {
 		AuthMode authMode = AuthMode.INTERNAL;
 		
 		if (cl.hasOption("auth")) {
-			authMode = AuthMode.valueOf(cl.getOptionValue("auth", ""));
+			authMode = AuthMode.valueOf(cl.getOptionValue("auth", "").toUpperCase());
 		}				
 		
 		return new Parameters(tlsPolicy, host, port, user, password, authMode, namespace, set);

@@ -356,7 +356,7 @@ public class Main implements Log.Callback {
         }
 
 		if (line.hasOption("auth")) {
-			clientPolicy.authMode = AuthMode.valueOf(line.getOptionValue("auth", ""));
+			clientPolicy.authMode = AuthMode.valueOf(line.getOptionValue("auth", "").toUpperCase());
 		}				
 
 		clientPolicy.user = line.getOptionValue("user");

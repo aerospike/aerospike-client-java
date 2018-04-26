@@ -152,7 +152,7 @@ public class Args {
 	        }
 	        
 			if (cl.hasOption("auth")) {
-				authMode = AuthMode.valueOf(cl.getOptionValue("auth", ""));
+				authMode = AuthMode.valueOf(cl.getOptionValue("auth", "").toUpperCase());
 			}				
 	        
 			if (cl.hasOption("netty")) {
