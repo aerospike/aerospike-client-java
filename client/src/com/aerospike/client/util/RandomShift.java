@@ -50,6 +50,32 @@ public final class RandomShift {
 		seed0 = random.nextLong();
 		seed1 = random.nextLong();
 	}
+
+	/**
+	 * Generate a random string of given size.
+	 */
+	public String nextString(int size) {
+		char[] chars = new char[size];
+		int r;
+		
+		for (int i = 0; i < size; i++) {
+			r = nextInt(62);  // Lower alpha + Upper alpha + digit
+			
+			if (r < 26) {
+				// Lower case
+				chars[i] = (char)(r + 97);
+			}
+			else if (r < 52) {
+				// Upper case
+				chars[i] = (char)(r - 26 + 65);
+			}
+			else {
+				// Digit
+				chars[i] = (char)(r - 52 + 48);
+			}
+		}
+		return new String(chars);
+	}
 	
 	/**
 	 * Generate random bytes.
