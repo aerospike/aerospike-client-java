@@ -96,7 +96,6 @@ public abstract class RWTask {
 
 	protected void runNextCommand() {
 	}
-	
 	private void readUpdate(RandomShift random) {
 		if (random.nextInt(100) < args.readPct) {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
