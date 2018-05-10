@@ -25,6 +25,7 @@ import com.aerospike.client.util.RandomShift;
 
 public class Arguments {
 	public String namespace;
+	public String[] namespaces;
 	public String setName;
 	public Workload workload;
 	public DBObjectSpec[] objectSpec;
