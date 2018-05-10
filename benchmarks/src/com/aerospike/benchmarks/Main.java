@@ -41,12 +41,14 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
+import com.aerospike.client.Value;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.ConsistencyLevel;
@@ -273,8 +275,13 @@ public class Main implements Log.Callback {
 				"Values:  serial numbers separated by comma\n" +
 				"Default: null (Do not revoke certificates)"
 				);
+		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
+		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
+		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
+		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
+		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -342,8 +349,16 @@ public class Main implements Log.Callback {
 			if (line.hasOption("tr")) {
 				String s = line.getOptionValue("tr", "");
 				clientPolicy.tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
-			}			
+			}
+
+			if (line.hasOption("tlsLoginOnly")) {
+				clientPolicy.tlsPolicy.forLoginOnly = true;
+			}
         }
+
+		if (line.hasOption("auth")) {
+			clientPolicy.authMode = AuthMode.valueOf(line.getOptionValue("auth", ""));
+		}				
 
 		clientPolicy.user = line.getOptionValue("user");
 		clientPolicy.password = line.getOptionValue("password");
@@ -768,6 +783,34 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("nettyEpoll")) {
 			this.eventLoopType = EventLoopType.NETTY_EPOLL;
+		}
+
+		if(line.hasOption("udfPackageName")){
+			args.udfPackageName = line.getOptionValue("udfPackageName");
+		}
+
+		if(line.hasOption("udfFunctionName")){
+			if(args.udfPackageName == null){
+				throw new Exception("Udf Package name missing");
+			}
+			args.udfFunctionName = line.getOptionValue("udfFunctionName");
+		}
+
+		if(line.hasOption("udfFunctionValues")){
+			Object[] udfVals = line.getOptionValue("udfFunctionValues").split(",");
+			if(args.udfPackageName == null){
+				throw new Exception("Udf Package name missing");
+			}
+
+			if(args.udfFunctionName == null){
+				throw new Exception("Udf Function name missing");
+			}
+			Value[] udfValues = new Value[udfVals.length];
+			int index = 0;
+			for(Object value : udfVals){
+				udfValues[index++] = Value.get(value);
+			}
+			args.udfValues = udfValues;
 		}
 
 		System.out.println("Benchmark: " + this.hosts[0] 

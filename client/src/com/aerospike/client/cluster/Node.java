@@ -17,6 +17,7 @@
 package com.aerospike.client.cluster;
 
 import java.io.Closeable;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -30,6 +31,7 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
+import com.aerospike.client.admin.AdminCommand.LoginCommand;
 import com.aerospike.client.async.AsyncConnection;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.policy.BatchPolicy;
@@ -60,7 +62,8 @@ public class Node implements Closeable {
 	private final Pool[] connectionPools;
 	private final AsyncPool[] asyncConnectionPools;
 	private Connection tendConnection;
-	private final byte[] sessionToken;
+	private byte[] sessionToken;
+	private long sessionExpiration;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
@@ -69,6 +72,7 @@ public class Node implements Closeable {
 	protected int failures;
 	private final int features;
 	protected boolean partitionChanged;
+	protected volatile boolean performLogin;
 	protected volatile boolean active;
 
 	/**
@@ -83,8 +87,9 @@ public class Node implements Closeable {
 		this.aliases = nv.aliases;
 		this.host = nv.primaryHost;
 		this.address = nv.primaryAddress;
-		this.tendConnection = nv.conn;
+		this.tendConnection = nv.primaryConn;
 		this.sessionToken = nv.sessionToken;
+		this.sessionExpiration = nv.sessionExpiration;
 		this.features = nv.features;
 		
 		// Create sync connection pools.
@@ -127,12 +132,22 @@ public class Node implements Closeable {
 		
 		try {
 			if (tendConnection.isClosed()) {
-				tendConnection = new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.getConnectionTimeout(), cluster.maxSocketIdleNanos, null);
+				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
+					new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
 
 				if (cluster.user != null) {
 					try {
-						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						command.authenticate(cluster, this, tendConnection);
+						if (! ensureLogin()) {
+							AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+							if (! command.authenticate(cluster, tendConnection, sessionToken)) {
+								// Authentication failed.  Session token probably expired.
+								// Must login again to get new session token.
+								LoginCommand login = new LoginCommand(cluster, tendConnection, host);
+								sessionToken = login.sessionToken;
+								sessionExpiration = login.sessionExpiration;
+							}
+						}
 					}
 					catch (AerospikeException ae) {
 						tendConnection.close();
@@ -144,7 +159,12 @@ public class Node implements Closeable {
 					}
 				}
 			}
-	
+			else {
+				if (cluster.user != null) {
+					ensureLogin();
+				}
+			}
+		
 			if (peers.usePeers) {
 				HashMap<String,String> infoMap = Info.request(tendConnection, "node", "peers-generation", "partition-generation");
 				verifyNodeName(infoMap);
@@ -171,7 +191,27 @@ public class Node implements Closeable {
 			refreshFailed(e);
 		}
 	}
+
+	private boolean ensureLogin() throws IOException {
+		if (performLogin || (sessionExpiration > 0 && System.nanoTime() >= sessionExpiration)) {
+			LoginCommand login = new LoginCommand(cluster, tendConnection, host);
+			sessionToken = login.sessionToken;
+			sessionExpiration = login.sessionExpiration;
+			performLogin = false;
+			return true;
+		}
+		return false;
+	}
 	
+	public final void signalLogin() {
+		// Only login when sessionToken is supported
+		// and login not already been requested.
+		if (! performLogin) {
+			performLogin = true;
+			cluster.interruptTendSleep();
+		}
+	}
+
 	private final void verifyNodeName(HashMap <String,String> infoMap) {
 		// If the node name has changed, remove node from cluster and hope one of the other host
 		// aliases is still valid.  Round-robbin DNS may result in a hostname that resolves to a
@@ -272,7 +312,7 @@ public class Node implements Closeable {
 				// Duplicate node name found.  This usually occurs when the server 
 				// services list contains both internal and external IP addresses 
 				// for the same node.
-				nv.conn.close();
+				nv.primaryConn.close();
 				peers.hosts.add(host);
 				node.aliases.add(host);
 				return true;				
@@ -282,7 +322,7 @@ public class Node implements Closeable {
 			node = cluster.nodesMap.get(nv.name);
 			
 			if (node != null) {
-				nv.conn.close();
+				nv.primaryConn.close();
 				peers.hosts.add(host);
 				node.aliases.add(host);
 				node.referenceCount++;
@@ -341,7 +381,7 @@ public class Node implements Closeable {
 							
 							if (findPeerNode(cluster, peers, nv.name)) {
 								// Node already exists. Do not even try to connect to hosts.				
-								nv.conn.close();
+								nv.primaryConn.close();
 								nodeValidated = true;
 								break;
 							}
@@ -486,7 +526,9 @@ public class Node implements Closeable {
 				// Socket not found and queue has available slot.
 				// Create new connection.
 				try {
-					conn = new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool);
+					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool) :
+						new Connection(address, timeoutMillis, cluster.maxSocketIdleNanos, pool);
 				}
 				catch (RuntimeException re) {
 					pool.total.getAndDecrement();
@@ -496,7 +538,10 @@ public class Node implements Closeable {
 				if (cluster.user != null) {
 					try {
 						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						command.authenticate(cluster, this, conn);
+						if (! command.authenticate(cluster, conn, sessionToken)) {
+							signalLogin();
+							throw new AerospikeException("Authentication failed");
+						}
 					}
 					catch (AerospikeException ae) {
 						// Socket not authenticated.  Do not put back into pool.
@@ -591,7 +636,7 @@ public class Node implements Closeable {
 	public final void decrAsyncConnection(int index) {
 		asyncConnectionPools[index].total--;
 	}
-
+	
 	/**
 	 * Return server node IP address and port.
 	 */

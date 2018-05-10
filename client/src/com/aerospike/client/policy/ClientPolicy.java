@@ -49,11 +49,27 @@ public class ClientPolicy {
 	public String clusterName;
 
 	/**
+	 * Authentication mode used when user/password is defined.
+	 * <p>
+	 * Default: INTERNAL
+	 */
+	public AuthMode authMode = AuthMode.INTERNAL;
+	
+	/**
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection 
 	 * to the server host for the first time.
+	 * <p>
 	 * Default: 1000ms
 	 */
 	public int timeout = 1000;
+
+	/**
+	 * Login timeout in milliseconds.  The timeout is used when user authentication is enabled and
+	 * a node login is being performed.
+	 * <p>
+	 * Default: 5000ms
+	 */
+	public int loginTimeout = 5000;
 
 	/**
 	 * Maximum number of connections allowed per server node.  Transactions will go through retry
@@ -223,7 +239,9 @@ public class ClientPolicy {
 		this.user = other.user;
 		this.password = other.password;
 		this.clusterName = other.clusterName;
+		this.authMode = other.authMode;
 		this.timeout = other.timeout;
+		this.loginTimeout = other.loginTimeout;
 		this.maxConnsPerNode = other.maxConnsPerNode;
 		this.connPoolsPerNode = other.connPoolsPerNode;
 		this.maxSocketIdle = other.maxSocketIdle;

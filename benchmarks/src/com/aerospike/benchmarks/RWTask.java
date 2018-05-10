@@ -23,6 +23,7 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.GenerationPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
@@ -263,9 +264,13 @@ public abstract class RWTask {
 	 */
 	protected void doRead(long keyIdx, boolean multiBin) {
 		try {
-
 			Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
-			if (multiBin) {
+
+			// if udf has been chosen call udf
+			if (args.udfValues != null) {
+				get(key,args.udfPackageName,args.udfFunctionName,args.udfValues);
+			}
+			else if (multiBin) {
 				// Read all bins, maybe validate
 				get(key);			
 			} 
@@ -293,7 +298,7 @@ public abstract class RWTask {
 			for (int i = 0; i < keyIdxs.length; i++) {
 				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdxs[i]);
 			}
-			
+
 			if (multiBin) {
 				// Read all bins, maybe validate
 				get(keys);			
@@ -364,9 +369,14 @@ public abstract class RWTask {
 	protected void doReadLong(long keyIdx, boolean multiBin) {
 		// Warning: read from file only works when keyStart + keyIdx < Integer.MAX_VALUE.
 		long numKey = Long.parseLong(Main.keyList.get((int)(keyStart + keyIdx)));
-		
+
+
 		try {
-			if (multiBin) {
+			// if udf has been chosen call udf
+			if (args.udfValues != null) {
+				get(new Key(args.namespace, args.setName, numKey),args.udfPackageName,args.udfFunctionName,args.udfValues);
+			}
+			else if (multiBin) {
 				// Read all bins, maybe validate
 				get(new Key(args.namespace, args.setName, numKey));			
 			} 
@@ -393,7 +403,10 @@ public abstract class RWTask {
 		String strKey = Main.keyList.get((int)(keyStart+keyIdx));
 
 		try {
-			if (multiBin) {
+			if (args.udfValues != null) {
+				get(new Key(args.namespace, args.setName, strKey),args.udfPackageName,args.udfFunctionName,args.udfValues);
+			}
+			else if (multiBin) {
 				// Read all bins, maybe validate
 				get(new Key(args.namespace, args.setName, strKey));			
 			} 
@@ -418,6 +431,15 @@ public abstract class RWTask {
 		}
 		else {
 			counters.read.count.getAndIncrement();		
+		}
+	}
+
+	protected void processRead(Key key, Object udfReturnValue) {
+		if (udfReturnValue == null && args.reportNotFound) {
+			counters.readNotFound.getAndIncrement();
+		}
+		else {
+			counters.read.count.getAndIncrement();
 		}
 	}
 
@@ -471,6 +493,7 @@ public abstract class RWTask {
 	protected abstract void add(Key key, Bin[] bins);
 	protected abstract void get(Key key, String binName);
 	protected abstract void get(Key key);
+	protected abstract void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues);
 	protected abstract void get(Key[] keys);
 	protected abstract void get(Key[] keys, String binName);
 }

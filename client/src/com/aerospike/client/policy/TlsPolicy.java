@@ -60,6 +60,13 @@ public final class TlsPolicy {
 	public BigInteger[] revokeCertificates;
 	
 	/**
+	 * Use TLS connections only for login authentication.  All other communication with
+	 * the server will be done with non-TLS connections. 
+	 * Default: false (Use TLS connections for all communication with server.)
+	 */
+	public boolean forLoginOnly;
+
+	/**
 	 * Copy TLS policy from another TLS policy.
 	 */
 	public TlsPolicy(TlsPolicy other) {
@@ -67,6 +74,7 @@ public final class TlsPolicy {
 		this.protocols = other.protocols;
 		this.ciphers = other.ciphers;
 		this.revokeCertificates = other.revokeCertificates;
+		this.forLoginOnly = other.forLoginOnly;
 	}
 
 	/**

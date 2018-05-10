@@ -52,93 +52,38 @@ public final class Connection implements Closeable {
 	protected final Pool pool;
 	private final long maxSocketIdle;
 	private volatile long lastUsed;
-	
+
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(null, null, address, timeoutMillis, TimeUnit.SECONDS.toNanos(55), null);
+		this(address, timeoutMillis, TimeUnit.SECONDS.toNanos(55), null);
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
+	public Connection(InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
 		this.maxSocketIdle = maxSocketIdle;
 		this.pool = pool;
 
 		try {
-			if (policy == null) {
-				socket = new Socket();
-			
-				try {
-					socket.setTcpNoDelay(true);
-					
-					if (timeoutMillis > 0) {
-						socket.setSoTimeout(timeoutMillis);
-					}
-					else {				
-						// Do not wait indefinitely on connection if no timeout is specified.
-						// Retry functionality will attempt to reconnect later.
-						timeoutMillis = 2000;
-					}
-					socket.connect(address, timeoutMillis);
-					in = socket.getInputStream();
-					out = socket.getOutputStream();
-					lastUsed = System.nanoTime();
-				}
-				catch (Exception e) {
-					// socket.close() will close input/output streams according to doc.
-					socket.close();
-					throw e;
-				}
-			}
-			else {				
-	            SSLSocketFactory sslsocketfactory = (policy.context != null) ?
-	            		policy.context.getSocketFactory() :
-	            		(SSLSocketFactory)SSLSocketFactory.getDefault();
-	            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket(address.getAddress(), address.getPort());
-				socket = sslSocket;
+			socket = new Socket();
+		
+			try {
+				socket.setTcpNoDelay(true);
 				
-				try {
-					socket.setTcpNoDelay(true);
-					
-					if (timeoutMillis > 0) {
-						socket.setSoTimeout(timeoutMillis);
-					}
-					else {				
-						// Do not wait indefinitely on connection if no timeout is specified.
-						// Retry functionality will attempt to reconnect later.
-						timeoutMillis = 2000;
-					}
-					
-					/*
-					String[] protocols = sslSocket.getSupportedProtocols();
-					for (String protocol : protocols) {
-						Log.info("Protocol: " + protocol);
-					}
-					String[] ciphers = sslSocket.getSupportedCipherSuites();
-					for (String cipher : ciphers) {
-						Log.info("Cipher: " + cipher);
-					}
-					*/
-
-					if (policy.protocols != null) {
-						sslSocket.setEnabledProtocols(policy.protocols);
-					}
-					
-					if (policy.ciphers != null) {
-						sslSocket.setEnabledCipherSuites(policy.ciphers);
-					}
-					
-					sslSocket.setUseClientMode(true);
-					sslSocket.startHandshake();		
-					X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
-					validateServerCertificate(policy, tlsName, cert);
-					
-					in = socket.getInputStream();
-					out = socket.getOutputStream();
-					lastUsed = System.nanoTime();
+				if (timeoutMillis > 0) {
+					socket.setSoTimeout(timeoutMillis);
 				}
-				catch (Exception e) {
-					// socket.close() will close input/output streams according to doc.
-					socket.close();
-					throw e;
+				else {				
+					// Do not wait indefinitely on connection if no timeout is specified.
+					// Retry functionality will attempt to reconnect later.
+					timeoutMillis = 2000;
 				}
+				socket.connect(address, timeoutMillis);
+				in = socket.getInputStream();
+				out = socket.getOutputStream();
+				lastUsed = System.nanoTime();
+			}
+			catch (Exception e) {
+				// socket.close() will close input/output streams according to doc.
+				socket.close();
+				throw e;
 			}
 		}
 		catch (AerospikeException ae) {
@@ -149,6 +94,71 @@ public final class Connection implements Closeable {
 		}
 	}
 	
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
+		this.maxSocketIdle = maxSocketIdle;
+		this.pool = pool;
+
+		try {
+            SSLSocketFactory sslsocketfactory = (policy.context != null) ?
+            		policy.context.getSocketFactory() :
+            		(SSLSocketFactory)SSLSocketFactory.getDefault();
+            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket(address.getAddress(), address.getPort());
+			socket = sslSocket;
+			
+			try {
+				socket.setTcpNoDelay(true);
+				
+				if (timeoutMillis > 0) {
+					socket.setSoTimeout(timeoutMillis);
+				}
+				else {				
+					// Do not wait indefinitely on connection if no timeout is specified.
+					// Retry functionality will attempt to reconnect later.
+					timeoutMillis = 2000;
+				}
+				
+				/*
+				String[] protocols = sslSocket.getSupportedProtocols();
+				for (String protocol : protocols) {
+					Log.info("Protocol: " + protocol);
+				}
+				String[] ciphers = sslSocket.getSupportedCipherSuites();
+				for (String cipher : ciphers) {
+					Log.info("Cipher: " + cipher);
+				}
+				*/
+
+				if (policy.protocols != null) {
+					sslSocket.setEnabledProtocols(policy.protocols);
+				}
+				
+				if (policy.ciphers != null) {
+					sslSocket.setEnabledCipherSuites(policy.ciphers);
+				}
+				
+				sslSocket.setUseClientMode(true);
+				sslSocket.startHandshake();		
+				X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
+				validateServerCertificate(policy, tlsName, cert);
+				
+				in = socket.getInputStream();
+				out = socket.getOutputStream();
+				lastUsed = System.nanoTime();
+			}
+			catch (Exception e) {
+				// socket.close() will close input/output streams according to doc.
+				socket.close();
+				throw e;
+			}
+		}
+		catch (AerospikeException ae) {
+			throw ae;
+		}
+		catch (Exception e) {
+			throw new AerospikeException.Connection(e);
+		}
+	}
+
 	public static void validateServerCertificate(TlsPolicy policy, String tlsName, X509Certificate cert) throws Exception {
 		if (tlsName == null) {
 			// Do not throw AerospikeException.Connection because that exception will be retried.

@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Host name/port of database server. 
@@ -78,7 +79,7 @@ public final class Host {
 	}
 	
 	/**
-	 * Parse hosts from string format: hostname1[:tlsname1][:port1],...
+	 * Parse command-line hosts from string format: hostname1[:tlsname1][:port1],...
 	 * <p>
 	 * Hostname may also be an IP address in the following formats.
 	 * <ul>
@@ -91,26 +92,47 @@ public final class Host {
 	 */
 	public static Host[] parseHosts(String str, int defaultPort) {
 		try {
-			return new HostParser(str, defaultPort).hosts;
+			return new HostParser(str).parseHosts(defaultPort);
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Invalid hosts string: " + str);
 		}
 	}
-	
+
+	/**
+	 * Parse server service hosts from string format: hostname1:port1,...
+	 * <p>
+	 * Hostname may also be an IP address in the following formats.
+	 * <ul>
+	 * <li>IPv4: xxx.xxx.xxx.xxx</li>
+	 * <li>IPv6: [xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx]</li>
+	 * <li>IPv6: [xxxx::xxxx]</li>
+	 * </ul>
+	 * IPv6 addresses must be enclosed by brackets.
+	 */
+	public static List<Host> parseServiceHosts(String str) {
+		try {
+			return new HostParser(str).parseServiceHosts();
+		}
+		catch (Exception e) {
+			throw new AerospikeException("Invalid service hosts string: " + str);
+		}
+	}
+
 	private static class HostParser {
-		private Host[] hosts;
-		private String str;
+		private final String str;
 		private int offset;
 		private int length;
 		private char c;
 		
-		private HostParser(String str, int defaultPort) {
+		private HostParser(String str) {
 			this.str = str;
 			this.length = str.length();
 			this.offset = 0;
-			this.c = ',';
-			
+			this.c = ',';		
+		}
+		
+		private Host[] parseHosts(int defaultPort) {
 			ArrayList<Host> list = new ArrayList<Host>();
 			String hostname;
 			String tlsname;
@@ -147,9 +169,32 @@ public final class Host {
 				}				
 				list.add(new Host(hostname, tlsname, port));
 			}
-			hosts = list.toArray(new Host[list.size()]);
+			return list.toArray(new Host[list.size()]);
 		}
 		
+		private List<Host> parseServiceHosts() {
+			ArrayList<Host> list = new ArrayList<Host>();
+			String hostname;
+			int port;
+			
+			while (offset < length) {
+				if (c != ',') {
+					throw new RuntimeException();
+				}
+				hostname = parseHost();
+				
+				if (c != ':') {
+					throw new RuntimeException();
+				}
+				
+				String s = parseString();
+				port = Integer.parseInt(s);
+
+				list.add(new Host(hostname, port));
+			}
+			return list;
+		}
+
 		private String parseHost() {
 			c = str.charAt(offset);
 			
