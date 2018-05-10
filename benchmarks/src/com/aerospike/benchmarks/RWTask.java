@@ -324,11 +324,21 @@ public abstract class RWTask {
 	protected void doReadBatch(RandomShift random, boolean multiBin) {
 		Key[] keys = new Key[args.batchSize];
 		
-		for (int i = 0; i < keys.length; i++) {
-			long keyIdx = random.nextLong(keyCount);
-			keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
+		if (args.batchNamespaces == null) {
+			for (int i = 0; i < keys.length; i++) {
+				long keyIdx = random.nextLong(keyCount);
+				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
+			}
 		}
-		
+		else {
+			int nslen = args.batchNamespaces.length;
+
+			for (int i = 0; i < keys.length; i++) {
+				long keyIdx = random.nextLong(keyCount);
+				keys[i] = new Key(args.batchNamespaces[i % nslen], args.setName, keyStart + keyIdx);
+			}
+		}
+
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate
