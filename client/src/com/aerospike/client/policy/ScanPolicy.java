@@ -71,6 +71,6 @@ public final class ScanPolicy extends Policy {
 	public ScanPolicy() {
 		// Scans should not retry.
 		super.maxRetries = 0;
-		super.socketTimeout = 10000;
+		super.socketTimeout = 30000;
 	}
 }

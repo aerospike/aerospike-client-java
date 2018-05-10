@@ -59,7 +59,7 @@ public class Policy {
 	 * <p>
 	 * Default for everything but scan/query: 0 (no socket idle time limit)
 	 * <p>
-	 * Default for scan/query: 10000ms
+	 * Default for scan/query: 30000ms
 	 */
 	public int socketTimeout;
 
