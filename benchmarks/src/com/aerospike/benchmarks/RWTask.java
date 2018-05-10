@@ -96,7 +96,6 @@ public abstract class RWTask {
 
 	protected void runNextCommand() {
 	}
-
 	private void readUpdate(RandomShift random) {
 		if (random.nextInt(100) < args.readPct) {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
@@ -322,13 +321,27 @@ public abstract class RWTask {
 	 * Read batch of keys in one call.
 	 */
 	protected void doReadBatch(RandomShift random, boolean multiBin) {
-		Key[] keys = new Key[args.batchSize];
-		
-		for (int i = 0; i < keys.length; i++) {
-			long keyIdx = random.nextLong(keyCount);
-			keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
+
+		Key[] keys;
+		if(args.namespaces!=null){
+			keys = new Key[args.batchSize * args.namespaces.length];
+			int index = 0;
+			for (int i = 0; i < args.batchSize; i++) {
+				for(int j = 0; j < args.namespaces.length; j++){
+					long keyIdx = random.nextLong(keyCount);
+					keys[index++] = new Key(args.namespaces[j], args.setName, keyStart + keyIdx);
+				}
+			}
 		}
-		
+		else{
+			keys = new Key[args.batchSize];
+			for (int i = 0; i < keys.length; i++) {
+				long keyIdx = random.nextLong(keyCount);
+				keys[i] = new Key(args.namespace, args.setName, keyStart + keyIdx);
+			}
+		}
+
+
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate

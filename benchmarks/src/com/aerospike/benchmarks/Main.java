@@ -119,6 +119,7 @@ public class Main implements Log.Callback {
 		options.addOption("U", "user", true, "User name");
 		options.addOption("P", "password", true, "Password");
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
+		options.addOption("ns","namespaces",true, "Set the Aerospike namespaces. Default: test");
         options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " + 
@@ -379,6 +380,13 @@ public class Main implements Log.Callback {
 		} 
 		else {
 			args.namespace = "test";
+		}
+
+		if (line.hasOption("namespaces")) {
+			args.namespaces = line.getOptionValue("namespaces").split(",");
+		}
+		else {
+			args.namespaces = new String[]{"test"};
 		}
 
 		if (line.hasOption("set")) {
