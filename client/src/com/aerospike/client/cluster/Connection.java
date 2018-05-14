@@ -102,7 +102,7 @@ public final class Connection implements Closeable {
             SSLSocketFactory sslsocketfactory = (policy.context != null) ?
             		policy.context.getSocketFactory() :
             		(SSLSocketFactory)SSLSocketFactory.getDefault();
-            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket(address.getAddress(), address.getPort());
+            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket();
 			socket = sslSocket;
 			
 			try {
@@ -137,6 +137,7 @@ public final class Connection implements Closeable {
 				}
 				
 				sslSocket.setUseClientMode(true);
+				sslSocket.connect(address, timeoutMillis);
 				sslSocket.startHandshake();		
 				X509Certificate cert = (X509Certificate)sslSocket.getSession().getPeerCertificates()[0];
 				validateServerCertificate(policy, tlsName, cert);
