@@ -16,6 +16,8 @@
  */
 package com.aerospike.examples;
 
+import java.util.ArrayList;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -38,19 +40,20 @@ public class OperateMap extends Example {
 	 * Perform operations on a map bin.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, Parameters params) {
 		if (! params.hasCDTMap) {
 			console.info("CDT map functions are not supported by the connected Aerospike server.");
 			return;
 		}	
 		runSimpleExample(client, params);
 		runScoreExample(client, params);
+		runListRangeExample(client, params);
 	}
 
 	/**
 	 * Simple example of map operate functionality.
 	 */
-	public void runSimpleExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runSimpleExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
 		
@@ -89,7 +92,7 @@ public class OperateMap extends Example {
 	/**
 	 * Map score example.
 	 */
-	public void runScoreExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runScoreExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
 		
@@ -130,5 +133,61 @@ public class OperateMap extends Example {
 		for (Object result : results) {
 			console.info("Received: " + result);			
 		}
+	}
+
+	/**
+	 * Value list range example.
+	 */
+	public void runListRangeExample(AerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mapkey");
+		String binName = params.getBinName("mapbin");
+		
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+		
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(new GregorianCalendar(2018, 1, 1).getTime()));
+		l1.add(Value.get(1));
+		
+		List<Value> l2 = new ArrayList<Value>();
+		l2.add(Value.get(new GregorianCalendar(2018, 1, 2).getTime()));
+		l2.add(Value.get(2));
+
+		List<Value> l3 = new ArrayList<Value>();
+		l3.add(Value.get(new GregorianCalendar(2018, 2, 1).getTime()));
+		l3.add(Value.get(3));
+
+		List<Value> l4 = new ArrayList<Value>();
+		l4.add(Value.get(new GregorianCalendar(2018, 2, 2).getTime()));
+		l4.add(Value.get(4));
+
+		List<Value> l5 = new ArrayList<Value>();
+		l5.add(Value.get(new GregorianCalendar(2018, 2, 5).getTime()));
+		l5.add(Value.get(5));
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("Charlie"), Value.get(l1));
+		inputMap.put(Value.get("Jim"), Value.get(l2));
+		inputMap.put(Value.get("John"), Value.get(l3));
+		inputMap.put(Value.get("Harry"), Value.get(l4));
+		inputMap.put(Value.get("Bill"), Value.get(l5));
+		
+		// Write values to empty map.
+		Record record = client.operate(params.writePolicy, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+		
+		console.info("Record: " + record);			
+			
+		List<Value> end = new ArrayList<Value>();
+		end.add(Value.get(new GregorianCalendar(2018, 2, 2).getTime()));
+		end.add(Value.getAsNull());
+
+		// Delete values < end.
+		record = client.operate(params.writePolicy, key, 
+				MapOperation.removeByValueRange(binName, null, Value.get(end), MapReturnType.COUNT)
+				);
+		
+		console.info("Record: " + record);
 	}
 }
