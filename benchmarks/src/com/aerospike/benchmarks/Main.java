@@ -153,7 +153,7 @@ public class Main implements Log.Callback {
 			"Otherwise, the start_value indicates the smallest value in the working set of keys."
 			);
 		options.addOption("w", "workload", true, 
-			"I | RU,<percent>[,<percent2>][,<percent3>] | RMU | RMI | RMD\n" +
+			"I | RU,<percent>[,<percent2>][,<percent3>] | RR,<percent>[,<percent2>][,<percent3>], RMU | RMI | RMD\n" +
 			"Set the desired workload.\n\n" +  
 			"   -w I sets a linear 'insert' workload.\n\n" +
 			"   -w RU,80 sets a random read-update workload with 80% reads and 20% writes.\n\n" + 
@@ -162,11 +162,14 @@ public class Main implements Log.Callback {
 			"   -w RU,80,60,30 sets a random multi-bin read-update workload with 80% reads and 20% writes.\n\n" + 
 			"      60% of reads will read all bins. 40% of reads will read a single bin.\n\n" + 
 			"      30% of writes will write all bins. 70% of writes will write a single bin.\n\n" + 
-			"    -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n" +      
-			"    -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" + 	    
-			"    -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n" +
-			"    -w TXN,r:1000,w:200,v:20%\n\n" + 
-			"       form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
+			"   -w RR,20 sets a random read-replace workload with 20% reads and 80% replace all bin(s) writes.\n\n" + 
+			"      100% of reads will read all bins.\n\n" + 
+			"      100% of writes will replace all bins.\n\n" + 
+			"   -w RMU sets a random read all bins-update one bin workload with 50% reads.\n\n" +      
+			"   -w RMI sets a random read all bins-increment one integer bin workload with 50% reads.\n\n" + 	    
+			"   -w RMD sets a random read all bins-decrement one integer bin workload with 50% reads.\n\n" +
+			"   -w TXN,r:1000,w:200,v:20%\n\n" + 
+			"      form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
 			);
 		options.addOption("e", "expirationTime", true,
 			"Set expiration time of each record in seconds." +
