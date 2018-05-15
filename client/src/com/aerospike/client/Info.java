@@ -21,6 +21,7 @@ import gnu.crypto.util.Base64;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.cluster.Connection;
@@ -123,6 +124,44 @@ public final class Info {
 		sendCommand(conn);
 	}
 	
+	/**
+	 * Send multiple commands to server and store results. 
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 * 
+	 * @param conn			connection to server node
+	 * @param commands		commands sent to server
+	 */
+	public Info(Connection conn, List<String> commands) throws AerospikeException {
+		buffer = ThreadLocalData.getBuffer();
+		
+		// First, do quick conservative buffer size estimate.
+		offset = 8;
+		
+		for (String command : commands) {
+			offset += command.length() * 2 + 1;
+		}
+		
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if (offset > buffer.length) {
+			offset = 8;
+			
+			for (String command : commands) {
+				offset += Buffer.estimateSizeUtf8(command) + 1;
+			}
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		for (String command : commands) {
+			offset += Buffer.stringToUtf8(command, buffer, offset);
+			buffer[offset++] = '\n';
+		}
+		sendCommand(conn);
+	}
+
 	/**
 	 * Send default empty command to server and store results. 
 	 * This constructor is used internally.
@@ -469,6 +508,20 @@ public final class Info {
 	 * @return						info name/value pairs
 	 */
 	public static HashMap<String,String> request(Connection conn, String... names) 
+		throws AerospikeException {		
+
+		Info info = new Info(conn, names);
+		return info.parseMultiResponse();
+	}
+
+	/**
+	 * Get many info values by name from the specified database server node.
+	 * 
+	 * @param conn					socket connection to server node
+	 * @param names					names of values to retrieve
+	 * @return						info name/value pairs
+	 */
+	public static HashMap<String,String> request(Connection conn, List<String> names) 
 		throws AerospikeException {		
 
 		Info info = new Info(conn, names);
