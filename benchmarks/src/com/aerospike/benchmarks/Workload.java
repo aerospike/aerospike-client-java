@@ -31,6 +31,11 @@ public enum Workload {
 	READ_UPDATE,
 	
 	/**
+	 * Read/Replace. Perform random key, random read all bins or replace all bins workload.
+	 */
+	READ_REPLACE,
+
+	/**
 	 * Read/Modify/Update. Perform random key, read all bins, write one bin workload.
 	 */
 	READ_MODIFY_UPDATE,

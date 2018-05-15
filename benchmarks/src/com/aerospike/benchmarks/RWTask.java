@@ -60,6 +60,7 @@ public abstract class RWTask {
 		try {
 			switch (args.workload) {
 			case READ_UPDATE:
+			case READ_REPLACE:
 				readUpdate(random);
 				break;
 				

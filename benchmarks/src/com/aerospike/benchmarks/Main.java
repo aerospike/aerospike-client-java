@@ -493,9 +493,9 @@ public class Main implements Log.Callback {
 			}
 			else if (workloadType.equals("RU") || workloadType.equals("RR")) {
 
-				args.workload = Workload.READ_UPDATE;
 				if (workloadType.equals("RR")) {
 					args.writePolicy.recordExistsAction = RecordExistsAction.REPLACE;
+					args.workload = Workload.READ_REPLACE;
 				}
 
 				if (workloadOpts.length < 2 || workloadOpts.length > 4) {
@@ -816,7 +816,7 @@ public class Main implements Log.Callback {
 			+ ", threads: " + this.nThreads
 			+ ", workload: " + args.workload);
 		
-		if (args.workload == Workload.READ_UPDATE) {
+		if (args.workload == Workload.READ_UPDATE || args.workload == Workload.READ_REPLACE) {
 			System.out.print("read: " + args.readPct + '%');
 			System.out.print(" (all bins: " + args.readMultiBinPct + '%');
 			System.out.print(", single bin: " + (100 - args.readMultiBinPct) + "%)");
