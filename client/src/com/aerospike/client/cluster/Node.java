@@ -143,7 +143,7 @@ public class Node implements Closeable {
 							if (! command.authenticate(cluster, tendConnection, sessionToken)) {
 								// Authentication failed.  Session token probably expired.
 								// Must login again to get new session token.
-								LoginCommand login = new LoginCommand(cluster, tendConnection, host);
+								LoginCommand login = new LoginCommand(cluster, tendConnection);
 								sessionToken = login.sessionToken;
 								sessionExpiration = login.sessionExpiration;
 							}
@@ -194,7 +194,7 @@ public class Node implements Closeable {
 
 	private boolean ensureLogin() throws IOException {
 		if (performLogin || (sessionExpiration > 0 && System.nanoTime() >= sessionExpiration)) {
-			LoginCommand login = new LoginCommand(cluster, tendConnection, host);
+			LoginCommand login = new LoginCommand(cluster, tendConnection);
 			sessionToken = login.sessionToken;
 			sessionExpiration = login.sessionExpiration;
 			performLogin = false;

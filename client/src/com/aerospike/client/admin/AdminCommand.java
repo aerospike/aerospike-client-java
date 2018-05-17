@@ -25,7 +25,6 @@ import java.util.concurrent.TimeUnit;
 import org.mindrot.jbcrypt.BCrypt;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
@@ -94,24 +93,20 @@ public class AdminCommand {
 		public byte[] sessionToken = null;
 		public long sessionExpiration = 0;
 		
-		public LoginCommand(Cluster cluster, Connection conn, Host host) throws IOException {
+		public LoginCommand(Cluster cluster, Connection conn) throws IOException {
 			super(ThreadLocalData.getBuffer());
-
-			if (Log.debugEnabled()) {
-				Log.debug("Login " + host);
-			}
 
 			conn.setTimeout(cluster.loginTimeout);
 			
 			try {
-				login(cluster, conn, host);
+				login(cluster, conn);
 			}
 			finally {
 				conn.setTimeout(cluster.connectionTimeout);
 			}
 		}
 
-		public void login(Cluster cluster, Connection conn, Host host) throws IOException {			
+		private void login(Cluster cluster, Connection conn) throws IOException {			
 			if (cluster.authMode == AuthMode.INTERNAL) {
 				writeHeader(LOGIN, 2);
 				writeField(USER, cluster.getUser());
@@ -137,7 +132,7 @@ public class AdminCommand {
 				}
 				
 				// login failed.
-				throw new AerospikeException(result, "Node " + host + " login failed");
+				throw new AerospikeException(result, "Login failed");
 			}
 			
 			// Read session token.
@@ -146,7 +141,7 @@ public class AdminCommand {
 			int fieldCount = dataBuffer[11] & 0xFF;
 
 			if (receiveSize <= 0 || receiveSize > dataBuffer.length || fieldCount <= 0) {
-				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");			
+				throw new AerospikeException(result, "Failed to retrieve session token");			
 			}
 			
 			conn.readFully(dataBuffer, receiveSize);
@@ -176,7 +171,7 @@ public class AdminCommand {
 			}
 
 			if (sessionToken == null) {
-				throw new AerospikeException(result, "Node " + host + " failed to retrieve session token");
+				throw new AerospikeException(result, "Failed to retrieve session token");
 			}
 		}
 	}

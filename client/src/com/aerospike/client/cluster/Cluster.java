@@ -257,7 +257,7 @@ public class Cluster implements Runnable, Closeable {
 			nv.seedNodes(this, seed, nodesToAdd);
 		}
 		catch (Exception e) {
-			throw new AerospikeException(e.getMessage(), e);
+			throw new AerospikeException("Seed " + seed + " failed: " + e.getMessage(), e);
 		}
 		
 		// Add seed node to nodes.

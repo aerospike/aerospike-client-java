@@ -45,21 +45,26 @@ public final class NodeValidator {
 	/**
 	 * Add node(s) referenced by seed host aliases. In most cases, aliases reference
 	 * a single node.  If round robin DNS configuration is used, the seed host may have 
-	 * several aliases that reference different nodes in the cluster.
+	 * several addresses that reference different nodes in the cluster.
 	 */
 	public void seedNodes(Cluster cluster, Host host, HashMap<String,Node> nodesToAdd) throws Exception {
-		setAliases(host);
+		InetAddress[] addresses = getAddresses(host);
 		
 		Exception exception = null;
 		boolean found = false;
 		
-		for (Host alias : aliases) {			
+		// Try all addresses because they might point to different nodes.
+		for (InetAddress address : addresses) {			
 			try {
-				validateAlias(cluster, alias);
+				validateAddress(cluster, address, host.tlsName, host.port, true);
 				found = true;
 				
 				if (! nodesToAdd.containsKey(name)) {
 					// New node found.
+					// Only set aliases when they were not set by load balancer detection logic.
+					if (this.aliases == null) {
+						setAliases(addresses, host.tlsName, host.port);
+					}
 					Node node = cluster.createNode(this);
 					nodesToAdd.put(name, node);
 				}
@@ -71,7 +76,7 @@ public final class NodeValidator {
 			catch (Exception e) {
 				// Log and continue to next alias.
 				if (Log.debugEnabled()) {
-					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
+					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
 				}
 				
 				if (exception == null) {
@@ -81,29 +86,30 @@ public final class NodeValidator {
 		}
 		
 		if (! found) {
-			// Exception can't be null here because setAliases() will throw exception 
+			// Exception can't be null here because getAddresses() will throw exception 
 			// if aliases length is zero.
 			throw exception;
-		}
+		}		
 	}
 	
 	/**
 	 * Verify that a host alias references a valid node.
 	 */
 	public void validateNode(Cluster cluster, Host host) throws Exception {
-		setAliases(host);
+		InetAddress[] addresses = getAddresses(host);
 		
 		Exception exception = null;
 		
-		for (Host alias : aliases) {			
+		for (InetAddress address : addresses) {			
 			try {
-				validateAlias(cluster, alias);
+				validateAddress(cluster, address, host.tlsName, host.port, false);
+				setAliases(addresses, host.tlsName, host.port);
 				return;
 			}
 			catch (Exception e) {
 				// Log and continue to next alias.
 				if (Log.debugEnabled()) {
-					Log.debug("Alias " + alias + " failed: " + Util.getErrorMessage(e));
+					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
 				}
 
 				if (exception == null) {
@@ -111,12 +117,12 @@ public final class NodeValidator {
 				}
 			}
 		}
-		// Exception can't be null here because setAliases() will throw exception 
+		// Exception can't be null here because getAddresses() will throw exception 
 		// if aliases length is zero.
 		throw exception;
 	}
 
-	private void setAliases(Host host) {
+	private static InetAddress[] getAddresses(Host host) {
 		InetAddress[] addresses;
 		
 		try {
@@ -129,25 +135,21 @@ public final class NodeValidator {
 		if (addresses.length == 0) {
 			throw new AerospikeException.Connection("Failed to find addresses for " + host);
 		}
-		
-		// Add capacity for current address aliases plus IPV6 address and hostname.
-		aliases = new ArrayList<Host>(addresses.length + 2);
-		
-		for (InetAddress address : addresses) {
-			aliases.add(new Host(address.getHostAddress(), host.tlsName, host.port));
-		}
+		return addresses;
 	}
-	
-	private void validateAlias(Cluster cluster, Host alias) throws Exception {
-		InetSocketAddress address = new InetSocketAddress(alias.name, alias.port);
+
+	private void validateAddress(Cluster cluster, InetAddress address, String tlsName, int port, boolean detectLoadBalancer)
+		throws Exception {
+		
+		InetSocketAddress socketAddress = new InetSocketAddress(address, port);
 		Connection conn = (cluster.tlsPolicy != null) ?
-			new Connection(cluster.tlsPolicy, alias.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
-			new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
+			new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
+			new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
 		
 		try {
 			if (cluster.user != null) {
 				// Login
-				LoginCommand admin = new LoginCommand(cluster, conn, alias);
+				LoginCommand admin = new LoginCommand(cluster, conn);
 				sessionToken = admin.sessionToken;
 				sessionExpiration = admin.sessionExpiration;
 				
@@ -155,60 +157,85 @@ public final class NodeValidator {
 					// Switch to using non-TLS socket.
 					SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
 					conn.close();
-					alias = sc.clearHost;
 					address = sc.clearAddress;
+					socketAddress = sc.clearSocketAddress;
 					conn = sc.clearConn;
+					
+					// Disable load balancer detection since non-TLS address has already
+					// been retrieved via service info command.
+					detectLoadBalancer = false;
 				}
 			}
-
-			HashMap<String,String> map;
+			
+			List<String> commands = new ArrayList<String>(5);
+			commands.add("node");
+			commands.add("partition-generation");
+			commands.add("features");
+			
 			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
 			
-			if (hasClusterName) {
-				map = Info.request(conn, "node", "partition-generation", "features", "cluster-name");			
-			}
-			else {
-				map = Info.request(conn, "node", "partition-generation", "features");
-			}
-			
-			String nodeName = map.get("node");
-			
-			if (nodeName == null) {
-				throw new AerospikeException.InvalidNode();				
-			}
-			
-			String genString = map.get("partition-generation");
-			int gen;
-			
-			try {
-				gen = Integer.parseInt(genString);
-			}
-			catch (Exception ex) {
-				throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);												
-			}
-						
-			if (gen == -1) {
-				throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + " is not yet fully initialized");
+			if (hasClusterName) {			
+				commands.add("cluster-name");
 			}
 
-			if (hasClusterName) {
-				String id = map.get("cluster-name");
+			String addressCommand = null;
+			
+			if (detectLoadBalancer) {
+				// Seed may be load balancer with changing address. Determine real address.
+				addressCommand = (cluster.tlsPolicy != null)? 
+					cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
+					cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
 				
-				if (id == null || ! cluster.clusterName.equals(id)) {
-					throw new AerospikeException.InvalidNode("Node " + nodeName + ' ' + alias + ' ' +
-							" expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
-				}
+				commands.add(addressCommand);
+			}
+
+			// Issue commands.
+			HashMap<String,String> map = Info.request(conn, commands);
+
+			// Node returned results.
+			this.primaryHost = new Host(address.getHostAddress(), tlsName, port);
+			this.primaryAddress = socketAddress;
+			this.primaryConn = conn;
+			
+			validateNode(map);
+			validatePartitionGeneration(map);
+			setFeatures(map);
+
+			if (hasClusterName) {
+				validateClusterName(cluster, map);
 			}
 			
-			this.name = nodeName;
-			this.primaryHost = alias;
-			this.primaryAddress = address;
-			this.primaryConn = conn;
-			setFeatures(map);
+			if (addressCommand != null) {
+				setAddress(cluster, map, addressCommand, tlsName);
+			}
 		}
 		catch (Exception e) {
 			conn.close();
 			throw e;
+		}
+	}
+
+	private void validateNode(HashMap<String,String> map) {
+		this.name = map.get("node");
+		
+		if (this.name == null) {
+			throw new AerospikeException.InvalidNode();				
+		}		
+	}
+
+	private void validatePartitionGeneration(HashMap<String,String> map) {
+		String genString = map.get("partition-generation");
+		int gen;
+		
+		try {
+			gen = Integer.parseInt(genString);
+		}
+		catch (Exception ex) {
+			throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);												
+		}
+					
+		if (gen == -1) {
+			throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " is not yet fully initialized");
 		}
 	}
 
@@ -253,9 +280,107 @@ public final class NodeValidator {
 		}
 	}
 	
+	private void validateClusterName(Cluster cluster, HashMap<String,String> map) {
+		String id = map.get("cluster-name");
+		
+		if (id == null || ! cluster.clusterName.equals(id)) {
+			throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + ' ' +
+					" expected cluster name '" + cluster.clusterName + "' received '" + id + "'");
+		}
+	}
+
+	private void setAddress(Cluster cluster, HashMap<String,String> map, String addressCommand, String tlsName) {
+		String result = map.get(addressCommand);
+		List<Host> hosts = Host.parseServiceHosts(result);
+		Host h;
+		
+		// Search real hosts for seed.
+		for (Host host : hosts) {
+			h = host;
+			
+			if (cluster.ipMap != null) {
+				String alt = cluster.ipMap.get(h.name);
+				
+				if (alt != null) {
+					h = new Host(alt, h.port);
+				}
+			}
+			
+			if (h.equals(this.primaryHost)) {
+				// Found seed which is not a load balancer.
+				return;
+			}
+		}
+		
+		// Seed not found, so seed is probably a load balancer.
+		// Find first valid real host.
+		for (Host host : hosts) {
+			try {
+				h = host;
+
+				if (cluster.ipMap != null) {
+					String alt = cluster.ipMap.get(h.name);
+					
+					if (alt != null) {
+						h = new Host(alt, h.port);
+					}
+				}
+				
+				InetAddress[] addresses = InetAddress.getAllByName(h.name);
+				
+				for (InetAddress address : addresses) {
+					try {
+						InetSocketAddress socketAddress = new InetSocketAddress(address, h.port);						
+						Connection conn = (cluster.tlsPolicy != null) ?
+							new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
+							new Connection(socketAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
+						
+						try {
+							if (cluster.user != null) {
+								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
+								if (! admin.authenticate(cluster, conn, this.sessionToken)) {
+									throw new AerospikeException("Authentication failed");
+								}
+							}
+							
+							// Authenticated connection.  Set real host.
+							setAliases(addresses, tlsName, h.port);
+							this.primaryHost = new Host(address.getHostAddress(), tlsName, h.port);
+							this.primaryAddress = socketAddress;
+							this.primaryConn.close();
+							this.primaryConn = conn;
+							return;
+						}
+						catch (Exception e) {
+							conn.close();
+						}
+					}
+					catch (Exception e) {
+						// Try next address.
+					}						
+				}			
+			}
+			catch (Exception e) {
+				// Try next host.
+			}
+		}
+		
+		// Failed to find a valid host.
+		throw new AerospikeException("Invalid address: " + result);
+	}
+
+	private void setAliases(InetAddress[] addresses, String tlsName, int port) {
+		// Add capacity for current address aliases plus IPV6 address and hostname.
+		this.aliases = new ArrayList<Host>(addresses.length + 2);
+				
+		for (InetAddress address : addresses) {
+			this.aliases.add(new Host(address.getHostAddress(), tlsName, port));
+		}
+	}
+	
 	private static final class SwitchClear {
-		private Host clearHost;
-		private InetSocketAddress clearAddress;
+		private InetAddress clearAddress;
+		private InetSocketAddress clearSocketAddress;
 		private Connection clearConn;
 		
 		// Switch from TLS connection to non-TLS connection.
@@ -264,6 +389,7 @@ public final class NodeValidator {
 			String command = cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
 			String result = Info.request(conn, command);
 			List<Host> hosts = Host.parseServiceHosts(result);
+			Host clearHost;
 
 			// Find first valid non-TLS host.
 			for (Host host : hosts) {
@@ -282,8 +408,9 @@ public final class NodeValidator {
 					
 					for (InetAddress ia : addresses) {
 						try {
-							clearAddress = new InetSocketAddress(ia, clearHost.port);						
-							clearConn = new Connection(clearAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
+							clearAddress = ia;
+							clearSocketAddress = new InetSocketAddress(clearAddress, clearHost.port);						
+							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
 							
 							try {
 								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
