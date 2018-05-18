@@ -17,17 +17,17 @@
 package com.aerospike.client.policy;
 
 /**
- * How replicas should be consulted in a read operation to provide the desired
- * consistency guarantee.
+ * How duplicates should be consulted in a read operation.
+ * Only makes a difference during migrations and only applicable in AP mode.
  */
 public enum ConsistencyLevel {
 	/**
-	 * Involve a single replica in the operation.
+	 * Involve master only in the read operation.
 	 */
 	CONSISTENCY_ONE,
 	
 	/**
-	 * Involve all replicas in the operation.
+	 * Involve all duplicates in the read operation.
 	 */
 	CONSISTENCY_ALL
 }
