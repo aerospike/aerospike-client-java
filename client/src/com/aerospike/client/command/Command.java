@@ -641,7 +641,7 @@ public abstract class Command {
 			fieldCount++;
 			
 			// Query bin names are specified as a field (Scan bin names are specified later as operations)		
-			if (binNames != null) {
+			if (binNames != null && binNames.length > 0) {
 				dataOffset += FIELD_HEADER_SIZE;
 				binNameSize++;  // num bin names
 				
@@ -739,7 +739,7 @@ public abstract class Command {
 			dataOffset = filter.write(dataBuffer, dataOffset);
 
 			// Query bin names are specified as a field (Scan bin names are specified later as operations)
-			if (binNames != null) {
+			if (binNames != null && binNames.length > 0) {
 				writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
 		        dataBuffer[dataOffset++] = (byte)binNames.length;
 
