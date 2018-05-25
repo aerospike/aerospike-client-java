@@ -372,8 +372,12 @@ public final class NodeValidator {
 			}
 		}
 		
-		// Failed to find a valid host.
-		throw new AerospikeException("Invalid address: " + result);
+		// Failed to find a valid address. IP Address is probably internal on the cloud
+		// because the server access-address is not configured.  Log warning and continue
+		// with original seed.
+		if (Log.infoEnabled()) {
+			Log.info("Invalid address " + result + ". access-address is probably not configured on server.");
+		}
 	}
 
 	private void setAliases(InetAddress[] addresses, String tlsName, int port) {
