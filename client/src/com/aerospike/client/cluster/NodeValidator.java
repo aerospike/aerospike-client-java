@@ -291,6 +291,13 @@ public final class NodeValidator {
 
 	private void setAddress(Cluster cluster, HashMap<String,String> map, String addressCommand, String tlsName) {
 		String result = map.get(addressCommand);
+
+		if (result == null || result.length() == 0) {
+			// Server does not support service level call (service-clear-std, ...).
+			// Load balancer detection is not possible.
+			return;
+		}
+
 		List<Host> hosts = Host.parseServiceHosts(result);
 		Host h;
 		
