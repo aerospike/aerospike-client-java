@@ -44,6 +44,11 @@ public class QueryPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
+	 * Terminate query if cluster is in migration state.
+	 */
+	public boolean failOnClusterChange;
+
+	/**
 	 * Copy query policy from another query policy.
 	 */
 	public QueryPolicy(QueryPolicy other) {
@@ -51,6 +56,7 @@ public class QueryPolicy extends Policy {
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.recordQueueSize = other.recordQueueSize;
 		this.includeBinData = other.includeBinData;
+		this.failOnClusterChange = other.failOnClusterChange;
 	}
 
 	/**

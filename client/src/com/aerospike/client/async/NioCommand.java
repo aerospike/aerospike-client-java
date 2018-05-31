@@ -41,7 +41,6 @@ public final class NioCommand implements Runnable, TimerTask {
 	long totalDeadline;
 	int state;
 	int iteration;
-	int receiveSize;
 	int commandSentCounter;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
@@ -348,7 +347,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			break;
 			
 		case AsyncCommand.COMMAND_READ_HEADER:
-			if (command.partition != null) {
+			if (command.isSingle) {
 				readSingleHeader();
 			}
 			else {
@@ -357,7 +356,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			break;
 			
 		case AsyncCommand.COMMAND_READ_BODY:
-			if (command.partition != null) {
+			if (command.isSingle) {
 				readSingleBody();
 			}
 			else {
@@ -369,13 +368,13 @@ public final class NioCommand implements Runnable, TimerTask {
 
 	private final void readAuthHeader() {
 		byteBuffer.position(0);
-		receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
+		command.receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
 
-		if (receiveSize < 2 || receiveSize > byteBuffer.capacity()) {
-			throw new AerospikeException.Parse("Invalid auth receive size: " + receiveSize);
+		if (command.receiveSize < 2 || command.receiveSize > byteBuffer.capacity()) {
+			throw new AerospikeException.Parse("Invalid auth receive size: " + command.receiveSize);
 		}
 		byteBuffer.clear();
-		byteBuffer.limit(receiveSize);
+		byteBuffer.limit(command.receiveSize);
 		state = AsyncCommand.AUTH_READ_BODY;			
 	}
 
@@ -399,19 +398,15 @@ public final class NioCommand implements Runnable, TimerTask {
 	
 	private final void readSingleHeader() throws IOException {
 		byteBuffer.position(0);
-		receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
-			        
-		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
-		}
-
-		if (receiveSize <= byteBuffer.capacity()) {
+		command.receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
+		
+		if (command.receiveSize <= byteBuffer.capacity()) {
 			byteBuffer.clear();
 		}
 		else {
-			byteBuffer = NioEventLoop.createByteBuffer(receiveSize);
+			byteBuffer = NioEventLoop.createByteBuffer(command.receiveSize);
 		}		
-		byteBuffer.limit(receiveSize);
+		byteBuffer.limit(command.receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;
 
 		if (conn.read(byteBuffer)) {
@@ -420,19 +415,12 @@ public final class NioCommand implements Runnable, TimerTask {
 	}
 
 	private final void readSingleBody() {
-		if (command.readAll) {
-			// Copy entire message to dataBuffer.
-			command.sizeBuffer(receiveSize);
-			byteBuffer.position(0);
-			byteBuffer.get(command.dataBuffer, 0, receiveSize);
-			command.resultCode = command.dataBuffer[5] & 0xFF;
-			((AsyncSingleCommand)command).parseResult();
-			command.putBuffer();
-		}
-		else {
-			command.resultCode = byteBuffer.get(5) & 0xFF;
-			((AsyncSingleCommand)command).parseResult();
-		}
+		// Copy entire message to dataBuffer.
+		command.sizeBuffer(command.receiveSize);
+		byteBuffer.position(0);
+		byteBuffer.get(command.dataBuffer, 0, command.receiveSize);
+		command.parseResult();
+		command.putBuffer();
 		finish();
 	}
 
@@ -474,7 +462,7 @@ public final class NioCommand implements Runnable, TimerTask {
 			return;
 		}
 		
-		if (receiveSize == Command.MSG_REMAINING_HEADER_SIZE) {
+		if (command.receiveSize == Command.MSG_REMAINING_HEADER_SIZE) {
 			// We may be at end.  Read ahead and parse.
 			if (! conn.read(byteBuffer)) {
 				return;
@@ -485,9 +473,9 @@ public final class NioCommand implements Runnable, TimerTask {
 
 	private final boolean parseGroupHeader() {
 		byteBuffer.position(0);
-		receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
+		command.receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
 			        
-		if (receiveSize <= 0) {
+		if (command.receiveSize <= 0) {
 			// Received zero length block. Read next header.
 			byteBuffer.clear();
 			byteBuffer.limit(8);
@@ -495,12 +483,12 @@ public final class NioCommand implements Runnable, TimerTask {
 			return false;
 		}
 
-		command.sizeBuffer(receiveSize);
+		command.sizeBuffer(command.receiveSize);
 		command.dataOffset = 0;
 		byteBuffer.clear();
 		
-		if (receiveSize < byteBuffer.capacity()) {
-			byteBuffer.limit(receiveSize);
+		if (command.receiveSize < byteBuffer.capacity()) {
+			byteBuffer.limit(command.receiveSize);
 		}
 		state = AsyncCommand.COMMAND_READ_BODY;
 		return true;
@@ -514,8 +502,8 @@ public final class NioCommand implements Runnable, TimerTask {
 			command.dataOffset += byteBuffer.limit();
 			byteBuffer.clear();
 			
-			if (command.dataOffset >= receiveSize) {
-				if (((AsyncMultiCommand)command).parseGroup(receiveSize)) {
+			if (command.dataOffset >= command.receiveSize) {
+				if (command.parseResult()) {
 					finish();
 					return false;
 				}
@@ -526,7 +514,7 @@ public final class NioCommand implements Runnable, TimerTask {
 				return true;
 			}
 			else {
-				int remaining = receiveSize - command.dataOffset;
+				int remaining = command.receiveSize - command.dataOffset;
 					
 				if (remaining < byteBuffer.capacity()) {
 					byteBuffer.limit(remaining);

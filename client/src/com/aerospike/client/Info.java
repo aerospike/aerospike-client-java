@@ -176,6 +176,14 @@ public final class Info {
 	}
 
 	/**
+	 * Internal constructor.  Do not use. 
+	 */
+	public Info(byte[] buffer, int length) {
+		this.buffer = buffer;
+		this.length = length;
+	}
+
+	/**
 	 * Parse response in name/value pair format:
 	 * <p>
 	 * <command>\t<name1>=<value1>;<name2>=<value2>;...\n
@@ -599,7 +607,7 @@ public final class Info {
 		}
 	}	
 
-	private HashMap<String,String> parseMultiResponse() throws AerospikeException {
+	public HashMap<String,String> parseMultiResponse() throws AerospikeException {
 		HashMap<String, String> responses = new HashMap<String,String>();
 		int offset = 0;
 		int begin = 0;

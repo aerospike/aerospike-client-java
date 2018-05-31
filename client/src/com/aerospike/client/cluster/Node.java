@@ -53,6 +53,7 @@ public class Node implements Closeable {
 	public static final int HAS_REPLICAS_ALL = (1 << 3);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
+	public static final int HAS_CLUSTER_STABLE = (1 << 6);
 
 	protected final Cluster cluster;
 	private final String name;
@@ -684,6 +685,13 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasBatchIndex() {
 		return (features & HAS_BATCH_INDEX) != 0;
+	}
+
+	/**
+	 * Does server support cluster-stable info command.
+	 */
+	public final boolean hasClusterStable() {
+		return (features & HAS_CLUSTER_STABLE) != 0;
 	}
 
 	/**

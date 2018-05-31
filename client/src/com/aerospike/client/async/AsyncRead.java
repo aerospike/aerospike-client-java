@@ -29,14 +29,14 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
-public class AsyncRead extends AsyncCommand implements AsyncSingleCommand {
+public class AsyncRead extends AsyncCommand {
 	private final RecordListener listener;
 	protected final Key key;
 	private final String[] binNames;
 	protected Record record;
 	
 	public AsyncRead(RecordListener listener, Policy policy, Key key, String[] binNames, boolean isRead) {
-		super(policy, new Partition(key), null, isRead, true);
+		super(policy, new Partition(key), null, isRead);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
@@ -48,7 +48,9 @@ public class AsyncRead extends AsyncCommand implements AsyncSingleCommand {
 	}
 
 	@Override
-	public final void parseResult() {
+	protected final boolean parseResult() {
+		validateHeaderSize();
+		
 		int resultCode = dataBuffer[5] & 0xFF;
 		int generation = Buffer.bytesToInt(dataBuffer, 6);
 		int expiration = Buffer.bytesToInt(dataBuffer, 10);
@@ -73,6 +75,7 @@ public class AsyncRead extends AsyncCommand implements AsyncSingleCommand {
         		throw new AerospikeException(resultCode);
         	}
         }
+        return true;
 	}
 
 	protected void handleNotFound(int resultCode) {

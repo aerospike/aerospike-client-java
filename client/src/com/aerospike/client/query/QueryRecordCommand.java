@@ -22,16 +22,16 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.command.MultiCommand;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryRecordCommand extends MultiCommand {
 	
-	private final Policy policy;
+	private final QueryPolicy policy;
 	private final Statement statement;
 	private final RecordSet recordSet;
 
-	public QueryRecordCommand(Policy policy, Statement statement, RecordSet recordSet) {
-		super(true);
+	public QueryRecordCommand(QueryPolicy policy, Statement statement, RecordSet recordSet, long clusterKey, boolean first) {
+		super(statement.namespace, clusterKey, first);
 		this.policy = policy;
 		this.statement = statement;
 		this.recordSet = recordSet;

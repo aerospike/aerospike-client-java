@@ -27,12 +27,18 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.query.QueryValidate;
 
 public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 10;  // 10 MB
 	
 	private BufferedInputStream bis;
+	protected final String namespace;
+	private final long clusterKey;
 	protected int resultCode;
 	protected int generation;
 	protected int expiration;
@@ -40,12 +46,36 @@ public abstract class MultiCommand extends SyncCommand {
 	protected int fieldCount;
 	protected int opCount;
 	private final boolean stopOnNotFound;
+	private final boolean first;
 	protected volatile boolean valid = true;
 	
 	protected MultiCommand(boolean stopOnNotFound) {
 		this.stopOnNotFound = stopOnNotFound;
+		this.namespace = null;
+		this.clusterKey = 0;
+		this.first = false;
 	}
 	
+	protected MultiCommand(String namespace, long clusterKey, boolean first) {
+		this.stopOnNotFound = true;
+		this.namespace = namespace;
+		this.clusterKey = clusterKey;
+		this.first = first;
+	}
+
+	public final void execute(Cluster cluster, Policy policy, Node node) {		
+		if (clusterKey != 0) {
+			if (! first) {
+				QueryValidate.validate(node, namespace, clusterKey);
+			}
+			super.execute(cluster, policy, null, node, true);
+			QueryValidate.validate(node, namespace, clusterKey);
+		}
+		else {			
+			super.execute(cluster, policy, null, node, true);
+		}
+	}
+
 	protected final void parseResult(Connection conn) throws IOException {	
 		// Read socket into receive buffer one record at a time.  Do not read entire receive size
 		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest 
@@ -196,7 +226,7 @@ public abstract class MultiCommand extends SyncCommand {
 		}		
 		dataOffset += length;
 	}
-	
+
 	public void stop() {
 		valid = false;
 	}

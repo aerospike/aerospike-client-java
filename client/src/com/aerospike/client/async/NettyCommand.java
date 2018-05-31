@@ -65,7 +65,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 	long totalDeadline;
 	int state;
 	int iteration;
-	int receiveSize;
 	int commandSentCounter;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
@@ -355,7 +354,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				break;
 				
 			case AsyncCommand.COMMAND_READ_HEADER:
-				if (command.partition != null) {
+				if (command.isSingle) {
 					readSingleHeader(byteBuffer);
 				}
 				else {
@@ -364,7 +363,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				break;
 			
 			case AsyncCommand.COMMAND_READ_BODY:
-				if (command.partition != null) {
+				if (command.isSingle) {
 					readSingleBody(byteBuffer);
 				}
 				else {
@@ -390,10 +389,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		// Process authentication header.
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, 8 - command.dataOffset);
-		receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));		
+		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));		
 
-		if (receiveSize < 2 || receiveSize > command.dataBuffer.length) {
-			throw new AerospikeException.Parse("Invalid auth receive size: " + receiveSize);
+		if (command.receiveSize < 2 || command.receiveSize > command.dataBuffer.length) {
+			throw new AerospikeException.Parse("Invalid auth receive size: " + command.receiveSize);
 		}
 		
 		state = AsyncCommand.AUTH_READ_BODY;		
@@ -403,7 +402,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (offset > 0) {
 			byteBuffer.readBytes(command.dataBuffer, 0, offset);
 			
-			if (offset >= receiveSize) {
+			if (offset >= command.receiveSize) {
 				parseAuthBody();
 			}
 		}
@@ -413,7 +412,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		int avail = byteBuffer.readableBytes();
 		int offset = command.dataOffset + avail;
 		
-		if (offset < receiveSize) {
+		if (offset < command.receiveSize) {
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, avail);
 			command.dataOffset = offset;
 			return;
@@ -453,44 +452,43 @@ public final class NettyCommand implements Runnable, TimerTask {
 		dataSize = 8 - command.dataOffset;
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		readableBytes -= dataSize;
-		receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
+		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 		
-		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
+		if (command.receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
+			throw new AerospikeException.Parse("Invalid receive size: " + command.receiveSize);
 		}
 
-		command.sizeBuffer(receiveSize);
+		command.sizeBuffer(command.receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;		
 			
 		if (readableBytes <= 0) {
 			return;
 		}
 
-		dataSize = (readableBytes >= receiveSize)? receiveSize : readableBytes; 
+		dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes; 
 		byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 		command.dataOffset = dataSize;
 		
-		if (command.dataOffset >= receiveSize) {
+		if (command.dataOffset >= command.receiveSize) {
 			parseSingleBody();
 		}
 	}
 	
 	private void readSingleBody(ByteBuf byteBuffer) {
 		int readableBytes = byteBuffer.readableBytes();
-		int needBytes = receiveSize - command.dataOffset;
+		int needBytes = command.receiveSize - command.dataOffset;
 		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes; 
 		
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		command.dataOffset += dataSize;
 		
-		if (command.dataOffset >= receiveSize) {
+		if (command.dataOffset >= command.receiveSize) {
 			parseSingleBody();
 		}
 	}
 
 	private void parseSingleBody() {
-		command.resultCode = command.dataBuffer[5] & 0xFF;
-		((AsyncSingleCommand)command).parseResult();
+		command.parseResult();
 		finish();
 	}
 
@@ -514,31 +512,31 @@ public final class NettyCommand implements Runnable, TimerTask {
 			dataSize = 8 - command.dataOffset;
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 			readableBytes -= dataSize;
-			receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
+			command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 			
-			if (receiveSize == 0) {
+			if (command.receiveSize == 0) {
 				// Read next header.
 				command.dataOffset = 0;
 				continue;
 			}
 	
-			command.sizeBuffer(receiveSize);
+			command.sizeBuffer(command.receiveSize);
 			state = AsyncCommand.COMMAND_READ_BODY;
 			
 			if (readableBytes <= 0) {
 				return;
 			}
 				
-			dataSize = (readableBytes >= receiveSize)? receiveSize : readableBytes; 
+			dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes; 
 			byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 			readableBytes -= dataSize;
 			command.dataOffset = dataSize;
 				
-			if (command.dataOffset < receiveSize) {
+			if (command.dataOffset < command.receiveSize) {
 				return;
 			}
 				
-			if (((AsyncMultiCommand)command).parseGroup(receiveSize)) {
+			if (command.parseResult()) {
 				finish();
 				return;
 			}
@@ -555,17 +553,17 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		int readableBytes = byteBuffer.readableBytes();
-		int needBytes = receiveSize - command.dataOffset;
+		int needBytes = command.receiveSize - command.dataOffset;
 		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes; 
 
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		command.dataOffset += dataSize;
 		
-		if (command.dataOffset < receiveSize) {
+		if (command.dataOffset < command.receiveSize) {
 			return;
 		}
 
-		if (((AsyncMultiCommand)command).parseGroup(receiveSize)) {
+		if (command.parseResult()) {
 			finish();
 			return;
 		}

@@ -43,12 +43,13 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	final boolean stopOnNotFound;
 		
 	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean stopOnNotFound) {
-		super(policy, null, node, true, true);
+		super(policy, null, node, true);
 		this.parent = parent;
 		this.stopOnNotFound = stopOnNotFound;
 	}
 
-	final boolean parseGroup(int receiveSize) {
+	@Override
+	final boolean parseResult() {
 		// Parse each message response and add it to the result array
 		dataOffset = 0;
 		
@@ -149,7 +150,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	
 	@Override
 	protected final void onSuccess() {
-		parent.childSuccess();
+		parent.childSuccess(node);
 	}
 
 	@Override

@@ -25,13 +25,13 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 
-public class AsyncReadHeader extends AsyncCommand implements AsyncSingleCommand {
+public final class AsyncReadHeader extends AsyncCommand {
 	private final RecordListener listener;
 	private final Key key;
 	private Record record;
 	
 	public AsyncReadHeader(RecordListener listener, Policy policy, Key key) {
-		super(policy, new Partition(key), null, true, true);
+		super(policy, new Partition(key), null, true);
 		this.listener = listener;
 		this.key = key;
 	}
@@ -42,31 +42,36 @@ public class AsyncReadHeader extends AsyncCommand implements AsyncSingleCommand 
 	}
 
 	@Override
-	public final void parseResult() {
-        if (resultCode == 0) {
-        	int generation = Buffer.bytesToInt(dataBuffer, 6);
-    		int expiration = Buffer.bytesToInt(dataBuffer, 10);
-    		record = new Record(null, generation, expiration);
-        }
-        else {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-        		record = null;
-        	}
-        	else {
-        		throw new AerospikeException(resultCode);
-        	}
-        }
+	protected boolean parseResult() {
+		validateHeaderSize();
+		
+		int resultCode = dataBuffer[5] & 0xFF;
+
+		if (resultCode == 0) {
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+			record = new Record(null, generation, expiration);
+		}
+		else {
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				record = null;
+			}
+			else {
+				throw new AerospikeException(resultCode);
+			}
+		}
+		return true;
 	}
 
 	@Override
-	protected final void onSuccess() {
+	protected void onSuccess() {
 		if (listener != null) {
 			listener.onSuccess(key, record);
 		}
 	}
 
 	@Override
-	protected final void onFailure(AerospikeException e) {
+	protected void onFailure(AerospikeException e) {
 		if (listener != null) {
 			listener.onFailure(e);
 		}

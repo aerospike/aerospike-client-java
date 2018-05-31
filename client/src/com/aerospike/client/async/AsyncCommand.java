@@ -45,17 +45,25 @@ public abstract class AsyncCommand extends Command {
 	final Partition partition;
 	Node node;
 	ArrayDeque<byte[]> bufferQueue;
-	int resultCode;
+	int receiveSize;
 	final boolean isRead;
-	final boolean readAll;
+	final boolean isSingle;
 	boolean valid = true;
 
-	public AsyncCommand(Policy policy, Partition partition, Node node, boolean isRead, boolean readAll) {
+	public AsyncCommand(Policy policy, Partition partition, Node node, boolean isRead) {
 		this.policy = policy;
 		this.partition = partition;
 		this.node = node;
 		this.isRead = isRead;
-		this.readAll = readAll;
+		this.isSingle = partition != null;
+	}
+
+	public AsyncCommand(Policy policy, Node node, boolean isRead, boolean isSingle) {
+		this.policy = policy;
+		this.partition = null;
+		this.node = node;
+		this.isRead = isRead;
+		this.isSingle = isSingle;
 	}
 
 	final Node getNode(Cluster cluster) {		
@@ -123,12 +131,19 @@ public abstract class AsyncCommand extends Command {
 			bufferQueue.addLast(buffer);
 		}
 	}
+	
+	final void validateHeaderSize() {
+		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
+			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
+		}
+	}
 
 	final void stop() {
 		valid = false;
 	}
 
-	protected abstract void writeBuffer();
-	protected abstract void onSuccess();
-	protected abstract void onFailure(AerospikeException ae);
+	abstract void writeBuffer();
+	abstract boolean parseResult();
+	abstract void onSuccess();
+	abstract void onFailure(AerospikeException ae);
 }

@@ -755,6 +755,11 @@ public abstract class Command {
 			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
 			byte priority = (byte)policy.priority.ordinal();
 			priority <<= 4;			
+			
+			if (! write && ((QueryPolicy)policy).failOnClusterChange) {
+				priority |= 0x08;
+			}
+
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)100;
 

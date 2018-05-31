@@ -49,12 +49,22 @@ public final class AsyncScanExecutor extends AsyncMultiExecutor {
 		// Create commands.
 		AsyncScan[] tasks = new AsyncScan[nodes.length];
 		int count = 0;
+		boolean hasClusterStable = true;
 
-		for (Node node : nodes) {			
+		for (Node node : nodes) {
+			if (! node.hasClusterStable()) {
+				hasClusterStable = false;
+			}
 			tasks[count++] = new AsyncScan(this, node, policy, listener, namespace, setName, binNames, taskId);
 		}
+		
 		// Dispatch commands to nodes.
-		execute(tasks, policy.maxConcurrentNodes);
+		if (policy.failOnClusterChange && hasClusterStable) {
+			executeValidate(tasks, policy.maxConcurrentNodes, namespace);
+		}
+		else {
+			execute(tasks, policy.maxConcurrentNodes);
+		}
 	}
 	
 	protected void onSuccess() {

@@ -30,7 +30,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 		throws AerospikeException {
 		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		statement.prepare(true);
+		statement.prepare(true);		
 		initializeThreads();
 	}
 	
@@ -39,8 +39,8 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	}
 	
 	@Override
-	protected MultiCommand createCommand() {
-		return new QueryRecordCommand(policy, statement, recordSet);
+	protected MultiCommand createCommand(long clusterKey, boolean first) {
+		return new QueryRecordCommand(policy, statement, recordSet, clusterKey, first);
 	}
 	
 	@Override

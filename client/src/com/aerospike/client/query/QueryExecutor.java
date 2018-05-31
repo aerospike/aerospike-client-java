@@ -66,10 +66,15 @@ public abstract class QueryExecutor {
 	}
 	
 	protected final void initializeThreads() {
+		// Detect cluster migrations when performing scan.
+		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], statement.namespace) : 0;	
+		boolean first = true;
+		
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
-			MultiCommand command = createCommand();
+			MultiCommand command = createCommand(clusterKey, first);
 			threads[i] = new QueryThread(nodes[i], command);
+			first = false;
 		}
 	}
 
@@ -138,7 +143,7 @@ public abstract class QueryExecutor {
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy, null, node, true);
+					command.execute(cluster, policy, node);
 				}
 				threadCompleted();
 			}
@@ -156,7 +161,7 @@ public abstract class QueryExecutor {
 		}		
 	}
 	
-	protected abstract MultiCommand createCommand();
+	protected abstract MultiCommand createCommand(long clusterKey, boolean first);
 	protected abstract void sendCancel();
 	protected abstract void sendCompleted();
 }

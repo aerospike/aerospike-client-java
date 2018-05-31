@@ -24,7 +24,7 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand {
+public final class AsyncWrite extends AsyncCommand {
 	private final WriteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;
@@ -32,7 +32,7 @@ public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand
 	private final Operation.Type operation;
 		
 	public AsyncWrite(WriteListener listener, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
-		super(writePolicy, new Partition(key), null, false, false);
+		super(writePolicy, new Partition(key), null, false);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
@@ -46,10 +46,15 @@ public final class AsyncWrite extends AsyncCommand implements AsyncSingleCommand
 	}
 
 	@Override
-	public void parseResult() {
+	protected boolean parseResult() {
+		validateHeaderSize();
+		
+		int resultCode = dataBuffer[5] & 0xFF;
+
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}
+		return true;
 	}
 
 	@Override

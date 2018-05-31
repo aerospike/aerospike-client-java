@@ -23,14 +23,14 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class AsyncDelete extends AsyncCommand implements AsyncSingleCommand {
+public final class AsyncDelete extends AsyncCommand {
 	private final DeleteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;
 	private boolean existed;
 		
 	public AsyncDelete(DeleteListener listener, WritePolicy writePolicy, Key key) {
-		super(writePolicy, new Partition(key), null, false, false);
+		super(writePolicy, new Partition(key), null, false);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
@@ -42,18 +42,23 @@ public final class AsyncDelete extends AsyncCommand implements AsyncSingleComman
 	}
 
 	@Override
-	public void parseResult() {
-        if (resultCode == 0) {
-        	existed = true;
-        }
-        else {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-        		existed = false;
-        	}
-        	else {
-        		throw new AerospikeException(resultCode);
-        	}
-        }
+	protected boolean parseResult() {
+		validateHeaderSize();
+		
+		int resultCode = dataBuffer[5] & 0xFF;
+
+		if (resultCode == 0) {
+			existed = true;
+		}
+		else {
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				existed = false;
+			}
+			else {
+				throw new AerospikeException(resultCode);
+			}
+		}
+		return true;
 	}
 
 	@Override

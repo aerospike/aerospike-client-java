@@ -272,6 +272,9 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "peers", 0, len)) {
 					this.features |= Node.HAS_PEERS;
 				}	        	
+				else if (featuresString.regionMatches(begin, "cluster-stable", 0, len)) {
+					this.features |= Node.HAS_CLUSTER_STABLE;
+				}	        	
 				begin = end + 1;
 			}        
 		}

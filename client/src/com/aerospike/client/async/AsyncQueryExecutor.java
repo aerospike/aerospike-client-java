@@ -46,12 +46,22 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 		// Create commands.
 		AsyncQuery[] tasks = new AsyncQuery[nodes.length];
 		int count = 0;
+		boolean hasClusterStable = true;
 
-		for (Node node : nodes) {			
+		for (Node node : nodes) {
+			if (! node.hasClusterStable()) {
+				hasClusterStable = false;
+			}
 			tasks[count++] = new AsyncQuery(this, node, listener, policy, statement);
 		}
+
 		// Dispatch commands to nodes.
-		execute(tasks, policy.maxConcurrentNodes);
+		if (policy.failOnClusterChange && hasClusterStable) {
+			executeValidate(tasks, policy.maxConcurrentNodes, statement.getNamespace());
+		}
+		else {
+			execute(tasks, policy.maxConcurrentNodes);
+		}
 	}
 	
 	protected void onSuccess() {

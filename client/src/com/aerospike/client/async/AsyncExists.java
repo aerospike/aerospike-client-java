@@ -23,13 +23,13 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
 
-public final class AsyncExists extends AsyncCommand implements AsyncSingleCommand {
+public final class AsyncExists extends AsyncCommand {
 	private final ExistsListener listener;
 	private final Key key;
 	private boolean exists;
 	
 	public AsyncExists(ExistsListener listener, Policy policy, Key key) {
-		super(policy, new Partition(key), null, true, false);
+		super(policy, new Partition(key), null, true);
 		this.listener = listener;
 		this.key = key;
 	}
@@ -40,19 +40,24 @@ public final class AsyncExists extends AsyncCommand implements AsyncSingleComman
 	}
 
 	@Override
-	public void parseResult() {
-        if (resultCode == 0) {
-        	exists = true;
-        }
-        else {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-            	exists = false;
-        	}
-        	else {
-        		throw new AerospikeException(resultCode);
-        	}
-        }
-	}	
+	protected boolean parseResult() {
+		validateHeaderSize();
+		
+		int resultCode = dataBuffer[5] & 0xFF;
+		
+		if (resultCode == 0) {
+			exists = true;
+		}
+		else {
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				exists = false;
+			}
+			else {
+				throw new AerospikeException(resultCode);
+			}
+		}
+		return true;
+	}
 
 	@Override
 	protected void onSuccess() {

@@ -27,23 +27,30 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.lua.LuaInstance;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateCommand extends MultiCommand {
 	
-	private final Policy policy;
+	private final QueryPolicy policy;
 	private final Statement statement;
 	private final LuaInstance instance;
 	private final BlockingQueue<LuaValue> inputQueue;
 
-	public QueryAggregateCommand(Policy policy, Statement statement, LuaInstance instance, BlockingQueue<LuaValue> inputQueue) {
-		super(true);
+	public QueryAggregateCommand(
+		QueryPolicy policy,
+		Statement statement,
+		LuaInstance instance,
+		BlockingQueue<LuaValue> inputQueue,
+		long clusterKey,
+		boolean first
+	) {
+		super(statement.namespace, clusterKey, first);
 		this.policy = policy;
 		this.statement = statement;
 		this.instance = instance;
 		this.inputQueue = inputQueue;
 	}
-	
+
 	@Override
 	protected final void writeBuffer() throws AerospikeException {
 		setQuery(policy, statement, false);

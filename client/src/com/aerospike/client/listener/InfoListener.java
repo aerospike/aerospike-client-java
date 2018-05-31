@@ -14,8 +14,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
+package com.aerospike.client.listener;
 
-public interface AsyncSingleCommand {	
-	void parseResult();
+import java.util.Map;
+
+import com.aerospike.client.AerospikeException;
+
+/**
+ * Asynchronous info command result notification.
+ */
+public interface InfoListener {
+	/**
+	 * This method is called when an asynchronous info command completes successfully.
+	 * 
+	 * @param map			map of info command keys and result values.
+	 */
+	public void onSuccess(Map<String,String> map);
+
+	/**
+	 * This method is called when an asynchronous info command fails.
+	 * 
+	 * @param exception		error that occurred
+	 */
+	public void onFailure(AerospikeException ae);
 }

@@ -49,7 +49,7 @@ public final class ScanPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
-	 * Terminate scan if cluster in fluctuating state.
+	 * Terminate scan if cluster in migration state.
 	 */
 	public boolean failOnClusterChange;
 

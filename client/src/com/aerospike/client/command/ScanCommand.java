@@ -26,7 +26,6 @@ import com.aerospike.client.policy.ScanPolicy;
 
 public final class ScanCommand extends MultiCommand {
 	private final ScanPolicy policy;
-	private final String namespace;
 	private final String setName;
 	private final ScanCallback callback;
 	private final String[] binNames;
@@ -38,17 +37,18 @@ public final class ScanCommand extends MultiCommand {
 		String setName,
 		ScanCallback callback,
 		String[] binNames,
-		long taskId
+		long taskId,
+		long clusterKey,
+		boolean first
 	) {
-		super(true);
+		super(namespace, clusterKey, first);
 		this.policy = policy;
-		this.namespace = namespace;
 		this.setName = setName;
 		this.callback = callback;
 		this.binNames = binNames;
 		this.taskId = taskId;
 	}
-
+	
 	@Override
 	protected void writeBuffer() throws AerospikeException {
 		setScan(policy, namespace, setName, binNames, taskId);

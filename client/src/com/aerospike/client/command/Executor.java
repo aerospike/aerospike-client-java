@@ -132,7 +132,7 @@ public final class Executor {
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy, null, node, true);
+					command.execute(cluster, policy, node);
 				}
 				threadCompleted();
 			}

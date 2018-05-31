@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 
 public abstract class AsyncMultiExecutor {
 
@@ -29,6 +30,8 @@ public abstract class AsyncMultiExecutor {
 	private final AtomicInteger completedCount = new AtomicInteger();
     private final AtomicBoolean done = new AtomicBoolean();
 	private AsyncMultiCommand[] commands;
+	private String namespace;
+	private long clusterKey;
 	private int maxConcurrent;
 	
 	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
@@ -36,16 +39,74 @@ public abstract class AsyncMultiExecutor {
 		this.cluster = cluster;
 	}
 	
-	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {	
+	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {
 		this.commands = commands;
 		this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.length) ? commands.length : maxConcurrent;
-		
+
 		for (int i = 0; i < this.maxConcurrent; i++) {
 			eventLoop.execute(cluster, commands[i]);
 		}
 	}
+
+	public void executeValidate(final AsyncMultiCommand[] commands, int maxConcurrent, final String namespace) {	
+		this.commands = commands;
+		this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.length) ? commands.length : maxConcurrent;
+		this.namespace = namespace;
+		
+		final int max = this.maxConcurrent;
+		
+		AsyncQueryValidate.validateBegin(cluster, eventLoop, new AsyncQueryValidate.BeginListener() {
+			@Override
+			public void onSuccess(long key) {
+				clusterKey = key;
+				eventLoop.execute(cluster, commands[0]);
+				
+				for (int i = 1; i < max; i++) {
+					executeValidateCommand(commands[i]);
+				}
+			}
+			
+			@Override
+			public void onFailure(AerospikeException ae) {
+				initFailure(ae);
+			}
+		}, commands[0].node, namespace);		
+	}
 	
-	protected final void childSuccess() {
+	private final void executeValidateCommand(final AsyncMultiCommand command) {		
+		AsyncQueryValidate.validate(cluster, eventLoop, new AsyncQueryValidate.Listener() {
+			@Override
+			public void onSuccess() {
+				eventLoop.execute(cluster, command);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				childFailure(ae);
+			}
+		}, command.node, namespace, clusterKey);
+	}
+	
+	protected final void childSuccess(Node node) {		
+		if (clusterKey == 0) {
+			queryComplete();
+		}
+		else {
+			AsyncQueryValidate.validate(cluster, eventLoop, new AsyncQueryValidate.Listener() {
+				@Override
+				public void onSuccess() {
+					queryComplete();
+				}
+
+				@Override
+				public void onFailure(AerospikeException ae) {
+					childFailure(ae);							
+				}
+			}, node, namespace, clusterKey);									
+		}
+	}
+	
+	private final void queryComplete() {	
 		int finished = completedCount.incrementAndGet();
 
 		if (finished < commands.length) {
@@ -54,7 +115,12 @@ public abstract class AsyncMultiExecutor {
 			// Determine if a new command needs to be started.
 			if (nextThread < commands.length && ! done.get()) {
 				// Start new command.
-				eventLoop.execute(cluster, commands[nextThread]);
+				if (clusterKey == 0) {
+					eventLoop.execute(cluster, commands[nextThread]);
+				}
+				else {
+					executeValidateCommand(commands[nextThread]);
+				}
 			}
 		}
 		else {
@@ -74,6 +140,10 @@ public abstract class AsyncMultiExecutor {
 			}
 			onFailure(ae);
 		}
+	}
+	
+	private final void initFailure(AerospikeException ae) {
+		onFailure(ae);
 	}
 	
 	protected abstract void onSuccess();
