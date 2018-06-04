@@ -34,7 +34,7 @@ public interface InfoListener {
 	/**
 	 * This method is called when an asynchronous info command fails.
 	 * 
-	 * @param exception		error that occurred
+	 * @param ae			error that occurred
 	 */
 	public void onFailure(AerospikeException ae);
 }
