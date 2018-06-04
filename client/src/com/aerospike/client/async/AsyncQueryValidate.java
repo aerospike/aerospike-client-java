@@ -39,7 +39,7 @@ public final class AsyncQueryValidate {
 		String namespace
 	) {
 		String command = "cluster-stable:namespace=" + namespace;
-		AsyncInfoCommand aic = new AsyncInfoCommand(new BeginHandler(listener, command), null, node, true, command);
+		AsyncInfoCommand aic = new AsyncInfoCommand(new BeginHandler(listener, command), null, node, command);
 		eventLoop.execute(cluster, aic);
 	}
 	
@@ -89,7 +89,7 @@ public final class AsyncQueryValidate {
 		long expectedKey
 	) {
 		String command = "cluster-stable:namespace=" + namespace;
-		AsyncInfoCommand aic = new AsyncInfoCommand(new Handler(listener, command, expectedKey), null, node, true, command);
+		AsyncInfoCommand aic = new AsyncInfoCommand(new Handler(listener, command, expectedKey), null, node, command);
 		eventLoop.execute(cluster, aic);
 	}
 

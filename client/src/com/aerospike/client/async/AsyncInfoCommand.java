@@ -31,8 +31,8 @@ public final class AsyncInfoCommand extends AsyncCommand {
 	private final String[] commands;
 	private Map<String,String> map;
 	
-	public AsyncInfoCommand(InfoListener listener, InfoPolicy policy, Node node, boolean isRead, String... commands) {
-		super(createPolicy(policy), node, isRead, true);
+	public AsyncInfoCommand(InfoListener listener, InfoPolicy policy, Node node, String... commands) {
+		super(createPolicy(policy), node, false, true);
 		this.listener = listener;
 		this.commands = commands;
 	}

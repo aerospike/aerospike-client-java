@@ -32,7 +32,6 @@ import com.aerospike.client.async.AsyncBatch;
 import com.aerospike.client.async.AsyncDelete;
 import com.aerospike.client.async.AsyncExecute;
 import com.aerospike.client.async.AsyncExists;
-import com.aerospike.client.async.AsyncInfoCommand;
 import com.aerospike.client.async.AsyncOperate;
 import com.aerospike.client.async.AsyncQueryExecutor;
 import com.aerospike.client.async.AsyncRead;
@@ -69,7 +68,6 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
-import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -1974,32 +1972,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return null;
 	}
 	
-	//-------------------------------------------------------
-	// Async Info
-	//-------------------------------------------------------
-
-	/**
-	 * Asynchronously issue info command. 
-	 * This method registers the command with an event loop and returns.
-	 * The event loop thread will process the command and send the results to the listener.
-	 * 
-	 * @param eventLoop				event loop that will process the command
-	 * @param listener				where to send results
-	 * @param policy				info configuration parameters, pass in null for defaults
-	 * @param node					server node
-	 * @param isRead				is info command a read
-	 * @param commands				array of info string commands
-	 * @throws AerospikeException	if event loop registration fails
-	 */
-	public final void info(EventLoop eventLoop, InfoListener listener, InfoPolicy policy, Node node, boolean isRead, String... commands)
-		throws AerospikeException {
-		if (policy == null) {
-			policy = infoPolicyDefault;
-		}
-		AsyncInfoCommand command = new AsyncInfoCommand(listener, policy, node, isRead, commands);
-		eventLoop.execute(cluster, command);
-	}
-
 	//-------------------------------------------------------
 	// User administration
 	//-------------------------------------------------------
