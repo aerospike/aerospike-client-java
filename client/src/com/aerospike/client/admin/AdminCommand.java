@@ -150,7 +150,7 @@ public class AdminCommand {
 			for (int i = 0; i < fieldCount; i++) {
 				int len = Buffer.bytesToInt(dataBuffer, dataOffset);
 				dataOffset += 4;
-				int id = dataBuffer[dataOffset++];
+				int id = dataBuffer[dataOffset++] & 0xFF;
 				len--;
 
 				if (id == SESSION_TOKEN) {
@@ -215,7 +215,7 @@ public class AdminCommand {
 		conn.write(dataBuffer, dataOffset);
 		conn.readFully(dataBuffer, HEADER_SIZE);
 
-		int result = dataBuffer[RESULT_CODE];
+		int result = dataBuffer[RESULT_CODE] & 0xFF;
 		if (result != 0) {
 			throw new AerospikeException(result, "Authentication failed");
 		}		
@@ -393,7 +393,7 @@ public class AdminCommand {
 			throw new AerospikeException(e);
 		}
 
-		int result = dataBuffer[RESULT_CODE];
+		int result = dataBuffer[RESULT_CODE] & 0xFF;
 
 		if (result != 0)
 		{
@@ -477,20 +477,20 @@ public class AdminCommand {
 			super.dataOffset = 0;
 
 			while (super.dataOffset < receiveSize) {
-				int resultCode = super.dataBuffer[super.dataOffset + 1];
+				int resultCode = super.dataBuffer[super.dataOffset + 1] & 0xFF;
 
 				if (resultCode != 0) {
 					return resultCode;
 				}
 
 				User user = new User();
-				int fieldCount = super.dataBuffer[super.dataOffset + 3];
+				int fieldCount = super.dataBuffer[super.dataOffset + 3] & 0xFF;
 				super.dataOffset += HEADER_REMAINING;
 
 				for (int i = 0; i < fieldCount; i++) {
 					int len = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
 					super.dataOffset += 4;
-					int id = super.dataBuffer[super.dataOffset++];
+					int id = super.dataBuffer[super.dataOffset++] & 0xFF;
 					len--;
 
 					if (id == USER) {
@@ -518,11 +518,11 @@ public class AdminCommand {
 		}
 
 		private void parseRoles(User user) {
-			int size = super.dataBuffer[super.dataOffset++];
+			int size = super.dataBuffer[super.dataOffset++] & 0xFF;
 			user.roles = new ArrayList<String>(size);
 
 			for (int i = 0; i < size; i++) {
-				int len = super.dataBuffer[super.dataOffset++];
+				int len = super.dataBuffer[super.dataOffset++] & 0xFF;
 				String role = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
 				super.dataOffset += len;
 				user.roles.add(role);
@@ -556,20 +556,20 @@ public class AdminCommand {
 			super.dataOffset = 0;
 
 			while (super.dataOffset < receiveSize) {
-				int resultCode = super.dataBuffer[super.dataOffset + 1];
+				int resultCode = super.dataBuffer[super.dataOffset + 1] & 0xFF;
 
 				if (resultCode != 0) {
 					return resultCode;
 				}
 
 				Role role = new Role();
-				int fieldCount = super.dataBuffer[super.dataOffset + 3];
+				int fieldCount = super.dataBuffer[super.dataOffset + 3] & 0xFF;
 				super.dataOffset += HEADER_REMAINING;
 
 				for (int i = 0; i < fieldCount; i++) {
 					int len = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
 					super.dataOffset += 4;
-					int id = super.dataBuffer[super.dataOffset++];
+					int id = super.dataBuffer[super.dataOffset++] & 0xFF;
 					len--;
 
 					if (id == ROLE) {
@@ -597,19 +597,19 @@ public class AdminCommand {
 		}
 
 		private void parsePrivileges(Role role) {
-			int size = super.dataBuffer[super.dataOffset++];
+			int size = super.dataBuffer[super.dataOffset++] & 0xFF;
 			role.privileges = new ArrayList<Privilege>(size);
 
 			for (int i = 0; i < size; i++) {
 				Privilege priv = new Privilege();
-				priv.code = PrivilegeCode.fromId(super.dataBuffer[super.dataOffset++]);
+				priv.code = PrivilegeCode.fromId(super.dataBuffer[super.dataOffset++] & 0xFF);
 				
 				if (priv.code.canScope()) {				
-					int len = super.dataBuffer[super.dataOffset++];
+					int len = super.dataBuffer[super.dataOffset++] & 0xFF;
 					priv.namespace = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
 					super.dataOffset += len;
 					
-					len = super.dataBuffer[super.dataOffset++];
+					len = super.dataBuffer[super.dataOffset++] & 0xFF;
 					priv.setName = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
 					super.dataOffset += len;
 				}
