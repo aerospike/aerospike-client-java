@@ -751,4 +751,189 @@ public class TestOperateMap extends TestSync {
 		client.operate(null, key,
 				MapOperation.removeByKeyList(binName, singletonList(Value.get("key-1")), MapReturnType.VALUE));
 	}
+
+	@Test
+	public void operateMapGetRelative() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey14");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get(0), Value.get(17));
+		inputMap.put(Value.get(4), Value.get(2));
+		inputMap.put(Value.get(5), Value.get(15));
+		inputMap.put(Value.get(9), Value.get(10));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		record = client.operate(null, key,
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), 0, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), 1, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), -1, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(3), 2, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(3), -2, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), 0, 1, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), 1, 2, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(5), -1, 1, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(3), 2, 1, MapReturnType.KEY),
+				MapOperation.getByKeyRelativeIndexRange(binName, Value.get(3), -2, 2, MapReturnType.KEY),
+				MapOperation.getByValueRelativeRankRange(binName, Value.get(11), 1, MapReturnType.VALUE),
+				MapOperation.getByValueRelativeRankRange(binName, Value.get(11), -1, MapReturnType.VALUE),
+				MapOperation.getByValueRelativeRankRange(binName, Value.get(11), 1, 1, MapReturnType.VALUE),
+				MapOperation.getByValueRelativeRankRange(binName, Value.get(11), -1, 1, MapReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(5L, list.get(0));
+		assertEquals(9L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(9L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(5L, list.get(1));
+		assertEquals(9L, list.get(2));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(9L, list.get(0));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		assertEquals(0L, list.get(0));
+		assertEquals(4L, list.get(1));
+		assertEquals(5L, list.get(2));
+		assertEquals(9L, list.get(3));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(5L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(9L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(4L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(9L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(0L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(17L, list.get(0));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(10L, list.get(0));
+		assertEquals(15L, list.get(1));
+		assertEquals(17L, list.get(2));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(17L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(10L, list.get(0));
+	}
+
+	@Test
+	public void operateMapRemoveRelative() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey15");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get(0), Value.get(17));
+		inputMap.put(Value.get(4), Value.get(2));
+		inputMap.put(Value.get(5), Value.get(15));
+		inputMap.put(Value.get(9), Value.get(10));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		record = client.operate(null, key,
+				MapOperation.removeByKeyRelativeIndexRange(binName, Value.get(5), 0, MapReturnType.VALUE),
+				MapOperation.removeByKeyRelativeIndexRange(binName, Value.get(5), 1, MapReturnType.VALUE),
+				MapOperation.removeByKeyRelativeIndexRange(binName, Value.get(5), -1, 1, MapReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(15L, list.get(0));
+		assertEquals(10L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+	
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(2L, list.get(0));
+		
+		// Write values to empty map.
+		client.delete(null, key);
+
+		record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+
+		assertRecordFound(key, record);
+
+		record = client.operate(null, key,
+				MapOperation.removeByValueRelativeRankRange(binName, Value.get(11), 1, MapReturnType.VALUE),
+				MapOperation.removeByValueRelativeRankRange(binName, Value.get(11), -1, 1, MapReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		results = record.getList(binName);
+		i = 0;
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(17L, list.get(0));
+	
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(10L, list.get(0));
+	}
 }

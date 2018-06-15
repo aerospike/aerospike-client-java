@@ -66,6 +66,7 @@ public class ListOperation {
 	private static final int GET_BY_INDEX_RANGE = 24;
 	private static final int GET_BY_VALUE_INTERVAL = 25;
 	private static final int GET_BY_RANK_RANGE = 26;
+	private static final int GET_BY_VALUE_REL_RANK_RANGE = 27;
 	private static final int REMOVE_BY_INDEX = 32;
 	private static final int REMOVE_BY_RANK = 34;
 	private static final int REMOVE_BY_VALUE = 35;
@@ -73,6 +74,7 @@ public class ListOperation {
 	private static final int REMOVE_BY_INDEX_RANGE = 37;
 	private static final int REMOVE_BY_VALUE_INTERVAL = 38;
 	private static final int REMOVE_BY_RANK_RANGE = 39;
+	private static final int REMOVE_BY_VALUE_REL_RANK_RANGE = 40;
 
 	/**
 	 * Create set list order operation.
@@ -353,6 +355,46 @@ public class ListOperation {
 	}
 
 	/**
+	 * Create list remove by value relative to rank range operation.
+	 * Server removes list items nearest to value and greater by relative rank.
+	 * Server returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * <p>
+	 * Examples for ordered list [0,4,5,9,11,15]:
+	 * <ul>
+	 * <li>(value,rank) = [removed items]</li>
+	 * <li>(5,0) = [5,9,11,15]</li>
+	 * <li>(5,1) = [9,11,15]</li>
+	 * <li>(5,-1) = [4,5,9,11,15]</li>
+	 * <li>(3,0) = [4,5,9,11,15]</li>
+	 * <li>(3,3) = [11,15]</li>
+	 * <li>(3,-3) = [0,4,5,9,11,15]</li>
+	 * </ul>
+	 */
+	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
+		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank);
+	}	
+
+	/**
+	 * Create list remove by value relative to rank range operation.
+	 * Server removes list items nearest to value and greater by relative rank with a count limit.
+	 * Server returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * <p>
+	 * Examples for ordered list [0,4,5,9,11,15]:
+	 * <ul>
+	 * <li>(value,rank,count) = [removed items]</li>
+	 * <li>(5,0,2) = [5,9]</li>
+	 * <li>(5,1,1) = [9]</li>
+	 * <li>(5,-1,2) = [4,5]</li>
+	 * <li>(3,0,1) = [4]</li>
+	 * <li>(3,3,7) = [11,15]</li>
+	 * <li>(3,-3,2) = []</li>
+	 * </ul>
+	 */
+	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
+		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank, count);
+	}	
+	
+	/**
 	 * Create list remove operation.
 	 * Server removes list item identified by index and returns removed data specified by returnType (See {@link ListReturnType}). 
 	 */
@@ -463,6 +505,46 @@ public class ListOperation {
 	}
 
 	/**
+	 * Create list get by value relative to rank range operation.
+	 * Server selects list items nearest to value and greater by relative rank.
+	 * Server returns selected data specified by returnType (See {@link ListReturnType}).
+	 * <p>
+	 * Examples for ordered list [0,4,5,9,11,15]:
+	 * <ul>
+	 * <li>(value,rank) = [selected items]</li>
+	 * <li>(5,0) = [5,9,11,15]</li>
+	 * <li>(5,1) = [9,11,15]</li>
+	 * <li>(5,-1) = [4,5,9,11,15]</li>
+	 * <li>(3,0) = [4,5,9,11,15]</li>
+	 * <li>(3,3) = [11,15]</li>
+	 * <li>(3,-3) = [0,4,5,9,11,15]</li>
+	 * </ul>
+	 */
+	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
+		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank);
+	}	
+
+	/**
+	 * Create list get by value relative to rank range operation.
+	 * Server selects list items nearest to value and greater by relative rank with a count limit.
+	 * Server returns selected data specified by returnType (See {@link ListReturnType}).
+	 * <p>
+	 * Examples for ordered list [0,4,5,9,11,15]:
+	 * <ul>
+	 * <li>(value,rank,count) = [selected items]</li>
+	 * <li>(5,0,2) = [5,9]</li>
+	 * <li>(5,1,1) = [9]</li>
+	 * <li>(5,-1,2) = [4,5]</li>
+	 * <li>(3,0,1) = [4]</li>
+	 * <li>(3,3,7) = [11,15]</li>
+	 * <li>(3,-3,2) = []</li>
+	 * </ul>
+	 */
+	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
+		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank, count);
+	}	
+
+	/**
 	 * Create list get by index operation.
 	 * Server selects list item identified by index and returns selected data specified by returnType
 	 * (See {@link ListReturnType}). 
@@ -512,5 +594,5 @@ public class ListOperation {
 	 */
 	public static Operation getByRankRange(String binName, int rank, int count, int returnType) {
 		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, rank, count);
-	}	
+	}
 }

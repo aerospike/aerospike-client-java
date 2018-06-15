@@ -38,6 +38,7 @@ import com.aerospike.client.cdt.ListOrder;
 import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListReturnType;
 import com.aerospike.client.cdt.ListSortFlags;
+import com.aerospike.client.cdt.ListWriteFlags;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
@@ -692,5 +693,172 @@ public class TestOperateList extends TestSync {
 		assertEquals(2L, list.size());
 		assertEquals(1L, list.get(0));
 		assertEquals(2L, list.get(1));
+	}
+
+	@Test
+	public void operateListGetRelative() {
+		Key key = new Key(args.namespace, args.set, "oplkey13");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(0));
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(9));
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(15));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), 0, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), 1, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), -1, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), 0, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), 3, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), -3, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), 0, 2, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), 1, 1, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(5), -1, 2, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), 0, 1, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), 3, 7, ListReturnType.VALUE),
+				ListOperation.getByValueRelativeRankRange(binName, Value.get(3), -3, 2, ListReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(6L, size);	
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		assertEquals(5L, list.get(0));
+		assertEquals(9L, list.get(1));
+		assertEquals(11L, list.get(2));
+		assertEquals(15L, list.get(3));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(3L, list.size());
+		assertEquals(9L, list.get(0));
+		assertEquals(11L, list.get(1));
+		assertEquals(15L, list.get(2));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(5L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(5L, list.get(1));
+		assertEquals(9L, list.get(2));
+		assertEquals(11L, list.get(3));
+		assertEquals(15L, list.get(4));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(5L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(5L, list.get(1));
+		assertEquals(9L, list.get(2));
+		assertEquals(11L, list.get(3));
+		assertEquals(15L, list.get(4));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(11L, list.get(0));
+		assertEquals(15L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(6L, list.size());
+		assertEquals(0L, list.get(0));
+		assertEquals(4L, list.get(1));
+		assertEquals(5L, list.get(2));
+		assertEquals(9L, list.get(3));
+		assertEquals(11L, list.get(4));
+		assertEquals(15L, list.get(5));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(5L, list.get(0));
+		assertEquals(9L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(9L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(4L, list.get(0));
+		assertEquals(5L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(4L, list.get(0));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(2L, list.size());
+		assertEquals(11L, list.get(0));
+		assertEquals(15L, list.get(1));
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+	}
+
+	@Test
+	public void operateListRemoveRelative() {
+		Key key = new Key(args.namespace, args.set, "oplkey14");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(0));
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(9));
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(15));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(5), 0, ListReturnType.VALUE),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(5), 1, ListReturnType.VALUE),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(5), -1, ListReturnType.VALUE),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(3), -3, 1, ListReturnType.VALUE),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(3), -3, 2, ListReturnType.VALUE),
+				ListOperation.removeByValueRelativeRankRange(binName, Value.get(3), -3, 3, ListReturnType.VALUE)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long size = (Long)results.get(i++);	
+		assertEquals(6L, size);	
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(4L, list.size());
+		assertEquals(5L, list.get(0));
+		assertEquals(9L, list.get(1));
+		assertEquals(11L, list.get(2));
+		assertEquals(15L, list.get(3));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(4L, list.get(0));
+
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+
+		list = (List<?>)results.get(i++);
+		assertEquals(0L, list.size());
+		
+		list = (List<?>)results.get(i++);
+		assertEquals(1L, list.size());
+		assertEquals(0L, list.get(0));
 	}
 }
