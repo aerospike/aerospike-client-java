@@ -40,6 +40,7 @@ import com.aerospike.client.cdt.MapOperation;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
+import com.aerospike.client.cdt.MapWriteFlags;
 import com.aerospike.client.cdt.MapWriteMode;
 import com.aerospike.test.sync.TestSync;
 
@@ -935,5 +936,47 @@ public class TestOperateMap extends TestSync {
 		list = (List<?>)results.get(i++);
 		assertEquals(1L, list.size());
 		assertEquals(10L, list.get(0));
+	}
+
+	@Test
+	public void operateMapPartial() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey16");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get(0), Value.get(17));
+		inputMap.put(Value.get(4), Value.get(2));
+		inputMap.put(Value.get(5), Value.get(15));
+		inputMap.put(Value.get(9), Value.get(10));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap),
+				MapOperation.putItems(MapPolicy.Default, "bin2", inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		Map<Value,Value> sourceMap = new HashMap<Value,Value>();
+		sourceMap.put(Value.get(3), Value.get(3));
+		sourceMap.put(Value.get(5), Value.get(15));
+
+		record = client.operate(null, key,
+				MapOperation.putItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.PARTIAL | MapWriteFlags.NO_FAIL), binName, sourceMap),
+				MapOperation.putItems(new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY | MapWriteFlags.NO_FAIL), "bin2", sourceMap)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		long size = record.getLong(binName);
+		assertEquals(5L, size);
+		
+		size = record.getLong("bin2");
+		assertEquals(4L, size);	
 	}
 }

@@ -17,7 +17,7 @@
 package com.aerospike.client.cdt;
 
 /**
- * List write flags.
+ * List write bit flags.
  */
 public final class ListWriteFlags {
 	/**
@@ -34,5 +34,16 @@ public final class ListWriteFlags {
 	 * Enforce list boundaries when inserting.  Do not allow values to be inserted
 	 * at index outside current list boundaries.
 	 */
-	public static final int INSERT_BOUNDED = 2;	
+	public static final int INSERT_BOUNDED = 2;
+
+	/**
+	 * Do not raise error if a list item fails due to write flag constraints.
+	 */
+	public static final int NO_FAIL = 4;
+
+	/**
+	 * Allow other valid list items to be committed if a list item fails due to
+	 * write flag constraints.
+	 */
+	public static final int PARTIAL = 8;
 }

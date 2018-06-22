@@ -17,34 +17,35 @@
 package com.aerospike.client.cdt;
 
 /**
- * Unique key map write type.
- * This enum should only be used for server versions < 4.3.
- * {@link MapWriteFlags} are recommended for server versions >= 4.3.
+ * Map write bit flags. 
+ * Requires server versions >= 4.3.
  */
-public enum MapWriteMode {
+public final class MapWriteFlags {
 	/**
-	 * If the key already exists, the item will be overwritten.
+	 * Default.  Allow create or update.
+	 */
+	public static final int DEFAULT = 0;
+	
+	/**
+	 * If the key already exists, the item will be denied.
 	 * If the key does not exist, a new item will be created.
 	 */
-	UPDATE (MapOperation.PUT, MapOperation.PUT_ITEMS),
-	
+	public static final int CREATE_ONLY = 1;
+
 	/**
 	 * If the key already exists, the item will be overwritten.
-	 * If the key does not exist, the write will fail.
+	 * If the key does not exist, the item will be denied.
 	 */
-	UPDATE_ONLY (MapOperation.REPLACE, MapOperation.REPLACE_ITEMS),
+	public static final int UPDATE_ONLY = 2;
 	
 	/**
-	 * If the key already exists, the write will fail.
-	 * If the key does not exist, a new item will be created.
+	 * Do not raise error if a map item is denied due to write flag constraints.
 	 */
-	CREATE_ONLY (MapOperation.ADD, MapOperation.ADD_ITEMS);
-	
-	protected final int itemCommand;
-	protected final int itemsCommand;
-	
-	private MapWriteMode(int itemCommand, int itemsCommand) {
-		this.itemCommand = itemCommand;
-		this.itemsCommand = itemsCommand;
-	}
+	public static final int NO_FAIL = 4;
+
+	/**
+	 * Allow other valid map items to be committed if a map item is denied due to
+	 * write flag constraints.
+	 */
+	public static final int PARTIAL = 8;
 }

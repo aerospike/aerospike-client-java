@@ -861,4 +861,53 @@ public class TestOperateList extends TestSync {
 		assertEquals(1L, list.size());
 		assertEquals(0L, list.get(0));
 	}
+
+	@Test
+	public void operateListPartial() {
+		Key key = new Key(args.namespace, args.set, "oplkey15");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(0));
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(9));
+		itemList.add(Value.get(9));
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(15));
+		itemList.add(Value.get(0));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL), "bin2", itemList)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		long size = record.getLong(binName);
+		assertEquals(6L, size);	
+		
+		size = record.getLong("bin2");
+		assertEquals(0L, size);	
+		
+		itemList = new ArrayList<Value>();
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(3));
+
+		record = client.operate(null, key,
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.PARTIAL | ListWriteFlags.NO_FAIL), binName, itemList),
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL), "bin2", itemList)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		size = record.getLong(binName);
+		assertEquals(7L, size);	
+		
+		size = record.getLong("bin2");
+		assertEquals(2L, size);	
+	}
 }

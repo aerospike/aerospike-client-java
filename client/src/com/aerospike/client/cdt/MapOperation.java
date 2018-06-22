@@ -104,26 +104,36 @@ public class MapOperation {
 	 * Server writes key/value item to map bin and returns map size.
 	 * <p>
 	 * The required map policy dictates the type of map to create when it does not exist.
-	 * The map policy also specifies the mode used when writing items to the map.
-	 * See policy {@link com.aerospike.client.cdt.MapPolicy} and write mode 
-	 * {@link com.aerospike.client.cdt.MapWriteMode}.
+	 * The map policy also specifies the flags used when writing items to the map.
+	 * See policy {@link com.aerospike.client.cdt.MapPolicy}.
 	 */
 	public static Operation put(MapPolicy policy, String binName, Value key, Value value) {
 		Packer packer = new Packer();
-		packer.packRawShort(policy.itemCommand);
-		
-		if (policy.itemCommand == REPLACE) {
-			// Replace doesn't allow map attributes because it does not create on non-existing key.
-			packer.packArrayBegin(2);
-			key.pack(packer);
-			value.pack(packer);
-		}
-		else {
-			packer.packArrayBegin(3);
+
+		if (policy.flags != 0) {
+			packer.packRawShort(PUT);
+			packer.packArrayBegin(4);
 			key.pack(packer);
 			value.pack(packer);
 			packer.packInt(policy.attributes);
-		}		
+			packer.packInt(policy.flags);			
+		}
+		else {			
+			packer.packRawShort(policy.itemCommand);
+
+			if (policy.itemCommand == REPLACE) {
+				// Replace doesn't allow map attributes because it does not create on non-existing key.
+				packer.packArrayBegin(2);
+				key.pack(packer);
+				value.pack(packer);
+			}
+			else {
+				packer.packArrayBegin(3);
+				key.pack(packer);
+				value.pack(packer);
+				packer.packInt(policy.attributes);
+			}
+		}
 		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
 
@@ -132,23 +142,32 @@ public class MapOperation {
 	 * Server writes each map item to map bin and returns map size.
 	 * <p>
 	 * The required map policy dictates the type of map to create when it does not exist.
-	 * The map policy also specifies the mode used when writing items to the map.
-	 * See policy {@link com.aerospike.client.cdt.MapPolicy} and write mode 
-	 * {@link com.aerospike.client.cdt.MapWriteMode}.
+	 * The map policy also specifies the flags used when writing items to the map.
+	 * See policy {@link com.aerospike.client.cdt.MapPolicy}.
 	 */
 	public static Operation putItems(MapPolicy policy, String binName, Map<Value,Value> map) {
 		Packer packer = new Packer();
-		packer.packRawShort(policy.itemsCommand);
 		
-		if (policy.itemsCommand == REPLACE_ITEMS) {
-			// Replace doesn't allow map attributes because it does not create on non-existing key.
-			packer.packArrayBegin(1);
+		if (policy.flags != 0) {
+			packer.packRawShort(PUT_ITEMS);
+			packer.packArrayBegin(3);
 			packer.packValueMap(map);
+			packer.packInt(policy.attributes);
+			packer.packInt(policy.flags);			
 		}
 		else {
-			packer.packArrayBegin(2);
-			packer.packValueMap(map);
-			packer.packInt(policy.attributes);			
+			packer.packRawShort(policy.itemsCommand);
+			
+			if (policy.itemsCommand == REPLACE_ITEMS) {
+				// Replace doesn't allow map attributes because it does not create on non-existing key.
+				packer.packArrayBegin(1);
+				packer.packValueMap(map);
+			}
+			else {
+				packer.packArrayBegin(2);
+				packer.packValueMap(map);
+				packer.packInt(policy.attributes);			
+			}
 		}
 		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
