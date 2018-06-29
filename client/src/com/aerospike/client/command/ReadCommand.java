@@ -157,7 +157,7 @@ public class ReadCommand extends SyncCommand {
 		int generation,
 		int expiration
 	) throws AerospikeException {
-		Map<String,Object> bins = null;
+		Map<String,Object> bins = new HashMap();
 	    int receiveOffset = 0;
 	
 		// There can be fields in the response (setname etc).
@@ -180,19 +180,11 @@ public class ReadCommand extends SyncCommand {
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
-	
-			if (bins == null) {
-				bins = new HashMap<String,Object>();
-			}
-			addBin(bins, name, value);
+			bins.put(name, value);
 	    }	
 	    return new Record(bins, generation, expiration);
 	}
-	
-	protected void addBin(Map<String,Object> bins, String name, Object value) {
-		bins.put(name, value);	
-	}
-	
+
 	public Record getRecord() {
 		return record;
 	}
