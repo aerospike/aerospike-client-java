@@ -187,7 +187,6 @@ public class ReadCommand extends SyncCommand {
 
     /*
      * The function represents mutability on the Record.
-     * {@link #setCallback(Callback callback) setCallback()}
      * The function is overridden in other commands to change
      * the behaviour of adding/modifying key to the map
      * @see com.aerospike.client.command.OperateCommand
