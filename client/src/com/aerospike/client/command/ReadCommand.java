@@ -180,10 +180,21 @@ public class ReadCommand extends SyncCommand {
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
-			bins.put(name, value);
+			addBin(bins, name, value);
 	    }	
 	    return new Record(bins, generation, expiration);
 	}
+
+    /*
+     * The function represents mutability on the Record.
+     * {@link #setCallback(Callback callback) setCallback()}
+     * The function is overridden in other commands to change
+     * the behaviour of adding/modifying key to the map
+     * @see com.aerospike.client.command.OperateCommand
+     */
+    protected void addBin(Map<String, Object> bins, String name, Object value) {
+        bins.put(name, value);
+    }
 
 	public Record getRecord() {
 		return record;
