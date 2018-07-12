@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
@@ -802,6 +803,25 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return null;
+	}
+
+	public final ClusterStats getStats() {
+		// Must copy array reference for copy on write semantics to work.
+		Node[] nodeArray = nodes;		
+		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
+		int count = 0;
+		
+		for (Node node : nodeArray) {
+			nodeStats[count++] = new NodeStats(node);
+		}
+		
+		int threadsInUse = 0;
+		
+		if (threadPool instanceof ThreadPoolExecutor) {
+			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
+			threadsInUse = tpe.getActiveCount();
+		}
+		return new ClusterStats(nodeStats, threadsInUse);
 	}
 
 	public final void interruptTendSleep() {

@@ -41,6 +41,7 @@ import com.aerospike.client.async.AsyncTouch;
 import com.aerospike.client.async.AsyncWrite;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Batch;
@@ -348,6 +349,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return cluster.getNode(nodeName);
 	}
 	
+	/**
+	 * Return operating cluster statistics.
+	 */
+	public final ClusterStats getClusterStats() {
+		return cluster.getStats();
+	}
+
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------

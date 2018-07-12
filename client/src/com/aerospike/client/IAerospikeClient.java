@@ -24,6 +24,7 @@ import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
@@ -110,6 +111,11 @@ public interface IAerospikeClient extends Closeable {
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
 	 */
 	public Node getNode(String nodeName) throws AerospikeException.InvalidNode;
+
+	/**
+	 * Return operating cluster statistics.
+	 */
+	public ClusterStats getClusterStats();
 
 	//-------------------------------------------------------
 	// Write Record Operations

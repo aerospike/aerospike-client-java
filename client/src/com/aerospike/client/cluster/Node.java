@@ -605,6 +605,24 @@ public class Node implements Closeable {
 		conn.close();
 	}
 
+	public final ConnectionStats getConnectionStats() {
+		int inPool = 0;
+		int inUse = 0;
+	
+		for (Pool pool : connectionPools) {
+			int tmp = pool.queue.size();
+			inPool += tmp;
+			tmp = pool.total.get() - tmp;
+			
+			// Timing issues may cause values to go negative. Adjust.
+			if (tmp < 0) {
+				tmp = 0;
+			}
+			inUse += tmp;
+		}
+		return new ConnectionStats(inPool, inUse);
+	}
+
 	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {	
 		AsyncPool pool = asyncConnectionPools[index];		
 		ArrayDeque<AsyncConnection> queue = pool.queue;
@@ -636,6 +654,31 @@ public class Node implements Closeable {
 
 	public final void decrAsyncConnection(int index) {
 		asyncConnectionPools[index].total--;
+	}
+	
+	public final ConnectionStats getAsyncConnectionStats() {
+		int inPool = 0;
+		int inUse = 0;
+
+		if (asyncConnectionPools != null) {
+			for (AsyncPool pool : asyncConnectionPools) {
+				// Warning: cross-thread reference without a lock.
+				int tmp =  pool.queue.size();
+				
+				// Timing issues may cause values to go negative. Adjust.
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inPool += tmp;
+				tmp = pool.total - tmp;
+				
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inUse += tmp;
+			}
+		}
+		return new ConnectionStats(inPool, inUse);
 	}
 	
 	/**
