@@ -27,9 +27,10 @@ import io.netty.util.concurrent.EventExecutor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.aerospike.client.AerospikeException;
@@ -42,24 +43,24 @@ import com.aerospike.client.util.Util;
  */
 public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
-	private final HashMap<EventExecutor,NettyEventLoop> eventLoopMap;
+	private final Map<EventExecutor,NettyEventLoop> eventLoopMap;
 	private final NettyEventLoop[] eventLoopArray;
 	private final EventLoopGroup group;
 	TlsPolicy tlsPolicy;
 	SslContext sslContext;
-    private int eventIter;
-    final boolean isEpoll;
+	private int eventIter;
+	final boolean isEpoll;
 
-    /**
-     * Create Aerospike event loop wrappers from given netty event loops.
-     */
+	/**
+	 * Create Aerospike event loop wrappers from given netty event loops.
+	 */
 	public NettyEventLoops(EventLoopGroup group) {
 		this(new EventPolicy(), group);
 	}
 
-    /**
-     * Create Aerospike event loop wrappers from given netty event loops.
-     */
+	/**
+	 * Create Aerospike event loop wrappers from given netty event loops.
+	 */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group) {
 		if (policy.minTimeout < 5) {
 			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
@@ -77,7 +78,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		}
 
 		eventLoopArray = list.toArray(new NettyEventLoop[count]);
-		eventLoopMap = new HashMap<EventExecutor,NettyEventLoop>(count);
+		eventLoopMap = new IdentityHashMap<EventExecutor,NettyEventLoop>(count);
 		
 		for (NettyEventLoop eventLoop : eventLoopArray) {
 			eventLoopMap.put(eventLoop.eventLoop, eventLoop);
