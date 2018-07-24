@@ -201,7 +201,7 @@ public class Main implements Log.Callback {
 			);
 		options.addOption("r", "replica", true,
 				"Which replica to use for reads.\n\n" +
-				"Values:  master | any | sequence.  Default: master\n" +
+				"Values:  master | any | sequence.  Default: sequence\n" +
 				"master: Always use node containing master partition.\n" +
 				"any: Distribute reads across master and proles in round-robin fashion.\n" +
 				"sequence: Always try master first. If master fails, try proles in sequence."	
