@@ -45,7 +45,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 
 public abstract class Command {		
-	// Flags commented out are not supported by this client.
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.

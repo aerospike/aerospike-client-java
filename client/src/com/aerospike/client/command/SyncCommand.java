@@ -48,7 +48,7 @@ public abstract class SyncCommand extends Command {
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
 
-			if (socketTimeout > totalTimeout) {
+			if (socketTimeout == 0 || socketTimeout > totalTimeout) {
 				socketTimeout = totalTimeout;
 			}
 		}

@@ -45,14 +45,14 @@ public class Policy {
 	/**
 	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
-	 * If socketTimeout is not zero and the socket has been idle for at least socketTimeout,
+	 * If socketTimeout is zero and totalTimeout is non-zero, then socketTimeout will be set
+	 * to totalTimeout.  If both socketTimeout and totalTimeout are non-zero and
+	 * socketTimeout > totalTimeout, then socketTimeout will be set to totalTimeout. If both
+	 * socketTimeout and totalTimeout are zero, then there will be no socket idle limit.
+	 * <p>
+	 * If socketTimeout is non-zero and the socket has been idle for at least socketTimeout,
 	 * both maxRetries and totalTimeout are checked.  If maxRetries and totalTimeout are not
 	 * exceeded, the transaction is retried.
-	 * <p>
-	 * If both socketTimeout and totalTimeout are non-zero and socketTimeout > totalTimeout,
-	 * then socketTimeout will be set to totalTimeout. 
-	 * <p>
-	 * If socketTimeout is zero, there will be no socket idle limit.
 	 * <p>
 	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
 	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
