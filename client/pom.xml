@@ -125,7 +125,10 @@
             <include>com/aerospike/client/async/NioEventLoops.java</include>
             <include>com/aerospike/client/async/Throttle.java</include>
             <include>com/aerospike/client/async/Throttles.java</include>
+            <include>com/aerospike/client/cluster/ClusterStats.java</include>
+            <include>com/aerospike/client/cluster/ConnectionStats.java</include>
             <include>com/aerospike/client/cluster/Node.java</include>
+            <include>com/aerospike/client/cluster/NodeStats.java</include>
             <include>com/aerospike/client/cluster/ThreadDaemonFactory.java</include>
             <include>com/aerospike/client/lua/LuaConfig.java</include>
             <include>com/aerospike/client/lua/LuaCache.java</include>
