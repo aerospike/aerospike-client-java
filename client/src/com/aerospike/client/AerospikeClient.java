@@ -374,6 +374,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+		if(bins.length < 1) {
+			throw new AerospikeException("Require at least a single bin");
+		}
 		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.WRITE);
 		command.execute(cluster, policy, key, null, false);
 	}

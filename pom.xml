@@ -13,6 +13,7 @@
     <module>examples</module>
     <module>benchmarks</module>
     <module>servlets</module>
+    <module>test</module>
   </modules>
 
 </project>
