@@ -10,6 +10,7 @@
 
   <modules>
     <module>client</module>
+    <module>reactor-client</module>
     <module>examples</module>
     <module>benchmarks</module>
     <module>servlets</module>
