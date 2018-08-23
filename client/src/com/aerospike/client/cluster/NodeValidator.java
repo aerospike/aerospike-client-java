@@ -181,12 +181,18 @@ public final class NodeValidator {
 			String addressCommand = null;
 			
 			if (detectLoadBalancer) {
-				// Seed may be load balancer with changing address. Determine real address.
-				addressCommand = (cluster.tlsPolicy != null)? 
-					cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
-					cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
-				
-				commands.add(addressCommand);
+				if (address.isLoopbackAddress()) {
+					// Disable load balancer detection for localhost.
+					detectLoadBalancer = false;
+				}
+				else {
+					// Seed may be load balancer with changing address. Determine real address.
+					addressCommand = (cluster.tlsPolicy != null)? 
+						cluster.useServicesAlternate ? "service-tls-alt" : "service-tls-std" :
+						cluster.useServicesAlternate ? "service-clear-alt" : "service-clear-std";
+					
+					commands.add(addressCommand);
+				}
 			}
 
 			// Issue commands.
