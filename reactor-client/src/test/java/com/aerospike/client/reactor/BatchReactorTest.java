@@ -44,7 +44,8 @@ public class BatchReactorTest extends ReactorTest {
 	private static final String valuePrefix = "batchvalue";
 	private final String binName = args.getBinName("batchbin");
 	private static final int size = 8;
-	private static Key[] sendKeys;
+	private Key[] sendKeys;
+	private Key[] notSendKeys;
 
 	public BatchReactorTest(Args args) {
 		super(args);
@@ -67,6 +68,11 @@ public class BatchReactorTest extends ReactorTest {
 							return reactorClient.put(policy, key, bin);
 						}).collect(Collectors.toList()),
 				objects -> objects).block();
+
+		notSendKeys = new Key[]{
+				new Key(args.namespace, args.set, keyPrefix+"absent1"),
+				new Key(args.namespace, args.set, keyPrefix+"absent2")
+		};
 	}
 
 	@Test
@@ -79,8 +85,21 @@ public class BatchReactorTest extends ReactorTest {
 					return true;
 				})
 				.verifyComplete();
-   }
-	
+	}
+
+	@Test
+	public void batchNotExistsArray() {
+
+		Mono<KeysExists> mono = reactorClient.exists(notSendKeys);
+
+		StepVerifier.create(mono)
+				.expectNextMatches(keysExists -> {
+					assertThat(keysExists.exists).hasSameSizeAs(notSendKeys).containsOnly(false);
+					return true;
+				})
+				.verifyComplete();
+	}
+
 	@Test
 	public void batchExistsSequence() {
 		Flux<KeyExists> flux = reactorClient.existsFlux(sendKeys);
@@ -90,9 +109,17 @@ public class BatchReactorTest extends ReactorTest {
 				.expectNextCount(sendKeys.length)
 				.consumeRecordedWith(results -> assertThat(results)
 						.extracting(keyExists -> keyExists.exists)
-						.isSubsetOf(true))
+						.containsOnly(true))
 				.verifyComplete();
-   }
+	}
+
+	@Test
+	public void batchNotExistsSequence() {
+		Flux<KeyExists> flux = reactorClient.existsFlux(notSendKeys);
+
+		StepVerifier.create(flux)
+				.verifyComplete();
+	}
 
 	@Test
 	public void batchGetArray() {
@@ -109,7 +136,7 @@ public class BatchReactorTest extends ReactorTest {
 	}
 
 	@Test
-	public void batchGetSequence() throws Exception {
+	public void batchGetSequence() {
 		Flux<KeyRecord> flux = reactorClient.getFlux(sendKeys);
 
 		StepVerifier.create(flux)
@@ -118,12 +145,20 @@ public class BatchReactorTest extends ReactorTest {
 				.consumeRecordedWith(results -> assertThat(results)
 						.extracting(keyRecord -> {
 							assertRecordFound(keyRecord.key, keyRecord.record);
-							assertNotNull(keyRecord.record.getValue(binName));
+							assertThat(keyRecord.record.getValue(binName)).isNotNull();
 							return true;
 						})
-						.isSubsetOf(true))
+						.containsOnly(true))
 				.verifyComplete();
-   }
+	}
+
+	@Test
+	public void batchGetNothingSequence() {
+		Flux<KeyRecord> flux = reactorClient.getFlux(notSendKeys);
+
+		StepVerifier.create(flux)
+				.verifyComplete();
+	}
 
 	@Test
 	public void batchGetHeaders() {
@@ -131,20 +166,20 @@ public class BatchReactorTest extends ReactorTest {
 
 		StepVerifier.create(mono)
 				.expectNextMatches(keysRecords -> {
-					assertEquals(size, keysRecords.records.length);
+					assertThat(keysRecords.records).hasSize(size);
 					for (int i = 0; i < keysRecords.records.length; i++) {
 						Record record = keysRecords.records[i];
 						assertRecordFound(keysRecords.keys[i], record);
-						assertGreaterThanZero(record.generation);
-						assertGreaterThanZero(record.expiration);
+						assertThat(record.generation).isGreaterThan(0);
+						assertThat(record.expiration).isGreaterThan(0);
 					}
 					return true;
 				})
 				.verifyComplete();
-   }
+	}
 
 	@Test
-	public void batchReadComplex() throws Exception {
+	public void batchReadComplex() {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
 		String[] bins = new String[] {binName};

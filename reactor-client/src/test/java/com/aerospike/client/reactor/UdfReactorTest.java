@@ -28,6 +28,8 @@ import org.junit.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class UdfReactorTest extends ReactorTest {
 
 	private final String binName = args.getBinName("audfbin1");
@@ -56,8 +58,8 @@ public class UdfReactorTest extends ReactorTest {
 		StepVerifier.create(mono)
 				.expectNextMatches(keyObject -> {
 					Object expected = bin.value.getObject();
-					assertNotNull(keyObject.value);
-					assertEquals(expected, keyObject.value);
+					assertThat(keyObject.value).isNotNull();
+					assertThat(expected).isEqualTo(keyObject.value);
 					return true;
 				})
 				.verifyComplete();

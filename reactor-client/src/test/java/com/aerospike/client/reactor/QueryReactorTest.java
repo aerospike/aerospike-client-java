@@ -68,7 +68,8 @@ public class QueryReactorTest extends ReactorTest {
 
 	@After
 	public void deleteIndex() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		IndexTask task = client.dropIndex(null, args.namespace, args.set, indexName);
+		task.waitTillComplete();
 	}
 
 	@Test
@@ -103,7 +104,7 @@ public class QueryReactorTest extends ReactorTest {
 					assertThat(results)
 							.extracting(keyRecord -> {
 								int result = keyRecord.record.getInt(binName);
-								assertBetween(26, 34, result);
+								assertThat(result).isBetween(26, 34);
 								return true;
 							})
 							.isSubsetOf(true);
