@@ -25,6 +25,8 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.EventExecutor;
 
+import java.io.FileInputStream;
+import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
@@ -32,6 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import javax.net.ssl.KeyManagerFactory;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.TlsPolicy;
@@ -110,17 +114,41 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 			}
 			return;
 		}
-		
+
 		try {
 			SslContextBuilder builder = SslContextBuilder.forClient();
 
 			if (policy.protocols != null) {
 				builder.protocols(policy.protocols);
 			}
-			
+
 			if (policy.ciphers != null) {
 				builder.ciphers(Arrays.asList(policy.ciphers));
+			}		
+
+			String keyStoreLocation = System.getProperty("javax.net.ssl.keyStore");
+
+			// Keystore is only required for mutual authentication.
+			if (keyStoreLocation != null) {
+				String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
+				char[] pass = (keyStorePassword != null) ? keyStorePassword.toCharArray() : null;
+
+				KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+				FileInputStream is = new FileInputStream(keyStoreLocation);
+
+				try {
+					ks.load(is, pass);
+				}
+				finally {
+					is.close();
+				}
+
+				KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+				kmf.init(ks, pass);
+
+				builder.keyManager(kmf);
 			}
+
 			sslContext = builder.build();
 		}
 		catch (Exception e) {
