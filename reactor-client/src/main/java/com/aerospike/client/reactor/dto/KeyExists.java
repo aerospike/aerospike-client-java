@@ -34,4 +34,16 @@ public final class KeyExists {
 		this.key = key;
 		this.exists = exists;
 	}
+
+	@Override
+	public String toString() {
+		StringBuilder sb = new StringBuilder(1024);
+
+		if (key != null) {
+			sb.append(key.toString());
+		}
+
+		sb.append(':').append(exists);
+		return sb.toString();
+	}
 }

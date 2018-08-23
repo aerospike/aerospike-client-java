@@ -18,6 +18,9 @@ package com.aerospike.client.reactor.dto;
 
 import com.aerospike.client.Key;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * Container object for keys identifier and exists flags.
  */
@@ -32,6 +35,19 @@ public final class KeysExists {
 	public KeysExists(Key[] keys, boolean[] exists) {
 		this.keys = keys;
 		this.exists = exists;
+	}
+
+	public Map<Key, Boolean> asMap(){
+		Map<Key, Boolean> map = new HashMap<>(keys.length);
+		for(int i = 0, n = keys.length; i < n; i++){
+			map.put(keys[i], exists[i]);
+		}
+		return map;
+	}
+
+	@Override
+	public String toString() {
+		return asMap().toString();
 	}
 
 }

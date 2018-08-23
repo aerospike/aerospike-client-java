@@ -34,6 +34,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 public class OperateReactorTest extends ReactorTest {
 
 	private final String binName = args.getBinName("putgetbin");
@@ -64,15 +66,9 @@ public class OperateReactorTest extends ReactorTest {
 					assertRecordFound(keyRecord.key, keyRecord.record);
 
 					List<?> list = keyRecord.record.getList(binName);
-
-					long size = (Long)list.get(0);
-					assertEquals(2, size);
-
-					long val = (Long)list.get(1);
-					assertEquals(77, val);
-
-					size = (Long)list.get(2);
-					assertEquals(1, size);
+					assertThat((Long)list.get(0)).isEqualTo(2);
+					assertThat((Long)list.get(1)).isEqualTo(77);
+					assertThat((Long)list.get(2)).isEqualTo(1);
 					return true;
 				})
 				.verifyComplete();
@@ -100,14 +96,10 @@ public class OperateReactorTest extends ReactorTest {
 					assertRecordFound(keyRecord.key, keyRecord.record);
 
 					List<?> results = keyRecord.record.getList(binName);
-
-					long size = (Long)results.get(0);
-					assertEquals(3, size);
-
-					List<?> list = (List<?>)results.get(1);
-					Entry<?,?> entry = (Entry<?,?>)list.get(0);
-					assertEquals("c", entry.getKey());
-					assertEquals(3L, entry.getValue());
+					assertThat((Long)results.get(0)).isEqualTo(3);
+					Entry<?,?> entry = (Entry<?,?>)((List<?>)results.get(1)).get(0);
+					assertThat(entry.getKey()).isEqualTo("c");
+					assertThat(entry.getValue()).isEqualTo(3L);
 					return true;
 				})
 				.verifyComplete();

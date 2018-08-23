@@ -75,9 +75,7 @@ public class BatchReactorTest extends ReactorTest {
 
 		StepVerifier.create(mono)
 				.expectNextMatches(keysExists -> {
-					for (int i = 0; i < keysExists.exists.length; i++) {
-						assertEquals(true, keysExists.exists[i]);
-					}
+					assertThat(keysExists.exists).hasSameSizeAs(sendKeys).containsOnly(true);
 					return true;
 				})
 				.verifyComplete();
@@ -170,27 +168,23 @@ public class BatchReactorTest extends ReactorTest {
 
 		StepVerifier.create(mono)
 				.expectNextMatches(batchReads -> {
-					int found = 0;
-					int count = 0;
-					for (BatchRead record : batchReads) {
-						Record rec = record.record;
-						count++;
+					List<BatchRead> recordsFound = batchReads.stream()
+							.filter(record -> record.record != null)
+							.collect(Collectors.toList());
+					assertThat(recordsFound).hasSize(8);
+					assertThat(recordsFound).extracting(record -> record.record.getValue(binName))
+							.containsExactly(
+									"batchvalue1",
+									"batchvalue2",
+									"batchvalue3",
+									//readAllBeans == false
+									null,
+									"batchvalue5",
+									"batchvalue6",
+									"batchvalue7",
+									//no bean with name "binnotfound"
+									null);
 
-						if (rec != null) {
-							found++;
-
-							Object value = rec.getValue(binName);
-
-							if (count != 4 && count <= 7) {
-								assertEquals(valuePrefix + count, value);
-							}
-							else {
-								assertNull(value);
-							}
-						}
-					}
-
-					assertEquals(8, found);
 					return true;
 				})
 				.verifyComplete();

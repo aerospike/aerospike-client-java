@@ -136,16 +136,6 @@ abstract public class ReactorTest {
 		}
 	}
 	
-	public void assertBinEqual(Key key, Record record, String binName, int expected) {
-		assertRecordFound(key, record);
-		
-		int received = record.getInt(binName);
-
-		if (received != expected) {
-			throw new IllegalArgumentException("Data mismatch: Expected " + expected + ". Received " + received);
-		}
-	}
-	
 	public void assertRecordFound(Key key, Record record) {
 		if (record == null) {
 			throw new IllegalArgumentException("Failed to get: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey);
@@ -163,36 +153,23 @@ abstract public class ReactorTest {
 			throw new IllegalArgumentException("Data mismatch: Expected " + expected + ". Received " + received);
 		}
 	}
-	
+
 	public void assertEquals(Object expected, Object received) {
 		if (! expected.equals(received)) {
 			throw new IllegalArgumentException("Data mismatch: Expected " + expected + ". Received " + received);
 		}
 	}
 
-	public void assertEquals(boolean expected, boolean received) {
-		if (expected != received) {
-			throw new IllegalArgumentException("Data mismatch: Expected " + expected + ". Received " + received);
-		}
-	}
-	
 	public void assertGreaterThanZero(long value) {
 		if (value <= 0) {
 			throw new IllegalArgumentException("Value not greater than zero");
 		}
 	}
-		
+
 	public void assertNotNull(Object obj) {
 		if (obj == null) {
 			throw new IllegalArgumentException("Object is null");
 		}
 	}
-	
-	public boolean assertNull(Object obj) {
-		if (obj != null) {
-			throw new IllegalArgumentException("Object is not null");
-		}
-		return true;
-	}
-	
+
 }

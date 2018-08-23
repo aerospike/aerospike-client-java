@@ -11,12 +11,11 @@ import com.aerospike.client.reactor.dto.KeysRecords;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.io.Closeable;
 import java.util.List;
 
 
-public interface IAerospikeReactorClient {
-
-	void close();
+public interface IAerospikeReactorClient extends Closeable{
 
 	/**
 	 * Reactively read entire record for specified key.
@@ -215,6 +214,32 @@ public interface IAerospikeReactorClient {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	Mono<KeysRecords> getHeaders(BatchPolicy policy, Key[] keys) throws AerospikeException;
+
+	/**
+	 * Reactively reset record's time to expiration using the policy's expiration.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Fail if the record does not exist.
+	 *
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	Mono<Key> touch(Key key) throws AerospikeException;
+
+
+	/**
+	 * Reactively reset record's time to expiration using the policy's expiration.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Fail if the record does not exist.
+	 *
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	Mono<Key> touch(WritePolicy policy, Key key) throws AerospikeException;
 
 	/**
 	 * Reactively determine if a record key exists.

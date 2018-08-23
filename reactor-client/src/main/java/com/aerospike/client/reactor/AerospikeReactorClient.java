@@ -2,7 +2,6 @@ package com.aerospike.client.reactor;
 
 import com.aerospike.client.*;
 import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.listener.*;
 import com.aerospike.client.policy.*;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
@@ -10,6 +9,7 @@ import com.aerospike.client.reactor.dto.KeyExists;
 import com.aerospike.client.reactor.dto.KeyObject;
 import com.aerospike.client.reactor.dto.KeysExists;
 import com.aerospike.client.reactor.dto.KeysRecords;
+import com.aerospike.client.reactor.listeners.*;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -37,10 +37,10 @@ import java.util.List;
  */
 public class AerospikeReactorClient implements IAerospikeReactorClient{
 
-	private final AerospikeClient aerospikeClient;
+	private final IAerospikeClient aerospikeClient;
 	private final EventLoops eventLoops;
 
-	public AerospikeReactorClient(AerospikeClient aerospikeClient, EventLoops eventLoops) {
+	public AerospikeReactorClient(IAerospikeClient aerospikeClient, EventLoops eventLoops) {
 		this.aerospikeClient = aerospikeClient;
 		this.eventLoops = eventLoops;
 	}
@@ -48,7 +48,6 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 	@Override
 	public void close(){
 		aerospikeClient.close();
-		eventLoops.close();
 	}
 
 	@Override
@@ -58,17 +57,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeyRecord> get(Policy policy, Key key) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.get(eventLoops.next(), new RecordListener() {
-					@Override
-					public void onSuccess(Key key, Record record) {
-						sink.success(new KeyRecord(key, record));
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key));
+		return Mono.create(sink -> aerospikeClient.get(
+				eventLoops.next(), new ReactorRecordListener(sink), policy, key));
 	}
 
 	@Override
@@ -78,17 +68,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeysRecords> get(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.get(eventLoops.next(), new RecordArrayListener() {
-					@Override
-					public void onSuccess(Key[] keys, Record[] records) {
-						sink.success(new KeysRecords(keys, records));
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, keys));
+		return Mono.create(sink -> aerospikeClient.get(
+				eventLoops.next(), new ReactorRecordArrayListener(sink), policy, keys));
 	}
 
 	@Override
@@ -98,19 +79,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<List<BatchRead>> get(BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.get(eventLoops.next(), new BatchListListener() {
-
-					@Override
-					public void onSuccess(List<BatchRead> records) {
-						sink.success(records);
-					}
-
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, records));
+		return Mono.create(sink -> aerospikeClient.get(
+				eventLoops.next(), new ReactorBatchListListener(sink), policy, records));
 	}
 
 	@Override
@@ -120,21 +90,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Flux<BatchRead> getFlux(BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
-		return Flux.create(sink -> aerospikeClient.get(eventLoops.next(), new BatchSequenceListener() {
-					@Override
-					public void onRecord(BatchRead record) {
-						sink.next(record);
-					}
-					@Override
-					public void onSuccess() {
-						sink.complete();
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, records));
+		return Flux.create(sink -> aerospikeClient.get(
+				eventLoops.next(), new ReactorBatchSequenceListener(sink), policy, records));
 	}
 
 	@Override
@@ -144,21 +101,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Flux<KeyRecord> getFlux(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		return Flux.create(sink -> aerospikeClient.get(eventLoops.next(), new RecordSequenceListener() {
-					@Override
-					public void onRecord(Key key, Record record) throws AerospikeException {
-						sink.next(new KeyRecord(key, record));
-					}
-					@Override
-					public void onSuccess() {
-						sink.complete();
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, keys));
+		return Flux.create(sink -> aerospikeClient.get(
+				eventLoops.next(), new ReactorRecordSequenceListener(sink), policy, keys));
 	}
 
 	@Override
@@ -168,17 +112,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeyRecord> getHeader(Policy policy, Key key) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.getHeader(eventLoops.next(), new RecordListener() {
-					@Override
-					public void onSuccess(Key key, Record record) {
-						sink.success(new KeyRecord(key, record));
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key));
+		return Mono.create(sink -> aerospikeClient.getHeader(
+				eventLoops.next(), new ReactorRecordListener(sink), policy, key));
 	}
 
 	@Override
@@ -188,18 +123,20 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeysRecords> getHeaders(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.getHeader(eventLoops.next(), new RecordArrayListener() {
-					@Override
-					public void onSuccess(Key[] keys, Record[] records) {
-						sink.success(new KeysRecords(keys, records));
-					}
-
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
+		return Mono.create(sink -> aerospikeClient.getHeader(
+				eventLoops.next(), new ReactorRecordArrayListener(sink),
 				policy, keys));
+	}
+
+	@Override
+	public final Mono<Key> touch(Key key) throws AerospikeException {
+		return touch(null, key);
+	}
+
+	@Override
+	public final Mono<Key> touch(WritePolicy policy, Key key) throws AerospikeException {
+		return Mono.create(sink -> aerospikeClient.touch(
+				eventLoops.next(), new ReactorWriteListener(sink), policy, key));
 	}
 
 	@Override
@@ -209,21 +146,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> exists(Policy policy, Key key) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.exists(eventLoops.next(), new ExistsListener() {
-					@Override
-					public void onSuccess(Key key, boolean exists) {
-						if(exists){
-							sink.success(key);
-						} else {
-							sink.success();
-						}
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key));
+		return Mono.create(sink -> aerospikeClient.exists(
+				eventLoops.next(), new ReactorExistsListener(sink), policy, key));
 	}
 
 	@Override
@@ -233,18 +157,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeysExists> exists(BatchPolicy policy, Key[] keys) throws AerospikeException{
-		return Mono.create(sink -> aerospikeClient.exists(eventLoops.next(), new ExistsArrayListener() {
-					@Override
-					public void onSuccess(Key[] keys, boolean[] exists) {
-						sink.success(new KeysExists(keys, exists));
-					}
-
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, keys));
+		return Mono.create(sink -> aerospikeClient.exists(
+				eventLoops.next(), new ReactorExistsArrayListener(sink), policy, keys));
 	}
 
 	@Override
@@ -254,21 +168,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Flux<KeyExists> existsFlux(BatchPolicy policy, Key[] keys) throws AerospikeException {
-		return Flux.create(sink -> aerospikeClient.exists(eventLoops.next(), new ExistsSequenceListener() {
-					@Override
-					public void onExists(Key key, boolean exists) {
-						sink.next(new KeyExists(key, exists));
-					}
-					@Override
-					public void onSuccess() {
-						sink.complete();
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, keys));
+		return Flux.create(sink -> aerospikeClient.exists(
+				eventLoops.next(), new ReactorExistsSequenceListener(sink), policy, keys));
 	}
 
 	@Override
@@ -278,17 +179,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.put(eventLoops.next(), new WriteListener() {
-					@Override
-					public void onSuccess(Key key) {
-						sink.success(key);
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key, bins));
+		return Mono.create(sink -> aerospikeClient.put(
+				eventLoops.next(), new ReactorWriteListener(sink), policy, key, bins));
 	}
 
 	@Override
@@ -298,17 +190,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.append(eventLoops.next(), new WriteListener() {
-					@Override
-					public void onSuccess(Key key) {
-						sink.success(key);
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key, bins));
+		return Mono.create(sink -> aerospikeClient.append(
+				eventLoops.next(), new ReactorWriteListener(sink), policy, key, bins));
 	}
 
 	@Override
@@ -318,17 +201,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.prepend(eventLoops.next(), new WriteListener() {
-					@Override
-					public void onSuccess(Key key) {
-						sink.success(key);
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key, bins));
+		return Mono.create(sink -> aerospikeClient.prepend(
+				eventLoops.next(), new ReactorWriteListener(sink), policy, key, bins));
 	}
 
 	@Override
@@ -338,17 +212,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.add(eventLoops.next(), new WriteListener() {
-					@Override
-					public void onSuccess(Key key) {
-						sink.success(key);
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key, bins));
+		return Mono.create(sink -> aerospikeClient.add(
+				eventLoops.next(), new ReactorWriteListener(sink), policy, key, bins));
 	}
 
 	@Override
@@ -358,21 +223,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<Key> delete(WritePolicy policy, Key key) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.delete(eventLoops.next(), new DeleteListener() {
-					@Override
-					public void onSuccess(Key key, boolean existed) {
-						if(existed){
-							sink.success(key);
-						} else {
-							sink.success();
-						}
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key));
+		return Mono.create(sink -> aerospikeClient.delete(
+				eventLoops.next(), new ReactorDeleteListener(sink), policy, key));
 	}
 
 	@Override
@@ -382,17 +234,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeyRecord> operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.operate(eventLoops.next(), new RecordListener() {
-					@Override
-					public void onSuccess(Key key, Record record) {
-						sink.success(new KeyRecord(key, record));
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, key, operations));
+		return Mono.create(sink -> aerospikeClient.operate(
+				eventLoops.next(), new ReactorRecordListener(sink), policy, key, operations));
 	}
 
 	@Override
@@ -402,21 +245,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Flux<KeyRecord> query(QueryPolicy policy, Statement statement) throws AerospikeException {
-		return Flux.create(sink -> aerospikeClient.query(eventLoops.next(), new RecordSequenceListener() {
-					@Override
-					public void onRecord(Key key, Record record) throws AerospikeException {
-						sink.next(new KeyRecord(key, record));
-					}
-					@Override
-					public void onSuccess() {
-						sink.complete();
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
-				policy, statement));
+		return Flux.create(sink -> aerospikeClient.query(eventLoops.next(),
+				new ReactorRecordSequenceListener(sink), policy, statement));
 	}
 
 	@Override
@@ -426,20 +256,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Flux<KeyRecord> scanAll(ScanPolicy policy, String namespace, String setName, String... binNames) throws AerospikeException {
-		return Flux.create(sink -> aerospikeClient.scanAll(eventLoops.next(), new RecordSequenceListener() {
-					@Override
-					public void onRecord(Key key, Record record) throws AerospikeException {
-						sink.next(new KeyRecord(key, record));
-					}
-					@Override
-					public void onSuccess() {
-						sink.complete();
-					}
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
+		return Flux.create(sink -> aerospikeClient.scanAll(
+				eventLoops.next(), new ReactorRecordSequenceListener(sink),
 				policy, namespace, setName, binNames));
 	}
 
@@ -451,17 +269,8 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 	@Override
 	public final Mono<KeyObject> execute(WritePolicy policy, Key key,
 								   String packageName, String functionName, Value... functionArgs) throws AerospikeException {
-		return Mono.create(sink -> aerospikeClient.execute(eventLoops.next(), new ExecuteListener() {
-					@Override
-					public void onSuccess(Key key, Object obj) {
-						sink.success(new KeyObject(key, obj));
-					}
-
-					@Override
-					public void onFailure(AerospikeException exception) {
-						sink.error(exception);
-					}
-				},
+		return Mono.create(sink -> aerospikeClient.execute(
+				eventLoops.next(), new ReactorExecuteListener(sink),
 				policy, key, packageName, functionName, functionArgs));
 	}
 }
