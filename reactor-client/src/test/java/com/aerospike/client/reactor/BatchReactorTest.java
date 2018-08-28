@@ -118,6 +118,11 @@ public class BatchReactorTest extends ReactorTest {
 		Flux<KeyExists> flux = reactorClient.existsFlux(notSendKeys);
 
 		StepVerifier.create(flux)
+				.recordWith(ArrayList::new)
+				.expectNextCount(notSendKeys.length)
+				.consumeRecordedWith(results -> assertThat(results)
+						.extracting(keyExists -> keyExists.exists)
+						.containsOnly(false))
 				.verifyComplete();
 	}
 
@@ -157,6 +162,11 @@ public class BatchReactorTest extends ReactorTest {
 		Flux<KeyRecord> flux = reactorClient.getFlux(notSendKeys);
 
 		StepVerifier.create(flux)
+				.recordWith(ArrayList::new)
+				.expectNextCount(notSendKeys.length)
+				.consumeRecordedWith(results -> assertThat(results)
+						.extracting(keyRecord -> keyRecord.record)
+						.containsOnlyNulls())
 				.verifyComplete();
 	}
 
