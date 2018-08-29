@@ -2,10 +2,14 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.aerospike</groupId>
+
+  <parent>
+    <groupId>com.aerospike</groupId>
+    <artifactId>aerospike-parent</artifactId>
+    <version>4.1.10</version>
+  </parent>
   <artifactId>aerospike</artifactId>
   <packaging>war</packaging>
-  <version>4.1.10</version>
 
   <name>aerospike-servlet</name>
 
@@ -13,12 +17,10 @@
     <dependency> 
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>4.1.10</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
       <artifactId>servlet-api</artifactId>
-      <version>2.4</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>
@@ -28,19 +30,15 @@
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
     <plugins>
       <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>
-          <source>1.7</source>
-          <target>1.7</target>
-        </configuration>
       </plugin>
       <plugin>
         <artifactId>maven-war-plugin</artifactId>
         <version>2.3</version>
         <configuration>
  	  <warSourceDirectory>${project.basedir}/webapp</warSourceDirectory>
-	  <webxml>${project.basedir}/webapp/WEB-INF/web.xml/</webxml>
+	  <webXml>${project.basedir}/webapp/WEB-INF/web.xml/</webXml>
         </configuration>
       </plugin>
       <plugin>
@@ -51,9 +49,4 @@
     </plugins>
   </build>
     
-  <properties>
-    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-    <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-  </properties>
-  
 </project>
