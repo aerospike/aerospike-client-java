@@ -24,6 +24,7 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
+import com.aerospike.client.reactor.util.proxy.TcpIpProxy;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -40,10 +41,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RunWith(Parameterized.class)
 abstract public class ReactorTest {
 
-	protected final Args args;
+	final Args args;
 
-	protected AerospikeReactorClient reactorClient;
-	protected AerospikeClient client;
+	EventLoops eventLoops;
+	TcpIpProxy proxy;
+	AerospikeReactorClient reactorClient;
+	AerospikeClient client;
 
 	@Parameterized.Parameters(name = "{0}")
 	public static Iterable<Object[]> parameters() {
@@ -59,7 +62,6 @@ abstract public class ReactorTest {
 
 	@Before
 	public void init(){
-		EventLoops eventLoops;
 
 		switch (args.eventLoopType) {
 			default:
@@ -81,7 +83,10 @@ abstract public class ReactorTest {
 			}
 		}
 
+		proxy = new TcpIpProxy(args.host, args.port);
 		try {
+			proxy.start();
+
 			ClientPolicy policy = new ClientPolicy();
 			policy.eventLoops = eventLoops;
 			policy.user = args.user;
@@ -89,7 +94,7 @@ abstract public class ReactorTest {
 			policy.authMode = args.authMode;
 			policy.tlsPolicy = args.tlsPolicy;
 
-			Host[] hosts = Host.parseHosts(args.host, args.port);
+			Host[] hosts = Host.parseHosts(proxy.getLocalAddress(), proxy.getLocalPort());
 
 			client = new AerospikeClient(policy, hosts);
 			this.reactorClient = new AerospikeReactorClient(client, eventLoops);
@@ -103,14 +108,21 @@ abstract public class ReactorTest {
 			}
 		}
 		catch (Throwable e) {
+			try {
+				proxy.close();
+			} catch (Exception e1) {
+				e1.printStackTrace();
+			}
 			eventLoops.close();
-			throw e;
+			throw new RuntimeException(e);
 		}
 	}
 	
 	@After
-	public void destroy() {
+	public void destroy() throws Exception {
 		reactorClient.close();
+		eventLoops.close();
+		proxy.close();
 	}
 
 	protected Predicate<KeyRecord> checkKeyRecord(Key key, String binName, Object binValue) {

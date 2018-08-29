@@ -16,8 +16,10 @@
  */
 package com.aerospike.client.reactor;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
 import org.junit.Test;
