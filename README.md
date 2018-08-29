@@ -3,11 +3,13 @@ Aerospike Java Client Package
 
 Aerospike Java client.  This package contains full source code for these projects.
 
-* client:     Java client library.
-* examples:   Java client examples.
-* benchmarks: Java client benchmarks.
-* servlets:   Java web servlet interface to client.
-* test:       Java client unit tests.
+* client:           Java client library.
+* reactor-client:   Java Reactor client library. Needs Java 1.8 or 
+higher
+* examples:         Java client examples.
+* benchmarks:       Java client benchmarks.
+* servlets:         Java web servlet interface to client.
+* test:             Java client unit tests.
 
 Prerequisites:
 
