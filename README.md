@@ -3,15 +3,16 @@ Aerospike Java Client Package
 
 Aerospike Java client.  This package contains full source code for these projects.
 
-* client:     Java client library.
-* examples:   Java client examples.
-* benchmarks: Java client benchmarks.
-* servlets:   Java web servlet interface to client.
-* test:       Java client unit tests.
+* client:           Java client library.
+* examples:         Java client examples.
+* benchmarks:       Java client benchmarks.
+* servlets:         Java client web servlet example.
+* test:             Java client unit tests.
+* extensions:       Java client extension libraries.
 
 Prerequisites:
 
-* Java 1.7 or greater.
+* Java 1.7 or greater.  Optional extensions may require Java 1.8.
 * Maven 3.0 or greater.
 
 AerospikeClient now supports synchronous and asynchronous methods. Asynchronous 
@@ -28,3 +29,5 @@ Maven build scripts are also provided.
 Build instructions:
 
     ./build_all
+
+Optional extensions are built separately.
