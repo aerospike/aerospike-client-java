@@ -13,6 +13,7 @@
     <module>examples</module>
     <module>benchmarks</module>
     <module>servlets</module>
+    <module>aerospike-container</module>
   </modules>
 
 </project>
