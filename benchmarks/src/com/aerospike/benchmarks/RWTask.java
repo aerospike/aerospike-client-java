@@ -83,6 +83,9 @@ public abstract class RWTask {
 			case TRANSACTION:
 				runTransaction(random);
 				break;
+				
+			default:
+				break;
 			}
 		} 
 		catch (Exception e) {
