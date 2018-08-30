@@ -2,9 +2,13 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.aerospike</groupId>
+
+  <parent>
+    <groupId>com.aerospike</groupId>
+    <artifactId>aerospike-client-extensions</artifactId>
+    <version>4.1.10</version>
+  </parent>
   <artifactId>aerospike-reactor-client</artifactId>
-  <version>4.1.10</version>
   <packaging>jar</packaging>
 
   <name>aerospike-reactor-client</name>
@@ -12,11 +16,10 @@
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+    <java.version>1.8</java.version>
+
     <reactor.version>3.1.8.RELEASE</reactor.version>
-    <assertj.version>3.9.0</assertj.version>
-    <junit.version>4.12</junit.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
-    <netty.version>4.1.11.Final</netty.version>
     <skipTests>true</skipTests>
   </properties>
 
@@ -24,7 +27,6 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
-      <version>${project.version}</version>
     </dependency>
 
     <dependency>
@@ -42,7 +44,6 @@
     <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
-      <version>${netty.version}</version>
       <optional>true</optional>
     </dependency>
 
@@ -50,27 +51,23 @@
       <groupId>io.netty</groupId>
       <artifactId>netty-transport-native-epoll</artifactId>
       <classifier>linux-x86_64</classifier>
-      <version>${netty.version}</version>
       <optional>true</optional>
     </dependency>
 
 	<dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-handler</artifactId>
-      <version>${netty.version}</version>
       <optional>true</optional>
     </dependency>
 
     <dependency>
       <groupId>commons-cli</groupId>
       <artifactId>commons-cli</artifactId>
-      <version>1.2</version>
     </dependency>
 
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
-      <version>${junit.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -84,7 +81,6 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
-      <version>${assertj.version}</version>
       <scope>test</scope>
     </dependency>
 
@@ -92,18 +88,17 @@
     
   <build>
     <plugins>
-      <plugin>  
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <version>2.3.2</version>
-        <configuration>     
-          <source>1.8</source>
-          <target>1.8</target>
-        </configuration>      
-      </plugin>     
+        <configuration>
+          <source>${java.version}</source>
+          <target>${java.version}</target>
+        </configuration>
+      </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
-        <version>2.9.1</version>
         <configuration>
           <reportOutputDirectory>${basedir}</reportOutputDirectory>
           <outputDirectory>${basedir}</outputDirectory>
@@ -118,7 +113,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
-        <version>2.18.1</version>
         <configuration>
           <skipTests>${skipTests}</skipTests>
         </configuration>
