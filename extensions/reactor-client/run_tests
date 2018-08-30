@@ -1,0 +1,13 @@
+#!/bin/bash
+
+for i in $*
+do
+  if [[ $i == -D* ]]
+  then
+    def="$def $i"
+  else
+    arg="$arg $i"
+  fi
+done
+
+mvn test -DskipTests=false $def -Dargs="$arg"

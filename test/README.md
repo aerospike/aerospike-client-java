@@ -6,7 +6,8 @@ The client library should be built/installed before running these tests.
   
 Usage:
 
-    mvn test [-Dargs="<options>"]
+    ./run_tests <options>
+
     options:
     -h,--host <arg>       Server hostname (default: localhost)
     -U,--user <arg>       User name. Use for servers that require authentication.
@@ -32,18 +33,17 @@ Usage:
 
 Examples:
 
-    mvn test 
-    mvn test -Dargs="-h host1"
-    mvn test -Dargs="-h host2 -p 3000 -n myns -s myset"
+    ./run_tests 
+    ./run_tests -h host1
+    ./run_tests -h host2 -p 3000 -n myns -s myset
 
 Run a specific test:
 
-    # TestQueryPredExp is the test class name and queryPredicate2 is
-    # the test method.
-    #
-    mvn test -Dtest=TestQueryPredExp#queryPredicate2
+    # TestQueryPredExp is the test class name and queryPredicate2 is the test method.
+    ./run_tests -Dtest=TestQueryPredExp#queryPredicate2
 
 TLS Examples:
 
-    mvn test -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteSync.class" -Dargs="-h hostname:tlsname:tlsport -tls"
-    mvn test -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteAsync.class" -Dargs="-h hostname:tlsname:tlsport -tls -netty"
+    ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteSync.class" -h hostname:tlsname:tlsport -tls
+
+    ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -DrunSuite="**/SuiteAsync.class" -h hostname:tlsname:tlsport -tls -netty

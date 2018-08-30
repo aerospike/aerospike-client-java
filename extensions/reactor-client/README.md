@@ -22,7 +22,8 @@ The simplest way is to install docker and run:
 
 Test Usage:
 
-    mvn test -DskipTests=false -Dargs="<options>"
+    ./run_tests <options>
+
     options:
     -h,--host <arg>       Server hostname (default: localhost)
     -U,--user <arg>       User name. Use for servers that require authentication.
@@ -48,11 +49,12 @@ Test Usage:
 
 Test Examples:
 
-    mvn test -DskipTests=false
-    mvn test -DskipTests=false -Dargs="-h host"
-    mvn test -DskipTests=false -Dargs="-h host -p 3000 -n myns -s myset"
+    ./run_tests
+    ./run_tests -h host
+    ./run_tests -h host -p 3000 -n myns -s myset
 
 Test TLS Examples:
 
-    mvn test -DskipTests=false -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -Dargs="-h hostname:tlsname:tlsport -tls"
-    mvn test -DskipTests=false -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -Dargs="-h hostname:tlsname:tlsport -tls -netty"
+    ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -h hostname:tlsname:tlsport -tls
+    
+    ./run_tests -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -h hostname:tlsname:tlsport -tls -netty

@@ -56,7 +56,7 @@ public class Args {
 	public Args() {
 		String argString = System.getProperty("args");
 		
-		if (argString == null) {
+		if (argString == null || argString.trim().length() == 0) {
 			return;
 		}
 	
