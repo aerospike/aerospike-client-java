@@ -302,17 +302,20 @@ public class Qualifier implements Map<String, Object>, Serializable {
 		FilterOperation op = getOperation();
 		switch (op) {
 			case AND:
-				return new StringBuffer()
+				return new StringBuilder()
 						.append("(")
-						.append(Arrays.asList((Qualifier[])get(QUALIFIERS)).stream().map(Qualifier::luaFilterString).collect(Collectors.joining(" and ")))
+						.append(Arrays.stream((Qualifier[])get(QUALIFIERS)).map(Qualifier::luaFilterString).collect(Collectors.joining(" and ")))
 						.append(")").toString();
 			case OR:
-				return new StringBuffer()
+				return new StringBuilder()
 						.append("(")
-						.append(Arrays.asList((Qualifier[])get(QUALIFIERS)).stream().map(Qualifier::luaFilterString).collect(Collectors.joining(" or ")))
+						.append(Arrays.stream((Qualifier[])get(QUALIFIERS)).map(Qualifier::luaFilterString).collect(Collectors.joining(" or ")))
 						.append(")").toString();
 			case EQ:
-				return String.format("%s == %s", luaFieldString(getField()), value1);
+				if (ignoreCase())
+					return String.format("string.upper(%s) == %s", luaFieldString(getField()), value1.toUpperCase());
+				else
+					return String.format("%s == %s", luaFieldString(getField()), value1);
 			case LIST_CONTAINS:
 				return String.format("containsValue(%s, %s)", luaFieldString(getField()), value1);
 			case MAP_KEYS_CONTAINS:
@@ -343,7 +346,7 @@ public class Qualifier implements Map<String, Object>, Serializable {
 				value2 = luaValueString(getValue2());
 				return String.format("rangeValue(%s, %s, %s)", luaFieldString(getField()), value1, value2);
 			case START_WITH:
-				if((Boolean) internalMap.get(IGNORE_CASE))
+				if(ignoreCase())
 					return String.format("string.upper(string.sub(%s,1,string.len(%s)))==%s", luaFieldString(getField()), value1, value1.toUpperCase());
 				else
 					return String.format("string.sub(%s,1,string.len(%s))==%s", luaFieldString(getField()), value1, value1);
@@ -354,7 +357,7 @@ public class Qualifier implements Map<String, Object>, Serializable {
 						value1,
 						value1);
 			case CONTAINING:
-				if((Boolean) internalMap.get(IGNORE_CASE))
+				if(ignoreCase())
 					return String.format("string.find(string.upper(%s), %s)", luaFieldString(getField()), value1.toUpperCase());
 				else
 					return String.format("string.find(%s, %s)", luaFieldString(getField()), value1);
@@ -364,6 +367,10 @@ public class Qualifier implements Map<String, Object>, Serializable {
 				break;
 		}
 		return "";
+	}
+
+	private Boolean ignoreCase() {
+		return (Boolean) internalMap.get(IGNORE_CASE);
 	}
 
 	protected String luaFieldString(String field) {

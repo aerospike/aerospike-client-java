@@ -1,6 +1,7 @@
 package com.aerospike.helper.query;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
@@ -11,10 +12,6 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
-import com.aerospike.helper.query.GenerationQualifier;
-import com.aerospike.helper.query.KeyQualifier;
-import com.aerospike.helper.query.KeyRecordIterator;
-import com.aerospike.helper.query.Qualifier;
 
 public class SelectorTests extends HelperTests{
 
@@ -100,6 +97,44 @@ public class SelectorTests extends HelperTests{
 			it.close();
 		}
 	}
+
+	@Test
+	public void startWithAndEqualIgnoreCaseReturnsAllItems() throws IOException {
+		boolean ignoreCase = true;
+		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, ignoreCase, Value.get("BLUE"));
+		Qualifier qual2 = new Qualifier("name", Qualifier.FilterOperation.START_WITH, ignoreCase, Value.get("NA"));
+
+		try (KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1, qual2)) {
+			List<KeyRecord> result = Utils.toList(it);
+
+			Assert.assertEquals(200, result.size());
+		}
+	}
+
+	@Test
+	public void equalIgnoreCaseReturnsNoItemsIfNoneMatched() throws IOException {
+		boolean ignoreCase = false;
+		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, ignoreCase, Value.get("BLUE"));
+
+		try (KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1)) {
+			List<KeyRecord> result = Utils.toList(it);
+
+			Assert.assertEquals(0, result.size());
+		}
+	}
+
+	@Test
+	public void startWithIgnoreCaseReturnsNoItemsIfNoneMatched() throws IOException {
+		boolean ignoreCase = false;
+		Qualifier qual1 = new Qualifier("name", Qualifier.FilterOperation.START_WITH, ignoreCase, Value.get("NA"));
+
+		try (KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1)) {
+			List<KeyRecord> result = Utils.toList(it);
+
+			Assert.assertEquals(0, result.size());
+		}
+	}
+
 	@Test
 	public void selectOnIndexWithQualifiers() throws IOException {
 		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index_selector", "age", IndexType.NUMERIC);
@@ -214,7 +249,7 @@ public class SelectorTests extends HelperTests{
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
 							  lon, lat, radius);
 		Statement stmt = new Statement();
-		stmt.setNamespace("test");
+		stmt.setNamespace(TestQueryEngine.NAMESPACE);
 		stmt.setSetName(geoSet);
 		Qualifier qual1 = new Qualifier(geoSet, Qualifier.FilterOperation.GEO_WITHIN, Value.getAsGeoJSON(rgnstr));
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1);

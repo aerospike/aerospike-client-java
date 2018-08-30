@@ -85,7 +85,7 @@ public class UsersTests extends HelperTests{
 		 * see if data is loaded
 		 */
 
-		Key key = new Key("test", "users", "user"+(TestQueryEngine.RECORD_COUNT-99));
+		Key key = new Key(TestQueryEngine.NAMESPACE, "users", "user"+(TestQueryEngine.RECORD_COUNT-99));
 		if (!client.exists(null, key)){
 			Random rnd1 = new Random();
 			Random rnd2 = new Random();
@@ -151,7 +151,7 @@ public class UsersTests extends HelperTests{
 		for (int j = 0; j < totalUsers; j++) {
 			// Check if user record exists
 			username = "user" + rnd3.nextInt(100000);
-			userKey = new Key("test", "users", username);
+			userKey = new Key(TestQueryEngine.NAMESPACE, "users", username);
 			userRecord = client.get(null, userKey);
 			if (userRecord != null) {
 				// create up to maxTweets random tweets for this user
@@ -160,7 +160,7 @@ public class UsersTests extends HelperTests{
 					// Create timestamp to store along with the tweet so we can
 					// query, index and report on it
 					ts = getTimeStamp();
-					Key tweetKey = new Key("test", "tweets", username + ":" + k);
+					Key tweetKey = new Key(TestQueryEngine.NAMESPACE, "tweets", username + ":" + k);
 					Bin bin1 = new Bin("tweet",
 							randomTweets[rnd2.nextInt(randomTweets.length)]);
 					Bin bin2 = new Bin("ts", ts);
