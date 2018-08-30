@@ -30,11 +30,7 @@ public final class ThreadLocalData {
 	private static final int THREAD_LOCAL_CUTOFF = 1024 * 128;  // 128 KB
 	//private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
 
-	private static final ThreadLocal<byte[]> BufferThreadLocal = new ThreadLocal<byte[]>() {
-		@Override protected byte[] initialValue() {
-			return new byte[DefaultBufferSize];
-		}
-	};
+	private static final ThreadLocal<byte[]> BufferThreadLocal = ThreadLocal.withInitial(() -> new byte[DefaultBufferSize]);
 
 	/**
 	 * Return thread local buffer.

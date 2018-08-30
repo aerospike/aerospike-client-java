@@ -23,11 +23,7 @@ import java.util.Random;
  * This class is not thread-safe and should be instantiated once per thread.
  */
 public final class RandomShift {
-	private static final ThreadLocal<RandomShift> ThreadLocalInstance = new ThreadLocal<RandomShift>() {
-		@Override protected RandomShift initialValue() {
-			return new RandomShift();
-		}
-	};
+	private static final ThreadLocal<RandomShift> ThreadLocalInstance = ThreadLocal.withInitial(() -> new RandomShift());
 
 	/**
 	 * Get thread local instance of RandomShift.
