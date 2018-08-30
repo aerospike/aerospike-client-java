@@ -14,6 +14,7 @@
     <module>benchmarks</module>
     <module>servlets</module>
     <module>test</module>
+    <module>extensions</module>
   </modules>
 
   <properties>
