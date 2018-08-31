@@ -21,6 +21,7 @@
     <reactor.version>3.1.8.RELEASE</reactor.version>
     <reactive-streams.version>1.0.2</reactive-streams.version>
     <skipTests>true</skipTests>
+    <netcrusher.version>0.10</netcrusher.version>
   </properties>
 
   <dependencies>
@@ -83,6 +84,14 @@
       <artifactId>assertj-core</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>com.github.netcrusherorg</groupId>
+      <artifactId>netcrusher-core</artifactId>
+      <version>${netcrusher.version}</version>
+      <scope>test</scope>
+    </dependency>
+
 
   </dependencies>
     

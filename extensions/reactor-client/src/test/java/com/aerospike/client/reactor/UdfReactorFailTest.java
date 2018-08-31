@@ -16,43 +16,35 @@
  */
 package com.aerospike.client.reactor;
 
+import com.aerospike.client.*;
+import com.aerospike.client.reactor.dto.KeyObject;
+import com.aerospike.client.reactor.util.Args;
+import com.aerospike.client.task.RegisterTask;
 import org.junit.Before;
 import org.junit.Test;
-
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
-import com.aerospike.client.policy.Policy;
-import com.aerospike.client.query.KeyRecord;
-import com.aerospike.client.reactor.util.Args;
-
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class PutGetFailReactorTest extends ReactorTest {
+import static org.assertj.core.api.Assertions.assertThat;
 
-	public PutGetFailReactorTest(Args args) {
+public class UdfReactorFailTest extends ReactorFailTest {
+
+	private final String binName = args.getBinName("audfbin1");
+
+	public UdfReactorFailTest(Args args) {
 		super(args);
 	}
 
-	@Before
-	public void setDelayOnProxy(){
-		proxy.setDelayOnResponse(100);
-	}
-
 	@Test
-	public void shouldFailOnGet() {
-		final Key key = new Key(args.namespace, args.set, "putgetkey1");
-
-		Mono<KeyRecord> mono = reactorClient.get(strictReadPolicy(), key);
+	public void udf() {
+		final Key key = new Key(args.namespace, args.set, "audfkey1");
+		final Bin bin = new Bin(binName, "string value");		
+		
+		Mono<KeyObject> mono = proxyReactorClient.execute(strictWritePolicy(), key,
+				"record_example", "writeBin", Value.get(bin.name), bin.value);
 
 		StepVerifier.create(mono)
-				.expectError(AerospikeException.Timeout.class);
+				.expectError(AerospikeException.Timeout.class)
+				.verify();
 	}
-
-	private Policy strictReadPolicy() {
-		Policy strictPolicy = new Policy();
-		strictPolicy.setTimeouts(1, 1);
-		return strictPolicy;
-	}
-
 }

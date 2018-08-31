@@ -24,7 +24,6 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
-import com.aerospike.client.reactor.util.proxy.TcpIpProxy;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -33,6 +32,8 @@ import org.junit.Before;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import java.io.IOException;
+import java.net.ServerSocket;
 import java.util.Arrays;
 import java.util.function.Predicate;
 
@@ -44,7 +45,6 @@ abstract public class ReactorTest {
 	final Args args;
 
 	EventLoops eventLoops;
-	TcpIpProxy proxy;
 	AerospikeReactorClient reactorClient;
 	AerospikeClient client;
 
@@ -83,9 +83,7 @@ abstract public class ReactorTest {
 			}
 		}
 
-		proxy = new TcpIpProxy(args.host, args.port);
 		try {
-			proxy.start();
 
 			ClientPolicy policy = new ClientPolicy();
 			policy.eventLoops = eventLoops;
@@ -94,9 +92,8 @@ abstract public class ReactorTest {
 			policy.authMode = args.authMode;
 			policy.tlsPolicy = args.tlsPolicy;
 
-			Host[] hosts = Host.parseHosts(proxy.getLocalAddress(), proxy.getLocalPort());
-
-			client = new AerospikeClient(policy, hosts);
+			Host[] hosts = Host.parseHosts(args.host, args.port);
+			this.client = new AerospikeClient(policy, hosts);
 			this.reactorClient = new AerospikeReactorClient(client, eventLoops);
 
 			try {
@@ -108,21 +105,21 @@ abstract public class ReactorTest {
 			}
 		}
 		catch (Throwable e) {
-			try {
-				proxy.close();
-			} catch (Exception e1) {
-				e1.printStackTrace();
-			}
 			eventLoops.close();
 			throw new RuntimeException(e);
 		}
 	}
-	
+
+	private int getFreePort() throws IOException {
+		try (ServerSocket serverSocket = new ServerSocket(0)) {
+			return serverSocket.getLocalPort();
+		}
+	}
+
 	@After
 	public void destroy() throws Exception {
 		reactorClient.close();
 		eventLoops.close();
-		proxy.close();
 	}
 
 	protected Predicate<KeyRecord> checkKeyRecord(Key key, String binName, Object binValue) {
