@@ -16,12 +16,10 @@
  */
 package com.aerospike.client;
 
-import gnu.crypto.hash.RipeMD160;
-
 import java.util.Arrays;
 
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.util.ThreadLocalData;
+import com.aerospike.client.util.Crypto;
 
 /**
  * Unique record identifier. Records can be identified using a specified namespace,
@@ -91,7 +89,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = new Value.StringValue(key);
-		digest = computeDigest(setName, this.userKey);
+		digest = Crypto.computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -127,7 +125,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = new Value.BytesValue(key);
-		digest = computeDigest(setName, this.userKey);
+		digest = Crypto.computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -165,7 +163,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = new Value.ByteSegmentValue(key, offset, length);
-		digest = computeDigest(setName, this.userKey);
+		digest = Crypto.computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -188,7 +186,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = new Value.LongValue(key);
-		digest = computeDigest(setName, this.userKey);
+		digest = Crypto.computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -211,7 +209,7 @@ public final class Key {
 		this.namespace = namespace; 
 		this.setName = setName;
 		this.userKey = new Value.LongValue(key);
-		digest = computeDigest(setName, this.userKey);
+		digest = Crypto.computeDigest(setName, this.userKey);
 	}
 
 	/**
@@ -238,7 +236,7 @@ public final class Key {
 		// Some value types can't be used as keys (jblob, list, map, null).  Verify key type.
 		key.validateKeyType();
 		
-		digest = computeDigest(setName, key);
+		digest = Crypto.computeDigest(setName, key);
 	}
 
 	/*
@@ -306,20 +304,7 @@ public final class Key {
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
-		// This method runs 14% faster using thread local byte array 
-		// versus creating the buffer each time.
-		byte[] buffer = ThreadLocalData.getBuffer();
-		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
-
-		buffer[setLength] = (byte)key.getType();		
-		int keyLength = key.write(buffer, setLength + 1);
-
-		// Run additional 16% faster using direct class versus 
-		// HashFactory.getInstance("RIPEMD-160").
-		RipeMD160 hash = new RipeMD160();
-		hash.update(buffer, 0, setLength);
-		hash.update(buffer, setLength, keyLength + 1);
-		return hash.digest();
+		return Crypto.computeDigest(setName, key);
 	}
 	
 	@Override

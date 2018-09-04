@@ -29,7 +29,7 @@
       <optional>true</optional>
     </dependency>
 
-	<dependency>
+    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-handler</artifactId>
       <scope>provided</scope>
@@ -39,6 +39,7 @@
     <dependency>
       <groupId>org.gnu</groupId>
       <artifactId>gnu-crypto</artifactId>
+      <version>2.0.1</version>
     </dependency>
 
     <dependency> 
@@ -142,18 +143,18 @@
   <profiles>
     <profile>
       <id>jdk18</id>
-        <activation>
-          <jdk>1.8</jdk>
-        </activation>
+      <activation>
+        <jdk>1.8</jdk>
+      </activation>
       <build>
-        <plugins>   
-          <plugin> 
+        <plugins>
+          <plugin>
             <artifactId>maven-javadoc-plugin</artifactId>
             <configuration>
               <additionalparam>-Xdoclint:none</additionalparam>
             </configuration>
           </plugin>
-       </plugins>      
+       </plugins>     
       </build>
     </profile>
   </profiles>

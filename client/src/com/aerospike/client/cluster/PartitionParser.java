@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.cluster;
 
-import gnu.crypto.util.Base64;
-
 import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -25,6 +23,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.util.Crypto;
 
 /**
  * Parse node's master (and optionally prole) partitions.
@@ -271,7 +270,7 @@ public final class PartitionParser {
 	private void decodeBitmap(Node node, Partitions partitions, int index, int regime, int begin) {
 		AtomicReferenceArray<Node> nodeArray = partitions.replicas[index];
 		int[] regimes = partitions.regimes;
-		byte[] restoreBuffer = Base64.decode(buffer, begin, offset - begin);
+		byte[] restoreBuffer = Crypto.decodeBase64(buffer, begin, offset - begin);
 	
 		for (int i = 0; i < partitionCount; i++) {
 			Node nodeOld = nodeArray.get(i);
