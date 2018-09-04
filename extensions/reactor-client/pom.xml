@@ -19,7 +19,9 @@
     <java.version>1.8</java.version>
 
     <reactor.version>3.1.8.RELEASE</reactor.version>
-    <reactive-streams.version>1.0.2</reactive-streams.version>
+    <assertj.version>3.9.0</assertj.version>
+    <netcrusher.version>0.10</netcrusher.version>
+
     <skipTests>true</skipTests>
   </properties>
 
@@ -33,12 +35,6 @@
       <groupId>io.projectreactor</groupId>
       <artifactId>reactor-core</artifactId>
       <version>${reactor.version}</version>
-    </dependency>
-
-    <dependency>
-      <groupId>org.reactivestreams</groupId>
-      <artifactId>reactive-streams</artifactId>
-      <version>${reactive-streams.version}</version>
     </dependency>
 
     <dependency>
@@ -81,6 +77,14 @@
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
+      <version>${assertj.version}</version>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>com.github.netcrusherorg</groupId>
+      <artifactId>netcrusher-core</artifactId>
+      <version>${netcrusher.version}</version>
       <scope>test</scope>
     </dependency>
 

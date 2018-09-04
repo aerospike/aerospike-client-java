@@ -16,40 +16,26 @@
  */
 package com.aerospike.client.reactor;
 
-import com.aerospike.client.Bin;
-import com.aerospike.client.Key;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
 import org.junit.Test;
-import reactor.core.publisher.Mono;
+import reactor.core.publisher.Flux;
 import reactor.test.StepVerifier;
 
-public class DeleteReactorTest extends ReactorTest {
+public class ScanReactorFailTest extends ReactorFailTest {
+	private final String binName = args.getBinName("scanbin");
 
-	private final String binName = args.getBinName("putgetbin");
-
-	public DeleteReactorTest(Args args) {
+	public ScanReactorFailTest(Args args) {
 		super(args);
 	}
 
 	@Test
-	public void deleteExisting() {
-		final Key key = new Key(args.namespace, args.set, "delkey1");
-		final Bin bin = new Bin(binName, "value");
-		Mono<Key> mono = reactorClient.put(key, bin)
-				.flatMap(key1 -> reactorClient.delete(key));
+	public void shouldFailScan() {
+		Flux<KeyRecord> flux = proxyReactorClient.scanAll(strictScanPolicy(), args.namespace, args.set, binName);
 
-		StepVerifier.create(mono)
-				.expectNextMatches(key::equals)
-				.verifyComplete();
-	}
-
-	@Test
-	public void deleteMissed() {
-		final Key key = new Key(args.namespace, args.set, "delkey2");
-		Mono<Key> mono = reactorClient.delete(key);
-
-		StepVerifier.create(mono)
-				.verifyComplete();
-	}
-
+		StepVerifier.create(flux)
+				.expectError(AerospikeException.Timeout.class)
+				.verify();
+   }	
 }

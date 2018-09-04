@@ -32,7 +32,6 @@
     <servlet-api.version>2.4</servlet-api.version>
     <commons-cli.version>1.2</commons-cli.version>
     <junit.version>4.12</junit.version>
-    <assertj.version>3.9.0</assertj.version>
   </properties>
 
   <dependencyManagement>
@@ -92,14 +91,6 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
-
-      <dependency>
-        <groupId>org.assertj</groupId>
-        <artifactId>assertj-core</artifactId>
-        <version>${assertj.version}</version>
-        <scope>test</scope>
-      </dependency>
-
     </dependencies>
   </dependencyManagement>
 

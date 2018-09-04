@@ -16,26 +16,24 @@
  */
 package com.aerospike.client.reactor;
 
-import static com.aerospike.client.reactor.util.ReactorUtil.succeedAfterRetries;
-
-import java.net.ConnectException;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import org.junit.Test;
-
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
-
+import org.junit.Test;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
 
-public class PutGetReactorTest extends ReactorTest {
+import java.net.ConnectException;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.aerospike.client.reactor.util.ReactorUtil.succeedAfterRetries;
+
+public class CrudReactorTest extends ReactorTest {
 
 	private final String binName = args.getBinName("putgetbin");
 
-	public PutGetReactorTest(Args args) {
+	public CrudReactorTest(Args args) {
 		super(args);
 	}
 
@@ -83,6 +81,27 @@ public class PutGetReactorTest extends ReactorTest {
 
 		StepVerifier.create(mono)
 				.expectNextMatches(checkKeyRecord(key, binName, binValue))
+				.verifyComplete();
+	}
+
+	@Test
+	public void deleteExisting() {
+		final Key key = new Key(args.namespace, args.set, "delkey1");
+		final Bin bin = new Bin(binName, "value");
+		Mono<Key> mono = reactorClient.put(key, bin)
+				.flatMap(key1 -> reactorClient.delete(key));
+
+		StepVerifier.create(mono)
+				.expectNextMatches(key::equals)
+				.verifyComplete();
+	}
+
+	@Test
+	public void deleteMissed() {
+		final Key key = new Key(args.namespace, args.set, "delkey2");
+		Mono<Key> mono = reactorClient.delete(key);
+
+		StepVerifier.create(mono)
 				.verifyComplete();
 	}
 
