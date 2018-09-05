@@ -16,8 +16,6 @@
  */
 package com.aerospike.client;
 
-import gnu.crypto.util.Base64;
-
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -28,6 +26,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.ThreadLocalData;
 
 /**
@@ -777,7 +776,7 @@ public final class Info {
 			if (len <= 0) {
 				return null;
 			}
-			byte[] bytes = Base64.decode(buffer, valueBegin, len);
+			byte[] bytes = Crypto.decodeBase64(buffer, valueBegin, len);
 			return Buffer.utf8ToString(bytes, 0, bytes.length);
 		}
 	}

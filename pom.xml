@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>4.1.10</version>
+  <version>4.1.11</version>
   <packaging>pom</packaging>
 
   <modules>
@@ -27,7 +27,6 @@
     <maven-javadoc-plugin.version>2.9.1</maven-javadoc-plugin.version>
 
     <netty.version>4.1.11.Final</netty.version>
-    <gnu-crypto.version>2.0.1</gnu-crypto.version>
     <luaj-jse.version>3.0</luaj-jse.version>
     <jbcrypt.version>0.3m</jbcrypt.version>
     <servlet-api.version>2.4</servlet-api.version>
@@ -35,6 +34,7 @@
     <junit.version>4.12</junit.version>
     <assertj.version>3.9.0</assertj.version>
     <netcrusher.version>0.10</netcrusher.version>
+
   </properties>
 
   <dependencyManagement>
@@ -62,12 +62,6 @@
         <groupId>io.netty</groupId>
         <artifactId>netty-handler</artifactId>
         <version>${netty.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>org.gnu</groupId>
-        <artifactId>gnu-crypto</artifactId>
-        <version>${gnu-crypto.version}</version>
       </dependency>
 
       <dependency>
