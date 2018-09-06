@@ -1,13 +1,13 @@
 language: java
 jdk:
 - oraclejdk8
+sudo: false
 os:
 - linux
 dist: trusty
 cache:
   directories:
   - $HOME/.m2
-sudo: false
 before_script:
 - .travis/start_cluster.sh 2
 install:
