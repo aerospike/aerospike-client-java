@@ -1,0 +1,22 @@
+language: java
+jdk:
+- oraclejdk8
+os:
+- linux
+dist: trusty
+cache:
+  directories:
+  - $HOME/.m2
+sudo: false
+before_script:
+- .travis/start_cluster.sh 2
+install:
+- mvn clean
+- mvn package
+script:
+- cd test
+- mvn test -DskipTests=false
+notifications:
+  email:
+  - qe-notices@aerospike.com
+  - qe-notices-clients@aerospike.com
