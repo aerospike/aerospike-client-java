@@ -30,7 +30,7 @@ Some sample arguments are:
     # Benchmark asynchronous methods using a single producer thread and 4 selector threads.
     # Limit the maximum number of concurrent commands to 200.
     # Use and 50% read 50% write pattern.
-    ./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 100000000 -S 1 -o S:50 -w RU,50 -z 1 -async -asyncMaxCommands 200 -asyncSelectorThreads 4
+    ./run_benchmarks -h 127.0.0.1 -p 3000 -n test -k 100000000 -S 1 -o S:50 -w RU,50 -z 1 -async -asyncMaxCommands 200 -eventLoops 4
 
     # Run default benchmarks using TLS secure sockets.
     java -Djavax.net.ssl.trustStore=TrustStorePath -Djavax.net.ssl.trustStorePassword=TrustStorePassword -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar -h "hostname:tlsname:tlsport" -tlsEnable
