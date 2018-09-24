@@ -1077,11 +1077,7 @@ public abstract class Command {
 			}			
 			sequence++;
 		}
-
-		if (partitions.cpMode) {
-			throw new AerospikeException.InvalidNode();
-		}
-		return cluster.getRandomNode();
+		throw new AerospikeException.InvalidNode();
 	}
 	
 	protected abstract void sizeBuffer();

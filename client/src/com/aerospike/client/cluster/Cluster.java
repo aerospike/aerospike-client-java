@@ -752,11 +752,7 @@ public class Cluster implements Runnable, Closeable {
 				return node;
 			}
 		}
-
-		if (partitions.cpMode) {
-			throw new AerospikeException.InvalidNode();
-		}
-		return getRandomNode();
+		throw new AerospikeException.InvalidNode();
 	}
 
 	public final Node getRandomNode() throws AerospikeException.InvalidNode {
