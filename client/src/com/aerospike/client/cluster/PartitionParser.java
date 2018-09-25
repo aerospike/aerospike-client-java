@@ -42,6 +42,7 @@ public final class PartitionParser {
 	private int length;
 	private int offset;
 	private boolean copied;
+	private boolean regimeError;
 	
 	public PartitionParser(Connection conn, Node node, HashMap<String,Partitions> map, int partitionCount, boolean requestProleReplicas) {
 		// Send format 1:  partition-generation\nreplicas\n
@@ -295,6 +296,14 @@ public final class PartitionParser {
 					// An extra millisecond for a node change will not make a difference and 
 					// overall performance is improved.
 					nodeArray.lazySet(i, node);				
+				}
+				else {
+					if (!regimeError) {
+						if (Log.infoEnabled()) {
+							Log.info(node.toString() + " regime(" + regime + ") < old regime(" + regimeOld + ")");
+						}
+						regimeError = true;
+					}
 				}
 			}
 			else {

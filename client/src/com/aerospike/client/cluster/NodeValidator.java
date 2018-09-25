@@ -225,7 +225,7 @@ public final class NodeValidator {
 		this.name = map.get("node");
 		
 		if (this.name == null) {
-			throw new AerospikeException.InvalidNode();				
+			throw new AerospikeException.InvalidNode("Node name is null");				
 		}		
 	}
 
@@ -237,7 +237,7 @@ public final class NodeValidator {
 			gen = Integer.parseInt(genString);
 		}
 		catch (Exception ex) {
-			throw new AerospikeException.InvalidNode("Invalid partition-generation: " + genString);												
+			throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " returned invalid partition-generation: " + genString);												
 		}
 					
 		if (gen == -1) {

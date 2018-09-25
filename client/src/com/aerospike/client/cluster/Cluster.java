@@ -727,10 +727,9 @@ public class Cluster implements Runnable, Closeable {
 		
 		if (node != null && node.isActive()) {
 			return node;
-		}
-		
-		// When master only specified, should never get random nodes.
-		throw new AerospikeException.InvalidNode();
+		}		
+		Node[] nodeArray = nodes;
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
 	public final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {		
@@ -752,7 +751,8 @@ public class Cluster implements Runnable, Closeable {
 				return node;
 			}
 		}
-		throw new AerospikeException.InvalidNode();
+		Node[] nodeArray = nodes;
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
 	public final Node getRandomNode() throws AerospikeException.InvalidNode {
@@ -771,7 +771,7 @@ public class Cluster implements Runnable, Closeable {
 				return node;
 			}
 		}
-		throw new AerospikeException.InvalidNode();		
+		throw new AerospikeException.InvalidNode("Cluster is empty");		
 	}
 
 	public final Node[] getNodes() {
@@ -784,7 +784,7 @@ public class Cluster implements Runnable, Closeable {
 		Node node = findNode(nodeName);
 		
 		if (node == null) {			
-			throw new AerospikeException.InvalidNode();
+			throw new AerospikeException.InvalidNode("Invalid node name: " + nodeName);
 		}
 		return node;
 	}

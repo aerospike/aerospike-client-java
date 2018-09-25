@@ -1077,7 +1077,8 @@ public abstract class Command {
 			}			
 			sequence++;
 		}
-		throw new AerospikeException.InvalidNode();
+		Node[] nodeArray = cluster.getNodes();
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 	
 	protected abstract void sizeBuffer();

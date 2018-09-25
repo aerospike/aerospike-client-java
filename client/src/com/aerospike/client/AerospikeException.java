@@ -17,6 +17,7 @@
 package com.aerospike.client;
 
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 /**
@@ -237,8 +238,9 @@ public class AerospikeException extends RuntimeException {
 	public static final class InvalidNode extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
-		public InvalidNode() {
-			super(ResultCode.INVALID_NODE_ERROR);
+		public InvalidNode(int clusterSize, Partition partition) {
+			super(ResultCode.INVALID_NODE_ERROR,
+				(clusterSize == 0) ? "Cluster is empty" : "Node not found for partition " + partition);
 		}
 		
 		public InvalidNode(String message) {
