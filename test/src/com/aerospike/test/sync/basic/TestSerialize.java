@@ -30,7 +30,6 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
-import com.aerospike.client.util.Environment;
 import com.aerospike.test.sync.TestSync;
 
 public class TestSerialize extends TestSync {
@@ -159,8 +158,8 @@ public class TestSerialize extends TestSync {
 		}
 
 		if (received == null || ! received.equals(list)) {
-			fail("Data mismatch" + Environment.Newline + 
-				"Expected " + list + Environment.Newline + 
+			fail("Data mismatch" + System.lineSeparator() + 
+				"Expected " + list + System.lineSeparator() + 
 				"Received " + received);
 		}
 	}

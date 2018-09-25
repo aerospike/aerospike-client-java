@@ -53,7 +53,6 @@ import javax.swing.JTextField;
 import javax.swing.border.EtchedBorder;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.util.Environment;
 
 public class GuiDisplay implements ActionListener {
 	private static String sourcePath = "src/com/aerospike/examples/";
@@ -440,7 +439,7 @@ public class GuiDisplay implements ActionListener {
 	private class GuiConsole extends Console {
 		@Override
 		public void write(final String message) {
-			consoleTextArea.append(message + Environment.Newline);
+			consoleTextArea.append(message + System.lineSeparator());
 		}
 	}
 }

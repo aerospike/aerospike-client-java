@@ -26,7 +26,6 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Crypto;
-import com.aerospike.client.util.Environment;
 
 public final class RegisterCommand {
 	
@@ -75,9 +74,9 @@ public final class RegisterCommand {
 			}
 			
 			if (error != null) {			
-				throw new AerospikeException("Registration failed: " + error + Environment.Newline +
-					"File: " + file + Environment.Newline + 
-					"Line: " + line + Environment.Newline +
+				throw new AerospikeException("Registration failed: " + error + System.lineSeparator() +
+					"File: " + file + System.lineSeparator() + 
+					"Line: " + line + System.lineSeparator() +
 					"Message: " + message
 					);
 			}

@@ -36,7 +36,6 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.util.Environment;
 import com.aerospike.test.sync.TestSync;
 
 public class TestUDF extends TestSync {
@@ -165,8 +164,8 @@ public class TestUDF extends TestSync {
 				}
 			}
 		}
-		fail("UDF data mismatch" + Environment.Newline +
-			 "Expected: " + value + Environment.Newline + 
+		fail("UDF data mismatch" + System.lineSeparator() +
+			 "Expected: " + value + System.lineSeparator() + 
 			 "Received: " + received);
 	}
 

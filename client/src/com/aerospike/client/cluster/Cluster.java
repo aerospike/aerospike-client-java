@@ -42,7 +42,6 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
-import com.aerospike.client.util.Environment;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
@@ -514,7 +513,7 @@ public class Cluster implements Runnable, Closeable {
 		else if (failIfNotConnected) {
 			StringBuilder sb = new StringBuilder(500);
 			sb.append("Failed to connect to host(s): ");
-			sb.append(Environment.Newline);
+			sb.append(System.lineSeparator());
 
 			for (int i = 0; i < seedArray.length; i++)
 			{
@@ -526,7 +525,7 @@ public class Cluster implements Runnable, Closeable {
 				if (ex != null)
 				{
 					sb.append(ex.getMessage());
-					sb.append(Environment.Newline);
+					sb.append(System.lineSeparator());
 				}
 			}
 			throw new AerospikeException.Connection(sb.toString());		
