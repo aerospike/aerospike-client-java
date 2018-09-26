@@ -16,9 +16,11 @@
  */
 package com.aerospike.test.sync.basic;
 
-import org.junit.Test;
 import static org.junit.Assert.fail;
-import static org.junit.Assert.assertEquals;
+
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -29,6 +31,9 @@ import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
 public class TestAdd extends TestSync {
+	@Rule
+	public ExpectedException expectedException = ExpectedException.none();
+
 	@Test
 	public void add() {
 		Key key = new Key(args.namespace, args.set, "addkey");
@@ -69,18 +74,13 @@ public class TestAdd extends TestSync {
 		client.delete(null, key);
 		
 		Bin bin;
-		
+
+		expectedException.expect(AerospikeException.class);
+		expectedException.expectMessage("Parameter error");
+
 		// verify correct exception for previous server crash
-		try {
-			bin = new Bin(binName, (Long)null);
-			client.add(null, key, bin);
-			fail("add with null value should not have succeeded");
-		}
-		catch (AerospikeException ae) {
-			assertEquals(ae.getMessage(), "Error Code 4: Parameter error");
-		}
-		catch (Exception e) {
-			fail("add with null value should have thrown AerospikeException");
-		}
+		bin = new Bin(binName, (Long)null);
+		client.add(null, key, bin);
+		fail("add with null value should not have succeeded");
 	}
 }

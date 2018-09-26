@@ -102,7 +102,7 @@ public abstract class SyncCommand extends Command {
 					if (ae.getResultCode() == ResultCode.TIMEOUT) {
 						// Go through retry logic on server timeout.
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-						exception = new AerospikeException.Timeout(node, policy, iteration + 1, false);
+						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
 						
 						if (isRead) {
@@ -111,6 +111,8 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+						ae.setNode(node);
+						ae.setIteration(iteration + 1);
 						ae.setInDoubt(isRead, commandSentCounter);
 						throw ae;
 					}
@@ -183,10 +185,12 @@ public abstract class SyncCommand extends Command {
 		// Retries have been exhausted.  Throw last exception.
 		if (isClientTimeout) {
 			// Log.info("SocketTimeoutException: " + tranId + ',' + sequence + ',' + iteration);
-			exception = new AerospikeException.Timeout(node, policy, iteration, true);
+			exception = new AerospikeException.Timeout(policy, true);
 		}
 				
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
+		exception.setNode(node);
+		exception.setIteration(iteration);
 		exception.setInDoubt(isRead, commandSentCounter);
 		throw exception;
 	}

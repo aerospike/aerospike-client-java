@@ -110,7 +110,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				// Command was queued to event loop thread.
 				if (currentTime >= totalDeadline) {
 					// Command already timed out.
-					queueError(new AerospikeException.Timeout(null, command.policy, iteration, true));
+					queueError(new AerospikeException.Timeout(command.policy, true));
 					return;
 				}
 			}
@@ -225,6 +225,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private void executeCommand() {
 		state = AsyncCommand.CONNECT;
+		iteration++;
 
 		try {
 			Node node = command.getNode(cluster);
@@ -596,7 +597,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 			currentTime = System.nanoTime();
 			
 			if (currentTime >= totalDeadline) {
-				iteration++;
 				totalTimeout();
 				return;
 			}
@@ -632,7 +632,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Check maxRetries.
-		if (++iteration > command.policy.maxRetries) {
+		if (iteration > command.policy.maxRetries) {
 			totalTimeout();
 			return;		
 		}			
@@ -665,7 +665,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 	
 	private final void totalTimeout() {
-		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, true);
+		AerospikeException ae = new AerospikeException.Timeout(command.policy, true);
 
 		if (state == AsyncCommand.DELAY_QUEUE) {
 			// Command timed out in delay queue.
@@ -728,7 +728,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			command.sequence++;
 		}
 
-		AerospikeException ae = new AerospikeException.Timeout(command.node, command.policy, iteration, false);
+		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
 		retry(ae, false);
 	}
 
@@ -741,7 +741,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		
 		// Check maxRetries.
-		if (++iteration > command.policy.maxRetries) {
+		if (iteration > command.policy.maxRetries) {
 			// Fail command.
 			close();
 			notifyFailure(ae);
@@ -833,6 +833,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 	
 	private final void notifyFailure(AerospikeException ae) {
 		try {
+			ae.setNode(command.node);
+			ae.setIteration(iteration);
 			ae.setInDoubt(command.isRead, commandSentCounter);
 			command.onFailure(ae);
 		}

@@ -26,9 +26,11 @@ import com.aerospike.client.policy.Policy;
 public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
-	private int resultCode;
-	private boolean inDoubt;
-	
+	protected Node node;
+	protected int resultCode = ResultCode.CLIENT_ERROR;
+	protected int iteration = -1;
+	protected boolean inDoubt;
+
 	public AerospikeException(int resultCode, String message) {
 		super(message);
 		this.resultCode = resultCode;
@@ -52,51 +54,45 @@ public class AerospikeException extends RuntimeException {
 
 	public AerospikeException(String message, Throwable e) {
 		super(message, e);
-		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	public AerospikeException(String message) {
 		super(message);
-		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	public AerospikeException(Throwable e) {
 		super(e);
-		this.resultCode = ResultCode.CLIENT_ERROR;
-	}
-	
-	public AerospikeException() {
-		this.resultCode = ResultCode.CLIENT_ERROR;
 	}
 
 	@Override
 	public String getMessage() {
 		StringBuilder sb = new StringBuilder();
 		String message = super.getMessage();
-		
-		if (resultCode != 0) {
-			sb.append("Error Code ");
-			sb.append(resultCode);
-			
-			if (inDoubt) {
-				sb.append("(inDoubt)");
-			}
-			sb.append(": ");
 
-			if (message != null) {
-				sb.append(message);
-			}
-			else {
-				sb.append(ResultCode.getResultString(resultCode));
-			}
+		sb.append("Error ");
+		sb.append(resultCode);
+		
+		if (inDoubt) {
+			sb.append("(inDoubt)");
+		}
+		
+		if (node != null) {
+			sb.append(" from ");
+			sb.append(node.toString());
+		}
+		
+		sb.append(": ");
+
+		if (message != null) {
+			sb.append(message);
 		}
 		else {
-			if (message != null) {
-				sb.append(message);
-			}
-			else {
-				sb.append(this.getClass().getName());
-			}
+			sb.append(ResultCode.getResultString(resultCode));
+		}
+		
+		if (iteration > 1) {
+			sb.append(System.lineSeparator());		
+			sb.append("iteration=" + iteration);
 		}		
 		return sb.toString();
 	}
@@ -109,12 +105,40 @@ public class AerospikeException extends RuntimeException {
 	}
 	
 	/**
+	 * Get last node used.
+	 */
+	public final Node getNode() {
+		return node;
+	}
+	
+	/**
+	 * Set last node used.
+	 */
+	public final void setNode(Node node) {
+		this.node = node;		
+	}
+
+	/**
 	 * Get integer result code.
 	 */
 	public final int getResultCode() {
 		return resultCode;
 	}
 	
+	/**
+	 * Get number of attempts before failing.
+	 */
+	public final int getIteration() {
+		return iteration;
+	}
+
+	/**
+	 * Set number of attempts before failing.
+	 */
+	public final void setIteration(int iteration) {
+		this.iteration = iteration;		
+	}
+
 	/**
 	 * Is it possible that write transaction may have completed.
 	 */
@@ -132,33 +156,23 @@ public class AerospikeException extends RuntimeException {
 			this.inDoubt = true;
 		}
 	}
-
+	
 	/**
 	 * Exception thrown when database request expires before completing.
 	 */
 	public static final class Timeout extends AerospikeException {
 		private static final long serialVersionUID = 1L;
-		
-		/**
-		 * Last node used before timeout.
-		 */
-		public Node node;
-		
+
 		/**
 		 * Socket idle timeout in milliseconds.
 		 */
 		public int socketTimeout;
-		
+
 		/**
 		 * Total timeout in milliseconds.
 		 */
 		public int timeout;
-		
-		/**
-		 * Number of attempts before failing.
-		 */
-		public int iterations;
-		
+
 		/**
 		 * If true, client initiated timeout.  If false, server initiated timeout.
 		 */
@@ -166,28 +180,26 @@ public class AerospikeException extends RuntimeException {
 		
 		public Timeout(int totalTimeout, boolean inDoubt) {
 			super(ResultCode.TIMEOUT, inDoubt);
+			this.socketTimeout = 0;
 			this.timeout = totalTimeout;
-			this.iterations = -1;
 			this.client = true;
 		}
-		
-		public Timeout(Node node, Policy policy, int iterations, boolean client) {
+
+		public Timeout(Policy policy, boolean client) {
 			super(ResultCode.TIMEOUT);
-			this.node = node;
 			this.socketTimeout = policy.socketTimeout;
 			this.timeout = policy.totalTimeout;
-			this.iterations = iterations;
 			this.client = client;
 		}
 		
 		@Override
 		public String getMessage() {
-			if (iterations == -1) {
+			if (iteration == -1) {
 				return "Client timeout: " + timeout;
 			}
 			String type = client ? "Client" : "Server";
-			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iterations=" + iterations + 
-				" lastNode=" + node + " inDoubt=" + getInDoubt();
+			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iteration=" + iteration + 
+				" node=" + node + " inDoubt=" + inDoubt;
 		}
 	}
 
