@@ -12,7 +12,7 @@ Aerospike Java client.  This package contains full source code for these project
 
 Prerequisites:
 
-* Java 1.7 or greater.  Optional extensions may require Java 1.8.
+* Java 1.8 or greater.
 * Maven 3.0 or greater.
 
 AerospikeClient now supports synchronous and asynchronous methods. Asynchronous 

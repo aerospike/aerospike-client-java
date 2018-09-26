@@ -14,13 +14,14 @@
     <module>benchmarks</module>
     <module>servlets</module>
     <module>test</module>
+    <module>extensions</module>
   </modules>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
-    <java.version>1.7</java.version>
+    <java.version>1.8</java.version>
 
     <maven-compiler-plugin.version>2.3.2</maven-compiler-plugin.version>
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
