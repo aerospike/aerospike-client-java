@@ -12,7 +12,7 @@ before_script:
 - .travis/start_cluster.sh 2
 install:
 - mvn clean
-- mvn package
+- mvn install
 script:
 - cd test
 - mvn test -DskipTests=false
