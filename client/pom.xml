@@ -60,11 +60,13 @@
         <directory>${project.basedir}/src/resources</directory>
       </resource>
     </resources>
-    <plugins>   
+
+    <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
       </plugin>
+
       <plugin>
         <artifactId>maven-assembly-plugin</artifactId>
         <configuration>
@@ -82,14 +84,19 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-source-plugin</artifactId>
+        <version>2.2.1</version>
+      </plugin>
+
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-javadoc-plugin</artifactId>
         <configuration>
           <additionalparam>-Xdoclint:none</additionalparam>
           <reportOutputDirectory>${basedir}</reportOutputDirectory>
-          <outputDirectory>${basedir}</outputDirectory>
-          <destDir>doc</destDir>
           <doctitle>Aerospike Java Client</doctitle>
           <show>public</show>
           <splitindex>true</splitindex>
@@ -139,6 +146,7 @@
         </configuration>
       </plugin>
     </plugins>      
+
   </build>
 
 </project>

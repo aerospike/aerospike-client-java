@@ -3,5 +3,5 @@
 
 mvn clean
 mvn install
-rm -rf client/doc
+rm -rf client/apidocs
 mvn -f client/pom.xml javadoc:javadoc

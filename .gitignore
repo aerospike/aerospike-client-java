@@ -5,7 +5,7 @@
 .settings
 bin
 target
-doc
+apidocs
 *.tgz
 *.zip
 *.out
