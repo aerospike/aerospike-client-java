@@ -51,6 +51,26 @@ public abstract class EventLoopBase implements EventLoop {
 	}
 
 	/**
+	 * Return the approximate number of commands currently being processed on
+	 * the event loop.  The value is approximate because the call may be from a
+	 * different thread than the event loop’s thread and there are no locks or
+	 * atomics used. 
+	 */	
+	public int getProcessSize() {
+		return pending;
+	}
+	
+	/**
+	 * Return the approximate number of commands stored on this event loop's
+	 * delay queue that have not been started yet.  The value is approximate
+	 * because the call may be from a different thread than the event loop’s
+	 * thread and there are no locks or atomics used. 
+	 */
+	public int getQueueSize() {		
+		return delayQueue.size();
+	}
+
+	/**
 	 * Return event loop array index.
 	 */
 	@Override

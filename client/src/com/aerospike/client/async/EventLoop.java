@@ -47,6 +47,30 @@ public interface EventLoop {
 	public void schedule(ScheduleTask task, long delay, TimeUnit unit);
 
 	/**
+	 * Return the approximate number of commands currently being processed on
+	 * the event loop.  The value is approximate because the call may be from a
+	 * different thread than the event loop’s thread and there are no locks or
+	 * atomics used.
+	 * 
+	 * If accuracy is important and not running in the event loop thread, 
+	 * the slower execute(Runnable) can be called to run this method in the
+	 * event loop thread.
+	 */	
+	public int getProcessSize();
+	
+	/**
+	 * Return the approximate number of commands stored on this event loop's
+	 * delay queue that have not been started yet.  The value is approximate
+	 * because the call may be from a different thread than the event loop’s
+	 * thread and there are no locks or atomics used.
+	 * 
+	 * If accuracy is important and not running in the event loop thread, 
+	 * the slower execute(Runnable) can be called to run this method in the
+	 * event loop thread.
+	 */
+	public int getQueueSize();
+	
+	/**
 	 * Return event loop array index.
 	 */	
 	public int getIndex();
