@@ -16,7 +16,21 @@
  */
 package com.aerospike.client.reactor;
 
-import com.aerospike.client.*;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Arrays;
+import java.util.function.Predicate;
+
+import org.junit.After;
+import org.junit.Before;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Bin;
+import com.aerospike.client.Host;
+import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.NettyEventLoops;
@@ -24,20 +38,10 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.util.Args;
+
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
-
-import java.io.IOException;
-import java.net.ServerSocket;
-import java.util.Arrays;
-import java.util.function.Predicate;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(Parameterized.class)
 abstract public class ReactorTest {
@@ -107,12 +111,6 @@ abstract public class ReactorTest {
 		catch (Throwable e) {
 			eventLoops.close();
 			throw new RuntimeException(e);
-		}
-	}
-
-	private int getFreePort() throws IOException {
-		try (ServerSocket serverSocket = new ServerSocket(0)) {
-			return serverSocket.getLocalPort();
 		}
 	}
 

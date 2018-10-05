@@ -16,29 +16,16 @@
  */
 package com.aerospike.client.reactor;
 
+import org.junit.Test;
+
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
-import com.aerospike.client.Key;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.reactor.util.Args;
-import com.aerospike.client.task.IndexTask;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import java.util.ArrayList;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class QueryReactorFailTest extends ReactorFailTest {
 	private final String binName = args.getBinName("asqbin");

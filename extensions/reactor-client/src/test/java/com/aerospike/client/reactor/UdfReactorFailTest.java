@@ -16,16 +16,17 @@
  */
 package com.aerospike.client.reactor;
 
-import com.aerospike.client.*;
+import org.junit.Test;
+
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
+import com.aerospike.client.Key;
+import com.aerospike.client.Value;
 import com.aerospike.client.reactor.dto.KeyObject;
 import com.aerospike.client.reactor.util.Args;
-import com.aerospike.client.task.RegisterTask;
-import org.junit.Before;
-import org.junit.Test;
+
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class UdfReactorFailTest extends ReactorFailTest {
 

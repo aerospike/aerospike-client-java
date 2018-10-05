@@ -16,26 +16,27 @@
  */
 package com.aerospike.client.reactor;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.reactor.dto.KeysExists;
 import com.aerospike.client.reactor.dto.KeysRecords;
 import com.aerospike.client.reactor.util.Args;
-import org.junit.Before;
-import org.junit.Test;
+
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.test.StepVerifier;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class BatchReactorFailTest extends ReactorFailTest {
 	private static final String keyPrefix = "batchkey";
