@@ -66,8 +66,8 @@ public abstract class EventLoopBase implements EventLoop {
 	 * because the call may be from a different thread than the event loop’s
 	 * thread and there are no locks or atomics used. 
 	 */
-	public int getQueueSize() {		
-		return delayQueue.size();
+	public int getQueueSize() {
+		return (delayQueue != null) ? delayQueue.size() : 0;
 	}
 
 	/**

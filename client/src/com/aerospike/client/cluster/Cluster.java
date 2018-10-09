@@ -36,6 +36,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoopStats;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.command.Buffer;
@@ -810,13 +811,25 @@ public class Cluster implements Runnable, Closeable {
 			nodeStats[count++] = new NodeStats(node);
 		}
 		
+		EventLoopStats[] eventLoopStats = null;
+		
+		if (eventLoops != null) {
+			EventLoop[] eventLoopArray = eventLoops.getArray();
+			eventLoopStats = new EventLoopStats[eventLoopArray.length];
+			count = 0;
+			
+			for (EventLoop eventLoop : eventLoopArray) {
+				eventLoopStats[count++] = new EventLoopStats(eventLoop);			
+			}
+		}
+
 		int threadsInUse = 0;
 		
 		if (threadPool instanceof ThreadPoolExecutor) {
 			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
 			threadsInUse = tpe.getActiveCount();
-		}
-		return new ClusterStats(nodeStats, threadsInUse);
+		}		
+		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse);
 	}
 
 	public final void interruptTendSleep() {

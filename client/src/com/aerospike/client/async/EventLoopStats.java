@@ -14,40 +14,36 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.cluster;
+package com.aerospike.client.async;
 
 /**
- * Node statistics.
+ * Event loop statistics.
  */
-public final class NodeStats {
+public final class EventLoopStats {
 	/**
-	 * Node for which statistics are generated.
+	 * Approximate number of commands actively being processed on
+	 * the event loop.
 	 */
-	public final Node node;
+	public final int processSize;
 	
 	/**
-	 * Connection statistics for sync commands.
+	 * Approximate number of commands stored on this event loop's
+	 * delay queue that have not been started yet.
 	 */
-	public final ConnectionStats sync;
-	
+	public final int queueSize;
+
 	/**
-	 * Connection statistics for async commands.
+	 * Event loop statistics constructor.
 	 */
-	public final ConnectionStats async;
-	
-	/**
-	 * Node statistics constructor.
-	 */
-	public NodeStats(Node node) {
-		this.node = node;
-		this.sync = node.getConnectionStats();
-		this.async = node.getAsyncConnectionStats();
+	public EventLoopStats(EventLoop eventLoop) {
+		this.processSize = eventLoop.getProcessSize();
+		this.queueSize = eventLoop.getQueueSize();
 	}
-	
+
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return node + " sync(" + sync + ") async(" + async + ')';  
+		return "" + processSize + ',' + queueSize;
 	}
 }

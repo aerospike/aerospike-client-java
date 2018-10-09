@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.cluster;
 
+import com.aerospike.client.async.EventLoopStats;
+
 /**
  * Cluster statistics.
  */
@@ -26,6 +28,12 @@ public final class ClusterStats {
 	public final NodeStats[] nodes;
 	
 	/**
+	 * Statistics for each event loop.
+	 * This value will be null if event loops are not defined.
+	 */
+	public final EventLoopStats[] eventLoops;
+	
+	/**
 	 * Number of active threads executing sync batch/scan/query commands.
 	 */
 	public final int threadsInUse;
@@ -33,8 +41,44 @@ public final class ClusterStats {
 	/**
 	 * Cluster statistics constructor.
 	 */
-	public ClusterStats(NodeStats[] nodes, int threadsInUse) {
+	public ClusterStats(NodeStats[] nodes, EventLoopStats[] eventLoops, int threadsInUse) {
 		this.nodes = nodes;
+		this.eventLoops = eventLoops;
 		this.threadsInUse = threadsInUse;
+	}
+	
+	/**
+	 * Convert statistics to string.
+	 */
+	public String toString() {
+		StringBuilder sb = new StringBuilder(1024);
+		
+		sb.append("nodes (inUse,inPool):");
+		sb.append(System.lineSeparator());
+		
+		for (NodeStats stat : nodes) {
+			sb.append(stat);
+			sb.append(System.lineSeparator());
+		}
+		
+		if (eventLoops != null) {
+			sb.append("event loops (processSize,queueSize): ");
+			
+			for (int i = 0; i < eventLoops.length; i++) {
+				EventLoopStats stat = eventLoops[i];
+				
+				if (i > 0) {
+					sb.append(',');
+				}
+				sb.append('(');
+				sb.append(stat);
+				sb.append(')');
+			}
+			sb.append(System.lineSeparator());
+		}
+		
+		sb.append("threadsInUse: " + threadsInUse);
+		sb.append(System.lineSeparator());
+		return sb.toString();
 	}
 }

@@ -21,20 +21,27 @@ package com.aerospike.client.cluster;
  */
 public final class ConnectionStats {
 	/**
-	 * Connections residing in connection pool(s).
-	 */
-	public final int inPool;
-	
-	/**
 	 * Active connections in currently executing commands.
 	 */
 	public final int inUse;
 	
 	/**
+	 * Connections residing in connection pool(s).
+	 */
+	public final int inPool;
+	
+	/**
 	 * Connection statistics constructor.
 	 */
-	public ConnectionStats(int inPool, int inUse) {
-		this.inPool = inPool;
+	public ConnectionStats(int inUse, int inPool) {
 		this.inUse = inUse;
+		this.inPool = inPool;
+	}
+	
+	/**
+	 * Convert statistics to string.
+	 */
+	public String toString() {
+		return "" + inUse + ',' + inPool;
 	}
 }

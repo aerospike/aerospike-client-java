@@ -606,8 +606,8 @@ public class Node implements Closeable {
 	}
 
 	public final ConnectionStats getConnectionStats() {
-		int inPool = 0;
 		int inUse = 0;
+		int inPool = 0;
 	
 		for (Pool pool : connectionPools) {
 			int tmp = pool.queue.size();
@@ -620,7 +620,7 @@ public class Node implements Closeable {
 			}
 			inUse += tmp;
 		}
-		return new ConnectionStats(inPool, inUse);
+		return new ConnectionStats(inUse, inPool);
 	}
 
 	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {	
@@ -657,8 +657,8 @@ public class Node implements Closeable {
 	}
 	
 	public final ConnectionStats getAsyncConnectionStats() {
-		int inPool = 0;
 		int inUse = 0;
+		int inPool = 0;
 
 		if (asyncConnectionPools != null) {
 			for (AsyncPool pool : asyncConnectionPools) {
@@ -678,7 +678,7 @@ public class Node implements Closeable {
 				inUse += tmp;
 			}
 		}
-		return new ConnectionStats(inPool, inUse);
+		return new ConnectionStats(inUse, inPool);
 	}
 	
 	/**
