@@ -466,7 +466,25 @@ public final class Packer {
     	buffer[offset++] = (byte)0xc0;
     }
 
-    public void packByte(int val) {
+	public void packInfinity() {
+		if (offset + 3 > buffer.length) {
+			resize(3);
+		}
+		buffer[offset++] = (byte)0xd4;
+		buffer[offset++] = (byte)0xff;
+		buffer[offset++] = (byte)0x01;
+	}
+
+	public void packWildcard() {
+		if (offset + 3 > buffer.length) {
+			resize(3);
+		}
+		buffer[offset++] = (byte)0xd4;
+		buffer[offset++] = (byte)0xff;
+		buffer[offset++] = (byte)0x00;
+	}
+
+	public void packByte(int val) {
     	if (offset >= buffer.length) {
     		resize(1);
     	}

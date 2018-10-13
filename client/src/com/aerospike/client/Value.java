@@ -40,6 +40,21 @@ import com.aerospike.client.util.Packer;
  */
 public abstract class Value {
 	/**
+	 * Null value.
+	 */
+	public static final Value NULL = NullValue.INSTANCE;
+
+	/**
+	 * Infinity value to be used in CDT range comparisons only.
+	 */
+	public static final Value INFINITY = new InfinityValue();
+	
+	/**
+	 * Wildcard value to be used in CDT range comparisons only.
+	 */
+	public static final Value WILDCARD = new WildcardValue();
+
+	/**
 	 * Should the client use the new double floating point particle type supported by Aerospike
 	 * server versions >= 3.6.0.  It's important that all server nodes and XDR be upgraded before
 	 * enabling this feature.
@@ -47,7 +62,7 @@ public abstract class Value {
 	 * If false, the old method using an long particle type is used instead.
 	 */
 	public static boolean UseDoubleType = true;
-	
+
 	/**
 	 * Get string or null value instance.
 	 */
@@ -1296,5 +1311,117 @@ public abstract class Value {
 		public int hashCode() {
 	        return map.hashCode();
 		}	
+	}
+
+	/**
+	 * Infinity value.
+	 */
+	public static final class InfinityValue extends Value {		
+		@Override
+		public int estimateSize() {
+			return 0;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {	
+			return 0;
+		}
+		
+		@Override
+		public void pack(Packer packer) {
+			packer.packInfinity();
+		}
+		
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
+		}		
+
+		@Override
+		public int getType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
+		}
+		
+		@Override
+		public Object getObject() {
+			return null;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: INF");
+		}
+
+		@Override
+		public String toString() {
+			return "INF";
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+					this.getClass().equals(other.getClass()));
+		}
+
+		@Override
+		public final int hashCode() {
+			return 0;
+		}
+	}
+
+	/**
+	 * Wildcard value.
+	 */
+	public static final class WildcardValue extends Value {
+		@Override
+		public int estimateSize() {
+			return 0;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {	
+			return 0;
+		}
+		
+		@Override
+		public void pack(Packer packer) {
+			packer.packWildcard();
+		}
+		
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
+		}		
+
+		@Override
+		public int getType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
+		}
+		
+		@Override
+		public Object getObject() {
+			return null;
+		}
+		
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: wildcard");
+		}
+
+		@Override
+		public String toString() {
+			return "*";
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+					this.getClass().equals(other.getClass()));
+		}
+
+		@Override
+		public final int hashCode() {
+			return 0;
+		}
 	}
 }

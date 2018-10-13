@@ -910,4 +910,105 @@ public class TestOperateList extends TestSync {
 		size = record.getLong("bin2");
 		assertEquals(2L, size);	
 	}
+
+	@Test
+	public void operateListInfinity() {
+		Key key = new Key(args.namespace, args.set, "oplkey16");
+		
+		client.delete(null, key);
+		
+		List<Value> itemList = new ArrayList<Value>();
+		itemList.add(Value.get(0));
+		itemList.add(Value.get(4));
+		itemList.add(Value.get(5));
+		itemList.add(Value.get(9));
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(15));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, ListWriteFlags.DEFAULT), binName, itemList)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		long size = record.getLong(binName);
+		assertEquals(6L, size);	
+				
+		itemList = new ArrayList<Value>();
+		itemList.add(Value.get(11));
+		itemList.add(Value.get(3));
+
+		record = client.operate(null, key,
+				ListOperation.getByValueRange(binName, Value.get(10), Value.INFINITY, ListReturnType.VALUE)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long val = (Long)results.get(i++);	
+		assertEquals(11L, val);
+		
+		val = (Long)results.get(i++);	
+		assertEquals(15L, val);	
+	}
+
+	@Test
+	public void operateListWildcard() {
+		Key key = new Key(args.namespace, args.set, "oplkey17");
+		
+		client.delete(null, key);
+		
+		List<Value> i1 = new ArrayList<Value>();
+		i1.add(Value.get("John"));
+		i1.add(Value.get(55));
+
+		List<Value> i2 = new ArrayList<Value>();
+		i2.add(Value.get("Jim"));
+		i2.add(Value.get(95));
+		
+		List<Value> i3 = new ArrayList<Value>();
+		i3.add(Value.get("Joe"));
+		i3.add(Value.get(80));
+
+		List<Value> itemList = new ArrayList<Value>();
+		
+		itemList.add(Value.get(i1));
+		itemList.add(Value.get(i2));
+		itemList.add(Value.get(i3));
+
+		Record record = client.operate(null, key,
+				ListOperation.appendItems(binName, itemList)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		long size = record.getLong(binName);
+		assertEquals(3L, size);	
+				
+		itemList = new ArrayList<Value>();
+		itemList.add(Value.get("Jim"));
+		itemList.add(Value.WILDCARD);
+
+		record = client.operate(null, key,
+				ListOperation.getByValue(binName, Value.get(itemList), ListReturnType.VALUE)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		List<?> items = (List<?>)results.get(i++);
+		String s = (String)items.get(0);	
+		assertEquals("Jim", s);
+		
+		long v = (Long)items.get(1);	
+		assertEquals(95L, v);
+	}
 }

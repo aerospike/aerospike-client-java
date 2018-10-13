@@ -979,4 +979,94 @@ public class TestOperateMap extends TestSync {
 		size = record.getLong("bin2");
 		assertEquals(4L, size);	
 	}
+
+	@Test
+	public void operateMapInfinity() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey17");
+		client.delete(null, key);
+		
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get(0), Value.get(17));
+		inputMap.put(Value.get(4), Value.get(2));
+		inputMap.put(Value.get(5), Value.get(15));
+		inputMap.put(Value.get(9), Value.get(10));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		record = client.operate(null, key,
+				MapOperation.getByKeyRange(binName, Value.get(5), Value.INFINITY, MapReturnType.KEY)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long v = (Long)results.get(i++);
+		assertEquals(5L, v);
+		
+		v = (Long)results.get(i++);
+		assertEquals(9L, v);
+	}
+
+	@Test
+	public void operateMapWildcard() {
+		if (! args.validateMap()) {
+			return;
+		}
+
+		Key key = new Key(args.namespace, args.set, "opmkey18");
+		client.delete(null, key);
+		
+		List<Value> i1 = new ArrayList<Value>();
+		i1.add(Value.get("John"));
+		i1.add(Value.get(55));
+
+		List<Value> i2 = new ArrayList<Value>();
+		i2.add(Value.get("Jim"));
+		i2.add(Value.get(95));
+		
+		List<Value> i3 = new ArrayList<Value>();
+		i3.add(Value.get("Joe"));
+		i3.add(Value.get(80));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get(4), Value.get(i1));
+		inputMap.put(Value.get(5), Value.get(i2));
+		inputMap.put(Value.get(9), Value.get(i3));
+		
+		// Write values to empty map.
+		Record record = client.operate(null, key, 
+				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
+				);
+					
+		assertRecordFound(key, record);
+
+		List<Value> filterList = new ArrayList<Value>();
+		filterList.add(Value.get("Joe"));
+		filterList.add(Value.WILDCARD);
+
+		record = client.operate(null, key,
+				MapOperation.getByValue(binName, Value.get(filterList), MapReturnType.KEY)
+				);
+		
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+		
+		List<?> results = record.getList(binName);
+		int i = 0;
+		
+		long v = (Long)results.get(i++);
+		assertEquals(9L, v);		
+	}
 }
