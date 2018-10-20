@@ -116,29 +116,29 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
-	
+
 	protected Cluster cluster;
-	
+
 	/**
 	 * Default read policy that is used when read command policy is null.
 	 */
 	public final Policy readPolicyDefault;
-	
+
 	/**
 	 * Default write policy that is used when write command policy is null.
 	 */
 	public final WritePolicy writePolicyDefault;
-	
+
 	/**
 	 * Default scan policy that is used when scan command policy is null.
 	 */
 	public final ScanPolicy scanPolicyDefault;
-	
+
 	/**
 	 * Default query policy that is used when query command policy is null.
 	 */
 	public final QueryPolicy queryPolicyDefault;
-	
+
 	/**
 	 * Default batch policy that is used when batch command policy is null.
 	 */
@@ -166,7 +166,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * If the connection succeeds, the client is ready to process database requests.
 	 * If the connection fails, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @throws AerospikeException	if host connection fails
@@ -185,10 +185,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * - Add these nodes to cluster map <br>
 	 * <p>
 	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails and the policy's failOnInvalidHosts is true, a connection 
+	 * If the connection fails and the policy's failOnInvalidHosts is true, a connection
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hostname				host name
 	 * @param port					host port
@@ -207,14 +207,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * - Request host's list of other nodes in cluster <br>
 	 * - Add these nodes to cluster map <br>
 	 * <p>
-	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts 
+	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts
 	 * are added as future seeds in case of a complete network failure.
 	 * <p>
 	 * If one connection succeeds, the client is ready to process database requests.
-	 * If all connections fail and the policy's failIfNotConnected is true, a connection 
+	 * If all connections fail and the policy's failIfNotConnected is true, a connection
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hosts					array of potential hosts to seed the cluster
 	 * @throws AerospikeException	if all host connections fail
@@ -230,8 +230,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.batchPolicyDefault = policy.batchPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
-		
-		cluster = new Cluster(policy, hosts);		
+
+		cluster = new Cluster(policy, hosts);
 	}
 
 	//-------------------------------------------------------
@@ -265,7 +265,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Default Policies
 	//-------------------------------------------------------
-	
+
 	public final Policy getReadPolicyDefault() {
 		return readPolicyDefault;
 	}
@@ -303,8 +303,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * will return before shutdown completes if close() is called from an
 	 * event loop thread.  This is done in order to prevent deadlock.
 	 * <p>
-	 * This close() method will wait for shutdown if the current thread is not 
-	 * an event loop thread.  It's recommended to call close() from a non event 
+	 * This close() method will wait for shutdown if the current thread is not
+	 * an event loop thread.  It's recommended to call close() from a non event
 	 * loop thread for this reason.
 	 */
 	public void close() {
@@ -313,7 +313,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Determine if we are ready to talk to the database server cluster.
-	 * 
+	 *
 	 * @return	<code>true</code> if cluster is ready,
 	 * 			<code>false</code> if cluster is not ready
 	 */
@@ -332,15 +332,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Return list of active server node names in the cluster.
 	 */
 	public final List<String> getNodeNames() {
-		Node[] nodes = cluster.getNodes();		
+		Node[] nodes = cluster.getNodes();
 		ArrayList<String> names = new ArrayList<String>(nodes.length);
-		
+
 		for (Node node : nodes) {
 			names.add(node.getName());
 		}
 		return names;
 	}
-	
+
 	/**
 	 * Return node given its name.
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
@@ -348,7 +348,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final Node getNode(String nodeName) throws AerospikeException.InvalidNode {
 		return cluster.getNode(nodeName);
 	}
-	
+
 	/**
 	 * Return operating cluster statistics.
 	 */
@@ -359,12 +359,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Write record bin(s).
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -379,13 +379,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Asynchronously write record bin(s). 
+	 * Asynchronously write record bin(s).
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -404,13 +404,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// String Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Append bin string values to existing record bin values.
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for string values. 
-	 * 
+	 * This call only works for string values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -423,7 +423,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.APPEND);
 		command.execute(cluster, policy, key, null, false);
 	}
-	
+
 	/**
 	 * Asynchronously append bin string values to existing record bin values.
 	 * This method registers the command with an event loop and returns.
@@ -431,8 +431,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for string values. 
-	 * 
+	 * This call only works for string values.
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -452,8 +452,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Prepend bin string values to existing record bin values.
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call works only for string values. 
-	 * 
+	 * This call works only for string values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -474,8 +474,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for string values. 
-	 * 
+	 * This call only works for string values.
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -494,13 +494,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Arithmetic Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Add integer bin values to existing record bin values.
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for integer values. 
-	 * 
+	 * This call only works for integer values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
@@ -521,8 +521,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for integer values. 
-	 * 
+	 * This call only works for integer values.
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -545,10 +545,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Delete record for specified key.
 	 * The policy specifies the transaction timeout.
-	 * 
+	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
-	 * @return						whether record existed on server before deletion 
+	 * @return						whether record existed on server before deletion
 	 * @throws AerospikeException	if delete fails
 	 */
 	public final boolean delete(WritePolicy policy, Key key) throws AerospikeException {
@@ -559,14 +559,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		command.execute(cluster, policy, key, null, false);
 		return command.existed();
 	}
-	
+
 	/**
 	 * Asynchronously delete record for specified key.
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy specifies the transaction timeout.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -582,7 +582,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude 
+	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude
 	 * faster than deleting records one at a time.
 	 * <p>
 	 * See <a href="https://www.aerospike.com/docs/reference/info#truncate">https://www.aerospike.com/docs/reference/info#truncate</a>
@@ -590,7 +590,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call may return before the truncation is complete.  The user can still
 	 * write new records after the server call returns because new records will have last update times
 	 * greater than the truncate cutoff (set at the time of truncate call).
-	 * 
+	 *
 	 * @param policy				info command configuration parameters, pass in null for defaults
 	 * @param ns					required namespace
 	 * @param set					optional set name.  Pass in null to delete all sets in namespace.
@@ -602,28 +602,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) throws AerospikeException {
 		if (policy == null) {
 			policy = infoPolicyDefault;
-		}	
+		}
 		StringBuilder sb = new StringBuilder(200);
 		sb.append("truncate:namespace=");
 		sb.append(ns);
-		
-		if (set != null && set.length() > 0) {			
+
+		if (set != null && set.length() > 0) {
 			sb.append(";set=");
 			sb.append(set);
 		}
-		
+
 		if (beforeLastUpdate != null) {
 			sb.append(";lut=");
 			// convert to nanoseconds since unix epoch (1970-01-01)
-			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);  
+			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);
 		}
-		
+
 		// Send truncate command to one node. That node will distribute the command to other nodes.
-		Node node = cluster.getRandomNode();		
+		Node node = cluster.getRandomNode();
 		String response = Info.request(policy, node, sb.toString());
-		
+
 		if (! response.equalsIgnoreCase("ok")) {
-			throw new AerospikeException("Truncate failed: " + response);			
+			throw new AerospikeException("Truncate failed: " + response);
 		}
 	}
 
@@ -634,7 +634,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Reset record's time to expiration using the policy's expiration.
 	 * Fail if the record does not exist.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if touch fails
@@ -653,7 +653,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Fail if the record does not exist.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -675,10 +675,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Determine if a record key exists.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
-	 * @return						whether record exists or not 
+	 * @return						whether record exists or not
 	 * @throws AerospikeException	if command fails
 	 */
 	public final boolean exists(Policy policy, Key key) throws AerospikeException {
@@ -696,7 +696,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -715,7 +715,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts and maximum concurrent nodes.
-	 *  
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array key/existence status pairs
@@ -736,7 +736,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The returned boolean array is in positional order with the original key array order.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -751,7 +751,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = batchPolicyDefault;
 		}
-		new AsyncBatch.ExistsArrayExecutor(eventLoop, cluster, policy, keys, listener);		
+		new AsyncBatch.ExistsArrayExecutor(eventLoop, cluster, policy, keys, listener);
 	}
 
 	/**
@@ -760,7 +760,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each key's result is returned in separate onExists() calls.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -775,7 +775,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = batchPolicyDefault;
 		}
-		new AsyncBatch.ExistsSequenceExecutor(eventLoop, cluster, policy, keys, listener);		
+		new AsyncBatch.ExistsSequenceExecutor(eventLoop, cluster, policy, keys, listener);
 	}
 
 	//-------------------------------------------------------
@@ -785,7 +785,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Read entire record for specified key.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
@@ -806,7 +806,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -824,14 +824,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Read record header and bins for specified key.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binNames				bins to retrieve
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {	
+	public final Record get(Policy policy, Key key, String... binNames) throws AerospikeException {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
@@ -846,7 +846,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -854,7 +854,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binNames				bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames) throws AerospikeException {	
+	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames) throws AerospikeException {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
@@ -865,7 +865,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Read record generation and expiration only for specified key.  Bins are not read.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @return						if found, return record instance.  If not found, return null.
@@ -886,7 +886,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
@@ -912,7 +912,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 * This method requires Aerospike Server version >= 3.6.0.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 *                              The returned records are located in the same list.
@@ -922,11 +922,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (records.size() == 0) {
 			return;
 		}
-		
+
 		if (policy == null) {
 			policy = batchPolicyDefault;
 		}
-		
+
 		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
 
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
@@ -934,17 +934,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			for (BatchNode batchNode : batchNodes) {
 				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-				}			
+				}
 				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				command.execute(cluster, policy, null, batchNode.node, true);
 			}
 		}
 		else {
 			// Run batch requests in parallel in separate threads.
-			//			
+			//
 			// Multiple threads write to the record list, so one might think that
 			// volatile or memory barriers are needed on the write threads and this read thread.
-			// This should not be necessary here because it happens in Executor which does a 
+			// This should not be necessary here because it happens in Executor which does a
 			// volatile write (completedCount.incrementAndGet()) at the end of write threads
 			// and a synchronized waitTillComplete() in this thread.
 			Executor executor = new Executor(cluster, policy, batchNodes.size());
@@ -952,12 +952,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			for (BatchNode batchNode : batchNodes) {
 				if (! batchNode.node.hasBatchIndex()) {
 					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-				}		
+				}
 				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				executor.addCommand(batchNode.node, command);
 			}
 			executor.execute(policy.maxConcurrentThreads);
-		}		
+		}
 	}
 
 	/**
@@ -969,7 +969,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -997,7 +997,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1021,7 +1021,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
@@ -1044,7 +1044,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1070,7 +1070,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1085,7 +1085,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = batchPolicyDefault;
 		}
-		new AsyncBatch.GetSequenceExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);		
+		new AsyncBatch.GetSequenceExecutor(eventLoop, cluster, policy, listener, keys, null, Command.INFO1_READ | Command.INFO1_GET_ALL);
 	}
 
 	/**
@@ -1093,7 +1093,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
@@ -1117,7 +1117,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1144,7 +1144,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1168,7 +1168,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @return						array of records
@@ -1191,7 +1191,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1217,7 +1217,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
@@ -1244,19 +1244,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * An example would be to add an integer value to an existing record and then
 	 * read the result, all in one database call.
 	 * <p>
-	 * Write operations are always performed first, regardless of operation order 
-	 * relative to read operations.
-	 * <p>
-	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
-	 * can be performed in same call.
-	 * 
+	 * The server executes operations in the same order as the operations array.
+	 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
+	 * MapOperation) can be performed in same call.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
 	 * @return						record if there is a read in the operations list
 	 * @throws AerospikeException	if command fails
 	 */
-	public final Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
+	public final Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {
 		OperateArgs args = new OperateArgs();
 		OperateCommand command = new OperateCommand(key, operations);
 		command.estimateOperate(operations, args);
@@ -1269,7 +1267,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				policy = operatePolicyReadDefault;
 			}
 		}
-		
+
 		if (policy.respondAllOps) {
 			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
@@ -1286,12 +1284,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * An example would be to add an integer value to an existing record and then
 	 * read the result, all in one database call.
 	 * <p>
-	 * Write operations are always performed first, regardless of operation order 
-	 * relative to read operations.
-	 * <p>
-	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
-	 * can be performed in same call.
-	 * 
+	 * The server executes operations in the same order as the operations array.
+	 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
+	 * MapOperation) can be performed in same call.
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -1299,7 +1295,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param operations			database operations to perform
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException {		
+	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException {
 		OperateArgs args = new OperateArgs();
 		AsyncOperate command = new AsyncOperate(listener, key, operations);
 		command.estimateOperate(operations, args);
@@ -1312,7 +1308,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				policy = operatePolicyReadDefault;
 			}
 		}
-		
+
 		if (policy.respondAllOps) {
 			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
@@ -1323,7 +1319,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Scan Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Read all records in specified namespace and set.  If the policy's
 	 * <code>concurrentNodes</code> is specified, each server node will be read in
@@ -1331,7 +1327,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
-	 * 
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -1341,16 +1337,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
-		throws AerospikeException {	
+		throws AerospikeException {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
 
 		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);			
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
 		}
 
-		Node[] nodes = cluster.getNodes();		
+		Node[] nodes = cluster.getNodes();
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
 		}
@@ -1359,7 +1355,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], namespace) : 0;
 		long taskId = RandomShift.instance().nextLong();
 		boolean first = true;
-		
+
 		if (policy.concurrentNodes) {
 			Executor executor = new Executor(cluster, policy, nodes.length);
 
@@ -1370,7 +1366,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				first = false;
 			}
 
-			executor.execute(policy.maxConcurrentNodes);			
+			executor.execute(policy.maxConcurrentNodes);
 		}
 		else {
 			for (Node node : nodes) {
@@ -1388,7 +1384,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
@@ -1401,7 +1397,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames) throws AerospikeException {
 		if (policy == null) {
 			policy = scanPolicyDefault;
-		}	
+		}
 		new AsyncScanExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames);
 	}
 
@@ -1411,18 +1407,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
-	 * 
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param nodeName				server node name
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
-	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.  
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
-	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames) 
-		throws AerospikeException {		
+	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames)
+		throws AerospikeException {
 		Node node = cluster.getNode(nodeName);
 		scanNode(policy, node, namespace, setName, callback, binNames);
 	}
@@ -1432,28 +1428,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * This call will block until the scan is complete - callbacks are made
 	 * within the scope of this call.
-	 * 
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param node					server node
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
-	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.  
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
 	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames) 
+	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
 
 		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);			
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
 		}
 
 		// Detect cluster migrations when performing scan.
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(node, namespace) : 0;	
+		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(node, namespace) : 0;
 		long taskId = RandomShift.instance().nextLong();
 
 		ScanCommand command = new ScanCommand(policy, namespace, setName, callback, binNames, taskId, clusterKey, true);
@@ -1463,20 +1459,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//---------------------------------------------------------------
 	// User defined functions
 	//---------------------------------------------------------------
-	
+
 	/**
 	 * Register package located in a file containing user defined functions with server.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param clientPath			path of client file containing user defined functions, relative to current directory
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
-	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) 
+	public final RegisterTask register(Policy policy, String clientPath, String serverPath, Language language)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
@@ -1485,13 +1481,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		byte[] bytes = Util.readFile(file);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
-	
+
 	/**
 	 * Register package located in a resource containing user defined functions with server.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
 	 * @param resourcePath          class path where Lua resource is located
@@ -1499,7 +1495,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
-	public final RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language) 
+	public final RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
@@ -1512,9 +1508,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Register UDF functions located in a code string with server.  Example:
 	 * <pre>
 	 * {@code
-	 * String code = 
-	 *   "local function reducer(val1,val2)\n" + 
-	 *   "  return val1 + val2\n" + 
+	 * String code =
+	 *   "local function reducer(val1,val2)\n" +
+	 *   "  return val1 + val2\n" +
 	 *   "end\n" +
 	 *   "\n" +
 	 *   "function sum_single_bin(stream,name)\n" +
@@ -1523,7 +1519,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *   "  end\n" +
 	 *   "  return stream : map(mapper) : reduce(reducer)\n" +
 	 *   "end\n";
-	 *   
+	 *
 	 * client.registerUdfString(null, code, "mysum.lua", Language.LUA);
 	 * }
 	 * </pre>
@@ -1531,14 +1527,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param code					code string containing user defined functions.
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
 	 */
-	public final RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language) 
+	public final RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
@@ -1546,10 +1542,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		byte[] bytes = Buffer.stringToUtf8(code);
 		return RegisterCommand.register(cluster, policy, bytes, serverPath, language);
 	}
-	
+
 	/**
 	 * Remove user defined function from server nodes.
-	 * 
+	 *
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param serverPath			location of UDF on server nodes.  Example: mylua.lua
 	 * @throws AerospikeException	if remove fails
@@ -1560,27 +1556,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		// Send UDF command to one node. That node will distribute the UDF command to other nodes.
 		String command = "udf-remove:filename=" + serverPath;
-		Node node = cluster.getRandomNode();		
+		Node node = cluster.getRandomNode();
 		String response = Info.request(policy, node, command);
-		
+
 		if (response.equalsIgnoreCase("ok")) {
 			return;
 		}
-		
+
 		if (response.startsWith("error=file_not_found")) {
 			// UDF has already been removed.
 			return;
 		}
 		throw new AerospikeException("Remove UDF failed: " + response);
 	}
-	
+
 	/**
 	 * Execute user defined function on server and return results.
 	 * The function operates on a single record.
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <server udf dir>/<package name>.lua
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param packageName			server package name where user defined function resides
@@ -1589,35 +1585,35 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @return						return value of user defined function
 	 * @throws AerospikeException	if transaction fails
 	 */
-	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs) 
+	public final Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... functionArgs)
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
 		ExecuteCommand command = new ExecuteCommand(policy, key, packageName, functionName, functionArgs);
 		command.execute(cluster, policy, key, null, false);
-		
+
 		Record record = command.getRecord();
-		
+
 		if (record == null || record.bins == null) {
 			return null;
 		}
-		
+
 		Map<String,Object> map = record.bins;
 
 		Object obj = map.get("SUCCESS");
-		
+
 		if (obj != null) {
 			return obj;
 		}
-		
+
 		// User defined functions don't have to return a value.
 		if (map.containsKey("SUCCESS")) {
 			return null;
 		}
-		
+
 		obj = map.get("FAILURE");
-		
+
 		if (obj != null) {
 			throw new AerospikeException(obj.toString());
 		}
@@ -1633,7 +1629,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <server udf dir>/<package name>.lua
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
@@ -1654,7 +1650,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
-		}	
+		}
 		AsyncExecute command = new AsyncExecute(listener, policy, key, packageName, functionName, functionArgs);
 		eventLoop.execute(cluster, command);
 	}
@@ -1669,7 +1665,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param statement				record filter
 	 * @param packageName			server package where user defined function resides
@@ -1711,10 +1707,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//--------------------------------------------------------
 
 	/**
-	 * Execute query on all server nodes and return record iterator.  The query executor puts 
-	 * records on a queue in separate threads.  The calling thread concurrently pops records off 
+	 * Execute query on all server nodes and return record iterator.  The query executor puts
+	 * records on a queue in separate threads.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
-	 * 
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @return						record iterator
@@ -1728,14 +1724,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		executor.execute();
 		return executor.getRecordSet();
 	}
-	
+
 	/**
 	 * Asynchronously execute query on all server nodes.
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
-	 * 
+	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
@@ -1745,15 +1741,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
-		}	
+		}
 		new AsyncQueryExecutor(eventLoop, listener, cluster, policy, statement);
 	}
 
 	/**
 	 * Execute query on a single server node and return record iterator.  The query executor puts
-	 * records on a queue in a separate thread.  The calling thread concurrently pops records off 
+	 * records on a queue in a separate thread.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @param node					server node to execute query
@@ -1770,8 +1766,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Execute query, apply statement's aggregation function, and return result iterator. The query 
-	 * executor puts results on a queue in separate threads.  The calling thread concurrently pops 
+	 * Execute query, apply statement's aggregation function, and return result iterator. The query
+	 * executor puts results on a queue in separate threads.  The calling thread concurrently pops
 	 * results off the queue through the result iterator.
 	 * <p>
 	 * The aggregation function is called on both server and client (final reduce).  Therefore,
@@ -1779,7 +1775,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The package name is used to locate the udf file location:
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @param packageName			server package where user defined function resides
@@ -1808,7 +1804,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * concurrently pops results off the queue through the ResultSet iterator.
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @throws AerospikeException	if query fails
@@ -1816,14 +1812,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final ResultSet queryAggregate(QueryPolicy policy, Statement statement) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
-		}		
+		}
 		statement.prepare(true);
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, null);
 		return executor.getResultSet();
 	}
 
 	/**
-	 * Execute query on a single server node, apply statement's aggregation function, and return 
+	 * Execute query on a single server node, apply statement's aggregation function, and return
 	 * result iterator.
 	 * The aggregation function should be initialized via the statement's setAggregateFunction()
 	 * and should be located in a resource or a filesystem file.
@@ -1832,7 +1828,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * concurrently pops results off the queue through the ResultSet iterator.
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param statement				database query command
 	 * @param node					server node to execute query
@@ -1841,7 +1837,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
-		}		
+		}
 		statement.prepare(true);
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, node);
 		return executor.getResultSet();
@@ -1852,7 +1848,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -1862,14 +1858,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final IndexTask createIndex(
-		Policy policy, 
-		String namespace, 
-		String setName, 
-		String indexName, 
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
 		String binName,
 		IndexType indexType
 	) throws AerospikeException {
-		return createIndex(policy, namespace, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);	
+		return createIndex(policy, namespace, setName, indexName, binName, indexType, IndexCollectionType.DEFAULT);
 	}
 
 	/**
@@ -1877,7 +1873,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -1888,10 +1884,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final IndexTask createIndex(
-		Policy policy, 
-		String namespace, 
-		String setName, 
-		String indexName, 
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
 		String binName,
 		IndexType indexType,
 		IndexCollectionType indexCollectionType
@@ -1899,20 +1895,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-						
+
 		StringBuilder sb = new StringBuilder(500);
 		sb.append("sindex-create:ns=");
 		sb.append(namespace);
-		
+
 		if (setName != null && setName.length() > 0) {
 			sb.append(";set=");
 			sb.append(setName);
 		}
-		
+
 		sb.append(";indexname=");
 		sb.append(indexName);
 		sb.append(";numbins=1");
-		
+
 		if (indexCollectionType != IndexCollectionType.DEFAULT) {
 			sb.append(";indextype=");
 			sb.append(indexCollectionType);
@@ -1926,12 +1922,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		// Send index command to one node. That node will distribute the command to other nodes.
 		String response = sendInfoCommand(policy, sb.toString());
-		
+
 		if (response.equalsIgnoreCase("OK")) {
 			// Return task that could optionally be polled for completion.
 			return new IndexTask(cluster, policy, namespace, indexName, true);
 		}
-		
+
 		parseInfoError("Create index failed", response);
 		return null;
 	}
@@ -1941,7 +1937,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
@@ -1949,37 +1945,37 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final IndexTask dropIndex(
-		Policy policy, 
-		String namespace, 
-		String setName, 
+		Policy policy,
+		String namespace,
+		String setName,
 		String indexName
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-						
+
 		StringBuilder sb = new StringBuilder(500);
 		sb.append("sindex-delete:ns=");
 		sb.append(namespace);
-		
+
 		if (setName != null && setName.length() > 0) {
 			sb.append(";set=");
 			sb.append(setName);
-		}		
+		}
 		sb.append(";indexname=");
 		sb.append(indexName);
-		
+
 		// Send index command to one node. That node will distribute the command to other nodes.
 		String response = sendInfoCommand(policy, sb.toString());
 
 		if (response.equalsIgnoreCase("OK")) {
 			return new IndexTask(cluster, policy, namespace, indexName, false);
-		}		
-		
+		}
+
 		parseInfoError("Drop index failed", response);
 		return null;
 	}
-	
+
 	//-------------------------------------------------------
 	// User administration
 	//-------------------------------------------------------
@@ -1987,7 +1983,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Create user with password and roles.  Clear-text password will be hashed using bcrypt
 	 * before sending to server.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param password				user password in clear-text format
@@ -1999,10 +1995,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		AdminCommand command = new AdminCommand();
 		command.createUser(cluster, policy, user, hash, roles);
 	}
-	
+
 	/**
 	 * Remove user from cluster.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @throws AerospikeException	if command fails
@@ -2014,7 +2010,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Change user's password.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param password				user password in clear-text format
@@ -2030,7 +2026,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		String hash = AdminCommand.hashPassword(password);
 		byte[] hashBytes = Buffer.stringToUtf8(hash);
-				
+
 		AdminCommand command = new AdminCommand();
 
 		if (Arrays.equals(userBytes, cluster.getUser())) {
@@ -2046,7 +2042,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Add roles to user's list of roles.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param roles					role names.  Predefined roles are listed in Role.cs
@@ -2059,7 +2055,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Remove roles from user's list of roles.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param roles					role names.  Predefined roles are listed in Role.cs
@@ -2072,7 +2068,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Create user defined role.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param privileges			privileges assigned to the role.
@@ -2085,7 +2081,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Drop user defined role.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @throws AerospikeException	if command fails
@@ -2097,7 +2093,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Grant privileges to an user defined role.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param privileges			privileges assigned to the role.
@@ -2110,7 +2106,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Revoke privileges from an user defined role.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name
 	 * @param privileges			privileges assigned to the role.
@@ -2123,7 +2119,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve roles for a given user.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
@@ -2135,7 +2131,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve all users and their roles.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
@@ -2146,7 +2142,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve role definition.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param roleName				role name filter
 	 * @throws AerospikeException	if command fails
@@ -2158,7 +2154,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Retrieve all roles.
-	 * 
+	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
@@ -2170,12 +2166,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Internal Methods
 	//-------------------------------------------------------
-	
-	private String sendInfoCommand(Policy policy, String command) {		
+
+	private String sendInfoCommand(Policy policy, String command) {
 		Node node = cluster.getRandomNode();
 		Connection conn = node.getConnection(policy.socketTimeout);
 		Info info;
-		
+
 		try {
 			info = new Info(conn, command);
 			node.putConnection(conn);
@@ -2190,15 +2186,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	private void parseInfoError(String prefix, String response) {
 		String message = prefix + ": " + response;
 		String[] list = response.split(":");
-		
+
 		if (list.length >= 2 && list[0].equals("FAIL")) {
 			int code = 0;
-			
+
 			try {
 				code = Integer.parseInt(list[1]);
 			}
 			catch (Exception ex) {
-			}			
+			}
 			throw new AerospikeException(code, message);
 		}
 		throw new AerospikeException(message);

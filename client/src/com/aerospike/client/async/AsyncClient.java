@@ -59,8 +59,8 @@ import com.aerospike.client.util.Util;
  * <p>
  * Asynchronous Aerospike client.
  * <p>
- * Your application uses this class to perform asynchronous database operations 
- * such as writing and reading records, and selecting sets of records. Write 
+ * Your application uses this class to perform asynchronous database operations
+ * such as writing and reading records, and selecting sets of records. Write
  * operations include specialized functionality such as append/prepend and arithmetic
  * addition.
  * <p>
@@ -71,21 +71,21 @@ import com.aerospike.client.util.Util;
  * configured as "single-bin". In "multi-bin" mode, partial records may be
  * written or read by specifying the relevant subset of bins.
  */
-public class AsyncClient extends AerospikeClient implements IAsyncClient, Closeable {	
+public class AsyncClient extends AerospikeClient implements IAsyncClient, Closeable {
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Default read policy that is used when asynchronous read command policy is null.
 	 */
 	public final Policy asyncReadPolicyDefault;
-	
+
 	/**
 	 * Default write policy that is used when asynchronous write command policy is null.
 	 */
 	public final WritePolicy asyncWritePolicyDefault;
-	
+
 	/**
 	 * Default scan policy that is used when asynchronous scan command policy is null.
 	 */
@@ -95,14 +95,14 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * Default query policy that is used when asynchronous query command policy is null.
 	 */
 	public final QueryPolicy asyncQueryPolicyDefault;
-	
+
 	/**
 	 * Default batch policy that is used when asynchronous batch command policy is null.
 	 */
 	public final BatchPolicy asyncBatchPolicyDefault;
 
 	private final NioEventLoops eventLoops;
-	private final ExecutorService taskThreadPool;	
+	private final ExecutorService taskThreadPool;
 	private final Throttle throttle;
 	private final int maxCommandsPerEventLoop;
 	private final boolean useListener;
@@ -122,7 +122,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * If the connection succeeds, the client is ready to process database requests.
 	 * If the connection fails, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @throws AerospikeException	if host connection fails
@@ -141,17 +141,17 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * - Add these nodes to cluster map <br>
 	 * <p>
 	 * If the connection succeeds, the client is ready to process database requests.
-	 * If the connection fails and the policy's failIfNotConnected is true, a connection 
+	 * If the connection fails and the policy's failIfNotConnected is true, a connection
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @throws AerospikeException	if host connection fails
 	 */
 	public AsyncClient(AsyncClientPolicy policy, String hostname, int port) throws AerospikeException {
-		this(policy, new Host(hostname, port));	
+		this(policy, new Host(hostname, port));
 	}
 
 	/**
@@ -163,21 +163,21 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * - Request host's list of other nodes in cluster <br>
 	 * - Add these nodes to cluster map <br>
 	 * <p>
-	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts 
+	 * In most cases, only one host is necessary to seed the cluster. The remaining hosts
 	 * are added as future seeds in case of a complete network failure.
 	 * <p>
 	 * If one connection succeeds, the client is ready to process database requests.
-	 * If all connections fail and the policy's failIfNotConnected is true, a connection 
+	 * If all connections fail and the policy's failIfNotConnected is true, a connection
 	 * exception will be thrown. Otherwise, the cluster will remain in a disconnected state
 	 * until the server is activated.
-	 * 
+	 *
 	 * @param policy				client configuration parameters, pass in null for defaults
 	 * @param hosts					array of potential hosts to seed the cluster
 	 * @throws AerospikeException	if all host connections fail
 	 */
 	public AsyncClient(AsyncClientPolicy policy, Host... hosts) throws AerospikeException {
 		super(policy);
-		
+
 		if (policy == null) {
 			policy = new AsyncClientPolicy();
 		}
@@ -189,9 +189,9 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		this.asyncBatchPolicyDefault = policy.asyncBatchPolicyDefault;
 
 		EventPolicy eventPolicy = new EventPolicy();
-		
+
 		if (policy.asyncSelectorTimeout > 0) {
-			eventPolicy.minTimeout = policy.asyncSelectorTimeout;			
+			eventPolicy.minTimeout = policy.asyncSelectorTimeout;
 		}
 
 		eventLoops = new NioEventLoops(eventPolicy, policy.asyncSelectorThreads);
@@ -202,11 +202,11 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			// of the new efficient async API.  Otherwise, the new efficient async API is used
 			// directly.  All modes are still limited by ClientPolicy.maxConnsPerNode.
 			useListener = (policy.asyncMaxCommandAction == MaxCommandAction.BLOCK || policy.asyncTaskThreadPool != null);
-			taskThreadPool = policy.asyncTaskThreadPool;					
-			
+			taskThreadPool = policy.asyncTaskThreadPool;
+
 			if (policy.asyncMaxCommandAction == MaxCommandAction.BLOCK) {
 				throttle = new Throttle(policy.asyncMaxCommands);
-				maxCommandsPerEventLoop = policy.asyncMaxCommands / eventLoops.getSize();				
+				maxCommandsPerEventLoop = policy.asyncMaxCommands / eventLoops.getSize();
 			}
 			else {
 				throttle = null;
@@ -261,22 +261,22 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------
-	
+
 	/**
-	 * Asynchronously write record bin(s). 
+	 * Asynchronously write record bin(s).
 	 * This method schedules the put command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if queue is full
 	 */
-	public final void put(final WritePolicy policy, final WriteListener listener, final Key key, final Bin... bins) throws AerospikeException {	
+	public final void put(final WritePolicy policy, final WriteListener listener, final Key key, final Bin... bins) throws AerospikeException {
 		final WritePolicy wp = (policy != null)? policy : asyncWritePolicyDefault;
 
 		if (useListener) {
@@ -294,7 +294,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 	// String Operations
 	//-------------------------------------------------------
-		
+
 	/**
 	 * Asynchronously append bin string values to existing record bin values.
 	 * This method schedules the append command with a channel selector and returns.
@@ -302,8 +302,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for string values. 
-	 * 
+	 * This call only works for string values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -322,9 +322,9 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			append(findEventLoop(), listener, wp, key, bins);
-		}		
+		}
 	}
-	
+
 	/**
 	 * Asynchronously prepend bin string values to existing record bin values.
 	 * This method schedules the prepend command with a channel selector and returns.
@@ -332,8 +332,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call works only for string values. 
-	 * 
+	 * This call works only for string values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -352,13 +352,13 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			prepend(findEventLoop(), listener, wp, key, bins);
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
 	// Arithmetic Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Asynchronously add integer bin values to existing record bin values.
 	 * This method schedules the add command with a channel selector and returns.
@@ -366,8 +366,8 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for integer values. 
-	 * 
+	 * This call only works for integer values.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -386,20 +386,20 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			add(findEventLoop(), listener, wp, key, bins);
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
 	// Delete Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Asynchronously delete record for specified key.
 	 * This method schedules the delete command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy specifies the transaction timeout.
-	 * 
+	 *
 	 * @param policy				delete configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -417,7 +417,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			delete(findEventLoop(), listener, wp, key);
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
@@ -425,12 +425,12 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 
 	/**
-	 * Asynchronously create record if it does not already exist.  If the record exists, the record's 
+	 * Asynchronously create record if it does not already exist.  If the record exists, the record's
 	 * time to expiration will be reset to the policy's expiration.
 	 * <p>
 	 * This method schedules the touch command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -454,14 +454,14 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 	// Existence-Check Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Asynchronously determine if a record key exists.
 	 * This method schedules the exists command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param key					unique record identifier
@@ -488,7 +488,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * Another thread will process the command and send the results to the listener in a single call.
 	 * <p>
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 *  
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -518,7 +518,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * Another thread will process the command and send the results to the listener in multiple unordered calls.
 	 * <p>
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 *  
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -545,19 +545,19 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 	// Read Record Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Asynchronously read entire record for specified key.
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if queue is full
-	 */	
+	 */
 	public final void get(final Policy policy, final RecordListener listener, final Key key) throws AerospikeException {
 		final Policy p = (policy != null)? policy : asyncReadPolicyDefault;
 
@@ -572,14 +572,14 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			get(findEventLoop(), listener, p, key);
 		}
 	}
-	
+
 	/**
 	 * Asynchronously read record header and bins for specified key.
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param key					unique record identifier
@@ -607,7 +607,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy can be used to specify timeouts.
-	 * 
+	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param key					unique record identifier
@@ -641,7 +641,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
 	 * This method requires Aerospike Server version >= 3.6.0.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param records				list of unique record identifiers and the bins to retrieve.
@@ -674,7 +674,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * This method schedules the get command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener in a single call.
 	 * This method requires Aerospike Server version >= 3.6.0.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param records				list of unique record identifiers and the bins to retrieve.
@@ -705,7 +705,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -728,7 +728,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			get(findEventLoop(), listener, bp, keys);
 		}
 	}
-	
+
 	/**
 	 * Asynchronously read multiple records for specified keys in one batch call.
 	 * This method schedules the get command with a channel selector and returns.
@@ -736,7 +736,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -767,7 +767,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -791,7 +791,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			get(findEventLoop(), listener, bp, keys, binNames);
 		}
 	}
-	
+
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
 	 * This method schedules the get command with a channel selector and returns.
@@ -799,7 +799,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -831,7 +831,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -862,7 +862,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts and maximum parallel commands.
-	 * 
+	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param keys					array of unique record identifiers
@@ -889,7 +889,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 	// Generic Database Operations
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Asynchronously perform multiple read/write operations on a single key in one batch call.
 	 * An example would be to add an integer value to an existing record and then
@@ -898,9 +898,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * This method schedules the operate command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
 	 * <p>
-	 * Both scalar bin operations (Operation) and list bin operations (ListOperation)
-	 * can be performed in same call.
-	 * 
+	 * The server executes operations in the same order as the operations array.  Both scalar
+	 * bin operations (Operation) and CDT bin operations (ListOperation, MapOperation) can be
+	 * performed in same call.
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -919,7 +920,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			operate(findEventLoop(), listener, wp, key, operations);
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
@@ -927,13 +928,13 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 
 	/**
-	 * Asynchronously read all records in specified namespace and set.  If the policy's 
+	 * Asynchronously read all records in specified namespace and set.  If the policy's
 	 * <code>concurrentNodes</code> is specified, each server node will be read in
 	 * parallel.  Otherwise, server nodes are read in series.
 	 * <p>
 	 * This method schedules the scan command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
-	 * 
+	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param namespace				namespace - equivalent to database name
@@ -959,7 +960,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			scanAll(findEventLoop(), listener, sp, namespace, setName, binNames);
 		}
 	}
-	
+
 	//---------------------------------------------------------------
 	// User defined functions
 	//---------------------------------------------------------------
@@ -973,7 +974,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	 * <p>
 	 * This method schedules the execute command with a channel selector and returns.
 	 * Another thread will process the command and send the results to the listener.
-	 * 
+	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param key					unique record identifier
@@ -1001,7 +1002,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 		else {
 			execute(findEventLoop(), listener, wp, key, packageName, functionName, functionArgs);
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
@@ -1009,13 +1010,13 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	//-------------------------------------------------------
 
 	/**
-	 * Asynchronously execute query on all server nodes.  The query policy's 
+	 * Asynchronously execute query on all server nodes.  The query policy's
 	 * <code>maxConcurrentNodes</code> dictate how many nodes can be queried in parallel.
 	 * The default is to query all nodes in parallel.
 	 * <p>
 	 * This method schedules the node's query commands with channel selectors and returns.
 	 * Selector threads will process the commands and send the results to the listener.
-	 * 
+	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param listener				where to send results
 	 * @param statement				database query command parameters
@@ -1038,21 +1039,21 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			query(findEventLoop(), listener, qp, statement);
 		}
 	}
-	
+
 	//-------------------------------------------------------
 	// Private
 	//-------------------------------------------------------
 
-	private final class AWriteListener implements WriteListener {	
+	private final class AWriteListener implements WriteListener {
 		private final WriteListener listener;
-		
+
 		private AWriteListener(WriteListener listener) {
 			this.listener = listener;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key key) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onSuccess(key);
@@ -1060,29 +1061,29 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onFailure(ae);
 					}
 				}
 			});
-		}	
+		}
 	}
 
-	private final class ADeleteListener implements DeleteListener {	
+	private final class ADeleteListener implements DeleteListener {
 		private final DeleteListener listener;
-		
+
 		private ADeleteListener(DeleteListener listener) {
 			this.listener = listener;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key key, final boolean existed) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onSuccess(key, existed);
@@ -1090,103 +1091,103 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onFailure(ae);
 					}
 				}
 			});
-		}	
+		}
 	}
 
-	private final class AExistsListener implements ExistsListener {	
+	private final class AExistsListener implements ExistsListener {
 		private final ExistsListener listener;
-		
+
 		private AExistsListener(ExistsListener listener) {
 			this.listener = listener;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key key, final boolean existed) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					listener.onSuccess(key, existed);
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
 			});
-		}	
+		}
 	}
-	
-	private final class AExistsArrayListener implements ExistsArrayListener {	
+
+	private final class AExistsArrayListener implements ExistsArrayListener {
 		private final ExistsArrayListener listener;
 		private final int commands;
-		
+
 		private AExistsArrayListener(ExistsArrayListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key[] keys, final boolean[] exists) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess(keys, exists);
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
 			});
 		}
 	}
-	
-	private final class AExistsSequenceListener implements ExistsSequenceListener {	
+
+	private final class AExistsSequenceListener implements ExistsSequenceListener {
 		private final ExistsSequenceListener listener;
 		private final int commands;
-		
+
 		private AExistsSequenceListener(ExistsSequenceListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
 		}
-		
+
 		@Override
 		public void onExists(final Key key, final boolean exists) {
-			callListener(new Runnable() {				
+			callListener(new Runnable() {
 				public void run() {
-					listener.onExists(key, exists);			
+					listener.onExists(key, exists);
 				}
 			});
 		}
 
 		@Override
 		public void onSuccess() {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess();
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
@@ -1194,16 +1195,16 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 	}
 
-	private final class ARecordListener implements RecordListener {	
+	private final class ARecordListener implements RecordListener {
 		private final RecordListener listener;
-		
+
 		private ARecordListener(RecordListener listener) {
 			this.listener = listener;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key key, final Record record) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onSuccess(key, record);
@@ -1211,23 +1212,23 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onFailure(ae);
 					}
 				}
 			});
-		}	
+		}
 	}
-		
-	private final class ABatchListListener implements BatchListListener {	
+
+	private final class ABatchListListener implements BatchListListener {
 		private final BatchListListener listener;
 		private final int commands;
-		
+
 		private ABatchListListener(BatchListListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
@@ -1235,27 +1236,27 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onSuccess(final List<BatchRead> records) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess(records);
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
 			});
 		}
 	}
-	
-	private final class ABatchSequenceListener implements BatchSequenceListener {	
+
+	private final class ABatchSequenceListener implements BatchSequenceListener {
 		private final BatchSequenceListener listener;
 		private final int commands;
-		
+
 		private ABatchSequenceListener(BatchSequenceListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
@@ -1263,7 +1264,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onRecord(final BatchRead record) {
-			callListener(new Runnable() {				
+			callListener(new Runnable() {
 				public void run() {
 					listener.onRecord(record);
 				}
@@ -1272,16 +1273,16 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onSuccess() {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess();
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
@@ -1289,10 +1290,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 	}
 
-	private final class ARecordArrayListener implements RecordArrayListener {	
+	private final class ARecordArrayListener implements RecordArrayListener {
 		private final RecordArrayListener listener;
 		private final int commands;
-		
+
 		private ARecordArrayListener(RecordArrayListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
@@ -1300,27 +1301,27 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onSuccess(final Key[] keys, final Record[] records) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess(keys, records);
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
 			});
 		}
 	}
-	
-	private final class ARecordSequenceListener implements RecordSequenceListener {	
+
+	private final class ARecordSequenceListener implements RecordSequenceListener {
 		private final RecordSequenceListener listener;
 		private final int commands;
-		
+
 		private ARecordSequenceListener(RecordSequenceListener listener, int commands) {
 			this.listener = listener;
 			this.commands = commands;
@@ -1328,7 +1329,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onRecord(final Key key, final Record record) {
-			callListener(new Runnable() {				
+			callListener(new Runnable() {
 				public void run() {
 					listener.onRecord(key, record);
 				}
@@ -1337,16 +1338,16 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 
 		@Override
 		public void onSuccess() {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onSuccess();
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(commands, new Runnable() {				
+			commandComplete(commands, new Runnable() {
 				public void run() {
 					listener.onFailure(ae);
 				}
@@ -1354,16 +1355,16 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 		}
 	}
 
-	private final class AExecuteListener implements ExecuteListener {	
+	private final class AExecuteListener implements ExecuteListener {
 		private final ExecuteListener listener;
-		
+
 		private AExecuteListener(ExecuteListener listener) {
 			this.listener = listener;
 		}
-		
+
 		@Override
 		public void onSuccess(final Key key, final Object obj) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onSuccess(key, obj);
@@ -1371,10 +1372,10 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 				}
 			});
 		}
-		
+
 		@Override
 		public void onFailure(final AerospikeException ae) {
-			commandComplete(1, new Runnable() {				
+			commandComplete(1, new Runnable() {
 				public void run() {
 					if (listener != null) {
 						listener.onFailure(ae);
@@ -1383,7 +1384,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			});
 		}
 	}
-	
+
 	private final EventLoop findEventLoop() {
 		// Find event loop that is not running at capacity.
 		// maxCommandsPerEventLoop is a soft limit.
@@ -1415,7 +1416,7 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 	}
 
 	private final void commandBegin(int commands, final Runnable runnable) {
-		if (throttle != null) {	
+		if (throttle != null) {
 			if (throttle.waitForSlot(commands)) {
 				try {
 					runnable.run();
@@ -1430,14 +1431,14 @@ public class AsyncClient extends AerospikeClient implements IAsyncClient, Closea
 			runnable.run();
 		}
 	}
-	
+
 	private final void commandComplete(int commands, final Runnable runnable) {
 		if (throttle != null) {
 			throttle.addSlot(commands);
 		}
 		callListener(runnable);
 	}
-	
+
 	private final void callListener(final Runnable runnable) {
 		if (taskThreadPool != null) {
 			taskThreadPool.submit(new Runnable() {
