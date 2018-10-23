@@ -28,9 +28,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.util.Util;
 
@@ -54,7 +52,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 	public NioEventLoop(EventPolicy policy, SelectorProvider provider, int index) throws IOException {
 		super(policy, index);
 
-		commandQueue = new ConcurrentLinkedDeque<Runnable>();		
+		commandQueue = new ConcurrentLinkedDeque<Runnable>();
 		scheduleQueue = new ArrayDeque<ScheduleTask>(8);
 		byteBufferQueue = new ArrayDeque<ByteBuffer>(policy.commandsPerEventLoop);
 		selectorTimeout = policy.minTimeout;
@@ -80,7 +78,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 	@Override
 	public void execute(Runnable command) {
 		commandQueue.offerLast(command);
-		
+
 		if (awakened.compareAndSet(false, true)) {
 			selector.wakeup();
 		}
@@ -92,7 +90,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 	@Override
 	public void schedule(Runnable command, long delay, TimeUnit unit) {
 		final ScheduleTask task = new ScheduleTask(command, delay, unit);
-		
+
 		if (thread == Thread.currentThread()) {
 			scheduleQueue.offer(task);
 		}
@@ -104,7 +102,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 			});
 		}
 	}
-	
+
 	/**
 	 * Schedule execution with a reusable ScheduleTask.
 	 * Saves memory allocation for repeatedly scheduled task.
@@ -128,30 +126,32 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 	/**
 	 * Is current thread the event loop thread.
 	 */
+	@Override
 	public boolean inEventLoop() {
 		return thread == Thread.currentThread();
 	}
 
 	public static ByteBuffer createByteBuffer(int size) {
-		// Round up to nearest 8KB.		
+		// Round up to nearest 8KB.
 		return ByteBuffer.allocateDirect((size + 8191) & ~8191);
 	}
 
 	public ByteBuffer getByteBuffer() {
 		ByteBuffer byteBuffer = byteBufferQueue.pollFirst();
-		
+
 		if (byteBuffer == null) {
 			byteBuffer = createByteBuffer(8192);
 		}
 		return byteBuffer;
 	}
-	
+
 	public void putByteBuffer(ByteBuffer byteBuffer) {
 		byteBufferQueue.addLast(byteBuffer);
 	}
 
-	public void run() {		
-		while (true) {			
+	@Override
+	public void run() {
+		while (true) {
 			try {
 				runCommands();
 			}
@@ -161,51 +161,52 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
 					Log.warn("Event loop error: " + Util.getErrorMessage(e));
-				}				
+				}
 				// Backoff when unexpected errors occur.
 				Util.sleep(100);
 			}
 		}
 		close();
 	}
-	
+
 	private void runCommands() throws Exception {
 		registerCommands();
 		runScheduled();
 		awakened.set(false);
 	    selector.select(selectorTimeout);
-	    
+
 		if (awakened.get()) {
 			selector.wakeup();
 		}
-	    
+
 		final Set<SelectionKey> keys = selector.selectedKeys();
-		
+
 		if (keys.isEmpty()) {
 			return;
 		}
-		
+
 		try {
 			final Iterator<SelectionKey> iter = keys.iterator();
-			
+
 			while (iter.hasNext()) {
 				final SelectionKey key = iter.next();
-			
+
 				if (! key.isValid()) {
 					continue;
-				}	        	
-				processKey(key);
+				}
+				INioCommand command = (INioCommand)key.attachment();
+				command.processEvent(key);
 			}
 		}
 		finally {
 			keys.clear();
 		}
 	}
-    
+
     private void registerCommands() {
 		Runnable last = commandQueue.peekLast();
 		Runnable command;
-			
+
 		while ((command = commandQueue.pollFirst()) != null) {
 			command.run();
 
@@ -235,41 +236,33 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 		}
 	}
 
-    private void processKey(SelectionKey key) {
-		NioCommand command = (NioCommand)key.attachment();
+	final void tryDelayQueue() {
+		if (maxCommandsInProcess > 0 && !usingDelayQueue) {
+			// Try executing commands from the delay queue.
+			executeFromDelayQueue();
+		}
+	}
+
+	final void executeFromDelayQueue() {
+		usingDelayQueue = true;
 
 		try {
-        	int ops = key.readyOps();
-    	
-        	if ((ops & SelectionKey.OP_READ) != 0) {
-        		command.read();
-        	}
-        	else if ((ops & SelectionKey.OP_WRITE) != 0) {
-        		command.write();
-        	}
-        	else if ((ops & SelectionKey.OP_CONNECT) != 0) {
-        		command.finishConnect();
-        	}
-        }
-        catch (AerospikeException.Connection ac) {
-        	command.onNetworkError(ac, false);
-        }
-        catch (AerospikeException ae) {
-        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
-        		// Go through retry logic on server timeout
-        		command.onServerTimeout();
-        	}
-        	else {
-        		command.onApplicationError(ae);
-        	}
-        }
-        catch (IOException ioe) {
-        	command.onNetworkError(new AerospikeException(ioe), false);
-        }
-        catch (Exception e) {
-			command.onApplicationError(new AerospikeException(e));
-        }
-    }
+			NioCommand cmd;
+			while (pending < maxCommandsInProcess && (cmd = (NioCommand)delayQueue.pollFirst()) != null) {
+				if (cmd.state == AsyncCommand.COMPLETE) {
+					// Command timed out and user has already been notified.
+					continue;
+				}
+				cmd.executeCommandFromDelayQueue();
+			}
+		}
+		catch (Exception e) {
+			Log.error("Unexpected async error: " + Util.getErrorMessage(e));
+		}
+		finally {
+			usingDelayQueue = false;
+		}
+	}
 
 	public void close() {
 		try {

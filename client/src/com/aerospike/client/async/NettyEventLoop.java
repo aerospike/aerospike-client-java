@@ -18,7 +18,9 @@ package com.aerospike.client.async;
 
 import java.util.concurrent.TimeUnit;
 
+import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.util.Util;
 
 /**
  * Aerospike wrapper around netty event loop.
@@ -34,7 +36,7 @@ public final class NettyEventLoop extends EventLoopBase {
      */
 	public NettyEventLoop(EventPolicy policy, io.netty.channel.EventLoop eventLoop, NettyEventLoops parent, int index) {
 		super(policy, index);
-		
+
 		this.eventLoop = eventLoop;
 		this.parent = parent;
 	}
@@ -45,7 +47,7 @@ public final class NettyEventLoop extends EventLoopBase {
 	public io.netty.channel.EventLoop get() {
 		return eventLoop;
 	}
-	
+
 	/**
 	 * Execute async command.  Execute immediately if in event loop.
 	 * Otherwise, place command on event loop queue.
@@ -83,7 +85,36 @@ public final class NettyEventLoop extends EventLoopBase {
 	/**
 	 * Is current thread the event loop thread.
 =	 */
+	@Override
 	public boolean inEventLoop() {
 		return eventLoop.inEventLoop();
+	}
+
+	final void tryDelayQueue() {
+		if (maxCommandsInProcess > 0 && !usingDelayQueue) {
+			// Try executing commands from the delay queue.
+			executeFromDelayQueue();
+		}
+	}
+
+	final void executeFromDelayQueue() {
+		usingDelayQueue = true;
+
+		try {
+			NettyCommand cmd;
+			while (pending < maxCommandsInProcess && (cmd = (NettyCommand)delayQueue.pollFirst()) != null) {
+				if (cmd.state == AsyncCommand.COMPLETE) {
+					// Command timed out and user has already been notified.
+					continue;
+				}
+				cmd.executeCommandFromDelayQueue();
+			}
+		}
+		catch (Exception e) {
+			Log.error("Unexpected async error: " + Util.getErrorMessage(e));
+		}
+		finally {
+			usingDelayQueue = false;
+		}
 	}
 }

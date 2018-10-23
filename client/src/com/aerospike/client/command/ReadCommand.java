@@ -38,7 +38,7 @@ public class ReadCommand extends SyncCommand {
 		this.key = key;
 		this.binNames = binNames;
 	}
-	
+
 	public ReadCommand(Key key) {
 		this.policy = null;
 		this.key = key;
@@ -52,11 +52,11 @@ public class ReadCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.		
-		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
-	
+		// Read header.
+		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+
         // A number of these are commented out because we just don't care enough to read
-        // that section of the header. If we do care, uncomment and check!        
+        // that section of the header. If we do care, uncomment and check!
 		long sz = Buffer.bytesToLong(dataBuffer, 0);
 		byte headerLength = dataBuffer[8];
 //		byte info1 = header[9];
@@ -77,32 +77,32 @@ public class ReadCommand extends SyncCommand {
 				Log.debug("read header: incorrect version.");
 			}
 		}
-		
+
 		byte type = (byte) (((int)(sz >> 48)) & 0xff);
 		if (type != MSG_TYPE) {
 			if (Log.debugEnabled()) {
 				Log.debug("read header: incorrect message type, aborting receive");
 			}
 		}
-		
+
 		if (headerLength != MSG_REMAINING_HEADER_SIZE) {
 			if (Log.debugEnabled()) {
 				Log.debug("read header: unexpected header size, aborting");
 			}
 		}*/
-				
+
 		// Read remaining message bytes.
         if (receiveSize > 0) {
         	sizeBuffer(receiveSize);
-    		conn.readFully(dataBuffer, receiveSize);
+    		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
         }
-        
+
         if (resultCode != 0) {
         	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND) {
         		handleNotFound(resultCode);
         		return;
         	}
-        	
+
         	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
 				record = parseRecord(opCount, fieldCount, generation, expiration);
 				handleUdfError(resultCode);
@@ -110,33 +110,33 @@ public class ReadCommand extends SyncCommand {
         	}
         	throw new AerospikeException(resultCode);
         }
-                  
+
         if (opCount == 0) {
         	// Bin data was not returned.
         	record = new Record(null, generation, expiration);
         	return;
         }
-        record = parseRecord(opCount, fieldCount, generation, expiration);            
+        record = parseRecord(opCount, fieldCount, generation, expiration);
 	}
-	
+
 	protected void handleNotFound(int resultCode) {
 		// Do nothing in default case. Record will be null.
 	}
-	
-	private void handleUdfError(int resultCode) throws AerospikeException {	
+
+	private void handleUdfError(int resultCode) throws AerospikeException {
 		String ret = (String)record.bins.get("FAILURE");
-		
+
 		if (ret == null) {
-	    	throw new AerospikeException(resultCode);			
+	    	throw new AerospikeException(resultCode);
 		}
-		
+
 		String message;
 		int code;
-		
+
 		try {
 			String[] list = ret.split(":");
 			code = Integer.parseInt(list[2].trim());
-			
+
 			if (code == ResultCode.LARGE_ITEM_NOT_FOUND) {
 				record = null;
 				return;
@@ -147,19 +147,19 @@ public class ReadCommand extends SyncCommand {
 			// Use generic exception if parse error occurs.
         	throw new AerospikeException(resultCode, ret);
 		}
-		
+
 		throw new AerospikeException(code, message);
 	}
-	
+
 	private final Record parseRecord(
-		int opCount, 
-		int fieldCount, 
+		int opCount,
+		int fieldCount,
 		int generation,
 		int expiration
 	) throws AerospikeException {
 		Map<String,Object> bins = new HashMap<String,Object>();
 	    int receiveOffset = 0;
-	
+
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		if (fieldCount > 0) {
@@ -169,19 +169,19 @@ public class ReadCommand extends SyncCommand {
 				receiveOffset += 4 + fieldSize;
 			}
 		}
-	
+
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
 			byte particleType = dataBuffer[receiveOffset+5];
 			byte nameSize = dataBuffer[receiveOffset+7];
 			String name = Buffer.utf8ToString(dataBuffer, receiveOffset+8, nameSize);
 			receiveOffset += 4 + 4 + nameSize;
-	
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
+
+			int particleBytesSize = opSize - (4 + nameSize);
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
 			receiveOffset += particleBytesSize;
 			addBin(bins, name, value);
-	    }	
+	    }
 	    return new Record(bins, generation, expiration);
 	}
 

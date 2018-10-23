@@ -33,7 +33,7 @@ public final class ExistsCommand extends SyncCommand {
 		this.policy = policy;
 		this.key = key;
 	}
-	
+
 	@Override
 	protected void writeBuffer() {
 		setExists(policy, key);
@@ -41,17 +41,16 @@ public final class ExistsCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.		
-		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
+		// Read header.
+		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
 		int resultCode = dataBuffer[13] & 0xFF;
-	
+
 	    if (resultCode != 0 && resultCode != ResultCode.KEY_NOT_FOUND_ERROR) {
-	    	throw new AerospikeException(resultCode);        	
-	    }        	
+	    	throw new AerospikeException(resultCode);
+	    }
 		exists = resultCode == 0;
-		emptySocket(conn);
 	}
-	
+
 	public boolean exists() {
 		return exists;
 	}

@@ -71,16 +71,16 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append("Error ");
 		sb.append(resultCode);
-		
+
 		if (inDoubt) {
 			sb.append("(inDoubt)");
 		}
-		
+
 		if (node != null) {
 			sb.append(" from ");
 			sb.append(node.toString());
 		}
-		
+
 		sb.append(": ");
 
 		if (message != null) {
@@ -89,33 +89,33 @@ public class AerospikeException extends RuntimeException {
 		else {
 			sb.append(ResultCode.getResultString(resultCode));
 		}
-		
+
 		if (iteration > 1) {
-			sb.append(System.lineSeparator());		
+			sb.append(System.lineSeparator());
 			sb.append("iteration=" + iteration);
-		}		
+		}
 		return sb.toString();
 	}
-	
+
 	/**
 	 * Should connection be put back into pool.
 	 */
 	public final boolean keepConnection() {
 		return ResultCode.keepConnection(resultCode);
 	}
-	
+
 	/**
 	 * Get last node used.
 	 */
 	public final Node getNode() {
 		return node;
 	}
-	
+
 	/**
 	 * Set last node used.
 	 */
 	public final void setNode(Node node) {
-		this.node = node;		
+		this.node = node;
 	}
 
 	/**
@@ -124,7 +124,7 @@ public class AerospikeException extends RuntimeException {
 	public final int getResultCode() {
 		return resultCode;
 	}
-	
+
 	/**
 	 * Get number of attempts before failing.
 	 */
@@ -136,7 +136,7 @@ public class AerospikeException extends RuntimeException {
 	 * Set number of attempts before failing.
 	 */
 	public final void setIteration(int iteration) {
-		this.iteration = iteration;		
+		this.iteration = iteration;
 	}
 
 	/**
@@ -148,7 +148,7 @@ public class AerospikeException extends RuntimeException {
 
 	/**
 	 * Set whether it is possible that the write transaction may have completed
-	 * even though this exception was generated.  This may be the case when a 
+	 * even though this exception was generated.  This may be the case when a
 	 * client error occurs (like timeout) after the command was sent to the server.
 	 */
 	public final void setInDoubt(boolean isRead, int commandSentCounter) {
@@ -156,7 +156,7 @@ public class AerospikeException extends RuntimeException {
 			this.inDoubt = true;
 		}
 	}
-	
+
 	/**
 	 * Exception thrown when database request expires before completing.
 	 */
@@ -177,7 +177,7 @@ public class AerospikeException extends RuntimeException {
 		 * If true, client initiated timeout.  If false, server initiated timeout.
 		 */
 		public boolean client;
-		
+
 		public Timeout(int totalTimeout, boolean inDoubt) {
 			super(ResultCode.TIMEOUT, inDoubt);
 			this.socketTimeout = 0;
@@ -191,14 +191,23 @@ public class AerospikeException extends RuntimeException {
 			this.timeout = policy.totalTimeout;
 			this.client = client;
 		}
-		
+
+		public Timeout(Node node, int totalTimeout) {
+			super(ResultCode.TIMEOUT);
+			super.node = node;
+			super.iteration = 1;
+			this.socketTimeout = 0;
+			this.timeout = totalTimeout;
+			this.client = true;
+		}
+
 		@Override
 		public String getMessage() {
 			if (iteration == -1) {
 				return "Client timeout: " + timeout;
 			}
 			String type = client ? "Client" : "Server";
-			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iteration=" + iteration + 
+			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iteration=" + iteration +
 				" node=" + node + " inDoubt=" + inDoubt;
 		}
 	}
@@ -208,18 +217,18 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public static final class Serialize extends AerospikeException {
 		private static final long serialVersionUID = 1L;
-		
+
 		public Serialize(Exception e) {
 			super(ResultCode.SERIALIZE_ERROR, e);
 		}
 	}
-	
+
 	/**
 	 * Exception thrown when client can't parse data returned from server.
 	 */
 	public static final class Parse extends AerospikeException {
 		private static final long serialVersionUID = 1L;
-		
+
 		public Parse(String message) {
 			super(ResultCode.PARSE_ERROR, message);
 		}
@@ -234,11 +243,11 @@ public class AerospikeException extends RuntimeException {
 		public Connection(String message) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, message);
 		}
-		
+
 		public Connection(Exception e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, e);
 		}
-		
+
 		public Connection(int resultCode, String message) {
 			super(resultCode, message);
 		}
@@ -254,7 +263,7 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.INVALID_NODE_ERROR,
 				(clusterSize == 0) ? "Cluster is empty" : "Node not found for partition " + partition);
 		}
-		
+
 		public InvalidNode(String message) {
 			super(ResultCode.INVALID_NODE_ERROR, message);
 		}
@@ -269,12 +278,12 @@ public class AerospikeException extends RuntimeException {
 		public ScanTerminated() {
 			super(ResultCode.SCAN_TERMINATED);
 		}
-		
+
 		public ScanTerminated(Exception e) {
 			super(ResultCode.SCAN_TERMINATED, e);
 		}
 	}
-	
+
 	/**
 	 * Exception thrown when query was terminated prematurely.
 	 */
@@ -284,14 +293,14 @@ public class AerospikeException extends RuntimeException {
 		public QueryTerminated() {
 			super(ResultCode.QUERY_TERMINATED);
 		}
-		
+
 		public QueryTerminated(Exception e) {
 			super(ResultCode.QUERY_TERMINATED, e);
 		}
 	}
 
 	/**
-	 * Exception thrown when async command was rejected because the 
+	 * Exception thrown when async command was rejected because the
 	 * async delay queue is full.
 	 */
 	public static final class AsyncQueueFull extends AerospikeException {

@@ -16,22 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import io.netty.bootstrap.Bootstrap;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
-import io.netty.channel.ChannelInitializer;
-import io.netty.channel.ChannelOption;
-import io.netty.channel.ChannelPipeline;
-import io.netty.channel.epoll.EpollSocketChannel;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.ssl.SslHandler;
-import io.netty.handler.ssl.SslHandshakeCompletionEvent;
-
 import java.io.IOException;
 import java.security.cert.X509Certificate;
 import java.util.concurrent.TimeUnit;
@@ -51,6 +35,22 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
+import io.netty.bootstrap.Bootstrap;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
+import io.netty.channel.ChannelPipeline;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.SslHandshakeCompletionEvent;
+
 /**
  * Asynchronous command handler using netty.
  */
@@ -69,19 +69,18 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
-	boolean timeoutDelay;
-	
+
 	public NettyCommand(NettyEventLoop loop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = loop;
 		this.cluster = cluster;
-		this.eventState = cluster.eventState[loop.index];		
+		this.eventState = cluster.eventState[loop.index];
 		this.command = command;
 		command.bufferQueue = loop.bufferQueue;
 		hasTotalTimeout = command.policy.totalTimeout > 0;
 
 		if (eventLoop.eventLoop.inEventLoop() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
-			run();			
+			run();
 		}
 		else {
 			if (hasTotalTimeout) {
@@ -91,21 +90,22 @@ public final class NettyCommand implements Runnable, TimerTask {
 			eventLoop.execute(this);
 		}
 	}
-	
+
+	@Override
 	public void run() {
 		if (eventState.pending++ == -1) {
 			eventState.pending = -1;
 			eventState.errors++;
-			state = AsyncCommand.COMPLETE;		
+			state = AsyncCommand.COMPLETE;
 			notifyFailure(new AerospikeException("Cluster has been closed"));
 			return;
 		}
 
 		long currentTime = 0;
-		
+
 		if (hasTotalTimeout) {
 			currentTime = System.nanoTime();
-			
+
 			if (state == AsyncCommand.REGISTERED) {
 				// Command was queued to event loop thread.
 				if (currentTime >= totalDeadline) {
@@ -115,14 +115,14 @@ public final class NettyCommand implements Runnable, TimerTask {
 				}
 			}
 			else {
-				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);			
+				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
 			}
 		}
-		
+
 		if (eventLoop.maxCommandsInProcess > 0) {
 			// Delay queue takes precedence over new commands.
-			executeFromDelayQueue();
-			
+			eventLoop.executeFromDelayQueue();
+
 			// Handle new command.
 			if (eventLoop.pending >= eventLoop.maxCommandsInProcess) {
 				// Pending queue full. Append new command to delay queue.
@@ -131,9 +131,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 					return;
 				}
 				eventLoop.delayQueue.addLast(this);
-				
+
 				if (hasTotalTimeout) {
-					timeoutTask = eventLoop.timer.addTimeout(this, totalDeadline);								
+					timeoutTask = eventLoop.timer.addTimeout(this, totalDeadline);
 				}
 				state = AsyncCommand.DELAY_QUEUE;
 				return;
@@ -145,9 +145,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 			if (command.policy.socketTimeout > 0) {
 				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
-				
+
 				if (deadline < totalDeadline) {
-					usingSocketTimeout = true;					
+					usingSocketTimeout = true;
 				}
 				else {
 					deadline = totalDeadline;
@@ -156,53 +156,25 @@ public final class NettyCommand implements Runnable, TimerTask {
 			else {
 				deadline = totalDeadline;
 			}
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);								
+			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
 		}
-		else if (command.policy.socketTimeout > 0) {		
+		else if (command.policy.socketTimeout > 0) {
 			usingSocketTimeout = true;
-			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));								
+			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));
 		}
 
 		eventLoop.pending++;
-		executeCommand();		
+		executeCommand();
 	}
-	
-	private final void queueError(AerospikeException ae) {		
+
+	private final void queueError(AerospikeException ae) {
 		eventState.pending--;
 		eventState.errors++;
 		state = AsyncCommand.COMPLETE;
 		notifyFailure(ae);
 	}
 
-	private final void tryDelayQueue() {
-		if (eventLoop.maxCommandsInProcess > 0 && !eventLoop.usingDelayQueue) {
-			// Try executing commands from the delay queue.
-			executeFromDelayQueue();
-		}
-	}
-
-	private final void executeFromDelayQueue() {
-		eventLoop.usingDelayQueue = true;
-
-		try {
-			NettyCommand cmd;
-			while (eventLoop.pending < eventLoop.maxCommandsInProcess && (cmd = (NettyCommand)eventLoop.delayQueue.pollFirst()) != null) {
-				if (cmd.state == AsyncCommand.COMPLETE) {
-					// Command timed out and user has already been notified.
-					continue;
-				}
-				cmd.executeCommandFromDelayQueue();
-			}
-		}
-		catch (Exception e) {
-			Log.error("Unexpected async error: " + Util.getErrorMessage(e));
-		}
-		finally {
-			eventLoop.usingDelayQueue = false;
-		}
-	}
-
-	private final void executeCommandFromDelayQueue() {
+	final void executeCommandFromDelayQueue() {
 		if (command.policy.socketTimeout > 0) {
 			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 
@@ -230,18 +202,18 @@ public final class NettyCommand implements Runnable, TimerTask {
 		try {
 			Node node = command.getNode(cluster);
 			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
-			
+
 			if (conn != null) {
 				InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
 				handler.command = this;
 				writeCommand();
 				return;
 			}
-			
+
 			try {
 				final InboundHandler handler = new InboundHandler();
 				handler.command = this;
-				
+
 				Bootstrap b = new Bootstrap();
 				b.group(eventLoop.eventLoop);
 
@@ -259,7 +231,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					public void initChannel(SocketChannel ch) {
 						conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
 						ChannelPipeline p = ch.pipeline();
-						
+
 						if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
 							//InetSocketAddress address = node.getAddress();
 							//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
@@ -273,7 +245,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			catch (Exception e) {
 				node.decrAsyncConnection(eventState.index);
 				throw e;
-			}		
+			}
 			eventState.errors = 0;
 		}
 		catch (AerospikeException.Connection ac) {
@@ -285,7 +257,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			eventState.errors++;
 			fail();
 			notifyFailure(new AerospikeException(e));
-			tryDelayQueue();
+			eventLoop.tryDelayQueue();
 		}
 	}
 
@@ -301,23 +273,23 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private void writeAuth() {
 		state = AsyncCommand.AUTH_WRITE;
 		command.initBuffer();
-				
+
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
 		command.dataOffset = admin.setAuthenticate(cluster, command.node.getSessionToken());
 		writeByteBuffer();
 	}
-	
-	private void writeCommand() {	
+
+	private void writeCommand() {
 		state = AsyncCommand.COMMAND_WRITE;
 		command.writeBuffer();
 		writeByteBuffer();
 	}
-	
+
 	private void writeByteBuffer() {
 		ByteBuf byteBuffer = PooledByteBufAllocator.DEFAULT.directBuffer(command.dataOffset);
 		byteBuffer.clear();
 		byteBuffer.writeBytes(command.dataBuffer, 0, command.dataOffset);
-		
+
 		ChannelFuture cf = conn.channel.writeAndFlush(byteBuffer);
 		cf.addListener(new ChannelFutureListener() {
 			@Override
@@ -328,7 +300,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				}
 				else {
 					state = AsyncCommand.AUTH_READ_HEADER;
-				}				
+				}
 				command.dataOffset = 0;
 				// Socket timeout applies only to read events.
 				// Reset event received because we are switching from a write to a read state.
@@ -349,11 +321,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 			case AsyncCommand.AUTH_READ_HEADER:
 				readAuthHeader(byteBuffer);
 				break;
-				
+
 			case AsyncCommand.AUTH_READ_BODY:
 				readAuthBody(byteBuffer);
 				break;
-				
+
 			case AsyncCommand.COMMAND_READ_HEADER:
 				if (command.isSingle) {
 					readSingleHeader(byteBuffer);
@@ -362,13 +334,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 					readMultiHeader(byteBuffer);
 				}
 				break;
-			
+
 			case AsyncCommand.COMMAND_READ_BODY:
 				if (command.isSingle) {
 					readSingleBody(byteBuffer);
 				}
 				else {
-					readMultiBody(byteBuffer);					
+					readMultiBody(byteBuffer);
 				}
 				break;
 			}
@@ -381,7 +353,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private void readAuthHeader(ByteBuf byteBuffer) {
 		int avail = byteBuffer.readableBytes();
 		int offset = command.dataOffset + avail;
-		
+
 		if (offset < 8) {
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, avail);
 			command.dataOffset = offset;
@@ -390,46 +362,46 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		// Process authentication header.
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, 8 - command.dataOffset);
-		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));		
+		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 
 		if (command.receiveSize < 2 || command.receiveSize > command.dataBuffer.length) {
 			throw new AerospikeException.Parse("Invalid auth receive size: " + command.receiveSize);
 		}
-		
-		state = AsyncCommand.AUTH_READ_BODY;		
+
+		state = AsyncCommand.AUTH_READ_BODY;
 		offset -= 8;
 		command.dataOffset = offset;
-		
+
 		if (offset > 0) {
 			byteBuffer.readBytes(command.dataBuffer, 0, offset);
-			
+
 			if (offset >= command.receiveSize) {
 				parseAuthBody();
 			}
 		}
 	}
-	
+
 	private void readAuthBody(ByteBuf byteBuffer) {
 		int avail = byteBuffer.readableBytes();
 		int offset = command.dataOffset + avail;
-		
+
 		if (offset < command.receiveSize) {
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, avail);
 			command.dataOffset = offset;
 			return;
 		}
-		parseAuthBody();		
+		parseAuthBody();
 	}
 
 	private void parseAuthBody() {
 		int resultCode = command.dataBuffer[1] & 0xFF;
-	
+
 		if (resultCode != 0) {
 			// Authentication failed. Session token probably expired.
-			// Signal tend thread to perform node login, so future 
+			// Signal tend thread to perform node login, so future
 			// transactions do not fail.
-			command.node.signalLogin();	
-			
+			command.node.signalLogin();
+
 			// This is a rare event because the client tracks session
 			// expiration and will relogin before session expiration.
 			// Do not try to login on same socket because login can take
@@ -454,35 +426,36 @@ public final class NettyCommand implements Runnable, TimerTask {
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		readableBytes -= dataSize;
 		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
-		
+
 		if (command.receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
 			throw new AerospikeException.Parse("Invalid receive size: " + command.receiveSize);
 		}
 
 		command.sizeBuffer(command.receiveSize);
-		state = AsyncCommand.COMMAND_READ_BODY;		
-			
+		state = AsyncCommand.COMMAND_READ_BODY;
+
 		if (readableBytes <= 0) {
+			command.dataOffset = 0;
 			return;
 		}
 
-		dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes; 
+		dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes;
 		byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 		command.dataOffset = dataSize;
-		
+
 		if (command.dataOffset >= command.receiveSize) {
 			parseSingleBody();
 		}
 	}
-	
+
 	private void readSingleBody(ByteBuf byteBuffer) {
 		int readableBytes = byteBuffer.readableBytes();
 		int needBytes = command.receiveSize - command.dataOffset;
-		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes; 
-		
+		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes;
+
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		command.dataOffset += dataSize;
-		
+
 		if (command.dataOffset >= command.receiveSize) {
 			parseSingleBody();
 		}
@@ -497,57 +470,57 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (! command.valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
-		
+
 		int readableBytes = byteBuffer.readableBytes();
 		int dataSize;
 
 		do {
 			dataSize = command.dataOffset + readableBytes;
-	
+
 			if (dataSize < 8) {
 				byteBuffer.readBytes(command.dataBuffer, command.dataOffset, readableBytes);
 				command.dataOffset = dataSize;
 				return;
 			}
-	
+
 			dataSize = 8 - command.dataOffset;
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 			readableBytes -= dataSize;
 			command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
-			
+
 			if (command.receiveSize == 0) {
 				// Read next header.
 				command.dataOffset = 0;
 				continue;
 			}
-	
+
 			command.sizeBuffer(command.receiveSize);
 			state = AsyncCommand.COMMAND_READ_BODY;
-			
+
 			if (readableBytes <= 0) {
 				return;
 			}
-				
-			dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes; 
+
+			dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes;
 			byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 			readableBytes -= dataSize;
 			command.dataOffset = dataSize;
-				
+
 			if (command.dataOffset < command.receiveSize) {
 				return;
 			}
-				
+
 			if (command.parseResult()) {
 				finish();
 				return;
 			}
-					
+
 			// Prepare for next group.
 			state = AsyncCommand.COMMAND_READ_HEADER;
 			command.dataOffset = 0;
 		} while (true);
 	}
-	
+
 	private final void readMultiBody(ByteBuf byteBuffer) {
 		if (! command.valid) {
 			throw new AerospikeException.QueryTerminated();
@@ -555,11 +528,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		int readableBytes = byteBuffer.readableBytes();
 		int needBytes = command.receiveSize - command.dataOffset;
-		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes; 
+		int dataSize = (readableBytes >= needBytes)? needBytes : readableBytes;
 
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		command.dataOffset += dataSize;
-		
+
 		if (command.dataOffset < command.receiveSize) {
 			return;
 		}
@@ -568,39 +541,30 @@ public final class NettyCommand implements Runnable, TimerTask {
 			finish();
 			return;
 		}
-		
+
 		// Prepare for next group.
 		state = AsyncCommand.COMMAND_READ_HEADER;
 		command.dataOffset = 0;
 		readMultiHeader(byteBuffer);
 	}
 
+	@Override
 	public final void timeout() {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
 
-		if (timeoutDelay) {
-			// Transaction has been delayed long enough.
-			// User has already been notified.
-			// timeoutTask has already been removed, so set to null to avoid cancel.
-			timeoutTask = null;
-			fail();
-			tryDelayQueue();
-			return;
-		}
-
 		long currentTime = 0;
-		
+
 		if (hasTotalTimeout) {
-			// Check total timeout.		
+			// Check total timeout.
 			currentTime = System.nanoTime();
-			
+
 			if (currentTime >= totalDeadline) {
 				totalTimeout();
 				return;
 			}
-			
+
 			if (usingSocketTimeout) {
 				// Socket idle timeout is in effect.
 				if (eventReceived) {
@@ -608,7 +572,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					eventReceived = false;
 
 					long deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
-					
+
 					if (deadline >= totalDeadline) {
 						// Transition to total timeout.
 						deadline = totalDeadline;
@@ -625,31 +589,32 @@ public final class NettyCommand implements Runnable, TimerTask {
 				// Event(s) received within socket timeout period.
 				eventReceived = false;
 
-				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);			
+				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
 				return;
 			}
 		}
-		
+
 		// Check maxRetries.
 		if (iteration > command.policy.maxRetries) {
 			totalTimeout();
-			return;		
-		}			
+			return;
+		}
+
+		// Recover connection when possible.
+		recoverConnection();
 
 		// Attempt retry.
-		closeConnection();
-		
 		if (command.isRead) {
 			// Read commands shift to prole node on timeout.
 			command.sequence++;
 		}
-		
+
 		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
-		
+
 		if (hasTotalTimeout) {
 			long remaining = totalDeadline - currentTime;
-			
+
 			if (remaining <= timeout) {
 				// Transition to total timeout.
 				timeout = remaining;
@@ -659,11 +624,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 		else {
 			currentTime = System.nanoTime();
 		}
-			
+
 		eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
-		executeCommand();					
+		executeCommand();
 	}
-	
+
 	private final void totalTimeout() {
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, true);
 
@@ -674,36 +639,41 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 
-		// Attempt timeout delay.
-		if (command.policy.timeoutDelay > 0) {
-			// Notify user of timeout, but allow transaction to continue in hope of reusing the socket.
-			timeoutDelay = true;
-			notifyFailure(ae);		
-			totalDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.timeoutDelay);
-			eventLoop.timer.restoreTimeout(timeoutTask, totalDeadline);
-			return;
-		}
+		// Recover connection when possible.
+		recoverConnection();
 
 		// Perform timeout.
 		timeoutTask = null;
-		fail();
+		close();
 		notifyFailure(ae);
-		tryDelayQueue();
+		eventLoop.tryDelayQueue();
+	}
+
+	private final void recoverConnection() {
+		if (command.policy.timeoutDelay > 0 && (
+			state == AsyncCommand.COMMAND_READ_HEADER || state == AsyncCommand.COMMAND_READ_BODY ||
+			state == AsyncCommand.AUTH_READ_HEADER || state == AsyncCommand.AUTH_READ_BODY)) {
+			// Create new command to drain connection.
+			new NettyRecover(this);
+			// NettyRecover took ownership of dataBuffer.
+			command.dataBuffer = null;
+		}
+		else {
+			closeConnection();
+		}
 	}
 
 	protected final void finish() {
 		complete();
-		
-		if (! timeoutDelay) {
-			try {
-				command.onSuccess();
-			}
-			catch (Exception e) {
-				Log.error("onSuccess() error: " + Util.getErrorMessage(e));
-			}
+
+		try {
+			command.onSuccess();
+		}
+		catch (Exception e) {
+			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
 		}
 
-		tryDelayQueue();
+		eventLoop.tryDelayQueue();
 	}
 
 	protected final void onNetworkError(AerospikeException ae) {
@@ -715,7 +685,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.sequence++;
 		retry(ae, true);
 	}
-	
+
 	protected final void onServerTimeout() {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
@@ -733,46 +703,39 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private final void retry(AerospikeException ae, boolean queueCommand) {
-		if (timeoutDelay) {
-			// User has already been notified.
-			close();
-			tryDelayQueue();
-			return;
-		}
-		
 		// Check maxRetries.
 		if (iteration > command.policy.maxRetries) {
 			// Fail command.
 			close();
 			notifyFailure(ae);
-			tryDelayQueue();
-			return;				
+			eventLoop.tryDelayQueue();
+			return;
 		}
-		
+
 		long currentTime = 0;
-		
+
 		// Check total timeout.
 		if (hasTotalTimeout) {
 			currentTime = System.nanoTime();
-			
+
 			if (currentTime >= totalDeadline) {
 				// Fail command.
 				close();
 				notifyFailure(ae);
-				tryDelayQueue();
+				eventLoop.tryDelayQueue();
 				return;
 			}
 		}
-		
+
 		// Attempt retry.
 		if (usingSocketTimeout) {
 			// Socket timeout in effect.
-			timeoutTask.cancel();		
+			timeoutTask.cancel();
 			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
-			
+
 			if (hasTotalTimeout) {
 				long remaining = totalDeadline - currentTime;
-				
+
 				if (remaining <= timeout) {
 					// Transition to total timeout.
 					timeout = remaining;
@@ -782,7 +745,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			else {
 				currentTime = System.nanoTime();
 			}
-			
+
 			eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
 		}
 
@@ -793,13 +756,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 				@Override
 				public void run() {
 					if (state == AsyncCommand.COMPLETE) {
-						return;
-					}
-
-					if (timeoutDelay) {
-						// User has already been notified.
-						close();
-						tryDelayQueue();
 						return;
 					}
 					executeCommand();
@@ -824,13 +780,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// Close socket to flush out possible garbage.
 			fail();
 		}
-		
-		if (! timeoutDelay) {			
-			notifyFailure(ae);
-		}
-		tryDelayQueue();
+
+		notifyFailure(ae);
+		eventLoop.tryDelayQueue();
 	}
-	
+
 	private final void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setNode(command.node);
@@ -839,10 +793,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 			command.onFailure(ae);
 		}
 		catch (Exception e) {
-			Log.error("onFailure() error: " + Util.getErrorMessage(e));		
+			Log.error("onFailure() error: " + Util.getErrorMessage(e));
 		}
 	}
-	
+
 	private final void complete() {
 		putConnection();
 		close();
@@ -881,51 +835,51 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
 		eventState.pending--;
-		eventLoop.pending--;		
+		eventLoop.pending--;
 	}
 
 	private static class InboundHandler extends ChannelInboundHandlerAdapter {
 		private NettyCommand command;
-	 	
+
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
 	    	command.channelActive();
 		}
-		
+
 	    @Override
 	    public void channelRead(ChannelHandlerContext ctx, Object msg) {
 	    	command.read((ByteBuf)msg);
 	    }
-	
+
 	    @Override
 	    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 			if (! (evt instanceof SslHandshakeCompletionEvent)) {
 				return;
 			}
-	
+
 			Throwable cause = ((SslHandshakeCompletionEvent)evt).cause();
-	
+
 			if (cause != null) {
 				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
 			}
-	
+
 			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
-		
+
 			String tlsName = command.command.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
-	
+
 			Connection.validateServerCertificate(tlsPolicy, tlsName, cert);
 	    }
-	    
+
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 			if (cause instanceof AerospikeException.Connection) {
-	        	command.onNetworkError((AerospikeException.Connection)cause);				
+	        	command.onNetworkError((AerospikeException.Connection)cause);
 			}
 			else if (cause instanceof AerospikeException) {
 				AerospikeException ae = (AerospikeException)cause;
-				
+
 	        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
 	        		// Go through retry logic on server timeout
 	        		command.onServerTimeout();
@@ -938,7 +892,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	        	command.onNetworkError(new AerospikeException(cause));
 			}
 			else {
-	        	command.onApplicationError(new AerospikeException(cause));		
+	        	command.onApplicationError(new AerospikeException(cause));
 			}
 		}
 	}

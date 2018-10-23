@@ -31,7 +31,7 @@ public final class TouchCommand extends SyncCommand {
 		this.policy = policy;
 		this.key = key;
 	}
-	
+
 	@Override
 	protected void writeBuffer() {
 		setTouch(policy, key);
@@ -39,14 +39,13 @@ public final class TouchCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.		
-		conn.readFully(dataBuffer, MSG_TOTAL_HEADER_SIZE);
-		
+		// Read header.
+		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+
 		int resultCode = dataBuffer[13] & 0xFF;
-	
+
 	    if (resultCode != 0) {
-	    	throw new AerospikeException(resultCode);        	
-	    }        	
-		emptySocket(conn);
+	    	throw new AerospikeException(resultCode);
+	    }
 	}
 }

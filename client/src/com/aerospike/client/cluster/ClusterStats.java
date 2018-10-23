@@ -37,14 +37,20 @@ public final class ClusterStats {
 	 * Number of active threads executing sync batch/scan/query commands.
 	 */
 	public final int threadsInUse;
-
+	
+	/**
+	 * Number of connections residing in sync connection shutdown queue.
+	 */
+	public final int recoverQueueSize;
+	
 	/**
 	 * Cluster statistics constructor.
 	 */
-	public ClusterStats(NodeStats[] nodes, EventLoopStats[] eventLoops, int threadsInUse) {
+	public ClusterStats(NodeStats[] nodes, EventLoopStats[] eventLoops, int threadsInUse, int recoverQueueSize) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
 		this.threadsInUse = threadsInUse;
+		this.recoverQueueSize = recoverQueueSize;
 	}
 	
 	/**
@@ -78,6 +84,8 @@ public final class ClusterStats {
 		}
 		
 		sb.append("threadsInUse: " + threadsInUse);
+		sb.append(System.lineSeparator());
+		sb.append("recoverQueueSize: " + recoverQueueSize);
 		sb.append(System.lineSeparator());
 		return sb.toString();
 	}

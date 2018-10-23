@@ -46,7 +46,7 @@ public class Node implements Closeable {
 	 * Number of partitions for each namespace.
 	 */
 	public static final int PARTITIONS = 4096;
-	
+
 	public static final int HAS_GEO	= (1 << 0);
 	public static final int HAS_DOUBLE = (1 << 1);
 	public static final int HAS_BATCH_INDEX	= (1 << 2);
@@ -78,8 +78,8 @@ public class Node implements Closeable {
 
 	/**
 	 * Initialize server node with connection parameters.
-	 * 
-	 * @param cluster			collection of active server nodes 
+	 *
+	 * @param cluster			collection of active server nodes
 	 * @param nv				connection parameters
 	 */
 	public Node(Cluster cluster, NodeValidator nv) {
@@ -92,23 +92,23 @@ public class Node implements Closeable {
 		this.sessionToken = nv.sessionToken;
 		this.sessionExpiration = nv.sessionExpiration;
 		this.features = nv.features;
-		
+
 		// Create sync connection pools.
 		connectionPools = new Pool[cluster.connPoolsPerNode];
 		int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
 		int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
-		
+
 		for (int i = 0; i < connectionPools.length; i++) {
 			int capacity = i < rem ? max + 1 : max;
 			connectionPools[i] = new Pool(capacity);
 		}
-		
+
 		// Create async connection pools only if event loops have been defined.
 		if (cluster.eventState != null) {
 			asyncConnectionPools = new AsyncPool[cluster.eventState.length];
 			max = cluster.connectionQueueSize / asyncConnectionPools.length;
 			rem = cluster.connectionQueueSize - (max * asyncConnectionPools.length);
-			
+
 			for (int i = 0; i <  cluster.eventState.length; i++) {
 				int capacity = i < rem ? max + 1 : max;
 				asyncConnectionPools[i] = new AsyncPool(capacity);
@@ -117,12 +117,12 @@ public class Node implements Closeable {
 		else {
 			asyncConnectionPools = null;
 		}
-		
+
 		peersGeneration = -1;
 		partitionGeneration = -1;
 		active = true;
 	}
-	
+
 	/**
 	 * Request current status from server node.
 	 */
@@ -130,7 +130,7 @@ public class Node implements Closeable {
 		if (! active) {
 			return;
 		}
-		
+
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -165,7 +165,7 @@ public class Node implements Closeable {
 					ensureLogin();
 				}
 			}
-		
+
 			if (peers.usePeers) {
 				HashMap<String,String> infoMap = Info.request(tendConnection, "node", "peers-generation", "partition-generation");
 				verifyNodeName(infoMap);
@@ -173,14 +173,14 @@ public class Node implements Closeable {
 				verifyPartitionGeneration(infoMap);
 			}
 			else {
-				String[] commands = cluster.useServicesAlternate ? 
+				String[] commands = cluster.useServicesAlternate ?
 					new String[] {"node", "partition-generation", "services-alternate"} :
 					new String[] {"node", "partition-generation", "services"};
-					
+
 				HashMap<String,String> infoMap = Info.request(tendConnection, commands);
 				verifyNodeName(infoMap);
 				verifyPartitionGeneration(infoMap);
-				addFriends(infoMap, peers);		
+				addFriends(infoMap, peers);
 			}
 			peers.refreshCount++;
 			failures = 0;
@@ -203,7 +203,7 @@ public class Node implements Closeable {
 		}
 		return false;
 	}
-	
+
 	public final void signalLogin() {
 		// Only login when sessionToken is supported
 		// and login not already been requested.
@@ -218,7 +218,7 @@ public class Node implements Closeable {
 		// aliases is still valid.  Round-robbin DNS may result in a hostname that resolves to a
 		// new address.
 		String infoName = infoMap.get("node");
-		
+
 		if (infoName == null || infoName.length() == 0) {
 			throw new AerospikeException.Parse("Node name is empty");
 		}
@@ -229,30 +229,30 @@ public class Node implements Closeable {
 			throw new AerospikeException("Node name has changed. Old=" + name + " New=" + infoName);
 		}
 	}
-	
-	private final void verifyPeersGeneration(HashMap<String,String> infoMap, Peers peers) {	
+
+	private final void verifyPeersGeneration(HashMap<String,String> infoMap, Peers peers) {
 		String genString = infoMap.get("peers-generation");
-		
+
 		if (genString == null || genString.length() == 0) {
 			throw new AerospikeException.Parse("peers-generation is empty");
 		}
 
 		int gen = Integer.parseInt(genString);
-		
+
 		if (peersGeneration != gen) {
 			peers.genChanged = true;
-		}						
+		}
 	}
 
-	private final void verifyPartitionGeneration(HashMap<String,String> infoMap) {	
+	private final void verifyPartitionGeneration(HashMap<String,String> infoMap) {
 		String genString = infoMap.get("partition-generation");
-				
+
 		if (genString == null || genString.length() == 0) {
 			throw new AerospikeException.Parse("partition-generation is empty");
 		}
 
 		int gen = Integer.parseInt(genString);
-			
+
 		if (partitionGeneration != gen) {
 			this.partitionChanged = true;
 		}
@@ -262,7 +262,7 @@ public class Node implements Closeable {
 		// Parse the service addresses and add the friends to the list.
 		String command = cluster.useServicesAlternate ? "services-alternate" : "services";
 		String friendString = infoMap.get(command);
-		
+
 		if (friendString == null || friendString.length() == 0) {
 			peersCount = 0;
 			return;
@@ -277,51 +277,51 @@ public class Node implements Closeable {
 
 			if (cluster.ipMap != null) {
 				String alternativeHost = cluster.ipMap.get(hostname);
-				
+
 				if (alternativeHost != null) {
 					hostname = alternativeHost;
-				}				
+				}
 			}
-			
+
 			int port = Integer.parseInt(friendInfo[1]);
 			Host host = new Host(hostname, port);
-			
+
 			// Check global aliases for existing cluster.
 			Node node = cluster.aliases.get(host);
-			
+
 			if (node == null) {
-				// Check local aliases for this tend iteration.	
+				// Check local aliases for this tend iteration.
 				if (! peers.hosts.contains(host)) {
 					prepareFriend(host, peers);
 				}
 			}
-			else {				
+			else {
 				node.referenceCount++;
 			}
 		}
 	}
-	
+
 	private final boolean prepareFriend(Host host, Peers peers) {
 		try {
 			NodeValidator nv = new NodeValidator();
 			nv.validateNode(cluster, host);
-			
+
 			// Check for duplicate nodes in nodes slated to be added.
 			Node node = peers.nodes.get(nv.name);
-			
+
 			if (node != null) {
-				// Duplicate node name found.  This usually occurs when the server 
-				// services list contains both internal and external IP addresses 
+				// Duplicate node name found.  This usually occurs when the server
+				// services list contains both internal and external IP addresses
 				// for the same node.
 				nv.primaryConn.close();
 				peers.hosts.add(host);
 				node.aliases.add(host);
-				return true;				
+				return true;
 			}
-			
+
 			// Check for duplicate nodes in cluster.
 			node = cluster.nodesMap.get(nv.name);
-			
+
 			if (node != null) {
 				nv.primaryConn.close();
 				peers.hosts.add(host);
@@ -349,45 +349,45 @@ public class Node implements Closeable {
 		if (failures > 0 || ! active) {
 			return;
 		}
-		
-		try { 
+
+		try {
 			if (Log.debugEnabled()) {
 				Log.debug("Update peers for node " + this);
 			}
 			PeerParser parser = new PeerParser(cluster, tendConnection, peers.peers);
 			peersCount = peers.peers.size();
-		
+
 			boolean peersValidated = true;
-			
-			for (Peer peer : peers.peers) {		
+
+			for (Peer peer : peers.peers) {
 				if (findPeerNode(cluster, peers, peer.nodeName)) {
-					// Node already exists. Do not even try to connect to hosts.				
+					// Node already exists. Do not even try to connect to hosts.
 					continue;
 				}
-				
+
 				boolean nodeValidated = false;
-	
+
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
 					try {
 						// Attempt connection to host.
 						NodeValidator nv = new NodeValidator();
 						nv.validateNode(cluster, host);
-						
-						if (! peer.nodeName.equals(nv.name)) {					
-							// Must look for new node name in the unlikely event that node names do not agree. 
+
+						if (! peer.nodeName.equals(nv.name)) {
+							// Must look for new node name in the unlikely event that node names do not agree.
 							if (Log.warnEnabled()) {
 								Log.warn("Peer node " + peer.nodeName + " is different than actual node " + nv.name + " for host " + host);
 							}
-							
+
 							if (findPeerNode(cluster, peers, nv.name)) {
-								// Node already exists. Do not even try to connect to hosts.				
+								// Node already exists. Do not even try to connect to hosts.
 								nv.primaryConn.close();
 								nodeValidated = true;
 								break;
 							}
 						}
-						
+
 						// Create new node.
 						Node node = cluster.createNode(nv);
 						peers.nodes.put(nv.name, node);
@@ -400,12 +400,12 @@ public class Node implements Closeable {
 						}
 					}
 				}
-				
+
 				if (! nodeValidated) {
 					peersValidated = false;
 				}
 			}
-			
+
 			// Only set new peers generation if all referenced peers are added to the cluster.
 			if (peersValidated) {
 				peersGeneration = parser.generation;
@@ -413,14 +413,14 @@ public class Node implements Closeable {
 			peers.refreshCount++;
 		}
 		catch (Exception e) {
-			refreshFailed(e);			
+			refreshFailed(e);
 		}
 	}
-	
-	private static boolean findPeerNode(Cluster cluster, Peers peers, String nodeName) {		
+
+	private static boolean findPeerNode(Cluster cluster, Peers peers, String nodeName) {
 		// Check global node map for existing cluster.
 		Node node = cluster.nodesMap.get(nodeName);
-		
+
 		if (node != null) {
 			node.referenceCount++;
 			return true;
@@ -435,7 +435,7 @@ public class Node implements Closeable {
 		}
 		return false;
 	}
-	
+
 	protected final void refreshPartitions(Peers peers) {
 		// Do not refresh partitions when node connection has already failed during this cluster tend iteration.
 		// Also, avoid "split cluster" case where this node thinks it's a 1-node cluster.
@@ -444,14 +444,14 @@ public class Node implements Closeable {
 		if (failures > 0 || ! active || (peersCount == 0 && peers.refreshCount > 1)) {
 			return;
 		}
-		
+
 		try {
 			if (Log.debugEnabled()) {
 				Log.debug("Update partition map for node " + this);
 			}
-			PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);			
+			PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);
 
-			if (parser.isPartitionMapCopied()) {		
+			if (parser.isPartitionMapCopied()) {
 				cluster.partitionMap = parser.getPartitionMap();
 			}
 			partitionGeneration = parser.getGeneration();
@@ -461,13 +461,13 @@ public class Node implements Closeable {
 		}
 	}
 
-	private final void refreshFailed(Exception e) {		
-		failures++;	
-		
+	private final void refreshFailed(Exception e) {
+		failures++;
+
 		if (! tendConnection.isClosed()) {
 			tendConnection.close();
 		}
-		
+
 		// Only log message if cluster is still active.
 		if (cluster.tendValid && Log.warnEnabled()) {
 			Log.warn("Node " + this + " refresh failed: " + Util.getErrorMessage(e));
@@ -476,19 +476,27 @@ public class Node implements Closeable {
 
 	/**
 	 * Get a socket connection from connection pool to the server node.
-	 * 
-	 * @param timeoutMillis			connection timeout value in milliseconds if a new connection is created	
-	 * @return						socket connection
-	 * @throws AerospikeException	if a connection could not be provided 
 	 */
 	public final Connection getConnection(int timeoutMillis) throws AerospikeException {
+		try {
+			return getConnection(timeoutMillis, 0);
+		}
+		catch (Connection.ReadTimeout crt) {
+			throw new AerospikeException.Timeout(this, timeoutMillis);
+		}
+	}
+
+	/**
+	 * Get a socket connection from connection pool to the server node.
+	 */
+	public final Connection getConnection(int timeoutMillis, int timeoutDelay) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
-		
+
 		if (max == 1) {
 			initialIndex = 0;
-			backward = false;			
+			backward = false;
 		}
 		else {
 			int iter = connectionIter++; // not atomic by design
@@ -496,17 +504,17 @@ public class Node implements Closeable {
 			if (initialIndex < 0) {
 				initialIndex += max;
 			}
-			backward = true;			
+			backward = true;
 		}
-		
+
 		Pool pool = connectionPools[initialIndex];
 		int queueIndex = initialIndex;
 		Connection conn;
-		
+
 		while (true) {
 			conn = pool.queue.poll();
-			
-			if (conn != null) {			
+
+			if (conn != null) {
 				// Found socket.
 				// Verify that socket is active and receive buffer is empty.
 				if (conn.isValid()) {
@@ -535,7 +543,7 @@ public class Node implements Closeable {
 					pool.total.getAndDecrement();
 					throw re;
 				}
-				
+
 				if (cluster.user != null) {
 					try {
 						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
@@ -543,6 +551,15 @@ public class Node implements Closeable {
 							signalLogin();
 							throw new AerospikeException("Authentication failed");
 						}
+					}
+					catch (Connection.ReadTimeout crt) {
+						if (timeoutDelay > 0) {
+							cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt));
+						}
+						else {
+							closeConnection(conn);
+						}
+						throw crt;
 					}
 					catch (AerospikeException ae) {
 						// Socket not authenticated.  Do not put back into pool.
@@ -554,13 +571,13 @@ public class Node implements Closeable {
 						closeConnection(conn);
 						throw new AerospikeException(e);
 					}
-				}					
-				return conn;		
+				}
+				return conn;
 			}
 			else {
 				// Socket not found and queue is full.  Try another queue.
 				pool.total.getAndDecrement();
-				
+
 				if (backward) {
 					if (queueIndex > 0) {
 						queueIndex--;
@@ -580,23 +597,23 @@ public class Node implements Closeable {
 				pool = connectionPools[queueIndex];
 			}
 		}
-		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS, 
+		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 	}
-	
+
 	/**
 	 * Put connection back into connection pool.
-	 * 
+	 *
 	 * @param conn					socket connection
 	 */
 	public final void putConnection(Connection conn) {
 		conn.updateLastUsed();
-		
+
 		if (! active || ! conn.pool.queue.offer(conn)) {
 			closeConnection(conn);
 		}
 	}
-	
+
 	/**
 	 * Close connection and decrement connection count.
 	 */
@@ -608,12 +625,12 @@ public class Node implements Closeable {
 	public final ConnectionStats getConnectionStats() {
 		int inUse = 0;
 		int inPool = 0;
-	
+
 		for (Pool pool : connectionPools) {
 			int tmp = pool.queue.size();
 			inPool += tmp;
 			tmp = pool.total.get() - tmp;
-			
+
 			// Timing issues may cause values to go negative. Adjust.
 			if (tmp < 0) {
 				tmp = 0;
@@ -623,8 +640,8 @@ public class Node implements Closeable {
 		return new ConnectionStats(inUse, inPool);
 	}
 
-	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {	
-		AsyncPool pool = asyncConnectionPools[index];		
+	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {
+		AsyncPool pool = asyncConnectionPools[index];
 		ArrayDeque<AsyncConnection> queue = pool.queue;
 		AsyncConnection conn;
 
@@ -634,19 +651,19 @@ public class Node implements Closeable {
 			}
 			closeAsyncConnection(conn, index);
 		}
-		
+
 		if (pool.total >= pool.capacity) {
-			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS, 
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Node " + this + " event loop " + index + " max connections " + pool.capacity + " would be exceeded.");
 		}
 		pool.total++;
 		return null;
 	}
-	
+
 	public final void putAsyncConnection(AsyncConnection conn, int index) {
 		asyncConnectionPools[index].queue.addLast(conn);
 	}
-	
+
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
 		asyncConnectionPools[index].total--;
 		conn.close();
@@ -655,7 +672,7 @@ public class Node implements Closeable {
 	public final void decrAsyncConnection(int index) {
 		asyncConnectionPools[index].total--;
 	}
-	
+
 	public final ConnectionStats getAsyncConnectionStats() {
 		int inUse = 0;
 		int inPool = 0;
@@ -664,14 +681,14 @@ public class Node implements Closeable {
 			for (AsyncPool pool : asyncConnectionPools) {
 				// Warning: cross-thread reference without a lock.
 				int tmp =  pool.queue.size();
-				
+
 				// Timing issues may cause values to go negative. Adjust.
 				if (tmp < 0) {
 					tmp = 0;
 				}
 				inPool += tmp;
 				tmp = pool.total - tmp;
-				
+
 				if (tmp < 0) {
 					tmp = 0;
 				}
@@ -680,14 +697,14 @@ public class Node implements Closeable {
 		}
 		return new ConnectionStats(inUse, inPool);
 	}
-	
+
 	/**
 	 * Return server node IP address and port.
 	 */
 	public final Host getHost() {
 		return host;
 	}
-	
+
 	/**
 	 * Return whether node is currently active.
 	 */
@@ -701,28 +718,28 @@ public class Node implements Closeable {
 	public final String getName() {
 		return name;
 	}
-	
+
 	/**
 	 * Return node IP address.
 	 */
 	public final InetSocketAddress getAddress() {
 		return address;
 	}
-	
+
 	/**
 	 * Return node session token.
 	 */
 	public final byte[] getSessionToken() {
 		return sessionToken;
 	}
-	
+
 	/**
 	 * Use new batch protocol if server supports it and useBatchDirect is not set.
 	 */
 	public final boolean useNewBatch(BatchPolicy policy) {
 		return ! policy.useBatchDirect && hasBatchIndex();
 	}
-	
+
 	/**
 	 * Does server support batch index protocol.
 	 */
@@ -780,7 +797,7 @@ public class Node implements Closeable {
 		Node other = (Node) obj;
 		return this.name.equals(other.name);
 	}
-	
+
 	/**
 	 * Close all socket connections.
 	 */
@@ -791,31 +808,31 @@ public class Node implements Closeable {
 		}
 		else {
 			final AtomicInteger eventLoopCount = new AtomicInteger(cluster.eventState.length);
-			
+
 			// Send close node notification to async event loops.
 			for (final EventState state : cluster.eventState) {
 				state.eventLoop.execute(new Runnable() {
 					public void run() {
 						closeConnections(eventLoopCount, state.index);
 					}
-				});				
+				});
 			}
 		}
 	}
-	
+
 	/**
 	 * Close all node socket connections from event loop.
 	 * Must be called from event loop thread.
 	 */
 	public final void closeConnections(AtomicInteger eventLoopCount, int index) {
 		closeAsyncConnections(index);
-		
+
 		if (eventLoopCount.decrementAndGet() == 0) {
 			// All event loops have reported.
 			closeSyncConnections();
 		}
 	}
-	
+
 	/**
 	 * Close asynchronous connections.
 	 * Must be called from event loop thread.
@@ -823,39 +840,39 @@ public class Node implements Closeable {
 	public final void closeAsyncConnections(int index) {
 		AsyncPool pool = asyncConnectionPools[index];
 		AsyncConnection conn;
-		
-		while ((conn = pool.queue.poll()) != null) {			
+
+		while ((conn = pool.queue.poll()) != null) {
 			conn.close();
-		}			
+		}
 	}
-	
+
 	/**
 	 * Close synchronous connections.
 	 */
 	public final void closeSyncConnections() {
 		 // Mark node invalid.
-		active = false;		
+		active = false;
 
 		// Close tend connection after making reference copy.
 		Connection conn = tendConnection;
 		conn.close();
-		
+
 		// Close synchronous connections.
 		for (Pool pool : connectionPools) {
-			while ((conn = pool.queue.poll()) != null) {			
+			while ((conn = pool.queue.poll()) != null) {
 				conn.close();
 			}
 		}
 	}
-	
+
 	private static final class AsyncPool {
 		public final ArrayDeque<AsyncConnection> queue;
 		public final int capacity;
 		public int total;
-		
+
 		private AsyncPool(int capacity) {
 			this.capacity = capacity;
 			this.queue = new ArrayDeque<AsyncConnection>(capacity);
-		}		
+		}
 	}
 }

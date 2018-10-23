@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -43,6 +44,7 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
@@ -92,6 +94,12 @@ public class Cluster implements Runnable, Closeable {
 	// Random partition replica index. 
 	private final AtomicInteger replicaIndex;
 
+	// Count of connections in shutdown queue. 
+	private final AtomicInteger recoverCount;
+
+	// Thread-safe queue of sync connections to be closed.
+	private final ConcurrentLinkedDeque<ConnectionRecover> recoverQueue;
+	
 	// Thread pool used in synchronous batch, scan and query commands.
 	private final ExecutorService threadPool;
 	
@@ -209,6 +217,8 @@ public class Cluster implements Runnable, Closeable {
 		partitionMap = new HashMap<String,Partitions>();		
 		nodeIndex = new AtomicInteger();
 		replicaIndex = new AtomicInteger();
+		recoverCount = new AtomicInteger();
+		recoverQueue = new ConcurrentLinkedDeque<ConnectionRecover>();
 
 		eventLoops = policy.eventLoops;
 		
@@ -474,6 +484,8 @@ public class Cluster implements Runnable, Closeable {
 		if (peers.nodes.size() > 0) {
 			addNodes(peers.nodes);
 		}
+		
+		processRecoverQueue();
 	}
 	
 	private final boolean seedNodes(boolean failIfNotConnected) throws AerospikeException {
@@ -801,6 +813,46 @@ public class Cluster implements Runnable, Closeable {
 		return null;
 	}
 
+	public final void recoverConnection(ConnectionRecover cs) {
+		// Many cloud providers encounter performance problems when sockets are 
+		// closed by the client when the server still has data left to write.
+		// The solution is to shutdown the socket and give the server time to
+		// respond before closing the socket.
+		//
+		// Put connection on a queue for later closing.
+		if (cs.isComplete()) {
+			return;
+		}
+
+		// Do not let queue get out of control.
+		if (recoverCount.getAndIncrement() < 10000) {
+			recoverQueue.offerLast(cs);
+		}
+		else {
+			recoverCount.getAndDecrement();
+			cs.abort();
+		}
+	}
+
+	private void processRecoverQueue() {
+		byte[] buf = ThreadLocalData.getBuffer();
+		ConnectionRecover last = recoverQueue.peekLast();
+		ConnectionRecover cs;
+		
+		while ((cs = recoverQueue.pollFirst()) != null) {
+			if (cs.drain(buf)) {
+				recoverCount.getAndDecrement();
+			}
+			else {
+				recoverQueue.offerLast(cs);				
+			}
+			
+			if (cs == last) {
+				break;
+			}
+		}		
+	}
+
 	public final ClusterStats getStats() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;		
@@ -829,7 +881,7 @@ public class Cluster implements Runnable, Closeable {
 			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
 			threadsInUse = tpe.getActiveCount();
 		}		
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse);
+		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get());
 	}
 
 	public final void interruptTendSleep() {

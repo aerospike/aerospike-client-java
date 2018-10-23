@@ -38,8 +38,8 @@ public final class NioConnection implements AsyncConnection, Closeable {
 	private SelectionKey key;
 	private final long maxSocketIdle;
 	private long lastUsed;
-	
-	public NioConnection(InetSocketAddress address, long maxSocketIdle) {		
+
+	public NioConnection(InetSocketAddress address, long maxSocketIdle) {
 		this.maxSocketIdle = maxSocketIdle;
 
 		try {
@@ -48,19 +48,19 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		catch (Exception e) {
 			throw new AerospikeException.Connection("SocketChannel open error: " + e.getMessage());
 		}
-	
+
 		try {
 			socketChannel.configureBlocking(false);
 			Socket socket = socketChannel.socket();
 			socket.setTcpNoDelay(true);
-			
+
 			// These options are useful when the connection pool is poorly bounded or there are a large
 			// amount of network errors.  Since these conditions are not the normal use case and
 			// the options could theoretically result in latent data being sent to new commands, leave
 			// them out for now.
 			// socket.setReuseAddress(true);
 			// socket.setSoLinger(true, 0);
-			
+
 			socketChannel.connect(address);
 		}
 		catch (Exception e) {
@@ -68,49 +68,49 @@ public final class NioConnection implements AsyncConnection, Closeable {
 			throw new AerospikeException.Connection("SocketChannel init error: " + e.getMessage());
 		}
 	}
-	
+
 	public void registerConnect(NioCommand command) {
 		try {
-			key = socketChannel.register(command.eventLoop.selector, SelectionKey.OP_CONNECT, command);    		
+			key = socketChannel.register(command.eventLoop.selector, SelectionKey.OP_CONNECT, command);
 		}
 		catch (ClosedChannelException e) {
 			throw new AerospikeException.Connection("SocketChannel register error: " + e.getMessage());
 		}
 	}
-	
+
 	public void finishConnect() throws IOException {
 		socketChannel.finishConnect();
 	}
-	
-	public void attach(NioCommand command) {
+
+	public void attach(INioCommand command) {
 		key.attach(command);
 	}
-	
-	public void registerWrite() {   	
+
+	public void registerWrite() {
 		key.interestOps(SelectionKey.OP_WRITE);
 	}
-	
+
 	public boolean write(ByteBuffer byteBuffer) throws IOException {
 		socketChannel.write(byteBuffer);
 		return ! byteBuffer.hasRemaining();
 	}
-	
-	public void registerRead() {   	
+
+	public void registerRead() {
 		key.interestOps(SelectionKey.OP_READ);
 	}
-	
+
 	/**
 	 * Read till byteBuffer limit reached or received would-block.
 	 */
 	public boolean read(ByteBuffer byteBuffer) throws IOException {
 		while (byteBuffer.hasRemaining()) {
 			int len = socketChannel.read(byteBuffer);
-			
-			if (len == 0) {			
+
+			if (len == 0) {
 				// Got would-block.
 				return false;
 			}
-			
+
 			if (len < 0) {
 				// Server has shutdown socket.
 		    	throw new EOFException();
@@ -118,7 +118,7 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Is socket valid.  Return true if socket is connected and has no data in it's buffer.
 	 * Return false, if not connected, socket read error or has data in it's buffer.
@@ -133,7 +133,7 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		// they do not take server actions on socket into account.
 		byteBuffer.position(0);
 		byteBuffer.limit(1);
-		
+
 		try {
 			// Perform non-blocking read.
 			// Expect socket buffer to be empty.
@@ -143,21 +143,22 @@ public final class NioConnection implements AsyncConnection, Closeable {
 			return false;
 		}
 	}
-	
+
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);
 		lastUsed = System.nanoTime();
 	}
-	
+
 	/**
 	 * Close socket channel.
 	 */
-	public void close() {		
+	@Override
+	public void close() {
 		if (key != null) {
 			key.cancel();
 		}
-		
+
 		try {
 			socketChannel.close();
 		}

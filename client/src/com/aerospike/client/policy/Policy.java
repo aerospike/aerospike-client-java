@@ -25,7 +25,7 @@ public class Policy {
 	 * Currently, only used for scans.
 	 */
 	public Priority priority = Priority.DEFAULT;
-	
+
 	/**
 	 * How replicas should be consulted in a read operation to provide the desired
 	 * consistency guarantee.
@@ -41,7 +41,7 @@ public class Policy {
 	 * Default: {@link Replica#SEQUENCE}
 	 */
 	public Replica replica = Replica.SEQUENCE;
-	
+
 	/**
 	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
@@ -66,7 +66,7 @@ public class Policy {
 	/**
 	 * Total transaction timeout in milliseconds.
 	 * <p>
-	 * The totalTimeout is tracked on the client and sent to the server along with 
+	 * The totalTimeout is tracked on the client and sent to the server along with
 	 * the transaction in the wire protocol.  The client will most likely timeout
 	 * first, but the server also has the capability to timeout the transaction.
 	 * <p>
@@ -81,22 +81,31 @@ public class Policy {
 	public int totalTimeout;
 
 	/**
-	 * Delay milliseconds after transaction timeout before closing socket in async mode only.
-	 * When a transaction is stopped prematurely, the socket must be closed and not placed back
-	 * on the pool. This is done to prevent unread socket data from corrupting the next transaction
+	 * Delay milliseconds after socket read timeout in an attempt to recover the socket
+	 * in the background.  Processing continues on the original transaction and the user
+	 * is still notified at the original transaction timeout.
+	 * <p>
+	 * When a transaction is stopped prematurely, the socket must be drained of all incoming
+	 * data or closed to prevent unread socket data from corrupting the next transaction
 	 * that would use that socket.
 	 * <p>
-	 * This field delays the closing of the socket to give the transaction more time to complete
-	 * in the hope that the socket can be reused.  This is helpful when timeouts are aggressive 
-	 * and a certain percentage of timeouts is expected.
+	 * If a socket read timeout occurs and timeoutDelay is greater than zero, the socket
+	 * will be drained until all data has been read or timeoutDelay is reached.  If all
+	 * data has been read, the socket will be placed back into the connection pool.  If
+	 * timeoutDelay is reached before the draining is complete, the socket will be closed.
 	 * <p>
-	 * The user is still notified of the timeout in async mode at the original timeout value.
-	 * The transaction's async timer is then reset to this delay and the transaction is allowed
-	 * to continue.  If the transactions succeeds within the delay, then the socket is placed back
-	 * on the pool and the transaction response is discarded.  Otherwise, the socket must be closed.
+	 * Sync sockets are drained in the cluster tend thread at periodic intervals.  Async
+	 * sockets are drained in the event loop from which the async command executed.
 	 * <p>
-	 * This field is ignored in sync mode because control must be returned back to user on timeout 
-	 * and there is no currently available thread pool to process the delay.
+	 * Many cloud providers encounter performance problems when sockets are closed by the
+	 * client when the server still has data left to write (results in socket RST packet).
+	 * If the socket is fully drained before closing, the socket RST performance penalty
+	 * can be avoided on these cloud providers.
+	 * <p>
+	 * The disadvantage of enabling timeoutDelay is that extra memory/processing is required
+	 * to drain sockets and additional connections may still be needed for transaction retries.
+	 * <p>
+	 * If timeoutDelay were to be enabled, 3000ms would be a reasonable value.
 	 * <p>
 	 * Default: 0 (no delay, connection closed on timeout)
 	 */
@@ -109,10 +118,10 @@ public class Policy {
 	 * If maxRetries is exceeded, the transaction will abort with
 	 * {@link com.aerospike.client.AerospikeException.Timeout}.
 	 * <p>
-	 * WARNING: Database writes that are not idempotent (such as add()) 
-	 * should not be retried because the write operation may be performed 
+	 * WARNING: Database writes that are not idempotent (such as add())
+	 * should not be retried because the write operation may be performed
 	 * multiple times if the client timed out previous transaction attempts.
-	 * It's important to use a distinct WritePolicy for non-idempotent 
+	 * It's important to use a distinct WritePolicy for non-idempotent
 	 * writes which sets maxRetries = 0;
 	 * <p>
 	 * Default for read: 2 (initial attempt + 2 retries = 3 attempts)
@@ -123,7 +132,7 @@ public class Policy {
 
 	/**
 	 * Milliseconds to sleep between retries.  Enter zero to skip sleep.
-	 * This field is ignored when maxRetries is zero.  
+	 * This field is ignored when maxRetries is zero.
 	 * This field is also ignored in async mode.
 	 * <p>
 	 * The sleep only occurs on connection errors and server timeouts
@@ -147,13 +156,13 @@ public class Policy {
 
 	/**
 	 * Send user defined key in addition to hash digest on both reads and writes.
-	 * If the key is sent on a write, the key will be stored with the record on 
+	 * If the key is sent on a write, the key will be stored with the record on
 	 * the server.
 	 * <p>
 	 * Default: false (do not send the user defined key)
 	 */
 	public boolean sendKey;
-	
+
 	/**
 	 * Force reads to be linearized for server namespaces that support strong consistency mode.
 	 * <p>
@@ -176,13 +185,13 @@ public class Policy {
 		this.sendKey = other.sendKey;
 		this.linearizeRead = other.linearizeRead;
 	}
-	
+
 	/**
 	 * Default constructor.
 	 */
 	public Policy() {
 	}
-	
+
 	/**
 	 * Create a single timeout by setting socketTimeout and totalTimeout
 	 * to the same value.
@@ -200,7 +209,7 @@ public class Policy {
 	public final void setTimeouts(int socketTimeout, int totalTimeout) {
 		this.socketTimeout = socketTimeout;
 		this.totalTimeout = totalTimeout;
-		
+
 		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
 			this.socketTimeout = totalTimeout;
 		}
