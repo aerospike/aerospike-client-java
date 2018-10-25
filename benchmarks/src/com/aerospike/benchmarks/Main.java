@@ -193,6 +193,7 @@ public class Main implements Log.Callback {
 		options.addOption("totalTimeout", true, "Set read and write totalTimeout in milliseconds.");
 		options.addOption("readTotalTimeout", true, "Set read totalTimeout in milliseconds.");
 		options.addOption("writeTotalTimeout", true, "Set write totalTimeout in milliseconds.");
+		options.addOption("timeoutDelay", true, "Set read and write timeoutDelay in milliseconds.");
 
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true,
@@ -313,10 +314,6 @@ public class Main implements Log.Callback {
     	args.readPolicy = clientPolicy.readPolicyDefault;
     	args.writePolicy = clientPolicy.writePolicyDefault;
     	args.batchPolicy = clientPolicy.batchPolicyDefault;
-
-    	//args.readPolicy.timeoutDelay = 3000;
-    	//args.writePolicy.timeoutDelay = 3000;
-    	//args.batchPolicy.timeoutDelay = 5000;
 
     	if (line.hasOption("e")) {
 			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
@@ -610,6 +607,13 @@ public class Main implements Log.Callback {
 			args.writePolicy.totalTimeout = timeout;
 		}
 
+		if (line.hasOption("timeoutDelay")) {
+			int timeoutDelay = Integer.parseInt(line.getOptionValue("timeoutDelay"));
+			args.readPolicy.timeoutDelay = timeoutDelay;
+			args.writePolicy.timeoutDelay = timeoutDelay;
+			args.batchPolicy.timeoutDelay = timeoutDelay;
+		}
+
 		if (line.hasOption("maxRetries")) {
 			int maxRetries = Integer.parseInt(line.getOptionValue("maxRetries"));
 			args.readPolicy.maxRetries = maxRetries;
@@ -845,6 +849,7 @@ public class Main implements Log.Callback {
 			System.out.println(
 					"    socketTimeout: " + args.readPolicy.socketTimeout
 					+ ", totalTimeout: " + args.readPolicy.totalTimeout
+					+ ", timeoutDelay: " + args.readPolicy.timeoutDelay
 					+ ", maxRetries: " + args.readPolicy.maxRetries
 					+ ", sleepBetweenRetries: " + args.readPolicy.sleepBetweenRetries
 					);
@@ -859,6 +864,7 @@ public class Main implements Log.Callback {
 		System.out.println(
 			"    socketTimeout: " + args.writePolicy.socketTimeout
 			+ ", totalTimeout: " + args.writePolicy.totalTimeout
+			+ ", timeoutDelay: " + args.writePolicy.timeoutDelay
 			+ ", maxRetries: " + args.writePolicy.maxRetries
 			+ ", sleepBetweenRetries: " + args.writePolicy.sleepBetweenRetries
 			);
