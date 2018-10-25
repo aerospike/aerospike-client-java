@@ -54,6 +54,7 @@ public class Node implements Closeable {
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
 	public static final int HAS_CLUSTER_STABLE = (1 << 6);
+	public static final int HAS_LUT_NOW = (1 << 7);
 
 	protected final Cluster cluster;
 	private final String name;
@@ -759,6 +760,13 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasDouble() {
 		return (features & HAS_DOUBLE) != 0;
+	}
+
+	/**
+	 * Does server support lut=now in truncate info command.
+	 */
+	public final boolean hasLutNow() {
+		return (features & HAS_LUT_NOW) != 0;
 	}
 
 	/**

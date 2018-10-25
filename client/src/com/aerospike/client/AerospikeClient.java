@@ -603,6 +603,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = infoPolicyDefault;
 		}
+
+		// Send truncate command to one node. That node will distribute the command to other nodes.
+		Node node = cluster.getRandomNode();
+
 		StringBuilder sb = new StringBuilder(200);
 		sb.append("truncate:namespace=");
 		sb.append(ns);
@@ -617,9 +621,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			// convert to nanoseconds since unix epoch (1970-01-01)
 			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);
 		}
+		else {
+			// Servers >= 4.3.1.4 require lut argument.
+			if (node.hasLutNow()) {
+				sb.append(";lut=now");
+			}
+		}
 
-		// Send truncate command to one node. That node will distribute the command to other nodes.
-		Node node = cluster.getRandomNode();
 		String response = Info.request(policy, node, sb.toString());
 
 		if (! response.equalsIgnoreCase("ok")) {
