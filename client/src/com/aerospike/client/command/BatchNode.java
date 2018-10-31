@@ -17,7 +17,9 @@
 package com.aerospike.client.command;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -26,17 +28,19 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Replica;
 
 public final class BatchNode {
-	
-	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys) throws AerospikeException {
+
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys) {
 		Node[] nodes = cluster.getNodes();
-		
+
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 		}
-		
+
 		// Create initial key capacity for each node as average + 25%.
 		int keysPerNode = keys.length / nodes.length;
 		keysPerNode += keysPerNode >>> 2;
@@ -48,12 +52,12 @@ public final class BatchNode {
 
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
-				
+
 		for (int i = 0; i < keys.length; i++) {
-			Partition partition = new Partition(keys[i]);						
-			Node node = cluster.getMasterNode(partition);
+			Partition partition = new Partition(keys[i]);
+			Node node = getNode(cluster, partition, policy.replica);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
-			
+
 			if (batchNode == null) {
 				batchNodes.add(new BatchNode(node, keysPerNode, i));
 			}
@@ -64,13 +68,13 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records) {
 		Node[] nodes = cluster.getNodes();
-		
+
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
 		}
-		
+
 		// Create initial key capacity for each node as average + 25%.
 		int max = records.size();
 		int keysPerNode = max / nodes.length;
@@ -83,12 +87,12 @@ public final class BatchNode {
 
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
-				
+
 		for (int i = 0; i < max; i++) {
-			Partition partition = new Partition(records.get(i).key);						
-			Node node = cluster.getMasterNode(partition);
+			Partition partition = new Partition(records.get(i).key);
+			Node node = getNode(cluster, partition, policy.replica);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
-			
+
 			if (batchNode == null) {
 				batchNodes.add(new BatchNode(node, keysPerNode, i));
 			}
@@ -97,6 +101,63 @@ public final class BatchNode {
 			}
 		}
 		return batchNodes;
+	}
+
+	private static Node getNode(Cluster cluster, Partition partition, Replica replica) {
+		switch (replica) {
+		default:
+		case MASTER:
+		case SEQUENCE:
+			// Sequence uses master node because it always starts at master
+			// and keys can't be transferred to other nodes on batch retry.
+			return cluster.getMasterNode(partition);
+
+		case PREFER_RACK:
+			return getRackNode(cluster, partition);
+
+		case MASTER_PROLES:
+			return cluster.getMasterProlesNode(partition);
+
+		case RANDOM:
+			return cluster.getRandomNode();
+		}
+	}
+
+	private static Node getRackNode(Cluster cluster, Partition partition) {
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(partition.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+		}
+
+		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+		Node fallback = null;
+		int sequence = 0;
+
+		for (int i = 0; i < replicas.length; i++) {
+			int index = Math.abs(sequence % replicas.length);
+			Node node = replicas[index].get(partition.partitionId);
+
+			if (node != null && node.isActive()) {
+				if (node.hasRack(partition.namespace, cluster.rackId)) {
+					return node;
+				}
+
+				if (fallback == null) {
+					fallback = node;
+				}
+			}
+			sequence++;
+		}
+
+		if (fallback != null) {
+			return fallback;
+		}
+
+		Node[] nodeArray = cluster.getNodes();
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
 	private static BatchNode findBatchNode(List<BatchNode> nodes, Node node) {
@@ -120,26 +181,26 @@ public final class BatchNode {
 		this.offsets[0] = offset;
 		this.offsetsSize = 1;
 	}
-	
+
 	public void addKey(int offset) {
 		if (offsetsSize >= offsets.length) {
-			int[] copy = new int[offsetsSize * 2];	        
+			int[] copy = new int[offsetsSize * 2];
 			System.arraycopy(offsets, 0, copy, 0, offsetsSize);
 			offsets = copy;
 		}
 		offsets[offsetsSize++] = offset;
 	}
-	
+
 	public void splitByNamespace(Key[] keys) {
 		String first = keys[offsets[0]].namespace;
-		
+
 		// Optimize for single namespace.
 		if (isSingleNamespace(keys, first)) {
 			batchNamespaces = new ArrayList<BatchNamespace>(1);
 			batchNamespaces.add(new BatchNamespace(first, offsets, offsetsSize));
 			return;
-		}		
-		
+		}
+
 		// Process multiple namespaces.
 		batchNamespaces = new ArrayList<BatchNamespace>(4);
 
@@ -147,7 +208,7 @@ public final class BatchNode {
 			int offset = offsets[i];
 			String ns = keys[offset].namespace;
 			BatchNamespace batchNamespace = findNamespace(batchNamespaces, ns);
-			
+
 			if (batchNamespace == null) {
 				batchNamespaces.add(new BatchNamespace(ns, offsetsSize, offset));
 			}
@@ -157,17 +218,17 @@ public final class BatchNode {
 		}
 	}
 
-	private boolean isSingleNamespace(Key[] keys, String first) {	
+	private boolean isSingleNamespace(Key[] keys, String first) {
 		for (int i = 1; i < offsetsSize; i++) {
 			String ns = keys[offsets[i]].namespace;
-			
+
 			if (!(ns == first || ns.equals(first))) {
 				return false;
 			}
 		}
 		return true;
 	}
-	
+
 	private BatchNamespace findNamespace(List<BatchNamespace> batchNamespaces, String ns) {
 		for (BatchNamespace batchNamespace : batchNamespaces) {
 			// Note: use both pointer equality and equals.
@@ -189,7 +250,7 @@ public final class BatchNode {
 			this.offsets[0] = offset;
 			this.offsetsSize = 1;
 		}
-		
+
 		public BatchNamespace(String namespace, int[] offsets, int offsetsSize) {
 			this.namespace = namespace;
 			this.offsets = offsets;
@@ -199,5 +260,5 @@ public final class BatchNode {
 		public void add(int offset) {
 			offsets[offsetsSize++] = offset;
 		}
-	}	 
+	}
 }

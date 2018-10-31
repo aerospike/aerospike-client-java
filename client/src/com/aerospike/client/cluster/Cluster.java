@@ -140,6 +140,12 @@ public class Cluster implements Runnable, Closeable {
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
 
+	// Request server rack ids.
+	final boolean rackAware;
+
+	// Rack id.
+	public final int rackId;
+
 	private boolean asyncComplete;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
@@ -210,6 +216,8 @@ public class Cluster implements Runnable, Closeable {
 		sharedThreadPool = policy.sharedThreadPool;
 		requestProleReplicas = policy.requestProleReplicas;
 		useServicesAlternate = policy.useServicesAlternate;
+		rackAware = policy.rackAware;
+		rackId = policy.rackId;
 
 		aliases = new HashMap<Host,Node>();
 		nodesMap = new HashMap<String,Node>();
@@ -442,6 +450,7 @@ public class Cluster implements Runnable, Closeable {
 		for (Node node : nodes) {
 			node.referenceCount = 0;
 			node.partitionChanged = false;
+			node.rebalanceChanged = false;
 
 			if (! node.hasPeers()) {
 				peers.usePeers = false;
@@ -467,6 +476,10 @@ public class Cluster implements Runnable, Closeable {
 		for (Node node : nodes) {
 			if (node.partitionChanged) {
 				node.refreshPartitions(peers);
+			}
+
+			if (node.rebalanceChanged) {
+				node.refreshRacks();
 			}
 		}
 

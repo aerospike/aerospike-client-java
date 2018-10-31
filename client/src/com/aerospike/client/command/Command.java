@@ -1044,25 +1044,35 @@ public abstract class Command {
 		Buffer.longToBytes(size, dataBuffer, 0);
 	}
 
-	public final Node getNode(Cluster cluster, Partition partition, Replica replica, boolean isRead)
-	{
+	public final Node getNode(Cluster cluster, Partition partition, Replica replica, boolean isRead) {
 		// Handle default case first.
 		if (replica == Replica.SEQUENCE) {
+			// Sequence always starts at master, so writes can go through the same algorithm.
 			return getSequenceNode(cluster, partition);
 		}
 
-		if (replica == Replica.MASTER || ! isRead) {
-			return cluster.getMasterNode(partition);
+		if (! isRead) {
+			// Writes will always proxy to master node.
+			cluster.getMasterNode(partition);
 		}
 
-		if (replica == Replica.MASTER_PROLES) {
+		switch (replica) {
+		default:
+		case MASTER:
+			return cluster.getMasterNode(partition);
+
+		case PREFER_RACK:
+			return getRackNode(cluster, partition);
+
+		case MASTER_PROLES:
 			return cluster.getMasterProlesNode(partition);
+
+		case RANDOM:
+			return cluster.getRandomNode();
 		}
-		return cluster.getRandomNode();
 	}
 
-	private final Node getSequenceNode(Cluster cluster, Partition partition)
-	{
+	private final Node getSequenceNode(Cluster cluster, Partition partition) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(partition.namespace);
@@ -1082,6 +1092,42 @@ public abstract class Command {
 			}
 			sequence++;
 		}
+		Node[] nodeArray = cluster.getNodes();
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
+	}
+
+	private final Node getRackNode(Cluster cluster, Partition partition) {
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(partition.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+		}
+
+		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+		Node fallback = null;
+
+		for (int i = 0; i < replicas.length; i++) {
+			int index = Math.abs(sequence % replicas.length);
+			Node node = replicas[index].get(partition.partitionId);
+
+			if (node != null && node.isActive()) {
+				if (node.hasRack(partition.namespace, cluster.rackId)) {
+					return node;
+				}
+
+				if (fallback == null) {
+					fallback = node;
+				}
+			}
+			sequence++;
+		}
+
+		if (fallback != null) {
+			return fallback;
+		}
+
 		Node[] nodeArray = cluster.getNodes();
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}

@@ -23,6 +23,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -56,6 +57,9 @@ public class Node implements Closeable {
 	public static final int HAS_CLUSTER_STABLE = (1 << 6);
 	public static final int HAS_LUT_NOW = (1 << 7);
 
+	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
+	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
+
 	protected final Cluster cluster;
 	private final String name;
 	private final Host host;
@@ -66,14 +70,17 @@ public class Node implements Closeable {
 	private Connection tendConnection;
 	private byte[] sessionToken;
 	private long sessionExpiration;
+	private volatile Map<String,Integer> racks;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
+	protected int rebalanceGeneration;
 	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
 	private final int features;
 	protected boolean partitionChanged;
+	protected boolean rebalanceChanged;
 	protected volatile boolean performLogin;
 	protected volatile boolean active;
 
@@ -119,8 +126,16 @@ public class Node implements Closeable {
 			asyncConnectionPools = null;
 		}
 
+		if (cluster.rackAware) {
+			this.racks = new HashMap<String,Integer>();
+		}
+		else {
+			this.racks = null;
+		}
+
 		peersGeneration = -1;
 		partitionGeneration = -1;
+		rebalanceGeneration = -1;
 		active = true;
 	}
 
@@ -168,10 +183,16 @@ public class Node implements Closeable {
 			}
 
 			if (peers.usePeers) {
-				HashMap<String,String> infoMap = Info.request(tendConnection, "node", "peers-generation", "partition-generation");
+				String[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
+				HashMap<String,String> infoMap = Info.request(tendConnection, commands);
+
 				verifyNodeName(infoMap);
 				verifyPeersGeneration(infoMap, peers);
 				verifyPartitionGeneration(infoMap);
+
+				if (cluster.rackAware) {
+					verifyRebalanceGeneration(infoMap);
+				}
 			}
 			else {
 				String[] commands = cluster.useServicesAlternate ?
@@ -256,6 +277,20 @@ public class Node implements Closeable {
 
 		if (partitionGeneration != gen) {
 			this.partitionChanged = true;
+		}
+	}
+
+	private final void verifyRebalanceGeneration(HashMap<String,String> infoMap) {
+		String genString = infoMap.get("rebalance-generation");
+
+		if (genString == null || genString.length() == 0) {
+			throw new AerospikeException.Parse("rebalance-generation is empty");
+		}
+
+		int gen = Integer.parseInt(genString);
+
+		if (rebalanceGeneration != gen) {
+			this.rebalanceChanged = true;
 		}
 	}
 
@@ -456,6 +491,26 @@ public class Node implements Closeable {
 				cluster.partitionMap = parser.getPartitionMap();
 			}
 			partitionGeneration = parser.getGeneration();
+		}
+		catch (Exception e) {
+			refreshFailed(e);
+		}
+	}
+
+	protected final void refreshRacks() {
+		// Do not refresh racks when node connection has already failed during this cluster tend iteration.
+		if (failures > 0 || ! active) {
+			return;
+		}
+
+		try {
+			if (Log.debugEnabled()) {
+				Log.debug("Update racks for node " + this);
+			}
+			RackParser parser = new RackParser(tendConnection, this);
+
+			this.rebalanceGeneration = parser.getGeneration();
+			this.racks = parser.getRacks();
 		}
 		catch (Exception e) {
 			refreshFailed(e);
@@ -732,6 +787,27 @@ public class Node implements Closeable {
 	 */
 	public final byte[] getSessionToken() {
 		return sessionToken;
+	}
+
+	/**
+	 * Return if this node has the same rack as the client for the
+	 * given namespace.
+	 */
+	public final boolean hasRack(String namespace, int rackId) {
+		// Must copy map reference for copy on write semantics to work.
+		Map<String,Integer> map = this.racks;
+
+		if (map == null) {
+			return false;
+		}
+
+		Integer r = map.get(namespace);
+
+		if (r == null) {
+			return false;
+		}
+
+		return r == rackId;
 	}
 
 	/**

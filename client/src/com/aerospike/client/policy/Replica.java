@@ -26,7 +26,7 @@ public enum Replica {
 	 * Use node containing key's master partition.
 	 */
 	MASTER,
-	
+
 	/**
 	 * Distribute reads across nodes containing key's master and replicated partitions
 	 * in round-robin fashion.  Writes always use node containing key's master partition.
@@ -39,13 +39,22 @@ public enum Replica {
 	/**
 	 * Try node containing master partition first.
 	 * If connection fails, all commands try nodes containing replicated partitions.
-	 * If socketTimeout is reached, reads also try nodes containing replicated partitions, 
+	 * If socketTimeout is reached, reads also try nodes containing replicated partitions,
 	 * but writes remain on master node.
 	 * <p>
 	 * This option requires {@link ClientPolicy#requestProleReplicas} to be enabled
 	 * in order to function properly.
 	 */
 	SEQUENCE,
+
+	/**
+	 * Try node on the same rack as the client first.  If there are no nodes on the
+	 * same rack, use SEQUENCE instead.
+	 * <p>
+	 * {@link ClientPolicy#rackAware}, {@link ClientPolicy#rackId}, and server rack
+	 * configuration must also be set to enable this functionality.
+	 */
+	PREFER_RACK,
 
 	/**
 	 * Distribute reads across all nodes in cluster in round-robin fashion.
