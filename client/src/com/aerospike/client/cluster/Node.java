@@ -811,10 +811,10 @@ public class Node implements Closeable {
 	}
 
 	/**
-	 * Use new batch protocol if server supports it and useBatchDirect is not set.
+	 * Use new batch protocol if server supports it.
 	 */
 	public final boolean useNewBatch(BatchPolicy policy) {
-		return ! policy.useBatchDirect && hasBatchIndex();
+		return hasBatchIndex();
 	}
 
 	/**
