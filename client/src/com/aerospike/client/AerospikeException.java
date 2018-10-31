@@ -270,6 +270,18 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
+	 * Exception thrown when namespace is invalid.
+	 */
+	public static final class InvalidNamespace extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public InvalidNamespace(String ns, int mapSize) {
+			super(ResultCode.INVALID_NAMESPACE,
+				(mapSize == 0) ? "Partition map empty" : "Namespace not found in partition map: " + ns);
+		}
+	}
+
+	/**
 	 * Exception thrown when scan was terminated prematurely.
 	 */
 	public static final class ScanTerminated extends AerospikeException {

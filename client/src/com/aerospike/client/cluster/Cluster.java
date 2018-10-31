@@ -745,7 +745,7 @@ public class Cluster implements Runnable, Closeable {
 		Partitions partitions  = map.get(partition.namespace);
 
 		if (partitions == null) {
-			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
 		Node node = partitions.replicas[0].get(partition.partitionId);
@@ -763,7 +763,7 @@ public class Cluster implements Runnable, Closeable {
 		Partitions partitions  = map.get(partition.namespace);
 
 		if (partitions == null) {
-			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;

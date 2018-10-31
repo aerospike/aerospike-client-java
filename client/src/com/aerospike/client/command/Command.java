@@ -1078,7 +1078,7 @@ public abstract class Command {
 		Partitions partitions = map.get(partition.namespace);
 
 		if (partitions == null) {
-			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
@@ -1102,7 +1102,7 @@ public abstract class Command {
 		Partitions partitions = map.get(partition.namespace);
 
 		if (partitions == null) {
-			throw new AerospikeException("Invalid namespace: " + partition.namespace);
+			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
