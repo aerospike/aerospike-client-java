@@ -23,7 +23,7 @@ import com.aerospike.client.Info;
 import com.aerospike.client.command.Buffer;
 
 /**
- * Parse node's master (and optionally prole) partitions.
+ * Parse rack-ids info command.
  */
 public final class RackParser {
 	static final String RebalanceGeneration = "rebalance-generation";
@@ -44,7 +44,7 @@ public final class RackParser {
 		this.length = info.length;
 
 		if (length == 0) {
-			throw new AerospikeException.Parse("Partition info is empty");
+			throw new AerospikeException.Parse("rack-ids response is empty");
 		}
 		this.buffer = info.buffer;
 
@@ -94,7 +94,7 @@ public final class RackParser {
 
 				if (namespace.length() <= 0 || namespace.length() >= 32) {
 					String response = getTruncatedResponse();
-					throw new AerospikeException.Parse("Invalid partition namespace " +
+					throw new AerospikeException.Parse("Invalid racks namespace " +
 						namespace + ". Response=" + response);
 				}
 				begin = ++offset;
