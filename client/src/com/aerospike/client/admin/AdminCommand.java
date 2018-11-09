@@ -66,7 +66,7 @@ public class AdminCommand {
 	private static final byte PRIVILEGES = 12;
 
 	// Misc
-	private static final long MSG_VERSION = 0L;
+	private static final long MSG_VERSION = 2L;
 	private static final long MSG_TYPE = 2L;
 	private static final int FIELD_HEADER_SIZE = 5;
 	private static final int HEADER_SIZE = 24;
