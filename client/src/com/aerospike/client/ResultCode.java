@@ -40,7 +40,7 @@ public final class ResultCode {
 	 * Max connections would be exceeded.  There are no more available connections.
 	 */
 	public static final int NO_MORE_CONNECTIONS = -7;
-	
+
 	/**
 	 * Asynchronous max concurrent database commands have been exceeded and therefore rejected.
 	 */
@@ -55,7 +55,7 @@ public final class ResultCode {
 	 * Scan was terminated by user.
 	 */
 	public static final int SCAN_TERMINATED = -4;
-	
+
 	/**
 	 * Chosen node is not currently active.
 	 */
@@ -75,17 +75,17 @@ public final class ResultCode {
 	 * Operation was successful.
 	 */
 	public static final int OK = 0;
-		
+
 	/**
 	 * Unknown server failure.
 	 */
 	public static final int SERVER_ERROR = 1;
-		
+
 	/**
 	 * On retrieving, touching or replacing a record that doesn't exist.
-	 */	
+	 */
 	public static final int KEY_NOT_FOUND_ERROR = 2;
-		
+
 	/**
 	 * On modifying a record with unexpected generation.
 	 */
@@ -101,12 +101,6 @@ public final class ResultCode {
 	 * exists.
 	 */
 	public static final int KEY_EXISTS_ERROR = 5;
-
-	/**
-	 * On create-only (write unique) operations on a bin that already
-	 * exists.
-	 */
-	public static final int BIN_EXISTS_ERROR = 6;
 
 	/**
 	 * Expected cluster was not received.
@@ -148,21 +142,16 @@ public final class ResultCode {
 	 * Too many concurrent operations on the same record.
 	 */
 	public static final int KEY_BUSY = 14;
-	
+
 	/**
 	 * Scan aborted by server.
 	 */
 	public static final int SCAN_ABORT = 15;
-	
+
 	/**
 	 * Unsupported Server Feature (e.g. Scan + UDF)
 	 */
 	public static final int UNSUPPORTED_FEATURE = 16;
-	
-	/**
-	 * Specified bin name does not exist in record.
-	 */
-	public static final int BIN_NOT_FOUND = 17;
 
 	/**
 	 * Device not keeping up with writes.
@@ -173,17 +162,17 @@ public final class ResultCode {
 	 * Key type mismatch.
 	 */
 	public static final int KEY_MISMATCH = 19;
-	
+
 	/**
 	 * Invalid namespace.
 	 */
 	public static final int INVALID_NAMESPACE = 20;
-	
+
 	/**
 	 * Bin name length greater than 14 characters or maximum bins exceeded.
 	 */
 	public static final int BIN_NAME_TOO_LONG = 21;
-	
+
 	/**
 	 *	Operation not allowed at this time.
 	 */
@@ -208,17 +197,17 @@ public final class ResultCode {
 	 * Security functionality not supported by connected server.
 	 */
 	public static final int SECURITY_NOT_SUPPORTED = 51;
-	
+
 	/**
 	 * Security functionality not enabled by connected server.
 	 */
 	public static final int SECURITY_NOT_ENABLED = 52;
-	
+
 	/**
 	 * Security type not supported by connected server.
 	 */
 	public static final int SECURITY_SCHEME_NOT_SUPPORTED = 53;
-	
+
 	/**
 	 * Administration command is invalid.
 	 */
@@ -238,7 +227,7 @@ public final class ResultCode {
 	 * User name is invalid.
 	 */
 	public static final int INVALID_USER = 60;
-	
+
 	/**
 	 * User was previously created.
 	 */
@@ -273,7 +262,7 @@ public final class ResultCode {
 	 * Role already exists.
 	 */
 	public static final int ROLE_ALREADY_EXISTS = 71;
-	
+
 	/**
 	 * Privilege is invalid.
 	 */
@@ -293,7 +282,7 @@ public final class ResultCode {
 	 * A user defined function returned an error code.
 	 */
 	public static final int UDF_BAD_RESPONSE = 100;
-	
+
 	/**
 	 * The requested item in a large collection was not found.
 	 */
@@ -308,7 +297,7 @@ public final class ResultCode {
 	 * Batch max requests have been exceeded.
 	 */
 	public static final int BATCH_MAX_REQUESTS_EXCEEDED = 151;
-	
+
 	/**
 	 * All batch queues are full.
 	 */
@@ -319,27 +308,27 @@ public final class ResultCode {
 	 */
 	public static final int INDEX_ALREADY_EXISTS = 200;
 	public static final int INDEX_FOUND = 200;  // For legacy reasons.
-	
+
 	/**
 	 * Requested secondary index does not exist.
 	 */
 	public static final int INDEX_NOTFOUND = 201;
-	
+
 	/**
 	 * Secondary index memory space exceeded.
 	 */
 	public static final int INDEX_OOM = 202;
-	
+
 	/**
 	 * Secondary index not available.
 	 */
 	public static final int INDEX_NOTREADABLE = 203;
-	
+
 	/**
 	 * Generic secondary index error.
 	 */
 	public static final int INDEX_GENERIC = 204;
-	
+
 	/**
 	 * Index name maximum length exceeded.
 	 */
@@ -354,28 +343,28 @@ public final class ResultCode {
 	 * Secondary index query aborted.
 	 */
 	public static final int QUERY_ABORTED = 210;
-	
+
 	/**
 	 * Secondary index queue full.
 	 */
 	public static final int QUERY_QUEUEFULL = 211;
-	
+
 	/**
 	 * Secondary index query timed out on server.
 	 */
 	public static final int QUERY_TIMEOUT = 212;
-	
+
 	/**
 	 * Generic query error.
 	 */
 	public static final int QUERY_GENERIC = 213;
-		
+
 	/**
 	 * Should connection be put back into pool.
 	 */
 	public static boolean keepConnection(int resultCode) {
-		// Keep connection on TIMEOUT because it can be server response which does not 
-		// close socket.  Also, client timeout code path does not call this method. 
+		// Keep connection on TIMEOUT because it can be server response which does not
+		// close socket.  Also, client timeout code path does not call this method.
 		switch (resultCode) {
 		case 0: // Exception did not originate on server.
 		case CLIENT_ERROR:
@@ -387,9 +376,9 @@ public final class ResultCode {
 		case SCAN_ABORT:
 		case QUERY_ABORTED:
 			return false;
-			
+
 		default:
-			return true;					
+			return true;
 		}
 	}
 
@@ -410,13 +399,13 @@ public final class ResultCode {
 
 		case NO_MORE_CONNECTIONS:
 			return "No more available connections";
-			
+
 		case COMMAND_REJECTED:
 			return "Command rejected";
-		
+
 		case QUERY_TERMINATED:
 			return "Query terminated";
-		
+
 		case SCAN_TERMINATED:
 			return "Scan terminated";
 
@@ -431,57 +420,51 @@ public final class ResultCode {
 
 		case OK:
 			return "ok";
-			
-		case SERVER_ERROR:		
+
+		case SERVER_ERROR:
 			return "Server error";
-			
-		case KEY_NOT_FOUND_ERROR:		
+
+		case KEY_NOT_FOUND_ERROR:
 			return "Key not found";
-		
+
 		case GENERATION_ERROR:
 			return "Generation error";
-			
+
 		case PARAMETER_ERROR:
 			return "Parameter error";
-		
+
 		case KEY_EXISTS_ERROR:
 			return "Key already exists";
-		
-		case BIN_EXISTS_ERROR:
-			return "Bin already exists";
-		
+
 		case CLUSTER_KEY_MISMATCH:
 			return "Cluster key mismatch";
-		
+
 		case SERVER_MEM_ERROR:
 			return "Server memory error";
-		
+
 		case TIMEOUT:
 			return "Timeout";
-		
+
 		case ALWAYS_FORBIDDEN:
 			return "Operation not allowed";
-		
+
 		case PARTITION_UNAVAILABLE:
 			return "Partition unavailable";
-		
+
 		case BIN_TYPE_ERROR:
 			return "Bin type error";
-		
+
 		case RECORD_TOO_BIG:
 			return "Record too big";
-		
+
 		case KEY_BUSY:
 			return "Hot key";
-			
+
 		case SCAN_ABORT:
 			return "Scan aborted";
-			
+
 		case UNSUPPORTED_FEATURE:
 			return "Unsupported Server Feature";
-			
-		case BIN_NOT_FOUND:
-			return "Bin not found";
 
 		case DEVICE_OVERLOAD:
 			return "Device overload";
@@ -491,7 +474,7 @@ public final class ResultCode {
 
 		case INVALID_NAMESPACE:
 			return "Namespace not found";
-			
+
 		case BIN_NAME_TOO_LONG:
 			return "Bin name length greater than 14 characters or maximum bins exceeded";
 
@@ -548,10 +531,10 @@ public final class ResultCode {
 
 		case ROLE_ALREADY_EXISTS:
 			return "Role already exists";
-					
+
 		case INVALID_PRIVILEGE:
 			return "Invalid privilege";
-			
+
 		case NOT_AUTHENTICATED:
 			return "Not authenticated";
 
@@ -560,52 +543,52 @@ public final class ResultCode {
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
-			
+
 		case LARGE_ITEM_NOT_FOUND:
 			return "Large collection item not found";
-		
+
 		case BATCH_DISABLED:
 			return "Batch functionality has been disabled";
-			
+
 		case BATCH_MAX_REQUESTS_EXCEEDED:
 			return "Batch max requests have been exceeded";
-			
+
 		case BATCH_QUEUES_FULL:
 			return "All batch queues are full";
-			
+
 		case INDEX_ALREADY_EXISTS:
 			return "Index already exists";
-			
+
 		case INDEX_NOTFOUND:
 			return "Index not found";
-			
+
 		case INDEX_OOM:
 			return "Index out of memory";
-			
+
 		case INDEX_NOTREADABLE:
 			return "Index not readable";
-			
+
 		case INDEX_GENERIC:
 			return "Index error";
-			
+
 		case INDEX_NAME_MAXLEN:
 			return "Index name max length exceeded";
-			
+
 		case INDEX_MAXCOUNT:
 			return "Index count exceeds max";
-		
+
 		case QUERY_ABORTED:
 			return "Query aborted";
-			
+
 		case QUERY_QUEUEFULL:
 			return "Query queue full";
-			
+
 		case QUERY_TIMEOUT:
 			return "Query timeout";
-			
+
 		case QUERY_GENERIC:
 			return "Query error";
-			
+
 		default:
 			return "";
 		}
