@@ -263,9 +263,6 @@ public final class NodeValidator {
 				if (featuresString.regionMatches(begin, "geo", 0, len)) {
 					this.features |= Node.HAS_GEO;
 				}
-				else if (featuresString.regionMatches(begin, "float", 0, len)) {
-					this.features |= Node.HAS_DOUBLE;
-				}
 				else if (featuresString.regionMatches(begin, "replicas", 0, len)) {
 					this.features |= Node.HAS_REPLICAS;
 				}

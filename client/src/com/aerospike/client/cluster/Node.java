@@ -48,7 +48,6 @@ public class Node implements Closeable {
 	public static final int PARTITIONS = 4096;
 
 	public static final int HAS_GEO	= (1 << 0);
-	public static final int HAS_DOUBLE = (1 << 1);
 	public static final int HAS_REPLICAS_ALL = (1 << 3);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
@@ -813,13 +812,6 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasClusterStable() {
 		return (features & HAS_CLUSTER_STABLE) != 0;
-	}
-
-	/**
-	 * Does server support double particle types.
-	 */
-	public final boolean hasDouble() {
-		return (features & HAS_DOUBLE) != 0;
 	}
 
 	/**

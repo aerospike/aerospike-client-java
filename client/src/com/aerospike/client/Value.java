@@ -48,20 +48,11 @@ public abstract class Value {
 	 * Infinity value to be used in CDT range comparisons only.
 	 */
 	public static final Value INFINITY = new InfinityValue();
-	
+
 	/**
 	 * Wildcard value to be used in CDT range comparisons only.
 	 */
 	public static final Value WILDCARD = new WildcardValue();
-
-	/**
-	 * Should the client use the new double floating point particle type supported by Aerospike
-	 * server versions >= 3.6.0.  It's important that all server nodes and XDR be upgraded before
-	 * enabling this feature.
-	 * <p>
-	 * If false, the old method using an long particle type is used instead.
-	 */
-	public static boolean UseDoubleType = true;
 
 	/**
 	 * Get string or null value instance.
@@ -76,7 +67,7 @@ public abstract class Value {
 	public static Value get(byte[] value) {
 		return (value == null)? NullValue.INSTANCE : new BytesValue(value);
 	}
-	
+
 	/**
 	 * Get byte segment or null value instance.
 	 */
@@ -97,7 +88,7 @@ public abstract class Value {
 	public static Value get(int value) {
 		return new IntegerValue(value);
 	}
-	
+
 	/**
 	 * Get long value instance.
 	 */
@@ -167,7 +158,7 @@ public abstract class Value {
 	public static Value getAsNull() {
 		return NullValue.INSTANCE;
 	}
-	
+
 	/**
 	 * Determine value given generic object.
 	 * This is the slowest of the Value get() methods.
@@ -177,7 +168,7 @@ public abstract class Value {
 		if (value == null) {
 			return NullValue.INSTANCE;
 		}
-		
+
 		if (value instanceof Value) {
 			return (Value)value;
 		}
@@ -185,31 +176,31 @@ public abstract class Value {
 		if (value instanceof byte[]) {
         	return new BytesValue((byte[])value);
 		}
-		
+
 		if (value instanceof String) {
         	return new StringValue((String)value);
 		}
-		
+
 		if (value instanceof Integer) {
         	return new IntegerValue((Integer)value);
 		}
-		
+
 		if (value instanceof Long) {
         	return new LongValue((Long)value);
 		}
-		
+
 		if (value instanceof Double) {
         	return new DoubleValue((Double)value);
 		}
-		
+
 		if (value instanceof Float) {
         	return new FloatValue((Float)value);
 		}
-		
+
 		if (value instanceof Boolean) {
         	return new BooleanValue((Boolean)value);
 		}
-		
+
 		if (value instanceof Byte) {
         	return new ByteValue((byte)value);
 		}
@@ -217,14 +208,14 @@ public abstract class Value {
 		if (value instanceof List<?>) {
         	return new ListValue((List<?>)value);
 		}
-		
+
 		if (value instanceof Map<?,?>) {
         	return new MapValue((Map<?,?>)value);
 		}
 
 		return new BlobValue(value);
 	}
-	
+
 	/**
 	 * Get value from Record object. Useful when copying records from one cluster to another.
 	 */
@@ -241,7 +232,7 @@ public abstract class Value {
 	 * Serialize the value in the wire protocol.
 	 */
 	public abstract int write(byte[] buffer, int offset) throws AerospikeException;
-	
+
 	/**
 	 * Serialize the value using MessagePack.
 	 */
@@ -251,19 +242,19 @@ public abstract class Value {
 	 * Validate if value type can be used as a key.
 	 * @throws AerospikeException	if type can't be used as a key.
 	 */
-	public void validateKeyType() throws AerospikeException {	
+	public void validateKeyType() throws AerospikeException {
 	}
-	
+
 	/**
 	 * Get wire protocol value type.
 	 */
 	public abstract int getType();
-	
+
 	/**
 	 * Return original value as an Object.
 	 */
 	public abstract Object getObject();
-	
+
 	/**
 	 * Return value as an Object.
 	 */
@@ -275,7 +266,7 @@ public abstract class Value {
 	public int toInteger() {
 		return 0;
 	}
-	
+
 	/**
 	 * Return value as a long.
 	 */
@@ -288,37 +279,37 @@ public abstract class Value {
 	 */
 	public static final class NullValue extends Value {
 		public static final NullValue INSTANCE = new NullValue();
-		
+
 		@Override
 		public int estimateSize() {
 			return 0;
 		}
 
 		@Override
-		public int write(byte[] buffer, int offset) {	
+		public int write(byte[] buffer, int offset) {
 			return 0;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packNil();
 		}
-		
+
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: null");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.NULL;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return null;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaNil.NIL;
@@ -328,12 +319,12 @@ public abstract class Value {
 		public String toString() {
 			return null;
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			if (other == null) {
 				return true;
-			}			
+			}
 			return this.getClass().equals(other.getClass());
 		}
 
@@ -342,29 +333,29 @@ public abstract class Value {
 			return 0;
 		}
 	}
-	
+
 	/**
 	 * Byte array value.
 	 */
-	public static final class BytesValue extends Value {		
+	public static final class BytesValue extends Value {
 		private final byte[] bytes;
 
 		public BytesValue(byte[] bytes) {
 			this.bytes = bytes;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return bytes.length;
 
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packBytes(bytes);
@@ -374,12 +365,12 @@ public abstract class Value {
 		public int getType() {
 			return ParticleType.BLOB;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return bytes;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return new LuaBytes(instance, bytes);
@@ -400,13 +391,13 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 			return Arrays.hashCode(bytes);
-		}	
+		}
 	}
 
 	/**
 	 * Byte segment value.
 	 */
-	public static final class ByteSegmentValue extends Value {		
+	public static final class ByteSegmentValue extends Value {
 		private final byte[] bytes;
 		private final int offset;
 		private final int length;
@@ -416,19 +407,19 @@ public abstract class Value {
 			this.offset = offset;
 			this.length = length;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return length;
 
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int targetOffset) {
 			System.arraycopy(bytes, offset, buffer, targetOffset, length);
 			return length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packBytes(bytes, offset, length);
@@ -438,12 +429,12 @@ public abstract class Value {
 		public int getType() {
 			return ParticleType.BLOB;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return this;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(bytes, offset, length);
@@ -453,22 +444,22 @@ public abstract class Value {
 		public String toString() {
 			return Buffer.bytesToHexString(bytes, offset, length);
 		}
-		
+
 		@Override
 		public boolean equals(Object obj) {
 			if (obj == null) {
 				return false;
 			}
-			
+
 			if (! this.getClass().equals(obj.getClass())) {
 				return false;
 			}
 			ByteSegmentValue other = (ByteSegmentValue)obj;
-			
+
 			if (this.length != other.length) {
 				return false;
 			}
-			
+
 			for (int i = 0; i < length; i++) {
 				if (this.bytes[this.offset + i] != other.bytes[other.offset + i]) {
 					return false;
@@ -484,7 +475,7 @@ public abstract class Value {
 	            result = 31 * result + bytes[offset+i];
 	        }
 	        return result;
-		}	
+		}
 
 		public byte[] getBytes() {
 			return bytes;
@@ -500,26 +491,26 @@ public abstract class Value {
 	}
 
 	/**
-	 * Byte value.  
+	 * Byte value.
 	 */
-	public static final class ByteValue extends Value {		
+	public static final class ByteValue extends Value {
 		private final byte value;
 
 		public ByteValue(byte value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.longToBytes(value, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packByte(value);
@@ -530,12 +521,12 @@ public abstract class Value {
 			// The server does not natively handle one byte, so store as long (8 byte integer).
 			return ParticleType.INTEGER;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaInteger.valueOf(value);
@@ -545,7 +536,7 @@ public abstract class Value {
 		public String toString() {
 			return Byte.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -556,7 +547,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value;
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -572,7 +563,7 @@ public abstract class Value {
 	/**
 	 * String value.
 	 */
-	public static final class StringValue extends Value {		
+	public static final class StringValue extends Value {
 		private final String value;
 
 		public StringValue(String value) {
@@ -583,12 +574,12 @@ public abstract class Value {
 		public int estimateSize() {
 			return Buffer.estimateSizeUtf8(value);
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			return Buffer.stringToUtf8(value, buffer, offset);
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packString(value);
@@ -598,12 +589,12 @@ public abstract class Value {
 		public int getType() {
 			return ParticleType.STRING;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(value);
@@ -613,7 +604,7 @@ public abstract class Value {
 		public String toString() {
 			return value;
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -624,30 +615,30 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value.hashCode();
-		}	
+		}
 	}
-	
+
 	/**
 	 * Integer value.
 	 */
-	public static final class IntegerValue extends Value {		
+	public static final class IntegerValue extends Value {
 		private final int value;
 
 		public IntegerValue(int value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.longToBytes(value, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packInt(value);
@@ -657,12 +648,12 @@ public abstract class Value {
 		public int getType() {
 			return ParticleType.INTEGER;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaInteger.valueOf(value);
@@ -672,7 +663,7 @@ public abstract class Value {
 		public String toString() {
 			return Integer.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -683,7 +674,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value;
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -699,24 +690,24 @@ public abstract class Value {
 	/**
 	 * Long value.
 	 */
-	public static final class LongValue extends Value {		
+	public static final class LongValue extends Value {
 		private final long value;
 
 		public LongValue(long value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.longToBytes(value, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packLong(value);
@@ -726,12 +717,12 @@ public abstract class Value {
 		public int getType() {
 			return ParticleType.INTEGER;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaInteger.valueOf(value);
@@ -741,7 +732,7 @@ public abstract class Value {
 		public String toString() {
 			return Long.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -752,7 +743,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return (int)(value ^ (value >>> 32));
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -768,24 +759,24 @@ public abstract class Value {
 	/**
 	 * Double value.
 	 */
-	public static final class DoubleValue extends Value {		
+	public static final class DoubleValue extends Value {
 		private final double value;
 
 		public DoubleValue(double value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.doubleToBytes(value, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packDouble(value);
@@ -793,14 +784,14 @@ public abstract class Value {
 
 		@Override
 		public int getType() {
-			return UseDoubleType? ParticleType.DOUBLE : ParticleType.INTEGER;
+			return ParticleType.DOUBLE;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaDouble.valueOf(value);
@@ -810,7 +801,7 @@ public abstract class Value {
 		public String toString() {
 			return Double.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -822,7 +813,7 @@ public abstract class Value {
 		public int hashCode() {
 	        long bits = Double.doubleToLongBits(value);
 	        return (int)(bits ^ (bits >>> 32));
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -838,24 +829,24 @@ public abstract class Value {
 	/**
 	 * Float value.
 	 */
-	public static final class FloatValue extends Value {		
+	public static final class FloatValue extends Value {
 		private final float value;
 
 		public FloatValue(float value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.doubleToBytes(value, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packFloat(value);
@@ -863,14 +854,14 @@ public abstract class Value {
 
 		@Override
 		public int getType() {
-			return UseDoubleType? ParticleType.DOUBLE : ParticleType.INTEGER;
+			return ParticleType.DOUBLE;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaDouble.valueOf(value);
@@ -880,7 +871,7 @@ public abstract class Value {
 		public String toString() {
 			return Float.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -891,7 +882,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return Float.floatToIntBits(value);
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -905,26 +896,26 @@ public abstract class Value {
 	}
 
 	/**
-	 * Boolean value.  
+	 * Boolean value.
 	 */
-	public static final class BooleanValue extends Value {		
+	public static final class BooleanValue extends Value {
 		private final boolean value;
 
 		public BooleanValue(boolean value) {
 			this.value = value;
 		}
-		
+
 		@Override
 		public int estimateSize() {
 			return 8;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			Buffer.longToBytes(value? 1L : 0L, buffer, offset);
 			return 8;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packBoolean(value);
@@ -935,12 +926,12 @@ public abstract class Value {
 			// The server does not natively handle boolean, so store as long (8 byte integer).
 			return ParticleType.INTEGER;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaBoolean.valueOf(value);
@@ -950,7 +941,7 @@ public abstract class Value {
 		public String toString() {
 			return Boolean.toString(value);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -961,7 +952,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value ? 1231 : 1237;
-		}	
+		}
 
 		@Override
 		public int toInteger() {
@@ -984,7 +975,7 @@ public abstract class Value {
 		public BlobValue(Object object) {
 			this.object = object;
 		}
-		
+
 		@Override
 		public int estimateSize() throws AerospikeException.Serialize {
 			try {
@@ -999,13 +990,13 @@ public abstract class Value {
 				throw new AerospikeException.Serialize(e);
 			}
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packBlob(object);
@@ -1014,18 +1005,18 @@ public abstract class Value {
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: jblob");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.JBLOB;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return object;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(bytes);
@@ -1035,7 +1026,7 @@ public abstract class Value {
 		public String toString() {
 			return Buffer.bytesToHexString(bytes);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -1046,13 +1037,13 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return object.hashCode();
-		}	
+		}
 	}
-	
+
 	/**
 	 * GeoJSON value.
 	 */
-	public static final class GeoJSONValue extends Value {		
+	public static final class GeoJSONValue extends Value {
 		private final String value;
 
 		public GeoJSONValue(String value) {
@@ -1064,14 +1055,14 @@ public abstract class Value {
 			// flags + ncells + jsonstr
 			return 1 + 2 + Buffer.estimateSizeUtf8(value);
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			buffer[offset] = 0; // flags
 			Buffer.shortToBytes(0, buffer, offset + 1); // ncells
 			return 1 + 2 + Buffer.stringToUtf8(value, buffer, offset + 3); // jsonstr
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packGeoJSON(value);
@@ -1080,18 +1071,18 @@ public abstract class Value {
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: GeoJson");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.GEOJSON;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return value;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return LuaString.valueOf(value);
@@ -1101,7 +1092,7 @@ public abstract class Value {
 		public String toString() {
 			return value;
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -1112,9 +1103,9 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value.hashCode();
-		}	
+		}
 	}
-	
+
 	/**
 	 * Value array.
 	 */
@@ -1125,19 +1116,19 @@ public abstract class Value {
 		public ValueArray(Value[] array) {
 			this.array = array;
 		}
-		
+
 		@Override
 		public int estimateSize() throws AerospikeException {
 			bytes = Packer.pack(array);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packValueArray(array);
@@ -1146,13 +1137,13 @@ public abstract class Value {
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: value[]");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.LIST;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return array;
@@ -1167,7 +1158,7 @@ public abstract class Value {
 		public String toString() {
 			return Arrays.toString(array);
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -1178,7 +1169,7 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 			return Arrays.hashCode(array);
-		}	
+		}
 	}
 
 	/**
@@ -1191,19 +1182,19 @@ public abstract class Value {
 		public ListValue(List<?> list) {
 			this.list = list;
 		}
-		
+
 		@Override
 		public int estimateSize() throws AerospikeException {
 			bytes = Packer.pack(list);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packList(list);
@@ -1212,13 +1203,13 @@ public abstract class Value {
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: list");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.LIST;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return list;
@@ -1228,23 +1219,23 @@ public abstract class Value {
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return instance.getLuaList(list);
 		}
-		
+
 		@Override
 		public String toString() {
 			return list.toString();
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
 				this.getClass().equals(other.getClass()) &&
 				this.list.equals(((ListValue)other).list));
 		}
-		
+
 		@Override
 		public int hashCode() {
 	        return list.hashCode();
-		}	
+		}
 	}
 
 	/**
@@ -1257,19 +1248,19 @@ public abstract class Value {
 		public MapValue(Map<?,?> map)  {
 			this.map = map;
 		}
-		
+
 		@Override
 		public int estimateSize() throws AerospikeException {
 			bytes = Packer.pack(map);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public int write(byte[] buffer, int offset) {
 			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
 			return bytes.length;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packMap(map);
@@ -1278,75 +1269,75 @@ public abstract class Value {
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			return ParticleType.MAP;
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return map;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			return instance.getLuaMap(map);
 		}
-		
+
 		@Override
 		public String toString() {
 			return map.toString();
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
 				this.getClass().equals(other.getClass()) &&
 				this.map.equals(((MapValue)other).map));
 		}
-		
+
 		@Override
 		public int hashCode() {
 	        return map.hashCode();
-		}	
+		}
 	}
 
 	/**
 	 * Infinity value.
 	 */
-	public static final class InfinityValue extends Value {		
+	public static final class InfinityValue extends Value {
 		@Override
 		public int estimateSize() {
 			return 0;
 		}
 
 		@Override
-		public int write(byte[] buffer, int offset) {	
+		public int write(byte[] buffer, int offset) {
 			return 0;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packInfinity();
 		}
-		
+
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: INF");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: INF");
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return null;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: INF");
@@ -1356,7 +1347,7 @@ public abstract class Value {
 		public String toString() {
 			return "INF";
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&
@@ -1379,30 +1370,30 @@ public abstract class Value {
 		}
 
 		@Override
-		public int write(byte[] buffer, int offset) {	
+		public int write(byte[] buffer, int offset) {
 			return 0;
 		}
-		
+
 		@Override
 		public void pack(Packer packer) {
 			packer.packWildcard();
 		}
-		
+
 		@Override
 		public void validateKeyType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: wildcard");
-		}		
+		}
 
 		@Override
 		public int getType() {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid particle type: wildcard");
 		}
-		
+
 		@Override
 		public Object getObject() {
 			return null;
 		}
-		
+
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid lua type: wildcard");
@@ -1412,7 +1403,7 @@ public abstract class Value {
 		public String toString() {
 			return "*";
 		}
-		
+
 		@Override
 		public boolean equals(Object other) {
 			return (other != null &&

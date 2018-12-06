@@ -21,7 +21,7 @@ import java.util.Map;
 
 
 /**
- * Column name/value pair. 
+ * Column name/value pair.
  */
 public final class Bin {
 	/**
@@ -33,11 +33,11 @@ public final class Bin {
 	 * Bin value.
 	 */
 	public final Value value;
-	
+
 	/**
 	 * Constructor, specifying bin name and string value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -45,11 +45,11 @@ public final class Bin {
 		this.name = name;
 		this.value = Value.get(value);
 	}
-	
+
 	/**
 	 * Constructor, specifying bin name and byte array value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -57,11 +57,11 @@ public final class Bin {
 		this.name = name;
 		this.value = Value.get(value);
 	}
-	
+
 	/**
 	 * Constructor, specifying bin name and byte array segment value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		byte array value
 	 * @param offset	byte array segment offset
@@ -75,7 +75,7 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and byte value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -88,7 +88,7 @@ public final class Bin {
 	 * Constructor, specifying bin name and integer value.
 	 * The server will convert all integers to longs.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -96,11 +96,11 @@ public final class Bin {
 		this.name = name;
 		this.value = Value.get(value);
 	}
-	
+
 	/**
 	 * Constructor, specifying bin name and long value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -108,29 +108,12 @@ public final class Bin {
 		this.name = name;
 		this.value = Value.get(value);
 	}
-	
+
 	/**
 	 * Constructor, specifying bin name and double value.
-	 * Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
-	 * supports floating point values, then this is always the correct constructor for double.
-	 * Remember to also set {@link com.aerospike.client.Value#UseDoubleType} to true;
-	 * <p>
-	 * If your cluster does not support floating point, the value is converted to long bits.
-	 * On reads, it's important to call {@link com.aerospike.client.Record#getDouble(String name)}
-	 * to indicate that the long returned by the server should be converted back to a double.
-	 * If the same bin name holds different types for different records, then this constructor
-	 * should not be used because there is no way to know when reading if the long should be
-	 * converted to a double.  Instead, use {@link #Bin(String name, Object value)} which converts
-	 * the double to a java serialized blob.
-	 * <pre>
-	 * double value = 22.7;
-	 * Bin bin = new Bin("mybin", (Object) value);
-	 * </pre>
-	 * This is slower and not portable to other languages, but the double type is preserved, so a
-	 * Double will be returned without knowing if a conversion should be made.
 	 * <p>
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -141,26 +124,9 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and float value.
-	 * Aerospike server versions >= 3.6.0 natively support floating point values.  If your cluster
-	 * supports floating point values, then this is always the correct constructor for float.
-	 * Remember to also set {@link com.aerospike.client.Value#UseDoubleType} to true;
-	 * <p>
-	 * If your cluster does not support floating point, the value is converted to long bits.
-	 * On reads, it's important to call {@link com.aerospike.client.Record#getFloat(String name)}
-	 * to indicate that the long returned by the server should be converted back to a float.
-	 * If the same bin name holds different types for different records, then this constructor
-	 * should not be used because there is no way to know when reading if the long should be
-	 * converted to a float.  Instead, use {@link #Bin(String name, Object value)} which converts
-	 * the float to a java serialized blob.
-	 * <pre>
-	 * float value = 11.7;
-	 * Bin bin = new Bin("mybin", (Object) value);
-	 * </pre>
-	 * This is slower and not portable to other languages, but the float type is preserved, so a
-	 * Float will be returned without knowing if a conversion should be made.
 	 * <p>
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -172,7 +138,7 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and boolean value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -191,7 +157,7 @@ public final class Bin {
 	 * }
 	 * </pre>
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -203,7 +169,7 @@ public final class Bin {
 	/**
 	 * Create bin with a map value.  The map value will be serialized as a server map type.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -215,7 +181,7 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and value.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -223,7 +189,7 @@ public final class Bin {
 		this.name = name;
 		this.value = value;
 	}
-	
+
 	/**
 	 * Constructor, specifying bin name and object value.
 	 * This is the slowest of the Bin constructors because the type
@@ -238,14 +204,14 @@ public final class Bin {
 		this.name = name;
 		this.value = Value.get(value);
 	}
-	
+
 	/**
 	 * Create bin with a blob value.  The value will be java serialized.
-	 * This method is faster than the bin Object constructor because the blob is converted 
+	 * This method is faster than the bin Object constructor because the blob is converted
 	 * directly instead of using multiple "instanceof" type checks with a blob default.
 	 * <p>
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -256,7 +222,7 @@ public final class Bin {
 	/**
 	 * Create bin with a null value. This is useful for bin deletions within a record.
 	 * For servers configured as "single-bin", enter a null or empty name.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 */
 	public static Bin asNull(String name) {
@@ -265,7 +231,7 @@ public final class Bin {
 
 	/**
 	 * Create bin with a GeoJSON value.
-	 * 
+	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
 	 */
@@ -305,7 +271,7 @@ public final class Bin {
 			return false;
 		return true;
 	}
-	
+
 	/**
 	 * Return hash code for Bin.
 	 */

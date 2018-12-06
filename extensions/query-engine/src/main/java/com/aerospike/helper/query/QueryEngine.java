@@ -26,6 +26,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -50,8 +53,6 @@ import com.aerospike.client.task.RegisterTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.model.Module;
 import com.aerospike.helper.model.Namespace;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * This class provides a multi-filter query engine that
@@ -71,7 +72,7 @@ public class QueryEngine implements Closeable {
 	protected Map<String, Index> indexCache;
 	protected Map<String, Module> moduleCache;
 	protected TreeMap<String, Namespace> namespaceCache;
-	
+
 	public WritePolicy updatePolicy;
 	public WritePolicy insertPolicy;
 	public InfoPolicy infoPolicy;
@@ -111,7 +112,6 @@ public class QueryEngine implements Closeable {
 
 	public QueryEngine() {
 		super();
-		Value.UseDoubleType = true; // Note: this supports the Double particle type
 	}
 
 	/**
@@ -132,10 +132,10 @@ public class QueryEngine implements Closeable {
 
 	/*
 	 * *****************************************************
-	 * 
+	 *
 	 * Select
-	 * 
-	 * ***************************************************** 
+	 *
+	 * *****************************************************
 	 */
 
 
@@ -300,7 +300,7 @@ public class QueryEngine implements Closeable {
 			return queryByLua(stmt, metaOnly, node, qualifiers);
 		}
 	}
-	
+
 	private KeyRecordIterator queryByLua(Statement stmt, Boolean metaOnly, Node node, Qualifier[] qualifiers){
 		Map<String, Object> originArgs = new HashMap<String, Object>();
 		originArgs.put("includeAllFields", 1);
@@ -329,7 +329,7 @@ public class QueryEngine implements Closeable {
 			return false;
 
 		switch (qualifier.getOperation()){
-			case EQ: case BETWEEN: case GT: case GTEQ: case LT: case LTEQ: 
+			case EQ: case BETWEEN: case GT: case GTEQ: case LT: case LTEQ:
 				return true;
 			default:
 				return false;
@@ -338,10 +338,10 @@ public class QueryEngine implements Closeable {
 
 	/*
 	 * *****************************************************
-	 * 
+	 *
 	 * Insert
-	 * 
-	 * ***************************************************** 
+	 *
+	 * *****************************************************
 	 */
 
 	/**
@@ -397,10 +397,10 @@ public class QueryEngine implements Closeable {
 
 	/*
 	 * *****************************************************
-	 * 
+	 *
 	 * Update
-	 * 
-	 * ***************************************************** 
+	 *
+	 * *****************************************************
 	 */
 
 	/**
@@ -449,10 +449,10 @@ public class QueryEngine implements Closeable {
 
 	/*
 	 * *****************************************************
-	 * 
+	 *
 	 * Delete
-	 * 
-	 * ***************************************************** 
+	 *
+	 * *****************************************************
 	 */
 
 	/**
@@ -509,7 +509,7 @@ public class QueryEngine implements Closeable {
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
+
 	protected List<PredExp> buildPredExp(Qualifier[] qualifiers) throws PredExpException{
 		List<PredExp> pes = new ArrayList<PredExp>();
 		int qCount = 0;
