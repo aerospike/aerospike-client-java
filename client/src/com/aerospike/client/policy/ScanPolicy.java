@@ -25,11 +25,11 @@ public final class ScanPolicy extends Policy {
 	 * Default is 100.
 	 */
 	public int scanPercent = 100;
-	
+
 	/**
 	 * Maximum number of concurrent requests to server nodes at any point in time.
 	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then scan requests
-	 * will be made to 8 nodes in parallel.  When a scan completes, a new scan request will 
+	 * will be made to 8 nodes in parallel.  When a scan completes, a new scan request will
 	 * be issued until all 16 nodes have been scanned.
 	 * <p>
 	 * This field is only relevant when concurrentNodes is true.
@@ -38,10 +38,10 @@ public final class ScanPolicy extends Policy {
 	public int maxConcurrentNodes;
 
 	/**
-	 * Issue scan requests in parallel or serially. 
+	 * Issue scan requests in parallel or serially.
 	 */
 	public boolean concurrentNodes = true;
-	
+
 	/**
 	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
 	 * if stored on the server) are retrieved.
@@ -71,6 +71,5 @@ public final class ScanPolicy extends Policy {
 	public ScanPolicy() {
 		// Scans should not retry.
 		super.maxRetries = 0;
-		super.socketTimeout = 30000;
 	}
 }

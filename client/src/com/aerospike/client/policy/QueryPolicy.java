@@ -22,13 +22,13 @@ package com.aerospike.client.policy;
 public class QueryPolicy extends Policy {
 	/**
 	 * Maximum number of concurrent requests to server nodes at any point in time.
-	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries 
-	 * will be made to 8 nodes in parallel.  When a query completes, a new query will 
+	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries
+	 * will be made to 8 nodes in parallel.  When a query completes, a new query will
 	 * be issued until all 16 nodes have been queried.
 	 * Default (0) is to issue requests to all server nodes in parallel.
 	 */
 	public int maxConcurrentNodes;
-	
+
 	/**
 	 * Number of records to place in queue before blocking.
 	 * Records received from multiple server nodes will be placed in a queue.
@@ -36,7 +36,7 @@ public class QueryPolicy extends Policy {
 	 * If the queue is full, the producer threads will block until records are consumed.
 	 */
 	public int recordQueueSize = 5000;
-	
+
 	/**
 	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
 	 * if stored on the server) are retrieved.
@@ -65,6 +65,5 @@ public class QueryPolicy extends Policy {
 	public QueryPolicy() {
 		// Queries should not retry.
 		super.maxRetries = 0;
-		super.socketTimeout = 30000;
 	}
 }

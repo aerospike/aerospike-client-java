@@ -57,11 +57,9 @@ public class Policy {
 	 * For synchronous methods, socketTimeout is the socket timeout (SO_TIMEOUT).
 	 * For asynchronous methods, the socketTimeout is implemented using a HashedWheelTimer.
 	 * <p>
-	 * Default for everything but scan/query: 0 (no socket idle time limit)
-	 * <p>
-	 * Default for scan/query: 30000ms
+	 * Default: 30000ms
 	 */
-	public int socketTimeout;
+	public int socketTimeout = 30000;
 
 	/**
 	 * Total transaction timeout in milliseconds.
