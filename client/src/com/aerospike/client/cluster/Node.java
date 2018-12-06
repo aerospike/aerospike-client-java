@@ -35,7 +35,6 @@ import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
 import com.aerospike.client.async.AsyncConnection;
 import com.aerospike.client.async.EventState;
-import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -50,7 +49,6 @@ public class Node implements Closeable {
 
 	public static final int HAS_GEO	= (1 << 0);
 	public static final int HAS_DOUBLE = (1 << 1);
-	public static final int HAS_BATCH_INDEX	= (1 << 2);
 	public static final int HAS_REPLICAS_ALL = (1 << 3);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
@@ -808,20 +806,6 @@ public class Node implements Closeable {
 		}
 
 		return r == rackId;
-	}
-
-	/**
-	 * Use new batch protocol if server supports it.
-	 */
-	public final boolean useNewBatch(BatchPolicy policy) {
-		return hasBatchIndex();
-	}
-
-	/**
-	 * Does server support batch index protocol.
-	 */
-	public final boolean hasBatchIndex() {
-		return (features & HAS_BATCH_INDEX) != 0;
 	}
 
 	/**

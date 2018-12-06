@@ -940,9 +940,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				if (! batchNode.node.hasBatchIndex()) {
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-				}
 				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				command.execute(cluster, policy, null, batchNode.node, true);
 			}
@@ -958,9 +955,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			Executor executor = new Executor(cluster, policy, batchNodes.size());
 
 			for (BatchNode batchNode : batchNodes) {
-				if (! batchNode.node.hasBatchIndex()) {
-					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Requested command requires a server that supports new batch index protocol.");
-				}
 				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
 				executor.addCommand(batchNode.node, command);
 			}

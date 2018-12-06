@@ -25,13 +25,12 @@ import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.BatchPolicy;
-import com.aerospike.client.policy.Policy;
 
 public final class Batch {
 	//-------------------------------------------------------
 	// ReadList
 	//-------------------------------------------------------
-	
+
 	public static final class ReadListCommand extends MultiCommand {
 		private final BatchNode batch;
 		private final BatchPolicy policy;
@@ -52,7 +51,7 @@ public final class Batch {
 		@Override
 		protected void parseRow(Key key) throws IOException {
 			BatchRead record = records.get(batchIndex);
-			
+
 			if (Arrays.equals(key.digest, record.key.digest)) {
 				if (resultCode == 0) {
 					record.record = parseRecord();
@@ -63,11 +62,11 @@ public final class Batch {
 			}
 		}
 	}
-	
+
 	//-------------------------------------------------------
 	// GetArray
 	//-------------------------------------------------------
-	
+
 	public static final class GetArrayCommand extends MultiCommand {
 		private final BatchNode batch;
 		private final BatchPolicy policy;
@@ -100,7 +99,7 @@ public final class Batch {
 
 		@Override
 		protected void parseRow(Key key) throws IOException {
-			if (Arrays.equals(key.digest, keys[batchIndex].digest)) {			
+			if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
 				if (resultCode == 0) {
 					records[batchIndex] = parseRecord();
 				}
@@ -110,53 +109,7 @@ public final class Batch {
 			}
 		}
 	}
-	
-	public static final class GetArrayDirect extends MultiCommand {
-		private final BatchNode.BatchNamespace batch;
-		private final Policy policy;
-		private final Key[] keys;
-		private final String[] binNames;
-		private final Record[] records;
-		private final int readAttr;
-		private int index;
 
-		public GetArrayDirect(
-			BatchNode.BatchNamespace batch,
-			Policy policy,		
-			Key[] keys,
-			String[] binNames,
-			Record[] records,
-			int readAttr
-		) {
-			super(false);
-			this.batch = batch;
-			this.policy = policy;
-			this.keys = keys;
-			this.binNames = binNames;
-			this.records = records;
-			this.readAttr = readAttr;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setBatchReadDirect(policy, keys, batch, binNames, readAttr);
-		}
-
-		@Override
-		protected void parseRow(Key key) throws IOException {
-			int offset = batch.offsets[index++];
-			
-			if (Arrays.equals(key.digest, keys[offset].digest)) {			
-				if (resultCode == 0) {
-					records[offset] = parseRecord();
-				}
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
-			}
-		}
-	}
-	
 	//-------------------------------------------------------
 	// ExistsArray
 	//-------------------------------------------------------
@@ -190,7 +143,7 @@ public final class Batch {
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
-			
+
 			if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
 				existsArray[batchIndex] = resultCode == 0;
 			}
@@ -199,46 +152,4 @@ public final class Batch {
 			}
 		}
 	}
-	
-	public static final class ExistsArrayDirect extends MultiCommand {
-		private final BatchNode.BatchNamespace batch;
-		private final Policy policy;
-		private final Key[] keys;
-		private final boolean[] existsArray;
-		private int index;
-
-		public ExistsArrayDirect(
-			BatchNode.BatchNamespace batch,
-			Policy policy,
-			Key[] keys,
-			boolean[] existsArray
-		) {
-			super(false);
-			this.batch = batch;
-			this.policy = policy;
-			this.keys = keys;
-			this.existsArray = existsArray;
-		}
-		
-		@Override
-		protected void writeBuffer() {
-			setBatchReadDirect(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
-		}
-
-		@Override
-		protected void parseRow(Key key) throws IOException {
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-			
-			int offset = batch.offsets[index++];
-			
-			if (Arrays.equals(key.digest, keys[offset].digest)) {
-				existsArray[offset] = resultCode == 0;
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + index + ',' + offset);
-			}
-		}
-	}	
 }

@@ -480,46 +480,6 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setBatchReadDirect(Policy policy, Key[] keys, BatchNode.BatchNamespace batch, String[] binNames, int readAttr) {
-		// Estimate buffer size
-		begin();
-
-		int byteSize = batch.offsetsSize * SyncCommand.DIGEST_SIZE;
-
-		dataOffset += Buffer.estimateSizeUtf8(batch.namespace) +
-				FIELD_HEADER_SIZE + byteSize + FIELD_HEADER_SIZE;
-
-		if (binNames != null) {
-			for (String binName : binNames) {
-				estimateOperationSize(binName);
-			}
-		}
-
-		sizeBuffer();
-
-		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeader(policy, readAttr, 0, 2, operationCount);
-		writeField(batch.namespace, FieldType.NAMESPACE);
-		writeFieldHeader(byteSize, FieldType.DIGEST_RIPE_ARRAY);
-
-		int[] offsets = batch.offsets;
-		int max = batch.offsetsSize;
-
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
-		    dataOffset += digest.length;
-		}
-
-		if (binNames != null) {
-			for (String binName : binNames) {
-				writeOperation(binName, Operation.Type.READ);
-			}
-		}
-		end();
-	}
-
 	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames, long taskId) {
 		begin();
 		int fieldCount = 0;

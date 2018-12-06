@@ -266,9 +266,6 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "float", 0, len)) {
 					this.features |= Node.HAS_DOUBLE;
 				}
-				else if (featuresString.regionMatches(begin, "batch-index", 0, len)) {
-					this.features |= Node.HAS_BATCH_INDEX;
-				}
 				else if (featuresString.regionMatches(begin, "replicas", 0, len)) {
 					this.features |= Node.HAS_REPLICAS;
 				}
