@@ -266,9 +266,6 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "replicas", 0, len)) {
 					this.features |= Node.HAS_REPLICAS;
 				}
-				else if (featuresString.regionMatches(begin, "replicas-all", 0, len)) {
-					this.features |= Node.HAS_REPLICAS_ALL;
-				}
 				else if (featuresString.regionMatches(begin, "peers", 0, len)) {
 					this.features |= Node.HAS_PEERS;
 				}

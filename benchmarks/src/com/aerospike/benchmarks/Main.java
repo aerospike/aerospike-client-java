@@ -636,11 +636,9 @@ public class Main implements Log.Callback {
 			}
 			else if (replica.equals("any")) {
 				args.readPolicy.replica = Replica.MASTER_PROLES;
-				clientPolicy.requestProleReplicas = true;
 			}
 			else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
-				clientPolicy.requestProleReplicas = true;
 			}
 			else {
 				throw new Exception("Invalid replica: " + replica);
@@ -649,7 +647,6 @@ public class Main implements Log.Callback {
 
 		// Leave this in for legacy reasons.
 		if (line.hasOption("prole")) {
-			clientPolicy.requestProleReplicas = true;
 			args.readPolicy.replica = Replica.MASTER_PROLES;
 		}
 

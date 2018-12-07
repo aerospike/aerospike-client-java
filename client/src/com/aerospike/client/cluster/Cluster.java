@@ -133,9 +133,6 @@ public class Cluster implements Runnable, Closeable {
 	// Is threadPool shared with other client instances?
 	private final boolean sharedThreadPool;
 
-	// Request prole replicas in addition to master replicas?
-	protected boolean requestProleReplicas;
-
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
 
@@ -213,7 +210,6 @@ public class Cluster implements Runnable, Closeable {
 			threadPool = policy.threadPool;
 		}
 		sharedThreadPool = policy.sharedThreadPool;
-		requestProleReplicas = policy.requestProleReplicas;
 		useServicesAlternate = policy.useServicesAlternate;
 		rackAware = policy.rackAware;
 		rackId = policy.rackId;
@@ -314,14 +310,6 @@ public class Cluster implements Runnable, Closeable {
 			Host host = node.getHost();
 			if (! findSeed(host)) {
 				seedsToAdd.add(host);
-			}
-
-			// Disable prole requests if some nodes don't support it.
-			if (requestProleReplicas && ! node.hasReplicasAll()) {
-				if (Log.warnEnabled()) {
-					Log.warn("Some nodes don't support 'replicas-all'.  Use 'replicas-master' for all nodes.");
-				}
-				requestProleReplicas = false;
 			}
 		}
 

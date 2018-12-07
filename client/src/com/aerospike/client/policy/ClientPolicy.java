@@ -197,20 +197,6 @@ public class ClientPolicy {
 	public boolean sharedThreadPool;
 
 	/**
-	 * Should prole replicas be requested from each server node in the cluster tend thread.
-	 * This option is required if there is a need to distribute reads across proles
-	 * ({@link com.aerospike.client.policy.Policy#replica} ==
-	 *  {@link com.aerospike.client.policy.Replica#MASTER_PROLES} or
-	 *  {@link com.aerospike.client.policy.Replica#SEQUENCE}).
-	 * <p>
-	 * If requestProleReplicas is enabled, all prole partition maps will be cached on the client which results in
-	 * extra storage multiplied by the replication factor.
-	 * <p>
-	 * Default: true (request all master and prole replicas).
-	 */
-	public boolean requestProleReplicas = true;
-
-	/**
 	 * Should use "services-alternate" instead of "services" in info request during cluster
 	 * tending.  "services-alternate" returns server configured external IP addresses that client
 	 * uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
@@ -279,7 +265,6 @@ public class ClientPolicy {
 		this.ipMap = other.ipMap;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);
-		this.requestProleReplicas = other.requestProleReplicas;
 		this.useServicesAlternate = other.useServicesAlternate;
 		this.forceSingleNode = other.forceSingleNode;
 		this.rackAware = other.rackAware;

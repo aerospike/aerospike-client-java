@@ -48,7 +48,6 @@ public class Node implements Closeable {
 	public static final int PARTITIONS = 4096;
 
 	public static final int HAS_GEO	= (1 << 0);
-	public static final int HAS_REPLICAS_ALL = (1 << 3);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
 	public static final int HAS_CLUSTER_STABLE = (1 << 6);
@@ -482,7 +481,7 @@ public class Node implements Closeable {
 			if (Log.debugEnabled()) {
 				Log.debug("Update partition map for node " + this);
 			}
-			PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS, cluster.requestProleReplicas);
+			PartitionParser parser = new PartitionParser(tendConnection, this, cluster.partitionMap, Node.PARTITIONS);
 
 			if (parser.isPartitionMapCopied()) {
 				cluster.partitionMap = parser.getPartitionMap();
@@ -826,13 +825,6 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasReplicas() {
 		return (features & HAS_REPLICAS) != 0;
-	}
-
-	/**
-	 * Does server support replicas-all info command.
-	 */
-	public final boolean hasReplicasAll() {
-		return (features & HAS_REPLICAS_ALL) != 0;
 	}
 
 	/**
