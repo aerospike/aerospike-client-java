@@ -173,7 +173,6 @@ public final class BatchNode {
 	public final Node node;
 	public int[] offsets;
 	public int offsetsSize;
-	public List<BatchNamespace> batchNamespaces;  // used by old batch only
 
 	public BatchNode(Node node, int capacity, int offset) {
 		this.node = node;
@@ -189,76 +188,5 @@ public final class BatchNode {
 			offsets = copy;
 		}
 		offsets[offsetsSize++] = offset;
-	}
-
-	public void splitByNamespace(Key[] keys) {
-		String first = keys[offsets[0]].namespace;
-
-		// Optimize for single namespace.
-		if (isSingleNamespace(keys, first)) {
-			batchNamespaces = new ArrayList<BatchNamespace>(1);
-			batchNamespaces.add(new BatchNamespace(first, offsets, offsetsSize));
-			return;
-		}
-
-		// Process multiple namespaces.
-		batchNamespaces = new ArrayList<BatchNamespace>(4);
-
-		for (int i = 0; i < offsetsSize; i++) {
-			int offset = offsets[i];
-			String ns = keys[offset].namespace;
-			BatchNamespace batchNamespace = findNamespace(batchNamespaces, ns);
-
-			if (batchNamespace == null) {
-				batchNamespaces.add(new BatchNamespace(ns, offsetsSize, offset));
-			}
-			else {
-				batchNamespace.add(offset);
-			}
-		}
-	}
-
-	private boolean isSingleNamespace(Key[] keys, String first) {
-		for (int i = 1; i < offsetsSize; i++) {
-			String ns = keys[offsets[i]].namespace;
-
-			if (!(ns == first || ns.equals(first))) {
-				return false;
-			}
-		}
-		return true;
-	}
-
-	private BatchNamespace findNamespace(List<BatchNamespace> batchNamespaces, String ns) {
-		for (BatchNamespace batchNamespace : batchNamespaces) {
-			// Note: use both pointer equality and equals.
-			if (batchNamespace.namespace == ns || batchNamespace.namespace.equals(ns)) {
-				return batchNamespace;
-			}
-		}
-		return null;
-	}
-
-	public static final class BatchNamespace {
-		public final String namespace;
-		public int[] offsets;
-		public int offsetsSize;
-
-		public BatchNamespace(String namespace, int capacity, int offset) {
-			this.namespace = namespace;
-			this.offsets = new int[capacity];
-			this.offsets[0] = offset;
-			this.offsetsSize = 1;
-		}
-
-		public BatchNamespace(String namespace, int[] offsets, int offsetsSize) {
-			this.namespace = namespace;
-			this.offsets = offsets;
-			this.offsetsSize = offsetsSize;
-		}
-
-		public void add(int offset) {
-			offsets[offsetsSize++] = offset;
-		}
 	}
 }
