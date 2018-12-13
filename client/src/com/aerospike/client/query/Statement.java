@@ -16,15 +16,13 @@
  */
 package com.aerospike.client.query;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
 /**
  * Query statement parameters.
  */
-public final class Statement {	
+public final class Statement {
 	String namespace;
 	String setName;
 	String indexName;
@@ -38,14 +36,14 @@ public final class Statement {
 	Value[] functionArgs;
 	long taskId;
 	boolean returnData;
-	
+
 	/**
 	 * Set query namespace.
 	 */
 	public void setNamespace(String namespace) {
 		this.namespace = namespace;
 	}
-	
+
 	/**
 	 * Get query namespace.
 	 */
@@ -88,37 +86,12 @@ public final class Statement {
 	public void setBinNames(String... binNames) {
 		this.binNames = binNames;
 	}
-	
+
 	/**
 	 * Get query bin names.
 	 */
 	public String[] getBinNames() {
 		return binNames;
-	}
-
-	/**
-	 * Set optional query index filters.
-	 * Currently, only one filter is allowed by the server on a secondary index lookup.
-	 * If multiple filters are necessary, see QueryFilter example for a workaround.
-	 * QueryFilter demonstrates how to add additional filters in an user-defined 
-	 * aggregation function.
-	 * <p>
-	 * This method is obsolete. Use {@link com.aerospike.client.query.Statement#setFilter(Filter)} instead.
-	 */
-	public void setFilters(Filter... filters) {
-		if (filters.length > 1) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "The server currently restricts queries to a single filter");
-		}
-		this.filter = filters[0];
-	}
-	
-	/**
-	 * Return query filters.
-	 * <p>
-	 * This method is obsolete. Use {@link com.aerospike.client.query.Statement#getFilter()} instead.
-	 */
-	public Filter[] getFilters() {
-		return new Filter[] {filter};
 	}
 
 	/**
@@ -128,14 +101,14 @@ public final class Statement {
 	public void setFilter(Filter filter) {
 		this.filter = filter;
 	}
-	
+
 	/**
 	 * Return query index filter.
 	 */
 	public Filter getFilter() {
 		return filter;
 	}
-	
+
 	/**
 	 * Set optional predicate expression filters in postfix notation.
 	 * Predicate expression filters are applied on the query results on the server.
@@ -165,19 +138,19 @@ public final class Statement {
      *   PredExp.and(2),
      *   PredExp.or(2)
      * );
-     * 
+     *
 	 * // Record last update time > 2017-01-15
 	 * stmt.setPredExp(
 	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
 	 *   PredExp.integerGreater(),
-	 * ); 
+	 * );
      * </pre>
 	 */
 	public void setPredExp(PredExp... predExp) {
 		this.predExp = predExp;
 	}
-	
+
 	/**
 	 * Return predicate expression filters.
 	 */
@@ -202,7 +175,7 @@ public final class Statement {
 	/**
 	 * Set Lua aggregation function parameters for a Lua package located on the filesystem.
 	 * This function will be called on both the server and client for each selected item.
-	 * 
+	 *
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
@@ -216,7 +189,7 @@ public final class Statement {
 	/**
 	 * Set Lua aggregation function parameters for a Lua package located in a resource file.
 	 * This function will be called on both the server and client for each selected item.
-	 * 
+	 *
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
 	 * @param resourcePath          class path where Lua resource is located
 	 * @param packageName			server package where user defined function resides
@@ -264,7 +237,7 @@ public final class Statement {
 	 */
 	public Value[] getFunctionArgs() {
 		return functionArgs;
-	}	
+	}
 
 	/**
 	 * Does command return data.
@@ -278,7 +251,7 @@ public final class Statement {
 	 */
 	public void prepare(boolean returnData) {
 		this.returnData = returnData;
-		
+
 		if (taskId == 0) {
 			taskId = RandomShift.instance().nextLong();
 		}
