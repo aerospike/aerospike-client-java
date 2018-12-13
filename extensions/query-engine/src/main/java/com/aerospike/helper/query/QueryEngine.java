@@ -154,7 +154,7 @@ public class QueryEngine implements Closeable {
 		stmt.setNamespace(namespace);
 		stmt.setSetName(set);
 		if (filter != null)
-			stmt.setFilters(filter);
+			stmt.setFilter(filter);
 		return select(stmt, sortMap, qualifiers);
 	}
 
@@ -200,7 +200,7 @@ public class QueryEngine implements Closeable {
 		stmt.setNamespace(namespace);
 		stmt.setSetName(set);
 		if (filter != null)
-			stmt.setFilters(filter);
+			stmt.setFilter(filter);
 		return select(stmt, qualifiers);
 	}
 
@@ -266,7 +266,7 @@ public class QueryEngine implements Closeable {
 				for(Qualifier q: qualifier.getQualifiers()){
 					Filter filter = q == null ? null : q.asFilter();
 					if (filter != null) {
-						stmt.setFilters(filter);
+						stmt.setFilter(filter);
 						q.asFilter(true);;
 						break;
 					}
@@ -274,7 +274,7 @@ public class QueryEngine implements Closeable {
 			}else if (isIndexedBin(stmt, qualifier)) {
 				Filter filter = qualifier.asFilter();
 				if (filter != null) {
-					stmt.setFilters(filter);
+					stmt.setFilter(filter);
 					qualifiers[i] = null;
 					break;
 				}
