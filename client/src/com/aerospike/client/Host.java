@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,14 +20,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Host name/port of database server. 
+ * Host name/port of database server.
  */
 public final class Host {
 	/**
 	 * Host name or IP address of database server.
 	 */
 	public final String name;
-	
+
 	/**
 	 * TLS certificate name used for secure connections.
 	 */
@@ -37,7 +37,7 @@ public final class Host {
 	 * Port of database server.
 	 */
 	public final int port;
-	
+
 	/**
 	 * Initialize host.
 	 */
@@ -62,7 +62,7 @@ public final class Host {
 		// Use space separator to avoid confusion with IPv6 addresses that contain colons.
 		return name + ' ' + port;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		// Ignore tlsName in default hash code.
@@ -74,10 +74,13 @@ public final class Host {
 	@Override
 	public boolean equals(Object obj) {
 		// Ignore tlsName in default equality comparison.
+		if (obj == null) {
+			return false;
+		}
 		Host other = (Host) obj;
 		return this.name.equals(other.name) && this.port == other.port;
 	}
-	
+
 	/**
 	 * Parse command-line hosts from string format: hostname1[:tlsname1][:port1],...
 	 * <p>
@@ -124,20 +127,20 @@ public final class Host {
 		private int offset;
 		private int length;
 		private char c;
-		
+
 		private HostParser(String str) {
 			this.str = str;
 			this.length = str.length();
 			this.offset = 0;
-			this.c = ',';		
+			this.c = ',';
 		}
-		
+
 		private Host[] parseHosts(int defaultPort) {
 			ArrayList<Host> list = new ArrayList<Host>();
 			String hostname;
 			String tlsname;
 			int port;
-			
+
 			while (offset < length) {
 				if (c != ',') {
 					throw new RuntimeException();
@@ -145,10 +148,10 @@ public final class Host {
 				hostname = parseHost();
 				tlsname = null;
 				port = defaultPort;
-				
+
 				if (offset < length && c == ':') {
 					String s = parseString();
-					
+
 					if (s.length() > 0) {
 						if (Character.isDigit(s.charAt(0))) {
 							// Found port.
@@ -157,36 +160,36 @@ public final class Host {
 						else {
 							// Found tls name.
 							tlsname = s;
-							
+
 							// Parse port.
 							s = parseString();
-							
+
 							if (s.length() > 0) {
 								port = Integer.parseInt(s);
 							}
 						}
 					}
-				}				
+				}
 				list.add(new Host(hostname, tlsname, port));
 			}
 			return list.toArray(new Host[list.size()]);
 		}
-		
+
 		private List<Host> parseServiceHosts() {
 			ArrayList<Host> list = new ArrayList<Host>();
 			String hostname;
 			int port;
-			
+
 			while (offset < length) {
 				if (c != ',') {
 					throw new RuntimeException();
 				}
 				hostname = parseHost();
-				
+
 				if (c != ':') {
 					throw new RuntimeException();
 				}
-				
+
 				String s = parseString();
 				port = Integer.parseInt(s);
 
@@ -197,17 +200,17 @@ public final class Host {
 
 		private String parseHost() {
 			c = str.charAt(offset);
-			
+
 			if (c == '[') {
 				// IPv6 addresses are enclosed by brackets.
 				int begin = ++offset;
-				
+
 				while (offset < length) {
 					c = str.charAt(offset);
-					
+
 					if (c == ']') {
 						String s = str.substring(begin, offset++);
-						
+
 						if (offset < length) {
 							c = str.charAt(offset++);
 						}
@@ -221,13 +224,13 @@ public final class Host {
 				return parseString();
 			}
 		}
-		
+
 		private String parseString() {
 			int begin = offset;
-			
+
 			while (offset < length) {
 				c = str.charAt(offset);
-				
+
 				if (c == ':' || c == ',') {
 					return str.substring(begin, offset++);
 				}
