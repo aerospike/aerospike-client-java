@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -60,7 +60,7 @@ public final class Executor {
 			threadPool.execute(threads.get(i));
 		}
 		waitTillComplete();
-		
+
 		// Throw an exception if an error occurred.
 		if (exception != null) {
 			if (exception instanceof AerospikeException) {
@@ -86,7 +86,7 @@ public final class Executor {
 		}
 		else {
 			// Ensure executor succeeds or fails exactly once.
-			if (done.compareAndSet(false, true)) {				
+			if (done.compareAndSet(false, true)) {
 				notifyCompleted();
 			}
 		}
@@ -95,15 +95,19 @@ public final class Executor {
 	private void stopThreads(Exception cause) {
 		// Ensure executor succeeds or fails exactly once.
 		if (done.compareAndSet(false, true)) {
-	    	exception = cause;  		
-			
+	    	exception = cause;
+
 			// Send stop signal to threads.
 			for (ExecutorThread thread : threads) {
 				thread.stop();
-			}					
+			}
 			notifyCompleted();
 		}
     }
+
+	final boolean isDone() {
+		return done.get();
+	}
 
 	private synchronized void waitTillComplete() {
 		while (! completed) {
@@ -114,12 +118,12 @@ public final class Executor {
 			}
 		}
 	}
-	
+
 	private synchronized void notifyCompleted() {
 		completed = true;
 		super.notify();
 	}
-	
+
     private final class ExecutorThread implements Runnable {
 		private final Node node;
 		private final MultiCommand command;
@@ -128,7 +132,7 @@ public final class Executor {
 			this.node = node;
 			this.command = command;
 		}
-		
+
 		public void run() {
 			try {
 				if (command.isValid()) {
@@ -141,12 +145,12 @@ public final class Executor {
 				stopThreads(e);
 			}
 		}
-		
+
 		/**
 		 * Send stop signal to each thread.
 		 */
 		public void stop() {
 			command.stop();
-		}		
+		}
 	}
 }

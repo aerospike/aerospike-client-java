@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,7 +29,7 @@ import com.aerospike.client.policy.Policy;
  * Asynchronous command handler.
  */
 public abstract class AsyncCommand extends Command {
-	static final int MAX_BUFFER_SIZE = 1024 * 128;  // 128 KB	
+	static final int MAX_BUFFER_SIZE = 1024 * 128;  // 128 KB
 	static final int REGISTERED = 1;
 	static final int DELAY_QUEUE = 2;
 	static final int CONNECT = 3;
@@ -40,7 +40,7 @@ public abstract class AsyncCommand extends Command {
 	static final int COMMAND_READ_HEADER = 8;
 	static final int COMMAND_READ_BODY = 9;
 	static final int COMPLETE = 10;
-	
+
 	Policy policy;
 	final Partition partition;
 	Node node;
@@ -66,22 +66,22 @@ public abstract class AsyncCommand extends Command {
 		this.isSingle = isSingle;
 	}
 
-	final Node getNode(Cluster cluster) {		
+	final Node getNode(Cluster cluster) {
 		if (partition != null) {
 			node = getNode(cluster, partition, policy.replica, isRead);
 		}
 		return node;
 	}
-	
+
 	final void initBuffer() {
 		dataBuffer = getBuffer(8192);
 	}
-	
+
 	@Override
 	protected final void sizeBuffer() {
 		sizeBuffer(dataOffset);
 	}
-	
+
 	final void sizeBuffer(int size) {
 		if (dataBuffer == null) {
 			dataBuffer = getBuffer(size);
@@ -99,22 +99,22 @@ public abstract class AsyncCommand extends Command {
 			dataBuffer = null;
 		}
 	}
-	
+
 	private final byte[] getBuffer(int size) {
 		if (size > MAX_BUFFER_SIZE) {
 			// Allocate huge buffer, but do not put back in pool.
 			return new byte[size];
 		}
-		
+
 		byte[] buffer = bufferQueue.pollFirst();
-		
+
 		if (buffer == null || buffer.length < size) {
 			// Round up to nearest 8KB.
 			buffer = new byte[(size + 8191) & ~8191];
 		}
 		return buffer;
 	}
-	
+
 	private final byte[] resizeBuffer(byte[] buffer, int size) {
 		if (size > MAX_BUFFER_SIZE) {
 			// Put original buffer back in pool.
@@ -125,13 +125,13 @@ public abstract class AsyncCommand extends Command {
 		// Round up to nearest 8KB.
 		return new byte[(size + 8191) & ~8191];
 	}
-	
+
 	private final void putBuffer(byte[] buffer) {
 		if (buffer.length <= MAX_BUFFER_SIZE) {
 			bufferQueue.addLast(buffer);
 		}
 	}
-	
+
 	final void validateHeaderSize() {
 		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
 			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
@@ -140,6 +140,11 @@ public abstract class AsyncCommand extends Command {
 
 	final void stop() {
 		valid = false;
+	}
+
+	boolean retryBatch(Runnable command, long deadline) {
+		// Override this method in batch to regenerate node assignments.
+		return false;
 	}
 
 	abstract void writeBuffer();

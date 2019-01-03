@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,19 +23,24 @@ import com.aerospike.client.cluster.Cluster;
 /**
  * Aerospike event loop interface.
  */
-public interface EventLoop {	
+public interface EventLoop {
 	/**
 	 * Execute async command.  Execute immediately if in event loop.
 	 * Otherwise, place command on event loop queue.
 	 */
 	public void execute(Cluster cluster, AsyncCommand command);
-	
+
 	/**
 	 * Schedule execution of runnable command on event loop.
 	 * Command is placed on event loop queue and is never executed directly.
 	 */
 	public void execute(Runnable command);
-	
+
+	/**
+	 * Retry async batch command.  For internal use only.
+	 */
+	public void executeBatchRetry(Runnable other, AsyncCommand command, long deadline);
+
 	/**
 	 * Schedule execution of runnable command with delay.
 	 */
@@ -51,35 +56,35 @@ public interface EventLoop {
 	 * the event loop.  The value is approximate because the call may be from a
 	 * different thread than the event loop’s thread and there are no locks or
 	 * atomics used.
-	 * 
-	 * If accuracy is important and not running in the event loop thread, 
+	 *
+	 * If accuracy is important and not running in the event loop thread,
 	 * the slower execute(Runnable) can be called to run this method in the
 	 * event loop thread.
-	 */	
+	 */
 	public int getProcessSize();
-	
+
 	/**
 	 * Return the approximate number of commands stored on this event loop's
 	 * delay queue that have not been started yet.  The value is approximate
 	 * because the call may be from a different thread than the event loop’s
 	 * thread and there are no locks or atomics used.
-	 * 
-	 * If accuracy is important and not running in the event loop thread, 
+	 *
+	 * If accuracy is important and not running in the event loop thread,
 	 * the slower execute(Runnable) can be called to run this method in the
 	 * event loop thread.
 	 */
 	public int getQueueSize();
-	
+
 	/**
 	 * Return event loop array index.
-	 */	
+	 */
 	public int getIndex();
-	
+
 	/**
 	 * Is current thread the event loop thread.
 =	 */
 	public boolean inEventLoop();
-	
+
 	/**
 	 * For internal use only.
 	 */

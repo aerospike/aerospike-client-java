@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,13 +38,9 @@ public abstract class SyncCommand extends Command {
 	public final void execute(Cluster cluster, Policy policy, Key key, Node node, boolean isRead) {
 		//final long tranId = TranCounter.getAndIncrement();
 		final Partition partition = (key != null)? new Partition(key) : null;
-		AerospikeException exception = null;
 		long deadline = 0;
 		int socketTimeout = policy.socketTimeout;
 		int totalTimeout = policy.totalTimeout;
-		int iteration = 0;
-		int commandSentCounter = 0;
-		boolean isClientTimeout;
 
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
@@ -53,6 +49,15 @@ public abstract class SyncCommand extends Command {
 				socketTimeout = totalTimeout;
 			}
 		}
+		execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 0, 0);
+	}
+
+	public final void execute(
+		final Cluster cluster, final Policy policy, final Partition partition, Node node, final boolean isRead,
+		int socketTimeout, int totalTimeout, final long deadline, int iteration, int commandSentCounter
+	) {
+		AerospikeException exception = null;
+		boolean isClientTimeout;
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
@@ -202,6 +207,11 @@ public abstract class SyncCommand extends Command {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
+
+			if (shouldRetryBatch() && retryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
+				// Batch retried in separate commands.  Complete this command.
+				return;
+			}
 		}
 
 		// Retries have been exhausted.  Throw last exception.
@@ -230,6 +240,16 @@ public abstract class SyncCommand extends Command {
 		if (size > dataBuffer.length) {
 			dataBuffer = ThreadLocalData.resizeBuffer(size);
 		}
+	}
+
+	protected boolean shouldRetryBatch() {
+		// Override this method in batch to regenerate node assignments.
+		return false;
+	}
+
+	protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
+		// Override this method in batch to regenerate node assignments.
+		return false;
 	}
 
 	protected abstract void writeBuffer();

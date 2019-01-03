@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,9 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Replica;
 
 public final class Batch {
 	//-------------------------------------------------------
@@ -32,12 +34,14 @@ public final class Batch {
 	//-------------------------------------------------------
 
 	public static final class ReadListCommand extends MultiCommand {
+		private final Executor parent;
 		private final BatchNode batch;
 		private final BatchPolicy policy;
 		private final List<BatchRead> records;
 
-		public ReadListCommand(BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
+		public ReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
 			super(false);
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.records = records;
@@ -61,6 +65,31 @@ public final class Batch {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		@Override
+		protected boolean shouldRetryBatch() {
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		}
+
+		@Override
+		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			for (BatchNode batchNode : batchNodes) {
+				MultiCommand command = new ReadListCommand(parent, batchNode, policy, records);
+				command.sequence = sequence;
+				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -68,6 +97,7 @@ public final class Batch {
 	//-------------------------------------------------------
 
 	public static final class GetArrayCommand extends MultiCommand {
+		private final Executor parent;
 		private final BatchNode batch;
 		private final BatchPolicy policy;
 		private final Key[] keys;
@@ -76,6 +106,7 @@ public final class Batch {
 		private final int readAttr;
 
 		public GetArrayCommand(
+			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -84,6 +115,7 @@ public final class Batch {
 			int readAttr
 		) {
 			super(false);
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -108,6 +140,31 @@ public final class Batch {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		@Override
+		protected boolean shouldRetryBatch() {
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		}
+
+		@Override
+		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			for (BatchNode batchNode : batchNodes) {
+				MultiCommand command = new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
+				command.sequence = sequence;
+				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -115,18 +172,21 @@ public final class Batch {
 	//-------------------------------------------------------
 
 	public static final class ExistsArrayCommand extends MultiCommand {
+		private final Executor parent;
 		private final BatchNode batch;
 		private final BatchPolicy policy;
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
 		public ExistsArrayCommand(
+			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
 			super(false);
+			this.parent = parent;
 			this.batch = batch;
 			this.policy = policy;
 			this.keys = keys;
@@ -150,6 +210,31 @@ public final class Batch {
 			else {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		@Override
+		protected boolean shouldRetryBatch() {
+			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		}
+
+		@Override
+		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
+			// Retry requires keys for this node to be split among other nodes.
+			// This is both recursive and exponential.
+			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			// Run batch requests sequentially in same thread.
+			for (BatchNode batchNode : batchNodes) {
+				MultiCommand command = new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
+				command.sequence = sequence;
+				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+			}
+			return true;
 		}
 	}
 }

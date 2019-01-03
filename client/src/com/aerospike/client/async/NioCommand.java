@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -68,6 +68,53 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			state = AsyncCommand.REGISTERED;
 			eventLoop.execute(this);
 		}
+	}
+
+	// Batch retry constructor.
+	public NioCommand(NioCommand other, AsyncCommand command, long deadline) {
+		this.eventLoop = other.eventLoop;
+		this.cluster = other.cluster;
+		this.command = command;
+		this.eventState = other.eventState;
+		this.totalDeadline = other.totalDeadline;
+		this.iteration = other.iteration;
+		this.commandSentCounter = other.commandSentCounter;
+		this.hasTotalTimeout = other.hasTotalTimeout;
+		this.usingSocketTimeout = other.usingSocketTimeout;
+
+		command.bufferQueue = eventLoop.bufferQueue;
+
+		// We are already in event loop thread, so start processing now.
+		if (eventState.pending++ == -1) {
+			eventState.pending = -1;
+			eventState.errors++;
+			state = AsyncCommand.COMPLETE;
+			notifyFailure(new AerospikeException("Cluster has been closed"));
+			return;
+		}
+
+		if (deadline > 0) {
+			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
+		}
+
+		if (eventLoop.maxCommandsInProcess > 0) {
+			// Delay queue takes precedence over new commands.
+			eventLoop.executeFromDelayQueue();
+
+			// Handle new command.
+			if (eventLoop.pending >= eventLoop.maxCommandsInProcess) {
+				// Pending queue full. Append new command to delay queue.
+				if (eventLoop.maxCommandsInQueue > 0 && eventLoop.delayQueue.size() >= eventLoop.maxCommandsInQueue) {
+					queueError(new AerospikeException.AsyncQueueFull());
+					return;
+				}
+				eventLoop.delayQueue.addLast(this);
+				state = AsyncCommand.DELAY_QUEUE;
+				return;
+			}
+		}
+		eventLoop.pending++;
+		executeCommand();
 	}
 
 	@Override
@@ -613,7 +660,16 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			currentTime = System.nanoTime();
 		}
 
-		eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
+		long deadline = currentTime + timeout;
+
+		if (command.retryBatch(this, deadline)) {
+			// Batch retried in separate commands.  Complete this command.
+			timeoutTask = null;
+			close();
+			return;
+		}
+
+		eventLoop.timer.restoreTimeout(timeoutTask, deadline);
 		executeCommand();
 	}
 
@@ -712,6 +768,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			}
 		}
 
+		long deadline = totalDeadline;
+
 		// Attempt retry.
 		if (usingSocketTimeout) {
 			// Socket timeout in effect.
@@ -731,26 +789,40 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				currentTime = System.nanoTime();
 			}
 
-			eventLoop.timer.restoreTimeout(timeoutTask, currentTime + timeout);
+			deadline = currentTime + timeout;
 		}
 
 		if (queueCommand) {
 			// Retry command at the end of the queue so other commands have a
 			// chance to run first.
+			final long d = deadline;
 			eventLoop.execute(new Runnable() {
 				@Override
 				public void run() {
 					if (state == AsyncCommand.COMPLETE) {
 						return;
 					}
-					executeCommand();
+					retry(d);
 				}
 			});
 		}
 		else {
 			// Retry command immediately.
-			executeCommand();
+			retry(deadline);
 		}
+	}
+
+	private final void retry(long deadline) {
+		if (command.retryBatch(this, deadline)) {
+			// Batch retried in separate commands.  Complete this command.
+			close();
+			return;
+		}
+
+		if (usingSocketTimeout) {
+			eventLoop.timer.restoreTimeout(timeoutTask, deadline);
+		}
+		executeCommand();
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {

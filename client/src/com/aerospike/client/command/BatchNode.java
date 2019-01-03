@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -55,7 +55,7 @@ public final class BatchNode {
 
 		for (int i = 0; i < keys.length; i++) {
 			Partition partition = new Partition(keys[i]);
-			Node node = getNode(cluster, partition, policy.replica);
+			Node node = getNode(cluster, partition, policy.replica, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -63,6 +63,41 @@ public final class BatchNode {
 			}
 			else {
 				batchNode.addKey(i);
+			}
+		}
+		return batchNodes;
+	}
+
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys, int sequence, BatchNode batchSeed) {
+		Node[] nodes = cluster.getNodes();
+
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
+
+		// Create initial key capacity for each node as average + 25%.
+		int keysPerNode = batchSeed.offsetsSize / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
+		}
+
+		// Split keys by server node.
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
+
+		for (int i = 0; i < batchSeed.offsetsSize; i++) {
+			int offset = batchSeed.offsets[i];
+			Partition partition = new Partition(keys[offset]);
+			Node node = getNode(cluster, partition, policy.replica, sequence);
+			BatchNode batchNode = findBatchNode(batchNodes, node);
+
+			if (batchNode == null) {
+				batchNodes.add(new BatchNode(node, keysPerNode, offset));
+			}
+			else {
+				batchNode.addKey(offset);
 			}
 		}
 		return batchNodes;
@@ -90,7 +125,7 @@ public final class BatchNode {
 
 		for (int i = 0; i < max; i++) {
 			Partition partition = new Partition(records.get(i).key);
-			Node node = getNode(cluster, partition, policy.replica);
+			Node node = getNode(cluster, partition, policy.replica, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -103,17 +138,52 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	private static Node getNode(Cluster cluster, Partition partition, Replica replica) {
+	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records, int sequence, BatchNode batchSeed) {
+		Node[] nodes = cluster.getNodes();
+
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
+
+		// Create initial key capacity for each node as average + 25%.
+		int keysPerNode = batchSeed.offsetsSize / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
+		}
+
+		// Split keys by server node.
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
+
+		for (int i = 0; i < batchSeed.offsetsSize; i++) {
+			int offset = batchSeed.offsets[i];
+			Partition partition = new Partition(records.get(offset).key);
+			Node node = getNode(cluster, partition, policy.replica, sequence);
+			BatchNode batchNode = findBatchNode(batchNodes, node);
+
+			if (batchNode == null) {
+				batchNodes.add(new BatchNode(node, keysPerNode, offset));
+			}
+			else {
+				batchNode.addKey(offset);
+			}
+		}
+		return batchNodes;
+	}
+
+	private static Node getNode(Cluster cluster, Partition partition, Replica replica, int sequence) {
 		switch (replica) {
-		default:
-		case MASTER:
 		case SEQUENCE:
-			// Sequence uses master node because it always starts at master
-			// and keys can't be transferred to other nodes on batch retry.
-			return cluster.getMasterNode(partition);
+			return getSequenceNode(cluster, partition, sequence);
 
 		case PREFER_RACK:
-			return getRackNode(cluster, partition);
+			return getRackNode(cluster, partition, sequence);
+
+		default:
+		case MASTER:
+			return cluster.getMasterNode(partition);
 
 		case MASTER_PROLES:
 			return cluster.getMasterProlesNode(partition);
@@ -123,7 +193,31 @@ public final class BatchNode {
 		}
 	}
 
-	private static Node getRackNode(Cluster cluster, Partition partition) {
+	private static final Node getSequenceNode(Cluster cluster, Partition partition, int sequence) {
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(partition.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
+		}
+
+		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+
+		for (int i = 0; i < replicas.length; i++) {
+			int index = Math.abs(sequence % replicas.length);
+			Node node = replicas[index].get(partition.partitionId);
+
+			if (node != null && node.isActive()) {
+				return node;
+			}
+			sequence++;
+		}
+		Node[] nodeArray = cluster.getNodes();
+		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
+	}
+
+	private static Node getRackNode(Cluster cluster, Partition partition, int sequence) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(partition.namespace);
@@ -134,7 +228,6 @@ public final class BatchNode {
 
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 		Node fallback = null;
-		int sequence = 0;
 
 		for (int i = 0; i < replicas.length; i++) {
 			int index = Math.abs(sequence % replicas.length);

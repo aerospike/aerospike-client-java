@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -940,7 +940,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
+				MultiCommand command = new Batch.ReadListCommand(null, batchNode, policy, records);
 				command.execute(cluster, policy, null, batchNode.node, true);
 			}
 		}
@@ -955,7 +955,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			Executor executor = new Executor(cluster, policy, batchNodes.size());
 
 			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new Batch.ReadListCommand(batchNode, policy, records);
+				MultiCommand command = new Batch.ReadListCommand(executor, batchNode, policy, records);
 				executor.addCommand(batchNode.node, command);
 			}
 			executor.execute(policy.maxConcurrentThreads);

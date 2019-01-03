@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,11 +44,11 @@ public final class BatchExecutor {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
+					MultiCommand command = new Batch.GetArrayCommand(null, batchNode, policy, keys, binNames, records, readAttr);
 					command.execute(cluster, policy, null, batchNode.node, true);
 				}
 				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
+					MultiCommand command = new Batch.ExistsArrayCommand(null, batchNode, policy, keys, existsArray);
 					command.execute(cluster, policy, null, batchNode.node, true);
 				}
 			}
@@ -66,11 +66,11 @@ public final class BatchExecutor {
 			// Initialize threads.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(batchNode, policy, keys, binNames, records, readAttr);
+					MultiCommand command = new Batch.GetArrayCommand(executor, batchNode, policy, keys, binNames, records, readAttr);
 					executor.addCommand(batchNode.node, command);
 				}
 				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(batchNode, policy, keys, existsArray);
+					MultiCommand command = new Batch.ExistsArrayCommand(executor, batchNode, policy, keys, existsArray);
 					executor.addCommand(batchNode.node, command);
 				}
 			}

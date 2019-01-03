@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,6 +34,7 @@ import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Replica;
 
 public final class AsyncBatch {
 	//-------------------------------------------------------
@@ -110,6 +111,33 @@ public final class AsyncBatch {
 			else {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, records, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new ReadListCommand(parent, batchNode, policy, records);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
 		}
 	}
 
@@ -189,6 +217,33 @@ public final class AsyncBatch {
 			else {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, records, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new ReadSequenceCommand(parent, batchNode, policy, listener, records);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
 		}
 	}
 
@@ -274,6 +329,33 @@ public final class AsyncBatch {
 			else {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
 		}
 	}
 
@@ -366,6 +448,33 @@ public final class AsyncBatch {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new GetSequenceCommand(parent, batchNode, policy, keys, binNames, listener, readAttr);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -445,6 +554,33 @@ public final class AsyncBatch {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
 		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
+		}
 	}
 
 	//-------------------------------------------------------
@@ -523,6 +659,33 @@ public final class AsyncBatch {
 			else {
 				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
 			}
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = new ExistsSequenceCommand(parent, batchNode, policy, keys, listener);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
 		}
 	}
 
