@@ -240,13 +240,6 @@ public final class PartitionParser {
 					}
 				}
 			}
-			else {
-				// Node does not own partition.
-				if (node == nodeOld) {
-					// Must erase previous map.
-					nodeArray.lazySet(i, null);
-				}
-			}
 		}
 	}
 
