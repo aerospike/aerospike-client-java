@@ -1013,7 +1013,7 @@ public abstract class Command {
 
 		if (! isRead) {
 			// Writes will always proxy to master node.
-			cluster.getMasterNode(partition);
+			return cluster.getMasterNode(partition);
 		}
 
 		switch (replica) {
