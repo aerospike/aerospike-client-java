@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -72,12 +72,17 @@ public class AerospikeException extends RuntimeException {
 		sb.append("Error ");
 		sb.append(resultCode);
 
+		if (iteration >= 0) {
+			sb.append(',');
+			sb.append(iteration);
+		}
+
 		if (inDoubt) {
-			sb.append("(inDoubt)");
+			sb.append(",inDoubt");
 		}
 
 		if (node != null) {
-			sb.append(" from ");
+			sb.append(',');
 			sb.append(node.toString());
 		}
 
@@ -88,11 +93,6 @@ public class AerospikeException extends RuntimeException {
 		}
 		else {
 			sb.append(ResultCode.getResultString(resultCode));
-		}
-
-		if (iteration > 1) {
-			sb.append(System.lineSeparator());
-			sb.append("iteration=" + iteration);
 		}
 		return sb.toString();
 	}

@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -61,15 +62,26 @@ public abstract class SyncCommand extends Command {
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
-			try {
-				if (partition != null) {
-					// Single record command node retrieval.
+			iteration++;
+
+			if (partition != null) {
+				// Single record command node retrieval.
+				try {
 					node = getNode(cluster, partition, policy.replica, isRead);
 
 					//if (iteration > 0 && !isRead) {
 					//	Log.info("Retry: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					//}
 				}
+				catch (AerospikeException ae) {
+					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+					ae.setIteration(iteration);
+					ae.setInDoubt(isRead, commandSentCounter);
+					throw ae;
+				}
+			}
+
+			try {
 				Connection conn = node.getConnection(socketTimeout, policy.timeoutDelay);
 
 				try {
@@ -116,10 +128,6 @@ public abstract class SyncCommand extends Command {
 						}
 					}
 					else {
-						// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
-						ae.setNode(node);
-						ae.setIteration(iteration + 1);
-						ae.setInDoubt(isRead, commandSentCounter);
 						throw ae;
 					}
 				}
@@ -177,9 +185,20 @@ public abstract class SyncCommand extends Command {
 				isClientTimeout = false;
 				super.sequence++;
 			}
+			catch (AerospikeException ae) {
+				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+				ae.setNode(node);
+				ae.setIteration(iteration);
+				ae.setInDoubt(isRead, commandSentCounter);
+
+				if (Log.debugEnabled()) {
+					LogPolicy(policy);
+				}
+				throw ae;
+			}
 
 			// Check maxRetries.
-			if (++iteration > policy.maxRetries) {
+			if (iteration > policy.maxRetries) {
 				break;
 			}
 
@@ -224,6 +243,10 @@ public abstract class SyncCommand extends Command {
 		exception.setNode(node);
 		exception.setIteration(iteration);
 		exception.setInDoubt(isRead, commandSentCounter);
+
+		if (Log.debugEnabled()) {
+			LogPolicy(policy);
+		}
 		throw exception;
 	}
 

@@ -844,6 +844,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			ae.setNode(command.node);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isRead, commandSentCounter);
+
+			if (Log.debugEnabled()) {
+				Command.LogPolicy(command.policy);
+			}
 			command.onFailure(ae);
 		}
 		catch (Exception e) {

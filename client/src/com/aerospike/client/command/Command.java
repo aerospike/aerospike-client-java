@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,6 +24,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
@@ -1090,6 +1091,11 @@ public abstract class Command {
 
 		Node[] nodeArray = cluster.getNodes();
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
+	}
+
+	public static void LogPolicy(Policy p) {
+		Log.debug("Policy: " + "socketTimeout=" + p.socketTimeout + " totalTimeout=" + p.totalTimeout + " maxRetries=" + p.maxRetries +
+				" sleepBetweenRetries=" + p.sleepBetweenRetries);
 	}
 
 	protected abstract void sizeBuffer();
