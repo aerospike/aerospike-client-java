@@ -195,6 +195,7 @@ public class Main implements Log.Callback {
 		options.addOption("writeTotalTimeout", true, "Set write totalTimeout in milliseconds.");
 		options.addOption("timeoutDelay", true, "Set read and write timeoutDelay in milliseconds.");
 
+		options.addOption("rackId", true, "Set Rack where this benchmark instance resides.  Default: 0");
 		options.addOption("maxRetries", true, "Maximum number of retries before aborting the current transaction.");
 		options.addOption("sleepBetweenRetries", true,
 			"Milliseconds to sleep between retries if a transaction fails and the timeout was not exceeded. " +
@@ -202,10 +203,12 @@ public class Main implements Log.Callback {
 			);
 		options.addOption("r", "replica", true,
 				"Which replica to use for reads.\n\n" +
-				"Values:  master | any | sequence.  Default: sequence\n" +
+				"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
 				"master: Always use node containing master partition.\n" +
 				"any: Distribute reads across master and proles in round-robin fashion.\n" +
-				"sequence: Always try master first. If master fails, try proles in sequence."
+				"sequence: Always try master first. If master fails, try proles in sequence.\n" +
+				"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
+				"Use 'rackId' option to set rack."
 				);
 		options.addOption("consistencyLevel", true,
 				"How replicas should be consulted in a read operation to provide the desired consistency guarantee. " +
@@ -628,6 +631,11 @@ public class Main implements Log.Callback {
 			args.batchPolicy.sleepBetweenRetries = sleepBetweenRetries;
 		}
 
+		if (line.hasOption("rackId")) {
+			int rackId = Integer.parseInt(line.getOptionValue("rackId"));
+			clientPolicy.rackId = rackId;
+		}
+
 		if (line.hasOption("replica")) {
 			String replica = line.getOptionValue("replica");
 
@@ -639,6 +647,10 @@ public class Main implements Log.Callback {
 			}
 			else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
+			}
+			else if (replica.equals("preferRack")) {
+				args.readPolicy.replica = Replica.PREFER_RACK;
+				clientPolicy.rackAware = true;
 			}
 			else {
 				throw new Exception("Invalid replica: " + replica);
