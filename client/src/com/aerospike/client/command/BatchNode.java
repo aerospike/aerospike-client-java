@@ -30,7 +30,6 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.BatchPolicy;
-import com.aerospike.client.policy.Replica;
 
 public final class BatchNode {
 
@@ -55,7 +54,7 @@ public final class BatchNode {
 
 		for (int i = 0; i < keys.length; i++) {
 			Partition partition = new Partition(keys[i]);
-			Node node = getNode(cluster, partition, policy.replica, 0);
+			Node node = getNode(cluster, policy, partition, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -90,7 +89,7 @@ public final class BatchNode {
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
 			Partition partition = new Partition(keys[offset]);
-			Node node = getNode(cluster, partition, policy.replica, sequence);
+			Node node = getNode(cluster, policy, partition, sequence);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -125,7 +124,7 @@ public final class BatchNode {
 
 		for (int i = 0; i < max; i++) {
 			Partition partition = new Partition(records.get(i).key);
-			Node node = getNode(cluster, partition, policy.replica, 0);
+			Node node = getNode(cluster, policy, partition, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -160,7 +159,7 @@ public final class BatchNode {
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
 			Partition partition = new Partition(records.get(offset).key);
-			Node node = getNode(cluster, partition, policy.replica, sequence);
+			Node node = getNode(cluster, policy, partition, sequence);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -173,27 +172,7 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	private static Node getNode(Cluster cluster, Partition partition, Replica replica, int sequence) {
-		switch (replica) {
-		case SEQUENCE:
-			return getSequenceNode(cluster, partition, sequence);
-
-		case PREFER_RACK:
-			return getRackNode(cluster, partition, sequence);
-
-		default:
-		case MASTER:
-			return cluster.getMasterNode(partition);
-
-		case MASTER_PROLES:
-			return cluster.getMasterProlesNode(partition);
-
-		case RANDOM:
-			return cluster.getRandomNode();
-		}
-	}
-
-	private static final Node getSequenceNode(Cluster cluster, Partition partition, int sequence) {
+	private static Node getNode(Cluster cluster, BatchPolicy policy, Partition partition, int sequence) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(partition.namespace);
@@ -202,6 +181,31 @@ public final class BatchNode {
 			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
+		if (partitions.cpMode && ! policy.linearizeRead) {
+			// Strong Consistency namespaces always use master node when read policy is sequential.
+			return cluster.getMasterNode(partitions, partition);
+		}
+
+		switch (policy.replica) {
+		case SEQUENCE:
+			return getSequenceNode(cluster, partitions, partition, sequence);
+
+		case PREFER_RACK:
+			return getRackNode(cluster, partitions, partition, sequence);
+
+		default:
+		case MASTER:
+			return cluster.getMasterNode(partitions, partition);
+
+		case MASTER_PROLES:
+			return cluster.getMasterProlesNode(partitions, partition);
+
+		case RANDOM:
+			return cluster.getRandomNode();
+		}
+	}
+
+	private static final Node getSequenceNode(Cluster cluster, Partitions partitions, Partition partition, int sequence) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 
 		for (int i = 0; i < replicas.length; i++) {
@@ -217,15 +221,7 @@ public final class BatchNode {
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
-	private static Node getRackNode(Cluster cluster, Partition partition, int sequence) {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
+	private static Node getRackNode(Cluster cluster, Partitions partitions, Partition partition, int sequence) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 		Node fallback = null;
 

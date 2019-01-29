@@ -68,9 +68,13 @@ public abstract class AsyncCommand extends Command {
 
 	final Node getNode(Cluster cluster) {
 		if (partition != null) {
-			node = getNode(cluster, partition, policy.replica, isRead);
+			node = getNode(cluster, policy, partition, isRead);
 		}
 		return node;
+	}
+
+	final void shiftSequenceOnRead() {
+		super.shiftSequenceOnRead(policy, isRead);
 	}
 
 	final void initBuffer() {

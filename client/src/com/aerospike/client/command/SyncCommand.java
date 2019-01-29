@@ -50,7 +50,7 @@ public abstract class SyncCommand extends Command {
 				socketTimeout = totalTimeout;
 			}
 		}
-		execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 0, 0);
+		execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
 	}
 
 	public final void execute(
@@ -62,12 +62,10 @@ public abstract class SyncCommand extends Command {
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
-			iteration++;
-
 			if (partition != null) {
 				// Single record command node retrieval.
 				try {
-					node = getNode(cluster, partition, policy.replica, isRead);
+					node = getNode(cluster, policy, partition, isRead);
 
 					//if (iteration > 0 && !isRead) {
 					//	Log.info("Retry: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
@@ -122,10 +120,7 @@ public abstract class SyncCommand extends Command {
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
-
-						if (isRead) {
-							super.sequence++;
-						}
+						shiftSequenceOnRead(policy, isRead);
 					}
 					else {
 						throw ae;
@@ -139,10 +134,7 @@ public abstract class SyncCommand extends Command {
 						node.closeConnection(conn);
 					}
 					isClientTimeout = true;
-
-					if (isRead) {
-						super.sequence++;
-					}
+					shiftSequenceOnRead(policy, isRead);
 				}
 				catch (RuntimeException re) {
 					// All runtime exceptions are considered fatal.  Do not retry.
@@ -156,10 +148,7 @@ public abstract class SyncCommand extends Command {
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					isClientTimeout = true;
-
-					if (isRead) {
-						super.sequence++;
-					}
+					shiftSequenceOnRead(policy, isRead);
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
@@ -173,10 +162,7 @@ public abstract class SyncCommand extends Command {
 			catch (Connection.ReadTimeout crt) {
 				// Connection already handled.
 				isClientTimeout = true;
-
-				if (isRead) {
-					super.sequence++;
-				}
+				shiftSequenceOnRead(policy, isRead);
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Retry.
@@ -226,6 +212,8 @@ public abstract class SyncCommand extends Command {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
+
+			iteration++;
 
 			if (shouldRetryBatch() && retryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
 				// Batch retried in separate commands.  Complete this command.

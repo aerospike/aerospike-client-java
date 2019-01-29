@@ -652,10 +652,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		recoverConnection();
 
 		// Attempt retry.
-		if (command.isRead) {
-			// Read commands shift to prole node on timeout.
-			command.sequence++;
-		}
+		command.shiftSequenceOnRead();
 
 		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 
@@ -748,11 +745,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		putConnection();
-
-		if (command.isRead) {
-			// Read commands shift to prole node on timeout.
-			command.sequence++;
-		}
+		command.shiftSequenceOnRead();
 
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
 		retry(ae, false);

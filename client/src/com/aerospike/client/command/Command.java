@@ -1005,35 +1005,7 @@ public abstract class Command {
 		Buffer.longToBytes(size, dataBuffer, 0);
 	}
 
-	public final Node getNode(Cluster cluster, Partition partition, Replica replica, boolean isRead) {
-		// Handle default case first.
-		if (replica == Replica.SEQUENCE) {
-			// Sequence always starts at master, so writes can go through the same algorithm.
-			return getSequenceNode(cluster, partition);
-		}
-
-		if (! isRead) {
-			// Writes will always proxy to master node.
-			return cluster.getMasterNode(partition);
-		}
-
-		switch (replica) {
-		default:
-		case MASTER:
-			return cluster.getMasterNode(partition);
-
-		case PREFER_RACK:
-			return getRackNode(cluster, partition);
-
-		case MASTER_PROLES:
-			return cluster.getMasterProlesNode(partition);
-
-		case RANDOM:
-			return cluster.getRandomNode();
-		}
-	}
-
-	private final Node getSequenceNode(Cluster cluster, Partition partition) {
+	public final Node getNode(Cluster cluster, Policy policy, Partition partition, boolean isRead) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(partition.namespace);
@@ -1042,6 +1014,39 @@ public abstract class Command {
 			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
 		}
 
+		if (partitions.cpMode && isRead && ! policy.linearizeRead) {
+			// Strong Consistency namespaces always use master node when read policy is sequential.
+			return cluster.getMasterNode(partitions, partition);
+		}
+
+		// Handle default case first.
+		if (policy.replica == Replica.SEQUENCE) {
+			// Sequence always starts at master, so writes can go through the same algorithm.
+			return getSequenceNode(cluster, partitions, partition);
+		}
+
+		if (! isRead) {
+			// Writes will always proxy to master node.
+			return cluster.getMasterNode(partitions, partition);
+		}
+
+		switch (policy.replica) {
+		default:
+		case MASTER:
+			return cluster.getMasterNode(partitions, partition);
+
+		case PREFER_RACK:
+			return getRackNode(cluster, partitions, partition);
+
+		case MASTER_PROLES:
+			return cluster.getMasterProlesNode(partitions, partition);
+
+		case RANDOM:
+			return cluster.getRandomNode();
+		}
+	}
+
+	private final Node getSequenceNode(Cluster cluster, Partitions partitions, Partition partition) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 
 		for (int i = 0; i < replicas.length; i++) {
@@ -1057,15 +1062,7 @@ public abstract class Command {
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
-	private final Node getRackNode(Cluster cluster, Partition partition) {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
+	private final Node getRackNode(Cluster cluster, Partitions partitions, Partition partition) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 		Node fallback = null;
 
@@ -1091,6 +1088,12 @@ public abstract class Command {
 
 		Node[] nodeArray = cluster.getNodes();
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
+	}
+
+	protected final void shiftSequenceOnRead(Policy policy, boolean isRead) {
+		if (isRead && ! policy.linearizeRead) {
+			sequence++;
+		}
 	}
 
 	public static void LogPolicy(Policy p) {

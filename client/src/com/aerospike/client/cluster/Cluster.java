@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -718,15 +718,7 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 
-	public final Node getMasterNode(Partition partition) throws AerospikeException.InvalidNode {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = partitionMap;
-		Partitions partitions  = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
+	public final Node getMasterNode(Partitions partitions, Partition partition) throws AerospikeException.InvalidNode {
 		Node node = partitions.replicas[0].get(partition.partitionId);
 
 		if (node != null && node.isActive()) {
@@ -736,15 +728,7 @@ public class Cluster implements Runnable, Closeable {
 		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
-	public final Node getMasterProlesNode(Partition partition) throws AerospikeException.InvalidNode {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = partitionMap;
-		Partitions partitions  = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
+	public final Node getMasterProlesNode(Partitions partitions, Partition partition) throws AerospikeException.InvalidNode {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 
 		for (int i = 0; i < replicas.length; i++) {

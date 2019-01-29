@@ -640,10 +640,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		recoverConnection();
 
 		// Attempt retry.
-		if (command.isRead) {
-			// Read commands shift to prole node on timeout.
-			command.sequence++;
-		}
+		command.shiftSequenceOnRead();
 
 		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 
@@ -733,11 +730,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	protected final void onServerTimeout() {
 		conn.unregister();
 		command.node.putAsyncConnection(conn, eventLoop.index);
-
-		if (command.isRead) {
-			// Read commands shift to prole node on timeout.
-			command.sequence++;
-		}
+		command.shiftSequenceOnRead();
 
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
 		retry(ae, false);
