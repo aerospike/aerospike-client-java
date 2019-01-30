@@ -609,7 +609,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		StringBuilder sb = new StringBuilder(200);
 
-		if (set != null && set.length() > 0) {
+		if (set != null) {
 			sb.append("truncate:namespace=");
 			sb.append(ns);
 			sb.append(";set=");
