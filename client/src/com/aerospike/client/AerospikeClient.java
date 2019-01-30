@@ -608,21 +608,32 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Node node = cluster.getRandomNode();
 
 		StringBuilder sb = new StringBuilder(200);
-		sb.append("truncate:namespace=");
-		sb.append(ns);
 
 		if (set != null && set.length() > 0) {
+			sb.append("truncate:namespace=");
+			sb.append(ns);
 			sb.append(";set=");
 			sb.append(set);
+		}
+		else {
+			// Servers >= 4.5.1.0 support truncate-namespace.
+			if (node.hasTruncateNamespace()) {
+				sb.append("truncate-namespace:namespace=");
+				sb.append(ns);
+			}
+			else {
+				sb.append("truncate:namespace=");
+				sb.append(ns);
+			}
 		}
 
 		if (beforeLastUpdate != null) {
 			sb.append(";lut=");
-			// convert to nanoseconds since unix epoch (1970-01-01)
+			// Convert to nanoseconds since unix epoch (1970-01-01)
 			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);
 		}
 		else {
-			// Servers >= 4.3.1.4 require lut argument.
+			// Servers >= 4.3.1.4 and <= 4.5.0.1 require lut argument.
 			if (node.hasLutNow()) {
 				sb.append(";lut=now");
 			}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,6 +48,7 @@ public class Node implements Closeable {
 	public static final int PARTITIONS = 4096;
 
 	public static final int HAS_GEO	= (1 << 0);
+	public static final int HAS_TRUNCATE_NS = (1 << 1);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
 	public static final int HAS_CLUSTER_STABLE = (1 << 6);
@@ -818,6 +819,13 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasLutNow() {
 		return (features & HAS_LUT_NOW) != 0;
+	}
+
+	/**
+	 * Does server support truncate-namespace info command.
+	 */
+	public final boolean hasTruncateNamespace() {
+		return (features & HAS_TRUNCATE_NS) != 0;
 	}
 
 	/**
