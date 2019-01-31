@@ -77,26 +77,22 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ReadListCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class ReadListCommand extends BaseCommand {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			List<BatchRead> records
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.records = records;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, records, batch);
+			setBatchRead(batchPolicy, records, batch);
 		}
 
 		@Override
@@ -114,30 +110,15 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new ReadListCommand(parent, batchNode, batchPolicy, records);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, records, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new ReadListCommand(parent, batchNode, policy, records);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequence, batch);
 		}
 	}
 
@@ -179,29 +160,25 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ReadSequenceCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class ReadSequenceCommand extends BaseCommand {
 		private final BatchSequenceListener listener;
 		private final List<BatchRead> records;
 
 		public ReadSequenceCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.listener = listener;
 			this.records = records;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, records, batch);
+			setBatchRead(batchPolicy, records, batch);
 		}
 
 		@Override
@@ -220,30 +197,15 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new ReadSequenceCommand(parent, batchNode, batchPolicy, listener, records);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, records, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new ReadSequenceCommand(parent, batchNode, policy, listener, records);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequence, batch);
 		}
 	}
 
@@ -288,9 +250,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class GetArrayCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class GetArrayCommand extends BaseCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Record[] records;
@@ -299,15 +259,13 @@ public final class AsyncBatch {
 		public GetArrayCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			String[] binNames,
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
@@ -316,7 +274,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		@Override
@@ -332,30 +290,15 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new GetArrayCommand(parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
 		}
 	}
 
@@ -400,9 +343,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class GetSequenceCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class GetSequenceCommand extends BaseCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final RecordSequenceListener listener;
@@ -411,15 +352,13 @@ public final class AsyncBatch {
 		public GetSequenceCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			String[] binNames,
 			RecordSequenceListener listener,
 			int readAttr
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.keys = keys;
 			this.binNames = binNames;
 			this.listener = listener;
@@ -428,7 +367,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		@Override
@@ -450,30 +389,15 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new GetSequenceCommand(parent, batchNode, batchPolicy, keys, binNames, listener, readAttr);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new GetSequenceCommand(parent, batchNode, policy, keys, binNames, listener, readAttr);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
 		}
 	}
 
@@ -516,29 +440,25 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ExistsArrayCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class ExistsArrayCommand extends BaseCommand {
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
 		public ExistsArrayCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
@@ -556,30 +476,15 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new ExistsArrayCommand(parent, batchNode, batchPolicy, keys, existsArray);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
 		}
 	}
 
@@ -620,29 +525,25 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ExistsSequenceCommand extends AsyncMultiCommand {
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	private static final class ExistsSequenceCommand extends BaseCommand {
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
 
 		public ExistsSequenceCommand(
 			AsyncMultiExecutor parent,
 			BatchNode batch,
-			BatchPolicy policy,
+			BatchPolicy batchPolicy,
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, batch.node, policy, false);
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, batchPolicy);
 			this.keys = keys;
 			this.listener = listener;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
@@ -662,35 +563,20 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
-			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
-			}
+		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		{
+			return new ExistsSequenceCommand(parent, batchNode, batchPolicy, keys, listener);
+		}
 
-			// Retry requires keys for this node to be split among other nodes.
-			// This can cause an exponential number of commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(parent.cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = new ExistsSequenceCommand(parent, batchNode, policy, keys, listener);
-				cmd.sequence = sequence;
-				cmds[count++] = cmd;
-			}
-			parent.executeBatchRetry(cmds, this, other, deadline);
-			return true;
+		@Override
+		protected List<BatchNode> generateBatchNodes()
+		{
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
 		}
 	}
 
 	//-------------------------------------------------------
-	// BaseExecutor
+	// Batch Base Executor
 	//-------------------------------------------------------
 
 	private static abstract class BaseExecutor extends AsyncMultiExecutor {
@@ -704,5 +590,52 @@ public final class AsyncBatch {
 			this.batchNodes = BatchNode.generateList(cluster, policy, keys);
 			this.taskSize = batchNodes.size();
 		}
+	}
+
+	//-------------------------------------------------------
+	// Batch Base Command
+	//-------------------------------------------------------
+
+	private static abstract class BaseCommand extends AsyncMultiCommand
+	{
+		protected final BatchNode batch;
+		protected final BatchPolicy batchPolicy;
+
+		public BaseCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy)
+		{
+			super(parent, batch.node, batchPolicy, false);
+			this.batch = batch;
+			this.batchPolicy = batchPolicy;
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
+			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
+				return false;
+			}
+
+			// Retry requires keys for this node to be split among other nodes.
+			// This can cause an exponential number of commands.
+			List<BatchNode> batchNodes = generateBatchNodes();
+
+			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+				// Batch node is the same.  Go through normal retry.
+				return false;
+			}
+
+			AsyncMultiCommand[] cmds = new AsyncMultiCommand[batchNodes.size()];
+			int count = 0;
+
+			for (BatchNode batchNode : batchNodes) {
+				AsyncMultiCommand cmd = createCommand(batchNode);
+				cmd.sequence = sequence;
+				cmds[count++] = cmd;
+			}
+			parent.executeBatchRetry(cmds, this, other, deadline);
+			return true;
+		}
+
+		abstract AsyncMultiCommand createCommand(BatchNode batchNode);
+		abstract List<BatchNode> generateBatchNodes();
 	}
 }
