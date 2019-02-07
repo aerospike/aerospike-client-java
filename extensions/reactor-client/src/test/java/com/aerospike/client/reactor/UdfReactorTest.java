@@ -47,8 +47,8 @@ public class UdfReactorTest extends ReactorTest {
 	@Test
 	public void udf() {
 		final Key key = new Key(args.namespace, args.set, "audfkey1");
-		final Bin bin = new Bin(binName, "string value");		
-		
+		final Bin bin = new Bin(binName, "string value");
+
 		Mono<KeyObject> mono = reactorClient.execute(key,
 				"record_example", "writeBin", Value.get(bin.name), bin.value)
 				// Write succeeded.  Now call read using udf.

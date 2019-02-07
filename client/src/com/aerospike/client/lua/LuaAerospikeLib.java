@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,25 +28,25 @@ import com.aerospike.client.Log.Level;
 public final class LuaAerospikeLib extends OneArgFunction {
 
 	private final LuaInstance instance;
-	
+
 	public LuaAerospikeLib(LuaInstance instance) {
 		this.instance = instance;
 	}
 
-	public LuaValue call(LuaValue env) {		
+	public LuaValue call(LuaValue env) {
 		LuaTable meta = new LuaTable();
 		meta.set("__index", new index());
-		
-		LuaTable table = new LuaTable();		
+
+		LuaTable table = new LuaTable();
 		table.setmetatable(meta);
-		
-		instance.registerPackage("aerospike", table);		
+
+		instance.registerPackage("aerospike", table);
 		return table;
 	}
 
 	public static final class index extends TwoArgFunction {
 		private ThreeArgFunction func = new log();
-		
+
 		@Override
 		public LuaValue call(LuaValue arg1, LuaValue arg2) {
 			return func;
@@ -57,7 +57,7 @@ public final class LuaAerospikeLib extends OneArgFunction {
 		@Override
 		public LuaValue call(LuaValue arg1, LuaValue arg2, LuaValue arg3) {
 			String message = arg3.toString();
-			
+
 			switch(arg2.toint()) {
 			case 1:
 				Log.log(Level.WARN, message);
@@ -70,7 +70,7 @@ public final class LuaAerospikeLib extends OneArgFunction {
 				Log.log(Level.DEBUG, message);
 				break;
 			}
-			
+
 			return NIL;
 		}
 	}

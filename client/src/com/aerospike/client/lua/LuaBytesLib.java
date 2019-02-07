@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ import org.luaj.vm2.lib.VarArgFunction;
 public final class LuaBytesLib extends OneArgFunction {
 
 	private final LuaInstance instance;
-	
+
 	public LuaBytesLib(LuaInstance instance) {
 		this.instance = instance;
 		instance.load(new MetaLib(instance));
@@ -37,10 +37,10 @@ public final class LuaBytesLib extends OneArgFunction {
 	public LuaValue call(LuaValue env) {
 		LuaTable meta = new LuaTable(0,2);
 		meta.set("__call", new create(instance));
-		
+
 		LuaTable table = new LuaTable(0,50);
 		table.setmetatable(meta);
-		
+
 		new bytescode(table, 0, "size");
 		new bytescode(table, 2, "get_byte");
 		new bytescode(table, 3, "get_type");
@@ -85,7 +85,7 @@ public final class LuaBytesLib extends OneArgFunction {
 		new bytesbool(table, 18, "append_int64");
 		new bytesbool(table, 18, "append_int64_be");
 		new bytesbool(table, 19, "append_int64_le");
-		
+
 		instance.registerPackage("bytes", table);
 		return table;
 	}
@@ -111,54 +111,54 @@ public final class LuaBytesLib extends OneArgFunction {
 
 	private static final class create extends VarArgFunction {
 		private final LuaInstance instance;
-		
+
 		public create(LuaInstance instance) {
 			this.instance = instance;
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			int size = args.toint(2);  // size is optional, defaults to zero.
-			return new LuaBytes(instance, size);		
+			return new LuaBytes(instance, size);
 		}
 	}
-	
+
 	private static final class bytescode extends VarArgFunction {
 		public bytescode(LuaTable table, int id, String name) {
 			super.opcode = id;
 			super.name = name;
 			table.set(name, this);
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			LuaBytes bytes = (LuaBytes)args.arg(1);
-			
+
 			switch (opcode) {
 			case 0: // __len, size
 				return LuaInteger.valueOf(bytes.size());
-				
+
 			case 1: // __tostring
 				return LuaString.valueOf(bytes.toString());
-				
+
 			case 2: // __index, get_byte
 				return LuaInteger.valueOf(bytes.getByte(args.arg(2).toint() - 1));
-				
+
 			case 3: // get_type
 				return LuaInteger.valueOf(bytes.getType());
-			
+
 			case 4: // get_string
 				return LuaString.valueOf(bytes.getString(args.arg(2).toint() - 1, args.arg(3).toint()));
-				
+
 			case 5: // get_bytes
 				return bytes.getBytes(args.arg(2).toint() - 1, args.arg(3).toint());
-				
+
 			case 6: // get_int16, get_int16_be
 				return LuaInteger.valueOf(bytes.getBigInt16(args.arg(2).toint() - 1));
 
 			case 7: // get_int16_le
 				return LuaInteger.valueOf(bytes.getLittleInt16(args.arg(2).toint() - 1));
-				
+
 			case 8: // get_int32, get_int32_be
 				return LuaInteger.valueOf(bytes.getBigInt32(args.arg(2).toint() - 1));
 
@@ -170,17 +170,17 @@ public final class LuaBytesLib extends OneArgFunction {
 
 			case 11: // get_int64_le
 				return LuaNumber.valueOf(bytes.getLittleInt64(args.arg(2).toint() - 1));
-				
+
 			case 12: // get_var_int
 				int[] results = bytes.getVarInt(args.arg(2).toint() - 1);
 				return LuaValue.varargsOf(new LuaValue[] {LuaInteger.valueOf(results[0]), LuaInteger.valueOf(results[1])});
-				
+
 			case 13: // set_var_int
 				return LuaInteger.valueOf(bytes.setVarInt(args.arg(2).toint() - 1, args.arg(3).toint()));
-				
+
 			case 14: // append_var_int
 				return LuaInteger.valueOf(bytes.appendVarInt(args.arg(2).toint()));
-				
+
 			default:
 				return NIL;
 			}
@@ -193,11 +193,11 @@ public final class LuaBytesLib extends OneArgFunction {
 			super.name = name;
 			table.set(name, this);
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			LuaBytes bytes = (LuaBytes)args.arg(1);
-			
+
 			try {
 				switch (opcode) {
 				case 0: // __newindex, set_byte
@@ -207,47 +207,47 @@ public final class LuaBytesLib extends OneArgFunction {
 				case 1: // set_size
 					bytes.setCapacity(args.arg(2).toint() - 1);
 					break;
-					
+
 				case 2: // set_type
 					bytes.setType(args.arg(2).toint());
 					break;
-				
+
 				case 3: // set_string
 					bytes.setString(args.arg(2).toint() - 1, args.arg(3).tojstring());
 					break;
-										
+
 				case 4: // set_bytes
 					bytes.setBytes(args.arg(2).toint() - 1, (LuaBytes)args.arg(3), args.arg(4).toint());
 					break;
-					
+
 				case 5: // set_int16 and set_int16_be
 					bytes.setBigInt16(args.arg(2).toint() - 1, args.arg(3).toint());
 					break;
-	
+
 				case 6: // set_int16_le
 					bytes.setLittleInt16(args.arg(2).toint() - 1, args.arg(3).toint());
 					break;
-					
+
 				case 7: // set_int32 and set_int32_be
 					bytes.setBigInt32(args.arg(2).toint() - 1, args.arg(3).toint());
 					break;
-					
+
 				case 8: // set_int32_le
 					bytes.setLittleInt32(args.arg(2).toint() - 1, args.arg(3).toint());
 					break;
-					
+
 				case 9: // set_int64 and set_int64_be
 					bytes.setBigInt64(args.arg(2).toint() - 1, args.arg(3).tolong());
 					break;
-					
+
 				case 10: // set_int64_le
 					bytes.setLittleInt64(args.arg(2).toint() - 1, args.arg(3).tolong());
 					break;
-					
+
 				case 11: // append_string
 					bytes.appendString(args.arg(2).tojstring());
 					break;
-					
+
 				case 12: // append_bytes
 					bytes.appendBytes((LuaBytes)args.arg(2), args.arg(3).toint());
 					break;
@@ -259,35 +259,35 @@ public final class LuaBytesLib extends OneArgFunction {
 				case 14: // append_byte
 					bytes.appendByte(args.arg(2).tobyte());
 					break;
-					
+
 				case 15: // append_int16_le
 					bytes.appendLittleInt16(args.arg(2).toint());
 					break;
-					
+
 				case 16: // append_int32 and append_int32_be
 					bytes.appendBigInt32(args.arg(2).toint());
 					break;
-					
+
 				case 17: // append_int32_le
 					bytes.appendLittleInt32(args.arg(2).toint());
 					break;
-					
+
 				case 18: // append_int64 and append_int64_be
 					bytes.appendBigInt64(args.arg(2).tolong());
 					break;
-					
+
 				case 19: // append_int64_le
 					bytes.appendLittleInt64(args.arg(2).tolong());
 					break;
-					
+
 				default:
 					return LuaValue.valueOf(false);
 				}
-				return LuaValue.valueOf(true);			
+				return LuaValue.valueOf(true);
 			}
 			catch (Exception e) {
 				return LuaValue.valueOf(false);
 			}
 		}
-	}		
+	}
 }

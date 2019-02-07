@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,13 +38,13 @@ public abstract class EventLoopBase implements EventLoop {
     /**
      * Common event loop constructor.
      */
-	public EventLoopBase(EventPolicy policy, int index) {		
+	public EventLoopBase(EventPolicy policy, int index) {
 		if (policy.maxCommandsInProcess > 0 && policy.maxCommandsInProcess < 5) {
 			throw new AerospikeException("maxCommandsInProcess " + policy.maxCommandsInProcess + " must be 0 or >= 5");
 		}
 		delayQueue = (policy.maxCommandsInProcess > 0) ? new ArrayDeque<Runnable>(policy.queueInitialCapacity) : null;
 		bufferQueue = new ArrayDeque<byte[]>(policy.commandsPerEventLoop);
-		timer = new HashedWheelTimer(this, policy.minTimeout, TimeUnit.MILLISECONDS, policy.ticksPerWheel);		
+		timer = new HashedWheelTimer(this, policy.minTimeout, TimeUnit.MILLISECONDS, policy.ticksPerWheel);
 		this.index = index;
 		this.maxCommandsInProcess = policy.maxCommandsInProcess;
 		this.maxCommandsInQueue = policy.maxCommandsInQueue;
@@ -54,17 +54,17 @@ public abstract class EventLoopBase implements EventLoop {
 	 * Return the approximate number of commands currently being processed on
 	 * the event loop.  The value is approximate because the call may be from a
 	 * different thread than the event loop’s thread and there are no locks or
-	 * atomics used. 
-	 */	
+	 * atomics used.
+	 */
 	public int getProcessSize() {
 		return pending;
 	}
-	
+
 	/**
 	 * Return the approximate number of commands stored on this event loop's
 	 * delay queue that have not been started yet.  The value is approximate
 	 * because the call may be from a different thread than the event loop’s
-	 * thread and there are no locks or atomics used. 
+	 * thread and there are no locks or atomics used.
 	 */
 	public int getQueueSize() {
 		return (delayQueue != null) ? delayQueue.size() : 0;

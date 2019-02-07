@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,23 +29,23 @@ public final class ThreadLocalData {
 
 	private static final int THREAD_LOCAL_CUTOFF = 1024 * 128;  // 128 KB
 	//private static final int MAX_BUFFER_SIZE = 1024 * 1024;  // 1 MB
-	
+
 	private static final ThreadLocal<byte[]> BufferThreadLocal = new ThreadLocal<byte[]>() {
 		@Override protected byte[] initialValue() {
 			return new byte[DefaultBufferSize];
 		}
 	};
-	
+
 	/**
 	 * Return thread local buffer.
 	 */
 	public static byte[] getBuffer() {
 		return BufferThreadLocal.get();
 	}
-	
+
 	/**
-	 * Resize and return thread local buffer if the requested size <= 128 KB. 
-	 * Otherwise, the thread local buffer will not be resized and a new 
+	 * Resize and return thread local buffer if the requested size <= 128 KB.
+	 * Otherwise, the thread local buffer will not be resized and a new
 	 * buffer will be returned from heap memory.
 	 * <p>
 	 * This method should only be called when the current buffer is too small to
@@ -58,11 +58,11 @@ public final class ThreadLocalData {
 			if (size > MAX_BUFFER_SIZE) {
 				throw new IllegalArgumentException("Thread " + Thread.currentThread().getId() + " invalid buffer size: " + size);
 			}*/
-			
+
 			if (Log.debugEnabled()) {
 				Log.debug("Thread " + Thread.currentThread().getId() + " allocate buffer on heap " + size);
 			}
-			return new byte[size];		
+			return new byte[size];
 		}
 
 		if (Log.debugEnabled()) {
@@ -70,5 +70,5 @@ public final class ThreadLocalData {
 		}
 		BufferThreadLocal.set(new byte[size]);
 		return BufferThreadLocal.get();
-	}	
+	}
 }

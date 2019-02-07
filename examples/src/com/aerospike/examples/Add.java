@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -62,7 +62,7 @@ public class Add extends Example {
 		int expected = 15;
 
 		if (received == expected) {
-			console.info("Add successful: ns=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Add successful: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
@@ -71,14 +71,14 @@ public class Add extends Example {
 
 		// Demonstrate add and get combined.
 		bin = new Bin(binName, 30);
-		console.info("Add " + bin.value + " to existing record.");		
+		console.info("Add " + bin.value + " to existing record.");
 		record = client.operate(params.writePolicy, key, Operation.add(bin), Operation.get(bin.name));
 
 		expected = 45;
 		received = record.getInt(bin.name);
 
 		if (received == expected) {
-			console.info("Add successful: ns=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Add successful: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {

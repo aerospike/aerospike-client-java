@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,7 @@ public class QueryRegionFilter extends Example {
 			console.info("Geospatial functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
 		String binName1 = params.getBinName("filterloc");
@@ -57,9 +57,9 @@ public class QueryRegionFilter extends Example {
 		createIndex(client, params, indexName, binName1);
 		writeRecords(client, params, keyPrefix, binName1, binName2, size);
 		runQuery(client, params, indexName, binName1, binName2);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void register(AerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/geo_filter_example.lua",
 											"geo_filter_example.lua", Language.LUA);
@@ -73,11 +73,11 @@ public class QueryRegionFilter extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set,
 												indexName, binName,
@@ -160,13 +160,13 @@ public class QueryRegionFilter extends Example {
 
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Object result = rs.getObject();
 				console.info("Record found: value2=%s", result);
 				count++;
 			}
-			
+
 			if (count != 2) {
 				console.error("wrong number of schools found. %d != 2", count);
 			}

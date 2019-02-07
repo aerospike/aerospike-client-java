@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,14 +25,14 @@ import com.aerospike.client.Key;
 public interface WriteListener {
 	/**
 	 * This method is called when an asynchronous write command completes successfully.
-	 * 
+	 *
 	 * @param key					unique record identifier
 	 */
 	public void onSuccess(Key key);
-	
+
 	/**
 	 * This method is called when an asynchronous write command fails.
-	 * 
+	 *
 	 * @param exception				error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,7 +45,7 @@ public class TestAsyncQuery extends TestAsync {
 	public static void initialize() {
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -59,7 +59,7 @@ public class TestAsyncQuery extends TestAsync {
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
 
 	@Test
@@ -69,36 +69,36 @@ public class TestAsyncQuery extends TestAsync {
 		for (int i = 1; i <= size; i++) {
 			final Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
-			
-			client.put(eventLoop, new WriteListener() {				
+
+			client.put(eventLoop, new WriteListener() {
 				public void onSuccess(final Key key) {
 					if (count.incrementAndGet() == size) {
 						runQuery();
 					}
 				}
-				
+
 				public void onFailure(AerospikeException e) {
 					setError(e);
 					notifyComplete();
 				}
-			}, null, key, bin);		
+			}, null, key, bin);
 		}
-		
+
 		waitTillComplete();
 	}
 
 	private void runQuery() {
 		int begin = 26;
 		int end = 34;
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		
+
 		final AtomicInteger count = new AtomicInteger();
-		
+
 		client.query(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) throws AerospikeException {
 				int result = record.getInt(binName);
@@ -108,15 +108,15 @@ public class TestAsyncQuery extends TestAsync {
 
 			public void onSuccess() {
 				int size = count.get();
-				assertEquals(9, size);				
+				assertEquals(9, size);
 				notifyComplete();
 			}
 
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			} 
-			
-		}, null, stmt);	
+			}
+
+		}, null, stmt);
 	}
 }

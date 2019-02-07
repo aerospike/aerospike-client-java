@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,9 +17,9 @@
 package com.aerospike.client;
 
 /**
- * Database operation definition.  The class is used in client's operate() method. 
+ * Database operation definition.  The class is used in client's operate() method.
  */
-public final class Operation {	
+public final class Operation {
 	/**
 	 * Create read bin database operation.
 	 */
@@ -54,14 +54,14 @@ public final class Operation {
 	public static Operation append(Bin bin) {
 		return new Operation(Type.APPEND, bin.name, bin.value);
 	}
-	
+
 	/**
 	 * Create string prepend database operation.
 	 */
 	public static Operation prepend(Bin bin) {
 		return new Operation(Type.PREPEND, bin.name, bin.value);
 	}
-	
+
 	/**
 	 * Create integer add database operation.
 	 */
@@ -76,7 +76,7 @@ public final class Operation {
 		return new Operation(Type.TOUCH);
 	}
 
-	public static enum Type {	
+	public static enum Type {
 		READ(1),
 		READ_HEADER(1),
 		WRITE(2),
@@ -88,9 +88,9 @@ public final class Operation {
 		APPEND(9),
 		PREPEND(10),
 		TOUCH(11);
-		
+
 		public final int protocolType;
-		
+
 		private Type(int protocolType) {
 			this.protocolType = protocolType;
 		}
@@ -100,17 +100,17 @@ public final class Operation {
 	 * Type of operation.
 	 */
 	public final Type type;
-	
+
 	/**
 	 * Optional bin name used in operation.
 	 */
 	public final String binName;
-	
+
 	/**
 	 * Optional argument to operation.
 	 */
 	public final Value value;
-		 
+
 	public Operation(Type type, String binName, Value value) {
 		this.type = type;
 		this.binName = binName;
@@ -122,7 +122,7 @@ public final class Operation {
 		this.binName = binName;
 		this.value = Value.getAsNull();
 	}
-	
+
 	private Operation(Type type) {
 		this.type = type;
 		this.binName = null;

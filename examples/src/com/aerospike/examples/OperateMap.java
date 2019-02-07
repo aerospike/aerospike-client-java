@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,7 +44,7 @@ public class OperateMap extends Example {
 		if (! params.hasCDTMap) {
 			console.info("CDT map functions are not supported by the connected Aerospike server.");
 			return;
-		}	
+		}
 		runSimpleExample(client, params);
 		runScoreExample(client, params);
 		runListRangeExample(client, params);
@@ -56,82 +56,82 @@ public class OperateMap extends Example {
 	public void runSimpleExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
-		
+
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
-		
+
 		Map<Value,Value> inputMap = new HashMap<Value,Value>();
 		inputMap.put(Value.get(1), Value.get(55));
 		inputMap.put(Value.get(2), Value.get(33));
-		
+
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key, 
+		Record record = client.operate(params.writePolicy, key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
-		
-		console.info("Record: " + record);			
-			
+
+		console.info("Record: " + record);
+
 		// Pop value from map and also return new size of map.
-		record = client.operate(params.writePolicy, key, 
+		record = client.operate(params.writePolicy, key,
 				MapOperation.removeByKey(binName, Value.get(1), MapReturnType.VALUE),
 				MapOperation.size(binName)
 				);
-		
-		console.info("Record: " + record);			
+
+		console.info("Record: " + record);
 
 		// There should be one result for each map operation on the same map bin.
-		// In this case, there are two map operations (pop and size), so there 
+		// In this case, there are two map operations (pop and size), so there
 		// should be two results.
 		List<?> list = record.getList(binName);
-		
+
 		for (Object value : list) {
-			console.info("Received: " + value);			
+			console.info("Received: " + value);
 		}
 	}
-	
+
 	/**
 	 * Map score example.
 	 */
 	public void runScoreExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
-		
+
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
-		
+
 		Map<Value,Value> inputMap = new HashMap<Value,Value>();
 		inputMap.put(Value.get("Charlie"), Value.get(55));
 		inputMap.put(Value.get("Jim"), Value.get(98));
 		inputMap.put(Value.get("John"), Value.get(76));
 		inputMap.put(Value.get("Harry"), Value.get(82));
-		
+
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key, 
+		Record record = client.operate(params.writePolicy, key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
-		
-		console.info("Record: " + record);			
-			
+
+		console.info("Record: " + record);
+
 		// Increment some user scores.
-		record = client.operate(params.writePolicy, key, 
+		record = client.operate(params.writePolicy, key,
 				MapOperation.increment(MapPolicy.Default, binName, Value.get("John"), Value.get(5)),
 				MapOperation.decrement(MapPolicy.Default, binName, Value.get("Jim"), Value.get(4))
 				);
-		
-		console.info("Record: " + record);			
+
+		console.info("Record: " + record);
 
 		// Get top two scores.
-		record = client.operate(params.writePolicy, key, 
+		record = client.operate(params.writePolicy, key,
 				MapOperation.getByRankRange(binName, -2, 2, MapReturnType.KEY_VALUE)
 				);
 
-		console.info("Record: " + record);			
+		console.info("Record: " + record);
 
 		// Print results.
 		List<?> results = record.getList(binName);
-		
+
 		for (Object result : results) {
-			console.info("Received: " + result);			
+			console.info("Received: " + result);
 		}
 	}
 
@@ -141,14 +141,14 @@ public class OperateMap extends Example {
 	public void runListRangeExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
-		
+
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
-		
+
 		List<Value> l1 = new ArrayList<Value>();
 		l1.add(Value.get(new GregorianCalendar(2018, 1, 1).getTime()));
 		l1.add(Value.get(1));
-		
+
 		List<Value> l2 = new ArrayList<Value>();
 		l2.add(Value.get(new GregorianCalendar(2018, 1, 2).getTime()));
 		l2.add(Value.get(2));
@@ -164,30 +164,30 @@ public class OperateMap extends Example {
 		List<Value> l5 = new ArrayList<Value>();
 		l5.add(Value.get(new GregorianCalendar(2018, 2, 5).getTime()));
 		l5.add(Value.get(5));
-		
+
 		Map<Value,Value> inputMap = new HashMap<Value,Value>();
 		inputMap.put(Value.get("Charlie"), Value.get(l1));
 		inputMap.put(Value.get("Jim"), Value.get(l2));
 		inputMap.put(Value.get("John"), Value.get(l3));
 		inputMap.put(Value.get("Harry"), Value.get(l4));
 		inputMap.put(Value.get("Bill"), Value.get(l5));
-		
+
 		// Write values to empty map.
-		Record record = client.operate(params.writePolicy, key, 
+		Record record = client.operate(params.writePolicy, key,
 				MapOperation.putItems(MapPolicy.Default, binName, inputMap)
 				);
-		
-		console.info("Record: " + record);			
-			
+
+		console.info("Record: " + record);
+
 		List<Value> end = new ArrayList<Value>();
 		end.add(Value.get(new GregorianCalendar(2018, 2, 2).getTime()));
 		end.add(Value.getAsNull());
 
 		// Delete values < end.
-		record = client.operate(params.writePolicy, key, 
+		record = client.operate(params.writePolicy, key,
 				MapOperation.removeByValueRange(binName, null, Value.get(end), MapReturnType.COUNT)
 				);
-		
+
 		console.info("Record: " + record);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,15 +25,15 @@ import com.aerospike.client.Key;
 public interface DeleteListener {
 	/**
 	 * This method is called when an asynchronous delete command completes successfully.
-	 * 
+	 *
 	 * @param key				unique record identifier
 	 * @param existed			whether record existed on server before deletion
 	 */
 	public void onSuccess(Key key, boolean existed);
-	
+
 	/**
 	 * This method is called when an asynchronous delete command fails.
-	 * 
+	 *
 	 * @param exception			error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

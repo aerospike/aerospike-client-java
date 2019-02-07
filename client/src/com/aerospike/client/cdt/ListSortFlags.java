@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,7 @@ public final class ListSortFlags {
 	 * Default.  Preserve duplicate values when sorting list.
 	 */
 	public static final int DEFAULT = 0;
-	
+
 	/**
 	 * Drop duplicate values when sorting list.
 	 */

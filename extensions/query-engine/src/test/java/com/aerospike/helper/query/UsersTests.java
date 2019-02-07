@@ -114,7 +114,7 @@ public class UsersTests extends HelperTests{
 			}
 			createTweets();
 		}
-	} 
+	}
 	public void createTweets() throws AerospikeException {
 		String[] randomTweets = {
 				"For just $1 you get a half price download of half of the song and listen to it just once.",
@@ -146,7 +146,7 @@ public class UsersTests extends HelperTests{
 		int maxTweets = 20;
 		String username;
 		long ts = 0;
-		
+
 
 		for (int j = 0; j < totalUsers; j++) {
 			// Check if user record exists
@@ -176,10 +176,10 @@ public class UsersTests extends HelperTests{
 				}
 			}
 		}
-	} 
-	
+	}
+
 	private long getTimeStamp() {
 		return System.currentTimeMillis();
-	} 
+	}
 
 }

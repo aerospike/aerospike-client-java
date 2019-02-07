@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -64,11 +64,11 @@ public class Arguments {
 		if (fixedBins != null) {
 		    return (multiBin)? fixedBins : fixedBin;
 		}
-		
-		int binCount = (multiBin)? nBins : 1;	
+
+		int binCount = (multiBin)? nBins : 1;
 		Bin[] bins = new Bin[binCount];
 		int specLength = objectSpec.length;
-		
+
 		for (int i = 0; i < binCount; i++) {
 			String name = Integer.toString(i);
 			// Use passed in value for 0th bin. Random for others.
@@ -78,7 +78,7 @@ public class Arguments {
 		}
 		return bins;
 	}
-    
+
 	private static Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 		switch (spec.type) {
 		case 'I':
@@ -87,12 +87,12 @@ public class Arguments {
 			} else {
 				return Value.get(keySeed);
 			}
-			
+
 		case 'B':
 			byte[] ba = new byte[spec.size];
 			random.nextBytes(ba);
 			return Value.get(ba);
-				
+
 		case 'S':
 			StringBuilder sb = new StringBuilder(spec.size);
             for (int i = 0; i < spec.size; i++) {
@@ -100,12 +100,12 @@ public class Arguments {
                 sb.append((char)(random.nextInt(94) + 33));
             }
 			return Value.get(sb.toString());
-			
+
 		case 'D':
 			return Value.get(System.currentTimeMillis());
-			
+
 		default:
 			return Value.getAsNull();
 		}
-	}	
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,7 @@ import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.util.RandomShift;
 
 public final class InsertTaskAsync extends InsertTask {
-	
+
 	private final AerospikeClient client;
 	private final EventLoop eventLoop;
 	private final RandomShift random;
@@ -35,7 +35,7 @@ public final class InsertTaskAsync extends InsertTask {
 	private long keyCount;
 	private long begin;
 	private final boolean useLatency;
-	
+
 	public InsertTaskAsync(
 		AerospikeClient client,
 		EventLoop eventLoop,
@@ -45,40 +45,40 @@ public final class InsertTaskAsync extends InsertTask {
 		long keyMax
 	) {
 		super(args, counters);
-		this.client = client;		
+		this.client = client;
 		this.eventLoop = eventLoop;
 		this.random = new RandomShift();
 		this.keyStart = keyStart;
 		this.keyMax = keyMax;
 		this.useLatency = counters.write.latency != null;
-		
+
 		if (useLatency) {
 			listener = new LatencyWriteHandler();
 		}
 		else {
-			listener = new WriteHandler();		
+			listener = new WriteHandler();
 		}
 	}
-	
+
 	public void runCommand() {
 		long currentKey = keyStart + keyCount;
 		Key key = new Key(args.namespace, args.setName, currentKey);
 		Bin[] bins = args.getBins(random, true, currentKey);
-		
+
 		if (useLatency) {
 			begin = System.nanoTime();
 		}
-		client.put(eventLoop, listener, args.writePolicy, key, bins);		
+		client.put(eventLoop, listener, args.writePolicy, key, bins);
 	}
-	
+
 	private final class LatencyWriteHandler implements WriteListener {
 		@Override
 		public void onSuccess(Key key) {
 			long elapsed = System.nanoTime() - begin;
 			counters.write.latency.add(elapsed);
-			counters.write.count.getAndIncrement();	
+			counters.write.count.getAndIncrement();
 			keyCount++;
-					
+
 			if (keyCount < keyMax) {
 				// Try next command.
 				runCommand();
@@ -93,12 +93,12 @@ public final class InsertTaskAsync extends InsertTask {
 		}
 	}
 
-	private final class WriteHandler implements WriteListener {		
+	private final class WriteHandler implements WriteListener {
 		@Override
 		public void onSuccess(Key key) {
-			counters.write.count.getAndIncrement();	
+			counters.write.count.getAndIncrement();
 			keyCount++;
-					
+
 			if (keyCount < keyMax) {
 				// Try next command.
 				runCommand();

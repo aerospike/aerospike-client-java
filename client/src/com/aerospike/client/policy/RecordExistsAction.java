@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,14 +31,14 @@ public enum RecordExistsAction {
 	 * Merge write command bins with existing bins.
 	 */
 	UPDATE_ONLY,
-	
+
 	/**
 	 * Create or replace record.
 	 * Delete existing bins not referenced by write command bins.
 	 * Supported by Aerospike server versions >= 3.1.6.
 	 */
 	REPLACE,
-	
+
 	/**
 	 * Replace record only. Fail if record does not exist.
 	 * Delete existing bins not referenced by write command bins.
@@ -47,7 +47,7 @@ public enum RecordExistsAction {
 	REPLACE_ONLY,
 
 	/**
-	 * Create only.  Fail if record exists. 
+	 * Create only.  Fail if record exists.
 	 */
 	CREATE_ONLY
 }

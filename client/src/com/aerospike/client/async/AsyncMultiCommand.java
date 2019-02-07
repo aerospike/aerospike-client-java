@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,7 +31,7 @@ import com.aerospike.client.command.FieldType;
 import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
-	
+
 	final AsyncMultiExecutor parent;
 	int groups;
 	int resultCode;
@@ -41,7 +41,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	int fieldCount;
 	int opCount;
 	final boolean stopOnNotFound;
-		
+
 	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean stopOnNotFound) {
 		super(policy, null, node, true);
 		this.parent = parent;
@@ -52,7 +52,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	final boolean parseResult() {
 		// Parse each message response and add it to the result array
 		dataOffset = 0;
-		
+
 		while (dataOffset < receiveSize) {
 			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
 
@@ -70,7 +70,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			// If this is the end marker of the response, do not proceed further
 			if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0) {
 				return true;
-			}			
+			}
 			generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
 			expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
 			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset + 14);
@@ -78,9 +78,9 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
 
 			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
-			
-			Key key = parseKey();	
-			parseRow(key);			
+
+			Key key = parseKey();
+			parseRow(key);
 		}
 		return false;
 	}
@@ -90,26 +90,26 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		String namespace = null;
 		String setName = null;
 		Value userKey = null;
-		
+
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
-			
+
 			int fieldtype = dataBuffer[dataOffset++];
 			int size = fieldlen - 1;
-			
+
 			switch (fieldtype) {
 			case FieldType.DIGEST_RIPE:
 				digest = new byte[size];
 				System.arraycopy(dataBuffer, dataOffset, digest, 0, size);
 				dataOffset += size;
 				break;
-			
+
 			case FieldType.NAMESPACE:
 				namespace = Buffer.utf8ToString(dataBuffer, dataOffset, size);
 				dataOffset += size;
 				break;
-				
+
 			case FieldType.TABLE:
 				setName = Buffer.utf8ToString(dataBuffer, dataOffset, size);
 				dataOffset += size;
@@ -123,19 +123,19 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 				break;
 			}
 		}
-		return new Key(namespace, digest, setName, userKey);		
+		return new Key(namespace, digest, setName, userKey);
 	}
-	
-	protected final Record parseRecord() {		
+
+	protected final Record parseRecord() {
 		Map<String,Object> bins = null;
-		
+
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
 			byte particleType = dataBuffer[dataOffset+5];
 			byte nameSize = dataBuffer[dataOffset+7];
 			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
 			dataOffset += 4 + 4 + nameSize;
-	
+
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 			dataOffset += particleBytesSize;
@@ -145,9 +145,9 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 			bins.put(name, value);
 	    }
-	    return new Record(bins, generation, expiration);	    
+	    return new Record(bins, generation, expiration);
 	}
-	
+
 	@Override
 	protected final void onSuccess() {
 		parent.childSuccess(node);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public class TestQuerySum extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			itask.waitTillComplete();
@@ -65,38 +65,38 @@ public class TestQuerySum extends TestSync {
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);			
+			Bin bin = new Bin(binName, i);
 			client.put(null, key, bin);
 		}
 	}
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	public void querySum() {
 		int begin = 4;
 		int end = 7;
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setAggregateFunction(TestQuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
-		
+
 		ResultSet rs = client.queryAggregate(null, stmt);
-		
+
 		try {
 			int expected = 22; // 4 + 5 + 6 + 7
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Object object = rs.getObject();
 				long sum = 0;
-				
+
 				if (object instanceof Long) {
 					sum = (Long)rs.getObject();
 				}

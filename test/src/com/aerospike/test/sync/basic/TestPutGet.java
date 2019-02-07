@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,30 +31,30 @@ public class TestPutGet extends TestSync {
 		if (args.singleBin) {
 			Key key = new Key(args.namespace, args.set, "putgetkey");
 			Bin bin = new Bin("", "value");
-			
+
 			client.put(null, key, bin);
 			Record record = client.get(null, key);
-			assertBinEqual(key, record, bin);			
+			assertBinEqual(key, record, bin);
 		}
 		else {
 			Key key = new Key(args.namespace, args.set, "putgetkey");
 			Bin bin1 = new Bin("bin1", "value1");
 			Bin bin2 = new Bin("bin2", "value2");
-			
+
 			client.put(null, key, bin1, bin2);
 			Record record = client.get(null, key);
 			assertBinEqual(key, record, bin1);
-			assertBinEqual(key, record, bin2);			
+			assertBinEqual(key, record, bin2);
 		}
 	}
-	
+
 	@Test
 	public void getHeader() {
 		Key key = new Key(args.namespace, args.set, "putgetkey");
 
 		Record record = client.getHeader(null, key);
 		assertRecordFound(key, record);
-		
+
 		// Generation should be greater than zero.  Make sure it's populated.
 		if (record.generation == 0) {
 			fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);

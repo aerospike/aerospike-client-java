@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public class TestOperate extends TestSync {
 		// Write initial record.
 		Key key = new Key(args.namespace, args.set, "opkey");
 		Bin bin1 = new Bin("optintbin", 7);
-		Bin bin2 = new Bin("optstringbin", "string value");		
+		Bin bin2 = new Bin("optstringbin", "string value");
 		client.put(null, key, bin1, bin2);
 
 		// Add integer, write new string and read record.
@@ -39,5 +39,5 @@ public class TestOperate extends TestSync {
 		Record record = client.operate(null, key, Operation.add(bin3), Operation.put(bin4), Operation.get());
 		assertBinEqual(key, record, bin3.name, 11);
 		assertBinEqual(key, record, bin4);
-	}	
+	}
 }

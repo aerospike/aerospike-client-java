@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,28 +22,28 @@ public final class Partitions {
 	public final AtomicReferenceArray<Node>[] replicas;
 	final int[] regimes;
 	public final boolean cpMode;
-	
+
 	@SuppressWarnings("unchecked")
 	public Partitions(int partitionCount, int replicaCount, boolean cpMode) {
 		this.replicas = new AtomicReferenceArray[replicaCount];
-		
+
 		for (int i = 0; i < replicaCount; i++) {
 			this.replicas[i] = new AtomicReferenceArray<Node>(partitionCount);
 		}
 		this.regimes = new int[partitionCount];
 		this.cpMode = cpMode;
-	}	
-	
+	}
+
 	/**
 	 * Copy partition map while reserving space for a new replica count.
 	 */
 	@SuppressWarnings("unchecked")
-	public Partitions(Partitions other, int replicaCount) {	
+	public Partitions(Partitions other, int replicaCount) {
 		this.replicas = new AtomicReferenceArray[replicaCount];
-		
+
 		if (other.replicas.length < replicaCount) {
 			int i = 0;
-			
+
 			// Copy existing entries.
 			for (; i < other.replicas.length; i++) {
 				this.replicas[i] = other.replicas[i];

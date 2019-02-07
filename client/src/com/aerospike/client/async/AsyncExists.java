@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,7 +27,7 @@ public final class AsyncExists extends AsyncCommand {
 	private final ExistsListener listener;
 	private final Key key;
 	private boolean exists;
-	
+
 	public AsyncExists(ExistsListener listener, Policy policy, Key key) {
 		super(policy, new Partition(key), null, true);
 		this.listener = listener;
@@ -42,9 +42,9 @@ public final class AsyncExists extends AsyncCommand {
 	@Override
 	protected boolean parseResult() {
 		validateHeaderSize();
-		
+
 		int resultCode = dataBuffer[5] & 0xFF;
-		
+
 		if (resultCode == 0) {
 			exists = true;
 		}

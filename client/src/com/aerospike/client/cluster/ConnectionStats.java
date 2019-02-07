@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,12 +24,12 @@ public final class ConnectionStats {
 	 * Active connections in currently executing commands.
 	 */
 	public final int inUse;
-	
+
 	/**
 	 * Connections residing in connection pool(s).
 	 */
 	public final int inPool;
-	
+
 	/**
 	 * Connection statistics constructor.
 	 */
@@ -37,7 +37,7 @@ public final class ConnectionStats {
 		this.inUse = inUse;
 		this.inPool = inPool;
 	}
-	
+
 	/**
 	 * Convert statistics to string.
 	 */

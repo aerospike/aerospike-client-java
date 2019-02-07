@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class AsyncWrite extends AsyncCommand {
 	private final Key key;
 	private final Bin[] bins;
 	private final Operation.Type operation;
-		
+
 	public AsyncWrite(WriteListener listener, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
 		super(writePolicy, new Partition(key), null, false);
 		this.listener = listener;
@@ -39,7 +39,7 @@ public final class AsyncWrite extends AsyncCommand {
 		this.bins = bins;
 		this.operation = operation;
 	}
-	
+
 	@Override
 	protected void writeBuffer() {
 		setWrite(writePolicy, operation, key, bins);
@@ -48,7 +48,7 @@ public final class AsyncWrite extends AsyncCommand {
 	@Override
 	protected boolean parseResult() {
 		validateHeaderSize();
-		
+
 		int resultCode = dataBuffer[5] & 0xFF;
 
 		if (resultCode != 0) {
@@ -62,7 +62,7 @@ public final class AsyncWrite extends AsyncCommand {
 		if (listener != null) {
 			listener.onSuccess(key);
 		}
-	}	
+	}
 
 	@Override
 	protected void onFailure(AerospikeException e) {

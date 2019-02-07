@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ public final class RandomShift {
 			return new RandomShift();
 		}
 	};
-	
+
 	/**
 	 * Get thread local instance of RandomShift.
 	 */
@@ -38,7 +38,7 @@ public final class RandomShift {
 
 	private long seed0;
 	private long seed1;
-	
+
 	/**
 	 * Generate seeds using standard Random class.
 	 */
@@ -57,10 +57,10 @@ public final class RandomShift {
 	public String nextString(int size) {
 		char[] chars = new char[size];
 		int r;
-		
+
 		for (int i = 0; i < size; i++) {
 			r = nextInt(62);  // Lower alpha + Upper alpha + digit
-			
+
 			if (r < 26) {
 				// Lower case
 				chars[i] = (char)(r + 97);
@@ -76,22 +76,22 @@ public final class RandomShift {
 		}
 		return new String(chars);
 	}
-	
+
 	/**
 	 * Generate random bytes.
 	 */
 	public void nextBytes(byte[] bytes) {
 		int len = bytes.length;
 		int i = 0;
-		
+
 		while (i < len) {
 			long r = nextLong();
 			int n = Math.min(len - i, 8);
-			
+
 			for (int j = 0; j < n; j++) {
                 bytes[i++] = (byte)r;
 				r >>= 8;
-			}		
+			}
 		}
 	}
 
@@ -108,14 +108,14 @@ public final class RandomShift {
 	public int nextInt() {
 		return (int)nextLong();
 	}
-	
+
 	/**
 	 * Generate random integer between 0 (inclusive) and the specified value (exclusive).
 	 */
 	public long nextLong(long n) {
 		return (nextLong() & Long.MAX_VALUE) % n;
 	}
-	
+
 	/**
 	 * Generate random long value which can be negative.
 	 */

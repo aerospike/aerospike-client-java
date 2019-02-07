@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,16 +25,16 @@ import org.bouncycastle.crypto.digests.RIPEMD160Digest;
 
 public final class Crypto {
 	/**
-	 * Generate unique server hash value from set name, key type and user defined key.  
+	 * Generate unique server hash value from set name, key type and user defined key.
 	 * The hash function is RIPEMD-160 (a 160 bit hash).
 	 */
 	public static byte[] computeDigest(String setName, Value key) {
-		// This method runs 14% faster using thread local byte array 
+		// This method runs 14% faster using thread local byte array
 		// versus creating the buffer each time.
 		byte[] buffer = ThreadLocalData.getBuffer();
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
-		buffer[setLength] = (byte)key.getType();		
+		buffer[setLength] = (byte)key.getType();
 		int keyLength = key.write(buffer, setLength + 1);
 
 		RIPEMD160Digest hash = new RIPEMD160Digest();
@@ -47,7 +47,7 @@ public final class Crypto {
 	}
 
 	/**
-	 * Decode base64 bytes into a byte array. 
+	 * Decode base64 bytes into a byte array.
 	 */
 	public static byte[] decodeBase64(byte[] src, int off, int len) {
 		return DatatypeConverter.parseBase64Binary(new String(src, off, len));

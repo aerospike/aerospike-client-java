@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class AsyncQueryValidate {
 		void onSuccess(long clusterKey);
 		void onFailure(AerospikeException ae);
 	}
-	
+
 	public static void validateBegin(
 		Cluster cluster,
 		EventLoop eventLoop,
@@ -42,23 +42,23 @@ public final class AsyncQueryValidate {
 		AsyncInfoCommand aic = new AsyncInfoCommand(new BeginHandler(listener, command), null, node, command);
 		eventLoop.execute(cluster, aic);
 	}
-	
+
 	private static class BeginHandler implements InfoListener {
 		private final AsyncQueryValidate.BeginListener listener;
 		private final String command;
-		
+
 		private BeginHandler(AsyncQueryValidate.BeginListener listener, String command) {
 			this.listener = listener;
 			this.command = command;
 		}
-	
+
 		@Override
 		public void onSuccess(Map<String,String> map) {
 			String result = map.get(command);
 			long clusterKey = 0;
-			
+
 			try {
-				clusterKey = Long.parseLong(result, 16);				
+				clusterKey = Long.parseLong(result, 16);
 			}
 			catch (Exception e) {
 				// Yes, even scans return QUERY_ABORTED.
@@ -72,7 +72,7 @@ public final class AsyncQueryValidate {
 		@Override
 		public void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
-		}	
+		}
 	}
 
 	public interface Listener {
@@ -97,18 +97,18 @@ public final class AsyncQueryValidate {
 		private final AsyncQueryValidate.Listener listener;
 		private final String command;
 		private final long expectedKey;
-		
+
 		private Handler(AsyncQueryValidate.Listener listener, String command, long expectedKey) {
 			this.listener = listener;
 			this.command = command;
 			this.expectedKey = expectedKey;
 		}
-	
+
 		@Override
 		public void onSuccess(Map<String,String> map) {
 			String result = map.get(command);
 			long clusterKey = 0;
-			
+
 			try {
 				clusterKey = Long.parseLong(result, 16);
 			}
@@ -117,18 +117,18 @@ public final class AsyncQueryValidate {
 				listener.onFailure(new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + result));
 				return;
 			}
-				
+
 			if (clusterKey != expectedKey) {
 				listener.onFailure(new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + expectedKey + ' ' + clusterKey));
 				return;
 			}
-			
+
 			listener.onSuccess();
 		}
 
 		@Override
 		public void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
-		}	
+		}
 	}
 }

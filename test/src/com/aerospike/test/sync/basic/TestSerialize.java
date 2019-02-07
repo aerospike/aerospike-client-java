@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ import com.aerospike.client.Value;
 import com.aerospike.test.sync.TestSync;
 
 public class TestSerialize extends TestSync {
-	private static final String binName = args.getBinName("serialbin");	
+	private static final String binName = args.getBinName("serialbin");
 
 	@Test
 	public void serializeArray() {
@@ -55,23 +55,23 @@ public class TestSerialize extends TestSync {
 
 		Record record = client.get(null, key, bin.name);
 		assertRecordFound(key, record);
-		
+
 		int[] received = null;
 
 		try {
 			received = (int[])record.getValue(bin.name);
 		}
 		catch (Exception e) {
-			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName + 
+			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName +
 				 " key=" + key.userKey + " bin=" + bin.name);
 		}
-		
+
 		assertNotNull(received);
 		assertEquals(10000, received.length);
 
 		for (int i = 0; i < 10000; i++) {
 			if (received[i] != i * i) {
-				fail("Mismatch: index=" + i + " expected=" + (i*i) + " received=" + received[i]); 
+				fail("Mismatch: index=" + i + " expected=" + (i*i) + " received=" + received[i]);
 			}
 		}
 	}
@@ -101,7 +101,7 @@ public class TestSerialize extends TestSync {
 			received = (List<?>) record.getValue(bin.name);
 		}
 		catch (Exception e) {
-			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName + 
+			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName +
 				 " key=" + key.userKey + " bin=" + bin.name);
 		}
 
@@ -113,11 +113,11 @@ public class TestSerialize extends TestSync {
 			String expected = "string" + (i + 1);
 			if (! received.get(i).equals(expected)) {
 				Object obj = received.get(i);
-				fail("Mismatch: index=" + i + " expected=" + expected + " received=" + obj); 
+				fail("Mismatch: index=" + i + " expected=" + expected + " received=" + obj);
 			}
 		}
 	}
-	
+
 	@Test
 	public void serializeComplex() {
 		Key key = new Key(args.namespace, args.set, "serialcomplexkey");
@@ -128,12 +128,12 @@ public class TestSerialize extends TestSync {
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
 		inner.add(8);
-		
+
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
 		innerMap.put("a", 1);
 		innerMap.put(2, "b");
 		innerMap.put("list", inner);
-		
+
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(4);
@@ -153,13 +153,13 @@ public class TestSerialize extends TestSync {
 			received = (List<?>) record.getValue(bin.name);
 		}
 		catch (Exception e) {
-			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName + 
+			fail("Failed to parse returned value: namespace=" + key.namespace + " set=" + key.setName +
 				 " key=" + key.userKey + " bin=" + bin.name);
 		}
 
 		if (received == null || ! received.equals(list)) {
-			fail("Data mismatch" + System.lineSeparator() + 
-				"Expected " + list + System.lineSeparator() + 
+			fail("Data mismatch" + System.lineSeparator() +
+				"Expected " + list + System.lineSeparator() +
 				"Received " + received);
 		}
 	}

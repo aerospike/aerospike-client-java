@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,42 +39,42 @@ public class TestAsyncUDF extends TestAsync {
 	@Test
 	public void asyncUDF() {
 		final Key key = new Key(args.namespace, args.set, "audfkey1");
-		final Bin bin = new Bin(binName, "string value");		
-		
+		final Bin bin = new Bin(binName, "string value");
+
 		client.execute(eventLoop, new ExecuteListener() {
-			
+
 			public void onSuccess(final Key key, final Object obj) {
 				try {
 					// Write succeeded.  Now call read using udf.
 					client.execute(eventLoop, new ExecuteListener() {
-						
+
 						public void onSuccess(final Key key, final Object received) {
-							Object expected = bin.value.getObject();	
-							
+							Object expected = bin.value.getObject();
+
 							if (assertNotNull(received)) {
 								assertEquals(expected, received);
-							}							
+							}
 							notifyComplete();
 						}
-						
+
 						public void onFailure(AerospikeException e) {
 							setError(e);
 							notifyComplete();
 						}
-						
+
 					}, null, key, "record_example", "readBin", Value.get(bin.name));
 				}
-				catch (Exception e) {				
+				catch (Exception e) {
 					setError(e);
 					notifyComplete();
 				}
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
 			}
-		
+
 		}, null, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
 
 		waitTillComplete();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -56,7 +56,7 @@ import com.aerospike.client.AerospikeException;
 
 public class GuiDisplay implements ActionListener {
 	private static String sourcePath = "src/com/aerospike/examples/";
-	
+
 	private Parameters params;
 	private Console console;
 	private ButtonGroup buttonGroup;
@@ -276,18 +276,18 @@ public class GuiDisplay implements ActionListener {
 		splitPane.setRightComponent(consoleScrollPane);
 
 		buttonGroup = new ButtonGroup();
-		JRadioButton jrb;		
-		
+		JRadioButton jrb;
+
 		for (String example : Main.getAllExampleNames()) {
 			jrb = new JRadioButton(example);
 			jrb.setActionCommand(example);
-			jrb.addActionListener(this);	
+			jrb.addActionListener(this);
 			buttonGroup.add(jrb);
 			examplePanel.add(jrb);
 		}
 		frmAerospikeExamples.pack();
 	}
-	
+
 	/**
 	 * SourcePath Dialog to prompt user for alternate source code path
 	 */
@@ -340,7 +340,7 @@ public class GuiDisplay implements ActionListener {
 			SourcePathDialog spDialog = new SourcePathDialog(frmAerospikeExamples);
 			spDialog.setVisible(true);
 			if (0 < sourcePath.length()) {
-				if (sourcePath.charAt(sourcePath.length()-1) != '/') 
+				if (sourcePath.charAt(sourcePath.length()-1) != '/')
 					sourcePath += "/";
 				sourceText =  readfile(sourcePath + example + ".java");
 				if (0 == sourceText.length()) {
@@ -360,21 +360,21 @@ public class GuiDisplay implements ActionListener {
 			sourceTextPane.setCaretPosition(0);
 			sourceTextPane.revalidate();
 		}
-	}	
+	}
 
 	/**
 	 * Run the user selected examples
 	 */
 	private void run_selected_examples() {
 		ButtonModel selected = buttonGroup.getSelection();
-		
+
 		if (selected == null) {
 			console.error("Please select an example and then press Run");
 			return;
 		}
-		
+
 		try {
-			String example = selected.getActionCommand();		
+			String example = selected.getActionCommand();
 			final String[] examples = new String[1];
 			examples[0] = example;
 
@@ -384,7 +384,7 @@ public class GuiDisplay implements ActionListener {
 			params.password = new String(passwordTextField.getPassword()).trim();
 			params.namespace = namespaceTextField.getText().trim();
 			params.set = txtSetTextfield.getText().trim();
-			
+
 			new Thread() {
 				public void run() {
 					try {
@@ -399,9 +399,9 @@ public class GuiDisplay implements ActionListener {
 			console.error(ex.toString());
 		}
 	}
-	
+
 	/**
-	 * Utility to read in a source file	
+	 * Utility to read in a source file
 	 */
 	private static String readfile(String fn) {
 		File aFile;
@@ -417,7 +417,7 @@ public class GuiDisplay implements ActionListener {
 		try {
 			BufferedReader input =  new BufferedReader(new FileReader(aFile));
 			try {
-				String line = null; 
+				String line = null;
 				while (( line = input.readLine()) != null){
 					contents.append(line);
 					contents.append(System.getProperty("line.separator"));
@@ -435,7 +435,7 @@ public class GuiDisplay implements ActionListener {
 		}
 		return contents.toString();
 	}
-	
+
 	private class GuiConsole extends Console {
 		@Override
 		public void write(final String message) {

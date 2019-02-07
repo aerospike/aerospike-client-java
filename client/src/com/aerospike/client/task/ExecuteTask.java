@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,7 @@ public final class ExecuteTask extends Task {
 	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with complete to be considered done.
 		Node[] nodes = cluster.getNodes();
-		
+
 		if (nodes.length == 0) {
 			throw new AerospikeException("Cluster is empty");
 		}
@@ -56,7 +56,7 @@ public final class ExecuteTask extends Task {
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
-			
+
 			if (response.startsWith("ERROR:2")) {
 				return Task.NOT_FOUND;
 			}
@@ -65,7 +65,7 @@ public final class ExecuteTask extends Task {
 				// Throw exception immediately.
 				throw new AerospikeException(command + " failed: " + response);
 			}
-			
+
 			String find = "status=";
 			int index = response.indexOf(find);
 
@@ -77,10 +77,10 @@ public final class ExecuteTask extends Task {
 			int begin = index + find.length();
 			int end = response.indexOf(':', begin);
 			String status = response.substring(begin, end);
-			
+
 			// Newer servers use "done" while older servers use "DONE"
 			if (! (status.startsWith("done") || status.startsWith("DONE"))) {
-				return Task.IN_PROGRESS;				
+				return Task.IN_PROGRESS;
 			}
 
 			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"

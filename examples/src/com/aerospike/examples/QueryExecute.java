@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,8 +50,8 @@ public class QueryExecute extends Example {
 		}
 		String indexName = "qeindex1";
 		String keyPrefix = "qekey";
-		String binName1 = params.getBinName("qebin1");  
-		String binName2 = params.getBinName("qebin2");  
+		String binName1 = params.getBinName("qebin1");
+		String binName2 = params.getBinName("qebin2");
 		int size = 10;
 
 		register(client, params);
@@ -59,9 +59,9 @@ public class QueryExecute extends Example {
 		writeRecords(client, params, keyPrefix, binName1, binName2, size);
 		runQueryExecute(client, params, indexName, binName1, binName2);
 		validateRecords(client, params, indexName, binName1, binName2, size);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void register(AerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
@@ -74,11 +74,11 @@ public class QueryExecute extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -112,21 +112,21 @@ public class QueryExecute extends Example {
 		String indexName,
 		String binName1,
 		String binName2
-	) throws Exception {		
+	) throws Exception {
 		int begin = 3;
 		int end = 9;
-		
+
 		console.info("For ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName1, begin, end);			
+			params.namespace, params.set, indexName, binName1, begin, end);
 		console.info("Even integers: add 100 to existing " + binName1);
 		console.info("Multiple of 5: delete " + binName2 + " bin");
 		console.info("Multiple of 9: delete record");
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName1, begin, end));
-		
+
 		ExecuteTask task = client.execute(params.writePolicy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 		task.waitTillComplete();
 	}
@@ -138,55 +138,55 @@ public class QueryExecute extends Example {
 		String binName1,
 		String binName2,
 		int size
-	) throws Exception {		
+	) throws Exception {
 		int begin = 1;
 		int end = size + 100;
-		
+
 		console.info("Validate records");
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName1, begin, end));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
 			int expectedSize = size - 1;
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
 				int value1 = record.getInt(binName1);
 				int value2 = record.getInt(binName2);
-				
+
 				console.info("Record found: ns=%s set=%s bin1=%s value1=%s bin2=%s value2=%s",
 					key.namespace, key.setName, binName1, value1, binName2, value2);
-				
+
 				int val1 = value1;
-				
-				if (val1 == 9) {			
+
+				if (val1 == 9) {
 					console.error("Data mismatch. value1 " + val1 + " should not exist");
 					break;
 				}
-				
+
 				if (val1 == 5) {
 					if (value2 != 0) {
 						console.error("Data mismatch. value2 " + value2 + " should be null");
-						break;					
+						break;
 					}
 				}
 				else if (value1 != expectedList[value2-1]) {
-					console.error("Data mismatch. Expected " + expectedList[value2-1] + ". Received " + value1);								
-					break;					
+					console.error("Data mismatch. Expected " + expectedList[value2-1] + ". Received " + value1);
+					break;
 				}
 				count++;
 			}
-			
+
 			if (count != expectedSize) {
-				console.error("Query count mismatch. Expected " + expectedSize + ". Received " + count);			
+				console.error("Query count mismatch. Expected " + expectedSize + ". Received " + count);
 			}
 		}
 		finally {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,7 @@ import org.luaj.vm2.LuaValue;
 import com.aerospike.client.Log;
 
 public final class LuaInputStream extends LuaUserdata implements LuaStream {
-	
+
 	private final BlockingQueue<LuaValue> queue;
 
 	public LuaInputStream(BlockingQueue<LuaValue> queue) {

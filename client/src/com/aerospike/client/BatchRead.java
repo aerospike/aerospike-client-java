@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,19 +26,19 @@ public final class BatchRead {
 	 * Key.
 	 */
 	public final Key key;
-	
+
 	/**
 	 * Bins to retrieve for this key.
 	 */
 	public final String[] binNames;
-	
+
 	/**
 	 * If true, ignore binNames and read all bins.
 	 * If false and binNames are set, read specified binNames.
 	 * If false and binNames are not set, read record header (generation, expiration) only.
 	 */
 	public final boolean readAllBins;
-	
+
 	/**
 	 * Record result after batch command has completed.  Will be null if record was not found.
 	 */
@@ -46,24 +46,24 @@ public final class BatchRead {
 
 	/**
 	 * Initialize batch key and bins to retrieve.
-	 * 
+	 *
 	 * @param key					record key
 	 * @param binNames				array of bins to retrieve.
 	 */
 	public BatchRead(Key key, String[] binNames) {
-		this.key = key; 
+		this.key = key;
 		this.binNames = binNames;
 		this.readAllBins = false;
 	}
-	
+
 	/**
 	 * Initialize batch key and readAllBins indicator.
-	 * 
+	 *
 	 * @param key					record key
 	 * @param readAllBins			should all bins in record be retrieved.
 	 */
 	public BatchRead(Key key, boolean readAllBins) {
-		this.key = key; 
+		this.key = key;
 		this.binNames = null;
 		this.readAllBins = readAllBins;
 	}

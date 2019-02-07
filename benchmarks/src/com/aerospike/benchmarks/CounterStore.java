@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,12 +21,12 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class CounterStore {
-	
+
 	Current write = new Current();
 	Current read = new Current();
 	Current transaction = new Current();
-	
-	AtomicLong periodBegin = new AtomicLong();	
+
+	AtomicLong periodBegin = new AtomicLong();
 	AtomicInteger readNotFound = new AtomicInteger();
 	AtomicInteger valueMismatchCnt = new AtomicInteger();
 	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
@@ -39,5 +39,5 @@ public class CounterStore {
 		AtomicInteger min = new AtomicInteger(-1);
 		AtomicInteger max = new AtomicInteger(-1);
 		LatencyManager latency;
-	}	
+	}
 }

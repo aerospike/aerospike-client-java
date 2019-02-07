@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,14 +24,14 @@ public final class MapPolicy {
 	 * Default unordered unique key map with normal put semantics.
 	 */
 	public static final MapPolicy Default = new MapPolicy();
-	
+
 	protected final int attributes;
 	protected final int flags;
 	protected final int itemCommand;
 	protected final int itemsCommand;
-	
+
 	/**
-	 * Default constructor.  
+	 * Default constructor.
 	 * Create unordered unique key map when map does not exist.
 	 * Use normal update mode when writing map items.
 	 */

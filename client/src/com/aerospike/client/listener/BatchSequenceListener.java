@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,18 +28,18 @@ public interface BatchSequenceListener {
 	 * This method is called when an asynchronous batch record is received from the server.
 	 * The receive sequence is not ordered.
 	 * <p>
-	 * The user may throw a 
-	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated} 
+	 * The user may throw a
+	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated}
 	 * exception if the command should be aborted.  If any exception is thrown, parallel command threads
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * onFailure() call.
-	 * 
+	 *
 	 * @param record		record instance, {@link com.aerospike.client.BatchRead#record}
 	 *						will be null if the key is not found
 	 * @throws AerospikeException	if error occurs or batch should be terminated.
 	 */
 	public void onRecord(BatchRead record);
-	
+
 	/**
 	 * This method is called when the asynchronous batch get command completes.
 	 */
@@ -47,7 +47,7 @@ public interface BatchSequenceListener {
 
 	/**
 	 * This method is called when an asynchronous batch get command fails.
-	 * 
+	 *
 	 * @param exception		error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -83,12 +83,12 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
 		eventLoopArray = list.toArray(new NettyEventLoop[count]);
 		eventLoopMap = new IdentityHashMap<EventExecutor,NettyEventLoop>(count);
-		
+
 		for (NettyEventLoop eventLoop : eventLoopArray) {
 			eventLoopMap.put(eventLoop.eventLoop, eventLoop);
 		}
 	}
-	
+
 	/**
 	 * Initialize TLS context. For internal use only.
 	 */
@@ -97,7 +97,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 			// Already initialized.
 			return;
 		}
-		
+
 		this.tlsPolicy = policy;
 
 		if (policy.context != null) {
@@ -124,7 +124,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
 			if (policy.ciphers != null) {
 				builder.ciphers(Arrays.asList(policy.ciphers));
-			}		
+			}
 
 			String keyStoreLocation = System.getProperty("javax.net.ssl.keyStore");
 
@@ -164,7 +164,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		if (tlsPolicy.ciphers != null) {
 			return tlsPolicy.ciphers;
 		}
-		return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();		
+		return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();
 	}
 
 	/**
@@ -173,7 +173,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	public NettyEventLoop get(EventExecutor eventExecutor) {
 		return eventLoopMap.get(eventExecutor);
 	}
-	
+
    /**
      * Return array of Aerospike event loops.
      */
@@ -181,7 +181,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	public NettyEventLoop[] getArray() {
 		return eventLoopArray;
 	}
-	
+
     /**
      * Return number of event loops in this group.
      */
@@ -205,13 +205,13 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	public NettyEventLoop next() {
 		int iter = eventIter++; // Not atomic by design
 		iter = iter % eventLoopArray.length;
-		
+
 		if (iter < 0) {
 			iter += eventLoopArray.length;
 		}
         return eventLoopArray[iter];
 	}
-	
+
 	@Override
 	public void close() {
 		group.shutdownGracefully();

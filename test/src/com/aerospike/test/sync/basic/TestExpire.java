@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 import com.aerospike.test.sync.TestSync;
 
 public class TestExpire extends TestSync {
-	private static final String binName = args.getBinName("expirebin");	
+	private static final String binName = args.getBinName("expirebin");
 
 	@Test
 	public void expire() {
@@ -41,7 +41,7 @@ public class TestExpire extends TestSync {
 		writePolicy.expiration = 2;
 		client.put(writePolicy, key, bin);
 
-		// Read the record before it expires, showing it is there.	
+		// Read the record before it expires, showing it is there.
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin);
 
@@ -50,13 +50,13 @@ public class TestExpire extends TestSync {
 		record = client.get(null, key, bin.name);
 		assertNull(record);
 	}
-	
+
 	@Test
 	public void noExpire() {
 		Key key = new Key(args.namespace, args.set, "expirekey");
 		Bin bin = new Bin(binName, "noexpirevalue");
 
-		// Specify that record NEVER expires. 
+		// Specify that record NEVER expires.
 		// The "Never Expire" value is -1, or 0xFFFFFFFF.
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = -1;
@@ -65,7 +65,7 @@ public class TestExpire extends TestSync {
 		// Read the record, showing it is there.
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin);
-				
+
 		// Read this Record after the Default Expiration, showing it is still there.
 		// We should have set the Namespace TTL at 5 sec.
 		Util.sleep(10 * 1000);

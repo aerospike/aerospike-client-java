@@ -18,7 +18,7 @@ import com.aerospike.helper.query.KeyQualifier;
 import com.aerospike.helper.query.QueryEngine;
 
 public class InserterTests extends HelperTests{
-	
+
 	public InserterTests() {
 		super();
 	}
@@ -34,9 +34,9 @@ public class InserterTests extends HelperTests{
 			client = new AerospikeClient(clientPolicy, TestQueryEngine.HOST, TestQueryEngine.PORT);
 //		}
 		queryEngine = new QueryEngine(client);
-		
+
 	}
-	
+
 	@After
 	public void tearDown() throws Exception {
 		for (int x = 1; x <= TestQueryEngine.RECORD_COUNT; x++){
@@ -51,23 +51,23 @@ public class InserterTests extends HelperTests{
 		int i = 0;
 		for (int x = 1; x <= TestQueryEngine.RECORD_COUNT; x++){
 			String keyString = "selector-test:"+x;
-			
+
 			Bin name = new Bin("name", "name:" + x);
 			Bin age = new Bin("age", ages[i]);
 			Bin colour = new Bin("color", colours[i]);
 			Bin animal = new Bin("animal", animals[i]);
 			List<Bin> bins = Arrays.asList(name, age, colour, animal);
-			
+
 			Key key = new Key(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, keyString);
 			this.client.delete(null, key);
-			
+
 			KeyQualifier kq = new KeyQualifier(Value.get(keyString));
 			Statement stmt = new Statement();
 			stmt.setNamespace(TestQueryEngine.NAMESPACE);
 			stmt.setSetName(TestQueryEngine.SET_NAME);
-			
+
 			queryEngine.insert(stmt, kq, bins);
-			
+
 			Record record = this.client.get(null, key);
 			Assert.assertNotNull(record);
 			i++;
@@ -77,27 +77,27 @@ public class InserterTests extends HelperTests{
 	}
 	@Test
 	public void insertByDigest(){
-		
+
 		int i = 0;
 		for (int x = 1; x <= TestQueryEngine.RECORD_COUNT; x++){
 			String keyString = "selector-test:"+x;
-			
+
 			Bin name = new Bin("name", "name:" + x);
 			Bin age = new Bin("age", ages[i]);
 			Bin colour = new Bin("color", colours[i]);
 			Bin animal = new Bin("animal", animals[i]);
 			List<Bin> bins = Arrays.asList(name, age, colour, animal);
-			
+
 			Key key = new Key(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, keyString);
 			this.client.delete(null, key);
-			
+
 			KeyQualifier kq = new KeyQualifier(key.digest);
 			Statement stmt = new Statement();
 			stmt.setNamespace(TestQueryEngine.NAMESPACE);
 			stmt.setSetName(TestQueryEngine.SET_NAME);
-			
+
 			queryEngine.insert(stmt, kq, bins);
-			
+
 			Record record = this.client.get(null, key);
 			Assert.assertNotNull(record);
 			i++;

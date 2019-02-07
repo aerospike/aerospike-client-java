@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,7 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.util.Util;
 
 public class AsyncScan extends AsyncExample {
-		
+
 	private int recordCount = 0;
 
 	/**
@@ -56,14 +56,14 @@ public class AsyncScan extends AsyncExample {
 				console.info("Total records returned: " + recordCount);
 				console.info("Elapsed time: " + seconds + " seconds");
 				double performance = Math.round((double)recordCount / seconds);
-				console.info("Records/second: " + performance);		
+				console.info("Records/second: " + performance);
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
 				console.error("Scan failed: " + Util.getErrorMessage(e));
-			} 
-			
-		}, policy, params.namespace, params.set);		
-	}	
+			}
+
+		}, policy, params.namespace, params.set);
+	}
 }

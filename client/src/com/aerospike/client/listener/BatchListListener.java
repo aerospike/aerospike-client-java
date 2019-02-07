@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,15 +28,15 @@ import com.aerospike.client.BatchRead;
 public interface BatchListListener {
 	/**
 	 * This method is called when an asynchronous batch get command completes successfully.
-	 * 
+	 *
 	 * @param records		record instances, {@link com.aerospike.client.BatchRead#record}
 	 *						will be null if the key is not found
 	 */
 	public void onSuccess(List<BatchRead> records);
-	
+
 	/**
 	 * This method is called when an asynchronous batch get command fails.
-	 * 
+	 *
 	 * @param exception		error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

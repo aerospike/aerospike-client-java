@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,39 +46,39 @@ public class TestUDF extends TestSync {
 	}
 
 	@Test
-	public void writeUsingUdf() {	
+	public void writeUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey1");
-		Bin bin = new Bin(args.getBinName("udfbin1"), "string value");		
-		
+		Bin bin = new Bin(args.getBinName("udfbin1"), "string value");
+
 		client.execute(null, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
-		
+
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin);
 	}
-	
+
 	@Test
-	public void writeIfGenerationNotChanged() {	
+	public void writeIfGenerationNotChanged() {
 		Key key = new Key(args.namespace, args.set, "udfkey2");
-		Bin bin = new Bin(args.getBinName("udfbin2"), "string value");		
-		
+		Bin bin = new Bin(args.getBinName("udfbin2"), "string value");
+
 		// Seed record.
 		client.put(null, key, bin);
-		
+
 		// Get record generation.
 		long gen = (Long)client.execute(null, key, "record_example", "getGeneration");
 
 		// Write record if generation has not changed.
-		client.execute(null, key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));		
+		client.execute(null, key, "record_example", "writeIfGenerationNotChanged", Value.get(bin.name), bin.value, Value.get(gen));
 	}
 
 	@Test
 	public void writeIfNotExists() {
 		Key key = new Key(args.namespace, args.set, "udfkey3");
 		String binName = "udfbin3";
-		
+
 		// Delete record if it already exists.
 		client.delete(null, key);
-		
+
 		// Write record only if not already exists. This should succeed.
 		client.execute(null, key, "record_example", "writeUnique", Value.get(binName), Value.get("first"));
 
@@ -88,22 +88,22 @@ public class TestUDF extends TestSync {
 
 		// Write record second time. This should fail.
 		client.execute(null, key, "record_example", "writeUnique", Value.get(binName), Value.get("second"));
-		
+
 		// Verify record not written.
 		record = client.get(null, key, binName);
-		assertBinEqual(key, record, binName, "first");		
+		assertBinEqual(key, record, binName, "first");
 	}
 
 	@Test
 	public void writeWithValidation() {
 		Key key = new Key(args.namespace, args.set, "udfkey4");
 		String binName = "udfbin4";
-				
+
 		// Lua function writeWithValidation accepts number between 1 and 10.
 		// Write record with valid value.
 		client.execute(null, key, "record_example", "writeWithValidation", Value.get(binName), Value.get(4));
 
-		// Write record with invalid value.		
+		// Write record with invalid value.
 		try {
 			client.execute(null, key, "record_example", "writeWithValidation", Value.get(binName), Value.get(11));
 			fail("UDF should not have succeeded!");
@@ -113,18 +113,18 @@ public class TestUDF extends TestSync {
 	}
 
 	@Test
-	public void writeListMapUsingUdf() {	
+	public void writeListMapUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey5");
 
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
 		inner.add(8L);
-		
+
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
 		innerMap.put("a", 1L);
 		innerMap.put(2L, "b");
 		innerMap.put("list", inner);
-		
+
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(4L);
@@ -134,43 +134,43 @@ public class TestUDF extends TestSync {
 		String binName = args.getBinName("udfbin5");
 
 		client.execute(null, key, "record_example", "writeBin", Value.get(binName), Value.get(list));
-		
+
 		Object received = client.execute(null, key, "record_example", "readBin", Value.get(binName));
 		assertNotNull(received);
 		assertEquals(list, received);
 	}
-	
+
 	@Test
-	public void appendListUsingUdf() {	
+	public void appendListUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey5");
 		String binName = args.getBinName("udfbin5");
 		String value = "appended value";
 
 		client.execute(null, key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
-		
+
 		Record record = client.get(null, key, binName);
 		assertRecordFound(key, record);
 
 		Object received = record.getValue(binName);
-		
+
 		if (received != null && received instanceof List<?>) {
 			List<?> list = (List<?>)received;
-			
+
 			if (list.size() == 5) {
 				Object obj = list.get(4);
-				
+
 				if (obj.equals(value)) {
 					return;
 				}
 			}
 		}
 		fail("UDF data mismatch" + System.lineSeparator() +
-			 "Expected: " + value + System.lineSeparator() + 
+			 "Expected: " + value + System.lineSeparator() +
 			 "Received: " + received);
 	}
 
 	@Test
-	public void writeBlobUsingUdf() {	
+	public void writeBlobUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey6");
 		String binName = args.getBinName("udfbin6");
 
@@ -185,9 +185,9 @@ public class TestUDF extends TestSync {
 			fail("DataOutputStream error: " + e.getMessage());
 		}
 		byte[] blob = baos.toByteArray();
-		
+
 		client.execute(null, key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
 		byte[] received = (byte[])client.execute(null, key, "record_example", "readBin", Value.get(binName));
 		assertArrayEquals(blob, received);
-	}	
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,13 +24,13 @@ public class TransactionalItem {
 		this.type = type;
 		this.repetitions = repetitions;
 	}
-	
+
 	public TransactionalItem(TransactionalType type) {
 		super();
 		this.type = type;
 		this.repetitions = 1;
 	}
-	
+
 	public TransactionalType getType() {
 		return type;
 	}

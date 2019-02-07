@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,11 +24,11 @@ import java.io.StringWriter;
 public final class AsyncMonitor {
 	private Throwable error;
 	private boolean completed;
-	
+
 	public void setError(Throwable t) {
 		error = t;
 	}
-	
+
 	public synchronized void waitTillComplete() {
 		while (! completed) {
 			try {
@@ -37,7 +37,7 @@ public final class AsyncMonitor {
 			catch (InterruptedException ie) {
 			}
 		}
-		
+
 		if (error != null) {
 			StringWriter out = new StringWriter();
 			error.printStackTrace(new PrintWriter(out));

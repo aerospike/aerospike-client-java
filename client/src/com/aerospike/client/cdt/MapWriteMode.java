@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,22 +27,22 @@ public enum MapWriteMode {
 	 * If the key does not exist, a new item will be created.
 	 */
 	UPDATE (MapOperation.PUT, MapOperation.PUT_ITEMS),
-	
+
 	/**
 	 * If the key already exists, the item will be overwritten.
 	 * If the key does not exist, the write will fail.
 	 */
 	UPDATE_ONLY (MapOperation.REPLACE, MapOperation.REPLACE_ITEMS),
-	
+
 	/**
 	 * If the key already exists, the write will fail.
 	 * If the key does not exist, a new item will be created.
 	 */
 	CREATE_ONLY (MapOperation.ADD, MapOperation.ADD_ITEMS);
-	
+
 	protected final int itemCommand;
 	protected final int itemsCommand;
-	
+
 	private MapWriteMode(int itemCommand, int itemsCommand) {
 		this.itemCommand = itemCommand;
 		this.itemsCommand = itemsCommand;

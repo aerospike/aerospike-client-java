@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,7 @@ public class TestQueryKey extends TestSync {
 	public static void prepare() {
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			itask.waitTillComplete();
@@ -62,37 +62,37 @@ public class TestQueryKey extends TestSync {
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);	
+			Bin bin = new Bin(binName, i);
 			client.put(writePolicy, key, bin);
 		}
 	}
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	public void queryKey() {
 		int begin = 2;
 		int end = 5;
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Key key = rs.getKey();
 				assertNotNull(key.userKey);
 
-				Object userkey = key.userKey.getObject();				
+				Object userkey = key.userKey.getObject();
 				assertNotNull(userkey);
 				count++;
 			}

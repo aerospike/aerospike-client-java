@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,23 +39,23 @@ public abstract class RWTask {
 	final long keyStart;
 	final long keyCount;
 	boolean valid;
-	
+
 	public RWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		this.args = args;
 		this.counters = counters;
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		this.valid = true;
-		
+
 		writePolicyGeneration = new WritePolicy(args.writePolicy);
 		writePolicyGeneration.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
-		writePolicyGeneration.generation = 0;		
-	}	
-	
+		writePolicyGeneration.generation = 0;
+	}
+
 	public void stop() {
 		valid = false;
 	}
-	
+
 	protected void runCommand(RandomShift random) {
 		try {
 			switch (args.workload) {
@@ -63,31 +63,31 @@ public abstract class RWTask {
 			case READ_REPLACE:
 				readUpdate(random);
 				break;
-				
+
 			case READ_MODIFY_UPDATE:
-				readModifyUpdate(random);		
+				readModifyUpdate(random);
 				break;
-				
+
 			case READ_MODIFY_INCREMENT:
-				readModifyIncrement(random);		
+				readModifyIncrement(random);
 				break;
-				
+
 			case READ_MODIFY_DECREMENT:
-				readModifyDecrement(random);		
+				readModifyDecrement(random);
 				break;
-				
+
 			case READ_FROM_FILE:
-				readFromFile(random);	
+				readFromFile(random);
 				break;
-				
+
 			case TRANSACTION:
 				runTransaction(random);
 				break;
-				
+
 			default:
 				break;
 			}
-		} 
+		}
 		catch (Exception e) {
 			if (args.debug) {
 				e.printStackTrace();
@@ -95,7 +95,7 @@ public abstract class RWTask {
 			else {
 				System.out.println("Exception - " + e.toString());
 			}
-		}		 
+		}
 	}
 
 	protected void runNextCommand() {
@@ -104,7 +104,7 @@ public abstract class RWTask {
 	private void readUpdate(RandomShift random) {
 		if (random.nextInt(100) < args.readPct) {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
-			
+
 			if (args.batchSize <= 1) {
 				long key = random.nextLong(keyCount);
 				doRead(key, isMultiBin);
@@ -115,22 +115,22 @@ public abstract class RWTask {
 		}
 		else {
 			boolean isMultiBin = random.nextInt(100) < args.writeMultiBinPct;
-			
+
 			// Perform Single record write even if in batch mode.
 			long key = random.nextLong(keyCount);
 			doWrite(random, key, isMultiBin, null);
-		}		
+		}
 	}
 
 	private void readModifyUpdate(RandomShift random) {
 		long key = random.nextLong(keyCount);
-				
+
 		// Read all bins.
 		doRead(key, true);
 		// Write one bin.
 		doWrite(random, key, false, null);
 	}
-	
+
 	private void readModifyIncrement(RandomShift random) {
 		long key = random.nextLong(keyCount);
 
@@ -148,13 +148,13 @@ public abstract class RWTask {
 		// Decrement one bin.
 		doIncrement(key, -1);
 	}
-	
+
 	private void readFromFile(RandomShift random) {
 		long key = random.nextLong(keyCount);
-		
+
 		if (args.keyType == KeyType.STRING) {
 		    doReadString(key, true);
-		}    
+		}
 		else if (args.keyType == KeyType.INTEGER) {
 			doReadLong(key, true);
 		}
@@ -206,14 +206,14 @@ public abstract class RWTask {
 					break;
 			}
 		}
-		
+
 		if (counters.transaction.latency != null) {
 			long elapsed = System.nanoTime() - begin;
-			counters.transaction.count.getAndIncrement();			
+			counters.transaction.count.getAndIncrement();
 			counters.transaction.latency.add(elapsed);
 		}
 	}
-	
+
 	private long[] getKeys(RandomShift random, int count) {
 		long[] keys = new long[count];
 		for (int i = 0; i < count; i++) {
@@ -221,7 +221,7 @@ public abstract class RWTask {
 		}
 		return keys;
 	}
-	
+
 	/**
 	 * Write the key at the given index
 	 */
@@ -229,14 +229,14 @@ public abstract class RWTask {
 		Key key = new Key(args.namespace, args.setName, keyStart + keyIdx);
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, multiBin, keyStart + keyIdx);
-		
+
 		try {
 			put(writePolicy, key, bins);
 		}
 		catch (AerospikeException ae) {
 			writeFailure(ae);
 			runNextCommand();
-		}	
+		}
 		catch (Exception e) {
 			writeFailure(e);
 			runNextCommand();
@@ -249,9 +249,9 @@ public abstract class RWTask {
 	protected void doIncrement(long keyIdx, int incrValue) {
 		// set up bin for increment
 		Bin[] bins = new Bin[] {new Bin("", incrValue)};
-		
+
 		try {
-			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);			
+			add(new Key(args.namespace, args.setName, keyStart + keyIdx), bins);
 		}
 		catch (AerospikeException ae) {
 			writeFailure(ae);
@@ -262,7 +262,7 @@ public abstract class RWTask {
 			runNextCommand();
 		}
 	}
-		
+
 	/**
 	 * Read the key at the given index.
 	 */
@@ -276,8 +276,8 @@ public abstract class RWTask {
 			}
 			else if (multiBin) {
 				// Read all bins, maybe validate
-				get(key);			
-			} 
+				get(key);
+			}
 			else {
 				// Read one bin, maybe validate
 				get(key, "0");
@@ -305,8 +305,8 @@ public abstract class RWTask {
 
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keys);			
-			} 
+				get(keys);
+			}
 			else {
 				// Read one bin, maybe validate
 				get(keys, "0");
@@ -327,7 +327,7 @@ public abstract class RWTask {
 	 */
 	protected void doReadBatch(RandomShift random, boolean multiBin) {
 		Key[] keys = new Key[args.batchSize];
-		
+
 		if (args.batchNamespaces == null) {
 			for (int i = 0; i < keys.length; i++) {
 				long keyIdx = random.nextLong(keyCount);
@@ -346,21 +346,21 @@ public abstract class RWTask {
 		try {
 			if (multiBin) {
 				// Read all bins, maybe validate
-				get(keys);			
-			} 
+				get(keys);
+			}
 			else {
 				// Read one bin, maybe validate
-				get(keys, "0");			
+				get(keys, "0");
 			}
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
 			runNextCommand();
-		}	
+		}
 		catch (Exception e) {
 			readFailure(e);
 			runNextCommand();
-		}	
+		}
 	}
 
 	/**
@@ -378,23 +378,23 @@ public abstract class RWTask {
 			}
 			else if (multiBin) {
 				// Read all bins, maybe validate
-				get(new Key(args.namespace, args.setName, numKey));			
-			} 
+				get(new Key(args.namespace, args.setName, numKey));
+			}
 			else {
 				// Read one bin, maybe validate
-				get(new Key(args.namespace, args.setName, numKey), "0");			
+				get(new Key(args.namespace, args.setName, numKey), "0");
 			}
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
 			runNextCommand();
-		}	
+		}
 		catch (Exception e) {
 			readFailure(e);
 			runNextCommand();
 		}
 	}
-	
+
 	/**
 	 * Read the keys of type String from the file supplied.
 	 */
@@ -408,29 +408,29 @@ public abstract class RWTask {
 			}
 			else if (multiBin) {
 				// Read all bins, maybe validate
-				get(new Key(args.namespace, args.setName, strKey));			
-			} 
+				get(new Key(args.namespace, args.setName, strKey));
+			}
 			else {
 				// Read one bin, maybe validate
-				get(new Key(args.namespace, args.setName, strKey), "0");			
+				get(new Key(args.namespace, args.setName, strKey), "0");
 			}
 		}
 		catch (AerospikeException ae) {
 			readFailure(ae);
 			runNextCommand();
-		}	
+		}
 		catch (Exception e) {
 			readFailure(e);
 			runNextCommand();
-		}		
+		}
 	}
-	
+
 	protected void processRead(Key key, Record record) {
 		if (record == null && args.reportNotFound) {
-			counters.readNotFound.getAndIncrement();	
+			counters.readNotFound.getAndIncrement();
 		}
 		else {
-			counters.read.count.getAndIncrement();		
+			counters.read.count.getAndIncrement();
 		}
 	}
 
@@ -448,12 +448,12 @@ public abstract class RWTask {
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.write.timeouts.getAndIncrement();
 		}
-		else {			
+		else {
 			counters.write.errors.getAndIncrement();
-			
+
 			if (args.debug) {
 				ae.printStackTrace();
 			}
@@ -462,19 +462,19 @@ public abstract class RWTask {
 
 	protected void writeFailure(Exception e) {
 		counters.write.errors.getAndIncrement();
-		
+
 		if (args.debug) {
 			e.printStackTrace();
 		}
 	}
-	
+
 	protected void readFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.read.timeouts.getAndIncrement();
 		}
-		else {			
+		else {
 			counters.read.errors.getAndIncrement();
-			
+
 			if (args.debug) {
 				ae.printStackTrace();
 			}
@@ -483,7 +483,7 @@ public abstract class RWTask {
 
 	protected void readFailure(Exception e) {
 		counters.read.errors.getAndIncrement();
-		
+
 		if (args.debug) {
 			e.printStackTrace();
 		}

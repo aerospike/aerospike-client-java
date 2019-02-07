@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,23 +32,23 @@ public class TestDeleteBin extends TestSync {
 	public void deleteBin() {
 		Key key = new Key(args.namespace, args.set, "delbinkey");
 		String binName1 = args.getBinName("bin1");
-		String binName2 = args.getBinName("bin2");		
+		String binName2 = args.getBinName("bin2");
 		Bin bin1 = new Bin(binName1, "value1");
 		Bin bin2 = new Bin(binName2, "value2");
 		client.put(null, key, bin1, bin2);
-	
+
 		bin1 = Bin.asNull(binName1); // Set bin value to null to drop bin.
 		client.put(null, key, bin1);
 
 		Record record = client.get(null, key, bin1.name, bin2.name, "bin3");
 		assertRecordFound(key, record);
-		
+
 		if (record.getValue("bin1") != null) {
 			fail("bin1 still exists.");
 		}
-		
+
 		Object v2 = record.getValue("bin2");
 		assertNotNull(v2);
 		assertEquals("value2", v2);
-	}	
+	}
 }

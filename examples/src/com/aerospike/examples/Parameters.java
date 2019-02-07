@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,7 +49,7 @@ public class Parameters {
 	boolean hasUdf;
 	boolean hasCDTList;
 	boolean hasCDTMap;
-	
+
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {
 		this.host = host;
 		this.port = port;
@@ -60,7 +60,7 @@ public class Parameters {
 		this.set = set;
 		this.tlsPolicy = policy;
 	}
-	
+
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
@@ -75,10 +75,10 @@ public class Parameters {
 		hasUdf = false;
 		hasCDTList = false;
 		hasCDTMap = false;
-		
+
 		if (features != null) {
 			String[] list = features.split(";");
-			
+
 			for (String s : list) {
 				if (s.equals("geo")) {
 					hasGeo = true;
@@ -94,9 +94,9 @@ public class Parameters {
 				}
 			}
 		}
-		
+
 		String namespaceTokens = tokens.get(namespaceFilter);
-		
+
 		if (namespaceTokens == null) {
 			throw new Exception(String.format(
 				"Failed to get namespace info: host=%s port=%d namespace=%s",
@@ -105,7 +105,7 @@ public class Parameters {
 
 		singleBin = parseBoolean(namespaceTokens, "single-bin");
 	}
-	
+
 	private static boolean parseBoolean(String namespaceTokens, String name) {
 		String search = name + '=';
 		int begin = namespaceTokens.indexOf(search);
@@ -127,9 +127,9 @@ public class Parameters {
 
 	@Override
 	public String toString() {
-		return "Parameters: host=" + host + 
-				" port=" + port + 
-				" ns=" + namespace + 
+		return "Parameters: host=" + host +
+				" port=" + port +
+				" ns=" + namespace +
 				" set=" + set +
 				" single-bin=" + singleBin;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -55,13 +55,13 @@ public class LatencyManagerYcsb implements LatencyManager {
         min = new AtomicLong(-1);
         max = new AtomicLong(-1);
 	}
-	
+
 	@Override
 	public void add(long latency) {
 		if (!warmupComplete) {
 			return;
 		}
-		
+
 		// Latency is specified in ns
 		long latencyUs = latency / 1000;
 		long latencyMs = latencyUs / 1000;
@@ -91,7 +91,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 	@Override
 	public void printResults(PrintStream exporter, String prefix) {
 		if (!warmupComplete) {
-			int countRemaining = warmupCount.decrementAndGet(); 
+			int countRemaining = warmupCount.decrementAndGet();
 			if (countRemaining <= 0) {
 				warmupComplete = true;
 			}
@@ -104,7 +104,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 		buffer.append(name).append(": Period[");
 		buffer.append("Ops:").append(windowoperations.get());
 		buffer.append(" Avg Latency:").append((long)windowAvgLatency).append("us");
-		
+
 		buffer.append("] Total[Ops:").append(operations.get());
 		buffer.append(" Latency:(avg:").append((long)avgLatency).append("us");
 		buffer.append(" Min:").append(min.get()).append("us");

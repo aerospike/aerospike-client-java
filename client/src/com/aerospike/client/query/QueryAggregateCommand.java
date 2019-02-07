@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateCommand extends MultiCommand {
-	
+
 	private final QueryPolicy policy;
 	private final Statement statement;
 	private final LuaInstance instance;
@@ -57,23 +57,23 @@ public final class QueryAggregateCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow(Key key) throws IOException {		
+	protected void parseRow(Key key) throws IOException {
 		if (opCount != 1) {
 			throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
 		}
 
 		// Parse aggregateValue.
-		readBytes(8);	
+		readBytes(8);
 		int opSize = Buffer.bytesToInt(dataBuffer, 0);
 		byte particleType = dataBuffer[5];
 		byte nameSize = dataBuffer[7];
-		
+
 		readBytes(nameSize);
 		String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
 
 		int particleBytesSize = (int) (opSize - (4 + nameSize));
 		readBytes(particleBytesSize);
-		
+
 		if (! name.equals("SUCCESS")) {
 			if (name.equals("FAILURE")) {
 				Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
@@ -83,16 +83,16 @@ public final class QueryAggregateCommand extends MultiCommand {
 				throw new AerospikeException(ResultCode.PARSE_ERROR, "Query aggregate expected bin name SUCCESS.  Received " + name);
 			}
 		}
-		
+
 		LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, 0, particleBytesSize);
-								
+
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
 
 		if (aggregateValue != null) {
 			try {
-				inputQueue.put(aggregateValue);			
+				inputQueue.put(aggregateValue);
 			}
 			catch (InterruptedException ie) {
 			}

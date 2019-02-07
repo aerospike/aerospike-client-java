@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,17 +24,17 @@ public final class NodeStats {
 	 * Node for which statistics are generated.
 	 */
 	public final Node node;
-	
+
 	/**
 	 * Connection statistics for sync commands.
 	 */
 	public final ConnectionStats sync;
-	
+
 	/**
 	 * Connection statistics for async commands.
 	 */
 	public final ConnectionStats async;
-	
+
 	/**
 	 * Node statistics constructor.
 	 */
@@ -43,11 +43,11 @@ public final class NodeStats {
 		this.sync = node.getConnectionStats();
 		this.async = node.getAsyncConnectionStats();
 	}
-	
+
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return node + " sync(" + sync + ") async(" + async + ')';  
+		return node + " sync(" + sync + ") async(" + async + ')';
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -41,20 +41,20 @@ public class ScanSeries extends Example implements ScanCallback {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		console.info("Scan series: namespace=" + params.namespace + " set=" + params.set);
-		
+
 		// Use low scan priority.  This will take more time, but it will reduce
 		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
 		policy.maxRetries = 1;
 		policy.priority = Priority.LOW;
-		
+
 		List<String> nodeList = client.getNodeNames();
 		long begin = System.currentTimeMillis();
-		
+
 		for (String nodeName : nodeList) {
 			console.info("Scan node " + nodeName);
 			client.scanNode(policy, nodeName, params.namespace, params.set, this);
-			
+
 			for (Map.Entry<String,Metrics> entry : setMap.entrySet()) {
 				console.info("Node " + nodeName + " set " + entry.getKey() + " count: " +  entry.getValue().count);
 				entry.getValue().count = 0;
@@ -64,9 +64,9 @@ public class ScanSeries extends Example implements ScanCallback {
 		long end = System.currentTimeMillis();
 		double seconds =  (double)(end - begin) / 1000.0;
 		console.info("Elapsed time: " + seconds + " seconds");
-		
+
 		long total = 0;
-		
+
 		for (Map.Entry<String,Metrics> entry : setMap.entrySet()) {
 			console.info("Total set " + entry.getKey() + " count: " +  entry.getValue().total);
 			total += entry.getValue().total;
@@ -79,19 +79,19 @@ public class ScanSeries extends Example implements ScanCallback {
 	@Override
 	public void scanCallback(Key key, Record record) {
 		Metrics metrics = setMap.get(key.setName);
-		
+
 		if (metrics == null) {
 			metrics = new Metrics();
 		}
 		metrics.count++;
 		metrics.total++;
 		setMap.put(key.setName, metrics);
-		
+
 		/*
 		System.out.print(key.namespace + ',' + key.setName + ',' + Buffer.bytesToHexString(key.digest));
-		
+
 		if (record.bins != null) {
-			for (Entry<String,Object> entry : record.bins.entrySet()) {	
+			for (Entry<String,Object> entry : record.bins.entrySet()) {
 				System.out.print(',');
 				System.out.print(entry.getKey());
 				System.out.print(',');
@@ -101,7 +101,7 @@ public class ScanSeries extends Example implements ScanCallback {
 		System.out.println();
 		*/
 	}
-	
+
 	private static class Metrics {
 		public long count = 0;
 		public long total = 0;

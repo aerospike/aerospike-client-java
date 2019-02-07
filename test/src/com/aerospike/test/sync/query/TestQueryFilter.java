@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public class TestQueryFilter extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.STRING);
 			itask.waitTillComplete();
@@ -67,7 +67,7 @@ public class TestQueryFilter extends TestSync {
 		writeRecord(keyPrefix + 2, "Bill", "hknfpkj");
 		writeRecord(keyPrefix + 3, "Doug", "dj6554");
 	}
-	
+
 	private static void writeRecord(String userKey, String name, String password) {
 		Key key = new Key(args.namespace, args.set, userKey);
 		Bin bin1 = new Bin("name", name);
@@ -77,33 +77,33 @@ public class TestQueryFilter extends TestSync {
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	@SuppressWarnings("unchecked")
 	public void queryFilter() {
 		String nameFilter = "Bill";
 		String passFilter = "hknfpkj";
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.equal(binName, nameFilter));
 		stmt.setAggregateFunction(TestQueryFilter.class.getClassLoader(), "udf/filter_example.lua", "filter_example", "profile_filter", Value.get(passFilter));
-		
+
 		// passFilter will be applied in filter_example.lua.
 		ResultSet rs = client.queryAggregate(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
-				Map<String,Object> map = (Map<String,Object>)rs.getObject();				
+				Map<String,Object> map = (Map<String,Object>)rs.getObject();
 				assertEquals(nameFilter, map.get("name"));
 				assertEquals(passFilter, map.get("password"));
 				count++;
-			}		
+			}
 			assertNotEquals(0, count);
 		}
 		finally {

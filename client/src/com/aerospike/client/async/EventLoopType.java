@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,14 +24,14 @@ public enum EventLoopType {
 	 * Direct NIO
 	 */
 	DIRECT_NIO,
-	
+
 	/**
 	 * Netty NIO
 	 */
 	NETTY_NIO,
-	
+
 	/**
-	 * Netty epoll.  Only available on Linux. 
+	 * Netty epoll.  Only available on Linux.
 	 */
 	NETTY_EPOLL
 }

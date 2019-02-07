@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,7 @@ public abstract class CDT {
 		packer.packInt(v2);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
-	
+
 	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, int v2, int v3) {
 		Packer packer = new Packer();
 		packer.packRawShort(command);
@@ -62,10 +62,10 @@ public abstract class CDT {
 		packer.packRawShort(command);
 		packer.packArrayBegin(2);
 		packer.packInt(v1);
-		v2.pack(packer);		
+		v2.pack(packer);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
-	
+
 	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2, int v3) {
 		Packer packer = new Packer();
 		packer.packRawShort(command);
@@ -98,7 +98,7 @@ public abstract class CDT {
 
 	protected static Operation createOperation(int command, Operation.Type type, String binName, Value v1, Value v2, int v3) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);		
+		packer.packRawShort(command);
 		packer.packArrayBegin(3);
 		v1.pack(packer);
 		v2.pack(packer);
@@ -109,21 +109,21 @@ public abstract class CDT {
 	protected static Operation createRangeOperation(int command, Operation.Type type, String binName, Value begin, Value end, int returnType) {
 		Packer packer = new Packer();
 		packer.packRawShort(command);
-		
+
 		if (begin == null) {
 			begin = Value.getAsNull();
 		}
-		
+
 		if (end == null) {
 			packer.packArrayBegin(2);
 			packer.packInt(returnType);
-			begin.pack(packer);		
+			begin.pack(packer);
 		}
 		else {
 			packer.packArrayBegin(3);
 			packer.packInt(returnType);
-			begin.pack(packer);		
-			end.pack(packer);		
+			begin.pack(packer);
+			end.pack(packer);
 		}
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,14 +26,14 @@ import com.aerospike.client.AerospikeException;
 public interface InfoListener {
 	/**
 	 * This method is called when an asynchronous info command completes successfully.
-	 * 
+	 *
 	 * @param map			map of info command keys and result values.
 	 */
 	public void onSuccess(Map<String,String> map);
 
 	/**
 	 * This method is called when an asynchronous info command fails.
-	 * 
+	 *
 	 * @param ae			error that occurred
 	 */
 	public void onFailure(AerospikeException ae);

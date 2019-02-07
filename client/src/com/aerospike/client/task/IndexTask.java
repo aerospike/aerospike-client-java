@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -47,21 +47,21 @@ public final class IndexTask extends Task {
 	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with load_pct of 100 to be considered done.
 		Node[] nodes = cluster.getNodes();
-		
+
 		if (nodes.length == 0) {
 			throw new AerospikeException("Cluster is empty");
 		}
-		
+
 		String command = "sindex/" + namespace + '/' + indexName;
 
 		for (Node node : nodes) {
 			String response = Info.request(policy, node, command);
-			
+
 			if (isCreate) {
 				// Check if index has been created.
 				String find = "load_pct=";
 				int index = response.indexOf(find);
-	
+
 				if (index < 0) {
 					if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
 						// Index not found or not readable.
@@ -69,16 +69,16 @@ public final class IndexTask extends Task {
 					}
 					else {
 						// Throw exception immediately.
-						throw new AerospikeException(command + " failed: " + response);				
+						throw new AerospikeException(command + " failed: " + response);
 					}
 				}
-	
+
 				int begin = index + find.length();
 				int end = response.indexOf(';', begin);
 				String str = response.substring(begin, end);
 				int pct = Integer.parseInt(str);
-				
-				if (pct != 100) {				
+
+				if (pct != 100) {
 					return Task.IN_PROGRESS;
 				}
 			}

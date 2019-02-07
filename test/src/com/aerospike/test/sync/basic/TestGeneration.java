@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,7 +40,7 @@ public class TestGeneration extends TestSync {
 
 		// Set some values for the same record.
 		Bin bin = new Bin(binName, "genvalue1");
-		
+
 		client.put(null, key, bin);
 
 		bin = new Bin(binName, "genvalue2");
@@ -65,12 +65,12 @@ public class TestGeneration extends TestSync {
 
 		try {
 			client.put(writePolicy, key, bin);
-			fail("Should have received generation error instead of success.");				
+			fail("Should have received generation error instead of success.");
 		}
 		catch (AerospikeException ae) {
 			if (ae.getResultCode() != ResultCode.GENERATION_ERROR) {
-				fail("Unexpected return code: namespace=" + key.namespace + " set=" + key.setName + 
-					" key=" + key.userKey + " bin=" + bin.name + " value=" + bin.value + 
+				fail("Unexpected return code: namespace=" + key.namespace + " set=" + key.setName +
+					" key=" + key.userKey + " bin=" + bin.name + " value=" + bin.value +
 					" code=" + ae.getResultCode());
 			}
 		}

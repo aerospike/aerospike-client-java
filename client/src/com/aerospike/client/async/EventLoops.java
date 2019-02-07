@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ public interface EventLoops extends Closeable {
      * Return array of Aerospike event loops.
      */
 	public EventLoop[] getArray();
-	
+
     /**
      * Return number of event loops in this group.
      */
@@ -43,12 +43,12 @@ public interface EventLoops extends Closeable {
 	 * Return next Aerospike event loop in round-robin fashion.
 	 */
 	public EventLoop next();
-	
+
 	/**
 	 * Close event loops.
 	 */
 	public void close();
-	
+
 	/**
 	 * Initialize TLS context. For internal use only.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -51,7 +51,7 @@ public class TestQueryPredExp extends TestSync {
 	public static void prepare() {
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, args.namespace, setName, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -66,7 +66,7 @@ public class TestQueryPredExp extends TestSync {
 			Key key = new Key(args.namespace, setName, keyPrefix + i);
 			List<Integer> list = null;
 			Map<String,String> map = null;
-			
+
 			if (i == 1) {
 				list = new ArrayList<Integer>(5);
 				list.add(1);
@@ -80,7 +80,7 @@ public class TestQueryPredExp extends TestSync {
 				list = new ArrayList<Integer>(3);
 				list.add(5);
 				list.add(9);
-				list.add(100);				
+				list.add(100);
 				// map will be null, which means mapbin will not exist in this record.
 			}
 			else if (i == 3) {
@@ -94,24 +94,24 @@ public class TestQueryPredExp extends TestSync {
 				list = new ArrayList<Integer>(0);
 				map = new HashMap<String,String>(0);
 			}
-			client.put(null, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map));			
+			client.put(null, key, new Bin(binName, i), new Bin("bin2", i), new Bin("listbin", list), new Bin("mapbin", map));
 		}
 	}
-	
+
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, setName, indexName);		
+		client.dropIndex(null, args.namespace, setName, indexName);
 	}
-	
+
 	@Test
 	public void queryPredicate1() {
 		int begin = 10;
 		int end = 45;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
-		stmt.setFilter(Filter.range(binName, begin, end));	
+		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
 			PredExp.integerBin("bin2"),
 			PredExp.integerValue(40),
@@ -143,10 +143,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().getValue(binName));
 				count++;
@@ -158,12 +158,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate2() {
 		int begin = 10;
 		int end = 45;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -178,7 +178,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.and(2),
 			PredExp.not()
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.not(Predicate.bin("bin2").greaterThanOrEqual(15).and(Predicate.bin("bin2").lessThanOrEqual(42)))
@@ -186,10 +186,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().getValue(binName));
 				count++;
@@ -201,12 +201,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate3() {
 		int begin = 10;
 		int end = 45;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -216,18 +216,18 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.integerValue(System.currentTimeMillis() * 1000000L + 100),
 			PredExp.integerGreater()
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.recordLastUpdate().greaterThan(Predicate.nanos(System.currentTimeMillis() + 100))
 			);
 		*/
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			//int count = 0;
-			
+
 			while (rs.next()) {
 				//Record record = rs.getRecord();
 				//System.out.println(record.getValue(binName).toString() + ' ' + record.expiration);
@@ -240,12 +240,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate4() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -257,7 +257,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.listBin("listbin"),
 			PredExp.listIterateOr("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.listInclude("listbin", "x", Predicate.var("x").equal(4))
@@ -265,10 +265,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -284,7 +284,7 @@ public class TestQueryPredExp extends TestSync {
 	public void queryPredicate5() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -296,7 +296,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.listBin("listbin"),
 			PredExp.listIterateAnd("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.listExclude("listbin", "x", Predicate.var("x").equal(5))
@@ -304,10 +304,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -318,12 +318,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate6() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -335,7 +335,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.mapBin("mapbin"),
 			PredExp.mapKeyIterateOr("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.mapKeyInclude("mapbin", "x", Predicate.var("x").equal("B"))
@@ -343,10 +343,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -357,12 +357,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate7() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -374,7 +374,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.mapBin("mapbin"),
 			PredExp.mapValIterateOr("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 				Predicate.mapValueInclude("mapbin", "x", Predicate.var("x").equal("BBB"))
@@ -382,10 +382,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -396,12 +396,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate8() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -413,7 +413,7 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.mapBin("mapbin"),
 			PredExp.mapKeyIterateAnd("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.mapKeyExclude("mapbin", "x", Predicate.var("x").equal("D"))
@@ -421,10 +421,10 @@ public class TestQueryPredExp extends TestSync {
 		*/
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -435,12 +435,12 @@ public class TestQueryPredExp extends TestSync {
 			rs.close();
 		}
 	}
-	
+
 	@Test
 	public void queryPredicate9() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -452,18 +452,18 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.mapBin("mapbin"),
 			PredExp.mapValIterateAnd("x")
 			);
-		
+
 		/*
 		stmt.setPredicate(
 			Predicate.mapValueExclude("mapbin", "x", Predicate.var("x").equal("AAA"))
 			);
 		*/
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -479,7 +479,7 @@ public class TestQueryPredExp extends TestSync {
 	public void queryPredicate10() {
 		int begin = 1;
 		int end = 10;
-				
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
@@ -489,12 +489,12 @@ public class TestQueryPredExp extends TestSync {
 			PredExp.integerValue(1),
 			PredExp.integerEqual()
 			);
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;
@@ -525,10 +525,10 @@ public class TestQueryPredExp extends TestSync {
 		predexps[2] = PredExp.geoJSONWithin();
 		stmt.setPredExp(predexps);
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//System.out.println(rs.getRecord().toString());
 				count++;

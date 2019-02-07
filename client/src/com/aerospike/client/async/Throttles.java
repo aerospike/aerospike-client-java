@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,13 +20,13 @@ package com.aerospike.client.async;
  * Use multiple throttles that enforce a limit on the maximum number of commands.
  * Useful in sync scan/async touch situations where scan thread needs to slow down
  * sending commands to event loops, so the event loop queues do not get overloaded.
- * 
+ *
  * Warning: Do not wait for slots directly from event loop threads.  Deadlock
  * may occur in that situation.
  */
 public final class Throttles {
 	private final Throttle[] throttles;
-	
+
 	/**
 	 * Construct throttles.
 	 */
@@ -40,7 +40,7 @@ public final class Throttles {
 
 	/**
 	 * Wait for a throttle's command slot(s).
-	 * 
+	 *
 	 * @param index		array index
 	 * @param count		count of commands to reserve
 	 * @return			if command should be processed
@@ -48,10 +48,10 @@ public final class Throttles {
 	public boolean waitForSlot(int index, int count) {
 		return throttles[index].waitForSlot(count);
 	}
-	
+
 	/**
 	 * Recover slot(s) from commands that have completed.
-	 * 
+	 *
 	 * @param index		array index
 	 * @param count		count of commands to reclaim
 	 */

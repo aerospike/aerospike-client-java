@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -35,11 +35,11 @@ import com.aerospike.client.lua.LuaOutputStream;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateExecutor extends QueryExecutor implements Runnable {
-	
+
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;
 	private LuaInstance lua;
-	
+
 	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
 		super(cluster, policy, statement, node);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
@@ -51,18 +51,18 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		// LuaInteger.valueOf(long) results in a static initialization error.
 		//
 		// If LuaValue.valueOf() is called before any luaj calls, then the static initializer in
-		// LuaInteger will be initialized properly.  		
+		// LuaInteger will be initialized properly.
 		LuaValue.valueOf(0);
-		
+
 		// Retrieve lua instance from cache.
 		lua = LuaCache.getInstance();
-		
+
 		try {
 			// Initialize threads, but do not run yet.
 			initializeThreads();
-			
-			// Start Lua thread which reads from a queue, applies aggregate function and 
-			// writes to a result set. 
+
+			// Start Lua thread which reads from a queue, applies aggregate function and
+			// writes to a result set.
 			threadPool.execute(this);
 		}
 		catch (RuntimeException re) {
@@ -71,7 +71,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			throw re;
 		}
 	}
-	
+
 	public void run() {
 		try {
 			runThreads();
@@ -80,24 +80,24 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			super.stopThreads(e);
 		}
 		finally {
-			LuaCache.putInstance(lua);			
+			LuaCache.putInstance(lua);
 		}
 	}
 
-	public void runThreads() throws AerospikeException {	
+	public void runThreads() throws AerospikeException {
 		try {
 			// Start thread queries to each node.
 			startThreads();
 
 			lua.loadPackage(statement);
-			
+
 			LuaValue[] args = new LuaValue[4 + statement.getFunctionArgs().length];
 			args[0] = lua.getFunction(statement.getFunctionName());
 			args[1] = LuaInteger.valueOf(2);
 			args[2] = new LuaInputStream(inputQueue);
 			args[3] = new LuaOutputStream(resultSet);
 			int count = 4;
-			
+
 			for (Value value : statement.getFunctionArgs()) {
 				args[count++] = value.getLuaValue(lua);
 			}
@@ -109,18 +109,18 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			resultSet.put(ResultSet.END);
 		}
 	}
-	
+
 	@Override
 	protected MultiCommand createCommand(long clusterKey, boolean first) {
 		return new QueryAggregateCommand(policy, statement, lua, inputQueue, clusterKey, first);
 	}
-	
+
 	@Override
 	protected void sendCancel() {
 		// Clear lua input queue to ensure cancel is accepted.
 		inputQueue.clear();
 		resultSet.abort();
-		
+
 		// Send end command to lua input queue.
 		// It's critical that the end offer succeeds.
 		while (! inputQueue.offer(LuaValue.NIL)) {
@@ -130,7 +130,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 				if (Log.debugEnabled()) {
 					Log.debug("Lua input queue " + statement.taskId + " both offer and poll failed on abort");
 				}
-				break;				
+				break;
 			}
 		}
 	}

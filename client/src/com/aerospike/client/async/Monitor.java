@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,7 @@ package com.aerospike.client.async;
  */
 public final class Monitor {
 	private boolean completed;
-	
+
 	/**
 	 * Wait in current thread for other thread to complete.
 	 */

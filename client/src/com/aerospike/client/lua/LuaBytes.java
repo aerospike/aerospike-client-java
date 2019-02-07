@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		bytes = (byte[])super.m_instance;
 		setmetatable(instance.getPackage("Bytes"));
 	}
-	
+
 	public LuaBytes(LuaInstance instance, byte[] bytes) {
 		super(bytes);
 		this.bytes = bytes;
@@ -60,25 +60,25 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		bytes[offset] = b;
 		resetSize(capacity);
 	}
-	
+
 	public void setCapacity(int capacity) {
 		if (bytes.length == capacity) {
 			return;
 		}
-		
+
 		byte[] target = new byte[capacity];
-		
+
 		if (length > capacity) {
 			length = capacity;
 		}
 		System.arraycopy(bytes, 0, target, 0, length);
 		bytes = target;
 	}
-	
+
 	public int getType() {
 		return type;
 	}
-	
+
 	public void setType(int type) {
 		this.type = type;
 	}
@@ -87,13 +87,13 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		if (offset < 0 || offset >= this.length) {
 			return "";
 		}
-		
+
 		if (offset + len > this.length) {
 			len = this.length - offset;
 		}
 		return Buffer.utf8ToString(bytes, offset, len);
 	}
-	
+
 	public LuaBytes getBytes(int offset, int len) {
 		if (offset < 0 || offset >= this.length) {
 			return new LuaBytes(instance, new byte[0]);
@@ -106,7 +106,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		System.arraycopy(bytes, offset, target, 0, len);
 		return new LuaBytes(instance, target);
 	}
-	
+
 	public int getBigInt16(int offset) {
 		if (offset < 0 || offset > this.length) {
 			return 0;
@@ -172,14 +172,14 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		System.arraycopy(src.bytes, 0, bytes, offset, len);
 		resetSize(capacity);
 	}
-		
+
 	public void setBigInt16(int offset, int value) {
 		int capacity = offset + 2;
 		ensureCapacity(capacity);
 		Buffer.shortToBytes(value, bytes, offset);
 		resetSize(capacity);
 	}
-	
+
 	public void setLittleInt16(int offset, int value) {
 		int capacity = offset + 2;
 		ensureCapacity(capacity);
@@ -193,7 +193,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		Buffer.intToBytes(value, bytes, offset);
 		resetSize(capacity);
 	}
-	
+
 	public void setLittleInt32(int offset, int value) {
 		int capacity = offset + 4;
 		ensureCapacity(capacity);
@@ -207,7 +207,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		Buffer.longToBytes(value, bytes, offset);
 		resetSize(capacity);
 	}
-	
+
 	public void setLittleInt64(int offset, long value) {
 		int capacity = offset + 8;
 		ensureCapacity(capacity);
@@ -221,7 +221,7 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 		resetSize(offset + len);
 		return len;
 	}
-	
+
 	public void appendString(String value) {
 		setString(length, value);
 	}
@@ -253,11 +253,11 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 	public int appendVarInt(int value) {
 		return setVarInt(length, value);
 	}
-	
+
 	public void appendBytes(LuaBytes source, int len) {
 		setBytes(length, source, len);
 	}
-	
+
 	public void appendByte(byte value) {
 		setByte(length, value);
 	}
@@ -265,18 +265,18 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 	private void ensureCapacity(int capacity) {
 		if (capacity > bytes.length) {
 			int len = bytes.length * 2;
-			
+
 			if (capacity > len) {
 				len = capacity;
 			}
-			
+
 			byte[] target = new byte[len];
 			System.arraycopy(bytes, 0, target, 0, length);
 			bytes = target;
 		}
 	}
 
-	private void resetSize(int capacity) {	
+	private void resetSize(int capacity) {
 		if (capacity > length) {
 			length = capacity;
 		}

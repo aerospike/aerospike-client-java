@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,19 +45,19 @@ public class QueryString extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "queryindex";
 		String keyPrefix = "querykey";
 		String valuePrefix = "queryvalue";
-		String binName = params.getBinName("querybin");  
+		String binName = params.getBinName("querybin");
 		int size = 5;
 
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, valuePrefix, size);
 		runQuery(client, params, indexName, binName, valuePrefix);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -65,11 +65,11 @@ public class QueryString extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING);
 			task.waitTillComplete();
@@ -92,10 +92,10 @@ public class QueryString extends Example {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin(binName, valuePrefix + i);
-			
+
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
-			
+
 			client.put(params.writePolicy, key, bin);
 		}
 	}
@@ -107,28 +107,28 @@ public class QueryString extends Example {
 		String binName,
 		String valuePrefix
 	) throws Exception {
-		
+
 		String filter = valuePrefix + 3;
-		
+
 		console.info("Query for: ns=%s set=%s index=%s bin=%s filter=%s",
-			params.namespace, params.set, indexName, binName, filter);			
-		
+			params.namespace, params.set, indexName, binName, filter);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.equal(binName, filter));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
 				String result = record.getString(binName);
-				
+
 				if (result.equals(filter)) {
 					console.info("Record found: ns=%s set=%s bin=%s key=%s value=%s",
 						key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
@@ -138,9 +138,9 @@ public class QueryString extends Example {
 				}
 				count++;
 			}
-			
+
 			if (count == 0) {
-				console.error("Query failed. No records returned.");			
+				console.error("Query failed. No records returned.");
 			}
 		}
 		finally {

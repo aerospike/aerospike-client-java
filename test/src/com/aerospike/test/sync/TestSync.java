@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,7 +31,7 @@ import com.aerospike.test.util.TestBase;
 public class TestSync extends TestBase {
 	protected static AerospikeClient client = SuiteSync.client;
 	private static boolean DestroyClient = false;
-	
+
 	@BeforeClass
 	public static void init() {
 		if (client == null) {
@@ -40,44 +40,44 @@ public class TestSync extends TestBase {
 			DestroyClient = true;
 		}
 	}
-	
+
 	@AfterClass
 	public static void destroy() {
 		if (DestroyClient) {
 			SuiteSync.destroy();
 		}
 	}
-	
+
 	public void assertRecordFound(Key key, Record record) {
 		if (record == null) {
-			fail("Failed to get: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey);			
+			fail("Failed to get: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey);
 		}
  	}
 
 	public void assertBinEqual(Key key, Record record, Bin bin) {
 		assertRecordFound(key, record);
-		
+
 		Object received = record.getValue(bin.name);
 		Object expected = bin.value.getObject();
-		
+
 		if (received == null || ! received.equals(expected)) {
 			fail("Data mismatch: Expected " + expected + ". Received " + received);
 		}
 	}
-	
+
 	public void assertBinEqual(Key key, Record record, String binName, Object expected) {
 		assertRecordFound(key, record);
 
 		Object received = record.getValue(binName);
-		
+
 		if (received == null || ! received.equals(expected)) {
 			fail("Data mismatch: Expected " + expected + ". Received " + received);
 		}
 	}
-	
+
 	public void assertBinEqual(Key key, Record record, String binName, int expected) {
 		assertRecordFound(key, record);
-		
+
 		int received = record.getInt(binName);
 
 		if (received != expected) {

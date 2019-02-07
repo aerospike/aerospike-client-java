@@ -123,23 +123,23 @@ abstract public class ReactorTest {
 	protected Predicate<KeyRecord> checkKeyRecord(Key key, String binName, Object binValue) {
 		return keyRecord -> keyRecord.key.equals(key) && keyRecord.record.bins.get(binName).equals(binValue);
 	}
-	
+
 	public void assertBinEqual(Key key, Record record, Bin bin) {
 		assertRecordFound(key, record);
-		
+
 		Object received = record.getValue(bin.name);
 		Object expected = bin.value.getObject();
 
 		assertThat(received).isEqualTo(expected);
 	}
-	
+
 	public void assertBinEqual(Key key, Record record, String binName, Object expected) {
 		assertRecordFound(key, record);
 
 		Object received = record.getValue(binName);
 		assertThat(received).isEqualTo(expected);
 	}
-	
+
 	public void assertRecordFound(Key key, Record record) {
 		if (record == null) {
 			throw new IllegalArgumentException("Failed to get: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey);

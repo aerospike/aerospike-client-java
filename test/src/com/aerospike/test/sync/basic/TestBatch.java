@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,18 +36,18 @@ import com.aerospike.test.sync.TestSync;
 public class TestBatch extends TestSync {
 	private static final String keyPrefix = "batchkey";
 	private static final String valuePrefix = "batchvalue";
-	private static final String binName = args.getBinName("batchbin");	
+	private static final String binName = args.getBinName("batchbin");
 	private static final int size = 8;
-		
+
 	@BeforeClass
 	public static void writeRecords() {
 		WritePolicy policy = new WritePolicy();
 		policy.expiration = 2592000;
-		
+
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			Bin bin = new Bin(binName, valuePrefix + i);
-			
+
 			client.put(policy, key, bin);
 		}
 	}
@@ -62,7 +62,7 @@ public class TestBatch extends TestSync {
 		boolean[] existsArray = client.exists(null, keys);
 		assertEquals(size, existsArray.length);
 
-		for (int i = 0; i < existsArray.length; i++) {			
+		for (int i = 0; i < existsArray.length; i++) {
 			if (! existsArray[i]) {
 				fail("Some batch records not found.");
 			}
@@ -82,11 +82,11 @@ public class TestBatch extends TestSync {
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
 			Record record = records[i];
-			
+
 			assertBinEqual(key, record, binName, valuePrefix + (i + 1));
-        }		
+        }
     }
-	
+
 	@Test
 	public void batchReadHeaders () {
 		Key[] keys = new Key[size];
@@ -100,17 +100,17 @@ public class TestBatch extends TestSync {
 		for (int i = 0; i < records.length; i++) {
 			Key key = keys[i];
 			Record record = records[i];
-			
+
 			assertRecordFound(key, record);
 			assertNotEquals(0, record.generation);
 			assertNotEquals(0, record.expiration);
-        }		
+        }
     }
-	
+
 	@Test
 	public void batchReadComplex () {
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-		String[] bins = new String[] {binName};		
+		String[] bins = new String[] {binName};
 		List<BatchRead> records = new ArrayList<BatchRead>();
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 1), bins));
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 2), true));
@@ -122,13 +122,13 @@ public class TestBatch extends TestSync {
 
 		// This record should be found, but the requested bin will not be found.
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 8), new String[] {"binnotfound"}));
-		
+
 		// This record should not be found.
 		records.add(new BatchRead(new Key(args.namespace, args.set, "keynotfound"), bins));
-		
+
 		// Execute batch.
 		client.get(null, records);
-	
+
 		assertBatchBinEqual(records, binName, 0);
 		assertBatchBinEqual(records, binName, 1);
 		assertBatchBinEqual(records, binName, 2);
@@ -136,25 +136,25 @@ public class TestBatch extends TestSync {
 		assertBatchBinEqual(records, binName, 4);
 		assertBatchBinEqual(records, binName, 5);
 		assertBatchBinEqual(records, binName, 6);
-		
+
 		BatchRead batch = records.get(7);
 		assertRecordFound(batch.key, batch.record);
 		Object val = batch.record.getValue("binnotfound");
 		if (val != null) {
 			fail("Unexpected batch bin value received");
 		}
-		
+
 		batch = records.get(8);
 		if (batch.record != null) {
 			fail("Unexpected batch record received");
 		}
     }
-	
+
 	private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
 		BatchRead batch = list.get(i);
 		assertBinEqual(batch.key, batch.record, binName, valuePrefix + (i + 1));
 	}
-	
+
 	private void assertBatchRecordExists(List<BatchRead> list, String binName, int i) {
 		BatchRead batch = list.get(i);
 		assertRecordFound(batch.key, batch.record);

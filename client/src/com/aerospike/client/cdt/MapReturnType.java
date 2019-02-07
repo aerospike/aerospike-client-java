@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,7 @@ public final class MapReturnType {
 	 * Do not return a result.
 	 */
 	public static final int NONE = 0;
-	
+
 	/**
 	 * Return key index order.
 	 * <ul>
@@ -34,7 +34,7 @@ public final class MapReturnType {
 	 * </ul>
 	 */
 	public static final int INDEX = 1;
-	
+
 	/**
 	 * Return reverse key order.
 	 * <ul>
@@ -78,7 +78,7 @@ public final class MapReturnType {
 	 * Return value for single key read and value list for range read.
 	 */
 	public static final int VALUE = 7;
-	
+
 	/**
 	 * Return key/value items. The possible return types are:
 	 * <ul>

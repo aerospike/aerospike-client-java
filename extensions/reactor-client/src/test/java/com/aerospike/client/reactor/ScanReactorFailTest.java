@@ -37,5 +37,5 @@ public class ScanReactorFailTest extends ReactorFailTest {
 		StepVerifier.create(flux)
 				.expectError(AerospikeException.Timeout.class)
 				.verify();
-   }	
+   }
 }

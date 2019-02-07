@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,13 +37,13 @@ public class RWTaskSync extends RWTask implements Runnable {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 	}
-	
+
 	public void run() {
 		RandomShift random = RandomShift.instance();
-		
+
 		while (valid) {
 			runCommand(random);
-			
+
 			// Throttle throughput
 			if (args.throughput > 0) {
 				int transactions;
@@ -55,7 +55,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 					transactions = counters.write.count.get() + counters.read.count.get();
 				}
 				if (transactions > args.throughput) {
-					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+					long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 
 					if (millis > 0) {
 						Util.sleep(millis);
@@ -71,22 +71,22 @@ public class RWTaskSync extends RWTask implements Runnable {
 			long begin = System.nanoTime();
 			client.put(writePolicy, key, bins);
 			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
+			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
 		}
 		else {
 			client.put(writePolicy, key, bins);
-			counters.write.count.getAndIncrement();			
+			counters.write.count.getAndIncrement();
 		}
 	}
-	
+
 	@Override
 	protected void add(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.add(writePolicyGeneration, key, bins);
 			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
+			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
 		}
 		else {
@@ -98,7 +98,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	@Override
 	protected void get(Key key, String binName) {
 		Record record;
-		
+
 		if (counters.read.latency != null) {
 			long begin = System.nanoTime();
 			record = client.get(args.readPolicy, key, binName);
@@ -107,14 +107,14 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key, binName);
-		}		
+		}
 		processRead(key, record);
 	}
-	
+
 	@Override
 	protected void get(Key key) {
 		Record record;
-		
+
 		if (counters.read.latency != null) {
 			long begin = System.nanoTime();
 			record = client.get(args.readPolicy, key);
@@ -123,7 +123,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		else {
 			record = client.get(args.readPolicy, key);
-		}	
+		}
 		processRead(key, record);
 	}
 
@@ -146,7 +146,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	@Override
 	protected void get(Key[] keys, String binName) {
 		Record[] records;
-		
+
 		if (counters.read.latency != null) {
 			long begin = System.nanoTime();
 			records = client.get(args.batchPolicy, keys, binName);
@@ -166,7 +166,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	@Override
 	protected void get(Key[] keys) {
 		Record[] records;
-		
+
 		if (counters.read.latency != null) {
 			long begin = System.nanoTime();
 			records = client.get(args.batchPolicy, keys);
@@ -176,10 +176,10 @@ public class RWTaskSync extends RWTask implements Runnable {
 		else {
 			records = client.get(args.batchPolicy, keys);
 		}
-	
+
 		if (records == null) {
 			System.out.println("Batch records returned is null");
 		}
 		processBatchRead();
-	}	
+	}
 }

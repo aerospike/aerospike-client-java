@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,17 +21,17 @@ import org.luaj.vm2.LuaValue;
 import com.aerospike.client.Log;
 
 public final class LuaUtil {
-	
+
 	public static Object luaToObject(LuaValue source) {
 		if (source == null) {
 			return null;
 		}
-		
+
 		switch (source.type()) {
 		case LuaValue.TNUMBER: {
 			double d = source.todouble();
 			long l = (long)d;
-			
+
 			if (d == (double)l) {
 				return l;
 			}
@@ -41,22 +41,22 @@ public final class LuaUtil {
 		}
 		case LuaValue.TBOOLEAN:
 			return source.toboolean();
-			
+
 		case LuaValue.TSTRING:
 			return source.tojstring();
-			
+
 		case LuaValue.TUSERDATA:
 			LuaData data = (LuaData)source;
 			return data.luaToObject();
-		
+
 		case LuaValue.TNIL:
 			return null;
-			
+
 		default:
 			if (Log.warnEnabled()) {
 				Log.warn("Invalid lua type: " + source.type());
 			}
 			return null;
 		}
-	}	
+	}
 }

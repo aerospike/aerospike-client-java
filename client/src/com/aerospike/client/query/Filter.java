@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,13 +23,13 @@ import com.aerospike.client.command.ParticleType;
 
 /**
  * Query filter definition.
- * 
+ *
  * Currently, only one filter is allowed in a Statement, and must be on bin which has a secondary index defined.
  */
 public final class Filter {
 	/**
 	 * Create long equality filter for query.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param value			filter value
 	 * @return				filter instance
@@ -41,7 +41,7 @@ public final class Filter {
 
 	/**
 	 * Create string equality filter for query.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param value			filter value
 	 * @return				filter instance
@@ -50,10 +50,10 @@ public final class Filter {
 		Value val = Value.get(value);
 		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
 	}
-	
+
 	/**
 	 * Create contains number filter for query on collection index.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param value			filter value
@@ -66,7 +66,7 @@ public final class Filter {
 
 	/**
 	 * Create contains string filter for query on collection index.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param value			filter value
@@ -78,10 +78,10 @@ public final class Filter {
 	}
 
 	/**
-	 * Create range filter for query.  
+	 * Create range filter for query.
 	 * Range arguments must be longs or integers which can be cast to longs.
 	 * String ranges are not supported.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param begin			filter begin value inclusive
 	 * @param end			filter end value inclusive
@@ -92,10 +92,10 @@ public final class Filter {
 	}
 
 	/**
-	 * Create range filter for query on collection index.  
+	 * Create range filter for query on collection index.
 	 * Range arguments must be longs or integers which can be cast to longs.
 	 * String ranges are not supported.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param begin			filter begin value inclusive
@@ -108,7 +108,7 @@ public final class Filter {
 
 	/**
 	 * Create geospatial "within region" filter for query.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param region		GeoJSON region
 	 * @return				filter instance
@@ -119,7 +119,7 @@ public final class Filter {
 
 	/**
 	 * Create geospatial "within region" filter for query on collection index.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param region		GeoJSON region
@@ -131,7 +131,7 @@ public final class Filter {
 
 	/**
 	 * Create geospatial "within radius" filter for query.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param lng			longitude
 	 * @param lat			latitude
@@ -142,13 +142,13 @@ public final class Filter {
 		String rgnstr =
 				String.format("{ \"type\": \"AeroCircle\", "
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
-							  lng, lat, radius);		
+							  lng, lat, radius);
 		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
 	}
 
 	/**
 	 * Create geospatial "within radius" filter for query on collection index.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param lng			longitude
@@ -160,13 +160,13 @@ public final class Filter {
 		String rgnstr =
 				String.format("{ \"type\": \"AeroCircle\", "
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
-							  lng, lat, radius);		
+							  lng, lat, radius);
 		return new Filter(name, type, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
 	}
 
 	/**
 	 * Create geospatial "containing point" filter for query.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param point			GeoJSON point
 	 * @return				filter instance
@@ -177,10 +177,10 @@ public final class Filter {
 
 	/**
 	 * Create geospatial "containing point" filter for query on collection index.
-	 * 
+	 *
 	 * @param name			bin name
 	 * @param type			index collection type
-	 * @param point			GeoJSON point.  
+	 * @param point			GeoJSON point.
 	 * @return				filter instance
 	 */
 	public static Filter geoContains(String name, IndexCollectionType type, String point) {
@@ -192,7 +192,7 @@ public final class Filter {
 	private final int valType;
 	private final Value begin;
 	private final Value end;
-		
+
 	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end) {
 		this.name = name;
 		this.valType = valType;
@@ -209,7 +209,7 @@ public final class Filter {
 		// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
 		return Buffer.estimateSizeUtf8(name) + begin.estimateSize() + end.estimateSize() + 10;
 	}
-	
+
 	/**
 	 * Write filter to send command buffer.
 	 * For internal use only.
@@ -219,23 +219,23 @@ public final class Filter {
 		int len = Buffer.stringToUtf8(name, buf, offset + 1);
 		buf[offset] = (byte)len;
 		offset += len + 1;
-		
+
 		// Write particle type.
 		buf[offset++] = (byte)valType;
-		
+
 		// Write filter begin.
 		len = begin.write(buf, offset + 4);
 		Buffer.intToBytes(len, buf, offset);
 		offset += len + 4;
-		
+
 		// Write filter end.
 		len = end.write(buf, offset + 4);
 		Buffer.intToBytes(len, buf, offset);
 		offset += len + 4;
-		
+
 		return offset;
 	}
-	
+
 	/**
 	 * Retrieve index collection type.
 	 * For internal use only.
@@ -243,7 +243,7 @@ public final class Filter {
 	public IndexCollectionType getCollectionType() {
 		return colType;
 	}
-	
+
 	/**
 	 * Check for Filter equality.
 	 */
@@ -277,7 +277,7 @@ public final class Filter {
 			return false;
 		return true;
 	}
-	
+
 	/**
 	 * Generate Filter hashCode.
 	 */

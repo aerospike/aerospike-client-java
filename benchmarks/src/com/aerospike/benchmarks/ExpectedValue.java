@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,32 +24,32 @@ import com.aerospike.client.Record;
 public final class ExpectedValue {
 	Bin[] bins;
 	int generation;
-	
+
 	public ExpectedValue(Bin[] bins, int generation) {
 		this.bins = bins;
 		this.generation = generation;
 	}
-	
+
 	public void write(Bin[] bins) {
 		this.bins = bins;
 		this.generation++;
 	}
-	
+
 	public void add(Bin[] addBins, int incrValue) {
 		int orig = 0;
-		
+
 		if (this.bins != null) {
 			Bin bin = this.bins[0];
-			
+
 			if (bin != null) {
 				Object object = bin.value.getObject();
-				
+
 				if (object instanceof Integer) {
 					orig = (Integer)object;
 				}
 			}
 		}
-		
+
 		if (orig != 0) {
 			this.bins[0] = new Bin(addBins[0].name, orig + incrValue);
 		}
@@ -58,27 +58,27 @@ public final class ExpectedValue {
 		}
 		this.generation++;
 	}
-	
+
 	public boolean validate(Record record) {
 		if (bins == null) {
 			if (record == null) {
 				return true;
 			}
-			System.out.println("Mismatch: Expected null. Received not null.");			
+			System.out.println("Mismatch: Expected null. Received not null.");
 			return false;
 		}
-		
-		if (record == null || record.bins == null) {			
-			System.out.println("Mismatch: Expected not null. Received null.");			
+
+		if (record == null || record.bins == null) {
+			System.out.println("Mismatch: Expected not null. Received null.");
 			return false;
 		}
 		Map<String,Object> map = record.bins;
 		int max = bins.length;
-		
+
 		for (int i = 0; i < max; i++) {
 			Object expected = bins[i].value.getObject();
 			Object received = map.get(Integer.toString(i));
-			
+
 			if (! expected.equals(received)) {
 				System.out.println("Mismatch: Expected '" + expected + "' Received '" + received + "'");
 				return false;

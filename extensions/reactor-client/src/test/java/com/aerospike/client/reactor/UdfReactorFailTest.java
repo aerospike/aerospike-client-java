@@ -39,8 +39,8 @@ public class UdfReactorFailTest extends ReactorFailTest {
 	@Test
 	public void udf() {
 		final Key key = new Key(args.namespace, args.set, "audfkey1");
-		final Bin bin = new Bin(binName, "string value");		
-		
+		final Bin bin = new Bin(binName, "string value");
+
 		Mono<KeyObject> mono = proxyReactorClient.execute(strictWritePolicy(), key,
 				"record_example", "writeBin", Value.get(bin.name), bin.value);
 

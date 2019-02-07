@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,7 +20,7 @@ import java.util.List;
 
 import com.aerospike.client.Host;
 
-public final class Peer {	
+public final class Peer {
 	String nodeName;
 	String tlsName;
 	List<Host> hosts;

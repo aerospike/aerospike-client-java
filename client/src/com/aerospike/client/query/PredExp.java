@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,22 +31,22 @@ public abstract class PredExp implements Serializable {
 
 	/**
 	 * Create "and" expression.
-	 * 
+	 *
 	 * @param nexp	number of expressions to perform "and" operation.  Usually two.
 	 */
 	public static PredExp and(int nexp) {
 		return new AndOr(AND, nexp);
 	}
-	
+
 	/**
 	 * Create "or" expression.
-	 * 
+	 *
 	 * @param nexp	number of expressions to perform "or" operation.  Usually two.
 	 */
 	public static PredExp or(int nexp) {
 		return new AndOr(OR, nexp);
 	}
-	
+
 	/**
 	 * Create "not" expression.
 	 */
@@ -67,52 +67,52 @@ public abstract class PredExp implements Serializable {
 	public static PredExp integerValue(long val) {
 		return new IntegerValue(val, INTEGER_VALUE);
 	}
-	
+
 	/**
 	 * Create string value.
-	 */	
+	 */
 	public static PredExp stringValue(String val) {
 		return new StringValue(val, STRING_VALUE);
 	}
 
 	/**
 	 * Create geospatial json string value.
-	 */	
+	 */
 	public static PredExp geoJSONValue(String val) {
 		return new GeoJSONValue(val, GEOJSON_VALUE);
 	}
 
 	/**
 	 * Create 64 bit integer bin predicate.
-	 */	
+	 */
 	public static PredExp integerBin(String name) {
 		return new StringValue(name, INTEGER_BIN);
 	}
 
 	/**
 	 * Create string bin predicate.
-	 */	
+	 */
 	public static PredExp stringBin(String name) {
 		return new StringValue(name, STRING_BIN);
 	}
 
 	/**
 	 * Create geospatial bin predicate.
-	 */	
+	 */
 	public static PredExp geoJSONBin(String name) {
 		return new StringValue(name, GEOJSON_BIN);
 	}
 
 	/**
 	 * Create list bin predicate.
-	 */	
+	 */
 	public static PredExp listBin(String name) {
 		return new StringValue(name, LIST_BIN);
 	}
 
 	/**
 	 * Create map bin predicate.
-	 */	
+	 */
 	public static PredExp mapBin(String name) {
 		return new StringValue(name, MAP_BIN);
 	}
@@ -123,28 +123,28 @@ public abstract class PredExp implements Serializable {
 	public static PredExp integerVar(String name) {
 		return new StringValue(name, INTEGER_VAR);
 	}
-	
+
 	/**
 	 * Create string variable used in list/map iterations.
-	 */	
+	 */
 	public static PredExp stringVar(String name) {
 		return new StringValue(name, STRING_VAR);
 	}
 
 	/**
 	 * Create geospatial json string variable used in list/map iterations.
-	 */	
+	 */
 	public static PredExp geoJSONVar(String name) {
 		return new StringValue(name, GEOJSON_VAR);
 	}
 
 	/**
 	 * Create record size on disk predicate.
-	 */	
+	 */
 	public static PredExp recDeviceSize() {
 		return new Op(RECSIZE);
 	}
-	
+
 	/**
 	 * Create record last update time predicate expressed in nanoseconds since 1970-01-01 epoch as 64 bit integer.
 	 * Example:
@@ -154,9 +154,9 @@ public abstract class PredExp implements Serializable {
 	 * PredExp.integerValue(new GregorianCalendar(2017, 0, 15))
 	 * PredExp.integerGreaterEq()
      * </pre>
-	 */	
+	 */
 	public static PredExp recLastUpdate() {
-		return new Op(LAST_UPDATE);	
+		return new Op(LAST_UPDATE);
 	}
 
 	/**
@@ -172,9 +172,9 @@ public abstract class PredExp implements Serializable {
 	 * PredExp.integerLess()
 	 * PredExp.and(2)
      * </pre>
-	 */	
+	 */
 	public static PredExp recVoidTime() {
-		return new Op(VOID_TIME);	
+		return new Op(VOID_TIME);
 	}
 
 	/**
@@ -191,61 +191,61 @@ public abstract class PredExp implements Serializable {
 	 * </pre>
 	 */
 	public static PredExp recDigestModulo(int mod) {
-		return new OpInt(DIGEST_MODULO, mod);	
+		return new OpInt(DIGEST_MODULO, mod);
 	}
 
 	/**
 	 * Create 64 bit integer "=" operation predicate.
-	 */	
+	 */
 	public static PredExp integerEqual() {
 		return new Op(INTEGER_EQUAL);
 	}
 
 	/**
 	 * Create 64 bit integer "!=" operation predicate.
-	 */	
+	 */
 	public static PredExp integerUnequal() {
 		return new Op(INTEGER_UNEQUAL);
 	}
 
 	/**
 	 * Create 64 bit integer ">" operation predicate.
-	 */	
+	 */
 	public static PredExp integerGreater() {
 		return new Op(INTEGER_GREATER);
 	}
 
 	/**
 	 * Create 64 bit integer ">=" operation predicate.
-	 */	
+	 */
 	public static PredExp integerGreaterEq() {
 		return new Op(INTEGER_GREATEREQ);
 	}
 
 	/**
 	 * Create 64 bit integer "<" operation predicate.
-	 */	
+	 */
 	public static PredExp integerLess() {
 		return new Op(INTEGER_LESS);
 	}
 
 	/**
 	 * Create 64 bit integer "<=" operation predicate.
-	 */	
+	 */
 	public static PredExp integerLessEq() {
 		return new Op(INTEGER_LESSEQ);
 	}
 
 	/**
 	 * Create string "=" operation predicate.
-	 */	
+	 */
 	public static PredExp stringEqual() {
 		return new Op(STRING_EQUAL);
 	}
 
 	/**
 	 * Create string "!=" operation predicate.
-	 */	
+	 */
 	public static PredExp stringUnequal() {
 		return new Op(STRING_UNEQUAL);
 	}
@@ -255,9 +255,9 @@ public abstract class PredExp implements Serializable {
 	 * <pre>
 	 * PredExp.stringRegex(RegexFlag.EXTENDED | RegexFlag.ICASE)
 	 * </pre>
-	 * 
+	 *
 	 * @param flags	regular expression bit flags. See {@link com.aerospike.client.query.RegexFlag}
-	 */	
+	 */
 	public static PredExp stringRegex(int flags) {
 		return new OpInt(STRING_REGEX, flags);
 	}
@@ -275,12 +275,12 @@ public abstract class PredExp implements Serializable {
 	public static PredExp geoJSONContains() {
 		return new Op(GEOJSON_CONTAINS);
 	}
-	
+
 	/**
 	 * Create list predicate where expression matches for any list item.
 	 * Example:
 	 * <pre>
-	 * // Find records where any list item v = "hello" in list bin x.  
+	 * // Find records where any list item v = "hello" in list bin x.
 	 * PredExp.stringVar("v")
 	 * PredExp.stringValue("hello")
 	 * PredExp.stringEqual()
@@ -296,7 +296,7 @@ public abstract class PredExp implements Serializable {
 	 * Create list predicate where expression matches for all list items.
 	 * Example:
 	 * <pre>
-	 * // Find records where all list elements v != "goodbye" in list bin x.  
+	 * // Find records where all list elements v != "goodbye" in list bin x.
 	 * PredExp.stringVar("v")
 	 * PredExp.stringValue("goodbye")
 	 * PredExp.stringUnequal()
@@ -312,7 +312,7 @@ public abstract class PredExp implements Serializable {
 	 * Create map predicate where expression matches for any map key.
 	 * Example:
 	 * <pre>
-	 * // Find records where any map key k = 7 in map bin m.  
+	 * // Find records where any map key k = 7 in map bin m.
 	 * PredExp.integerVar("k")
 	 * PredExp.integerValue(7)
 	 * PredExp.integerEqual()
@@ -328,7 +328,7 @@ public abstract class PredExp implements Serializable {
 	 * Create map key predicate where expression matches for all map keys.
 	 * Example:
 	 * <pre>
-	 * // Find records where all map keys k < 5 in map bin m.  
+	 * // Find records where all map keys k < 5 in map bin m.
 	 * PredExp.integerVar("k")
 	 * PredExp.integerValue(5)
 	 * PredExp.integerLess()
@@ -343,7 +343,7 @@ public abstract class PredExp implements Serializable {
 	/**
 	 * Create map predicate where expression matches for any map value.
 	 * <pre>
-	 * // Find records where any map value v > 100 in map bin m.  
+	 * // Find records where any map value v > 100 in map bin m.
 	 * PredExp.integerVar("v")
 	 * PredExp.integerValue(100)
 	 * PredExp.integerGreater()
@@ -359,7 +359,7 @@ public abstract class PredExp implements Serializable {
 	 * Create map predicate where expression matches for all map values.
 	 * Example:
 	 * <pre>
-	 * // Find records where all map values v > 500 in map bin m.  
+	 * // Find records where all map values v > 500 in map bin m.
 	 * PredExp.integerVar("v")
 	 * PredExp.integerValue(500)
 	 * PredExp.integerGreater()
@@ -384,7 +384,7 @@ public abstract class PredExp implements Serializable {
 	private static final int MAP_BIN = 104;
 	private static final int INTEGER_VAR = 120;
 	private static final int STRING_VAR = 121;
-	private static final int GEOJSON_VAR = 122;	
+	private static final int GEOJSON_VAR = 122;
 	private static final int RECSIZE = 150;
 	private static final int LAST_UPDATE = 151;
 	private static final int VOID_TIME = 152;
@@ -406,7 +406,7 @@ public abstract class PredExp implements Serializable {
 	private static final int LIST_ITERATE_AND = 253;
 	private static final int MAPKEY_ITERATE_AND = 254;
 	private static final int MAPVAL_ITERATE_AND = 255;
-	
+
 	private static final long NANOS_PER_MILLIS = 1000000L;
 
 	/**
@@ -415,7 +415,7 @@ public abstract class PredExp implements Serializable {
 	 */
 	public static int estimateSize(PredExp[] predExp) {
 		int size = 0;
-		
+
 		for (PredExp pred : predExp) {
 			size += pred.estimateSize();
 		}
@@ -432,13 +432,13 @@ public abstract class PredExp implements Serializable {
 		}
 		return offset;
 	}
-	
+
 	/**
 	 * Estimate size of predicate expression.
 	 * For internal use only.
 	 */
 	public abstract int estimateSize();
-	
+
 	/**
 	 * Write predicate expression to write protocol.
 	 * For internal use only.
@@ -450,12 +450,12 @@ public abstract class PredExp implements Serializable {
 
 		private final long value;
 		private final int type;
-		
+
 		private IntegerValue(long value, int type) {
 			this.value = value;
 			this.type = type;
 		}
-		
+
 		public int estimateSize() {
 			return 14;
 		}
@@ -464,24 +464,24 @@ public abstract class PredExp implements Serializable {
 			// Write value type
 			Buffer.shortToBytes(type, buf, offset);
 			offset += 2;
-			
+
 			// Write length
 			Buffer.intToBytes(8, buf, offset);
 			offset += 4;
-			
+
 			// Write value
 			Buffer.longToBytes(value, buf, offset);
 			offset += 8;
 			return offset;
 		}
 	}
-	
+
 	private static final class StringValue extends PredExp {
 		private static final long serialVersionUID = -3524085980377177985L;
 
 		private final String value;
 		private final int type;
-		
+
 		public StringValue(String value, int type) {
 			this.value = value;
 			this.type = type;
@@ -495,21 +495,21 @@ public abstract class PredExp implements Serializable {
 			// Write value type
 			Buffer.shortToBytes(type, buf, offset);
 			offset += 2;
-			
+
 			// Write value
 			int len = Buffer.stringToUtf8(value, buf, offset + 4);
 			Buffer.intToBytes(len, buf, offset);
-			offset += 4 + len;			
+			offset += 4 + len;
 			return offset;
 		}
 	}
-	
+
 	private static final class GeoJSONValue extends PredExp {
 		private static final long serialVersionUID = 4455928732518557753L;
 
 		private final String value;
 		private final int type;
-		
+
 		public GeoJSONValue(String value, int type) {
 			this.value = value;
 			this.type = type;
@@ -524,7 +524,7 @@ public abstract class PredExp implements Serializable {
 			// Write value type
 			Buffer.shortToBytes(this.type, buf, offset);
 			offset += 2;
-			
+
 			// Write value
 			int len = Buffer.stringToUtf8(value, buf, offset + 4 + 1 + 2);
 			Buffer.intToBytes(len + 1 + 2, buf, offset);
@@ -532,26 +532,26 @@ public abstract class PredExp implements Serializable {
 
 			buf[offset] = 0; // flags
 			offset += 1;
-			
+
 			Buffer.shortToBytes(0, buf, offset); // ncells
 			offset += 2;
 
-			offset += len;			
+			offset += len;
 			return offset;
 		}
 	}
-	
+
 	private static final class AndOr extends PredExp {
 		private static final long serialVersionUID = 8758581924470272519L;
 
 		private final int op;
 		private final int nexp;
-		
+
 		private AndOr(int op, int nexp) {
 			this.op = op;
 			this.nexp = nexp;
 		}
-		
+
 		public int estimateSize() {
 			 return 8;
 		}
@@ -560,10 +560,10 @@ public abstract class PredExp implements Serializable {
 			// Write type
 			Buffer.shortToBytes(op, buf, offset);
 			offset += 2;
-			
+
 			// Write length
 			Buffer.intToBytes(2, buf, offset);
-			offset += 4;		
+			offset += 4;
 
 			// Write predicate count
 			Buffer.shortToBytes(nexp, buf, offset);
@@ -576,7 +576,7 @@ public abstract class PredExp implements Serializable {
 		private static final long serialVersionUID = 6679095249949169203L;
 
 		private final int op;
-		
+
 		private Op(int op) {
 			this.op = op;
 		}
@@ -589,10 +589,10 @@ public abstract class PredExp implements Serializable {
 			// Write op type
 			Buffer.shortToBytes(op, buf, offset);
 			offset += 2;
-			
+
 			// Write zero length
 			Buffer.intToBytes(0, buf, offset);
-			offset += 4;		
+			offset += 4;
 			return offset;
 		}
 	}
@@ -602,12 +602,12 @@ public abstract class PredExp implements Serializable {
 
 		private final int op;
 		private final int flags;
-		
+
 		private OpInt(int op, int flags) {
 			this.op = op;
-			this.flags = flags; 
+			this.flags = flags;
 		}
-		
+
 		public int estimateSize() {
 			 return 10;
 		}
@@ -616,15 +616,15 @@ public abstract class PredExp implements Serializable {
 			// Write op type
 			Buffer.shortToBytes(op, buf, offset);
 			offset += 2;
-			
+
 			// Write length
 			Buffer.intToBytes(4, buf, offset);
-			offset += 4;		
+			offset += 4;
 
 			// Write predicate count
 			Buffer.intToBytes(flags, buf, offset);
 			offset += 4;
 			return offset;
 		}
-	}	
+	}
 }

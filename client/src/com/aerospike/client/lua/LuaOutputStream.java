@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,14 +23,14 @@ import org.luaj.vm2.LuaValue;
 import com.aerospike.client.query.ResultSet;
 
 public final class LuaOutputStream extends LuaUserdata implements LuaStream {
-	
+
 	private final ResultSet resultSet;
-	
+
 	public LuaOutputStream(ResultSet resultSet) {
 		super(resultSet);
 		this.resultSet = resultSet;
 	}
-	
+
 	@Override
 	public LuaValue read() {
 		throw new RuntimeException("LuaOutputStream is not readable.");
@@ -39,7 +39,7 @@ public final class LuaOutputStream extends LuaUserdata implements LuaStream {
 	@Override
 	public void write(LuaValue source) {
 		Object target = LuaUtil.luaToObject(source);
-		
+
 		if (target != null) {
 			resultSet.put(target);
 		}

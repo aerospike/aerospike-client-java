@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,24 +23,24 @@ import org.luaj.vm2.lib.OneArgFunction;
 import org.luaj.vm2.lib.TwoArgFunction;
 
 public final class LuaStreamLib extends OneArgFunction {
-	
+
 	private final LuaInstance instance;
 
 	public LuaStreamLib(LuaInstance instance) {
 		this.instance = instance;
 	}
-	
+
 	public LuaValue call(LuaValue env) {
 		LuaTable meta = new LuaTable(0,1);
 		meta.set("__tostring", new tostring());
-		
+
 		LuaTable table = new LuaTable(0,10);
 		table.setmetatable(meta);
 		table.set("read", new read());
 		table.set("readable", new readable());
 		table.set("writeable", new writeable());
 		table.set("write", new write());
-		
+
 		instance.registerPackage("stream", table);
 		return table;
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ import com.aerospike.client.Record;
  */
 public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	public static final KeyRecord END = new KeyRecord(null, null);
-	
+
 	private final QueryExecutor executor;
 	private final BlockingQueue<KeyRecord> queue;
 	private KeyRecord record;
@@ -46,16 +46,16 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		this.executor = executor;
 		this.queue = new ArrayBlockingQueue<KeyRecord>(capacity);
 	}
-	
+
 	//-------------------------------------------------------
 	// Record traversal methods
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next record.  This method will block until a record is retrieved 
+	 * Retrieve next record.  This method will block until a record is retrieved
 	 * or the query is cancelled.
-	 * 
-	 * @return		whether record exists - if false, no more records are available 
+	 *
+	 * @return		whether record exists - if false, no more records are available
 	 */
 	public final boolean next() throws AerospikeException {
 		if (! valid) {
@@ -68,7 +68,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
-			
+
 			if (Log.debugEnabled()) {
 				Log.debug("RecordSet " + executor.statement.taskId + " take interrupted");
 			}
@@ -82,20 +82,20 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Close query.
 	 */
 	public final void close() {
 		valid = false;
-		
+
 		// Check if more records are available.
 		if (record != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}
 	}
-	
+
 	/**
 	 * Provide Iterator for RecordSet.
 	 */
@@ -103,29 +103,29 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	public Iterator<KeyRecord> iterator() {
 		return new RecordSetIterator(this);
 	}
-	
+
 	//-------------------------------------------------------
 	// Meta-data retrieval methods
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Get record's unique identifier.
 	 */
 	public final Key getKey() {
 		return record.key;
 	}
-	
+
 	/**
 	 * Get record's header and bin data.
 	 */
 	public final Record getRecord() {
 		return record.record;
 	}
-		
+
 	//-------------------------------------------------------
 	// Methods for internal use only.
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Put a record on the queue.
 	 */
@@ -151,14 +151,14 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Abort retrieval with end token.
 	 */
 	protected final void abort() {
 		valid = false;
 		queue.clear();
-		
+
 		// Send end command to transaction thread.
 		// It's critical that the end offer succeeds.
 		while (! queue.offer(END)) {
@@ -168,7 +168,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 				if (Log.debugEnabled()) {
 					Log.debug("RecordSet " + executor.statement.taskId + " both offer and poll failed on abort");
 				}
-				break;				
+				break;
 			}
 		}
 	}
@@ -177,7 +177,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 * Support standard iteration interface for RecordSet.
 	 */
 	private class RecordSetIterator implements Iterator<KeyRecord>, Closeable {
-		
+
 		private final RecordSet recordSet;
 		private boolean more;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -47,20 +47,20 @@ public final class LuaMap extends LuaUserdata implements LuaData {
 	public LuaString toLuaString() {
 		return LuaString.valueOf(map.toString());
 	}
-	
+
 	public LuaValue get(LuaValue key) {
 		LuaValue val = map.get(key);
-		return val != null ? val : NIL; 
+		return val != null ? val : NIL;
 	}
 
 	public void put(LuaValue key, LuaValue value) {
 		map.put(key, value);
 	}
-	
+
 	public Iterator<Entry<LuaValue,LuaValue>> entrySetIterator() {
 		return map.entrySet().iterator();
 	}
-	
+
 	public Iterator<LuaValue> keySetIterator() {
 		return map.keySet().iterator();
 	}
@@ -80,13 +80,13 @@ public final class LuaMap extends LuaUserdata implements LuaData {
 	public LuaMap merge(LuaMap map2, LuaFunction func) {
 		HashMap<LuaValue,LuaValue> target = new HashMap<LuaValue,LuaValue>(map.size() + map2.map.size());
 		target.putAll(map);
-		
+
 		boolean hasFunc = !(func == null || func.isnil());
-		
+
 		for (Entry<LuaValue,LuaValue> entry : map2.map.entrySet()) {
 			if (hasFunc) {
 				LuaValue value = map.get(entry.getKey());
-				
+
 				if (value != null) {
 					Varargs ret = func.invoke(value, entry.getValue());
 					target.put(entry.getKey(), (LuaValue)ret);
@@ -100,13 +100,13 @@ public final class LuaMap extends LuaUserdata implements LuaData {
 
 	public LuaMap diff(LuaMap map2) {
 		HashMap<LuaValue,LuaValue> target = new HashMap<LuaValue,LuaValue>(map.size() + map2.map.size());
-		
+
 		for (Entry<LuaValue,LuaValue> entry : map.entrySet()) {
 			if (!map2.map.containsKey(entry.getKey())) {
 				target.put(entry.getKey(), entry.getValue());
 			}
 		}
-		
+
 		for (Entry<LuaValue,LuaValue> entry : map2.map.entrySet()) {
 			if (!map.containsKey(entry.getKey())) {
 				target.put(entry.getKey(), entry.getValue());
@@ -117,7 +117,7 @@ public final class LuaMap extends LuaUserdata implements LuaData {
 
 	public Object luaToObject() {
 		Map<Object,Object> target = new HashMap<Object,Object>(map.size());
-		
+
 		for (Entry<LuaValue,LuaValue> entry : map.entrySet()) {
 			Object key = LuaUtil.luaToObject(entry.getKey());
 			Object value = LuaUtil.luaToObject(entry.getValue());

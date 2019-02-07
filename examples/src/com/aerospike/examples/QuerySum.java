@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,16 +48,16 @@ public class QuerySum extends Example {
 		}
 		String indexName = "aggindex";
 		String keyPrefix = "aggkey";
-		String binName = params.getBinName("aggbin");  
+		String binName = params.getBinName("aggbin");
 		int size = 10;
 
 		register(client, params);
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void register(AerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/sum_example.lua", "sum_example.lua", Language.LUA);
 		// Alternately register from resource.
@@ -72,11 +72,11 @@ public class QuerySum extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -98,10 +98,10 @@ public class QuerySum extends Example {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
-			
+
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
-			
+
 			client.put(params.writePolicy, key, bin);
 		}
 	}
@@ -112,13 +112,13 @@ public class QuerySum extends Example {
 		String indexName,
 		String binName
 	) throws Exception {
-		
+
 		int begin = 4;
 		int end = 7;
-		
+
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);			
-		
+			params.namespace, params.set, indexName, binName, begin, end);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
@@ -127,17 +127,17 @@ public class QuerySum extends Example {
 		stmt.setAggregateFunction("sum_example", "sum_single_bin", Value.get(binName));
 		// Alternately load aggregate function from resource
 		// stmt.setAggregateFunction(QuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
-		
+
 		ResultSet rs = client.queryAggregate(null, stmt);
-		
+
 		try {
 			int expected = 22; // 4 + 5 + 6 + 7
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Object object = rs.getObject();
 				long sum;
-				
+
 				if (object instanceof Long) {
 					sum = (Long)rs.getObject();
 				}
@@ -145,7 +145,7 @@ public class QuerySum extends Example {
 					console.error("Return value not a long: " + object);
 					continue;
 				}
-				
+
 				if (expected == (int)sum) {
 					console.info("Sum matched: value=%d", expected);
 				}
@@ -154,9 +154,9 @@ public class QuerySum extends Example {
 				}
 				count++;
 			}
-			
+
 			if (count == 0) {
-				console.error("Query failed. No records returned.");			
+				console.error("Query failed. No records returned.");
 			}
 		}
 		finally {

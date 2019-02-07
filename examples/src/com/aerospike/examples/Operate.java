@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,7 +36,7 @@ public class Operate extends Example {
 		// Write initial record.
 		Key key = new Key(params.namespace, params.set, "opkey");
 		Bin bin1 = new Bin("optintbin", 7);
-		Bin bin2 = new Bin("optstringbin", "string value");		
+		Bin bin2 = new Bin("optstringbin", "string value");
 		console.info("Put: namespace=%s set=%s key=%s bin1=%s value1=%s bin2=%s value2=%s",
 			key.namespace, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
 		client.put(params.writePolicy, key, bin1, bin2);
@@ -56,9 +56,9 @@ public class Operate extends Example {
 		}
 
 		validateBin(key, record, bin3.name, 11, record.getInt(bin3.name));
-		validateBin(key, record, bin4.name, bin4.value.toString(), record.getValue(bin4.name));	
+		validateBin(key, record, bin4.name, bin4.value.toString(), record.getValue(bin4.name));
 	}
-	
+
 	private void validateBin(Key key, Record record, String binName, Object expected, Object received) {
 		if (received != null && received.equals(expected)) {
 			console.info("Bin matched: namespace=%s set=%s key=%s bin=%s value=%s generation=%s expiration=%s",

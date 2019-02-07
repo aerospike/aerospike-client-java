@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,10 +23,10 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Utils {	
+public class Utils {
 	/**
 	 * Read all the contents from the file and put it in a List.
-	 * @throws IOException 
+	 * @throws IOException
 	 */
 	protected static List<String> readKeyFromFile(String filepath) throws IOException {
 		List<String> contentsFromFile = readAllLines(filepath);
@@ -36,10 +36,10 @@ public class Utils {
     private static List<String> readAllLines(String filepath) throws IOException {
     	List<String> fileContent = new ArrayList<String>();
         File file = new File(filepath);
-        
+
         BufferedReader input =  new BufferedReader(new FileReader(file));
         try {
-        	String line = null; 
+        	String line = null;
         	while (( line = input.readLine()) != null) {
             	  fileContent.add(line);
             }
@@ -48,10 +48,10 @@ public class Utils {
         	if (input != null)
         		input.close();
         }
-        
+
         return fileContent;
     }
-    
+
     public static boolean isNumeric(String str) {
 	  return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,7 @@ public final class AsyncTouch extends AsyncCommand {
 	private final WriteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;
-		
+
 	public AsyncTouch(WriteListener listener, WritePolicy writePolicy, Key key) {
 		super(writePolicy, new Partition(key), null, false);
 		this.listener = listener;
@@ -42,7 +42,7 @@ public final class AsyncTouch extends AsyncCommand {
 	@Override
 	protected boolean parseResult() {
 		validateHeaderSize();
-		
+
 		int resultCode = dataBuffer[5] & 0xFF;
 
 		if (resultCode != 0) {
@@ -56,7 +56,7 @@ public final class AsyncTouch extends AsyncCommand {
 		if (listener != null) {
 			listener.onSuccess(key);
 		}
-	}	
+	}
 
 	@Override
 	protected void onFailure(AerospikeException e) {

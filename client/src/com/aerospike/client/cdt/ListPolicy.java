@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,12 +24,12 @@ public final class ListPolicy {
 	 * Default unordered list with normal write semantics.
 	 */
 	public static final ListPolicy Default = new ListPolicy();
-	
+
 	protected final int attributes;
 	protected final int flags;
-	
+
 	/**
-	 * Default constructor.  
+	 * Default constructor.
 	 * Create unordered list when list does not exist.
 	 * Use normal update mode when writing list items.
 	 */

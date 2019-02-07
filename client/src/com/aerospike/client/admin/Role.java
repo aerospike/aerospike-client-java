@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,12 +28,12 @@ public final class Role {
 	public static final String UserAdmin = "user-admin";
 
 	/**
-	 * Manage server configuration. 
+	 * Manage server configuration.
 	 */
 	public static final String SysAdmin = "sys-admin";
 
 	/**
-	 * Manage indicies and user defined functions. 
+	 * Manage indicies and user defined functions.
 	 */
 	public static final String DataAdmin = "data-admin";
 
@@ -51,12 +51,12 @@ public final class Role {
 	 * Allow read and write transactions within user defined functions.
 	 */
 	public static final String ReadWriteUdf = "read-write-udf";
-	
+
 	/**
 	 * Role name.
 	 */
 	public String name;
-	
+
 	/**
 	 * List of assigned privileges.
 	 */

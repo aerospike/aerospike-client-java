@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,7 @@ import com.aerospike.client.util.Util;
 
 public final class InsertTaskSync extends InsertTask implements Runnable {
 
-	private final AerospikeClient client; 
+	private final AerospikeClient client;
 	private final long keyStart;
 	private final long keyCount;
 
@@ -35,9 +35,9 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 	}
-	
+
 	public void run() {
-		try {			
+		try {
 			RandomShift random = new RandomShift();
 
 			for (long i = 0; i < keyCount; i++) {
@@ -47,18 +47,18 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 				catch (AerospikeException ae) {
 					i--;
 					writeFailure(ae);
-				}	
+				}
 				catch (Exception e) {
 					i--;
 					writeFailure(e);
 				}
-				
+
 				// Throttle throughput
 				if (args.throughput > 0) {
 					int transactions = counters.write.count.get();
-					
+
 					if (transactions > args.throughput) {
-						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();                                        
+						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
 
 						if (millis > 0) {
 							Util.sleep(millis);
@@ -70,27 +70,27 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 		catch (Exception ex) {
 			System.out.println("Insert task error: " + ex.getMessage());
 			ex.printStackTrace();
-		}		
+		}
 	}
-	
+
 	private void runCommand(long keyCurrent, RandomShift random) {
 		Key key = new Key(args.namespace, args.setName, keyCurrent);
 		// Use predictable value for 0th bin same as key value
 		Bin[] bins = args.getBins(random, true, keyCurrent);
-		put(key, bins);		
+		put(key, bins);
 	}
-	
+
 	private void put(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.put(args.writePolicy, key, bins);
 			long elapsed = System.nanoTime() - begin;
-			counters.write.count.getAndIncrement();			
+			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
 		}
 		else {
 			client.put(args.writePolicy, key, bins);
-			counters.write.count.getAndIncrement();			
+			counters.write.count.getAndIncrement();
 		}
-	}		
+	}
 }

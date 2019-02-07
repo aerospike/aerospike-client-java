@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,7 @@ public final class InfoPolicy {
 	 * Default is one second timeout.
 	 */
 	public int timeout;
-	
+
 	/**
 	 * Copy timeout from other InfoPolicy.
 	 */
@@ -39,7 +39,7 @@ public final class InfoPolicy {
 	public InfoPolicy(Policy other) {
 		this.timeout = other.socketTimeout;
 	}
-	
+
 	/**
 	 * Default constructor.  Default is one second timeout.
 	 */

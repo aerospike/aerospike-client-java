@@ -53,5 +53,5 @@ public class ScanReactorTest extends ReactorTest {
 		StepVerifier.create(flux)
 				.expectNextCount(size)
 				.verifyComplete();
-   }	
+   }
 }

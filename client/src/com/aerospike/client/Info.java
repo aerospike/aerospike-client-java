@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,15 +38,15 @@ import com.aerospike.client.util.ThreadLocalData;
  * <p>
  * <a href="https://docs.aerospike.com/display/AS2/Config+Parameters+Reference">https://docs.aerospike.com/display/AS2/Config+Parameters+Reference</a>
  * <p>
- * 
+ *
  */
-public final class Info {	
+public final class Info {
 	//-------------------------------------------------------
 	// Static variables.
 	//-------------------------------------------------------
-	
+
 	private static final int DEFAULT_TIMEOUT = 1000;
-	
+
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
@@ -63,7 +63,7 @@ public final class Info {
 	 * Send single command to server and store results.
 	 * This constructor is used internally.
 	 * The static request methods should be used instead.
-	 * 
+	 *
 	 * @param conn			connection to server node
 	 * @param command		command sent to server
 	 */
@@ -81,33 +81,33 @@ public final class Info {
 		// The command format is: <name1>\n<name2>\n...
 		offset += Buffer.stringToUtf8(command, buffer, offset);
 		buffer[offset++] = '\n';
-		
+
 		sendCommand(conn);
 	}
-	
+
 	/**
-	 * Send multiple commands to server and store results. 
+	 * Send multiple commands to server and store results.
 	 * This constructor is used internally.
 	 * The static request methods should be used instead.
-	 * 
+	 *
 	 * @param conn			connection to server node
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, String... commands) throws AerospikeException {
 		buffer = ThreadLocalData.getBuffer();
-		
+
 		// First, do quick conservative buffer size estimate.
 		offset = 8;
-		
+
 		for (String command : commands) {
 			offset += command.length() * 2 + 1;
 		}
-		
+
 		// If conservative estimate may be exceeded, get exact estimate
 		// to preserve memory and resize buffer.
 		if (offset > buffer.length) {
 			offset = 8;
-			
+
 			for (String command : commands) {
 				offset += Buffer.estimateSizeUtf8(command) + 1;
 			}
@@ -122,30 +122,30 @@ public final class Info {
 		}
 		sendCommand(conn);
 	}
-	
+
 	/**
-	 * Send multiple commands to server and store results. 
+	 * Send multiple commands to server and store results.
 	 * This constructor is used internally.
 	 * The static request methods should be used instead.
-	 * 
+	 *
 	 * @param conn			connection to server node
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, List<String> commands) throws AerospikeException {
 		buffer = ThreadLocalData.getBuffer();
-		
+
 		// First, do quick conservative buffer size estimate.
 		offset = 8;
-		
+
 		for (String command : commands) {
 			offset += command.length() * 2 + 1;
 		}
-		
+
 		// If conservative estimate may be exceeded, get exact estimate
 		// to preserve memory and resize buffer.
 		if (offset > buffer.length) {
 			offset = 8;
-			
+
 			for (String command : commands) {
 				offset += Buffer.estimateSizeUtf8(command) + 1;
 			}
@@ -162,20 +162,20 @@ public final class Info {
 	}
 
 	/**
-	 * Send default empty command to server and store results. 
+	 * Send default empty command to server and store results.
 	 * This constructor is used internally.
 	 * The static request methods should be used instead.
-	 * 
+	 *
 	 * @param conn			connection to server node
 	 */
 	public Info(Connection conn) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();		
-		offset = 8;  // Skip size field.		
+		buffer = ThreadLocalData.getBuffer();
+		offset = 8;  // Skip size field.
 		sendCommand(conn);
 	}
 
 	/**
-	 * Internal constructor.  Do not use. 
+	 * Internal constructor.  Do not use.
 	 */
 	public Info(byte[] buffer, int length) {
 		this.buffer = buffer;
@@ -186,7 +186,7 @@ public final class Info {
 	 * Parse response in name/value pair format:
 	 * <p>
 	 * <command>\t<name1>=<value1>;<name2>=<value2>;...\n
-	 *     
+	 *
 	 * @return				parser for name/value pairs
 	 */
 	public NameValueParser getNameValueParser() {
@@ -202,7 +202,7 @@ public final class Info {
 		skipToValue();
 		return Buffer.utf8ToString(buffer, offset, length - offset - 1);
 	}
-	
+
 	public void skipToValue() {
 		// Skip past command.
 		while (offset < length) {
@@ -212,14 +212,14 @@ public final class Info {
 				offset++;
 				break;
 			}
-			
+
 			if (b == '\n') {
 				break;
 			}
 			offset++;
 		}
 	}
-	
+
     /**
      * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
      * Input format: 1234
@@ -232,60 +232,60 @@ public final class Info {
     	// Skip to end of integer.
     	while (offset < length) {
 			b = buffer[offset];
-		
+
 			if (b < 48 || b > 57) {
 				end = offset;
     			break;
 			}
     		offset++;
     	}
-    	
+
     	// Convert digits into an integer.
     	return Buffer.utf8DigitsToInt(buffer, begin, end);
 	}
-	
+
 	public String parseString(char stop) {
 		int begin = offset;
 		byte b;
-		
+
     	while (offset < length) {
 			b = buffer[offset];
-    		
+
     		if (b == stop) {
     			break;
     		}
     		offset++;
-    	}    	
+    	}
 		return Buffer.utf8ToString(buffer, begin, offset - begin);
 	}
 
 	public String parseString(char stop1, char stop2, char stop3) {
 		int begin = offset;
 		byte b;
-		
+
     	while (offset < length) {
 			b = buffer[offset];
-    		
+
     		if (b == stop1 || b == stop2 || b == stop3) {
     			break;
     		}
     		offset++;
-    	}    	
+    	}
 		return Buffer.utf8ToString(buffer, begin, offset - begin);
 	}
 
 	public void expect(char expected) {
 		if (expected != buffer[offset]) {
-			throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)(buffer[offset] & 0xFF));			
+			throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)(buffer[offset] & 0xFF));
 		}
-		offset++;		
+		offset++;
 	}
 
 	public String getTruncatedResponse() {
 		int max = (length > 200) ? 200 : length;
-		return Buffer.utf8ToString(buffer, 0, max);		
+		return Buffer.utf8ToString(buffer, 0, max);
 	}
-	
+
 	//-------------------------------------------------------
 	// Get Info via Node
 	//-------------------------------------------------------
@@ -293,7 +293,7 @@ public final class Info {
 	/**
 	 * Get one info value by name from the specified database server node.
 	 * This method supports user authentication.
-	 * 
+	 *
 	 * @param node		server node
 	 * @param name		name of variable to retrieve
 	 */
@@ -310,11 +310,11 @@ public final class Info {
 			throw re;
 		}
 	}
-	
+
 	/**
 	 * Get one info value by name from the specified database server node.
 	 * This method supports user authentication.
-	 * 
+	 *
 	 * @param policy	info command configuration parameters, pass in null for defaults
 	 * @param node		server node
 	 * @param name		name of variable to retrieve
@@ -337,7 +337,7 @@ public final class Info {
 	/**
 	 * Get many info values by name from the specified database server node.
 	 * This method supports user authentication.
-	 * 
+	 *
 	 * @param policy	info command configuration parameters, pass in null for defaults
 	 * @param node		server node
 	 * @param names		names of variables to retrieve
@@ -360,7 +360,7 @@ public final class Info {
 	/**
 	 * Get default info values from the specified database server node.
 	 * This method supports user authentication.
-	 * 
+	 *
 	 * @param policy	info command configuration parameters, pass in null for defaults
 	 * @param node		server node
 	 */
@@ -382,18 +382,18 @@ public final class Info {
 	//-------------------------------------------------------
 	// Get Info via Host Name and Port
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Get one info value by name from the specified database server node, using
 	 * host name and port.
 	 * This method does not support user authentication.
-	 * 
+	 *
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @param name					name of value to retrieve
 	 * @return						info value
 	 */
-	public static String request(String hostname, int port, String name) 
+	public static String request(String hostname, int port, String name)
 		throws AerospikeException {
 		return request(new InetSocketAddress(hostname, port), name);
 	}
@@ -402,27 +402,27 @@ public final class Info {
 	 * Get many info values by name from the specified database server node,
 	 * using host name and port.
 	 * This method does not support user authentication.
-	 * 
+	 *
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(String hostname, int port, String... names) 
-		throws AerospikeException {		
+	public static HashMap<String,String> request(String hostname, int port, String... names)
+		throws AerospikeException {
 		return request(new InetSocketAddress(hostname, port), names);
 	}
 
 	/**
 	 * Get default info from the specified database server node, using host name and port.
 	 * This method does not support user authentication.
-	 * 
+	 *
 	 * @param hostname				host name
 	 * @param port					host port
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(String hostname, int port) 
-		throws AerospikeException {		
+	public static HashMap<String,String> request(String hostname, int port)
+		throws AerospikeException {
 		return request(new InetSocketAddress(hostname, port));
 	}
 
@@ -433,15 +433,15 @@ public final class Info {
 	/**
 	 * Get one info value by name from the specified database server node.
 	 * This method does not support TLS connections nor user authentication.
-	 * 
+	 *
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param name					name of value to retrieve
 	 * @return						info value
 	 */
-	public static String request(InetSocketAddress socketAddress, String name) 
-		throws AerospikeException {	
+	public static String request(InetSocketAddress socketAddress, String name)
+		throws AerospikeException {
 		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
-		
+
 		try {
 			return request(conn, name);
 		}
@@ -453,21 +453,21 @@ public final class Info {
 	/**
 	 * Get many info values by name from the specified database server node.
 	 * This method does not support TLS connections nor user authentication.
-	 * 
+	 *
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(InetSocketAddress socketAddress, String... names) 
+	public static HashMap<String,String> request(InetSocketAddress socketAddress, String... names)
 		throws AerospikeException {
 		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
-		
+
 		try {
 			return request(conn, names);
 		}
 		finally {
 			conn.close();
-		}		
+		}
 	}
 
 	/**
@@ -477,7 +477,7 @@ public final class Info {
 	 * @param socketAddress			<code>InetSocketAddress</code> of server node
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(InetSocketAddress socketAddress) 
+	public static HashMap<String,String> request(InetSocketAddress socketAddress)
 		throws AerospikeException {
 		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
 
@@ -486,7 +486,7 @@ public final class Info {
 		}
 		finally {
 			conn.close();
-		}		
+		}
 	}
 
 	//-------------------------------------------------------
@@ -495,27 +495,27 @@ public final class Info {
 
 	/**
 	 * Get one info value by name from the specified database server node.
-	 * 
+	 *
 	 * @param conn					socket connection to server node
 	 * @param name					name of value to retrieve
 	 * @return						info value
 	 */
-	public static String request(Connection conn, String name) 
-		throws AerospikeException {		
-		
+	public static String request(Connection conn, String name)
+		throws AerospikeException {
+
 		Info info = new Info(conn, name);
 		return info.parseSingleResponse(name);
 	}
 
 	/**
 	 * Get many info values by name from the specified database server node.
-	 * 
+	 *
 	 * @param conn					socket connection to server node
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(Connection conn, String... names) 
-		throws AerospikeException {		
+	public static HashMap<String,String> request(Connection conn, String... names)
+		throws AerospikeException {
 
 		Info info = new Info(conn, names);
 		return info.parseMultiResponse();
@@ -523,13 +523,13 @@ public final class Info {
 
 	/**
 	 * Get many info values by name from the specified database server node.
-	 * 
+	 *
 	 * @param conn					socket connection to server node
 	 * @param names					names of values to retrieve
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(Connection conn, List<String> names) 
-		throws AerospikeException {		
+	public static HashMap<String,String> request(Connection conn, List<String> names)
+		throws AerospikeException {
 
 		Info info = new Info(conn, names);
 		return info.parseMultiResponse();
@@ -537,12 +537,12 @@ public final class Info {
 
 	/**
 	 * Get all the default info from the specified database server node.
-	 * 
+	 *
 	 * @param conn					socket connection to server node
 	 * @return						info name/value pairs
 	 */
-	public static HashMap<String,String> request(Connection conn) 
-		throws AerospikeException {		
+	public static HashMap<String,String> request(Connection conn)
+		throws AerospikeException {
 		Info info = new Info(conn);
 		return info.parseMultiResponse();
 	}
@@ -550,16 +550,16 @@ public final class Info {
 	//-------------------------------------------------------
 	// Private methods.
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Issue request and set results buffer. This method is used internally.
 	 * The static request methods should be used instead.
-	 * 
+	 *
 	 * @param conn			socket connection to server node
 	 * @throws IOException	if socket send or receive fails
 	 */
-	private void sendCommand(Connection conn) throws AerospikeException {		
-		try {		
+	private void sendCommand(Connection conn) throws AerospikeException {
+		try {
 			// Write size field.
 			long size = ((long)offset - 8L) | (2L << 56) | (1L << 48);
 			Buffer.longToBytes(size, buffer, 0);
@@ -569,11 +569,11 @@ public final class Info {
 
 			// Read - reuse input buffer.
 			conn.readFully(buffer, 8);
-			
+
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
 			resizeBuffer(length);
-			conn.readFully(buffer, length);		
+			conn.readFully(buffer, length);
 			offset = 0;
 		}
 		catch (IOException ioe) {
@@ -590,7 +590,7 @@ public final class Info {
 	private String parseSingleResponse(String name) throws AerospikeException {
 		// Convert the UTF8 byte array into a string.
 		String response = Buffer.utf8ToString(buffer, 0, length);
-		
+
 		if (response.startsWith(name)) {
 			if (response.length() > name.length() + 1) {
 				// Remove field name, tab and trailing newline from response.
@@ -604,24 +604,24 @@ public final class Info {
 		else {
 			throw new AerospikeException.Parse("Info response does not include: " + name);
 		}
-	}	
+	}
 
 	public HashMap<String,String> parseMultiResponse() throws AerospikeException {
 		HashMap<String, String> responses = new HashMap<String,String>();
 		int offset = 0;
 		int begin = 0;
-		
+
 		// Create reusable StringBuilder for performance.
 		StringBuilder sb = new StringBuilder(length);
-		
+
 		while (offset < length) {
 			byte b = buffer[offset];
-			
+
 			if (b == '\t') {
 				String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
 				checkError(name);
 				begin = ++offset;
-				
+
 				// Parse field value.
 				while (offset < length) {
 					if (buffer[offset] == '\n') {
@@ -629,13 +629,13 @@ public final class Info {
 					}
 					offset++;
 				}
-				
+
 				if (offset > begin) {
 					String value = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
 					responses.put(name, value);
 				}
 				else {
-					responses.put(name, null);					
+					responses.put(name, null);
 				}
 				begin = ++offset;
 			}
@@ -644,14 +644,14 @@ public final class Info {
 					String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
 					checkError(name);
 					responses.put(name, null);
-				}		
+				}
 				begin = ++offset;
 			}
 			else {
 				offset++;
 			}
 		}
-		
+
 		if (offset > begin) {
 			String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
 			checkError(name);
@@ -659,7 +659,7 @@ public final class Info {
 		}
 		return responses;
 	}
-	
+
 	private void checkError(String str) throws AerospikeException
 	{
 		if (str.startsWith("ERROR:"))
@@ -696,10 +696,10 @@ public final class Info {
 		private int nameEnd;
 		private int valueBegin;
 		private int valueEnd;
-		
+
 		/**
 		 * Set pointers to next name/value pair.
-		 * 
+		 *
 		 * @return		true if next name/value pair exists; false if at end
 		 */
 		public boolean next() {
@@ -716,29 +716,29 @@ public final class Info {
 					parseValue();
 					return true;
 				}
-				
+
 				if (b == '\n') {
 					break;
 				}
 				offset++;
-			}		
+			}
 			nameEnd = offset;
 			valueBegin = offset;
-			valueEnd = offset;			
+			valueEnd = offset;
 			return offset > nameBegin;
 		}
-		
+
 		private void parseValue() {
 			valueBegin = ++offset;
-			
+
 			while (offset < length) {
 				byte b = buffer[offset];
-				
+
 				if (b == ';') {
 					valueEnd = offset++;
 					return;
 				}
-				
+
 				if (b == '\n') {
 					break;
 				}
@@ -754,25 +754,25 @@ public final class Info {
 			int len = nameEnd - nameBegin;
 			return Buffer.utf8ToString(buffer, nameBegin, len);
 		}
-		
+
 		/**
 		 * Get value.
 		 */
 		public String getValue() {
 			int len = valueEnd - valueBegin;
-			
+
 			if (len <= 0) {
 				return null;
 			}
 			return Buffer.utf8ToString(buffer, valueBegin, len);
 		}
-		
+
 		/**
 		 * Get Base64 string value.
 		 */
 		public String getStringBase64() {
 			int len = valueEnd - valueBegin;
-			
+
 			if (len <= 0) {
 				return null;
 			}

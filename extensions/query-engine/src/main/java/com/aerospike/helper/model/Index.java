@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -81,7 +81,7 @@ public class Index {
 	public String toString() {
 		return this.getName();
 	}
-	
+
 	public String toKeyString(){
 		return new StringJoiner(":").add(getNamespace()).add(getSet()).add(getBin()).toString();
 	}
@@ -99,7 +99,7 @@ public class Index {
 			return values.get("set");
 		return null;
 	}
-	
+
 	public String getNamespace() {
 		if (values.containsKey("ns"))
 			return values.get("ns");

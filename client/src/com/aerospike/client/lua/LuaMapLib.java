@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ import org.luaj.vm2.lib.VarArgFunction;
 public final class LuaMapLib extends OneArgFunction {
 
 	private final LuaInstance instance;
-	
+
 	public LuaMapLib(LuaInstance instance) {
 		this.instance = instance;
 		instance.load(new MetaLib(instance));
@@ -39,11 +39,11 @@ public final class LuaMapLib extends OneArgFunction {
 	public LuaValue call(LuaValue env) {
 		LuaTable meta = new LuaTable(0,2);
 		meta.set("__call", new create(instance));
-		
+
 		LuaTable table = new LuaTable(0,11);
 		table.setmetatable(meta);
 		table.set("create", new create(instance));
-		
+
 		new mapcode(table, 0, "size");
 		new mapcode(table, 4, "pairs");
 		new mapcode(table, 5, "keys");
@@ -72,16 +72,16 @@ public final class LuaMapLib extends OneArgFunction {
 			new mapcode(meta, 3, "__newindex");
 			instance.registerPackage("Map", meta);
 			return meta;
-		}			
+		}
 	}
 
 	private static final class create extends VarArgFunction {
 		private final LuaInstance instance;
-		
+
 		public create(LuaInstance instance) {
 			this.instance = instance;
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			int capacity = 32;
@@ -89,71 +89,71 @@ public final class LuaMapLib extends OneArgFunction {
 			if (args.isnumber(1)) {
 				capacity = args.toint(1);
 			}
-			
+
 			LuaMap map = new LuaMap(instance, new HashMap<LuaValue,LuaValue>(capacity));
-			
+
 			if (args.istable(2)) {
 				LuaTable table = args.checktable(2);
 				LuaValue k = LuaValue.NIL;
-				
+
 				while (true) {
 					 Varargs n = table.next(k);
-					 
+
 					 if ((k = n.arg1()).isnil())
 						 break;
 
 					 LuaValue v = n.arg(2);
 					 map.put(k, v);
 				 }
-			}				
+			}
 			return map;
 		}
 	}
-	
+
 	private static final class mapcode extends VarArgFunction {
 		public mapcode(LuaTable table, int id, String name) {
 			super.opcode = id;
 			super.name = name;
 			table.set(name, this);
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			LuaMap map = (LuaMap)args.arg(1);
-			
+
 			switch (opcode) {
 			case 0: // __len, size
-				return map.size();		
-				
+				return map.size();
+
 			case 1: // __tostring
 				return map.toLuaString();
-				
+
 			case 2: // __index
 				return map.get(args.arg(2));
-				
+
 			case 3: // __newindex
 				map.put(args.arg(2), args.arg(3));
 				return NIL;
-				
+
 			case 4: // pairs
 				return new nextLuaValue(map.entrySetIterator());
-				
+
 			case 5: // keys
 				return new LuaListLib.nextLuaValue(map.keySetIterator());
-			
+
 			case 6: // values
 				return new LuaListLib.nextLuaValue(map.valuesIterator());
-			
+
 			case 7: // remove
 				map.remove(args.arg(2));
 				return NIL;
-				
+
 			case 8: // clone
 				return map.clone();
-				
+
 			case 9: // merge
 				return map.merge((LuaMap)args.arg(2), (LuaFunction)args.arg(3));
-				
+
 			case 10: // diff
 				return map.diff((LuaMap)args.arg(2));
 
@@ -165,11 +165,11 @@ public final class LuaMapLib extends OneArgFunction {
 
 	private static final class nextLuaValue extends VarArgFunction {
 		private final Iterator<Entry<LuaValue,LuaValue>> iter;
-		
+
 		public nextLuaValue(Iterator<Entry<LuaValue,LuaValue>> iter) {
 			this.iter = iter;
 		}
-		
+
 		@Override
 		public Varargs invoke(Varargs args) {
 			if (iter.hasNext()) {

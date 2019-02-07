@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,16 +31,16 @@ import com.aerospike.client.AerospikeException;
 public final class LuaCache {
 	private static final ArrayBlockingQueue<LuaInstance> InstanceQueue = new ArrayBlockingQueue<LuaInstance>(LuaConfig.InstancePoolSize);
 	private static final ConcurrentHashMap<String,Prototype> Packages = new ConcurrentHashMap<String,Prototype>();
-	
+
 	/**
 	 * Return lua instance from a pool.  If a lua instance is not available,
-	 * a new instance will be created. 
+	 * a new instance will be created.
 	 */
 	public static final LuaInstance getInstance() throws AerospikeException {
 		LuaInstance instance = InstanceQueue.poll();
 		return (instance != null)? instance : new LuaInstance();
 	}
-	
+
 	/**
 	 * Put lua instance back into pool if pool size (LuaConfig.InstancePoolSize)
 	 * would not be exceeded.
@@ -48,13 +48,13 @@ public final class LuaCache {
 	public static final void putInstance(LuaInstance instance) {
 		InstanceQueue.offer(instance);
 	}
-	
+
 	/**
 	 * Load lua package from a file.
 	 */
 	public static final Prototype loadPackageFromFile(String packageName) throws AerospikeException {
 		Prototype prototype = Packages.get(packageName);
-		
+
 		if (prototype == null) {
 			File source = new File(LuaConfig.SourceDirectory, packageName + ".lua");
 
@@ -69,17 +69,17 @@ public final class LuaCache {
 		}
 		return prototype;
 	}
-	
+
 	/**
 	 * Load lua package from a resource.
 	 */
 	public static final Prototype loadPackageFromResource(ClassLoader resourceLoader, String resourcePath, String packageName) throws AerospikeException {
 		Prototype prototype = Packages.get(packageName);
-		
+
 		if (prototype == null) {
 			try {
 				InputStream is = resourceLoader.getResourceAsStream(resourcePath);
-				
+
 				if (is == null) {
 					throw new Exception();
 				}
@@ -92,11 +92,11 @@ public final class LuaCache {
 		}
 		return prototype;
 	}
-		
+
 	private static Prototype compile(String packageName, InputStream is) throws AerospikeException {
 		try {
 			BufferedInputStream bis = new BufferedInputStream(is);
-			
+
 			try {
 		        return LuaC.instance.compile(bis, packageName);
 			}
@@ -126,7 +126,7 @@ public final class LuaCache {
 	}
 
 	/**
-	 * Remove all lua packages and non-active lua instances from cache.  
+	 * Remove all lua packages and non-active lua instances from cache.
 	 * This method assumes lua instances are not running concurrently
 	 * with this call.  Active lua instances will not be removed.
 	 */

@@ -30,11 +30,11 @@ public class UpdatorTests extends HelperTests{
 			Statement stmt = new Statement();
 			stmt.setNamespace(TestQueryEngine.NAMESPACE);
 			stmt.setSetName(TestQueryEngine.SET_NAME);
-			
+
 			ArrayList<Bin> bins = new ArrayList<Bin>() {{
 			    add(new Bin("ending", "ends with e"));
 			}};
-			
+
 			Map<String, Long> counts = queryEngine.update(stmt, bins, kq );
 			Assert.assertEquals((Long)1L, (Long)counts.get("write"));
 			Record record = this.client.get(null, key);
@@ -45,7 +45,7 @@ public class UpdatorTests extends HelperTests{
 	}
 	@Test
 	public void updateByDigest(){
-			
+
 			for (int x = 1; x <= TestQueryEngine.RECORD_COUNT; x++){
 				String keyString = "selector-test:"+x;
 				Key key = new Key(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, keyString);
@@ -53,11 +53,11 @@ public class UpdatorTests extends HelperTests{
 				Statement stmt = new Statement();
 				stmt.setNamespace(TestQueryEngine.NAMESPACE);
 				stmt.setSetName(TestQueryEngine.SET_NAME);
-				
+
 				ArrayList<Bin> bins = new ArrayList<Bin>() {{
 				    add(new Bin("ending", "ends with e"));
 				}};
-				
+
 				Map<String, Long> counts = queryEngine.update(stmt, bins, kq );
 				Assert.assertEquals((Long)1L, (Long)counts.get("write"));
 				Record record = this.client.get(null, key);
@@ -80,7 +80,7 @@ public class UpdatorTests extends HelperTests{
 		Assert.assertEquals((Long)400L, (Long)counts.get("read"));
 		Assert.assertEquals((Long)400L, (Long)counts.get("write"));
 	}
-	
+
 	@Test
 	public void updateEndsWith() throws IOException {
 		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("blue"));

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,12 +36,12 @@ public class Serialize extends Example {
 	 * Write complex objects using serializer.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {	
+	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		testArray(client, params);
 		testList(client, params);
 		testComplex(client, params);
 	}
-	
+
 	/**
 	 * Write array of integers using standard java serializer..
 	 */
@@ -81,7 +81,7 @@ public class Serialize extends Example {
 		}
 		catch (Exception e) {
 			throw new Exception(String.format(
-				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s", 
+				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s",
 				key.namespace, key.setName, key.userKey, bin.name));
 		}
 
@@ -93,7 +93,7 @@ public class Serialize extends Example {
 		for (int i = 0; i < 10000; i++) {
 			if (received[i] != i * i) {
 				throw new Exception(String.format(
-					"Mismatch: index=%d expected=%d received=%d", i, i*i, received[i])); 
+					"Mismatch: index=%d expected=%d received=%d", i, i*i, received[i]));
 			}
 		}
 
@@ -110,7 +110,7 @@ public class Serialize extends Example {
 		client.delete(params.writePolicy, key);
 
 		console.info("Initialize list");
-		
+
 		ArrayList<String> list = new ArrayList<String>();
 		list.add("string1");
 		list.add("string2");
@@ -137,7 +137,7 @@ public class Serialize extends Example {
 		}
 		catch (Exception e) {
 			throw new Exception(String.format(
-				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s", 
+				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s",
 				key.namespace, key.setName, key.userKey, bin.name));
 		}
 
@@ -151,13 +151,13 @@ public class Serialize extends Example {
 			if (! received.get(i).equals(expected)) {
 				Object obj = received.get(i);
 				throw new Exception(String.format(
-					"Mismatch: index=%d expected=%s received=%s", i, expected, obj)); 
+					"Mismatch: index=%d expected=%s received=%s", i, expected, obj));
 			}
 		}
 
 		console.info("Read list successful.");
 	}
-	
+
 	/**
 	 * Write complex object using standard java serializer.
 	 */
@@ -168,16 +168,16 @@ public class Serialize extends Example {
 		client.delete(params.writePolicy, key);
 
 		console.info("Initialize complex object");
-		
+
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
 		inner.add(8);
-		
+
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
 		innerMap.put("a", 1);
 		innerMap.put(2, "b");
 		innerMap.put("list", inner);
-		
+
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(4);
@@ -205,12 +205,12 @@ public class Serialize extends Example {
 		}
 		catch (Exception e) {
 			throw new Exception(String.format(
-				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s", 
+				"Failed to parse returned value: namespace=%s set=%s key=%s bin=%s",
 				key.namespace, key.setName, key.userKey, bin.name));
 		}
 
 		if (received != null && received.equals(list)) {
-			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {

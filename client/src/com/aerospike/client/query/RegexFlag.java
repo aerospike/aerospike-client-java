@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,22 +24,22 @@ public final class RegexFlag {
 	 * Use regex defaults.
 	 */
 	public static final int NONE = 0;
-	
+
 	/**
 	 * Use POSIX Extended Regular Expression syntax when interpreting regex.
-	 */		
+	 */
 	public static final int EXTENDED = 1;
-	
+
 	/**
 	 * Do not differentiate case.
 	 */
 	public static final int ICASE = 2;
-	
+
 	/**
-	 * Do not report position of matches. 
+	 * Do not report position of matches.
 	 */
 	public static final int NOSUB = 4;
-	
+
 	/**
 	 * Match-any-character operators don't match a newline.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,12 +24,12 @@ public enum Workload {
 	 * Initialize data with sequential key writes.
 	 */
 	INITIALIZE,
-	
+
 	/**
 	 * Read/Update. Perform random key, random read all bins or write all bins workload.
 	 */
 	READ_UPDATE,
-	
+
 	/**
 	 * Read/Replace. Perform random key, random read all bins or replace all bins workload.
 	 */
@@ -39,22 +39,22 @@ public enum Workload {
 	 * Read/Modify/Update. Perform random key, read all bins, write one bin workload.
 	 */
 	READ_MODIFY_UPDATE,
-	
+
 	/**
 	 * Read/Modify/Increment. Perform random key, read all bins, increment one integer bin workload.
 	 */
 	READ_MODIFY_INCREMENT,
-	
+
 	/**
 	 * Read/Modify/Decrement. Perform random key, read all bins, decrement one integer bin workload.
-	 */	
+	 */
 	READ_MODIFY_DECREMENT,
-	
+
 	/**
 	 * Read the keys(String/Integer) from the File.Read all bins .
-	 */	
+	 */
 	READ_FROM_FILE,
-	
+
 	/**
 	 * Form business transactions
 	 */

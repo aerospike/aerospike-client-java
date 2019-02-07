@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,12 +38,12 @@ public class TestTouch extends TestSync {
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = 2;
 		client.put(writePolicy, key, bin);
-		
+
 		writePolicy.expiration = 5;
 		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
 		assertRecordFound(key, record);
 		assertNotEquals(0, record.expiration);
-		
+
 		Util.sleep(3000);
 
 		record = client.get(null, key, bin.name);
@@ -53,5 +53,5 @@ public class TestTouch extends TestSync {
 
 		record = client.get(null, key, bin.name);
 		assertNull(record);
-	}	
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class NioEventLoops implements EventLoops {
 
 	final NioEventLoop[] eventLoops;
     private int eventIter;
-	
+
 	/**
 	 * Create direct NIO event loops, one per CPU core.
 	 */
@@ -40,7 +40,7 @@ public final class NioEventLoops implements EventLoops {
 
 	/**
 	 * Create direct NIO event loops.
-	 * 
+	 *
 	 * @param size		number of event loops to create
 	 */
 	public NioEventLoops(int size) throws AerospikeException {
@@ -49,7 +49,7 @@ public final class NioEventLoops implements EventLoops {
 
 	/**
 	 * Create direct NIO event loops.
-	 * 
+	 *
 	 * @param policy	event loop policy
 	 * @param size		number of event loops to create
 	 */
@@ -61,15 +61,15 @@ public final class NioEventLoops implements EventLoops {
 		if (size <= 0) {
 			// Default to all available CPU cores.
 			size = Runtime.getRuntime().availableProcessors();
-			
+
 			if (size <= 0) {
 				size = 1;
 			}
 		}
 		eventLoops = new NioEventLoop[size];
-		
+
 		SelectorProvider provider = SelectorProvider.provider();
-		
+
 		for (int i = 0; i < eventLoops.length; i++) {
 			try {
 				eventLoops[i] = new NioEventLoop(policy, provider, i);
@@ -81,7 +81,7 @@ public final class NioEventLoops implements EventLoops {
 				throw new AerospikeException("Failed to construct event loop: " + Util.getErrorMessage(ioe));
 			}
 		}
-		
+
 		for (NioEventLoop eventLoop : eventLoops) {
 			eventLoop.thread.start();
 		}
@@ -125,13 +125,13 @@ public final class NioEventLoops implements EventLoops {
 	public NioEventLoop next() {
 		int iter = eventIter++; // Not atomic by design
 		iter = iter % eventLoops.length;
-		
+
 		if (iter < 0) {
 			iter += eventLoops.length;
 		}
         return eventLoops[iter];
 	}
-	
+
 	/**
 	 * Close all event loops.
 	 */

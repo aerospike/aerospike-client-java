@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class AsyncExecute extends AsyncRead {
 	private final String packageName;
 	private final String functionName;
 	private final Value[] args;
-		
+
 	public AsyncExecute(
 		ExecuteListener listener,
 		WritePolicy writePolicy,
@@ -64,7 +64,7 @@ public final class AsyncExecute extends AsyncRead {
 			executeListener.onSuccess(key, obj);
 		}
 	}
-	
+
 	@Override
 	protected void onFailure(AerospikeException e) {
 		if (executeListener != null) {
@@ -76,25 +76,25 @@ public final class AsyncExecute extends AsyncRead {
 		if (record == null || record.bins == null) {
 			return null;
 		}
-		
+
 		Map<String,Object> map = record.bins;
 
 		Object obj = map.get("SUCCESS");
-		
+
 		if (obj != null) {
 			return obj;
 		}
-		
+
 		// User defined functions don't have to return a value.
 		if (map.containsKey("SUCCESS")) {
 			return null;
 		}
-		
+
 		obj = map.get("FAILURE");
-		
+
 		if (obj != null) {
 			throw new AerospikeException(obj.toString());
 		}
-		throw new AerospikeException("Invalid UDF return value");		
+		throw new AerospikeException("Invalid UDF return value");
 	}
 }

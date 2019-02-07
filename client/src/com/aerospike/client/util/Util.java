@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -41,19 +41,19 @@ public final class Util {
 		catch (InterruptedException ie) {
 		}
 	}
-	
+
 	public static String getErrorMessage(Exception e) {
 		// Connection error messages don't need a stacktrace.
 		Throwable cause = e.getCause();
-		if (e instanceof SocketException || e instanceof AerospikeException.Connection || 
-			cause instanceof SocketTimeoutException) {			
+		if (e instanceof SocketException || e instanceof AerospikeException.Connection ||
+			cause instanceof SocketTimeoutException) {
 			return e.getMessage();
 		}
-		
+
 		if (e instanceof EOFException || cause instanceof EOFException) {
 			return EOFException.class.getName();
 		}
-		
+
 		// Unexpected exceptions need a stacktrace.
 		StringWriter sw = new StringWriter(1000);
 		PrintWriter pw = new PrintWriter(sw);
@@ -65,11 +65,11 @@ public final class Util {
 		try {
 			byte[] bytes = new byte[(int)file.length()];
 			FileInputStream in = new FileInputStream(file);
-			
+
 			try {
 				int pos = 0;
 				int len = 0;
-				
+
 				while (pos < bytes.length) {
 					len = in.read(bytes, pos, bytes.length - pos);
 					pos += len;
@@ -84,21 +84,21 @@ public final class Util {
 			throw new AerospikeException("Failed to read " + file.getAbsolutePath(), e);
 		}
 	}
-	
-	public static byte[] readResource(ClassLoader resourceLoader, String resourcePath) {	
+
+	public static byte[] readResource(ClassLoader resourceLoader, String resourcePath) {
 		try {
 			URL url = resourceLoader.getResource(resourcePath);
 			InputStream is = url.openStream();
-			
+
 			try {
 				ByteArrayOutputStream bos = new ByteArrayOutputStream(8192);
 				byte[] bytes = new byte[8192];
 				int length;
-						
+
 				while ((length = is.read(bytes)) > 0) {
 					bos.write(bytes, 0, length);
 				}
-				return bos.toByteArray();	
+				return bos.toByteArray();
 			}
 			finally {
 				is.close();
@@ -108,7 +108,7 @@ public final class Util {
 			throw new AerospikeException("Failed to read resource " + resourcePath, e);
 		}
 	}
-	
+
 	/**
 	 * Convert a comma separated array of strings to a BigInteger array.
 	 * Each individual string will be treated as hex if the string prefix is "0x".
@@ -117,7 +117,7 @@ public final class Util {
 		String[] strArray = str.split(",");
 		BigInteger[] bigArray = new BigInteger[strArray.length];
 		int count = 0;
-		
+
 		for (String s : strArray) {
 			if (s.startsWith("0x")) {
 				bigArray[count] = new BigInteger(s.substring(2), 16);
@@ -126,7 +126,7 @@ public final class Util {
 				// Some certificates show serial numbers in hex pairs delimited by colons.
 				// Remove those colons before converting to BigInteger.
 				s = s.replaceAll(":", "");
-				bigArray[count] = new BigInteger(s, 16);				
+				bigArray[count] = new BigInteger(s, 16);
 			}
 			else {
 				bigArray[count] = new BigInteger(s);
@@ -143,9 +143,9 @@ public final class Util {
 		Date formatDate = format.parse(dateTime);
 		long miliSecondForDate = formatDate.getTime()
 				- timeZoneOffset;
-		return miliSecondForDate / 1000;		
+		return miliSecondForDate / 1000;
 	}
-	
+
 	/**
 	 * Convert a string to a time stamp using a string pattern.
 	 */
@@ -153,7 +153,7 @@ public final class Util {
 		SimpleDateFormat format = new SimpleDateFormat(pattern);
 		return toTimeStamp(dateTime, format, timeZoneOffset);
 	}
-	
+
 	/**
 	 * Convert a time stamp (time in milliseconds) to a string.
 	 */
@@ -161,7 +161,7 @@ public final class Util {
 		Date formatDate = new Date(timeStamp);
 		return format.format(formatDate);
 	}
-	
+
 	/**
 	 * Convert a time stamp (time in milliseconds) to a string using a string pattern.
 	 */
@@ -169,7 +169,7 @@ public final class Util {
 		SimpleDateFormat format = new SimpleDateFormat(pattern);
 		return fromTimeStamp(timeStamp, format);
 	}
-	
+
 	/**
 	 * Convert object returned from server to long.
 	 */
@@ -178,7 +178,7 @@ public final class Util {
 		// If not found, the server may return null.  Convert null to zero.
 		return (obj != null)? (Long)obj : 0;
 	}
-	
+
 	/**
 	 * Convert object returned from server to int.
 	 */
@@ -186,7 +186,7 @@ public final class Util {
 		// The server always returns numbers as longs, so get long and cast.
 		return (int)toLong(obj);
 	}
-	
+
 	/**
 	 * Convert object returned from server to short.
 	 */
@@ -194,7 +194,7 @@ public final class Util {
 		// The server always returns numbers as longs, so get long and cast.
 		return (short)toLong(obj);
 	}
-	
+
 	/**
 	 * Convert object returned from server to byte.
 	 */
@@ -202,7 +202,7 @@ public final class Util {
 		// The server always returns numbers as longs, so get long and cast.
 		return (byte)toLong(obj);
 	}
-	
+
 	/**
 	 * Convert object returned from server to boolean.
 	 */

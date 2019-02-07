@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,26 +31,26 @@ import com.aerospike.test.sync.TestSync;
 
 public class TestScan extends TestSync implements ScanCallback {
 	private final Map<String,Metrics> setMap = new HashMap<String,Metrics>();
-	
+
 	@Test
 	public void scanParallel() {
 		ScanPolicy policy = new ScanPolicy();
 		client.scanAll(policy, args.namespace, args.set, this);
 	}
-	
+
 	@Test
-	public void scanSeries() {		
+	public void scanSeries() {
 		// Use low scan priority.  This will take more time, but it will reduce
 		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
 		policy.maxRetries = 1;
 		policy.priority = Priority.LOW;
-		
+
 		List<String> nodeList = client.getNodeNames();
-		
+
 		for (String nodeName : nodeList) {
 			client.scanNode(policy, nodeName, args.namespace, args.set, this);
-			
+
 			for (Map.Entry<String,Metrics> entry : setMap.entrySet()) {
 				entry.getValue().count = 0;
 			}
@@ -60,17 +60,17 @@ public class TestScan extends TestSync implements ScanCallback {
 	@Override
 	public void scanCallback(Key key, Record record) {
 		Metrics metrics = setMap.get(key.setName);
-		
+
 		if (metrics == null) {
 			metrics = new Metrics();
 		}
 		metrics.count++;
 		metrics.total++;
-		setMap.put(key.setName, metrics);		
+		setMap.put(key.setName, metrics);
 	}
-	
+
 	public static class Metrics {
 		public long count = 0;
 		public long total = 0;
-	}	
+	}
 }

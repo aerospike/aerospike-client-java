@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,12 +32,12 @@ import com.aerospike.client.Value;
 import com.aerospike.client.Record;
 import com.aerospike.test.sync.TestSync;
 
-public class TestListMap extends TestSync {	
+public class TestListMap extends TestSync {
 	@Test
 	public void listStrings() {
 		Key key = new Key(args.namespace, args.set, "listkey1");
 		client.delete(null, key);
-		
+
 		ArrayList<String> list = new ArrayList<String>();
 		list.add("string1");
 		list.add("string2");
@@ -49,12 +49,12 @@ public class TestListMap extends TestSync {
 		Record record = client.get(null, key, bin.name);
 		List<?> receivedList = (List<?>) record.getValue(bin.name);
 
-		assertEquals(3, receivedList.size());	
+		assertEquals(3, receivedList.size());
 		assertEquals("string1", receivedList.get(0));
 		assertEquals("string2", receivedList.get(1));
 		assertEquals("string3", receivedList.get(2));
 	}
-	
+
 	@Test
 	public void listComplex() {
 		Key key = new Key(args.namespace, args.set, "listkey2");
@@ -62,8 +62,8 @@ public class TestListMap extends TestSync {
 
 		String geopoint =
 			"{ \"type\": \"Point\", \"coordinates\": [0.00, 0.00] }";
-		
-		byte[] blob = new byte[] {3, 52, 125};		
+
+		byte[] blob = new byte[] {3, 52, 125};
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(2);
@@ -79,11 +79,11 @@ public class TestListMap extends TestSync {
 		assertEquals(4, receivedList.size());
 		assertEquals("string1", receivedList.get(0));
 		// Server convert numbers to long, so must expect long.
-		assertEquals(2L, receivedList.get(1)); 
+		assertEquals(2L, receivedList.get(1));
 		assertArrayEquals(blob, (byte[])receivedList.get(2));
 		assertEquals(Value.getAsGeoJSON(geopoint), receivedList.get(3));
 	}
-	
+
 	@Test
 	public void mapStrings() {
 		Key key = new Key(args.namespace, args.set, "mapkey1");
@@ -99,7 +99,7 @@ public class TestListMap extends TestSync {
 
 		Record record = client.get(null, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
-		
+
 		assertEquals(3, receivedMap.size());
 		assertEquals("string1", receivedMap.get("key1"));
 		assertEquals("loooooooooooooooooooooooooongerstring2", receivedMap.get("key2"));
@@ -111,13 +111,13 @@ public class TestListMap extends TestSync {
 		Key key = new Key(args.namespace, args.set, "mapkey2");
 		client.delete(null, key);
 
-		byte[] blob = new byte[] {3, 52, 125};		
+		byte[] blob = new byte[] {3, 52, 125};
 		List<Integer> list = new ArrayList<Integer>();
 		list.add(100034);
 		list.add(12384955);
 		list.add(3);
 		list.add(512);
-		
+
 		HashMap<Object,Object> map = new HashMap<Object,Object>();
 		map.put("key1", "string1");
 		map.put("key2", 2);
@@ -131,13 +131,13 @@ public class TestListMap extends TestSync {
 
 		Record record = client.get(null, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
-		
+
 		assertEquals(6, receivedMap.size());
 		assertEquals("string1", receivedMap.get("key1"));
 		// Server convert numbers to long, so must expect long.
 		assertEquals(2L, receivedMap.get("key2"));
 		assertArrayEquals(blob, (byte[])receivedMap.get("key3"));
-				
+
 		List<?> receivedInner = (List<?>)receivedMap.get("key4");
 		assertEquals(4, receivedInner.size());
 		assertEquals(100034L, receivedInner.get(0));
@@ -154,17 +154,17 @@ public class TestListMap extends TestSync {
 		Key key = new Key(args.namespace, args.set, "listmapkey");
 		client.delete(null, key);
 
-		byte[] blob = new byte[] {3, 52, 125};		
+		byte[] blob = new byte[] {3, 52, 125};
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
 		inner.add(5);
-		
+
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
 		innerMap.put("a", 1);
 		innerMap.put(2, "b");
 		innerMap.put(3, blob);
 		innerMap.put("list", inner);
-		
+
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(8);
@@ -176,17 +176,17 @@ public class TestListMap extends TestSync {
 
 		Record record = client.get(null, key, bin.name);
 		List<?> received = (List<?>) record.getValue(bin.name);
-		
+
 		assertEquals(4, received.size());
 		assertEquals("string1", received.get(0));
 		// Server convert numbers to long, so must expect long.
 		assertEquals(8L, received.get(1));
-		
+
 		List<?> receivedInner = (List<?>)received.get(2);
 		assertEquals(2, receivedInner.size());
 		assertEquals("string2", receivedInner.get(0));
 		assertEquals(5L, receivedInner.get(1));
-		
+
 		Map<?,?> receivedMap = (Map<?,?>)received.get(3);
 		assertEquals(4, receivedMap.size());
 		assertEquals(1L, receivedMap.get("a"));

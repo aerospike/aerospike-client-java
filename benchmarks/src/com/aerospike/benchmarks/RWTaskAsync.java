@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 
 public final class RWTaskAsync extends RWTask {
-	
+
 	private final AerospikeClient client;
 	private final EventLoop eventLoop;
 	private final RandomShift random;
@@ -51,7 +51,7 @@ public final class RWTaskAsync extends RWTask {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 		this.eventLoop = eventLoop;
-		this.random = new RandomShift();	
+		this.random = new RandomShift();
 		this.useLatency = counters.write.latency != null;
 
 		if (useLatency) {
@@ -78,19 +78,19 @@ public final class RWTaskAsync extends RWTask {
 		if (useLatency) {
 			begin = System.nanoTime();
 		}
-		client.put(eventLoop, writeListener, policy, key, bins);	
-	}
-	
-	@Override
-	protected void add(Key key, Bin[] bins) {		
-		if (useLatency) {
-			begin = System.nanoTime();
-		}
-		client.add(eventLoop, writeListener, writePolicyGeneration, key, bins);			
+		client.put(eventLoop, writeListener, policy, key, bins);
 	}
 
 	@Override
-	protected void get(Key key, String binName) {		
+	protected void add(Key key, Bin[] bins) {
+		if (useLatency) {
+			begin = System.nanoTime();
+		}
+		client.add(eventLoop, writeListener, writePolicyGeneration, key, bins);
+	}
+
+	@Override
+	protected void get(Key key, String binName) {
 		if (useLatency) {
 			begin = System.nanoTime();
 		}
@@ -126,7 +126,7 @@ public final class RWTaskAsync extends RWTask {
 		client.get(eventLoop, recordArrayListener, args.batchPolicy, keys);
 	}
 
-	private final class WriteHandler implements WriteListener {	
+	private final class WriteHandler implements WriteListener {
 		@Override
 		public void onSuccess(Key key) {
 			counters.write.count.getAndIncrement();
@@ -137,7 +137,7 @@ public final class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
 			runNextCommand();
-		}		
+		}
 	}
 
 	private final class LatencyWriteHandler implements WriteListener {
@@ -153,17 +153,17 @@ public final class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			writeFailure(ae);
 			runNextCommand();
-		}		
+		}
 	}
-	
+
 	private final class ReadHandler implements RecordListener {
 		@Override
 		public void onSuccess(Key key, Record record) {
 			if (record == null && args.reportNotFound) {
-				counters.readNotFound.getAndIncrement();	
+				counters.readNotFound.getAndIncrement();
 			}
 			else {
-				counters.read.count.getAndIncrement();		
+				counters.read.count.getAndIncrement();
 			}
 			runNextCommand();
 		}
@@ -174,18 +174,18 @@ public final class RWTaskAsync extends RWTask {
 			runNextCommand();
 		}
 	}
-	
+
 	private final class LatencyReadHandler implements RecordListener {
 		@Override
 		public void onSuccess(Key key, Record record) {
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-			
+
 			if (record == null && args.reportNotFound) {
-				counters.readNotFound.getAndIncrement();	
+				counters.readNotFound.getAndIncrement();
 			}
 			else {
-				counters.read.count.getAndIncrement();		
+				counters.read.count.getAndIncrement();
 			}
 			runNextCommand();
 		}
@@ -194,13 +194,13 @@ public final class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
 			runNextCommand();
-		}		
+		}
 	}
-	
+
 	private final class BatchReadHandler implements RecordArrayListener {
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
-			counters.read.count.getAndIncrement();		
+			counters.read.count.getAndIncrement();
 			runNextCommand();
 		}
 
@@ -210,13 +210,13 @@ public final class RWTaskAsync extends RWTask {
 			runNextCommand();
 		}
 	}
-	
+
 	private final class LatencyBatchReadHandler implements RecordArrayListener {
 		@Override
 		public void onSuccess(Key[] keys, Record[] records) {
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
-			counters.read.count.getAndIncrement();			
+			counters.read.count.getAndIncrement();
 			runNextCommand();
 		}
 
@@ -224,6 +224,6 @@ public final class RWTaskAsync extends RWTask {
 		public void onFailure(AerospikeException ae) {
 			readFailure(ae);
 			runNextCommand();
-		}		
-	}	
+		}
+	}
 }

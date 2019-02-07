@@ -14,7 +14,7 @@
  * under the License.
  */
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 import com.aerospike.client.Log;
 
 /**
- * This HashedWheelTimer is a simplified version of netty's 
+ * This HashedWheelTimer is a simplified version of netty's
  * <a href="https://github.com/netty/netty/blob/ed37cf20ef1ce2c792d57b02ef6494880b24f72d/common/src/main/java/io/netty/util/HashedWheelTimer.java">HashedWheelTimer</a>.
  * <p>
  * {@link HashedWheelTimer} is based on
@@ -47,7 +47,7 @@ import com.aerospike.client.Log;
  * timer facility'</a>.  More comprehensive slides are located
  * <a href="http://www.cse.wustl.edu/~cdgill/courses/cs6874/TimingWheels.ppt">here</a>.
  * <p>
- * This HashedWheelTimer runs directly in each event loop thread.  All HashedWheelTimer method calls 
+ * This HashedWheelTimer runs directly in each event loop thread.  All HashedWheelTimer method calls
  * must also occur in its defined event loop thread.
  */
 public final class HashedWheelTimer implements Runnable {
@@ -59,11 +59,11 @@ public final class HashedWheelTimer implements Runnable {
 	private long tick;
 	private final int mask;
 	private boolean scheduled;
-	
+
 	public HashedWheelTimer(EventLoop eventLoop, long tickDuration, TimeUnit unit, int ticksPerWheel) {
 		this.eventLoop = eventLoop;
 		this.tickDuration = unit.toNanos(tickDuration);
-		
+
         int normalizedTicksPerWheel = 1;
 
 		while (normalizedTicksPerWheel < ticksPerWheel) {
@@ -76,7 +76,7 @@ public final class HashedWheelTimer implements Runnable {
 			wheel[i] = new HashedWheelBucket();
 		}
 		mask = wheel.length - 1;
-		
+
 		// Prevent overflow.
 		if (this.tickDuration >= Long.MAX_VALUE / wheel.length) {
 			throw new IllegalArgumentException(String.format(
@@ -91,19 +91,19 @@ public final class HashedWheelTimer implements Runnable {
 		if (! scheduled) {
 			scheduled = true;
 			startTime = System.nanoTime();
-			HashedWheelTimeout timeout = addTimeout(task, deadline);  // recursive call		
+			HashedWheelTimeout timeout = addTimeout(task, deadline);  // recursive call
 			eventLoop.schedule(schedule, tickDuration, TimeUnit.NANOSECONDS);
 			return timeout;
 		}
 
 		HashedWheelTimeout timeout = new HashedWheelTimeout(task, deadline - startTime);
-		
+
 		long calculated = timeout.deadline / tickDuration;
 		timeout.remainingRounds = (calculated - tick) / wheel.length;
-		
+
 		final long ticks = Math.max(calculated, tick);
 		int stopIndex = (int) (ticks & mask);
-		
+
 		HashedWheelBucket bucket = wheel[stopIndex];
 		bucket.addTimeout(timeout);
 		return timeout;
@@ -113,13 +113,13 @@ public final class HashedWheelTimer implements Runnable {
 		timeout.deadline = deadline - startTime;
 		timeout.next = null;
 		timeout.prev = null;
-		
+
 		long calculated = timeout.deadline / tickDuration;
 		timeout.remainingRounds = (calculated - tick) / wheel.length;
-		
+
 		final long ticks = Math.max(calculated, tick);
 		int stopIndex = (int) (ticks & mask);
-		
+
 		HashedWheelBucket bucket = wheel[stopIndex];
 		bucket.addTimeout(timeout);
 	}
@@ -144,18 +144,18 @@ public final class HashedWheelTimer implements Runnable {
 		private HashedWheelTimeout next;
 		private HashedWheelTimeout prev;
 		private HashedWheelBucket bucket;
-		
+
 		private HashedWheelTimeout(TimerTask task, long deadline) {
 			this.task = task;
 			this.deadline = deadline;
 		}
-		
+
 		public void cancel() {
 			if (bucket != null) {
 				bucket.remove(this);
 			}
 		}
-		
+
 		private void expire() {
 			try {
 			    task.timeout();
@@ -170,7 +170,7 @@ public final class HashedWheelTimer implements Runnable {
     private static final class HashedWheelBucket {
 		private HashedWheelTimeout head;
 		private HashedWheelTimeout tail;
-		
+
 		public void addTimeout(HashedWheelTimeout timeout) {
 			timeout.bucket = this;
 			if (head == null) {
@@ -181,16 +181,16 @@ public final class HashedWheelTimer implements Runnable {
 				tail = timeout;
 			}
 		}
-		
+
 		public void expireTimeouts(long deadline) {
 			HashedWheelTimeout timeout = head;
-			
+
 			// process all timeouts
 			while (timeout != null) {
 				HashedWheelTimeout next = timeout.next;
 				if (timeout.remainingRounds <= 0) {
 					next = remove(timeout);
-					
+
 					if (timeout.deadline > deadline) {
 						// Should not happen.  Do not throw exception because that would break all
 						// other timeouts in this iteration.
@@ -198,14 +198,14 @@ public final class HashedWheelTimer implements Runnable {
 							Log.warn("timeout.deadline (" + timeout.deadline + ") > deadline (" + deadline + ")");
 						}
 					}
-					timeout.expire();					
+					timeout.expire();
 				} else {
 					timeout.remainingRounds--;
 				}
 				timeout = next;
 			}
 		}
-		
+
 		public HashedWheelTimeout remove(HashedWheelTimeout timeout) {
 			HashedWheelTimeout next = timeout.next;
 			// remove timeout that was either processed or cancelled by updating the linked-list
@@ -215,7 +215,7 @@ public final class HashedWheelTimer implements Runnable {
 			if (timeout.next != null) {
 				timeout.next.prev = timeout.prev;
 			}
-			
+
 			if (timeout == head) {
 				// if timeout is also the tail we need to adjust the entry too
 				if (timeout == tail) {
@@ -233,16 +233,16 @@ public final class HashedWheelTimer implements Runnable {
 			timeout.next = null;
 			timeout.bucket = null;
 			return next;
-		}		
+		}
 	}
 
     /*
     public void printRemaining() {
 		System.out.println("Search remaining buckets");
-    	
+
     	for (int i = 0; i < wheel.length; i++) {
     		HashedWheelBucket bucket = wheel[i];
-    		
+
     		if (bucket.head != null || bucket.tail != null) {
     			System.out.println("Bucket " + i + " exists");
     		}

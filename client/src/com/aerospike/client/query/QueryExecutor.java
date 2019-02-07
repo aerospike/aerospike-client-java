@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
 public abstract class QueryExecutor {
-	
+
 	private final Cluster cluster;
 	protected final QueryPolicy policy;
 	protected final Statement statement;
@@ -39,17 +39,17 @@ public abstract class QueryExecutor {
     private final AtomicBoolean done;
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
-	
+
 	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
 		this.cluster = cluster;
 		this.policy = policy;
 		this.statement = statement;
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
-		
+
 		if (node == null) {
 			nodes = cluster.getNodes();
-			
+
 			if (nodes.length == 0) {
 				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
 			}
@@ -64,12 +64,12 @@ public abstract class QueryExecutor {
 		// Initialize maximum number of nodes to query in parallel.
 		this.maxConcurrentNodes = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= threads.length) ? threads.length : policy.maxConcurrentNodes;
 	}
-	
+
 	protected final void initializeThreads() {
 		// Detect cluster migrations when performing scan.
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], statement.namespace) : 0;	
+		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], statement.namespace) : 0;
 		boolean first = true;
-		
+
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
 			MultiCommand command = createCommand(clusterKey, first);
@@ -84,7 +84,7 @@ public abstract class QueryExecutor {
 			threadPool.execute(threads[i]);
 		}
 	}
-	
+
 	private final void threadCompleted() {
 		int finished = completedCount.incrementAndGet();
 
@@ -110,7 +110,7 @@ public abstract class QueryExecutor {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
 	    	exception = cause;
-	    	
+
 			// Send stop signal to threads.
 			for (QueryThread thread : threads) {
 				thread.stop();
@@ -123,12 +123,12 @@ public abstract class QueryExecutor {
 		// Throw an exception if an error occurred.
 		if (exception != null) {
 			if (exception instanceof AerospikeException) {
-				throw (AerospikeException)exception;		
+				throw (AerospikeException)exception;
 			}
 			else {
 				throw new AerospikeException(exception);
-			}		
-		}				
+			}
+		}
 	}
 
 	private final class QueryThread implements Runnable {
@@ -158,9 +158,9 @@ public abstract class QueryExecutor {
 		 */
 		public void stop() {
 			command.stop();
-		}		
+		}
 	}
-	
+
 	protected abstract MultiCommand createCommand(long clusterKey, boolean first);
 	protected abstract void sendCancel();
 	protected abstract void sendCompleted();

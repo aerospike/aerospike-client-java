@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,7 +38,7 @@ public class TestAsyncPutGet extends TestAsync {
 	public void asyncPutGetInline() {
 		final Key key = new Key(args.namespace, args.set, "putgetkey1");
 		final Bin bin = new Bin(binName, "value");
-		
+
 		client.put(eventLoop, new WriteListener() {
 			public void onSuccess(final Key key) {
 				try {
@@ -48,7 +48,7 @@ public class TestAsyncPutGet extends TestAsync {
 							assertBinEqual(key, record, bin);
 							notifyComplete();
 						}
-						
+
 						public void onFailure(AerospikeException e) {
 							setError(e);
 							notifyComplete();
@@ -60,16 +60,16 @@ public class TestAsyncPutGet extends TestAsync {
 					notifyComplete();
 				}
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
 			}
 		}, null, key, bin);
-		
+
 		waitTillComplete();
 	}
-	
+
 	@Test
 	public void asyncPutGetWithRetry() {
 		final Key key = new Key(args.namespace, args.set, "putgetkey2");
@@ -77,21 +77,21 @@ public class TestAsyncPutGet extends TestAsync {
 		client.put(eventLoop, new WriteHandler(client, null, key, bin), null, key, bin);
 		waitTillComplete();
 	}
-	
+
 	private class WriteHandler implements WriteListener {
 		private final AerospikeClient client;
 		private final WritePolicy policy;
 		private final Key key;
 		private final Bin bin;
     	private int failCount = 0;
-		
+
 		public WriteHandler(AerospikeClient client, WritePolicy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
 			this.bin = bin;
 		}
-		
+
 		// Write success callback.
 		public void onSuccess(Key key) {
 			try {
@@ -103,13 +103,13 @@ public class TestAsyncPutGet extends TestAsync {
 				notifyComplete();
 			}
 		}
-		
+
 		// Error callback.
 		public void onFailure(AerospikeException e) {
 		   // Retry up to 2 more times.
            if (++failCount <= 2) {
             	Throwable t = e.getCause();
-            	
+
             	// Check for common socket errors.
             	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
                     try {
@@ -132,14 +132,14 @@ public class TestAsyncPutGet extends TestAsync {
 		private final Key key;
 		private final Bin bin;
     	private int failCount = 0;
-		
+
 		public ReadHandler(AerospikeClient client, Policy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
 			this.bin = bin;
 		}
-				
+
 		// Read success callback.
 		public void onSuccess(Key key, Record record) {
 			// Verify received bin value is what was written.
@@ -152,7 +152,7 @@ public class TestAsyncPutGet extends TestAsync {
 			// Retry up to 2 more times.
 			if (++failCount <= 2) {
             	Throwable t = e.getCause();
-            	
+
             	// Check for common socket errors.
             	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
                     try {

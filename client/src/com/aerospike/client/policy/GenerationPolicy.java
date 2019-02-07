@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,15 +24,15 @@ public enum GenerationPolicy {
 	 * Do not use record generation to restrict writes.
 	 */
 	NONE,
-	
+
 	/**
-	 * Update/delete record if expected generation is equal to server generation. Otherwise, fail. 
+	 * Update/delete record if expected generation is equal to server generation. Otherwise, fail.
 	 */
 	EXPECT_GEN_EQUAL,
 
 	/**
 	 * Update/delete record if expected generation greater than the server generation. Otherwise, fail.
-	 * This is useful for restore after backup. 
+	 * This is useful for restore after backup.
 	 */
 	EXPECT_GEN_GT
 }

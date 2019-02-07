@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,34 +27,34 @@ import com.aerospike.client.policy.WritePolicy;
 public final class ServerCommand extends MultiCommand {
 	private final WritePolicy writePolicy;
 	private final Statement statement;
-	
+
 	public ServerCommand(WritePolicy policy, Statement statement) {
 		super(true);
 		this.writePolicy = policy;
 		this.statement = statement;
 	}
-	
+
 	@Override
 	protected final void writeBuffer() throws AerospikeException {
 		setQuery(writePolicy, statement, true);
-	}	
-	
+	}
+
 	@Override
-	protected void parseRow(Key key) throws IOException {		
+	protected void parseRow(Key key) throws IOException {
 		// Server commands (Query/Execute UDF) should only send back a return code.
 		// Keep parsing logic to empty socket buffer just in case server does
 		// send records back.
 		for (int i = 0 ; i < opCount; i++) {
-    		readBytes(8);	
+    		readBytes(8);
 			int opSize = Buffer.bytesToInt(dataBuffer, 0);
 			byte nameSize = dataBuffer[7];
-    		
+
 			readBytes(nameSize);
-	
+
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			readBytes(particleBytesSize);
 	    }
-		
+
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
 		}

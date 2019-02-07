@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,7 @@ import org.junit.runner.Description;
 
 public class LogTestName extends TestWatcher {
 	public static final LogTestName Instance = new LogTestName();
-	
+
     @Override
     protected void starting(Description description) {
         System.out.println("Test " + description.getMethodName());

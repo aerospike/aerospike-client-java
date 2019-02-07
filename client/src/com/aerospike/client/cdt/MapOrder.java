@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,19 +24,19 @@ public enum MapOrder {
 	 * Map is not ordered.  This is the default.
 	 */
 	UNORDERED(0),
-	
+
 	/**
 	 * Order map by key.
 	 */
 	KEY_ORDERED(1),
-	
+
 	/**
 	 * Order map by key, then value.
 	 */
 	KEY_VALUE_ORDERED(3);
-	
+
 	public final int attributes;
-	
+
 	private MapOrder(int attributes) {
 		this.attributes = attributes;
 	}

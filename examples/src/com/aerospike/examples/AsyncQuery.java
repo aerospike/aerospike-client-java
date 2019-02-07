@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -35,7 +35,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.util.Util;
 
-public class AsyncQuery extends AsyncExample {		
+public class AsyncQuery extends AsyncExample {
 	/**
 	 * Asynchronous query example.
 	 */
@@ -45,31 +45,31 @@ public class AsyncQuery extends AsyncExample {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
-		String binName = params.getBinName("asqbin");  
+		String binName = params.getBinName("asqbin");
 		int size = 50;
 
 		createIndex(client, indexName, binName);
 		runQueryExample(client, eventLoop, keyPrefix, binName, size);
-		
+
 		// Wait until query finishes before dropping index.
 		waitTillComplete();
-		client.dropIndex(policy, params.namespace, params.set, indexName);		
+		client.dropIndex(policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		String indexName,
 		String binName
 	) {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -95,52 +95,52 @@ public class AsyncQuery extends AsyncExample {
 		for (int i = 1; i <= size; i++) {
 			final Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
-			
-			client.put(eventLoop, new WriteListener() {				
+
+			client.put(eventLoop, new WriteListener() {
 				public void onSuccess(final Key key) {
 					if (count.incrementAndGet() == size) {
 						runQuery(client, eventLoop, binName);
 					}
 				}
-				
+
 				public void onFailure(AerospikeException e) {
 					console.error("Failed to put: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 					notifyComplete();
 				}
-			}, writePolicy, key, bin);		
+			}, writePolicy, key, bin);
 		}
 	}
 
 	private void runQuery(AerospikeClient client, EventLoop eventLoop, final String binName) {
 		int begin = 26;
 		int end = 34;
-		
+
 		console.info("Query for: ns=%s set=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, binName, begin, end);			
-		
+			params.namespace, params.set, binName, begin, end);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		
+
 		final AtomicInteger count = new AtomicInteger();
-		
+
 		client.query(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) throws AerospikeException {
 				int result = record.getInt(binName);
-				
+
 				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
 					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
-				
+
 				count.incrementAndGet();
 			}
 
 			public void onSuccess() {
 				int size = count.get();
-				
+
 				if (size != 9) {
-					console.error("Query count mismatch. Expected 9. Received " + size);			
+					console.error("Query count mismatch. Expected 9. Received " + size);
 				}
 				notifyComplete();
 			}
@@ -148,8 +148,8 @@ public class AsyncQuery extends AsyncExample {
 			public void onFailure(AerospikeException e) {
 				console.error("Query failed: " + Util.getErrorMessage(e));
 				notifyComplete();
-			} 
-			
-		}, null, stmt);	
+			}
+
+		}, null, stmt);
 	}
 }

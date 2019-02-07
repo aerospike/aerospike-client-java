@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class AsyncOperate extends AsyncRead {
 	private final Operation[] operations;
 	private WritePolicy writePolicy;
 	private OperateArgs args;
-	
+
 	public AsyncOperate(RecordListener listener, Key key, Operation[] operations) {
 		super(listener, null, key, null, false);
 		this.operations = operations;
@@ -46,7 +46,7 @@ public final class AsyncOperate extends AsyncRead {
 	protected void writeBuffer() {
 		setOperate(writePolicy, key, operations, args);
 	}
-	
+
 	@Override
 	protected void handleNotFound(int resultCode) {
 		// Only throw not found exception for command with write operations.
@@ -59,13 +59,13 @@ public final class AsyncOperate extends AsyncRead {
 	@Override
 	protected void addBin(Map<String,Object> bins, String name, Object value) {
 		if (bins.containsKey(name)) {
-			// Multiple values returned for the same bin. 
+			// Multiple values returned for the same bin.
 			Object prev = bins.get(name);
-			
+
 			if (prev instanceof OpResults) {
 				// List already exists.  Add to it.
 				OpResults list = (OpResults)prev;
-				list.add(value);					
+				list.add(value);
 			}
 			else {
 				// Make a list to store all values.
@@ -79,7 +79,7 @@ public final class AsyncOperate extends AsyncRead {
 			bins.put(name, value);
 		}
 	}
-	
+
 	private static class OpResults extends ArrayList<Object> {
 		private static final long serialVersionUID = 1L;
 	}

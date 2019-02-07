@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,7 +44,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	/**
-	 * Perform region queries using a Geo index on a collection. 
+	 * Perform region queries using a Geo index on a collection.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
@@ -53,7 +53,7 @@ public class QueryGeoCollection extends Example {
 		runMapKeyExample(client,params);
 		runListExample(client,params);
 	}
-	
+
 	private void runMapExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_map";
 		String keyPrefix = "map";
@@ -61,15 +61,15 @@ public class QueryGeoCollection extends Example {
 		String binName = "geo_map_bin";
 		String binName2 = "geo_uniq_bin";
 		int size = 1000;
-		
+
 		// create collection index on mapValue
 		createIndex(client, params, IndexCollectionType.MAPVALUES, indexName, binName);
 		writeMapRecords(client, params, keyPrefix, binName, binName2, mapValuePrefix, size);
 		runQuery(client, params, binName, binName2, IndexCollectionType.MAPVALUES);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-		deleteRecords(client,params, keyPrefix, size);		
+		deleteRecords(client,params, keyPrefix, size);
 	}
-	
+
 	private void runMapKeyExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_mapkey";
 		String keyPrefix = "mapkey";
@@ -77,13 +77,13 @@ public class QueryGeoCollection extends Example {
 		String binName = "geo_mkey_bin";
 		String binName2 = "geo_uniq_bin";
 		int size = 1000;
-		
+
 		// create collection index on mapKey
 		createIndex(client, params, IndexCollectionType.MAPKEYS, indexName, binName);
 		writeMapKeyRecords(client, params, keyPrefix, binName, binName2, mapValuePrefix, size);
 		runQuery(client, params, binName, binName2, IndexCollectionType.MAPKEYS);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-		deleteRecords(client,params, keyPrefix, size);		
+		deleteRecords(client,params, keyPrefix, size);
 	}
 
 	private void runListExample(AerospikeClient client, Parameters params) throws Exception {
@@ -91,8 +91,8 @@ public class QueryGeoCollection extends Example {
 		String keyPrefix = "list";
 		String binName = "geo_list_bin";
 		String binName2 = "geo_uniq_bin";
-		int size = 1000;		
-		
+		int size = 1000;
+
 		// create collection index on list
 		createIndex(client, params, IndexCollectionType.LIST, indexName, binName);
 		writeListRecords(client, params, keyPrefix, binName, binName2, size);
@@ -100,7 +100,7 @@ public class QueryGeoCollection extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 		deleteRecords(client,params, keyPrefix, size);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -109,11 +109,11 @@ public class QueryGeoCollection extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create GeoJSON %s index: ns=%s set=%s index=%s bin=%s",
-			indexType, params.namespace, params.set, indexName, binName);			
-		
+			indexType, params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set,
 					indexName, binName, IndexType.GEO2DSPHERE, indexType);
@@ -138,7 +138,7 @@ public class QueryGeoCollection extends Example {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			HashMap<String, Value> map = new HashMap<String,Value>();
-			
+
 			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
@@ -151,15 +151,15 @@ public class QueryGeoCollection extends Example {
 				double rlng = 0.0 - (0.10 * jj);
 
 				geoString = generatePolygon(rlat, rlng);
-				
+
 				map.put(valuePrefix+"regionkey_"+i+"_"+jj, Value.getAsGeoJSON(geoString));
 
 			}
 			Bin bin = new Bin(binName, map);
 			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);			
+			client.put(params.writePolicy, key, bin, bin2);
 		}
-		
+
 		console.info("Write " + size + " records.");
 	}
 
@@ -175,7 +175,7 @@ public class QueryGeoCollection extends Example {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			HashMap<Value, String> map = new HashMap<Value, String>();
-			
+
 			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
@@ -188,15 +188,15 @@ public class QueryGeoCollection extends Example {
 				double rlng = 0.0 - (0.10 * jj);
 
 				geoString = generatePolygon(rlat, rlng);
-				
+
 				map.put(Value.getAsGeoJSON(geoString), valuePrefix+"regionkey_"+i+"_"+jj);
 
 			}
 			Bin bin = new Bin(binName, map);
 			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);			
+			client.put(params.writePolicy, key, bin, bin2);
 		}
-		
+
 		console.info("Write " + size + " records.");
 	}
 
@@ -211,7 +211,7 @@ public class QueryGeoCollection extends Example {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			List<Value> mylist = new ArrayList<Value>();
-			
+
 			for (int jj = 0; jj < 10; ++jj) {
 
 				double plat = 0.0 + (0.01 * i);
@@ -224,16 +224,16 @@ public class QueryGeoCollection extends Example {
 				double rlng = 0.0 - (0.10 * jj);
 
 				geoString = generatePolygon(rlat, rlng);
-				
+
 				mylist.add(Value.getAsGeoJSON(geoString));
 
 			}
-			
+
 			Bin bin = new Bin(binName, mylist);
 			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);			
+			client.put(params.writePolicy, key, bin, bin2);
 		}
-		
+
 		console.info("Write " + size + " records.");
 	}
 
@@ -244,19 +244,19 @@ public class QueryGeoCollection extends Example {
 		String binName2,
 		IndexCollectionType indexType
 	) throws Exception {
-			
+
 		console.info("Query for: ns=%s set=%s bin=%s %s within <region>",
-			params.namespace, params.set, binName, indexType.toString());			
-		
+			params.namespace, params.set, binName, indexType.toString());
+
 		StringBuilder rgnsb = generateQueryRegion();
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.geoWithinRegion(binName, indexType, rgnsb.toString()));
-	
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
 			Set <String> uniques = new HashSet<String>();
@@ -267,12 +267,12 @@ public class QueryGeoCollection extends Example {
 				uniques.add(record.getString(binName2));
 				count++;
 			}
-			
+
 			if (count != 697) {
-				console.error("Query failed. %d records expected. %d returned.", 697, count);			
-			} 
+				console.error("Query failed. %d records expected. %d returned.", 697, count);
+			}
 			else if (uniques.size()!=21) {
-				console.error("Query failed. %d unique records expected. %d unique returned.", 21, uniques.size());			
+				console.error("Query failed. %d unique records expected. %d unique returned.", 21, uniques.size());
 			}
 			else {
 				console.info("query succeeded with %d records %d unique",count,uniques.size());
@@ -287,14 +287,14 @@ public class QueryGeoCollection extends Example {
 		AerospikeClient client,
 		Parameters params,
 		String keyPrefix,
-		int size	
+		int size
 	) throws Exception {
 		for (int i = 0; i < size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			client.delete(params.writePolicy, key);			
+			client.delete(params.writePolicy, key);
 		}
 	}
-	
+
 	private StringBuilder generateQueryRegion() {
 		StringBuilder rgnsb = new StringBuilder();
 		rgnsb.append("{ ");
@@ -309,7 +309,7 @@ public class QueryGeoCollection extends Example {
 		rgnsb.append(" } ");
 		return rgnsb;
 	}
-	
+
 	private String generatePoint(double plat, double plng) {
 		return String.format("{ \"type\": \"Point\", \"coordinates\": [%f, %f] }", plng, plat);
 	}

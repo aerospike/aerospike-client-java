@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -88,17 +88,17 @@ public class SuiteSync {
 	public static void init() {
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
-		
+
 		ClientPolicy policy = new ClientPolicy();
 		policy.user = args.user;
 		policy.password = args.password;
 		policy.authMode = args.authMode;
 		policy.tlsPolicy = args.tlsPolicy;
-		
+
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
 		client = new AerospikeClient(policy, hosts);
-		
+
 		try {
 			args.setServerSpecific(client);
 		}
@@ -107,7 +107,7 @@ public class SuiteSync {
 			throw re;
 		}
 	}
-	
+
 	@AfterClass
 	public static void destroy() {
 		System.out.println("End AerospikeClient");

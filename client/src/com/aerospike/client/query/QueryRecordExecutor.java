@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,36 +23,36 @@ import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryRecordExecutor extends QueryExecutor {
-	
+
 	private final RecordSet recordSet;
-	
-	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) 
+
+	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node)
 		throws AerospikeException {
 		super(cluster, policy, statement, node);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		statement.prepare(true);		
+		statement.prepare(true);
 		initializeThreads();
 	}
-	
-	public void execute() {		
+
+	public void execute() {
 		startThreads();
 	}
-	
+
 	@Override
 	protected MultiCommand createCommand(long clusterKey, boolean first) {
 		return new QueryRecordCommand(policy, statement, recordSet, clusterKey, first);
 	}
-	
+
 	@Override
 	protected void sendCancel() {
 		recordSet.abort();
 	}
 
 	@Override
-	protected void sendCompleted() {		
+	protected void sendCompleted() {
 		recordSet.put(RecordSet.END);
 	}
-	
+
 	public RecordSet getRecordSet() {
 		return recordSet;
 	}

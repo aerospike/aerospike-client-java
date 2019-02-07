@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -58,22 +58,22 @@ public class SuiteAsync {
 	public static void init() {
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
-		
+
 		switch (args.eventLoopType) {
 			default:
 			case DIRECT_NIO: {
-				eventLoops = new NioEventLoops(1);			
+				eventLoops = new NioEventLoops(1);
 				break;
 			}
-				
+
 			case NETTY_NIO: {
 				EventLoopGroup group = new NioEventLoopGroup(1);
 				eventLoops = new NettyEventLoops(group);
 				break;
 			}
-				
+
 			case NETTY_EPOLL: {
-				EventLoopGroup group = new EpollEventLoopGroup(1);				
+				EventLoopGroup group = new EpollEventLoopGroup(1);
 				eventLoops = new NettyEventLoops(group);
 				break;
 			}
@@ -81,17 +81,17 @@ public class SuiteAsync {
 
 		try {
 			ClientPolicy policy = new ClientPolicy();
-			policy.eventLoops = eventLoops;			
+			policy.eventLoops = eventLoops;
 			policy.user = args.user;
 			policy.password = args.password;
 			policy.authMode = args.authMode;
 			policy.tlsPolicy = args.tlsPolicy;
-			
+
 			Host[] hosts = Host.parseHosts(args.host, args.port);
 
 			eventLoop = eventLoops.get(0);
 			client = new AerospikeClient(policy, hosts);
-			
+
 			try {
 				args.setServerSpecific(client);
 			}
@@ -105,7 +105,7 @@ public class SuiteAsync {
 			throw e;
 		}
 	}
-	
+
 	@AfterClass
 	public static void destroy() {
 		System.out.println("End AerospikeClient");

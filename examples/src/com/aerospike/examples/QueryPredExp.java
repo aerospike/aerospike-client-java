@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,9 +49,9 @@ public class QueryPredExp extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "predidx";
-		String binName = params.getBinName("idxbin");  
+		String binName = params.getBinName("idxbin");
 		int size = 50;
 
 		createIndex(client, params, indexName, binName);
@@ -59,9 +59,9 @@ public class QueryPredExp extends Example {
 		runQuery1(client, params, binName);
 		runQuery2(client, params, binName);
 		runQuery3(client, params, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -69,11 +69,11 @@ public class QueryPredExp extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -95,14 +95,14 @@ public class QueryPredExp extends Example {
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, i);
-			Bin bin1 = new Bin(binName, i);	
+			Bin bin1 = new Bin(binName, i);
 			Bin bin2 = new Bin("bin2", i * 10);
 			Bin bin3;
-			
-			if (i % 4 == 0) {				
+
+			if (i % 4 == 0) {
 				bin3 = new Bin("bin3", "prefix-" + i + "-suffix");
 			}
-			else if (i % 2 == 0) {				
+			else if (i % 2 == 0) {
 				bin3 = new Bin("bin3", "prefix-" + i + "-SUFFIX");
 			}
 			else {
@@ -117,19 +117,19 @@ public class QueryPredExp extends Example {
 		Parameters params,
 		String binName
 	) throws Exception {
-		
+
 		int begin = 10;
 		int end = 40;
-		
+
 		console.info("Query Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		
+
 		// Filter applied on query itself.  Filter can only reference an indexed bin.
 		stmt.setFilter(Filter.range(binName, begin, end));
-		
+
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
 		stmt.setPredExp(
@@ -145,36 +145,36 @@ public class QueryPredExp extends Example {
 			PredExp.integerEqual(),
 			PredExp.or(2)
 			);
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			while (rs.next()) {
-				Record record = rs.getRecord();				
-				console.info("Record: " + record.toString());			
-			}			
+				Record record = rs.getRecord();
+				console.info("Record: " + record.toString());
+			}
 		}
 		finally {
 			rs.close();
 		}
 	}
-	
+
 	private void runQuery2(
 		AerospikeClient client,
 		Parameters params,
 		String binName
 	) throws Exception {
-		
+
 		int begin = 10;
 		int end = 40;
-		
+
 		console.info("Query Predicate: Record updated on 2017-01-15");
 		Calendar beginTime = new GregorianCalendar(2017, 0, 15);
 		Calendar endTime = new GregorianCalendar(2017, 0, 16);
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);		
+		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
 			PredExp.recLastUpdate(),
@@ -185,14 +185,14 @@ public class QueryPredExp extends Example {
 			PredExp.integerLess(),
 			PredExp.and(2)
 			);
-				
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			while (rs.next()) {
-				Record record = rs.getRecord();				
-				console.info("Record: " + record.toString());			
-			}			
+				Record record = rs.getRecord();
+				console.info("Record: " + record.toString());
+			}
 		}
 		finally {
 			rs.close();
@@ -204,15 +204,15 @@ public class QueryPredExp extends Example {
 		Parameters params,
 		String binName
 	) throws Exception {
-		
+
 		int begin = 20;
 		int end = 30;
-		
+
 		console.info("Query Predicate: bin3 contains string with 'prefix' and 'suffix'");
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
-		stmt.setSetName(params.set);		
+		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 		stmt.setPredExp(
 			PredExp.stringBin("bin3"),
@@ -221,12 +221,12 @@ public class QueryPredExp extends Example {
 			);
 
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			while (rs.next()) {
-				Record record = rs.getRecord();				
-				console.info("Record: " + record.toString());			
-			}			
+				Record record = rs.getRecord();
+				console.info("Record: " + record.toString());
+			}
 		}
 		finally {
 			rs.close();

@@ -48,7 +48,7 @@ public class HelperTests {
 			if ( i == 5)
 				i = 0;
 		}
-		
+
 		//GEO Test setup
 		for (i = 0; i < TestQueryEngine.RECORD_COUNT; i++) {
 			double lng = -122 + (0.1 * i);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,7 +31,7 @@ public abstract class Task {
 	public static final int NOT_FOUND = 0;
 	public static final int IN_PROGRESS = 1;
 	public static final int COMPLETE = 2;
-	
+
 	protected final Cluster cluster;
 	protected InfoPolicy policy;
 	private boolean done;
@@ -92,7 +92,7 @@ public abstract class Task {
 		if (done) {
 			return;
 		}
-		
+
 		long deadline = (policy.timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.timeout) : 0L;
 
 		do {
@@ -101,33 +101,33 @@ public abstract class Task {
 			Util.sleep(sleepInterval);
 
 			int status = queryStatus();
-			
+
 			// The server can remove task listings immediately after completion
-			// (especially for background query execute), so "NOT_FOUND" can 
+			// (especially for background query execute), so "NOT_FOUND" can
 			// really mean complete. If not found and timeout not defined,
 			// consider task complete.
 			if (status == COMPLETE || (status == NOT_FOUND && policy.timeout == 0)) {
 				done = true;
 				return;
 			}
-			
+
 			// Check for timeout.
 			if (policy.timeout > 0 && System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sleepInterval) > deadline) {
 				// Timeout has been reached or will be reached after next sleep.
-				// Do not throw timeout exception when status is "NOT_FOUND" because the server will drop 
+				// Do not throw timeout exception when status is "NOT_FOUND" because the server will drop
 				// background query execute task listings immediately after completion (which makes client
 				// polling worthless).  This should be fixed by having server take an extra argument to query
-				// execute command that says if server should wait till command is complete before responding 
+				// execute command that says if server should wait till command is complete before responding
 				// to client.
 				if (status == NOT_FOUND) {
 					done = true;
 					return;
 				}
 				else {
-					throw new AerospikeException.Timeout(policy.timeout, true);	
+					throw new AerospikeException.Timeout(policy.timeout, true);
 				}
-			}		
-		} while (true);		
+			}
+		} while (true);
 	}
 
 	/**
@@ -137,9 +137,9 @@ public abstract class Task {
 		if (done) {
 			return true;
 		}
-		
+
 		int status = queryStatus();
-		
+
 		if (status == NOT_FOUND) {
 			// The task may have not started yet.  Re-request status after a delay.
 			Util.sleep(1000);
@@ -147,7 +147,7 @@ public abstract class Task {
 		}
 
 		// The server can remove task listings immediately after completion
-		// (especially for background query execute), so we must assume a 
+		// (especially for background query execute), so we must assume a
 		// "not found" status means the task is complete.
 		done = status != IN_PROGRESS;
 		return done;
@@ -156,5 +156,5 @@ public abstract class Task {
 	/**
 	 * Query all nodes for task completion status.
 	 */
-	public abstract int queryStatus();	
+	public abstract int queryStatus();
 }

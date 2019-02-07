@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -54,7 +54,7 @@ public class TestQueryExecute extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName1, IndexType.NUMERIC);
 			itask.waitTillComplete();
@@ -73,61 +73,61 @@ public class TestQueryExecute extends TestSync {
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	public void queryExecute() {
 		int begin = 3;
 		int end = 9;
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName1, begin, end));
-		
+
 		ExecuteTask task = client.execute(null, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
 		task.waitTillComplete();
 		validateRecords();
 	}
-	
+
 	private void validateRecords() {
 		int begin = 1;
 		int end = size + 100;
-		
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName1, begin, end));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int[] expectedList = new int[] {1,2,3,104,5,106,7,108,-1,10};
 			int expectedSize = size - 1;
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Record record = rs.getRecord();
 				int value1 = record.getInt(binName1);
 				int value2 = record.getInt(binName2);
-				
+
 				int val1 = value1;
-				
-				if (val1 == 9) {			
+
+				if (val1 == 9) {
 					fail("Data mismatch. value1 " + val1 + " should not exist");
 				}
-				
+
 				if (val1 == 5) {
 					if (value2 != 0) {
 						fail("Data mismatch. value2 " + value2 + " should be null");
 					}
 				}
 				else if (value1 != expectedList[value2-1]) {
-					fail("Data mismatch. Expected " + expectedList[value2-1] + ". Received " + value1);								
+					fail("Data mismatch. Expected " + expectedList[value2-1] + ". Received " + value1);
 				}
 				count++;
-			}			
+			}
 			assertEquals(expectedSize, count);
 		}
 		finally {

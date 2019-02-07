@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,7 @@ public class Generation extends Example {
 		Bin bin = new Bin(binName, "genvalue1");
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value);
-		
+
 		client.put(params.writePolicy, key, bin);
 
 		bin = new Bin(binName, "genvalue2");
@@ -66,9 +66,9 @@ public class Generation extends Example {
 
 		Object received = record.getValue(bin.name);
 		String expected = bin.value.toString();
-		
+
 		if (received.equals(expected)) {
-			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s generation=%d", 
+			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s generation=%d",
 				key.namespace, key.setName, key.userKey, bin.name, received, record.generation);
 		}
 		else {
@@ -94,16 +94,16 @@ public class Generation extends Example {
 
 		try {
 			client.put(writePolicy, key, bin);
-			throw new Exception("Should have received generation error instead of success.");				
+			throw new Exception("Should have received generation error instead of success.");
 		}
 		catch (AerospikeException ae) {
 			if (ae.getResultCode() == ResultCode.GENERATION_ERROR) {
-				console.info("Success: Generation error returned as expected.");				
+				console.info("Success: Generation error returned as expected.");
 			}
 			else {
 				throw new Exception(String.format(
-					"Unexpected set return code: namespace=%s set=%s key=%s bin=%s value=%s code=%s", 
-					key.namespace, key.setName, key.userKey, bin.name, bin.value, ae.getResultCode()));				
+					"Unexpected set return code: namespace=%s set=%s key=%s bin=%s value=%s code=%s",
+					key.namespace, key.setName, key.userKey, bin.name, bin.value, ae.getResultCode()));
 			}
 		}
 
@@ -118,14 +118,14 @@ public class Generation extends Example {
 
 		received = record.getValue(bin.name);
 		expected = "genvalue3";
-		
+
 		if (received.equals(expected)) {
-			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s generation=%d", 
+			console.info("Get successful: namespace=%s set=%s key=%s bin=%s value=%s generation=%d",
 				key.namespace, key.setName, key.userKey, bin.name, received, record.generation);
 		}
 		else {
 			throw new Exception(String.format("Get mismatch: Expected %s. Received %s.",
 				expected, received));
-		}		
+		}
 	}
 }

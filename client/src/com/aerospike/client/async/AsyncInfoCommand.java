@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,13 +30,13 @@ public final class AsyncInfoCommand extends AsyncCommand {
 	private final InfoListener listener;
 	private final String[] commands;
 	private Map<String,String> map;
-	
+
 	public AsyncInfoCommand(InfoListener listener, InfoPolicy policy, Node node, String... commands) {
 		super(createPolicy(policy), node, false, true);
 		this.listener = listener;
 		this.commands = commands;
 	}
-	
+
 	private static Policy createPolicy(InfoPolicy policy) {
 		Policy p = new Policy();
 
@@ -52,12 +52,12 @@ public final class AsyncInfoCommand extends AsyncCommand {
 	@Override
 	protected void writeBuffer() {
 		dataOffset = 8;
-		
+
 		for (String command : commands) {
 			dataOffset += Buffer.estimateSizeUtf8(command) + 1;
 		}
-		
-		sizeBuffer();		
+
+		sizeBuffer();
 		dataOffset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...

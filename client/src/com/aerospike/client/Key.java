@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,7 @@ import com.aerospike.client.util.Crypto;
 /**
  * Unique record identifier. Records can be identified using a specified namespace,
  * an optional set name, and a user defined key which must be unique within a set.
- * Records can also be identified by namespace/digest which is the combination used 
+ * Records can also be identified by namespace/digest which is the combination used
  * on the server.
  */
 public final class Key {
@@ -32,21 +32,21 @@ public final class Key {
 	 * Namespace. Equivalent to database name.
 	 */
 	public final String namespace;
-	
+
 	/**
 	 * Optional set name. Equivalent to database table.
 	 */
 	public final String setName;
-	
+
 	/**
 	 * Unique server hash value generated from set name and user key.
 	 */
 	public final byte[] digest;
-	
+
 	/**
 	 * Original user key. This key is immediately converted to a hash digest.
-	 * This key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * This key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
@@ -54,12 +54,12 @@ public final class Key {
 	 * </ul>
 	 */
 	public final Value userKey;
-	
+
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
@@ -79,14 +79,14 @@ public final class Key {
 	 * </pre>
 	 * </li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, String key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = new Value.StringValue(key);
 		digest = Crypto.computeDigest(setName, this.userKey);
@@ -95,8 +95,8 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
@@ -115,14 +115,14 @@ public final class Key {
 	 * </pre>
 	 * </li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, byte[] key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = new Value.BytesValue(key);
 		digest = Crypto.computeDigest(setName, this.userKey);
@@ -131,8 +131,8 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
@@ -151,7 +151,7 @@ public final class Key {
 	 * </pre>
 	 * </li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
@@ -160,7 +160,7 @@ public final class Key {
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, byte[] key, int offset, int length) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = new Value.ByteSegmentValue(key, offset, length);
 		digest = Crypto.computeDigest(setName, this.userKey);
@@ -169,21 +169,21 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, int key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = new Value.LongValue(key);
 		digest = Crypto.computeDigest(setName, this.userKey);
@@ -192,21 +192,21 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, long key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = new Value.LongValue(key);
 		digest = Crypto.computeDigest(setName, this.userKey);
@@ -215,27 +215,27 @@ public final class Key {
 	/**
 	 * Initialize key from namespace, optional set name and user key.
 	 * The set name and user defined key are converted to a digest before sending to the server.
-	 * The user key is not used or returned by the server by default. If the user key needs 
-	 * to persist on the server, use one of the following methods: 
+	 * The user key is not used or returned by the server by default. If the user key needs
+	 * to persist on the server, use one of the following methods:
 	 * <ul>
 	 * <li>Set "WritePolicy.sendKey" to true. In this case, the key will be sent to the server for storage on writes
 	 * and retrieved on multi-record scans and queries.</li>
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					user defined unique identifier within set.
 	 * @throws AerospikeException	if digest computation fails
 	 */
 	public Key(String namespace, String setName, Value key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = key;
-		
+
 		// Some value types can't be used as keys (jblob, list, map, null).  Verify key type.
 		key.validateKeyType();
-		
+
 		digest = Crypto.computeDigest(setName, key);
 	}
 
@@ -244,20 +244,20 @@ public final class Key {
 	 * checks.  If the type is not known, java serialization (slow) is used for byte conversion.
 	 * These two performance penalties make this constructor unsuitable in all cases from
 	 * a performance perspective.
-	 * 
-	 * The preferred method when using compound java key objects is to explicitly convert the 
+	 *
+	 * The preferred method when using compound java key objects is to explicitly convert the
 	 * object to a byte[], String (or other known type) and call the associated Key constructor.
-	 * 
+	 *
 	public Key(String namespace, String setName, Object key) throws AerospikeException {
-		this.namespace = namespace; 
+		this.namespace = namespace;
 		this.setName = setName;
 		this.userKey = key;
 		digest = computeDigest(setName, Value.get(key));
 	} */
-	
+
 	/**
 	 * Initialize key from namespace, digest, optional set name and optional userKey.
-	 * 
+	 *
 	 * @param namespace				namespace
 	 * @param digest				unique server hash value
 	 * @param setName				optional set name, enter null when set does not exist
@@ -287,17 +287,17 @@ public final class Key {
 	@Override
 	public boolean equals(Object obj) {
 		Key other = (Key) obj;
-		
+
 		if (! Arrays.equals(digest, other.digest))
 			return false;
-		
+
 		return namespace.equals(other.namespace);
 	}
 
 	/**
-	 * Generate unique server hash value from set name, key type and user defined key.  
+	 * Generate unique server hash value from set name, key type and user defined key.
 	 * The hash function is RIPEMD-160 (a 160 bit hash).
-	 * 
+	 *
 	 * @param setName				optional set name, enter null when set does not exist
 	 * @param key					record identifier, unique within set
 	 * @return						unique server hash value
@@ -306,7 +306,7 @@ public final class Key {
 	public static byte[] computeDigest(String setName, Value key) throws AerospikeException {
 		return Crypto.computeDigest(setName, key);
 	}
-	
+
 	@Override
 	public String toString() {
 		return this.namespace + ":" + this.setName + ":" + this.userKey + ":" + Buffer.bytesToHexString(this.digest);

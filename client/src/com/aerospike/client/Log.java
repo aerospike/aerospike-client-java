@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,7 @@
 package com.aerospike.client;
 
 /**
- * Aerospike client logging facility. Logs can be filtered and message callbacks 
+ * Aerospike client logging facility. Logs can be filtered and message callbacks
  * can be defined to control how log messages are written.
  */
 public final class Log {
@@ -45,16 +45,16 @@ public final class Log {
 		 */
 		DEBUG
 	}
-	
+
 	/**
-	 * An object implementing this interface may be passed in to 
-	 * {@link #setCallback(Callback callback) setCallback()}, 
+	 * An object implementing this interface may be passed in to
+	 * {@link #setCallback(Callback callback) setCallback()},
 	 * so the caller can channel Aerospike client logs as desired.
 	 */
 	public static interface Callback {
 		/**
 		 * This method will be called for each client log statement.
-		 * 
+		 *
 		 * @param level		{@link Level log level}
 		 * @param message	log message
 		 */
@@ -66,7 +66,7 @@ public final class Log {
 
 	/**
 	 * Set log level filter.
-	 * 
+	 *
 	 * @param level			only show logs at this or more urgent level
 	 */
 	public static void setLevel(Level level) {
@@ -74,15 +74,15 @@ public final class Log {
 	}
 
 	/**
-	 * Set optional log callback implementation. If the callback is not defined (or null), 
+	 * Set optional log callback implementation. If the callback is not defined (or null),
 	 * log messages will not be displayed.
-	 * 
+	 *
 	 * @param callback		{@link Callback} implementation
 	 */
 	public static void setCallback(Callback callback) {
 		gCallback = callback;
 	}
-		
+
 	/**
 	 * Determine if warning log level is enabled.
 	 */
@@ -105,8 +105,8 @@ public final class Log {
 	}
 
 	/**
-	 * Log an error message. 
-	 * 
+	 * Log an error message.
+	 *
 	 * @param message		message string not terminated with a newline
 	 */
 	public static void error(String message) {
@@ -114,8 +114,8 @@ public final class Log {
 	}
 
 	/**
-	 * Log a warning message. 
-	 * 
+	 * Log a warning message.
+	 *
 	 * @param message		message string not terminated with a newline
 	 */
 	public static void warn(String message) {
@@ -123,8 +123,8 @@ public final class Log {
 	}
 
 	/**
-	 * Log an info message. 
-	 * 
+	 * Log an info message.
+	 *
 	 * @param message		message string not terminated with a newline
 	 */
 	public static void info(String message) {
@@ -132,8 +132,8 @@ public final class Log {
 	}
 
 	/**
-	 * Log an debug message. 
-	 * 
+	 * Log an debug message.
+	 *
 	 * @param message		message string not terminated with a newline
 	 */
 	public static void debug(String message) {
@@ -142,8 +142,8 @@ public final class Log {
 
 	/**
 	 * Filter and forward message to callback.
-	 * 
-	 * @param level			message severity level				
+	 *
+	 * @param level			message severity level
 	 * @param message		message string not terminated with a newline
 	 */
 	public static void log(Level level, String message) {

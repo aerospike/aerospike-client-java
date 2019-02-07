@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class QueryValidate {
 
 		// Fail when cluster is in migration.
 		String result = Info.request(node, "cluster-stable:namespace=" + namespace);
-		
+
 		try {
 			return Long.parseLong(result, 16);
 		}
@@ -49,7 +49,7 @@ public final class QueryValidate {
 		long clusterKey = validateBegin(node, namespace);
 
 		if (clusterKey != expectedKey) {
-			throw new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + expectedKey + ' ' + clusterKey);			
+			throw new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + expectedKey + ' ' + clusterKey);
 		}
 	}
 }

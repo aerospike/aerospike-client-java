@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,18 +45,18 @@ public class QueryInteger extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "queryindexint";
 		String keyPrefix = "querykeyint";
-		String binName = params.getBinName("querybinint");  
+		String binName = params.getBinName("querybinint");
 		int size = 50;
 
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, binName, size);
 		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -64,11 +64,11 @@ public class QueryInteger extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -91,7 +91,7 @@ public class QueryInteger extends Example {
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);	
+			Bin bin = new Bin(binName, i);
 			client.put(params.writePolicy, key, bin);
 		}
 	}
@@ -102,37 +102,37 @@ public class QueryInteger extends Example {
 		String indexName,
 		String binName
 	) throws Exception {
-		
+
 		int begin = 14;
 		int end = 18;
-		
+
 		console.info("Query for: ns=%s set=%s index=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, indexName, binName, begin, end);			
-		
+			params.namespace, params.set, indexName, binName, begin, end);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
 				int result = record.getInt(binName);
-				
+
 				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
 					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
-				
+
 				count++;
 			}
-			
+
 			if (count != 5) {
-				console.error("Query count mismatch. Expected 5. Received " + count);			
+				console.error("Query count mismatch. Expected 5. Received " + count);
 			}
 		}
 		finally {

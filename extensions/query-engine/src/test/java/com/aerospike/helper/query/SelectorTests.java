@@ -208,7 +208,7 @@ public class SelectorTests extends HelperTests{
 		Qualifier or = new Qualifier(Qualifier.FilterOperation.OR, qual3, qual2, qual4);
 		Qualifier or2 = new Qualifier(Qualifier.FilterOperation.OR, qual1, qual4);
 		Qualifier and = new Qualifier(Qualifier.FilterOperation.AND, or, or2);
-		
+
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, and);
 		try{
 			boolean has25=false;

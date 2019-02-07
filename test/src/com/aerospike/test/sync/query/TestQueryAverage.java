@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public class TestQueryAverage extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			itask.waitTillComplete();
@@ -65,16 +65,16 @@ public class TestQueryAverage extends TestSync {
 
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
-			Bin bin = new Bin("l1", i);			
+			Bin bin = new Bin("l1", i);
 			client.put(null, key, bin, new Bin("l2", 1));
 		}
 	}
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	public void queryAverage() {
 		Statement stmt = new Statement();
@@ -82,21 +82,21 @@ public class TestQueryAverage extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName, 0, 1000));
 		stmt.setAggregateFunction(TestQueryAverage.class.getClassLoader(), "udf/average_example.lua", "average_example", "average");
-		
+
 		ResultSet rs = client.queryAggregate(null, stmt);
-		
+
 		try {
 			if (rs.next()) {
 				Object obj = rs.getObject();
-				
+
 				if (obj instanceof Map<?,?>) {
 					Map<?,?> map = (Map<?,?>)obj;
 					long sum = (Long)map.get("sum");
 					long count = (Long)map.get("count");
-					double avg = (double) sum / count;					
+					double avg = (double) sum / count;
 					assertEquals(5.5, avg, 0.00000001);
 				}
-				else {			
+				else {
 					fail("Unexpected object returned: " + obj);
 				}
 			}

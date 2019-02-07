@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,12 +30,12 @@ public final class Record {
 	 * Map of requested name/value bins.
 	 */
 	public final Map<String,Object> bins;
-	
+
 	/**
 	 * Record modification count.
 	 */
 	public final int generation;
-	
+
 	/**
 	 * Date record will expire, in seconds from Jan 01 2010 00:00:00 GMT
 	 */
@@ -53,7 +53,7 @@ public final class Record {
 		this.generation = generation;
 		this.expiration = expiration;
 	}
-	
+
 	/**
 	 * Get bin value given bin name.
 	 * Enter empty string ("") for servers configured as single-bin.
@@ -61,14 +61,14 @@ public final class Record {
 	public Object getValue(String name) {
 		return (bins == null)? null : bins.get(name);
 	}
-	
+
 	/**
 	 * Get bin value as String.
 	 */
 	public String getString(String name) {
 		return (String)getValue(name);
 	}
-	
+
 	/**
 	 * Get bin value as double.
 	 */
@@ -127,7 +127,7 @@ public final class Record {
 		// The server always returns booleans as longs, so get long and convert.
 		return (getLong(name) != 0) ? true : false;
 	}
-	
+
 	/**
 	 * Get bin value as list.
 	 */
@@ -148,21 +148,21 @@ public final class Record {
 	public String getGeoJSON(String name) {
 		return getGeoJSONString(name);
 	}
-	
+
 	/**
 	 * Get bin value as GeoJSON String.
 	 */
 	public String getGeoJSONString(String name) {
 		return getValue(name).toString();
 	}
-	
+
 	/**
 	 * Get bin value as GeoJSON Value.
 	 */
 	public GeoJSONValue getGeoJSONValue(String name) {
 		return (GeoJSONValue) getValue(name);
 	}
-	
+
 	/**
 	 * Convert record expiration (seconds from Jan 01 2010 00:00:00 GMT) to
 	 * ttl (seconds from now).
@@ -173,11 +173,11 @@ public final class Record {
 			// Convert to client-side convention for "never expires".
 			return -1;
 		}
-		
+
 		// Subtract epoch difference (1970/1/1 GMT to 2010/1/1 GMT) from current time.
 		// Handle server's unsigned int ttl with java's usage of long for time.
 		int now = (int)((System.currentTimeMillis() - 1262304000000L) / 1000);
-		
+
 		// Record may not have expired on server, but delay or clock differences may
 		// cause it to look expired on client. Floor at 1, not 0, to avoid old
 		// "never expires" interpretation.
@@ -195,10 +195,10 @@ public final class Record {
 		sb.append("),(exp:");
 		sb.append(expiration);
 		sb.append("),(bins:");
-		
+
 		if (bins != null) {
 			boolean sep = false;
-			
+
 			for (Entry<String,Object> entry : bins.entrySet()) {
 				if (sep) {
 					sb.append(',');
@@ -211,7 +211,7 @@ public final class Record {
 				sb.append(':');
 				sb.append(entry.getValue());
 				sb.append(')');
-				
+
 				if (sb.length() > 1000) {
 					sb.append("...");
 					break;

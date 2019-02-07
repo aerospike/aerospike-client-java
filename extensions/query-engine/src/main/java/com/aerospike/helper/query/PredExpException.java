@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,7 +18,7 @@ package com.aerospike.helper.query;
 
 public class PredExpException extends Exception {
 	private static final long serialVersionUID = 1L;
-	
+
 	public PredExpException(String msg){
 		super(msg);
 	}

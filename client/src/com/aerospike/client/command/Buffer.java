@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,20 +30,20 @@ public final class Buffer {
 
 	public static Value bytesToKeyValue(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
-		
+
 		switch (type) {
 		case ParticleType.STRING:
 			return Value.get(Buffer.utf8ToString(buf, offset, len));
-			
+
 		case ParticleType.INTEGER:
 			return bytesToLongValue(buf, offset, len);
-		
+
 		case ParticleType.DOUBLE:
 			return new Value.DoubleValue(Buffer.bytesToDouble(buf, offset));
 
 		case ParticleType.BLOB:
 			return Value.get(Arrays.copyOfRange(buf, offset, offset+len));
-		
+
 		default:
 			return null;
 		}
@@ -51,44 +51,44 @@ public final class Buffer {
 
 	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
-		
+
 		switch (type) {
 		case ParticleType.STRING:
 			return Buffer.utf8ToString(buf, offset, len);
-			
+
 		case ParticleType.INTEGER:
 			return Buffer.bytesToNumber(buf, offset, len);
-		
+
 		case ParticleType.DOUBLE:
 			return Buffer.bytesToDouble(buf, offset);
 
 		case ParticleType.BLOB:
 			return Arrays.copyOfRange(buf, offset, offset+len);
-			
+
 		case ParticleType.JBLOB:
 			return Buffer.bytesToObject(buf, offset, len);
-			
+
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
-			
+
 		case ParticleType.LIST:
 			return Unpacker.unpackObjectList(buf, offset, len);
 
 		case ParticleType.MAP:
 			return Unpacker.unpackObjectMap(buf, offset, len);
-		
+
 		default:
 			return null;
 		}
 	}
-	
+
 	/*
 	private static Object parseList(byte[] buf, int offset, int len) throws AerospikeException {
 		int limit = offset + len;
 		int itemCount = Buffer.bytesToInt(buf, offset);
 		offset += 4;
 		ArrayList<Object> list = new ArrayList<Object>(itemCount);
-		
+
 		while (offset < limit) {
 			int sz = Buffer.bytesToInt(buf, offset);
 			offset += 4;
@@ -96,64 +96,64 @@ public final class Buffer {
 			offset++;
 			list.add(bytesToParticle(type, buf, offset, sz));
 			offset += sz;
-		}	
+		}
 		return list;
 	}
-		
+
 	private static Object parseMap(byte[] buf, int offset, int len) throws AerospikeException {
 		Object key;
 		Object value;
-		
+
 		int limit = offset + len;
 		int n_items = Buffer.bytesToInt(buf, offset);
 		offset += 4;
 		HashMap<Object, Object> map = new HashMap<Object, Object>(n_items);
-		
+
 		while (offset < limit) {
 			// read out the key
 			int sz = Buffer.bytesToInt(buf, offset);
 			offset += 4;
 			int type = buf[offset];
 			offset++;
-			
+
 			key = bytesToParticle(type, buf, offset, len);
 			offset += sz;
-			
+
 			// read out the value
 			sz = Buffer.bytesToInt(buf, offset);
 			offset += 4;
 			type = buf[offset];
 			offset++;
-			
+
 			value = bytesToParticle(type, buf, offset, len);
 			offset += sz;
-			
+
 			map.put(key, value);
 		}
 		return map;
 	}
 	*/
-	
+
 	/**
-	 * Estimate size of Utf8 encoded bytes without performing the actual encoding. 
+	 * Estimate size of Utf8 encoded bytes without performing the actual encoding.
 	 */
 	public static int estimateSizeUtf8(String value) {
 		if (value == null) {
 			return 0;
 		}
-		
+
 		int max = value.length();
 		int count = 0;
-		
+
 		for (int i = 0; i < max; i++) {
 			char ch = value.charAt(i);
-			
+
 			if (ch < 0x80) {
 				count++;
 			}
 			else if (ch < 0x800) {
 			    count += 2;
-			} 
+			}
 			else if (Character.isHighSurrogate(ch)) {
 				count += 4;
 				++i;
@@ -188,7 +188,7 @@ public final class Buffer {
         }
     	int length = s.length();
         int startOffset = offset;
-        
+
         for (int i = 0; i < length; i++) {
             int c = s.charAt(i);
             if (c < 0x80) {
@@ -214,12 +214,12 @@ public final class Buffer {
     }
 
     public static String utf8ToString(byte[] buf, int offset, int length) {
-    	// A Thread local implementation does not help here, so  
+    	// A Thread local implementation does not help here, so
     	// allocate character buffer each time.
     	if (length == 0) {
     		return "";
     	}
-    	
+
 		char[] charBuffer = new char[length];
     	int charCount = 0;
         int limit = offset + length;
@@ -227,10 +227,10 @@ public final class Buffer {
 
         while (offset < limit ) {
         	int b1 = buf[offset];
-        	
+
         	if (b1 >= 0) {
                 charBuffer[charCount++] = (char)b1;
-                offset++;        		
+                offset++;
         	}
         	else if ((b1 >> 5) == -2) {
         		int b2 = buf[offset + 1];
@@ -238,7 +238,7 @@ public final class Buffer {
                 offset += 2;
         	}
 		    else {
-		    	// Encountered an UTF encoding which uses more than 2 bytes. 
+		    	// Encountered an UTF encoding which uses more than 2 bytes.
 		    	// Use a native function to do the conversion.
 		    	try {
 		    		return new String(buf, origoffset, length, "UTF8");
@@ -255,7 +255,7 @@ public final class Buffer {
     	if (length == 0) {
     		return "";
     	}
-    	
+
     	// This method is designed to accommodate multiple string conversions on the same
     	// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
     	// created on the stack and passed in each method invocation.
@@ -275,7 +275,7 @@ public final class Buffer {
                 offset += 2;
             }
 		    else {
-		    	// Encountered an UTF encoding which uses more than 2 bytes. 
+		    	// Encountered an UTF encoding which uses more than 2 bytes.
 		    	// Use a native function to do the conversion.
 		    	try {
 		    		return new String(buf, origoffset, length, "UTF8");
@@ -287,29 +287,29 @@ public final class Buffer {
         }
         return sb.toString();
     }
-    
+
     /**
      * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
-     * 
+     *
      * Input format: 1234
      */
     public static int utf8DigitsToInt(byte[] buf, int begin, int end) {
     	int val = 0;
     	int mult = 1;
-    	
+
     	for (int i = end - 1; i >= begin; i--) {
     		val += ((int)buf[i] - 48) * mult;
     		mult *= 10;
     	}
     	return val;
     }
-    
+
     public static String bytesToHexString(byte[] buf) {
     	if (buf == null || buf.length == 0) {
     		return "";
     	}
 		StringBuilder sb = new StringBuilder(buf.length * 2);
-		
+
 		for (int i = 0; i < buf.length; i++) {
     		sb.append(String.format("%02x", buf[i]));
 		}
@@ -318,7 +318,7 @@ public final class Buffer {
 
     public static String bytesToHexString(byte[] buf, int offset, int length) {
 		StringBuilder sb = new StringBuilder(length * 2);
-		
+
 		for (int i = offset; i < length; i++) {
     		sb.append(String.format("%02x", buf[i]));
 		}
@@ -327,29 +327,29 @@ public final class Buffer {
 
     public static Object bytesToObject(byte[] buf, int offset, int length)
 		throws AerospikeException.Serialize {
-    	
+
     	if (length <= 0) {
     		return null;
     	}
-    	
+
 		try {
 			ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length);
 			ObjectInputStream oistream = new ObjectInputStream(bastream);
 			return oistream.readObject();
-		} 
+		}
 		catch (Exception e) {
     		throw new AerospikeException.Serialize(e);
 		}
 	}
 
-	public static Value bytesToLongValue(byte[] buf, int offset, int len) {		
+	public static Value bytesToLongValue(byte[] buf, int offset, int len) {
 		long val = 0;
-		
+
 		for (int i = 0; i < len; i++) {
 			val <<= 8;
 			val |= buf[offset+i] & 0xFF;
 		}
-		
+
 		return new Value.LongValue(val);
 	}
 
@@ -359,29 +359,29 @@ public final class Buffer {
 		int hdrsz = 1 + 2 + (ncells * 8);
 		return Value.getAsGeoJSON(Buffer.utf8ToString(buf, offset + hdrsz, len - hdrsz));
 	}
-	
+
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {
 		// Server always returns 8 for integer length.
 		if (len == 8) {
 			return bytesToLong(buf, offset);
 		}
-		
+
 		// Handle other lengths just in case server changes.
 		if (len == 0) {
 			return new Long(0);
 		}
-		
+
 		if (len == 4) {
 			return new Long(bytesToInt(buf, offset));
 		}
-		
+
 		if (len > 8) {
-			return bytesToBigInteger(buf, offset, len);	
+			return bytesToBigInteger(buf, offset, len);
 		}
-				
-		// Handle variable length integer. 
+
+		// Handle variable length integer.
 		long val = 0;
-		
+
 		for (int i = 0; i < len; i++) {
 			val <<= 8;
 			val |= buf[offset+i] & 0xFF;
@@ -391,16 +391,16 @@ public final class Buffer {
 
 	public static Object bytesToBigInteger(byte[] buf, int offset, int len) {
 		boolean negative = false;
-		
+
 		if ((buf[offset] & 0x80) != 0) {
 			negative = true;
 			buf[offset] &= 0x7f;
 		}
 		byte[] bytes = new byte[len];
 		System.arraycopy(buf, offset, bytes, 0, len);
-		
+
 		BigInteger big = new BigInteger(bytes);
-		
+
 		if (negative) {
 			big = big.negate();
 		}
@@ -410,7 +410,7 @@ public final class Buffer {
 	//-------------------------------------------------------
 	// 64 bit double conversions.
 	//-------------------------------------------------------
-	
+
 	public static double bytesToDouble(byte[] buf, int offset) {
 		return Double.longBitsToDouble(bytesToLong(buf, offset));
 	}
@@ -437,7 +437,7 @@ public final class Buffer {
 		buf[offset++] = (byte)(v >>>  8);
 		buf[offset]   = (byte)(v >>>  0);
 	}
-  	
+
     /**
      * Convert long to little endian signed or unsigned 64 bits.
      * The bit pattern will be the same regardless of sign.
@@ -450,7 +450,7 @@ public final class Buffer {
 		buf[offset++] = (byte)(v >>> 32);
 		buf[offset++] = (byte)(v >>> 40);
 		buf[offset++] = (byte)(v >>> 48);
-		buf[offset]   = (byte)(v >>> 56);		
+		buf[offset]   = (byte)(v >>> 56);
 	}
 
     /**
@@ -546,7 +546,7 @@ public final class Buffer {
 			((long)(buf[offset+3] & 0xFF) << 0)
 			);
 	}
-	
+
 	//-------------------------------------------------------
 	// 16 bit number conversions.
 	//-------------------------------------------------------
@@ -606,16 +606,16 @@ public final class Buffer {
     /**
      *	Encode an integer in variable 7-bit format.
      *	The high bit indicates if more bytes are used.
-     *  Return byte size of integer. 
+     *  Return byte size of integer.
      */
     public static int intToVarBytes(int v, byte[] buf, int offset) {
     	int i = offset;
-    	
+
     	while (i < buf.length && v >= 0x80) {
     		buf[i++] = (byte)(v | 0x80);
     		v >>>= 7;
     	}
-    	
+
     	if (i < buf.length) {
     		buf[i++] = (byte)v;
     		return i - offset;
@@ -633,13 +633,13 @@ public final class Buffer {
 		int val = 0;
 		int shift = 0;
 		byte b;
-		
+
 		do {
 			b = buf[i++];
 			val |= (b & 0x7F) << shift;
 			shift += 7;
 		} while ((b & 0x80) != 0);
-		
+
 		return new int[] {val, i - offset};
     }
 }

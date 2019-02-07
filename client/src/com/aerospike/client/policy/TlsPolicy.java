@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,12 +26,12 @@ import javax.net.ssl.SSLContext;
  */
 public final class TlsPolicy {
 	/**
-	 * Optional SSLContext configuration instead using default SSLContext. 
+	 * Optional SSLContext configuration instead using default SSLContext.
 	 * <p>
-	 * Default: null (use default SSLContext). 
+	 * Default: null (use default SSLContext).
 	 */
 	public SSLContext context;
-	
+
 	/**
 	 * Allowable TLS protocols that the client can use for secure connections.
 	 * Available cipher names can be obtained by {@link javax.net.ssl.SSLSocket#getSupportedProtocols()}
@@ -45,11 +45,11 @@ public final class TlsPolicy {
 	 * Default: TLSv1.2 (Only allow TLSv1.2 protocol)
 	 */
 	public String[] protocols = new String[] {"TLSv1.2"};
-	
+
 	/**
 	 * Allowable TLS ciphers that the client can use for secure connections.
 	 * Available cipher names can be obtained by {@link javax.net.ssl.SSLSocket#getSupportedCipherSuites()}
-	 * Multiple ciphers can be specified. 
+	 * Multiple ciphers can be specified.
 	 * Default: null (Allow default ciphers defined by JVM)
 	 */
 	public String[] ciphers;
@@ -59,10 +59,10 @@ public final class TlsPolicy {
 	 * Default: null (Do not exclude by certificate serial number)
 	 */
 	public BigInteger[] revokeCertificates;
-	
+
 	/**
 	 * Use TLS connections only for login authentication.  All other communication with
-	 * the server will be done with non-TLS connections. 
+	 * the server will be done with non-TLS connections.
 	 * Default: false (Use TLS connections for all communication with server.)
 	 */
 	public boolean forLoginOnly;

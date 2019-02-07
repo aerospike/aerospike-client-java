@@ -52,17 +52,17 @@ public class Args {
 	public boolean hasUdf;
 	public boolean hasMap;
 	public boolean singleBin;
-	
+
 	public Args() {
 		String argString = System.getProperty("args");
-		
+
 		if (argString == null || argString.trim().length() == 0) {
 			return;
 		}
-	
+
 		try {
 			String[] args = argString.split(" ");
-			
+
 			Options options = new Options();
 			options.addOption("h", "host", true,
 					"List of seed hosts in format:\n" +
@@ -70,11 +70,11 @@ public class Args {
 					"The tlsname is only used when connecting with a secure TLS enabled server. " +
 					"If the port is not specified, the default port is used.\n" +
 					"IPv6 addresses must be enclosed in square brackets.\n" +
-					"Default: localhost\n" + 
-					"Examples:\n" + 
-					"host1\n" + 
-					"host1:3000,host2:3000\n" + 
-					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n" 
+					"Default: localhost\n" +
+					"Examples:\n" +
+					"host1\n" +
+					"host1:3000,host2:3000\n" +
+					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n"
 					);
 			options.addOption("p", "port", true, "Server default port (default: 3000)");
 			options.addOption("U", "user", true, "User name");
@@ -82,17 +82,17 @@ public class Args {
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
 			options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
-			options.addOption("tp", "tlsProtocols", true, 
+			options.addOption("tp", "tlsProtocols", true,
 					"Allow TLS protocols\n" +
 					"Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
 					"Default: TLSv1.2"
 					);
-			options.addOption("tlsCiphers", "tlsCipherSuite", true, 
+			options.addOption("tlsCiphers", "tlsCipherSuite", true,
 					"Allow TLS cipher suites\n" +
 					"Values:  cipher names defined by JVM separated by comma\n" +
 					"Default: null (default cipher list provided by JVM)"
 					);
-			options.addOption("tr", "tlsRevoke", true, 
+			options.addOption("tr", "tlsRevoke", true,
 					"Revoke certificates identified by their serial number\n" +
 					"Values:  serial numbers separated by comma\n" +
 					"Default: null (Do not revoke certificates)"
@@ -111,7 +111,7 @@ public class Args {
 				logUsage(options);
 				throw new AerospikeException("Terminate after displaying usage");
 			}
-			
+
 			host = cl.getOptionValue("h", host);
 			String portString = cl.getOptionValue("p", "3000");
 			port = Integer.parseInt(portString);
@@ -121,20 +121,20 @@ public class Args {
 			if (set.equals("empty")) {
 				set = "";
 			}
-			
+
 	        if (cl.hasOption("tls")) {
 	        	tlsPolicy = new TlsPolicy();
-	        	
+
 				if (cl.hasOption("tp")) {
 					String s = cl.getOptionValue("tp", "");
 					tlsPolicy.protocols = s.split(",");
 				}
-				
+
 				if (cl.hasOption("tlsCiphers")) {
 					String s = cl.getOptionValue("tlsCiphers", "");
 					tlsPolicy.ciphers = s.split(",");
 				}
-				
+
 				if (cl.hasOption("tr")) {
 					String s = cl.getOptionValue("tr", "");
 					tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
@@ -144,35 +144,35 @@ public class Args {
 					tlsPolicy.forLoginOnly = true;
 				}
 	        }
-	        
+
 			if (cl.hasOption("auth")) {
 				authMode = AuthMode.valueOf(cl.getOptionValue("auth", "").toUpperCase());
-			}				
-	        
+			}
+
 			if (cl.hasOption("netty")) {
 				eventLoopType = EventLoopType.NETTY_NIO;
 			}
-			
+
 			if (cl.hasOption("nettyEpoll")) {
 				eventLoopType = EventLoopType.NETTY_EPOLL;
 			}
 
 	        user = cl.getOptionValue("U");
 			password = cl.getOptionValue("P");
-			
+
 			if (user != null && password == null) {
 				java.io.Console console = System.console();
-				
+
 				if (console != null) {
 					char[] pass = console.readPassword("Enter password:");
-					
+
 					if (pass != null) {
 						password = new String(pass);
 					}
 				}
 			}
-						
-			if (cl.hasOption("d")) {				
+
+			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
 		}
@@ -212,10 +212,10 @@ public class Args {
 		String features = tokens.get(featuresFilter);
 		hasUdf = false;
 		hasMap = false;
-		
+
 		if (features != null) {
 			String[] list = features.split(";");
-			
+
 			for (String s : list) {
 				if (s.equals("udf")) {
 					hasUdf = true;
@@ -227,9 +227,9 @@ public class Args {
 				}
 			}
 		}
-		
+
 		String namespaceTokens = tokens.get(namespaceFilter);
-		
+
 		if (namespaceTokens == null) {
 			throw new AerospikeException(String.format(
 				"Failed to get namespace info: host=%s port=%d namespace=%s",
@@ -238,7 +238,7 @@ public class Args {
 
 		singleBin = parseBoolean(namespaceTokens, "single-bin");
 	}
-	
+
 	private static boolean parseBoolean(String namespaceTokens, String name) {
 		String search = name + '=';
 		int begin = namespaceTokens.indexOf(search);
@@ -257,10 +257,10 @@ public class Args {
 		String value = namespaceTokens.substring(begin, end);
 		return Boolean.parseBoolean(value);
 	}
-	
+
 	public String getBinName(String name) {
 		// Single bin servers don't need a bin name.
 		return singleBin ? "" : name;
 	}
-	
+
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,47 +32,47 @@ public final class PeerParser {
 	private String tlsName;
 	private final int portDefault;
 	public final int generation;
-	
+
 	public PeerParser(Cluster cluster, Connection conn, List<Peer> peers) {
 		this.cluster = cluster;
-		
-		String command = (cluster.tlsPolicy != null)? 
+
+		String command = (cluster.tlsPolicy != null)?
 				cluster.useServicesAlternate ? "peers-tls-alt" : "peers-tls-std" :
 				cluster.useServicesAlternate ? "peers-clear-alt" : "peers-clear-std";
-			
+
 		parser = new Info(conn, command);
 
 		if (parser.length == 0) {
 			throw new AerospikeException.Parse(command + " response is empty");
 		}
-		
+
 		parser.skipToValue();
 		generation = parser.parseInt();
-		parser.expect(',');		
+		parser.expect(',');
 		portDefault = parser.parseInt();
 		parser.expect(',');
 		parser.expect('[');
-		
+
 		// Reset peers
 		peers.clear();
-		
+
 		if (parser.buffer[parser.offset] == ']') {
-			return; 
+			return;
 		}
-		
-		while (true) {			
+
+		while (true) {
 			Peer peer = parsePeer();
 			peers.add(peer);
-			
+
 			if (parser.offset < parser.length && parser.buffer[parser.offset] == ',') {
-				parser.offset++;			
+				parser.offset++;
 			}
 			else {
 				break;
 			}
 		}
 	}
-	
+
 	private Peer parsePeer() {
 		Peer peer = new Peer();
 		parser.expect('[');
@@ -84,30 +84,30 @@ public final class PeerParser {
 		parser.expect(']');
 		return peer;
 	}
-	
+
 	private List<Host> parseHosts() {
 		ArrayList<Host> hosts = new ArrayList<Host>(4);
 		parser.expect('[');
-		
+
 		if (parser.buffer[parser.offset] == ']') {
 			return hosts;
 		}
-		
+
 		while (true) {
 			Host host = parseHost();
 			hosts.add(host);
-			
+
 			if (parser.buffer[parser.offset] == ']') {
-				parser.offset++;	
+				parser.offset++;
 				return hosts;
-			}			
-			parser.offset++;	
+			}
+			parser.offset++;
 		}
 	}
 
 	private Host parseHost() {
 		String host;
-		
+
 		if (parser.buffer[parser.offset] == '[') {
 			// IPV6 addresses can start with bracket.
 			parser.offset++;
@@ -117,24 +117,24 @@ public final class PeerParser {
 		else {
 			host = parser.parseString(':', ',', ']');
 		}
-		
+
 		if (cluster.ipMap != null) {
 			String alternativeHost = cluster.ipMap.get(host);
-			
+
 			if (alternativeHost != null) {
 				host = alternativeHost;
-			}				
+			}
 		}
 
 		if (parser.offset < parser.length) {
-			byte b = parser.buffer[parser.offset];			
+			byte b = parser.buffer[parser.offset];
 
 			if (b == ':') {
 				parser.offset++;
 				int port = parser.parseInt();
 				return new Host(host, tlsName, port);
 			}
-			
+
 			if (b == ',' || b == ']') {
 				return new Host(host, tlsName, portDefault);
 			}

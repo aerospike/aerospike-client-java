@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ public enum TransactionalType {
 	MULTI_BIN_UPDATE('U', false),
 	MULTI_BIN_REPLACE('P', false),
 	MULTI_BIN_WRITE('W', false);
-	
+
 	private char code;
 	private boolean read;
 	private boolean batch;
@@ -40,19 +40,19 @@ public enum TransactionalType {
 	private TransactionalType(char code, boolean isRead) {
 		this(code, isRead, false);
 	}
-	
+
 	public char getCode() {
 		return code;
 	}
-	
+
 	public boolean isRead() {
 		return this.read;
 	}
-	
+
 	public boolean isBatch() {
 		return batch;
 	}
-	
+
 	public static TransactionalType lookupCode(char code) {
 		for (TransactionalType thisItem : TransactionalType.values()) {
 			if (thisItem.code == code) {

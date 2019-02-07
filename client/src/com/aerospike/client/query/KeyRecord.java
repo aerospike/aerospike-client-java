@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,35 +27,35 @@ public final class KeyRecord {
 	 * Unique identifier for record.
 	 */
 	public final Key key;
-	
+
 	/**
 	 * Record header and bin data.
 	 */
 	public final Record record;
-	
+
 	/**
 	 * Initialize key and record.
 	 */
 	public KeyRecord(Key key, Record record) {
 		this.key = key;
-		this.record = record;	
+		this.record = record;
 	}
-	
+
 	/**
 	 * Convert key and record to string.
 	 */
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
-		
+
 		if (key != null) {
 			sb.append(key.toString());
 		}
 
 		sb.append(':');
-		
+
 		if (record != null) {
-			sb.append(record.toString());		
+			sb.append(record.toString());
 		}
 		return sb.toString();
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -91,11 +91,11 @@ public class Main extends JPanel {
 					"The tlsname is only used when connecting with a secure TLS enabled server. " +
 					"If the port is not specified, the default port is used.\n" +
 					"IPv6 addresses must be enclosed in square brackets.\n" +
-					"Default: localhost\n" + 
-					"Examples:\n" + 
-					"host1\n" + 
-					"host1:3000,host2:3000\n" + 
-					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n" 
+					"Default: localhost\n" +
+					"Examples:\n" +
+					"host1\n" +
+					"host1:3000,host2:3000\n" +
+					"192.168.1.10:cert1:3000,[2001::1111]:cert2:3000\n"
 					);
 			options.addOption("p", "port", true, "Server default port (default: 3000)");
 			options.addOption("U", "user", true, "User name");
@@ -103,17 +103,17 @@ public class Main extends JPanel {
 			options.addOption("n", "namespace", true, "Namespace (default: test)");
 			options.addOption("s", "set", true, "Set name. Use 'empty' for empty set (default: demoset)");
 			options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
-			options.addOption("tp", "tlsProtocols", true, 
+			options.addOption("tp", "tlsProtocols", true,
 					"Allow TLS protocols\n" +
 					"Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
 					"Default: TLSv1.2"
 					);
-			options.addOption("tlsCiphers", "tlsCipherSuite", true, 
+			options.addOption("tlsCiphers", "tlsCipherSuite", true,
 					"Allow TLS cipher suites\n" +
 					"Values:  cipher names defined by JVM separated by comma\n" +
 					"Default: null (default cipher list provided by JVM)"
 					);
-			options.addOption("tr", "tlsRevoke", true, 
+			options.addOption("tr", "tlsRevoke", true,
 					"Revoke certificates identified by their serial number\n" +
 					"Values:  serial numbers separated by comma\n" +
 					"Default: null (Do not revoke certificates)"
@@ -135,12 +135,12 @@ public class Main extends JPanel {
 			}
 			Parameters params = parseParameters(cl);
 			String[] exampleNames = cl.getArgs();
-			
+
 			if ((exampleNames.length == 0) && (!cl.hasOption("g"))) {
 				logUsage(options);
-				return;			
+				return;
 			}
-			
+
 			// Check for all.
 			for (String exampleName : exampleNames) {
 				if (exampleName.equalsIgnoreCase("all")) {
@@ -148,16 +148,16 @@ public class Main extends JPanel {
 					break;
 				}
 			}
-			
+
 			if (cl.hasOption("netty")) {
 				params.eventLoopType = EventLoopType.NETTY_NIO;
 			}
-			
+
 			if (cl.hasOption("nettyEpoll")) {
 				params.eventLoopType = EventLoopType.NETTY_EPOLL;
 			}
 
-			if (cl.hasOption("d")) {				
+			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
 
@@ -166,7 +166,7 @@ public class Main extends JPanel {
 			}
 			else {
 				Console console = new Console();
-				runExamples(console, params, exampleNames);				
+				runExamples(console, params, exampleNames);
 			}
 		}
 		catch (Exception ex) {
@@ -187,7 +187,7 @@ public class Main extends JPanel {
 		System.out.println("examples:");
 
 		for (String name : ExampleNames) {
-			System.out.println(name.toString());			
+			System.out.println(name.toString());
 		}
 		System.out.println();
 		System.out.println("All examples will be run if 'all' is specified as an example.");
@@ -199,44 +199,44 @@ public class Main extends JPanel {
 	private static Parameters parseParameters(CommandLine cl) throws Exception {
 		String host = cl.getOptionValue("h", "127.0.0.1");
 		String portString = cl.getOptionValue("p", "3000");
-		int port = Integer.parseInt(portString);		
+		int port = Integer.parseInt(portString);
 		String namespace = cl.getOptionValue("n","test");
 		String set = cl.getOptionValue("s", "demoset");
 
 		if (set.equals("empty")) {
 			set = "";
 		}
-		
+
 		String user = cl.getOptionValue("U");
 		String password = cl.getOptionValue("P");
-		
+
 		if (user != null && password == null) {
 			java.io.Console console = System.console();
-			
+
 			if (console != null) {
 				char[] pass = console.readPassword("Enter password:");
-				
+
 				if (pass != null) {
 					password = new String(pass);
 				}
 			}
 		}
-		
+
 		TlsPolicy tlsPolicy = null;
-		
+
 		if (cl.hasOption("tls")) {
 			tlsPolicy = new TlsPolicy();
-			
+
 			if (cl.hasOption("tp")) {
 				String s = cl.getOptionValue("tp", "");
 				tlsPolicy.protocols = s.split(",");
 			}
-			
+
 			if (cl.hasOption("tlsCiphers")) {
 				String s = cl.getOptionValue("tlsCiphers", "");
 				tlsPolicy.ciphers = s.split(",");
 			}
-			
+
 			if (cl.hasOption("tr")) {
 				String s = cl.getOptionValue("tr", "");
 				tlsPolicy.revokeCertificates = Util.toBigIntegerArray(s);
@@ -246,23 +246,23 @@ public class Main extends JPanel {
 				tlsPolicy.forLoginOnly = true;
 			}
 		}
-		
+
 		AuthMode authMode = AuthMode.INTERNAL;
-		
+
 		if (cl.hasOption("auth")) {
 			authMode = AuthMode.valueOf(cl.getOptionValue("auth", "").toUpperCase());
-		}				
-		
+		}
+
 		return new Parameters(tlsPolicy, host, port, user, password, authMode, namespace, set);
 	}
-	
+
 	/**
 	 * Connect and run one or more client examples.
 	 */
 	public static void runExamples(Console console, Parameters params, String[] examples) throws Exception {
 		ArrayList<String> syncExamples = new ArrayList<String>();
 		ArrayList<String> asyncExamples = new ArrayList<String>();
-		
+
 		for (String example : examples) {
 			if (example.startsWith("Async")) {
 				asyncExamples.add(example);
@@ -271,11 +271,11 @@ public class Main extends JPanel {
 				syncExamples.add(example);
 			}
 		}
-		
+
 		if (syncExamples.size() > 0) {
 			Example.runExamples(console, params, syncExamples);
 		}
-		
+
 		if (asyncExamples.size() > 0) {
 			AsyncExample.runExamples(console, params, asyncExamples);
 		}

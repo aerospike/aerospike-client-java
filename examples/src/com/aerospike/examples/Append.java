@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -58,7 +58,7 @@ public class Append extends Example {
 		String expected = "Hello World";
 
 		if (received.equals(expected)) {
-			console.info("Append successful: ns=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Append successful: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {

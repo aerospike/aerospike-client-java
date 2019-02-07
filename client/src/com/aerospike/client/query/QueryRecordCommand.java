@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,7 @@ import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryRecordCommand extends MultiCommand {
-	
+
 	private final QueryPolicy policy;
 	private final Statement statement;
 	private final RecordSet recordSet;
@@ -43,13 +43,13 @@ public final class QueryRecordCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow(Key key) throws IOException {		
+	protected void parseRow(Key key) throws IOException {
 		Record record = parseRecord();
-		
+
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
-		
+
 		if (! recordSet.put(new KeyRecord(key, record))) {
 			stop();
 			throw new AerospikeException.QueryTerminated();

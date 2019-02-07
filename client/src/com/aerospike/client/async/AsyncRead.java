@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,7 +34,7 @@ public class AsyncRead extends AsyncCommand {
 	protected final Key key;
 	private final String[] binNames;
 	protected Record record;
-	
+
 	public AsyncRead(RecordListener listener, Policy policy, Key key, String[] binNames, boolean isRead) {
 		super(policy, new Partition(key), null, isRead);
 		this.listener = listener;
@@ -50,14 +50,14 @@ public class AsyncRead extends AsyncCommand {
 	@Override
 	protected final boolean parseResult() {
 		validateHeaderSize();
-		
+
 		int resultCode = dataBuffer[5] & 0xFF;
 		int generation = Buffer.bytesToInt(dataBuffer, 6);
 		int expiration = Buffer.bytesToInt(dataBuffer, 10);
 		int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
 		int opCount = Buffer.bytesToShort(dataBuffer, 20);
 		dataOffset = Command.MSG_REMAINING_HEADER_SIZE;
-		        
+
         if (resultCode == 0) {
             if (opCount == 0) {
             	// Bin data was not returned.
@@ -83,8 +83,8 @@ public class AsyncRead extends AsyncCommand {
 	}
 
 	private final Record parseRecord(
-		int opCount, 
-		int fieldCount, 
+		int opCount,
+		int fieldCount,
 		int generation,
 		int expiration
 	) throws AerospikeException {
@@ -97,32 +97,32 @@ public class AsyncRead extends AsyncCommand {
 				dataOffset += 4 + fieldSize;
 			}
 		}
-	
+
 		Map<String,Object> bins = null;
-		
+
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
 			byte particleType = dataBuffer[dataOffset+5];
 			byte nameSize = dataBuffer[dataOffset+7];
 			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
 			dataOffset += 4 + 4 + nameSize;
-	
+
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = null;
-	        
+
 			value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 			dataOffset += particleBytesSize;
-	
+
 			if (bins == null) {
 				bins = new HashMap<String,Object>();
 			}
 			addBin(bins, name, value);
-	    }	
+	    }
 	    return new Record(bins, generation, expiration);
 	}
 
 	protected void addBin(Map<String,Object> bins, String name, Object value) {
-		bins.put(name, value);	
+		bins.put(name, value);
 	}
 
 	@Override

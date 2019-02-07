@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,19 +23,19 @@ public abstract class InsertTask {
 
 	final Arguments args;
 	final CounterStore counters;
-	
+
 	public InsertTask(Arguments args, CounterStore counters) {
 		this.args = args;
 		this.counters = counters;
 	}
 
 	protected void writeFailure(AerospikeException ae) {
-		if (ae.getResultCode() == ResultCode.TIMEOUT) {		
+		if (ae.getResultCode() == ResultCode.TIMEOUT) {
 			counters.write.timeouts.getAndIncrement();
 		}
-		else {			
+		else {
 			counters.write.errors.getAndIncrement();
-			
+
 			if (args.debug) {
 				ae.printStackTrace();
 			}
@@ -44,9 +44,9 @@ public abstract class InsertTask {
 
 	protected void writeFailure(Exception e) {
 		counters.write.errors.getAndIncrement();
-		
+
 		if (args.debug) {
 			e.printStackTrace();
 		}
-	}	
+	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -42,42 +42,42 @@ public abstract class AsyncExample {
 		EventPolicy eventPolicy = new EventPolicy();
 		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
 		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
-		
+
 		EventLoops eventLoops;
-		
+
 		switch (params.eventLoopType) {
 			default:
 			case DIRECT_NIO: {
-				eventLoops = new NioEventLoops(eventPolicy, 1);			
+				eventLoops = new NioEventLoops(eventPolicy, 1);
 				break;
 			}
-				
+
 			case NETTY_NIO: {
 				EventLoopGroup group = new NioEventLoopGroup(1);
 				eventLoops = new NettyEventLoops(eventPolicy, group);
 				break;
 			}
-				
+
 			case NETTY_EPOLL: {
-				EventLoopGroup group = new EpollEventLoopGroup(1);				
+				EventLoopGroup group = new EpollEventLoopGroup(1);
 				eventLoops = new NettyEventLoops(eventPolicy, group);
 				break;
 			}
 		}
 
-		try {			
-			ClientPolicy policy = new ClientPolicy();		
+		try {
+			ClientPolicy policy = new ClientPolicy();
 			policy.eventLoops = eventLoops;
 			policy.user = params.user;
 			policy.password = params.password;
 			policy.authMode = params.authMode;
 			policy.tlsPolicy = params.tlsPolicy;
-			
+
 			params.policy = policy.readPolicyDefault;
 			params.writePolicy = policy.writePolicyDefault;
-			
+
 			Host[] hosts = Host.parseHosts(params.host, params.port);
-			
+
 			AerospikeClient client = new AerospikeClient(policy, hosts);
 
 			try {
@@ -96,7 +96,7 @@ public abstract class AsyncExample {
 			eventLoops.close();
 		}
 	}
-	
+
 	/**
 	 * Run asynchronous client example.
 	 */
@@ -123,19 +123,19 @@ public abstract class AsyncExample {
 	protected WritePolicy writePolicy;
 	protected Policy policy;
 	private boolean completed;
-	
+
 	public void run(AerospikeClient client, EventLoop eventLoop) {
 		// Most async examples no longer wait for completion, so
-		// these examples are run in parallel with intertwined log 
+		// these examples are run in parallel with intertwined log
 		// messages.  It's done that way because most applications
 		// should be written this way for performance reasons.
-		// 
+		//
 		// Fortunately, AerospikeClient.close() now waits for pending
 		// async commands to complete before closing.
 		console.info("Example: " + this.getClass().getSimpleName());
 		runExample(client, eventLoop);
 	}
-	
+
 	protected void resetComplete() {
 		completed = false;
 	}

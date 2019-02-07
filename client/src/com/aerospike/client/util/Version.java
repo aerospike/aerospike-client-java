@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,9 +22,9 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 
 public final class Version {
-	
+
 	public static Version getServerVersion(AerospikeClient client, InfoPolicy policy) {
-		Node node = client.getNodes()[0];		
+		Node node = client.getNodes()[0];
 		String response = Info.request(policy, node, "build");
 		return new Version(response);
 	}
@@ -33,22 +33,22 @@ public final class Version {
 	private final int minor;
 	private final int revision;
 	private final String extension;
-	
+
 	public Version(String version) {
-		int begin = 0;			
+		int begin = 0;
 		int i = begin;
 		int max = version.length();
-		
+
 		while (i < max) {
 			if (! Character.isDigit(version.charAt(i))) {
 				break;
 			}
 			i++;
 		}
-		
+
 		major = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
 		begin = ++i;
-		
+
 		while (i < max) {
 			if (! Character.isDigit(version.charAt(i))) {
 				break;
@@ -58,23 +58,23 @@ public final class Version {
 
 		minor = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
 		begin = ++i;
-		
+
 		while (i < max) {
 			if (! Character.isDigit(version.charAt(i))) {
 				break;
 			}
 			i++;
 		}
-		
+
 		revision = (i > begin)? Integer.parseInt(version.substring(begin, i)) : 0;
 		begin = i;
 		extension = (begin < max)? version.substring(begin) : "";
 	}
-	
+
 	public boolean isGreaterEqual(int v1, int v2, int v3) {
 		return major > v1 || (major == v1 && (minor > v2 || (minor == v2 && revision >= v3)));
 	}
-	
+
 	public boolean isLess(int v1, int v2, int v3) {
 		return major < v1 || (major == v1 && (minor < v2 || (minor == v2 && revision < v3)));
 	}
@@ -83,7 +83,7 @@ public final class Version {
 	public String toString() {
 		return Integer.toString(major) + "." + minor + "." + revision + extension;
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -95,7 +95,7 @@ public final class Version {
 		Version other = (Version) obj;
 		return major == other.major && minor == other.minor && revision == other.revision;
 	}
-	
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;

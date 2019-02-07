@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,10 +22,10 @@ import com.aerospike.client.command.Buffer;
 public final class Partition {
 	public final String namespace;
 	public final int partitionId;
-	
+
 	public Partition(Key key) {
 		this.namespace = key.namespace;
-		
+
 		// CAN'T USE MOD directly - mod will give negative numbers.
 		// First AND makes positive and negative correctly, then mod.
 		this.partitionId = (Buffer.littleBytesToInt(key.digest, 0) & 0xFFFF) % Node.PARTITIONS;
@@ -35,7 +35,7 @@ public final class Partition {
 		this.namespace = namespace;
 		this.partitionId = partitionId;
 	}
-	
+
 	@Override
 	public String toString() {
 		return namespace + ':' + partitionId;

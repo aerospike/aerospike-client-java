@@ -39,20 +39,20 @@ public final class KeyObject {
 		this.key = key;
 		this.value = value;
 	}
-	
+
 	/**
 	 * Convert key and record to string.
 	 */
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
-		
+
 		if (key != null) {
 			sb.append(key.toString());
 		}
 
 		sb.append(':');
-		
+
 		if (value != null) {
 			sb.append(value.toString());
 		}

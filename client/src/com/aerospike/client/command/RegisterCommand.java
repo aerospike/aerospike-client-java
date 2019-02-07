@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,10 +28,10 @@ import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Crypto;
 
 public final class RegisterCommand {
-	
-	public static RegisterTask register(Cluster cluster, Policy policy, byte[] bytes, String serverPath, Language language) {	
+
+	public static RegisterTask register(Cluster cluster, Policy policy, byte[] bytes, String serverPath, Language language) {
 		String content = Crypto.encodeBase64(bytes);
-		
+
 		StringBuilder sb = new StringBuilder(serverPath.length() + content.length() + 100);
 		sb.append("udf-put:filename=");
 		sb.append(serverPath);
@@ -42,20 +42,20 @@ public final class RegisterCommand {
 		sb.append(";udf-type=");
 		sb.append(language);
 		sb.append(";");
-		
+
 		// Send UDF to one node. That node will distribute the UDF to other nodes.
 		String command = sb.toString();
 		Node node = cluster.getRandomNode();
 		Connection conn = node.getConnection(policy.socketTimeout);
-		
-		try {			
+
+		try {
 			Info info = new Info(conn, command);
 			NameValueParser parser = info.getNameValueParser();
 			String error = null;
 			String file = null;
 			String line = null;
 			String message = null;
-			
+
 			while (parser.next()) {
 				String name = parser.getName();
 
@@ -63,24 +63,24 @@ public final class RegisterCommand {
 					error = parser.getValue();
 				}
 				else if (name.equals("file")) {
-					file = parser.getValue();				
+					file = parser.getValue();
 				}
 				else if (name.equals("line")) {
-					line = parser.getValue();				
+					line = parser.getValue();
 				}
 				else if (name.equals("message")) {
-					message = parser.getStringBase64();					
+					message = parser.getStringBase64();
 				}
 			}
-			
-			if (error != null) {			
+
+			if (error != null) {
 				throw new AerospikeException("Registration failed: " + error + System.lineSeparator() +
-					"File: " + file + System.lineSeparator() + 
+					"File: " + file + System.lineSeparator() +
 					"Line: " + line + System.lineSeparator() +
 					"Message: " + message
 					);
 			}
-			
+
 			node.putConnection(conn);
 			return new RegisterTask(cluster, policy, serverPath);
 		}

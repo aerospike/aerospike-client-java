@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,20 +46,20 @@ public class TestAsyncBatch extends TestAsync {
 	@BeforeClass
 	public static void initialize() {
 		sendKeys = new Key[size];
-		
+
 		for (int i = 0; i < size; i++) {
 			sendKeys[i] = new Key(args.namespace, args.set, keyPrefix + (i + 1));
 		}
-		
+
 		AsyncMonitor monitor = new AsyncMonitor();
 		WriteHandler handler = new WriteHandler(monitor, size);
-		
+
 		WritePolicy policy = new WritePolicy();
 		policy.expiration = 2592000;
 
 		for (int i = 1; i <= size; i++) {
 			Key key = sendKeys[i-1];
-			Bin bin = new Bin(binName, valuePrefix + i);			
+			Bin bin = new Bin(binName, valuePrefix + i);
 			client.put(eventLoop, handler, policy, key, bin);
 		}
 		monitor.waitTillComplete();
@@ -69,26 +69,26 @@ public class TestAsyncBatch extends TestAsync {
 		private AsyncMonitor monitor;
 		private final int max;
 		private AtomicInteger count = new AtomicInteger();
-		
+
 		public WriteHandler(AsyncMonitor monitor, int max) {
 			this.monitor = monitor;
 			this.max = max;
 		}
-		
+
 		public void onSuccess(Key key) {
 			int rows = count.incrementAndGet();
-			
+
 			if (rows == max) {
 				monitor.notifyComplete();
 			}
 		}
-		
+
 		public void onFailure(AerospikeException e) {
 			monitor.setError(e);
 			monitor.notifyComplete();
 		}
 	}
-	
+
 	@Test
 	public void asyncBatchExistsArray() {
 		client.exists(eventLoop, new ExistsArrayListener() {
@@ -100,16 +100,16 @@ public class TestAsyncBatch extends TestAsync {
 		        }
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			}			
+			}
 		}, null, sendKeys);
-		
+
 		waitTillComplete();
    }
-	
+
 	@Test
 	public void asyncBatchExistsSequence() throws Exception {
 		client.exists(eventLoop, new ExistsSequenceListener() {
@@ -120,13 +120,13 @@ public class TestAsyncBatch extends TestAsync {
 			public void onSuccess() {
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			}			
+			}
 		}, null, sendKeys);
-		
+
 		waitTillComplete();
    }
 
@@ -138,18 +138,18 @@ public class TestAsyncBatch extends TestAsync {
 					for (int i = 0; i < records.length; i++) {
 						if (! assertBinEqual(keys[i], records[i], binName, valuePrefix + (i + 1))) {
 							break;
-						}						
+						}
 			        }
-				}				
+				}
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			}			
+			}
 		}, null, sendKeys);
-		
+
 		waitTillComplete();
    }
 
@@ -162,17 +162,17 @@ public class TestAsyncBatch extends TestAsync {
 					assertNotNull(value);
 				}
 			}
-			
-			public void onSuccess() {				
+
+			public void onSuccess() {
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			}			
+			}
 		}, null, sendKeys);
-		
+
 		waitTillComplete();
    }
 
@@ -183,11 +183,11 @@ public class TestAsyncBatch extends TestAsync {
 				if (assertEquals(size, records.length)) {
 					for (int i = 0; i < records.length; i++) {
 						Record record = records[i];
-						
+
 						if (! assertRecordFound(keys[i], record)) {
 							break;
 						}
-						
+
 						if (! assertGreaterThanZero(record.generation)) {
 							break;
 						}
@@ -196,16 +196,16 @@ public class TestAsyncBatch extends TestAsync {
 							break;
 						}
 			        }
-				}				
+				}
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
-			}			
+			}
 		}, null, sendKeys);
-		
+
 		waitTillComplete();
    }
 
@@ -213,7 +213,7 @@ public class TestAsyncBatch extends TestAsync {
 	public void asyncBatchReadComplex() throws Exception {
 		// Batch gets into one call.
 		// Batch allows multiple namespaces in one call, but example test environment may only have one namespace.
-		String[] bins = new String[] {binName};		
+		String[] bins = new String[] {binName};
 		List<BatchRead> records = new ArrayList<BatchRead>();
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 1), bins));
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 2), true));
@@ -225,27 +225,27 @@ public class TestAsyncBatch extends TestAsync {
 
 		// This record should be found, but the requested bin will not be found.
 		records.add(new BatchRead(new Key(args.namespace, args.set, keyPrefix + 8), new String[] {"binnotfound"}));
-		
+
 		// This record should not be found.
 		records.add(new BatchRead(new Key(args.namespace, args.set, "keynotfound"), bins));
-		
+
 		// Execute batch.
 		client.get(eventLoop, new BatchListListener() {
-			public void onSuccess(List<BatchRead> records) {	
+			public void onSuccess(List<BatchRead> records) {
 				// Show results.
 				int found = 0;
 				int count = 0;
 				for (BatchRead record : records) {
 					Record rec = record.record;
 					count++;
-					
+
 					if (rec != null) {
 						found++;
-						
+
 						Object value = rec.getValue(binName);
-					
+
 						if (count != 4 && count <= 7) {
-							if (!assertEquals(valuePrefix + count, value)) {					
+							if (!assertEquals(valuePrefix + count, value)) {
 								notifyComplete();
 								return;
 							}
@@ -258,17 +258,17 @@ public class TestAsyncBatch extends TestAsync {
 						}
 					}
 				}
-				
+
 				assertEquals(8, found);
 				notifyComplete();
 			}
-			
+
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
 			}
 		}, null, records);
-		
+
 		waitTillComplete();
 	}
 }

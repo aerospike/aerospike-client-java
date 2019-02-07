@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,7 +36,7 @@ public class Replace extends Example {
 	 * to be overwritten.  If an existing bin is not referenced in the replace command,
 	 * the bin will be deleted.
 	 * <p>
-	 * The replace command has a performance advantage over the default put, because 
+	 * The replace command has a performance advantage over the default put, because
 	 * the server does not have to read the existing record before overwriting it.
 	 */
 	@Override
@@ -44,7 +44,7 @@ public class Replace extends Example {
 		runReplaceExample(client, params);
 		runReplaceOnlyExample(client, params);
 	}
-	
+
 	public void runReplaceExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "replacekey");
 		Bin bin1 = new Bin("bin1", "value1");
@@ -53,16 +53,16 @@ public class Replace extends Example {
 
 		console.info("Put: namespace=%s set=%s key=%s bin1=%s value1=%s bin2=%s value2=%s",
 			key.namespace, key.setName, key.userKey, bin1.name, bin1.value, bin2.name, bin2.value);
-		
+
 		client.put(params.writePolicy, key, bin1, bin2);
 
 		console.info("Replace with: namespace=%s set=%s key=%s bin=%s value=%s",
 			key.namespace, key.setName, key.userKey, bin3.name, bin3.value);
 
 		WritePolicy policy = new WritePolicy();
-		policy.recordExistsAction = RecordExistsAction.REPLACE;	
+		policy.recordExistsAction = RecordExistsAction.REPLACE;
 		client.put(policy, key, bin3);
-		
+
 		console.info("Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
 
 		Record record = client.get(params.policy, key);
@@ -78,7 +78,7 @@ public class Replace extends Example {
 		else {
 			console.error(bin1.name + " found when it should have been deleted.");
 		}
-		
+
 		if (record.getValue(bin2.name) == null) {
 			console.info(bin2.name + " was deleted as expected.");
 		}
@@ -102,25 +102,25 @@ public class Replace extends Example {
 			WritePolicy policy = new WritePolicy();
 			policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
 			client.put(policy, key, bin);
-			
+
 			console.error("Failure. This command should have resulted in an error.");
 		}
 		catch (AerospikeException ae) {
-			if (ae.getResultCode() == ResultCode.KEY_NOT_FOUND_ERROR) {				
+			if (ae.getResultCode() == ResultCode.KEY_NOT_FOUND_ERROR) {
 				console.info("Success. Key not found error returned as expected.");
 			}
 			else {
 				throw ae;
-			}			
+			}
 		}
 	}
-	
+
 	private void validateBin(Key key, Bin bin, Record record) {
 		Object received = record.getValue(bin.name);
 		String expected = bin.value.toString();
-		
+
 		if (received != null && received.equals(expected)) {
-			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s generation=%d expiration=%d", 
+			console.info("Data matched: namespace=%s set=%s key=%s bin=%s value=%s generation=%d expiration=%d",
 				key.namespace, key.setName, key.userKey, bin.name, received, record.generation, record.expiration);
 		}
 		else {

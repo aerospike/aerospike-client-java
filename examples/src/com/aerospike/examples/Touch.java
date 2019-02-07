@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -41,23 +41,23 @@ public class Touch extends Example {
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = 2;
 		client.put(writePolicy, key, bin);
-		
+
 		console.info("Touch same record with 5 second expiration.");
 		writePolicy.expiration = 5;
 		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
 
 		if (record == null) {
 			throw new Exception(String.format(
-				"Failed to get: namespace=%s set=%s key=%s bin=%s value=%s", 
+				"Failed to get: namespace=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, null));
 		}
 
 		if (record.expiration == 0) {
 			throw new Exception(String.format(
-				"Failed to get record expiration: namespace=%s set=%s key=%s", 
+				"Failed to get record expiration: namespace=%s set=%s key=%s",
 				key.namespace, key.setName, key.userKey));
 		}
-		
+
 		console.info("Sleep 3 seconds.");
 		Thread.sleep(3000);
 
@@ -78,7 +78,7 @@ public class Touch extends Example {
 		if (record == null) {
 			console.info("Success. Record expired as expected.");
 		}
-		else {		
+		else {
 			console.error("Found record when it should have expired.");
 		}
 	}

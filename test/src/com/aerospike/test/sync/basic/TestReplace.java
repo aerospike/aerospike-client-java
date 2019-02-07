@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,20 +40,20 @@ public class TestReplace extends TestSync {
 		client.put(null, key, bin1, bin2);
 
 		WritePolicy policy = new WritePolicy();
-		policy.recordExistsAction = RecordExistsAction.REPLACE;	
+		policy.recordExistsAction = RecordExistsAction.REPLACE;
 		client.put(policy, key, bin3);
-		
+
 		Record record = client.get(null, key);
 		assertRecordFound(key, record);
 
 		if (record.getValue(bin1.name) != null) {
 			fail(bin1.name + " found when it should have been deleted.");
 		}
-		
+
 		if (record.getValue(bin2.name) != null) {
 			fail(bin2.name + " found when it should have been deleted.");
 		}
-		assertBinEqual(key, record, bin3);			
+		assertBinEqual(key, record, bin3);
 	}
 
 	@Test
@@ -68,13 +68,13 @@ public class TestReplace extends TestSync {
 			WritePolicy policy = new WritePolicy();
 			policy.recordExistsAction = RecordExistsAction.REPLACE_ONLY;
 			client.put(policy, key, bin);
-			
+
 			fail("Failure. This command should have resulted in an error.");
 		}
 		catch (AerospikeException ae) {
-			if (ae.getResultCode() != ResultCode.KEY_NOT_FOUND_ERROR) {				
+			if (ae.getResultCode() != ResultCode.KEY_NOT_FOUND_ERROR) {
 				throw ae;
-			}			
+			}
 		}
 	}
 }

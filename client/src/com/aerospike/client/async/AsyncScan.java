@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 	private final String setName;
 	private final String[] binNames;
 	private final long taskId;
-	
+
 	public AsyncScan(
 		AsyncMultiExecutor parent,
 		Node node,
@@ -56,7 +56,7 @@ public final class AsyncScan extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {		
+	protected void parseRow(Key key) throws AerospikeException {
 		Record record = parseRecord();
 		listener.onRecord(key, record);
 	}

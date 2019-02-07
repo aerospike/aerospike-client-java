@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,7 @@
 package com.aerospike.client.cdt;
 
 /**
- * Map write bit flags. 
+ * Map write bit flags.
  * Requires server versions >= 4.3.
  */
 public final class MapWriteFlags {
@@ -25,7 +25,7 @@ public final class MapWriteFlags {
 	 * Default.  Allow create or update.
 	 */
 	public static final int DEFAULT = 0;
-	
+
 	/**
 	 * If the key already exists, the item will be denied.
 	 * If the key does not exist, a new item will be created.
@@ -37,7 +37,7 @@ public final class MapWriteFlags {
 	 * If the key does not exist, the item will be denied.
 	 */
 	public static final int UPDATE_ONLY = 2;
-	
+
 	/**
 	 * Do not raise error if a map item is denied due to write flag constraints.
 	 */

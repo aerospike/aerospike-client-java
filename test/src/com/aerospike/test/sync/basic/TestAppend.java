@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -41,7 +41,7 @@ public class TestAppend extends TestSync {
 		Record record = client.get(null, key, bin.name);
 		assertBinEqual(key, record, bin.name, "Hello World");
 	}
-	
+
 	@Test
 	public void prepend() {
 		Key key = new Key(args.namespace, args.set, "prependkey");

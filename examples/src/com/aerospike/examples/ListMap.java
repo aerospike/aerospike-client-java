@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,7 +37,7 @@ public class ListMap extends Example {
 	 * Write List and Map objects directly instead of relying on java serializer.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {	
+	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		if (! params.hasUdf) {
 			console.info("List/Map functions are not supported by the connected Aerospike server.");
 			return;
@@ -48,7 +48,7 @@ public class ListMap extends Example {
 		testMapComplex(client, params);
 		testListMapCombined(client, params);
 	}
-	
+
 	/**
 	 * Write/Read ArrayList<String> directly instead of relying on java serializer.
 	 */
@@ -56,7 +56,7 @@ public class ListMap extends Example {
 		console.info("Read/Write ArrayList<String>");
 		Key key = new Key(params.namespace, params.set, "listkey1");
 		client.delete(params.writePolicy, key);
-		
+
 		ArrayList<String> list = new ArrayList<String>();
 		list.add("string1");
 		list.add("string2");
@@ -75,7 +75,7 @@ public class ListMap extends Example {
 
 		console.info("Read/Write ArrayList<String> successful.");
 	}
-	
+
 	/**
 	 * Write/Read ArrayList<Object> directly instead of relying on java serializer.
 	 */
@@ -84,7 +84,7 @@ public class ListMap extends Example {
 		Key key = new Key(params.namespace, params.set, "listkey2");
 		client.delete(params.writePolicy, key);
 
-		byte[] blob = new byte[] {3, 52, 125};		
+		byte[] blob = new byte[] {3, 52, 125};
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(2);
@@ -99,12 +99,12 @@ public class ListMap extends Example {
 		validateSize(3, receivedList.size());
 		validate("string1", receivedList.get(0));
 		// Server convert numbers to long, so must expect long.
-		validate(2L, receivedList.get(1)); 
+		validate(2L, receivedList.get(1));
 		validate(blob, (byte[])receivedList.get(2));
-		
+
 		console.info("Read/Write ArrayList<Object> successful.");
 	}
-	
+
 	/**
 	 * Write/Read HashMap<String,String> directly instead of relying on java serializer.
 	 */
@@ -123,7 +123,7 @@ public class ListMap extends Example {
 
 		Record record = client.get(params.policy, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
-		
+
 		validateSize(3, receivedMap.size());
 		validate("string1", receivedMap.get("key1"));
 		validate("string2", receivedMap.get("key2"));
@@ -140,13 +140,13 @@ public class ListMap extends Example {
 		Key key = new Key(params.namespace, params.set, "mapkey2");
 		client.delete(params.writePolicy, key);
 
-		byte[] blob = new byte[] {3, 52, 125};		
+		byte[] blob = new byte[] {3, 52, 125};
 		List<Integer> list = new ArrayList<Integer>();
 		list.add(100034);
 		list.add(12384955);
 		list.add(3);
 		list.add(512);
-		
+
 		HashMap<Object,Object> map = new HashMap<Object,Object>();
 		map.put("key1", "string1");
 		map.put("key2", 2);
@@ -160,13 +160,13 @@ public class ListMap extends Example {
 
 		Record record = client.get(params.policy, key, bin.name);
 		Map<?,?> receivedMap = (Map<?,?>) record.getValue(bin.name);
-		
+
 		validateSize(6, receivedMap.size());
 		validate("string1", receivedMap.get("key1"));
 		// Server convert numbers to long, so must expect long.
 		validate(2L, receivedMap.get("key2"));
 		validate(blob, (byte[])receivedMap.get("key3"));
-				
+
 		List<?> receivedInner = (List<?>)receivedMap.get("key4");
 		validateSize(4, receivedInner.size());
 		validate(100034L, receivedInner.get(0));
@@ -188,17 +188,17 @@ public class ListMap extends Example {
 		Key key = new Key(params.namespace, params.set, "listmapkey");
 		client.delete(params.writePolicy, key);
 
-		byte[] blob = new byte[] {3, 52, 125};		
+		byte[] blob = new byte[] {3, 52, 125};
 		ArrayList<Object> inner = new ArrayList<Object>();
 		inner.add("string2");
 		inner.add(5);
-		
+
 		HashMap<Object,Object> innerMap = new HashMap<Object,Object>();
 		innerMap.put("a", 1);
 		innerMap.put(2, "b");
 		innerMap.put(3, blob);
 		innerMap.put("list", inner);
-		
+
 		ArrayList<Object> list = new ArrayList<Object>();
 		list.add("string1");
 		list.add(8);
@@ -210,17 +210,17 @@ public class ListMap extends Example {
 
 		Record record = client.get(params.policy, key, bin.name);
 		List<?> received = (List<?>) record.getValue(bin.name);
-		
+
 		validateSize(4, received.size());
 		validate("string1", received.get(0));
 		// Server convert numbers to long, so must expect long.
 		validate(8L, received.get(1));
-		
+
 		List<?> receivedInner = (List<?>)received.get(2);
 		validateSize(2, receivedInner.size());
 		validate("string2", receivedInner.get(0));
 		validate(5L, receivedInner.get(1));
-		
+
 		Map<?,?> receivedMap = (Map<?,?>)received.get(3);
 		validateSize(4, receivedMap.size());
 		validate(1L, receivedMap.get("a"));
@@ -235,24 +235,24 @@ public class ListMap extends Example {
 		console.info("Read/Write List/HashMap successful");
 	}
 
-	private static void validateSize(int expected, int received) throws Exception {		
+	private static void validateSize(int expected, int received) throws Exception {
 		if (received != expected) {
 			throw new Exception(String.format(
-				"Size mismatch: expected=%s received=%s", expected, received)); 
+				"Size mismatch: expected=%s received=%s", expected, received));
 		}
 	}
 
 	private static void validate(Object expected, Object received) throws Exception {
 		if (! received.equals(expected)) {
 			throw new Exception(String.format(
-				"Mismatch: expected=%s received=%s", expected, received)); 
+				"Mismatch: expected=%s received=%s", expected, received));
 		}
 	}
 
-	private static void validate(byte[] expected, byte[] received) throws Exception {		
+	private static void validate(byte[] expected, byte[] received) throws Exception {
 		if (! Arrays.equals(expected, received)) {
 			throw new Exception(String.format(
-				"Mismatch: expected=%s received=%s", Arrays.toString(expected), Arrays.toString(received))); 
+				"Mismatch: expected=%s received=%s", Arrays.toString(expected), Arrays.toString(received)));
 		}
 	}
 }

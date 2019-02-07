@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 		PLUS,
 		MINUS
 	};
-	
+
 	// These options are derived and should not be set
 	private int minReads;
 	private int maxReads;
@@ -44,26 +44,26 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private static final TransactionalItem MULTI_BIN_READ = new TransactionalItem(TransactionalType.MULTI_BIN_READ);
 	private static final TransactionalItem SINGLE_BIN_UPDATE = new TransactionalItem(TransactionalType.SINGLE_BIN_UPDATE);
 	private static final TransactionalItem MULTI_BIN_UPDATE = new TransactionalItem(TransactionalType.MULTI_BIN_UPDATE);
-	
+
 	public TransactionalWorkload(String[] formatStrings) throws Exception {
 		if (formatStrings == null || formatStrings.length == 0) {
 			throw new Exception("invalid empty transactional workload string");
 		}
 		parseFormatStrings(formatStrings);
 	}
-	
-	
+
+
 	private void parseFormatStrings(String[] formatStrings) throws Exception {
 		int reads = 0;
 		int writes = 0;
 		String variance = "";
-		
+
 		for (int i = 1; i < formatStrings.length; i++) {
 			String thisOption = formatStrings[i];
 			if (thisOption.length() < 3 || thisOption.charAt(1) != ':') {
 				throw new Exception("Invalid transaction workload argument: " + thisOption);
 			}
-			
+
 			String thisOptionValue = thisOption.substring(2);
 			switch(thisOption.charAt(0)) {
 				case 'r':
@@ -93,11 +93,11 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 		this.maxReads = applyVariance(reads, variance, VariationType.PLUS);
 		this.minWrites = applyVariance(writes, variance, VariationType.MINUS);
 		this.maxWrites = applyVariance(writes, variance, VariationType.PLUS);
-		
+
 	}
-	
+
 	private TransactionalItem[] parseFixedTransaction(String thisOptionValue) throws Exception{
-		// A fixed transaction string consists of a code for a transactional item, possibly preceeded by 
+		// A fixed transaction string consists of a code for a transactional item, possibly preceeded by
 		// an count. Eg "rwrrriu20r" is a read, a write (either update or replace), 3 reads, an insert,
 		// an update then 20 reads, in that order.
 		List<TransactionalItem> itemList = new ArrayList<TransactionalItem>();
@@ -137,7 +137,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 		if (varianceStr == null || varianceStr.isEmpty() || base == 0) {
 			return base;
 		}
-		
+
 		// Parse the variance
 		double variance;
 		if (varianceStr.matches("^\\d+(\\.\\d+)?%$")) {
@@ -168,10 +168,10 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 		private int writes = 0;
 		private RandomShift random;
 		private int fixedSequenceIndex = 0;
-		
+
 		public WorkloadIterator(RandomShift random) {
 			this.random = random;
-			
+
 			if (this.random == null) {
 				this.reads = (minReads + maxReads)/2;
 				this.writes = (minWrites + maxWrites)/2;
@@ -191,7 +191,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 				}
 			}
  		}
-		
+
 		@Override
 		public boolean hasNext() {
 			if (items != null && fixedSequenceIndex < items.length) {

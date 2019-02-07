@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,12 +25,12 @@ public final class LuaConfig {
 	 * Directory location which contains user defined Lua source files.
 	 */
 	public static String SourceDirectory = System.getProperty("lua.dir", "udf");
-	
+
 	/**
 	 * Maximum number of Lua runtime instances to cache at any point in time.
 	 * Each query with an aggregation function requires a Lua instance.
-	 * If the number of concurrent queries exceeds the Lua pool size, a new Lua 
-	 * instance will still be created, but it will not be returned to the pool. 
+	 * If the number of concurrent queries exceeds the Lua pool size, a new Lua
+	 * instance will still be created, but it will not be returned to the pool.
 	 */
 	public static int InstancePoolSize = 5;
 }

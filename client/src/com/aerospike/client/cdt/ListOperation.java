@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,7 +38,7 @@ import com.aerospike.client.util.Packer;
  * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
  * </ul>
  * <p>
- * If an index is out of bounds, a parameter error will be returned. If a range is partially 
+ * If an index is out of bounds, a parameter error will be returned. If a range is partially
  * out of bounds, the valid part of the range will be returned.
  */
 public class ListOperation {
@@ -96,7 +96,7 @@ public class ListOperation {
 		value.pack(packer);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
-	
+
 	/**
 	 * Create list append operation with policy.
 	 * Server appends value to list bin.
@@ -160,7 +160,7 @@ public class ListOperation {
 
 	/**
 	 * Create default list insert items operation.
-	 * Server inserts each input list item starting at specified index of list bin. 
+	 * Server inserts each input list item starting at specified index of list bin.
 	 * Server returns list size.
 	 */
 	public static Operation insertItems(String binName, int index, List<Value> list) {
@@ -174,7 +174,7 @@ public class ListOperation {
 
 	/**
 	 * Create list insert items operation with policy.
-	 * Server inserts each input list item starting at specified index of list bin. 
+	 * Server inserts each input list item starting at specified index of list bin.
 	 * Server returns list size.
 	 */
 	public static Operation insertItems(ListPolicy policy, String binName, int index, List<Value> list) {
@@ -232,7 +232,7 @@ public class ListOperation {
 	public static Operation pop(String binName, int index) {
 		return CDT.createOperation(POP, Operation.Type.CDT_MODIFY, binName, index);
 	}
-	
+
 	/**
 	 * Create list pop range operation.
 	 * Server returns "count" items starting at specified index and removes items from list bin.
@@ -267,7 +267,7 @@ public class ListOperation {
 	public static Operation removeRange(String binName, int index, int count) {
 		return CDT.createOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, index, count);
 	}
-	
+
 	/**
 	 * Create list remove range operation.
 	 * Server removes items starting at specified index to the end of list.
@@ -297,7 +297,7 @@ public class ListOperation {
 
 	/**
 	 * Create list trim operation.
-	 * Server removes items in list bin that do not fall into range specified by index 
+	 * Server removes items in list bin that do not fall into range specified by index
 	 * and count range.  If the range is out of bounds, then all items will be removed.
 	 * Server returns list size after trim.
 	 */
@@ -318,14 +318,14 @@ public class ListOperation {
 	 * Create list sort operation.
 	 * Server sorts list according to sortFlags.
 	 * Server does not return a result by default.
-	 * 
+	 *
 	 * @param binName	server bin name
 	 * @param sortFlags sort flags. See {@link ListSortFlags}.
 	 */
 	public static Operation sort(String binName, int sortFlags) {
 		return CDT.createOperation(SORT, Operation.Type.CDT_MODIFY, binName, sortFlags);
 	}
-	
+
 	/**
 	 * Create list remove operation.
 	 * Server removes list items identified by value and returns removed data specified by returnType (See {@link ListReturnType}).
@@ -333,7 +333,7 @@ public class ListOperation {
 	public static Operation removeByValue(String binName, Value value, int returnType) {
 		return CDT.createOperation(REMOVE_BY_VALUE, Operation.Type.CDT_MODIFY, binName, returnType, value);
 	}
-	
+
 	/**
 	 * Create list remove operation.
 	 * Server removes list items identified by values and returns removed data specified by returnType (See {@link ListReturnType}).
@@ -346,9 +346,9 @@ public class ListOperation {
 	 * Create list remove operation.
 	 * Server removes list items identified by value range (valueBegin inclusive, valueEnd exclusive).
 	 * If valueBegin is null, the range is less than valueEnd.
-	 * If valueEnd is null, the range is greater than equal to valueBegin. 
+	 * If valueEnd is null, the range is greater than equal to valueBegin.
 	 * <p>
-	 * Server returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * Server returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
 	public static Operation removeByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType) {
 		return CDT.createRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.CDT_MODIFY, binName, valueBegin, valueEnd, returnType);
@@ -357,7 +357,7 @@ public class ListOperation {
 	/**
 	 * Create list remove by value relative to rank range operation.
 	 * Server removes list items nearest to value and greater by relative rank.
-	 * Server returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * Server returns removed data specified by returnType (See {@link ListReturnType}).
 	 * <p>
 	 * Examples for ordered list [0,4,5,9,11,15]:
 	 * <ul>
@@ -372,12 +372,12 @@ public class ListOperation {
 	 */
 	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
 		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank);
-	}	
+	}
 
 	/**
 	 * Create list remove by value relative to rank range operation.
 	 * Server removes list items nearest to value and greater by relative rank with a count limit.
-	 * Server returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * Server returns removed data specified by returnType (See {@link ListReturnType}).
 	 * <p>
 	 * Examples for ordered list [0,4,5,9,11,15]:
 	 * <ul>
@@ -392,16 +392,16 @@ public class ListOperation {
 	 */
 	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
 		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank, count);
-	}	
-	
+	}
+
 	/**
 	 * Create list remove operation.
-	 * Server removes list item identified by index and returns removed data specified by returnType (See {@link ListReturnType}). 
+	 * Server removes list item identified by index and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
 	public static Operation removeByIndex(String binName, int index, int returnType) {
 		return CDT.createOperation(REMOVE_BY_INDEX, Operation.Type.CDT_MODIFY, binName, returnType, index);
 	}
-	
+
 	/**
 	 * Create list remove operation.
 	 * Server removes list items starting at specified index to the end of list and returns removed
@@ -417,7 +417,7 @@ public class ListOperation {
 	 */
 	public static Operation removeByIndexRange(String binName, int index, int count, int returnType) {
 		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, index, count);
-	}	
+	}
 
 	/**
 	 * Create list remove operation.
@@ -442,7 +442,7 @@ public class ListOperation {
 	 */
 	public static Operation removeByRankRange(String binName, int rank, int count, int returnType) {
 		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, rank, count);
-	}	
+	}
 
 	/**
 	 * Create list size operation.
@@ -467,7 +467,7 @@ public class ListOperation {
 	public static Operation getRange(String binName, int index, int count) {
 		return CDT.createOperation(GET_RANGE, Operation.Type.CDT_READ, binName, index, count);
 	}
-	
+
 	/**
 	 * Create list get range operation.
 	 * Server returns items starting at index to the end of list.
@@ -488,9 +488,9 @@ public class ListOperation {
 	 * Create list get by value range operation.
 	 * Server selects list items identified by value range (valueBegin inclusive, valueEnd exclusive)
 	 * If valueBegin is null, the range is less than valueEnd.
-	 * If valueEnd is null, the range is greater than equal to valueBegin. 
+	 * If valueEnd is null, the range is greater than equal to valueBegin.
 	 * <p>
-	 * Server returns selected data specified by returnType (See {@link ListReturnType}). 
+	 * Server returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
 	public static Operation getByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType) {
 		return CDT.createRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.CDT_READ, binName, valueBegin, valueEnd, returnType);
@@ -522,7 +522,7 @@ public class ListOperation {
 	 */
 	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
 		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank);
-	}	
+	}
 
 	/**
 	 * Create list get by value relative to rank range operation.
@@ -542,12 +542,12 @@ public class ListOperation {
 	 */
 	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
 		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank, count);
-	}	
+	}
 
 	/**
 	 * Create list get by index operation.
 	 * Server selects list item identified by index and returns selected data specified by returnType
-	 * (See {@link ListReturnType}). 
+	 * (See {@link ListReturnType}).
 	 */
 	public static Operation getByIndex(String binName, int index, int returnType) {
 		return CDT.createOperation(GET_BY_INDEX, Operation.Type.CDT_READ, binName, returnType, index);

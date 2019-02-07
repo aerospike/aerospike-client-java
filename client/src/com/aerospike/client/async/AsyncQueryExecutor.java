@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -42,7 +42,7 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 		if (nodes.length == 0) {
 			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
 		}
-	
+
 		// Create commands.
 		AsyncQuery[] tasks = new AsyncQuery[nodes.length];
 		int count = 0;
@@ -63,12 +63,12 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 			execute(tasks, policy.maxConcurrentNodes);
 		}
 	}
-	
+
 	protected void onSuccess() {
 		listener.onSuccess();
 	}
-	
+
 	protected void onFailure(AerospikeException ae) {
 		listener.onFailure(ae);
-	}		
+	}
 }

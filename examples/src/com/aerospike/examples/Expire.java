@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,13 +29,13 @@ public class Expire extends Example {
 	}
 
 	/**
-	 * Demonstrate various record expiration settings. 
+	 * Demonstrate various record expiration settings.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		expireExample(client, params);
 	}
-	
+
 	/**
 	 * Write and twice read an expiration record.
 	 */
@@ -54,7 +54,7 @@ public class Expire extends Example {
 		// Read the record before it expires, showing it is there.
 		console.info("Get: namespace=%s set=%s key=%s",
 				key.namespace, key.setName, key.userKey);
-		
+
 		Record record = client.get(params.policy, key, bin.name);
 		if (record == null) {
 			throw new Exception(String.format(
@@ -63,9 +63,9 @@ public class Expire extends Example {
 		}
 
 		Object received = record.getValue(bin.name);
-		String expected = bin.value.toString();	
+		String expected = bin.value.toString();
 		if (received.equals(expected)) {
-			console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s", 
+			console.info("Get record successful: namespace=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, received);
 		}
 		else {
@@ -80,7 +80,7 @@ public class Expire extends Example {
 		if (record == null) {
 			console.info("Expiry of record successful. Record not found.");
 		}
-		else {		
+		else {
 			console.error("Found record when it should have expired.");
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,13 +26,13 @@ public final class ScheduleTask implements Runnable {
 		this.command = command;
 		this.deadline = System.nanoTime() + unit.toNanos(delay);
 	}
-	
+
 	public ScheduleTask(Runnable command) {
 		this.command = command;
 	}
-	
+
 	public void setDeadline(long delay, TimeUnit unit) {
-		this.deadline = System.nanoTime() + unit.toNanos(delay);		
+		this.deadline = System.nanoTime() + unit.toNanos(delay);
 	}
 
 	@Override

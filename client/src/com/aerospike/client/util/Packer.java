@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,11 +31,11 @@ import com.aerospike.client.command.ParticleType;
 
 /**
  * Serialize collection objects using MessagePack format specification:
- * 
+ *
  * https://github.com/msgpack/msgpack/blob/master/spec.md
  */
 public final class Packer {
-	
+
 	public static byte[] pack(Value[] val) throws AerospikeException {
 		try {
 			Packer packer = new Packer();
@@ -57,7 +57,7 @@ public final class Packer {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
-	
+
 	public static byte[] pack(Map<?,?> val) throws AerospikeException {
 		try {
 			Packer packer = new Packer();
@@ -68,22 +68,22 @@ public final class Packer {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
-	
+
 	private byte[] buffer;
 	private int offset;
 	private ArrayList<BufferItem> bufferList;
-	
+
 	public Packer() {
 		this.buffer = ThreadLocalData.getBuffer();
 	}
-	
+
 	public void packValueArray(Value[] values) {
 		packArrayBegin(values.length);
 		for (Value value : values) {
 			value.pack(this);
 		}
 	}
-	
+
 	public void packValueList(List<Value> list) {
 		packArrayBegin(list.size());
 		for (Value value : list) {
@@ -101,10 +101,10 @@ public final class Packer {
 	public void packArrayBegin(int size) {
         if (size < 16) {
         	packByte(0x90 | size);
-        } 
+        }
         else if (size < 65536) {
         	packShort(0xdc, size);
-        } 
+        }
         else {
         	packInt(0xdd, size);
         }
@@ -143,16 +143,16 @@ public final class Packer {
     	packByte(ParticleType.BLOB);
     	packByteArray(b, 0, b.length);
     }
-	
+
 	public void packBytes(byte[] b, int offset, int length) {
     	packByteArrayBegin(length + 1);
     	packByte(ParticleType.BLOB);
     	packByteArray(b, offset, length);
 	}
-	
+
 	public void packBlob(Object val) throws AerospikeException {
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-		
+
 		try {
 			ObjectOutputStream ostream = new ObjectOutputStream(bstream);
 			ostream.writeObject(val);
@@ -161,8 +161,8 @@ public final class Packer {
 		catch (IOException ioe) {
 			throw new AerospikeException.Serialize(ioe);
 		}
-		
-		byte[] bytes = bstream.toByteArray();		
+
+		byte[] bytes = bstream.toByteArray();
         packByteArrayBegin(bytes.length + 1);
     	packByte(ParticleType.JBLOB);
     	packByteArray(bytes, 0, bytes.length);
@@ -174,7 +174,7 @@ public final class Packer {
 		packByte(ParticleType.GEOJSON);
 		packByteArray(buffer, 0, buffer.length);
 	}
-	
+
 	private void packByteArrayBegin(int size) {
 		// Continue to pack byte arrays as strings until all servers/clients
 		// have been upgraded to handle new message pack binary type.
@@ -210,28 +210,28 @@ public final class Packer {
 			packNil();
 			return;
 		}
-		
+
 		if (obj instanceof Value) {
 			Value value = (Value) obj;
 			value.pack(this);
 			return;
 		}
-		
+
 		if (obj instanceof byte[]) {
 			packBytes((byte[]) obj);
 			return;
 		}
-		
+
 		if (obj instanceof String) {
 			packString((String) obj);
 			return;
 		}
-		
+
 		if (obj instanceof Integer) {
 			packInt((Integer) obj);
 			return;
 		}
-		
+
 		if (obj instanceof Long) {
 			packLong((Long) obj);
 			return;
@@ -241,12 +241,12 @@ public final class Packer {
 			packDouble((Double) obj);
 			return;
 		}
-		
+
 		if (obj instanceof Float) {
 			packFloat((Float) obj);
 			return;
 		}
-		
+
 		if (obj instanceof Boolean) {
 			packBoolean((Boolean)obj);
 			return;
@@ -256,54 +256,54 @@ public final class Packer {
 			packList((List<?>) obj);
 			return;
 		}
-		
+
 		if (obj instanceof Map<?,?>) {
 			packMap((Map<?,?>) obj);
 			return;
 		}
-		
+
 		packBlob(obj);
 	}
 
-	public void packLong(long val) {	
-    	if (val >= 0L) { 		
+	public void packLong(long val) {
+    	if (val >= 0L) {
         	if (val < 128L) {
         		packByte((int)val);
         		return;
         	}
-        	
-        	if (val < 256L) {       		
+
+        	if (val < 256L) {
         		packByte(0xcc, (int)val);
         		return;
         	}
-        	
+
         	if (val < 65536L) {
         		packShort(0xcd, (int)val);
         		return;
         	}
-        	
+
         	if (val < 4294967296L) {
         		packInt(0xce, (int)val);
         		return;
         	}
         	packLong(0xcf, val);
     	}
-    	else {  		
+    	else {
         	if (val >= -32) {
         		packByte(0xe0 | ((int)val + 32));
         		return;
         	}
-        	
+
         	if (val >= Byte.MIN_VALUE) {
                 packByte(0xd0, (int)val);
                 return;
         	}
-        	
+
         	if (val >= Short.MIN_VALUE) {
                 packShort(0xd1, (int)val);
                 return;
         	}
-        	
+
         	if (val >= Integer.MIN_VALUE) {
         		packInt(0xd2, (int)val);
                 return;
@@ -311,52 +311,52 @@ public final class Packer {
         	packLong(0xd3, val);
     	}
     }
-    
+
     public void packInt(int val) {
-    	if (val >= 0) { 		
+    	if (val >= 0) {
         	if (val < 128) {
         		packByte(val);
         		return;
         	}
-        	
-        	if (val < 256) {       		
+
+        	if (val < 256) {
         		packByte(0xcc, val);
         		return;
         	}
-        	
+
         	if (val < 65536) {
         		packShort(0xcd, val);
         		return;
         	}
         	packInt(0xce, val);
     	}
-    	else {  		
+    	else {
         	if (val >= -32) {
         		packByte(0xe0 | (val + 32));
         		return;
         	}
-        	
+
         	if (val >= Byte.MIN_VALUE) {
                 packByte(0xd0, val);
                 return;
         	}
-        	
+
         	if (val >= Short.MIN_VALUE) {
                 packShort(0xd1, val);
                 return;
-        	}    	
+        	}
         	packInt(0xd2, val);
     	}
     }
 
-	public void packString(String val) {     	
+	public void packString(String val) {
 		int size = Buffer.estimateSizeUtf8(val) + 1;
-    
+
 		if (size < 32) {
 			packByte(0xa0 | size);
 		}
 		// TODO: Enable this code after all servers/clients
-		// have been upgraded to handle 8 bit string length format.		
+		// have been upgraded to handle 8 bit string length format.
 		/*
 		else if (size < 256) {
 			packByte(0xd9, size);
@@ -392,7 +392,7 @@ public final class Packer {
     	Buffer.longToBytes(Double.doubleToLongBits(val), buffer, offset);
     	offset += 8;
     }
-    
+
     public void packFloat(float val) {
     	if (offset + 5 > buffer.length) {
     		resize(5);
@@ -419,7 +419,7 @@ public final class Packer {
     	Buffer.intToBytes(val, buffer, offset);
     	offset += 4;
     }
-    
+
     private void packShort(int type, int val) {
     	if (offset + 3 > buffer.length) {
     		resize(3);
@@ -450,7 +450,7 @@ public final class Packer {
     	if (offset + 1 > buffer.length) {
     		resize(1);
     	}
-    	
+
     	if (val) {
     		buffer[offset++] = (byte)0xc3;
     	}
@@ -458,7 +458,7 @@ public final class Packer {
     		buffer[offset++] = (byte)0xc2;
     	}
     }
-    
+
     public void packNil() {
     	if (offset >= buffer.length) {
     		resize(1);
@@ -490,27 +490,27 @@ public final class Packer {
     	}
     	buffer[offset++] = (byte)val;
     }
-    
+
     private void resize(int size) {
     	if (bufferList == null) {
     		bufferList = new ArrayList<BufferItem>();
     	}
     	bufferList.add(new BufferItem(buffer, offset));
-    	
+
     	if (size < buffer.length) {
     		size = buffer.length;
     	}
-    	buffer = new byte[size];    		
+    	buffer = new byte[size];
     	offset = 0;
     }
-    
+
     public byte[] toByteArray() {
     	if (bufferList != null) {
-        	int size = offset;        	
+        	int size = offset;
     		for (BufferItem item : bufferList) {
     			size += item.length;
     		}
-        	
+
     		byte[] target = new byte[size];
     		size = 0;
     		for (BufferItem item : bufferList) {
@@ -527,11 +527,11 @@ public final class Packer {
         	return target;
     	}
 	}
-    
+
     private static final class BufferItem {
     	private byte[] buffer;
     	private int length;
-    	
+
     	private BufferItem(byte[] buffer, int length) {
     		this.buffer = buffer;
     		this.length = length;

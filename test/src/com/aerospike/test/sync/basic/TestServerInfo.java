@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ public class TestServerInfo extends TestSync {
 		GetServerConfig(node);
 		GetNamespaceConfig(node);
 	}
-	
+
 	/**
 	 * Query server configuration and cluster status.
 	 */
@@ -43,7 +43,7 @@ public class TestServerInfo extends TestSync {
 
 		for (Map.Entry<String,String> entry : map.entrySet()) {
 			String key = entry.getKey();
-			
+
 			if (key.equals("statistics") || key.equals("query-stat")) {
 				LogNameValueTokens(entry.getValue());
 			}

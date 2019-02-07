@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,7 +31,7 @@ import com.aerospike.client.Log;
  */
 public final class ResultSet implements Iterable<Object>, Closeable {
 	public static final Integer END = new Integer(-1);
-	
+
 	private final QueryAggregateExecutor executor;
 	private final BlockingQueue<Object> queue;
 	private Object row;
@@ -44,16 +44,16 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 		this.executor = executor;
 		this.queue = new ArrayBlockingQueue<Object>(capacity);
 	}
-	
+
 	//-------------------------------------------------------
 	// Result traversal methods
 	//-------------------------------------------------------
 
 	/**
-	 * Retrieve next result.  This method will block until a result is retrieved 
+	 * Retrieve next result.  This method will block until a result is retrieved
 	 * or the query is cancelled.
-	 * 
-	 * @return	whether result exists - if false, no more results are available 
+	 *
+	 * @return	whether result exists - if false, no more results are available
 	 */
 	public final boolean next() throws AerospikeException {
 		if (! valid) {
@@ -66,7 +66,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
-			
+
 			if (Log.debugEnabled()) {
 				Log.debug("ResultSet " + executor.statement.taskId + " take interrupted");
 			}
@@ -80,7 +80,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 		}
 		return true;
 	}
-	
+
 	/**
 	 * Close query.
 	 */
@@ -93,7 +93,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}
 	}
-	
+
 	/**
 	 * Provide Iterator for RecordSet.
 	 */
@@ -105,18 +105,18 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	//-------------------------------------------------------
 	// Meta-data retrieval methods
 	//-------------------------------------------------------
-		
+
 	/**
 	 * Get result.
 	 */
 	public final Object getObject() {
 		return row;
 	}
-		
+
 	//-------------------------------------------------------
 	// Methods for internal use only.
 	//-------------------------------------------------------
-	
+
 	/**
 	 * Put object on the queue.
 	 */
@@ -142,14 +142,14 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 			return false;
 		}
 	}
-	
+
 	/**
 	 * Abort retrieval with end token.
 	 */
 	protected final void abort() {
 		valid = false;
 		queue.clear();
-		
+
 		// Send end command to transaction thread.
 		// It's critical that the end offer succeeds.
 		while (! queue.offer(END)) {
@@ -159,16 +159,16 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 				if (Log.debugEnabled()) {
 					Log.debug("ResultSet " + executor.statement.taskId + " both offer and poll failed on abort");
 				}
-				break;				
+				break;
 			}
 		}
 	}
-	
+
 	/**
 	 * Support standard iteration interface for RecordSet.
 	 */
 	private class ResultSetIterator implements Iterator<Object>, Closeable {
-		
+
 		private final ResultSet resultSet;
 		private boolean more;
 

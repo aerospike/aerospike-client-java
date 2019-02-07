@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,21 +49,21 @@ public class QueryAverage extends Example {
 		}
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
-		String binName = params.getBinName("l2");  
+		String binName = params.getBinName("l2");
 		int size = 10;
 
 		register(client, params);
 		createIndex(client, params, indexName, binName);
 		writeRecords(client, params, keyPrefix, size);
 		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void register(AerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -71,11 +71,11 @@ public class QueryAverage extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();
@@ -96,10 +96,10 @@ public class QueryAverage extends Example {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin("l1", i);
-			
+
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
 				key.namespace, key.setName, key.userKey, bin.name, bin.value);
-			
+
 			client.put(params.writePolicy, key, bin, new Bin("l2", 1));
 		}
 	}
@@ -110,35 +110,35 @@ public class QueryAverage extends Example {
 		String indexName,
 		String binName
 	) throws Exception {
-		
+
 		console.info("Query for: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, 0, 1000));
 		stmt.setAggregateFunction("average_example", "average");
-		
+
 		ResultSet rs = client.queryAggregate(null, stmt);
-		
+
 		try {
 			if (rs.next()) {
 				Object obj = rs.getObject();
-				
+
 				if (obj instanceof Map<?,?>) {
 					Map<?,?> map = (Map<?,?>)obj;
 					long sum = (Long)map.get("sum");
 					long count = (Long)map.get("count");
 					double avg = (double) sum / count;
-					console.info("Sum=" + sum + " Count=" + count + " Average=" + avg);					
-					
+					console.info("Sum=" + sum + " Count=" + count + " Average=" + avg);
+
 					double expected = 5.5;
 					if (avg != expected) {
 						console.error("Data mismatch: Expected %s. Received %s.", expected, avg);
 					}
 				}
-				else {			
+				else {
 					console.error("Unexpected object returned: " + obj);
 				}
 			}

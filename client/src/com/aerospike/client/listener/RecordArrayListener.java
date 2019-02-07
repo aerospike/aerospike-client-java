@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,15 +28,15 @@ public interface RecordArrayListener {
 	/**
 	 * This method is called when an asynchronous batch get command completes successfully.
 	 * The returned record array is in positional order with the original key array order.
-	 * 
+	 *
 	 * @param keys			unique record identifiers
 	 * @param records		record instances, an instance will be null if the key is not found
 	 */
 	public void onSuccess(Key[] keys, Record[] records);
-	
+
 	/**
 	 * This method is called when an asynchronous batch get command fails.
-	 * 
+	 *
 	 * @param exception		error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

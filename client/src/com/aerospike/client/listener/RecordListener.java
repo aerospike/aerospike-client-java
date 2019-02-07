@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,7 @@ import com.aerospike.client.Record;
 public interface RecordListener {
 	/**
 	 * This method is called when an asynchronous get or operate command completes successfully.
-	 * 
+	 *
 	 * @param key			unique record identifier
 	 * @param record		record instance if found, otherwise null
 	 */
@@ -34,7 +34,7 @@ public interface RecordListener {
 
 	/**
 	 * This method is called when an asynchronous get or operate command fails.
-	 * 
+	 *
 	 * @param exception		error that occurred
 	 */
 	public void onFailure(AerospikeException exception);

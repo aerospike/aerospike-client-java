@@ -54,7 +54,7 @@ public class QueryReactorTest extends ReactorTest {
 	public void buildIndex() {
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			task.waitTillComplete();

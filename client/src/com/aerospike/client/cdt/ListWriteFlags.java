@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,12 +24,12 @@ public final class ListWriteFlags {
 	 * Default.  Allow duplicate values and insertions at any index.
 	 */
 	public static final int DEFAULT = 0;
-	
+
 	/**
 	 * Only add unique values.
 	 */
 	public static final int ADD_UNIQUE = 1;
-	
+
 	/**
 	 * Enforce list boundaries when inserting.  Do not allow values to be inserted
 	 * at index outside current list boundaries.

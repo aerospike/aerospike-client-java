@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,12 +48,12 @@ public class QueryCollection extends Example {
 			console.info("Query functions are not supported by the connected Aerospike server.");
 			return;
 		}
-		
+
 		String indexName = "mapkey_index";
 		String keyPrefix = "qkey";
 		String mapKeyPrefix = "mkey";
 		String mapValuePrefix = "qvalue";
-		String binName = params.getBinName("map_bin");  
+		String binName = params.getBinName("map_bin");
 		int size = 20;
 
 		// create collection index on mapKey
@@ -62,9 +62,9 @@ public class QueryCollection extends Example {
 		writeRecords(client, params, keyPrefix, binName, mapKeyPrefix, mapValuePrefix, size);
 		// query on mapKey <mapKeyPrefix>2
 		runQuery(client, params, indexName, binName, mapKeyPrefix+2);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);		
+		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
-	
+
 	private void createIndex(
 		AerospikeClient client,
 		Parameters params,
@@ -72,11 +72,11 @@ public class QueryCollection extends Example {
 		String binName
 	) throws Exception {
 		console.info("Create mapkeys index: ns=%s set=%s index=%s bin=%s",
-			params.namespace, params.set, indexName, binName);			
-		
+			params.namespace, params.set, indexName, binName);
+
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
 			task.waitTillComplete();
@@ -100,7 +100,7 @@ public class QueryCollection extends Example {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			HashMap<String,String> map = new HashMap<String,String>();
-			
+
 			map.put(mapKeyPrefix+1, valuePrefix+i);
 			if (i%2 == 0) {
 				map.put(mapKeyPrefix+2, valuePrefix+i);
@@ -111,11 +111,11 @@ public class QueryCollection extends Example {
 
 			Bin bin = new Bin(binName, map);
 			client.put(params.writePolicy, key, bin);
-			
+
 			/*
 			console.info("Put: ns=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, bin.name, bin.value);	
-			*/		
+				key.namespace, key.setName, key.userKey, bin.name, bin.value);
+			*/
 		}
 	}
 
@@ -126,21 +126,21 @@ public class QueryCollection extends Example {
 		String binName,
 		String queryMapKey
 	) throws Exception {
-		
+
 		console.info("Query for: ns=%s set=%s index=%s bin=%s mapkey contains=%s",
-			params.namespace, params.set, indexName, binName, queryMapKey);			
-		
+			params.namespace, params.set, indexName, binName, queryMapKey);
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				//Key key = rs.getKey();
 				Record record = rs.getRecord();
@@ -156,9 +156,9 @@ public class QueryCollection extends Example {
 				}
 				count++;
 			}
-			
+
 			if (count == 0) {
-				console.error("Query failed. No records returned.");			
+				console.error("Query failed. No records returned.");
 			} else {
 				console.info("Number of records %d",count);
 			}

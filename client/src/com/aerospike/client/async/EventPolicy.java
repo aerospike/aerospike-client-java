@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,7 +44,7 @@ public final class EventPolicy {
 	 * limit should be defined when it's possible that the application executes so many async
 	 * commands that memory could be exhausted.
 	 * <p>
-	 * If this limit is reached, the next async command will be rejected with exception 
+	 * If this limit is reached, the next async command will be rejected with exception
 	 * {@link com.aerospike.client.AerospikeException.AsyncQueueFull}.
 	 * If this limit is zero, all async commands will be accepted into the delay queue.
 	 * <p>
@@ -88,7 +88,7 @@ public final class EventPolicy {
 	 * pool initial capacity.  This value is not a fixed limit and the queues will dynamically
 	 * resize when necessary.
 	 * <p>
-	 * The real event loop limiting factor is the maximum number of async connections allowed 
+	 * The real event loop limiting factor is the maximum number of async connections allowed
 	 * per node (defined in {@link com.aerospike.client.policy.ClientPolicy#maxConnsPerNode}).
 	 * <p>
 	 * Default: 256

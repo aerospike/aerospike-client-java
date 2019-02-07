@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -57,7 +57,7 @@ public class TestQueryCollection extends TestSync {
 
 		Policy policy = new Policy();
 		policy.socketTimeout = 0; // Do not timeout on index create.
-		
+
 		try {
 			IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.STRING, IndexCollectionType.MAPKEYS);
 			task.waitTillComplete();
@@ -71,7 +71,7 @@ public class TestQueryCollection extends TestSync {
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			HashMap<String,String> map = new HashMap<String,String>();
-			
+
 			map.put(mapKeyPrefix+1, mapValuePrefix+i);
 			if (i%2 == 0) {
 				map.put(mapKeyPrefix+2, mapValuePrefix+i);
@@ -87,9 +87,9 @@ public class TestQueryCollection extends TestSync {
 
 	@AfterClass
 	public static void destroy() {
-		client.dropIndex(null, args.namespace, args.set, indexName);		
+		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
-	
+
 	@Test
 	public void queryCollection() {
 		String queryMapKey = mapKeyPrefix+2;
@@ -98,12 +98,12 @@ public class TestQueryCollection extends TestSync {
 		stmt.setSetName(args.set);
 		stmt.setBinNames(binName);
 		stmt.setFilter(Filter.contains(binName, IndexCollectionType.MAPKEYS, queryMapKey));
-		
+
 		RecordSet rs = client.query(null, stmt);
-		
+
 		try {
 			int count = 0;
-			
+
 			while (rs.next()) {
 				Record record = rs.getRecord();
 				Map<?,?> result = (Map<?,?>)record.getValue(binName);
@@ -118,5 +118,5 @@ public class TestQueryCollection extends TestSync {
 		finally {
 			rs.close();
 		}
-	}	
+	}
 }

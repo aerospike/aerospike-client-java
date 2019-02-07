@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,23 +26,23 @@ public final class ClusterStats {
 	 * Statistics for each node.
 	 */
 	public final NodeStats[] nodes;
-	
+
 	/**
 	 * Statistics for each event loop.
 	 * This value will be null if event loops are not defined.
 	 */
 	public final EventLoopStats[] eventLoops;
-	
+
 	/**
 	 * Number of active threads executing sync batch/scan/query commands.
 	 */
 	public final int threadsInUse;
-	
+
 	/**
 	 * Number of connections residing in sync connection shutdown queue.
 	 */
 	public final int recoverQueueSize;
-	
+
 	/**
 	 * Cluster statistics constructor.
 	 */
@@ -52,27 +52,27 @@ public final class ClusterStats {
 		this.threadsInUse = threadsInUse;
 		this.recoverQueueSize = recoverQueueSize;
 	}
-	
+
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
-		
+
 		sb.append("nodes (inUse,inPool):");
 		sb.append(System.lineSeparator());
-		
+
 		for (NodeStats stat : nodes) {
 			sb.append(stat);
 			sb.append(System.lineSeparator());
 		}
-		
+
 		if (eventLoops != null) {
 			sb.append("event loops (processSize,queueSize): ");
-			
+
 			for (int i = 0; i < eventLoops.length; i++) {
 				EventLoopStats stat = eventLoops[i];
-				
+
 				if (i > 0) {
 					sb.append(',');
 				}
@@ -82,7 +82,7 @@ public final class ClusterStats {
 			}
 			sb.append(System.lineSeparator());
 		}
-		
+
 		sb.append("threadsInUse: " + threadsInUse);
 		sb.append(System.lineSeparator());
 		sb.append("recoverQueueSize: " + recoverQueueSize);

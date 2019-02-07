@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,15 +22,15 @@ package com.aerospike.client;
  */
 public interface ScanCallback {
 	/**
-	 * This method will be called for each record returned from a scan. The user may throw a 
-	 * {@link com.aerospike.client.AerospikeException.ScanTerminated AerospikeException.ScanTerminated} 
+	 * This method will be called for each record returned from a scan. The user may throw a
+	 * {@link com.aerospike.client.AerospikeException.ScanTerminated AerospikeException.ScanTerminated}
 	 * exception if the scan should be aborted.  If any exception is thrown, parallel scan threads
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * initiating scan call.
 	 * <p>
 	 * Multiple threads will likely be calling scanCallback in parallel.  Therefore, your scanCallback
 	 * implementation should be thread safe.
-	 * 
+	 *
 	 * @param key					unique record identifier
 	 * @param record				container for bins and record meta-data
 	 * @throws AerospikeException	if error occurs or scan should be terminated.

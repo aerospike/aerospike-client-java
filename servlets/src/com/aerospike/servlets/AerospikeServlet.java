@@ -45,9 +45,9 @@ public class AerospikeServlet extends HttpServlet {
     protected int port;
 
     @Override
-	protected void service(HttpServletRequest request, HttpServletResponse response) 
+	protected void service(HttpServletRequest request, HttpServletResponse response)
 		throws ServletException, IOException {
-    	
+
     	try {
             String method = request.getMethod();
 
@@ -69,52 +69,52 @@ public class AerospikeServlet extends HttpServlet {
     		throw new ServletException(e);
     	}
     }
-    
-	private boolean initConnection(HttpServletRequest request, HttpServletResponse response) 
+
+	private boolean initConnection(HttpServletRequest request, HttpServletResponse response)
 		throws IOException {
 
 		String hostString = request.getParameter("host");
 		String portString = request.getParameter("port");
-				
+
 		if (client != null && client.isConnected() && hostString != null && portString != null && host.equals(hostString) && Integer.toString(port).equals(portString))
 			return true;
-				
+
 		host = hostString;
-		
+
 	    if (host == null || host.length() == 0) {
 	    	try {
 		        host = getServletConfig().getInitParameter("clusterAddr").trim();
-		    } 
+		    }
 		    catch (Exception e) {
 		        host = "127.0.0.1";
 		    }
 	    }
-	    
+
 		if (portString == null || portString.length() == 0) {
 		    try {
 		        portString = getServletConfig().getInitParameter("clusterPort");
-		    } 
+		    }
 		    catch (Exception e) {
 		    	portString = "3000";
 		    }
 	    }
-		
+
 		try {
 			port = Integer.parseInt(portString);
 		}
 		catch (Exception e) {
-			displayLoginError(response, host, portString, null);	
+			displayLoginError(response, host, portString, null);
 			return false;
 		}
-		
+
 		try {
 			ClientPolicy policy = new ClientPolicy();
-			client = new AerospikeClient(policy, host, port);						
-			
+			client = new AerospikeClient(policy, host, port);
+
 			if (client.isConnected())
 				return true;
-			
-			displayLoginError(response, host, portString, null);	
+
+			displayLoginError(response, host, portString, null);
 			return false;
 		}
 		catch (Exception ex) {
@@ -122,19 +122,19 @@ public class AerospikeServlet extends HttpServlet {
 			return false;
 		}
 	}
-	
-	private void displayLoginError(HttpServletResponse response, String hostString, String portString, String message) 
+
+	private void displayLoginError(HttpServletResponse response, String hostString, String portString, String message)
 		throws IOException {
-        
+
 		String errorMsg = "Invalid server: " + hostString + ':' + portString;
-		
+
 		if (message != null) {
 			errorMsg += " " + message;
 		}
-		response.sendError(HttpServletResponse.SC_NOT_FOUND, errorMsg); 
+		response.sendError(HttpServletResponse.SC_NOT_FOUND, errorMsg);
 	}
-	
-	private void processRequest(HttpServletRequest request, HttpServletResponse response) 
+
+	private void processRequest(HttpServletRequest request, HttpServletResponse response)
 		throws ServletException, IOException {
 
         String method = request.getMethod();
@@ -183,7 +183,7 @@ public class AerospikeServlet extends HttpServlet {
                 log("bad key received");
                 throw new BadParamException("No Key");
             }
-            
+
             Key key = new Key(namespace, set, userKey);
 
             // Get other parameters from the parameters on the URL
@@ -235,7 +235,7 @@ public class AerospikeServlet extends HttpServlet {
                 	record = this.client.get(policy, key);
                 else
                 	record = this.client.get(policy, key, bins);
-                
+
                 if (record != null) {
                     if (record.bins != null) {
                         Set<?> keyset = record.bins.keySet();
@@ -275,7 +275,7 @@ public class AerospikeServlet extends HttpServlet {
                 }
 
             }else if (method.equals("POST")) {
-            
+
                 if (values == null || values.length < 1) {
                     throw new BadParamException("Setting a key requires a value");
                 }
@@ -293,7 +293,7 @@ public class AerospikeServlet extends HttpServlet {
                     	isPrepend = true;
                     }
                 }
-                
+
                 WritePolicy writePolicy = new WritePolicy();
                 writePolicy.socketTimeout = timeout;
                 writePolicy.expiration = expiration;
@@ -301,12 +301,12 @@ public class AerospikeServlet extends HttpServlet {
                 	writePolicy.generationPolicy = GenerationPolicy.EXPECT_GEN_EQUAL;
                     writePolicy.generation = generation;
                 }
-                
+
                 if (values.length > 1) {
                     if (bins == null || bins.length != values.length) {
                         throw new BadParamException("Setting a key requires a bin name");
                     }
-                    Bin[] binArray = new Bin[bins.length];                    
+                    Bin[] binArray = new Bin[bins.length];
                     for (int i=0; i<bins.length; i++) {
                         Object value = getObject(values[i], isArithmeticAdd);
                         binArray[i] = new Bin(bins[i], value);
@@ -326,7 +326,7 @@ public class AerospikeServlet extends HttpServlet {
                     String binName = bins != null && bins.length > 0 ? bins[0] : "";
                     Object value = getObject(values[0], isArithmeticAdd);
                     Bin bin = new Bin(binName, value);
-                    
+
                     if (isArithmeticAdd) {
                         client.add(writePolicy, key, bin);
                     } else if (isAppend) {
@@ -345,7 +345,7 @@ public class AerospikeServlet extends HttpServlet {
                     writePolicy.generation = generation;
                 }
 
-                client.delete(writePolicy, key);                
+                client.delete(writePolicy, key);
             } else {
                 throw new BadMethodException("Unknown Method");
             }
@@ -365,15 +365,15 @@ public class AerospikeServlet extends HttpServlet {
         } catch (ResourceNotFoundException e) {
             responseCode = HttpServletResponse.SC_NOT_FOUND;
             errorMsg = e.getMessage();
-            
+
         } catch (AerospikeException ae) {
             responseCode = HttpServletResponse.SC_NOT_FOUND;
             errorMsg = "Error " + ae.getResultCode() + ": " + ae.getMessage();
         }
-        
+
         if (responseCode != HttpServletResponse.SC_OK) {
             try {
-                response.sendError(responseCode, errorMsg); 
+                response.sendError(responseCode, errorMsg);
 
             } catch (java.io.IOException e) {
             }
@@ -383,19 +383,19 @@ public class AerospikeServlet extends HttpServlet {
         }
     }
 
-    private Object getObject(String valueStr, boolean isArithmeticAdd) 
+    private Object getObject(String valueStr, boolean isArithmeticAdd)
     	throws BadParamException {
     	if (! isArithmeticAdd) {
     		return valueStr;
     	}
-    	
+
         try {
             return Integer.parseInt(valueStr);
         } catch (NumberFormatException e) {
-            throw new BadParamException("Integer Value Required"); 
+            throw new BadParamException("Integer Value Required");
         }
     }
-    
+
     private static String stripChar(String inStr, char stripChar) {
         int i = 0;
         for (i = 0; i < inStr.length(); i++) {
@@ -416,28 +416,28 @@ public class AerospikeServlet extends HttpServlet {
 			client = null;
 		}
 	}
-	    
+
 	private class BadParamException extends Exception {
 		private static final long serialVersionUID = 1L;
-	
+
 		public BadParamException(String message) {
 			super(message);
 		}
 	}
-	
+
 	private class BadMethodException extends Exception {
 		private static final long serialVersionUID = 1L;
-	
+
 		public BadMethodException(String message) {
 			super(message);
 		}
 	}
-	
+
 	private class ResourceNotFoundException extends Exception {
 		private static final long serialVersionUID = 1L;
-	
+
 		public ResourceNotFoundException(String message) {
 			super(message);
 		}
-	}	
+	}
 }

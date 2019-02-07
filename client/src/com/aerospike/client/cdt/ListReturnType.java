@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,7 @@ public final class ListReturnType {
 	 * Do not return a result.
 	 */
 	public static final int NONE = 0;
-	
+
 	/**
 	 * Return index offset order.
 	 * <ul>
@@ -34,7 +34,7 @@ public final class ListReturnType {
 	 * </ul>
 	 */
 	public static final int INDEX = 1;
-	
+
 	/**
 	 * Return reverse index offset order.
 	 * <ul>

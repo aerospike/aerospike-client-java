@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,16 +33,16 @@ public final class WritePolicy extends Policy {
 	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
 
 	/**
-	 * Desired consistency guarantee when committing a transaction on the server. The default 
-	 * (COMMIT_ALL) indicates that the server should wait for master and all replica commits to 
+	 * Desired consistency guarantee when committing a transaction on the server. The default
+	 * (COMMIT_ALL) indicates that the server should wait for master and all replica commits to
 	 * be successful before returning success to the client.
 	 */
 	public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
 
 	/**
 	 * Expected generation. Generation is the number of times a record has been modified
-	 * (including creation) on the server. If a write operation is creating a record, 
-	 * the expected generation would be <code>0</code>.  
+	 * (including creation) on the server. If a write operation is creating a record,
+	 * the expected generation would be <code>0</code>.
 	 */
 	public int generation;
 
@@ -59,7 +59,7 @@ public final class WritePolicy extends Policy {
 	 * </ul>
 	 */
 	public int expiration;
-	
+
 	/**
 	 * For client operate(), return a result for every operation.
 	 * <p>
@@ -67,14 +67,14 @@ public final class WritePolicy extends Policy {
 	 * This can make it difficult to determine the desired result offset in the returned
 	 * bin's result list.
 	 * <p>
-	 * Setting respondAllOps to true makes it easier to identify the desired result offset 
+	 * Setting respondAllOps to true makes it easier to identify the desired result offset
 	 * (result offset equals bin's operate sequence).  If there is a map operation in operate(),
 	 * respondAllOps will be forced to true for that operate() call.
 	 * <p>
 	 * Default: false
 	 */
 	public boolean respondAllOps;
-	
+
 	/**
 	 * If the transaction results in a record deletion, leave a tombstone for the record.
 	 * This prevents deleted records from reappearing after node failures.
@@ -104,7 +104,7 @@ public final class WritePolicy extends Policy {
 	public WritePolicy(Policy other) {
 		super(other);
 	}
-	
+
 	/**
 	 * Default constructor.
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2019 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,7 +39,7 @@ public class OperateList extends Example {
 		if (! params.hasCDTList) {
 			console.info("CDT list functions are not supported by the connected Aerospike server.");
 			return;
-		}	
+		}
 		runSimpleExample(client, params);
 	}
 
@@ -49,36 +49,36 @@ public class OperateList extends Example {
 	public void runSimpleExample(AerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "listkey");
 		String binName = params.getBinName("listbin");
-		
+
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);
-		
+
 		List<Value> inputList = new ArrayList<Value>();
 		inputList.add(Value.get(55));
 		inputList.add(Value.get(77));
-		
+
 		// Write values to empty list.
-		Record record = client.operate(params.writePolicy, key, 
+		Record record = client.operate(params.writePolicy, key,
 				ListOperation.appendItems(binName, inputList)
 				);
-		
-		console.info("Record: " + record);			
-			
+
+		console.info("Record: " + record);
+
 		// Pop value from end of list and also return new size of list.
-		record = client.operate(params.writePolicy, key, 
+		record = client.operate(params.writePolicy, key,
 				ListOperation.pop(binName, -1),
 				ListOperation.size(binName)
 				);
-		
-		console.info("Record: " + record);			
+
+		console.info("Record: " + record);
 
 		// There should be one result for each list operation on the same list bin.
-		// In this case, there are two list operations (pop and size), so there 
+		// In this case, there are two list operations (pop and size), so there
 		// should be two results.
 		List<?> list = record.getList(binName);
-		
+
 		for (Object value : list) {
-			console.info("Received: " + value);			
+			console.info("Received: " + value);
 		}
 	}
 }
