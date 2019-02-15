@@ -8,8 +8,7 @@ import org.junit.runners.Suite.SuiteClasses;
 @SuiteClasses({ SelectorTests.class, InserterTests.class, UpdatorTests.class, DeleterTests.class, UsersTests.class })
 public class TestQueryEngine {
 	public static final int PORT = 3000;
-	public static final String HOST = "192.168.105.145";
-//	public static final String HOST = "54.175.187.56";
+	public static final String HOST = "localhost";
 	public static final String NAMESPACE = "test";
 	public static final String SET_NAME = "selector";
 	public static final int RECORD_COUNT = 1000;

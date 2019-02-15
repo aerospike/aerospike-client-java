@@ -82,10 +82,6 @@ public class Index {
 		return this.getName();
 	}
 	
-	public String toKeyString(){
-		return new StringJoiner(":").add(getNamespace()).add(getSet()).add(getBin()).toString();
-	}
-
 	public String getBin() {
 		if (values.containsKey("bin"))
 			return values.get("bin");
