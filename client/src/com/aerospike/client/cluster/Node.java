@@ -565,7 +565,7 @@ public class Node implements Closeable {
 		Connection conn;
 
 		while (true) {
-			conn = pool.queue.poll();
+			conn = pool.poll();
 
 			if (conn != null) {
 				// Found socket.
@@ -584,7 +584,7 @@ public class Node implements Closeable {
 				}
 				closeConnection(conn);
 			}
-			else if (pool.total.getAndIncrement() < pool.capacity) {
+			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
 				// Create new connection.
 				try {
@@ -662,7 +662,7 @@ public class Node implements Closeable {
 	public final void putConnection(Connection conn) {
 		conn.updateLastUsed();
 
-		if (! active || ! conn.pool.queue.offer(conn)) {
+		if (! active || ! conn.pool.offer(conn)) {
 			closeConnection(conn);
 		}
 	}
@@ -675,12 +675,18 @@ public class Node implements Closeable {
 		conn.close();
 	}
 
+	public final void closeIdleConnections() {
+		for (Pool pool : connectionPools) {
+			pool.closeIdle();
+		}
+	}
+
 	public final ConnectionStats getConnectionStats() {
 		int inUse = 0;
 		int inPool = 0;
 
 		for (Pool pool : connectionPools) {
-			int tmp = pool.queue.size();
+			int tmp = pool.size();
 			inPool += tmp;
 			tmp = pool.total.get() - tmp;
 
@@ -714,7 +720,7 @@ public class Node implements Closeable {
 	}
 
 	public final void putAsyncConnection(AsyncConnection conn, int index) {
-		asyncConnectionPools[index].queue.addLast(conn);
+		asyncConnectionPools[index].queue.addFirst(conn);
 	}
 
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
@@ -724,6 +730,24 @@ public class Node implements Closeable {
 
 	public final void decrAsyncConnection(int index) {
 		asyncConnectionPools[index].total--;
+	}
+
+	public final void closeIdleAsyncConnections(int index) {
+		AsyncPool pool = asyncConnectionPools[index];
+		ArrayDeque<AsyncConnection> queue = pool.queue;
+		AsyncConnection conn;
+
+		// Oldest connection is at end of queue.
+		while ((conn = queue.peekLast()) != null) {
+			if (conn.isCurrent()) {
+				return;
+			}
+
+			// Pop connection from queue.
+			queue.pollLast();
+			pool.total--;
+			conn.close();
+		}
 	}
 
 	public final ConnectionStats getAsyncConnectionStats() {
@@ -901,7 +925,7 @@ public class Node implements Closeable {
 		AsyncPool pool = asyncConnectionPools[index];
 		AsyncConnection conn;
 
-		while ((conn = pool.queue.poll()) != null) {
+		while ((conn = pool.queue.pollFirst()) != null) {
 			conn.close();
 		}
 	}
@@ -919,7 +943,7 @@ public class Node implements Closeable {
 
 		// Close synchronous connections.
 		for (Pool pool : connectionPools) {
-			while ((conn = pool.queue.poll()) != null) {
+			while ((conn = pool.poll()) != null) {
 				conn.close();
 			}
 		}

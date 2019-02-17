@@ -144,6 +144,15 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		}
 	}
 
+	/**
+	 * Is connection idle time less than or equal to
+	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
+	 */
+	@Override
+	public boolean isCurrent() {
+		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
+	}
+
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);

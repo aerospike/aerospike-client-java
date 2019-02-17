@@ -16,9 +16,9 @@
  */
 package com.aerospike.client.async;
 
-import io.netty.channel.socket.SocketChannel;
-
 import java.nio.ByteBuffer;
+
+import io.netty.channel.socket.SocketChannel;
 
 /**
  * Aerospike wrapper around netty channel.
@@ -44,6 +44,15 @@ public final class NettyConnection implements AsyncConnection {
 	@Override
 	public boolean isValid(ByteBuffer notUsed) {
 		return (System.nanoTime() - lastUsed) <= maxSocketIdle && channel.isActive();
+	}
+
+	/**
+	 * Is connection idle time less than or equal to
+	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
+	 */
+	@Override
+	public boolean isCurrent() {
+		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
 	}
 
 	void updateLastUsed() {

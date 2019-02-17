@@ -103,8 +103,9 @@ public class ClientPolicy {
 	 * (default 60000 milliseconds or 1 minute), so the client does not attempt to use a socket
 	 * that has already been reaped by the server.
 	 * <p>
-	 * This field is ignored by asynchronous transactions since these transactions use a
-	 * non-blocking read to determine if the socket is active and empty.
+	 * Connection pools are now implemented by a LIFO stack.  Connections at the tail of the
+	 * stack will always be the least used.  These connections are checked for maxSocketIdle
+	 * once every 30 tend iterations (usually 30 seconds).
 	 * <p>
 	 * Default: 55 seconds
 	 */

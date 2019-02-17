@@ -28,6 +28,12 @@ public interface AsyncConnection {
 	public boolean isValid(ByteBuffer byteBuffer);
 
 	/**
+	 * Is connection idle time less than or equal to
+	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
+	 */
+	public boolean isCurrent();
+
+	/**
 	 * Close connection.
 	 */
 	public void close();

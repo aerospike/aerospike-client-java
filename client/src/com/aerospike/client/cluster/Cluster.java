@@ -126,6 +126,9 @@ public class Cluster implements Runnable, Closeable {
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
 
+	// Cluster tend counter
+	private int tendCount;
+
 	// Tend thread variables.
 	private Thread tendThread;
 	protected volatile boolean tendValid;
@@ -475,6 +478,30 @@ public class Cluster implements Runnable, Closeable {
 		// Add nodes in a batch.
 		if (peers.nodes.size() > 0) {
 			addNodes(peers.nodes);
+		}
+
+		// Close idle connections every 30 tend intervals.
+		if (++tendCount >= 30) {
+			tendCount = 0;
+
+			for (Node node : nodes) {
+				node.closeIdleConnections();
+			}
+
+			if (eventLoops != null) {
+				for (EventLoop eventLoop : eventLoops.getArray()) {
+					eventLoop.execute(new Runnable() {
+						public void run() {
+							final Node[] nodeArray = nodes;
+							final int index = eventLoop.getIndex();
+
+							for (Node node : nodeArray) {
+								node.closeIdleAsyncConnections(index);
+							}
+						}
+					});
+				}
+			}
 		}
 
 		processRecoverQueue();
