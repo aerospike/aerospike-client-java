@@ -69,7 +69,7 @@ public class Set {
                 String value = kv[1];
                 NameValuePair storedValue = values.get(key);
                 if (storedValue == null) {
-                    storedValue = new NameValuePair(this, key, value);
+                    storedValue = new NameValuePair(key, value);
                     values.put(key, storedValue);
                 } else {
                     storedValue.value = value;
@@ -93,7 +93,7 @@ public class Set {
                 String value = kv[1];
                 NameValuePair storedValue = values.get(key);
                 if (storedValue == null) {
-                    storedValue = new NameValuePair(this, key, value);
+                    storedValue = new NameValuePair(key, value);
                     values.put(key, storedValue);
                 } else {
                     try {

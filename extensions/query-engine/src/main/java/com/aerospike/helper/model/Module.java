@@ -123,7 +123,7 @@ public class Module {
 		Set<String> keys = this.values.keySet();
 		for (String key : keys) {
 			String value = this.values.get(key);
-			NameValuePair nvp = new NameValuePair(this, key, value);
+			NameValuePair nvp = new NameValuePair(key, value);
 			result.add(nvp);
 		}
 		return result;

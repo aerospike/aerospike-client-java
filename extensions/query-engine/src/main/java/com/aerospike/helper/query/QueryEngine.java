@@ -16,43 +16,27 @@
  */
 package com.aerospike.helper.query;
 
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
-import com.aerospike.client.Info;
-import com.aerospike.client.Key;
-import com.aerospike.client.Language;
-import com.aerospike.client.Record;
-import com.aerospike.client.Value;
+import com.aerospike.client.*;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.KeyRecord;
-import com.aerospike.client.query.PredExp;
-import com.aerospike.client.query.RecordSet;
-import com.aerospike.client.query.ResultSet;
-import com.aerospike.client.query.Statement;
+import com.aerospike.client.query.*;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.model.Module;
 import com.aerospike.helper.model.Namespace;
+import com.aerospike.helper.query.cache.IndexCache;
+import com.aerospike.helper.query.cache.IndexInfoParser;
+import com.aerospike.helper.query.cache.IndexKey;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * This class provides a multi-filter query engine that
@@ -69,14 +53,14 @@ public class QueryEngine implements Closeable {
 	protected static final String AS_UTILITY_PATH = QUERY_MODULE + ".lua";
 	protected static Logger log = LoggerFactory.getLogger(QueryEngine.class);
 	protected AerospikeClient client;
-	protected Map<String, Index> indexCache;
+	private final IndexCache indexCache;
 	protected Map<String, Module> moduleCache;
 	protected TreeMap<String, Namespace> namespaceCache;
 
-	public WritePolicy updatePolicy;
-	public WritePolicy insertPolicy;
-	public InfoPolicy infoPolicy;
-	public QueryPolicy queryPolicy;
+	private final WritePolicy updatePolicy;
+	private final WritePolicy insertPolicy;
+	private final InfoPolicy infoPolicy;
+	private final QueryPolicy queryPolicy;
 
 	public enum Meta {
 		KEY,
@@ -106,28 +90,35 @@ public class QueryEngine implements Closeable {
 	 * @param client An instance of Aerospike client
 	 */
 	public QueryEngine(AerospikeClient client) {
-		this();
-		setClient(client);
+		this(client, getUpdatePolicy(client.writePolicyDefault),
+				getInsertPolicy(client.writePolicyDefault),
+				client.queryPolicyDefault,
+				client.infoPolicyDefault,
+				new IndexCache(client, client.infoPolicyDefault, new IndexInfoParser()));
 	}
 
-	public QueryEngine() {
-		super();
-	}
-
-	/**
-	 * Sets the AerospikeClient
-	 *
-	 * @param client An instance of AerospikeClient
-	 */
-	public void setClient(AerospikeClient client) {
+	public QueryEngine(AerospikeClient client, WritePolicy updatePolicy, WritePolicy insertPolicy,
+					   QueryPolicy queryPolicy, InfoPolicy infoPolicy, IndexCache indexCache) {
 		this.client = client;
-		this.updatePolicy = new WritePolicy(this.client.writePolicyDefault);
-		this.updatePolicy.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
-		this.insertPolicy = new WritePolicy(this.client.writePolicyDefault);
-		this.insertPolicy.recordExistsAction = RecordExistsAction.CREATE_ONLY;
-		this.queryPolicy = client.queryPolicyDefault;
+		this.updatePolicy = updatePolicy;
+		this.insertPolicy = insertPolicy;
+		this.queryPolicy = queryPolicy;
+		this.infoPolicy = infoPolicy;
+		this.indexCache = indexCache;
 		refreshCluster();
 		registerUDF();
+	}
+
+	private static WritePolicy getInsertPolicy(WritePolicy writePolicyDefault) {
+		WritePolicy insertPolicy = new WritePolicy(writePolicyDefault);
+		insertPolicy.recordExistsAction = RecordExistsAction.CREATE_ONLY;
+		return insertPolicy;
+	}
+
+	private static WritePolicy getUpdatePolicy(WritePolicy writePolicyDefault) {
+		WritePolicy updatePolicy = new WritePolicy(writePolicyDefault);
+		updatePolicy.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
+		return updatePolicy;
 	}
 
 	/*
@@ -324,8 +315,8 @@ public class QueryEngine implements Closeable {
 
 	protected boolean isIndexedBin(Statement stmt, Qualifier qualifier) {
 		if(null == qualifier.getField()) return false;
-		Index index = this.indexCache.get(String.join(":", Arrays.asList(stmt.getNamespace(), stmt.getSetName(), qualifier.getField())));
-		if (index == null)
+		Optional<Index> index = indexCache.getIndex(getIndexKey(stmt, qualifier));
+		if (!index.isPresent())
 			return false;
 
 		switch (qualifier.getOperation()){
@@ -334,6 +325,10 @@ public class QueryEngine implements Closeable {
 			default:
 				return false;
 		}
+	}
+
+	private IndexKey getIndexKey(Statement stmt, Qualifier qualifier) {
+		return new IndexKey(stmt.getNamespace(), stmt.getSetName(), qualifier.getField());
 	}
 
 	/*
@@ -562,9 +557,6 @@ public class QueryEngine implements Closeable {
 	 * @return the current InfoPolicy
 	 */
 	public InfoPolicy getInfoPolicy() {
-		if (this.infoPolicy == null) {
-			this.infoPolicy = new InfoPolicy();
-		}
 		return this.infoPolicy;
 	}
 
@@ -650,31 +642,8 @@ public class QueryEngine implements Closeable {
 	/**
 	 * refreshes the Index cache from the Cluster
 	 */
-	public synchronized void refreshIndexes() {
-		/*
-		 * cache index by Bin name
-		 */
-		if (this.indexCache == null)
-			this.indexCache = new TreeMap<String, Index>();
-
-		Node[] nodes = client.getNodes();
-		for (Node node : nodes) {
-			if (node.isActive()) {
-				try {
-					String indexString = Info.request(getInfoPolicy(), node, "sindex");
-					if (!indexString.isEmpty()) {
-						String[] indexList = indexString.split(";");
-						for (String oneIndexString : indexList) {
-							Index index = new Index(oneIndexString);
-							this.indexCache.put(index.toKeyString(), index);
-						}
-					}
-					break;
-				} catch (AerospikeException e) {
-					log.error("Error geting Index informaton", e);
-				}
-			}
-		}
+	public void refreshIndexes() {
+		indexCache.refreshIndexes();
 	}
 
 	/**
@@ -683,8 +652,8 @@ public class QueryEngine implements Closeable {
 	 * @param key The key = namespace:set:bin built from the indexed Bin
 	 * @return An Index model object
 	 */
-	public synchronized Index getIndex(String key) {
-		return this.indexCache.get(key);
+	public Optional<Index> getIndex(IndexKey key) {
+		return this.indexCache.getIndex(key);
 	}
 
 	/**
@@ -711,7 +680,7 @@ public class QueryEngine implements Closeable {
 				loadedModules = true;
 				break;
 			} catch (AerospikeException e) {
-
+				log.error("Failed to load UDF modules", e);
 			}
 		}
 		if (!loadedModules) {
@@ -737,12 +706,7 @@ public class QueryEngine implements Closeable {
 	public void close() throws IOException {
 		if (this.client != null)
 			this.client.close();
-		indexCache.clear();
-		indexCache = null;
-		updatePolicy = null;
-		insertPolicy = null;
-		infoPolicy = null;
-		queryPolicy = null;
+		indexCache.close();
 		moduleCache.clear();
 		moduleCache = null;
 	}

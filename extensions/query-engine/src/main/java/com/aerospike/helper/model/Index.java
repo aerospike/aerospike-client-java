@@ -16,12 +16,10 @@
  */
 package com.aerospike.helper.model;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import com.aerospike.client.query.IndexType;
 
@@ -33,86 +31,53 @@ import com.aerospike.client.query.IndexType;
  */
 public class Index {
 
-	protected Map<String, String> values;
+    private final Map<String, String> values;
+    private final String name;
+    private final String namespace;
+    private final String set;
+    private final String bin;
+    private final IndexType indexType;
 
-	public Index(String info) {
-		setIndexInfo(info);
-	}
+    public Index(Map<String, String> values, String name,
+                 String namespace, String set, String bin, IndexType indexType) {
+        this.values = values;
+        this.name = name;
+        this.namespace = namespace;
+        this.set = set;
+        this.bin = bin;
+        this.indexType = indexType;
+    }
 
-	public String getName() {
-		return values.get("indexname");
-	}
+    public List<NameValuePair> getValues() {
+        return this.values.keySet().stream()
+                .map(key -> new NameValuePair(key, this.values.get(key)))
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        Collections::unmodifiableList));
+    }
 
-	public List<NameValuePair> getValues() {
-		List<NameValuePair> result = new ArrayList<NameValuePair>();
-		Set<String> keys = this.values.keySet();
-		for (String key : keys) {
-			NameValuePair nvp = new NameValuePair(this, key, this.values.get(key));
-			result.add(nvp);
-		}
-		return result;
-	}
+    @Override
+    public String toString() {
+        return this.getName();
+    }
 
-	/**
-	 * Populates the Index object from an "info" message from Aerospike
-	 *
-	 * @param info Info string from node
-	 */
-	public void setIndexInfo(String info) {
-		//ns=phobos_sindex:set=longevity:indexname=str_100_idx:num_bins=1:bins=str_100_bin:type=TEXT:sync_state=synced:state=RW;
-		//ns=test:set=Customers:indexname=mail_index_userss:bin=email:type=STRING:indextype=LIST:path=email:sync_state=synced:state=RW
-		if (!info.isEmpty()) {
-			String[] parts = info.split(":");
-			for (String part : parts) {
-				kvPut(part);
-			}
-		}
-	}
+    public String getName() {
+        return this.name;
+    }
 
-	private void kvPut(String kv) {
-		if (values == null) {
-			values = new HashMap<String, String>();
-		}
-		String[] kvParts = kv.split("=");
-		this.values.put(kvParts[0], kvParts.length == 1 ? null : kvParts[1]);
-	}
+    public String getBin() {
+        return this.bin;
+    }
 
-	@Override
-	public String toString() {
-		return this.getName();
-	}
+    public String getSet() {
+        return this.set;
+    }
 
-	public String toKeyString(){
-		return new StringJoiner(":").add(getNamespace()).add(getSet()).add(getBin()).toString();
-	}
+    public String getNamespace() {
+        return this.namespace;
+    }
 
-	public String getBin() {
-		if (values.containsKey("bin"))
-			return values.get("bin");
-		if (values.containsKey("bins"))
-			return values.get("bins");
-		return null;
-	}
-
-	public String getSet() {
-		if (values.containsKey("set"))
-			return values.get("set");
-		return null;
-	}
-
-	public String getNamespace() {
-		if (values.containsKey("ns"))
-			return values.get("ns");
-		if (values.containsKey("namespace"))
-			return values.get("namespace");
-		return null;
-	}
-
-	public IndexType getType() {
-		String indexTypeString = values.get("type");
-		if (indexTypeString.equalsIgnoreCase("TEXT"))
-			return IndexType.STRING;
-		else
-			return IndexType.NUMERIC;
-	}
+    public IndexType getType() {
+        return this.indexType;
+    }
 }
