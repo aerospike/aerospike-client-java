@@ -20,8 +20,7 @@ public class NameValuePair {
 	public String name;
 	public Object value;
 
-	public NameValuePair(Object parent, String name, Object value) {
-		super();
+	public NameValuePair(String name, Object value) {
 		this.name = name;
 		this.value = value;
 	}

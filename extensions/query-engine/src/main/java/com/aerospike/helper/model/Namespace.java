@@ -150,7 +150,7 @@ public class Namespace {
 			String value = kv[1];
 			NameValuePair storedValue = map.get(key);
 			if (storedValue == null) {
-				storedValue = new NameValuePair(this, key, value);
+				storedValue = new NameValuePair(key, value);
 				map.put(key, storedValue);
 			} else {
 				if (merge && !dontMerge.contains(key)) {

@@ -9,9 +9,14 @@ import com.aerospike.helper.query.QueryEngine;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Stream;
+
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toMap;
 
 public class IndexCache implements AutoCloseable {
 
@@ -21,10 +26,12 @@ public class IndexCache implements AutoCloseable {
     private final Logger log = LoggerFactory.getLogger(QueryEngine.class);
     private final AerospikeClient client;
     private final InfoPolicy infoPolicy;
+    private final IndexInfoParser indexInfoParser;
 
-    public IndexCache(AerospikeClient client, InfoPolicy infoPolicy) {
+    public IndexCache(AerospikeClient client, InfoPolicy infoPolicy, IndexInfoParser indexInfoParser) {
         this.client = client;
         this.infoPolicy = infoPolicy;
+        this.indexInfoParser = indexInfoParser;
     }
 
     public Optional<Index> getIndex(IndexKey indexKey) {
@@ -40,8 +47,10 @@ public class IndexCache implements AutoCloseable {
                 .filter(indexString -> !indexString.isEmpty())
                 .map(indexString -> Arrays.stream(indexString.split(";")))
                 .orElse(Stream.empty())
-                .map(Index::new)
-                .collect(Collectors.toMap(this::getIndexKey, index -> index));
+                .map(indexInfoParser::parse)
+                .collect(collectingAndThen(
+                        toMap(this::getIndexKey, index -> index),
+                        Collections::unmodifiableMap));
 
         log.debug("Loaded indexes: {}", indexCache);
     }

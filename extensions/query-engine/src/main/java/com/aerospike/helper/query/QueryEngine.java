@@ -29,6 +29,7 @@ import com.aerospike.helper.model.Index;
 import com.aerospike.helper.model.Module;
 import com.aerospike.helper.model.Namespace;
 import com.aerospike.helper.query.cache.IndexCache;
+import com.aerospike.helper.query.cache.IndexInfoParser;
 import com.aerospike.helper.query.cache.IndexKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -93,7 +94,7 @@ public class QueryEngine implements Closeable {
 				getInsertPolicy(client.writePolicyDefault),
 				client.queryPolicyDefault,
 				client.infoPolicyDefault,
-				new IndexCache(client, client.infoPolicyDefault));
+				new IndexCache(client, client.infoPolicyDefault, new IndexInfoParser()));
 	}
 
 	public QueryEngine(AerospikeClient client, WritePolicy updatePolicy, WritePolicy insertPolicy,
