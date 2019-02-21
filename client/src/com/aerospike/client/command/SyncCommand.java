@@ -72,10 +72,15 @@ public abstract class SyncCommand extends Command {
 					//}
 				}
 				catch (AerospikeException ae) {
-					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
-					ae.setIteration(iteration);
-					ae.setInDoubt(isRead, commandSentCounter);
-					throw ae;
+					if (cluster.isActive()) {
+						// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+						ae.setIteration(iteration);
+						ae.setInDoubt(isRead, commandSentCounter);
+						throw ae;
+					}
+					else {
+						throw new AerospikeException("Cluster has been closed");
+					}
 				}
 			}
 

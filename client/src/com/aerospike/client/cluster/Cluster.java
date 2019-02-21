@@ -940,6 +940,10 @@ public class Cluster implements Runnable, Closeable {
 		return passwordHash;
 	}
 
+	public final boolean isActive() {
+		return tendValid;
+	}
+
 	public void close() {
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.
