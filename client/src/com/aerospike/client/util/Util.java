@@ -88,6 +88,11 @@ public final class Util {
 	public static byte[] readResource(ClassLoader resourceLoader, String resourcePath) {
 		try {
 			URL url = resourceLoader.getResource(resourcePath);
+
+			if (url == null) {
+				throw new IllegalArgumentException("Resource: " + resourcePath + " not found");
+			}
+
 			InputStream is = url.openStream();
 
 			try {
