@@ -36,7 +36,7 @@ import com.aerospike.client.util.ThreadLocalData;
  * database server node is queried to determine its configuration and status.
  * The list of supported names can be found at:
  * <p>
- * <a href="https://docs.aerospike.com/display/AS2/Config+Parameters+Reference">https://docs.aerospike.com/display/AS2/Config+Parameters+Reference</a>
+ * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
  * <p>
  *
  */
