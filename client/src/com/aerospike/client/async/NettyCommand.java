@@ -69,6 +69,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
+	boolean connectInProgress;
 
 	public NettyCommand(NettyEventLoop loop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = loop;
@@ -257,42 +258,38 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 
-			try {
-				final InboundHandler handler = new InboundHandler();
-				handler.command = this;
+			connectInProgress = true;
+			final InboundHandler handler = new InboundHandler();
+			handler.command = this;
 
-				Bootstrap b = new Bootstrap();
-				b.group(eventLoop.eventLoop);
+			Bootstrap b = new Bootstrap();
+			b.group(eventLoop.eventLoop);
 
-				if (eventLoop.parent.isEpoll) {
-					b.channel(EpollSocketChannel.class);
-				}
-				else {
-					b.channel(NioSocketChannel.class);
-				}
-				b.option(ChannelOption.TCP_NODELAY, true);
-				b.option(ChannelOption.AUTO_READ, false);
+			if (eventLoop.parent.isEpoll) {
+				b.channel(EpollSocketChannel.class);
+			}
+			else {
+				b.channel(NioSocketChannel.class);
+			}
+			b.option(ChannelOption.TCP_NODELAY, true);
+			b.option(ChannelOption.AUTO_READ, false);
 
-				b.handler(new ChannelInitializer<SocketChannel>() {
-					@Override
-					public void initChannel(SocketChannel ch) {
-						conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
-						ChannelPipeline p = ch.pipeline();
+			b.handler(new ChannelInitializer<SocketChannel>() {
+				@Override
+				public void initChannel(SocketChannel ch) {
+					conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
+					connectInProgress = false;
+					ChannelPipeline p = ch.pipeline();
 
-						if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
-							//InetSocketAddress address = node.getAddress();
-							//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
-							p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
-						}
-						p.addLast(handler);
+					if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
+						//InetSocketAddress address = node.getAddress();
+						//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
+						p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
 					}
-				});
-				b.connect(node.getAddress());
-			}
-			catch (Exception e) {
-				node.decrAsyncConnection(eventState.index);
-				throw e;
-			}
+					p.addLast(handler);
+				}
+			});
+			b.connect(node.getAddress());
 			eventState.errors = 0;
 		}
 		catch (AerospikeException.Connection ac) {
@@ -888,6 +885,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (conn != null) {
 			command.node.closeAsyncConnection(conn, eventState.index);
 			conn = null;
+		}
+		else if (connectInProgress) {
+			command.node.decrAsyncConnection(eventState.index);
+			connectInProgress = false;
 		}
 	}
 
