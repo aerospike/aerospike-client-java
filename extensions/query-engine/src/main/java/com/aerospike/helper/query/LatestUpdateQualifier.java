@@ -17,6 +17,7 @@
 package com.aerospike.helper.query;
 
 import com.aerospike.client.Value;
+import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.query.PredExp;
 
 /**
@@ -29,6 +30,9 @@ public class LatestUpdateQualifier extends Qualifier {
 
 	public LatestUpdateQualifier(FilterOperation op, Value value) {
 		super("latest_update_time", op, value); // the field should never be used as here we use a bit different logic
+		if (value.getType() != ParticleType.INTEGER) {
+			throw new QualifierException("LatestUpdateQualifer value must be an integer or long");
+		}
 	}
 
 	@Override

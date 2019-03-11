@@ -24,13 +24,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 import com.aerospike.client.Value;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PredExp;
+import com.aerospike.client.query.RegexFlag;
 
 /**
  * Generic Bin qualifier. It acts as a filter to exclude records that do not met this criteria.
@@ -51,6 +51,8 @@ import com.aerospike.client.query.PredExp;
  */
 public class Qualifier implements Map<String, Object>, Serializable {
 	private static final long serialVersionUID = -2689196529952712849L;
+	private static final String listIterVar = "listIterVar";
+	private static final String mapIterVar = "mapIterVar";
 	private static final String FIELD = "field";
 	private static final String IGNORE_CASE = "ignoreCase";
 	private static final String VALUE2 = "value2";
@@ -59,6 +61,65 @@ public class Qualifier implements Map<String, Object>, Serializable {
 	private static final String OPERATION = "operation";
 	private static final String AS_FILTER = "queryAsFilter";
 	protected Map<String, Object> internalMap;
+
+	public static class QualifierRegexpBuilder {
+		private static Character BACKSLASH = '\\';
+		private static Character DOT = '.';
+		private static Character ASTERISK = '*';
+		private static Character DOLLAR = '$';
+		private static Character OPEN_BRACKET = '[';
+		private static Character CIRCUMFLEX = '^';
+
+		public static String escapeBRERegexp(String base) {
+			StringBuilder builder = new StringBuilder();
+			for (char stringChar: base.toCharArray()) {
+				if (
+				stringChar == BACKSLASH ||
+				stringChar == DOT ||
+				stringChar == ASTERISK ||
+				stringChar == DOLLAR ||
+				stringChar == OPEN_BRACKET ||
+				stringChar == CIRCUMFLEX) {
+						builder.append(BACKSLASH);
+				}
+				builder.append(stringChar);
+			}
+			return builder.toString();
+		}
+
+		/*
+		 * This op is always in [START_WITH, ENDS_WITH, EQ, CONTAINING]
+		 */
+		private static String getRegexp(String base, FilterOperation op) {
+			String escapedBase = escapeBRERegexp(base);
+			if (op == FilterOperation.START_WITH) {
+				return "^" + escapedBase;
+			}
+			if (op == FilterOperation.ENDS_WITH) {
+				return escapedBase + "$";
+			}
+			if (op == FilterOperation.EQ) {
+				return "^" + escapedBase + "$";
+			}
+			return escapedBase;
+		}
+
+		public static String getStartsWith(String base) {
+			return getRegexp(base, FilterOperation.START_WITH);
+		}
+
+		public static String getEndsWith(String base) {
+			return getRegexp(base, FilterOperation.ENDS_WITH);
+		}
+
+		public static String getContaining(String base) {
+			return getRegexp(base, FilterOperation.CONTAINING);
+		}
+		public static String getStringEquals(String base) {
+			return getRegexp(base, FilterOperation.EQ);
+		}
+	}
+
 
 	public enum FilterOperation {
 		EQ, GT, GTEQ, LT, LTEQ, NOTEQ, BETWEEN, START_WITH, ENDS_WITH, CONTAINING, IN,
@@ -140,10 +201,15 @@ public class Qualifier implements Map<String, Object>, Serializable {
 		FilterOperation op = getOperation();
 		switch (op) {
 			case EQ:
-				if (getValue1().getType() == ParticleType.INTEGER)
+				if (getValue1().getType() == ParticleType.INTEGER) {
 					return Filter.equal(getField(), getValue1().toLong());
-				else
+				} else {
+					// There is no case insensitive string comparison filter.
+					if(ignoreCase()) {
+						return null;
+					}
 					return Filter.equal(getField(), getValue1().toString());
+				}
 			case GTEQ:
 			case BETWEEN:
 				return Filter.range(getField(), getValue1().toLong(), getValue2()==null?Long.MAX_VALUE:getValue2().toLong());
@@ -152,7 +218,7 @@ public class Qualifier implements Map<String, Object>, Serializable {
 			case LT:
 				return Filter.range(getField(), Long.MIN_VALUE, getValue1().toLong()-1);
 			case LTEQ:
-				return Filter.range(getField(),  Long.MIN_VALUE, getValue1().toLong()+1);
+				return Filter.range(getField(),  Long.MIN_VALUE, getValue1().toLong());
 			case LIST_CONTAINS:
 				return collectionContains(IndexCollectionType.LIST);
 			case MAP_KEYS_CONTAINS:
@@ -164,7 +230,7 @@ public class Qualifier implements Map<String, Object>, Serializable {
 			case MAP_KEYS_BETWEEN:
 				return collectionRange(IndexCollectionType.MAPKEYS);
 			case MAP_VALUES_BETWEEN:
-				return collectionRange(IndexCollectionType.MAPKEYS);
+				return collectionRange(IndexCollectionType.MAPVALUES);
 			case GEO_WITHIN:
 				return geoWithinRadius(IndexCollectionType.DEFAULT);
 			default:
@@ -193,6 +259,7 @@ public class Qualifier implements Map<String, Object>, Serializable {
 	}
 
 	public List<PredExp> toPredExp() throws PredExpException{
+		int regexFlags = ignoreCase() ? RegexFlag.ICASE : RegexFlag.NONE;
 		List<PredExp> rs = new ArrayList<PredExp>();
 		switch(getOperation()){
 		case AND:
@@ -224,12 +291,19 @@ public class Qualifier implements Map<String, Object>, Serializable {
 					rs.add(PredExp.integerEqual());
 					break;
 				case ParticleType.STRING:
-					rs.add(getFieldExpr(valType));
-					rs.add(PredExp.stringValue(val.toString()));
-					rs.add(PredExp.stringEqual());
+					if (ignoreCase()) {
+						String equalsRegexp = QualifierRegexpBuilder.getStringEquals(getValue1().toString());
+						rs.add(getFieldExpr(getValue1().getType()));
+						rs.add(PredExp.stringValue(equalsRegexp));
+						rs.add(PredExp.stringRegex(RegexFlag.ICASE));
+					} else {
+						rs.add(getFieldExpr(valType));
+						rs.add(PredExp.stringValue(val.toString()));
+						rs.add(PredExp.stringEqual());
+					}
 					break;
-					default:
-						throw new PredExpException("PredExp Unsupported Particle Type: " + valType);
+				default:
+					throw new PredExpException("PredExp Unsupported Particle Type: " + valType);
 			}
 			break;
 		case NOTEQ:
@@ -260,15 +334,105 @@ public class Qualifier implements Map<String, Object>, Serializable {
 			rs.add(PredExp.geoJSONWithin());
 
 			break;
-		case LIST_CONTAINS:
-		case MAP_KEYS_CONTAINS:
-		case MAP_VALUES_CONTAINS:
-		case LIST_BETWEEN:
-		case MAP_KEYS_BETWEEN:
-		case MAP_VALUES_BETWEEN:
 		case START_WITH:
+			String startWithRegexp = QualifierRegexpBuilder.getStartsWith(getValue1().toString());
+			rs.add(getFieldExpr(getValue1().getType()));
+			rs.add(PredExp.stringValue(startWithRegexp));
+			rs.add(PredExp.stringRegex(regexFlags));
+			break;
 		case ENDS_WITH:
+			String endWithRegexp = QualifierRegexpBuilder.getEndsWith(getValue1().toString());
+			rs.add(getFieldExpr(getValue1().getType()));
+			rs.add(PredExp.stringValue(endWithRegexp));
+			rs.add(PredExp.stringRegex(regexFlags));
+			break;
 		case CONTAINING:
+			String containingRegexp = QualifierRegexpBuilder.getContaining(getValue1().toString());
+			rs.add(getFieldExpr(getValue1().getType()));
+			rs.add(PredExp.stringValue(containingRegexp));
+			rs.add(PredExp.stringRegex(regexFlags));
+			break;
+		case LIST_CONTAINS:
+			if (getValue1().getType() == ParticleType.STRING) {
+				rs.add(PredExp.stringVar(listIterVar));
+				rs.add(PredExp.stringValue(getValue1().toString()));
+				rs.add(PredExp.stringEqual());
+			} else {
+				rs.add(PredExp.integerVar(listIterVar));
+				rs.add(PredExp.integerValue(getValue1().toLong()));
+				rs.add(PredExp.integerEqual());
+			}
+			rs.add(PredExp.listBin(getField()));
+			rs.add(PredExp.listIterateOr(listIterVar));
+			break;
+		case MAP_KEYS_CONTAINS:
+			if (getValue1().getType() == ParticleType.STRING) {
+				rs.add(PredExp.stringVar(mapIterVar));
+				rs.add(PredExp.stringValue(getValue1().toString()));
+				rs.add(PredExp.stringEqual());
+			} else {
+				rs.add(PredExp.integerVar(mapIterVar));
+				rs.add(PredExp.integerValue(getValue1().toLong()));
+				rs.add(PredExp.integerEqual());
+			}
+			rs.add(PredExp.mapBin(getField()));
+			rs.add(PredExp.mapKeyIterateOr(mapIterVar));
+			break;
+		case MAP_VALUES_CONTAINS:
+			if (getValue1().getType() == ParticleType.STRING) {
+				rs.add(PredExp.stringVar(mapIterVar));
+				rs.add(PredExp.stringValue(getValue1().toString()));
+				rs.add(PredExp.stringEqual());
+			} else {
+				rs.add(PredExp.integerVar(mapIterVar));
+				rs.add(PredExp.integerValue(getValue1().toLong()));
+				rs.add(PredExp.integerEqual());
+			}
+			rs.add(PredExp.mapBin(getField()));
+			rs.add(PredExp.mapValIterateOr(mapIterVar));
+			break;
+		case LIST_BETWEEN:
+			rs.add(PredExp.integerVar(listIterVar));
+			rs.add(PredExp.integerValue(getValue1().toLong()));
+			rs.add(PredExp.integerGreaterEq());
+			
+			rs.add(PredExp.integerVar(listIterVar));
+			rs.add(PredExp.integerValue(getValue2().toLong()));
+			rs.add(PredExp.integerLessEq());
+			
+			rs.add(PredExp.and(2));
+
+			rs.add(PredExp.listBin(getField()));
+			rs.add(PredExp.listIterateOr(listIterVar));
+			break;
+		case MAP_KEYS_BETWEEN:
+			rs.add(PredExp.integerVar(mapIterVar));
+			rs.add(PredExp.integerValue(getValue1().toLong()));
+			rs.add(PredExp.integerGreaterEq());
+			
+			rs.add(PredExp.integerVar(mapIterVar));
+			rs.add(PredExp.integerValue(getValue2().toLong()));
+			rs.add(PredExp.integerLessEq());
+			
+			rs.add(PredExp.and(2));
+
+		rs.add(PredExp.mapBin(getField()));
+			rs.add(PredExp.mapKeyIterateOr(mapIterVar));
+			break;
+		case MAP_VALUES_BETWEEN:
+			rs.add(PredExp.integerVar(mapIterVar));
+			rs.add(PredExp.integerValue(getValue1().toLong()));
+			rs.add(PredExp.integerGreaterEq());
+			
+			rs.add(PredExp.integerVar(mapIterVar));
+			rs.add(PredExp.integerValue(getValue2().toLong()));
+			rs.add(PredExp.integerLessEq());
+			
+			rs.add(PredExp.and(2));
+
+		rs.add(PredExp.mapBin(getField()));
+			rs.add(PredExp.mapValIterateOr(mapIterVar));
+			break;
 		default:
 			throw new PredExpException("PredExp Unsupported Operation: " + getOperation());
 		}
@@ -297,80 +461,11 @@ public class Qualifier implements Map<String, Object>, Serializable {
 
 
 
-	public String luaFilterString(){
-		String value1 = luaValueString(getValue1());
-		FilterOperation op = getOperation();
-		switch (op) {
-			case AND:
-				return new StringBuilder()
-						.append("(")
-						.append(Arrays.stream((Qualifier[])get(QUALIFIERS)).map(Qualifier::luaFilterString).collect(Collectors.joining(" and ")))
-						.append(")").toString();
-			case OR:
-				return new StringBuilder()
-						.append("(")
-						.append(Arrays.stream((Qualifier[])get(QUALIFIERS)).map(Qualifier::luaFilterString).collect(Collectors.joining(" or ")))
-						.append(")").toString();
-			case EQ:
-				if (ignoreCase())
-					return String.format("string.upper(%s) == %s", luaFieldString(getField()), value1.toUpperCase());
-				else
-					return String.format("%s == %s", luaFieldString(getField()), value1);
-			case LIST_CONTAINS:
-				return String.format("containsValue(%s, %s)", luaFieldString(getField()), value1);
-			case MAP_KEYS_CONTAINS:
-				return String.format("containsKey(%s, %s)", luaFieldString(getField()), value1);
-			case MAP_VALUES_CONTAINS:
-				return String.format("containsValue(%s, %s)", luaFieldString(getField()), value1);
-			case NOTEQ:
-				return String.format("%s ~= %s", luaFieldString(getField()), value1);
-			case GT:
-				return String.format("%s > %s", luaFieldString(getField()), value1);
-			case GTEQ:
-				return String.format("%s >= %s", luaFieldString(getField()), value1);
-			case LT:
-				return String.format("%s < %s", luaFieldString(getField()), value1);
-			case LTEQ:
-				return String.format("%s <= %s", luaFieldString(getField()), value1);
-			case BETWEEN:
-				String value2 = luaValueString(getValue2());
-				String fieldString = luaFieldString(getField());
-				return String.format("%s >= %s and %s <= %s  ", fieldString, value1, luaFieldString(getField()), value2);
-			case LIST_BETWEEN:
-				value2 = luaValueString(getValue2());
-				return String.format("rangeValue(%s, %s, %s)", luaFieldString(getField()), value1, value2);
-			case MAP_KEYS_BETWEEN:
-				value2 = luaValueString(getValue2());
-				return String.format("rangeKey(%s, %s, %s)", luaFieldString(getField()), value1, value2);
-			case MAP_VALUES_BETWEEN:
-				value2 = luaValueString(getValue2());
-				return String.format("rangeValue(%s, %s, %s)", luaFieldString(getField()), value1, value2);
-			case START_WITH:
-				if(ignoreCase())
-					return String.format("string.upper(string.sub(%s,1,string.len(%s)))==%s", luaFieldString(getField()), value1, value1.toUpperCase());
-				else
-					return String.format("string.sub(%s,1,string.len(%s))==%s", luaFieldString(getField()), value1, value1);
-			case ENDS_WITH:
-				return String.format("%s=='' or string.sub(%s,-string.len(%s))==%s",
-						value1,
-						luaFieldString(getField()),
-						value1,
-						value1);
-			case CONTAINING:
-				if(ignoreCase())
-					return String.format("string.find(string.upper(%s), %s)", luaFieldString(getField()), value1.toUpperCase());
-				else
-					return String.format("string.find(%s, %s)", luaFieldString(getField()), value1);
-			case GEO_WITHIN:
-				return String.format("%s %d %s %s)", getField(), ParticleType.GEOJSON, value1, value1);
-			default:
-				break;
-		}
-		return "";
-	}
+	
 
 	private Boolean ignoreCase() {
-		return (Boolean) internalMap.get(IGNORE_CASE);
+		Boolean ignoreCase = (Boolean) internalMap.get(IGNORE_CASE);
+		return (ignoreCase == null) ? false : ignoreCase;
 	}
 
 	protected String luaFieldString(String field) {

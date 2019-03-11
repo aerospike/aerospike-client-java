@@ -17,6 +17,7 @@
 package com.aerospike.helper.query;
 
 import com.aerospike.client.Value;
+import com.aerospike.client.command.ParticleType;
 
 /**
  * Qualifier used to query by expiry epoch
@@ -28,6 +29,9 @@ public class ExpiryQualifier extends Qualifier {
 
 	public ExpiryQualifier(FilterOperation op, Value value) {
 		super(QueryEngine.Meta.EXPIRATION.toString(), op, value);
+		if (value.getType() != ParticleType.INTEGER) {
+			throw new QualifierException("ExpiryQualifier value must be an integer or long");
+		}
 	}
 
 	@Override

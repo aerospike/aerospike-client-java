@@ -82,7 +82,7 @@ function rangeValue(collection, low, high)
 	  end
 	else
 	  for v in list.iterator(collection) do
-	    if v == value then
+	    if v >= low and v <= high then
 	      return true
 	    end
 	  end

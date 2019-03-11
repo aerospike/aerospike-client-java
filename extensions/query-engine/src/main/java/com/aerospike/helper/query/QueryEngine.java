@@ -23,7 +23,6 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.*;
-import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.model.Module;
@@ -131,53 +130,6 @@ public class QueryEngine implements Closeable {
 
 
 	/**
-	 * Select records filtered by Qualifiers
-	 *
-	 * @param namespace  Namespace to storing the data
-	 * @param set		Set storing the data
-	 * @param filter	 Aerospike Filter to be used
-	 * @param sortMap	<STRONG>NOT IMPLEMENTED</STRONG>
-	 * @param qualifiers Zero or more Qualifiers for the update query
-	 * @return A KeyRecordIterator to iterate over the results
-	 */
-	public KeyRecordIterator select(String namespace, String set, Filter filter, Map<String, String> sortMap, Qualifier... qualifiers) {
-		Statement stmt = new Statement();
-		stmt.setNamespace(namespace);
-		stmt.setSetName(set);
-		if (filter != null)
-			stmt.setFilter(filter);
-		return select(stmt, sortMap, qualifiers);
-	}
-
-	/**
-	 * Select records filtered by Qualifiers
-	 *
-	 * @param stmt	   A Statement object containing Namespace, Set and the Bins to be returned.
-	 * @param sortMap	<STRONG>NOT IMPLEMENTED</STRONG>
-	 * @param qualifiers Zero or more Qualifiers for the update query
-	 * @return A KeyRecordIterator to iterate over the results
-	 */
-	public KeyRecordIterator select(Statement stmt, Map<String, String> sortMap, Qualifier... qualifiers) {
-		KeyRecordIterator results = null;
-
-		if (qualifiers != null && qualifiers.length > 0) {
-			Map<String, Object> originArgs = new HashMap<String, Object>();
-			originArgs.put("includeAllFields", 1);
-			String filterFuncStr = buildFilterFunction(qualifiers);
-			originArgs.put("filterFuncStr", filterFuncStr);
-			String sortFuncStr = buildSortFunction(sortMap);
-			originArgs.put("sortFuncStr", sortFuncStr);
-			stmt.setAggregateFunction(this.getClass().getClassLoader(), AS_UTILITY_PATH, QUERY_MODULE, "select_records", Value.get(originArgs));
-			ResultSet resultSet = this.client.queryAggregate(queryPolicy, stmt);
-			results = new KeyRecordIterator(stmt.getNamespace(), resultSet);
-		} else {
-			RecordSet recordSet = this.client.query(queryPolicy, stmt);
-			results = new KeyRecordIterator(stmt.getNamespace(), recordSet);
-		}
-		return results;
-	}
-
-	/**
 	 * Select records filtered by a Filter and Qualifiers
 	 *
 	 * @param namespace  Namespace to storing the data
@@ -262,11 +214,24 @@ public class QueryEngine implements Closeable {
 						break;
 					}
 				}
-			}else if (isIndexedBin(stmt, qualifier)) {
+			} else if (isIndexedBin(stmt, qualifier)) {
 				Filter filter = qualifier.asFilter();
 				if (filter != null) {
 					stmt.setFilter(filter);
+					qualifier.asFilter(true);
 					qualifiers[i] = null;
+					/* If this was the only qualifier, we do not need to do anymore work, just return
+					 * the query iterator.
+					 */
+					if (qualifiers.length == 1) {
+						RecordSet rs;
+						if (null == node){
+							rs = client.query(queryPolicy, stmt);
+						} else{
+							rs = client.queryNode(queryPolicy, stmt, node);
+						}
+						return new KeyRecordIterator(stmt.getNamespace(), rs);
+					}
 					break;
 				}
 			}
@@ -275,7 +240,7 @@ public class QueryEngine implements Closeable {
 		try {
 			PredExp[] predexps;
 			predexps = buildPredExp(qualifiers).toArray(new PredExp[0]);
-			if(predexps.length > 0){
+			if(predexps.length > 0) {
 				stmt.setPredExp(predexps);
 				RecordSet rs;
 				if(null == node){
@@ -285,33 +250,14 @@ public class QueryEngine implements Closeable {
 				}
 				return new KeyRecordIterator(stmt.getNamespace(), rs);
 			}else{
-				return queryByLua(stmt, metaOnly, node, qualifiers);
+				throw new QualifierException("Failed to build Query");
 			}
 		} catch (PredExpException e) {
-			return queryByLua(stmt, metaOnly, node, qualifiers);
+			throw new QualifierException(e.getMessage());
 		}
 	}
 
-	private KeyRecordIterator queryByLua(Statement stmt, Boolean metaOnly, Node node, Qualifier[] qualifiers){
-		Map<String, Object> originArgs = new HashMap<String, Object>();
-		originArgs.put("includeAllFields", 1);
-		ResultSet resultSet = null;
 
-		String filterFuncStr = buildFilterFunction(qualifiers);
-		originArgs.put("filterFuncStr", filterFuncStr);
-
-		if (metaOnly)
-			stmt.setAggregateFunction(this.getClass().getClassLoader(), AS_UTILITY_PATH, QUERY_MODULE, "query_meta", Value.get(originArgs));
-		else
-			stmt.setAggregateFunction(this.getClass().getClassLoader(), AS_UTILITY_PATH, QUERY_MODULE, "select_records", Value.get(originArgs));
-		if (node != null) {
-			resultSet = this.client.queryAggregateNode(queryPolicy, stmt, node);
-		} else {
-			resultSet = this.client.queryAggregate(queryPolicy, stmt);
-		}
-		return new KeyRecordIterator(stmt.getNamespace(), resultSet);
-
-	}
 
 	protected boolean isIndexedBin(Statement stmt, Qualifier qualifier) {
 		if(null == qualifier.getField()) return false;
@@ -459,12 +405,11 @@ public class QueryEngine implements Closeable {
 	 */
 	public Map<String, Long> delete(Statement stmt, Qualifier... qualifiers) {
 		if (qualifiers == null || qualifiers.length == 0) {
-			/*
-			 * There are no qualifiers, so delete every record in the set
-			 * using Scan UDF delete
-			 */
-			ExecuteTask task = client.execute(null, stmt, QUERY_MODULE, "delete_record");
-			task.waitTillComplete();
+            /*
+			 * There are no qualifiers, so delete every record in the ns/set
+			 * using Truncate
+             */
+			this.client.truncate(null, stmt.getNamespace(), stmt.getSetName(), null);
 			return null;
 		}
 
@@ -500,11 +445,6 @@ public class QueryEngine implements Closeable {
 		return map;
 	}
 
-	private String buildSortFunction(Map<String, String> sortMap) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
 	protected List<PredExp> buildPredExp(Qualifier[] qualifiers) throws PredExpException{
 		List<PredExp> pes = new ArrayList<PredExp>();
 		int qCount = 0;
@@ -521,24 +461,6 @@ public class QueryEngine implements Closeable {
 
 		if(qCount>1) pes.add(PredExp.and(qCount));
 		return pes;
-	}
-
-	protected String buildFilterFunction(Qualifier[] qualifiers) {
-		int count = 0;
-		StringBuilder sb = new StringBuilder("if ");
-		for (int i = 0; i < qualifiers.length; i++) {
-			if (qualifiers[i] == null) //Skip nulls
-				continue;
-			if (qualifiers[i] instanceof KeyQualifier) //Skip primary key -- should not happen
-				continue;
-			if (count > 0)
-				sb.append(" and ");
-
-			sb.append(qualifiers[i].luaFilterString());
-			count++;
-		}
-		sb.append(" then selectedRec = true end");
-		return sb.toString();
 	}
 
 	private void registerUDF() {

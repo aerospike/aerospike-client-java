@@ -1,20 +1,25 @@
 package com.aerospike.helper.query;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
+import com.aerospike.helper.query.Qualifier.FilterOperation;
 
 public class SelectorTests extends HelperTests{
-
 
 
 	public SelectorTests() {
@@ -46,16 +51,17 @@ public class SelectorTests extends HelperTests{
 				it.next();
 				count++;
 			}
-			Assert.assertEquals(1000, count);
+			Assert.assertEquals(TestQueryEngine.RECORD_COUNT, count);
 		} finally {
 			it.close();
 		}
 	}
 
 	@Test
-	public void selectOnIndex() throws IOException {
-		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
-		task.waitTillComplete(50);
+	public void selectOnIndexFilter() throws IOException {
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
+		long age28Count = 0;
+		long age29Count = 0;
 		Filter filter = Filter.range("age", 28, 29);
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, filter);
 		try{
@@ -63,39 +69,99 @@ public class SelectorTests extends HelperTests{
 				KeyRecord rec = it.next();
 				int age = rec.record.getInt("age");
 				Assert.assertTrue(age >= 28 && age <= 29);
+				if (age == 28) {
+					age28Count++;
+				}
+				if (age == 29) {
+					age29Count++;
+				}
 			}
 		} finally {
-			this.client.dropIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index");
 			it.close();
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", 50);
 		}
+		assertThat(age28Count).isEqualTo(recordsWithAgeCounts.get(28));
+		assertThat(age29Count).isEqualTo(recordsWithAgeCounts.get(29));
 	}
+
+	/*
+	 * If we use a qualifier on an indexed bin, The QueryEngine will generate a Filter. Verify that a LTEQ Filter Operation
+	 * Generates the correct Filter.Range() filter.
+	 */
 	@Test
-	public void selectStartsWith() throws IOException {
+	public void selectOnIndexedLTEQQualifier() throws IOException {
+		long age25Count = 0l;
+		long age26Count = 0l;
+
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
+
+		// Make sure that the query engine knows that we actually have an index on this bin.
+		queryEngine.refreshCluster();
+
+		// Ages range from 25 -> 29. We expected to only get back values with age <= 26
+		Qualifier AgeRangeQualifier = new Qualifier("age", FilterOperation.LTEQ, Value.get(26));
+		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, AgeRangeQualifier);
+		try{
+			while (it.hasNext()){
+				KeyRecord rec = it.next();
+				int age = rec.record.getInt("age");
+
+				if (age == 25) {
+					age25Count++;
+				} else if (age == 26) {
+					age26Count++;
+				}
+				assertThat(age).isLessThanOrEqualTo(26);
+			}
+		} finally {
+			it.close();
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", 50);
+
+		}
+
+		// Make sure that our query returned all of the records we expected.
+		assertThat(age25Count).isEqualTo(recordsWithAgeCounts.get(25));
+		assertThat(age26Count).isEqualTo(recordsWithAgeCounts.get(26));
+	}
+
+	@Test
+	public void selectEndssWith() throws IOException {
 		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.ENDS_WITH, Value.get("e"));
+		long endsWithECount = 0;
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1);
 		try{
 			while (it.hasNext()){
 				KeyRecord rec = it.next();
 				Assert.assertTrue(rec.record.getString("color").endsWith("e"));
+				endsWithECount++;
 			}
 		} finally {
 			it.close();
 		}
+		// Number of records containing a color ending with "e"
+		long expectedEndsWithECount = Arrays.stream(colours)
+			.filter(c -> c.endsWith("e"))
+			.mapToLong(c -> recordsWithColourCounts.get(c))
+			.sum();
+
+		assertThat(endsWithECount).isEqualTo(expectedEndsWithECount);
+
 	}
 	@Test
-	public void selectEndsWith() throws IOException {
-		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("blue"));
-		Qualifier qual2 = new Qualifier("name", Qualifier.FilterOperation.START_WITH, Value.get("na"));
-		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1, qual2);
+	public void selectStartsWith() throws IOException {
+		Qualifier startsWithQual = new Qualifier("color", Qualifier.FilterOperation.START_WITH, Value.get("bl"));
+		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, startsWithQual);
+		long startsWithBL = 0;
 		try{
 			while (it.hasNext()){
 				KeyRecord rec = it.next();
-				Assert.assertEquals("blue", rec.record.getString("color"));
-				Assert.assertTrue(rec.record.getString("name").startsWith("na"));
+				Assert.assertTrue(rec.record.getString("color").startsWith("bl"));
+				startsWithBL++;
 			}
 		} finally {
 			it.close();
 		}
+		assertThat(startsWithBL).isEqualTo(recordsWithColourCounts.get("blue"));
 	}
 
 	@Test
@@ -107,7 +173,7 @@ public class SelectorTests extends HelperTests{
 		try (KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1, qual2)) {
 			List<KeyRecord> result = Utils.toList(it);
 
-			Assert.assertEquals(200, result.size());
+			Assert.assertEquals((long)recordsWithColourCounts.get("blue"), (long)result.size());
 		}
 	}
 
@@ -136,28 +202,96 @@ public class SelectorTests extends HelperTests{
 	}
 
 	@Test
+	public void stringEqualIgnoreCaseWorksOnIndexedBin() throws IOException {
+		boolean ignoreCase = true;
+		String expectedColor = "blue";
+		long blueRecordCount = 0;
+
+		try {
+			tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "color_index_selector", "color", IndexType.STRING);
+		} catch (AerospikeException e) {
+			if (e.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
+				throw e;
+			}
+		}
+		queryEngine.refreshCluster();
+		Qualifier caseInsensitiveQual = new Qualifier("color", Qualifier.FilterOperation.EQ, ignoreCase, Value.get("BlUe"));
+		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, caseInsensitiveQual);
+		try {
+			while(it.hasNext()) {
+				KeyRecord kr = it.next();
+				String color = kr.record.getString("color");
+				assertThat(color).isEqualTo(expectedColor);
+				blueRecordCount++;
+			}
+		} finally {
+			it.close();
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "color_index_selector", 50);
+		}
+		assertThat(blueRecordCount).isEqualTo(recordsWithColourCounts.get("blue"));
+	}
+
+	@Test
+	public void stringEqualIgnoreCaseWorksOnUnindexedBin() throws IOException {
+		boolean ignoreCase = true;
+		String expectedColor = "blue";
+		long blueRecordCount = 0;
+
+		Qualifier caseInsensitiveQual = new Qualifier("color", Qualifier.FilterOperation.EQ, ignoreCase, Value.get("BlUe"));
+		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, caseInsensitiveQual);
+		try {
+			while(it.hasNext()) {
+				KeyRecord kr = it.next();
+				String color = kr.record.getString("color");
+				assertThat(color).isEqualTo(expectedColor);
+				blueRecordCount++;
+			}
+		} finally {
+			it.close();
+		}
+		assertThat(blueRecordCount).isEqualTo(recordsWithColourCounts.get("blue"));
+	}
+
+	@Test
+	public void stringEqualIgnoreCaseWorksRequiresFullMatch() throws IOException {
+		boolean ignoreCase = true;
+		Qualifier caseInsensitiveQual = new Qualifier("color", Qualifier.FilterOperation.EQ, ignoreCase, Value.get("lue"));
+		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, caseInsensitiveQual);
+		try {
+			List<KeyRecord> result = Utils.toList(it);
+			assertThat(result.size()).isEqualTo(0);
+		} finally {
+			it.close();
+		}
+
+	}
+
+	@Test
 	public void selectOnIndexWithQualifiers() throws IOException {
-		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index_selector", "age", IndexType.NUMERIC);
-		task.waitTillComplete(50);
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index_selector", "age", IndexType.NUMERIC);
 		Filter filter = Filter.range("age", 25, 29);
 		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("blue"));
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, filter, qual1);
+		long blueCount = 0;
 		try{
 			while (it.hasNext()){
 				KeyRecord rec = it.next();
 				Assert.assertEquals("blue", rec.record.getString("color"));
+				blueCount++;
 				int age = rec.record.getInt("age");
 				Assert.assertTrue(age >= 25 && age <= 29);
 			}
 		} finally {
-			this.client.dropIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index_selector");
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index_selector", 50);
 			it.close();
 		}
+		assertThat(blueCount).isEqualTo(recordsWithColourCounts.get("blue"));
 	}
+
 	@Test
 	public void selectWithQualifiersOnly() throws IOException {
-		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
-		task.waitTillComplete(50);
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
+
 		queryEngine.refreshCluster();
 		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("green"));
 		Qualifier qual2 = new Qualifier("age", Qualifier.FilterOperation.BETWEEN, Value.get(28), Value.get(29));
@@ -170,17 +304,23 @@ public class SelectorTests extends HelperTests{
 				Assert.assertTrue(age >= 28 && age <= 29);
 			}
 		} finally {
-			this.client.dropIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index");
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", 50);
 			it.close();
 		}
 	}
 
 	@Test
 	public void selectWithOrQualifiers() throws IOException {
-		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
-		task.waitTillComplete(50);
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
+
+		String expectedColor = colours[0];
+		long colorMatched = 0;
+		long ageMatched = 0;
+
 		queryEngine.refreshCluster();
-		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("green"));
+
+		// We are  expecting to get back all records where color == blue or (age == 28 || age == 29)
+		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get(expectedColor));
 		Qualifier qual2 = new Qualifier("age", Qualifier.FilterOperation.BETWEEN, Value.get(28), Value.get(29));
 		Qualifier or = new Qualifier(Qualifier.FilterOperation.OR, qual1, qual2);
 		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, or);
@@ -188,18 +328,28 @@ public class SelectorTests extends HelperTests{
 			while (it.hasNext()){
 				KeyRecord rec = it.next();
 				int age = rec.record.getInt("age");
-				Assert.assertTrue("green"==rec.record.getString("color") ||(age >= 28 && age <= 29));
+				String color = rec.record.getString("color");
+
+				Assert.assertTrue( expectedColor.equals(color) || (age >= 28 && age <= 29));
+				if (expectedColor.equals(color)) {
+					colorMatched++;
+				}
+				if ((age >= 28 && age <= 29)) {
+					ageMatched++;
+				}
 			}
 		} finally {
-			this.client.dropIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index");
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", 50);
 			it.close();
 		}
+		assertThat(colorMatched).isEqualTo(recordsWithColourCounts.get(expectedColor));
+		assertThat(ageMatched).isEqualTo(recordsWithAgeCounts.get(28) + recordsWithAgeCounts.get(29));
 	}
 
 	@Test
 	public void selectWithBetweenAndOrQualifiers() throws IOException {
-		IndexTask task = this.client.createIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
-		task.waitTillComplete(50);
+		tryCreateIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", "age", IndexType.NUMERIC);
+
 		queryEngine.refreshCluster();
 		Qualifier qual1 = new Qualifier("color", Qualifier.FilterOperation.EQ, Value.get("green"));
 		Qualifier qual2 = new Qualifier("age", Qualifier.FilterOperation.BETWEEN, Value.get(28), Value.get(29));
@@ -220,22 +370,7 @@ public class SelectorTests extends HelperTests{
 			}
 			Assert.assertTrue(has25);
 		} finally {
-			this.client.dropIndex(null, TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index");
-			it.close();
-		}
-	}
-
-	@Test
-	public void selectWithGeneration() throws IOException {
-		queryEngine.refreshCluster();
-		Qualifier qual1 = new GenerationQualifier(Qualifier.FilterOperation.GTEQ, Value.get(1));
-		KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, qual1);
-		try {
-			while (it.hasNext()){
-				KeyRecord rec = it.next();
-				Assert.assertTrue(rec.record.generation >= 1);
-			}
-		} finally {
+			tryDropIndex(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "age_index", 50);
 			it.close();
 		}
 	}
@@ -262,4 +397,5 @@ public class SelectorTests extends HelperTests{
 			it.close();
 		}
 	}
+
 }

@@ -5,7 +5,8 @@ import org.junit.runners.Suite;
 import org.junit.runners.Suite.SuiteClasses;
 
 @RunWith(Suite.class)
-@SuiteClasses({ SelectorTests.class, InserterTests.class, UpdatorTests.class, DeleterTests.class, UsersTests.class })
+@SuiteClasses({ SelectorTests.class, InserterTests.class, UpdatorTests.class, DeleterTests.class, UsersTests.class, QualifierTests.class,
+	IndexedQualifierTest.class, RegexpBuilderTests.class})
 public class TestQueryEngine {
 	public static final int PORT = 3000;
 	public static final String HOST = "localhost";
