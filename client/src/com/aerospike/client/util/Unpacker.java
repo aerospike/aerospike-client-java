@@ -19,6 +19,7 @@ package com.aerospike.client.util;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -142,43 +143,11 @@ public abstract class Unpacker<T> {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	private T unpackMap(int count) throws IOException, ClassNotFoundException {
 		if (count <= 0) {
 			return getMap(new HashMap<T,T>(0));
 		}
 
-		Map<T,T> map = createMap(count);
-
-		if (map != null) {
-			// HashMap or TreeMap
-			for (int i = 0; i < count; i++) {
-				T key = unpackObject();
-				T val = unpackObject();
-
-				if (key != null) {
-					map.put(key, val);
-				}
-			}
-			return getMap(map);
-		}
-		else {
-			// Store in List<Entry<?,?> to preserve order.
-			List<Entry<T,T>> list = new ArrayList<Entry<T,T>>(count - 1);
-
-			for (int i = 0; i < count; i++) {
-				T key = unpackObject();
-				T val = unpackObject();
-
-				if (key != null) {
-					list.add(new AbstractMap.SimpleEntry<T,T>(key, val));
-				}
-			}
-			return getList((List<T>)list);
-		}
-	}
-
-	private Map<T,T> createMap(int count) {
 		// Peek at buffer to determine map type, but do not advance.
 		int type = buffer[offset] & 0xff;
 
@@ -192,15 +161,67 @@ public abstract class Unpacker<T> {
 				// Extension is a map type.  Determine which one.
 				if ((mapBits & (0x04 | 0x08)) != 0) {
 					// Index/rank range result where order needs to be preserved.
-					return null;
+					return unpackMapAsList(count);
 				}
 				else if ((mapBits & 0x01) != 0) {
 					// Sorted map
-					return new TreeMap<T,T>();
+					return unpackTreeMap(count);
 				}
 			}
 		}
-		return new HashMap<T,T>(count);
+		return unpackHashMap(count);
+	}
+
+	private T unpackHashMap(int count) throws IOException, ClassNotFoundException {
+		HashMap<T,T> map = new HashMap<T,T>(count);
+
+		for (int i = 0; i < count; i++) {
+			T key = unpackObject();
+			T val = unpackObject();
+
+			if (key != null) {
+				map.put(key, val);
+			}
+		}
+		return getMap(map);
+	}
+
+	@SuppressWarnings("unchecked")
+	private T unpackTreeMap(int count) throws IOException, ClassNotFoundException {
+		TreeMap<T,T> map = new TreeMap<T,T>();
+
+		for (int i = 0; i < count; i++) {
+			T key = unpackObject();
+			T val = unpackObject();
+
+			if (key != null) {
+				if (key instanceof byte[]) {
+					// TreeMap does not support byte[] keys,
+					// so wrap byte[] in a ByteBuffer.
+					key = (T)ByteBuffer.wrap((byte[])key);
+				}
+				map.put(key, val);
+			}
+		}
+		return getMap(map);
+	}
+
+	@SuppressWarnings("unchecked")
+	private T unpackMapAsList(int count) throws IOException, ClassNotFoundException {
+		// Index/rank range result where order needs to be preserved.
+		// Store in List<Entry<?,?> to preserve order.
+		// The first entry is going to be null (ignored), so use "count - 1" size.
+		List<Entry<T,T>> list = new ArrayList<Entry<T,T>>(count - 1);
+
+		for (int i = 0; i < count; i++) {
+			T key = unpackObject();
+			T val = unpackObject();
+
+			if (key != null) {
+				list.add(new AbstractMap.SimpleEntry<T,T>(key, val));
+			}
+		}
+		return getList((List<T>)list);
 	}
 
 	private T unpackBlob(int count) throws IOException, ClassNotFoundException {
