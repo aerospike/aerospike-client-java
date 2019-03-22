@@ -16,9 +16,7 @@
  */
 package com.aerospike.client.command;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -27,16 +25,11 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
-import com.aerospike.client.policy.ConsistencyLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.Replica;
+import com.aerospike.client.policy.ReadModeAP;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
@@ -50,7 +43,7 @@ public abstract class Command {
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
-	public static final int INFO1_CONSISTENCY_ALL	= (1 << 6); // Involve all replicas in read operation.
+	public static final int INFO1_READ_MODE_AP_ALL	= (1 << 6); // Involve all replicas in read operation.
 
 	public static final int INFO2_WRITE				= (1 << 0); // Create or update record
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
@@ -65,7 +58,21 @@ public abstract class Command {
 	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
 	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
 	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
-	public static final int INFO3_LINEARIZE_READ	= (1 << 6); // Linearize read when in strong consistency mode.
+	public static final int INFO3_SC_READ_TYPE	    = (1 << 6); // See below.
+	public static final int INFO3_SC_READ_RELAX	    = (1 << 7); // See below.
+
+	// Interpret SC_READ bits in info3.
+	//
+	// RELAX   TYPE
+	//	                strict
+	//	                ------
+	//   0      0     sequential (default)
+	//   0      1     linearize
+	//
+	//	                relaxed
+	//	                -------
+	//   1      0     allow replica
+	//   1      1     allow unavailable
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -82,7 +89,6 @@ public abstract class Command {
 
 	public byte[] dataBuffer;
 	public int dataOffset;
-	public int sequence;
 
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -298,8 +304,8 @@ public abstract class Command {
 
 		int readAttr = Command.INFO1_READ;
 
-		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
-			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		if (policy.readModeAP == ReadModeAP.ALL) {
+			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
 		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
@@ -423,8 +429,8 @@ public abstract class Command {
 
 		sizeBuffer();
 
-		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
-			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		if (policy.readModeAP == ReadModeAP.ALL) {
+			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
 		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
@@ -849,16 +855,26 @@ public abstract class Command {
     		infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
 
-		if (policy.linearizeRead) {
-			infoAttr |= Command.INFO3_LINEARIZE_READ;
-		}
-
-		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
-			readAttr |= Command.INFO1_CONSISTENCY_ALL;
-		}
-
 		if (policy.durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
+		}
+
+		switch (policy.readModeSC) {
+		case SESSION:
+			break;
+		case LINEARIZE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE;
+			break;
+		case ALLOW_REPLICA:
+			infoAttr |= Command.INFO3_SC_READ_RELAX;
+			break;
+		case ALLOW_UNAVAILABLE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+			break;
+		}
+
+		if (policy.readModeAP == ReadModeAP.ALL) {
+			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
     	// Write all header data except total size which must be written last.
@@ -882,12 +898,22 @@ public abstract class Command {
 	protected final void writeHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
 		int infoAttr = 0;
 
-		if (policy.linearizeRead) {
-			infoAttr |= Command.INFO3_LINEARIZE_READ;
+		switch (policy.readModeSC) {
+		case SESSION:
+			break;
+		case LINEARIZE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE;
+			break;
+		case ALLOW_REPLICA:
+			infoAttr |= Command.INFO3_SC_READ_RELAX;
+			break;
+		case ALLOW_UNAVAILABLE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+			break;
 		}
 
-		if (policy.consistencyLevel == ConsistencyLevel.CONSISTENCY_ALL) {
-			readAttr |= Command.INFO1_CONSISTENCY_ALL;
+		if (policy.readModeAP == ReadModeAP.ALL) {
+			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
 		// Write all header data except total size which must be written last.
@@ -1003,97 +1029,6 @@ public abstract class Command {
 		// Write total size of message which is the current offset.
 		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(size, dataBuffer, 0);
-	}
-
-	public final Node getNode(Cluster cluster, Policy policy, Partition partition, boolean isRead) {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
-		if (partitions.cpMode && isRead && ! policy.linearizeRead) {
-			// Strong Consistency namespaces always use master node when read policy is sequential.
-			return cluster.getMasterNode(partitions, partition);
-		}
-
-		// Handle default case first.
-		if (policy.replica == Replica.SEQUENCE) {
-			// Sequence always starts at master, so writes can go through the same algorithm.
-			return getSequenceNode(cluster, partitions, partition);
-		}
-
-		if (! isRead) {
-			// Writes will always proxy to master node.
-			return cluster.getMasterNode(partitions, partition);
-		}
-
-		switch (policy.replica) {
-		default:
-		case MASTER:
-			return cluster.getMasterNode(partitions, partition);
-
-		case PREFER_RACK:
-			return getRackNode(cluster, partitions, partition);
-
-		case MASTER_PROLES:
-			return cluster.getMasterProlesNode(partitions, partition);
-
-		case RANDOM:
-			return cluster.getRandomNode();
-		}
-	}
-
-	private final Node getSequenceNode(Cluster cluster, Partitions partitions, Partition partition) {
-		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
-			Node node = replicas[index].get(partition.partitionId);
-
-			if (node != null && node.isActive()) {
-				return node;
-			}
-			sequence++;
-		}
-		Node[] nodeArray = cluster.getNodes();
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
-	}
-
-	private final Node getRackNode(Cluster cluster, Partitions partitions, Partition partition) {
-		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-		Node fallback = null;
-
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
-			Node node = replicas[index].get(partition.partitionId);
-
-			if (node != null && node.isActive()) {
-				if (node.hasRack(partition.namespace, cluster.rackId)) {
-					return node;
-				}
-
-				if (fallback == null) {
-					fallback = node;
-				}
-			}
-			sequence++;
-		}
-
-		if (fallback != null) {
-			return fallback;
-		}
-
-		Node[] nodeArray = cluster.getNodes();
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
-	}
-
-	protected final void shiftSequenceOnRead(Policy policy, boolean isRead) {
-		if (isRead && ! policy.linearizeRead) {
-			sequence++;
-		}
 	}
 
 	public static void LogPolicy(Policy p) {

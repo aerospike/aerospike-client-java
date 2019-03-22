@@ -22,6 +22,9 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.WritePolicy;
@@ -32,14 +35,27 @@ public final class AsyncOperate extends AsyncRead {
 	private OperateArgs args;
 
 	public AsyncOperate(RecordListener listener, Key key, Operation[] operations) {
-		super(listener, null, key, null, false);
+		super(listener, null, key, false, null);
 		this.operations = operations;
 	}
 
-	public void setArgs(WritePolicy writePolicy, OperateArgs args) {
+	public void setArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args) {
 		super.policy = writePolicy;
 		this.writePolicy = writePolicy;
 		this.args = args;
+
+		if (args.hasWrite) {
+			partition = Partition.write(cluster, writePolicy, key);
+		}
+		else {
+			super.isRead = true;
+			partition = Partition.read(cluster, writePolicy, key);
+		}
+	}
+
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
 	}
 
 	@Override
@@ -78,6 +94,17 @@ public final class AsyncOperate extends AsyncRead {
 		else {
 			bins.put(name, value);
 		}
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		if (args.hasWrite) {
+			partition.prepareRetryWrite(timeout);
+		}
+		else {
+			partition.prepareRetryRead(timeout);
+		}
+		return true;
 	}
 
 	private static class OpResults extends ArrayList<Object> {

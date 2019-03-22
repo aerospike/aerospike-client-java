@@ -38,6 +38,7 @@ public class TestAsync extends TestBase {
 		if (client == null) {
 			SuiteAsync.init();
 			client = SuiteAsync.client;
+			eventLoop = SuiteAsync.eventLoop;
 			DestroyClient = true;
 		}
 	}

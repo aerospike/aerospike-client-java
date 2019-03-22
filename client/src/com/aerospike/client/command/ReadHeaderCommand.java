@@ -22,17 +22,27 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadHeaderCommand extends SyncCommand {
 	private final Policy policy;
 	private final Key key;
+	private final Partition partition;
 	private Record record;
 
-	public ReadHeaderCommand(Policy policy, Key key) {
+	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
 		this.policy = policy;
 		this.key = key;
+		this.partition = Partition.read(cluster, policy, key);
+	}
+
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return partition.getNodeRead(cluster);
 	}
 
 	@Override
@@ -60,6 +70,12 @@ public class ReadHeaderCommand extends SyncCommand {
 				throw new AerospikeException(resultCode);
 			}
 		}
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryRead(timeout);
+		return true;
 	}
 
 	public Record getRecord() {

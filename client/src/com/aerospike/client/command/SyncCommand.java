@@ -21,14 +21,12 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.ConnectionRecover;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
@@ -36,9 +34,8 @@ import com.aerospike.client.util.Util;
 public abstract class SyncCommand extends Command {
 	// private static final AtomicLong TranCounter = new AtomicLong();
 
-	public final void execute(Cluster cluster, Policy policy, Key key, Node node, boolean isRead) {
+	public final void execute(Cluster cluster, Policy policy, boolean isRead) {
 		//final long tranId = TranCounter.getAndIncrement();
-		final Partition partition = (key != null)? new Partition(key) : null;
 		long deadline = 0;
 		int socketTimeout = policy.socketTimeout;
 		int totalTimeout = policy.totalTimeout;
@@ -50,37 +47,37 @@ public abstract class SyncCommand extends Command {
 				socketTimeout = totalTimeout;
 			}
 		}
-		execute(cluster, policy, partition, node, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
+		execute(cluster, policy, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
 	}
 
 	public final void execute(
-		final Cluster cluster, final Policy policy, final Partition partition, Node node, final boolean isRead,
-		int socketTimeout, int totalTimeout, final long deadline, int iteration, int commandSentCounter
+		final Cluster cluster,
+		final Policy policy,
+		final boolean isRead,
+		int socketTimeout,
+		int totalTimeout,
+		final long deadline,
+		int iteration,
+		int commandSentCounter
 	) {
+		Node node;
 		AerospikeException exception = null;
 		boolean isClientTimeout;
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
-			if (partition != null) {
-				// Single record command node retrieval.
-				try {
-					node = getNode(cluster, policy, partition, isRead);
-
-					//if (iteration > 0 && !isRead) {
-					//	Log.info("Retry: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					//}
+			try {
+				node = getNode(cluster);
+			}
+			catch (AerospikeException ae) {
+				if (cluster.isActive()) {
+					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+					ae.setIteration(iteration);
+					ae.setInDoubt(isRead, commandSentCounter);
+					throw ae;
 				}
-				catch (AerospikeException ae) {
-					if (cluster.isActive()) {
-						// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
-						ae.setIteration(iteration);
-						ae.setInDoubt(isRead, commandSentCounter);
-						throw ae;
-					}
-					else {
-						throw new AerospikeException("Cluster has been closed");
-					}
+				else {
+					throw new AerospikeException("Cluster has been closed");
 				}
 			}
 
@@ -125,7 +122,6 @@ public abstract class SyncCommand extends Command {
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
-						shiftSequenceOnRead(policy, isRead);
 					}
 					else {
 						throw ae;
@@ -139,7 +135,6 @@ public abstract class SyncCommand extends Command {
 						node.closeConnection(conn);
 					}
 					isClientTimeout = true;
-					shiftSequenceOnRead(policy, isRead);
 				}
 				catch (RuntimeException re) {
 					// All runtime exceptions are considered fatal.  Do not retry.
@@ -153,7 +148,6 @@ public abstract class SyncCommand extends Command {
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					isClientTimeout = true;
-					shiftSequenceOnRead(policy, isRead);
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
@@ -161,20 +155,17 @@ public abstract class SyncCommand extends Command {
 					node.closeConnection(conn);
 					exception = new AerospikeException(ioe);
 					isClientTimeout = false;
-					super.sequence++;
 				}
 			}
 			catch (Connection.ReadTimeout crt) {
 				// Connection already handled.
 				isClientTimeout = true;
-				shiftSequenceOnRead(policy, isRead);
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Retry.
 				// Log.info("Connection error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 				exception = ce;
 				isClientTimeout = false;
-				super.sequence++;
 			}
 			catch (AerospikeException ae) {
 				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
@@ -220,9 +211,12 @@ public abstract class SyncCommand extends Command {
 
 			iteration++;
 
-			if (shouldRetryBatch() && retryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
-				// Batch retried in separate commands.  Complete this command.
-				return;
+			if (! prepareRetry(isClientTimeout || exception.getResultCode() == ResultCode.TIMEOUT)) {
+				// Batch may be retried in separate commands.
+				if (retryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
+					// Batch was retried in separate commands.  Complete this command.
+					return;
+				}
 			}
 		}
 
@@ -258,16 +252,19 @@ public abstract class SyncCommand extends Command {
 		}
 	}
 
-	protected boolean shouldRetryBatch() {
-		// Override this method in batch to regenerate node assignments.
+	protected boolean retryBatch(
+		Cluster cluster,
+		int socketTimeout,
+		int totalTimeout,
+		long deadline,
+		int iteration,
+		int commandSentCounter
+	) {
 		return false;
 	}
 
-	protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
-		// Override this method in batch to regenerate node assignments.
-		return false;
-	}
-
+	protected abstract Node getNode(Cluster cluster);
 	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
+	protected abstract boolean prepareRetry(boolean timeout);
 }

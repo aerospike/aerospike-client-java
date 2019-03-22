@@ -21,7 +21,6 @@ import java.util.ArrayDeque;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 
@@ -42,39 +41,16 @@ public abstract class AsyncCommand extends Command {
 	static final int COMPLETE = 10;
 
 	Policy policy;
-	final Partition partition;
-	Node node;
 	ArrayDeque<byte[]> bufferQueue;
 	int receiveSize;
-	final boolean isRead;
+	boolean isRead;
 	final boolean isSingle;
 	boolean valid = true;
 
-	public AsyncCommand(Policy policy, Partition partition, Node node, boolean isRead) {
+	public AsyncCommand(Policy policy, boolean isRead, boolean isSingle) {
 		this.policy = policy;
-		this.partition = partition;
-		this.node = node;
-		this.isRead = isRead;
-		this.isSingle = partition != null;
-	}
-
-	public AsyncCommand(Policy policy, Node node, boolean isRead, boolean isSingle) {
-		this.policy = policy;
-		this.partition = null;
-		this.node = node;
 		this.isRead = isRead;
 		this.isSingle = isSingle;
-	}
-
-	final Node getNode(Cluster cluster) {
-		if (partition != null) {
-			node = getNode(cluster, policy, partition, isRead);
-		}
-		return node;
-	}
-
-	final void shiftSequenceOnRead() {
-		super.shiftSequenceOnRead(policy, isRead);
 	}
 
 	final void initBuffer() {
@@ -151,8 +127,10 @@ public abstract class AsyncCommand extends Command {
 		return false;
 	}
 
+	abstract Node getNode(Cluster cluster);
 	abstract void writeBuffer();
 	abstract boolean parseResult();
+	abstract boolean prepareRetry(boolean timeout);
 	abstract void onSuccess();
 	abstract void onFailure(AerospikeException ae);
 }

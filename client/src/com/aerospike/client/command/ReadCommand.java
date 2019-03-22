@@ -24,25 +24,36 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
 	private final Policy policy;
 	protected final Key key;
+	protected Partition partition;
 	private final String[] binNames;
 	private Record record;
 
-	public ReadCommand(Policy policy, Key key, String[] binNames) {
+	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
 		this.policy = policy;
 		this.key = key;
 		this.binNames = binNames;
+		this.partition = Partition.read(cluster, policy, key);
 	}
 
-	public ReadCommand(Key key) {
+	public ReadCommand(Key key, Partition partition) {
 		this.policy = null;
 		this.key = key;
 		this.binNames = null;
+		this.partition = partition;
+	}
+
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return partition.getNodeRead(cluster);
 	}
 
 	@Override
@@ -117,6 +128,12 @@ public class ReadCommand extends SyncCommand {
         	return;
         }
         record = parseRecord(opCount, fieldCount, generation, expiration);
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryRead(timeout);
+		return true;
 	}
 
 	protected void handleNotFound(int resultCode) {

@@ -91,7 +91,7 @@ public class Cluster implements Runnable, Closeable {
 	private final AtomicInteger nodeIndex;
 
 	// Random partition replica index.
-	private final AtomicInteger replicaIndex;
+	final AtomicInteger replicaIndex;
 
 	// Count of connections in recover queue.
 	private final AtomicInteger recoverCount;
@@ -743,31 +743,6 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return false;
-	}
-
-	public final Node getMasterNode(Partitions partitions, Partition partition) throws AerospikeException.InvalidNode {
-		Node node = partitions.replicas[0].get(partition.partitionId);
-
-		if (node != null && node.isActive()) {
-			return node;
-		}
-		Node[] nodeArray = nodes;
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
-	}
-
-	public final Node getMasterProlesNode(Partitions partitions, Partition partition) throws AerospikeException.InvalidNode {
-		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(replicaIndex.getAndIncrement() % replicas.length);
-			Node node = replicas[index].get(partition.partitionId);
-
-			if (node != null && node.isActive()) {
-				return node;
-			}
-		}
-		Node[] nodeArray = nodes;
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
 	public final Node getRandomNode() throws AerospikeException.InvalidNode {

@@ -650,7 +650,7 @@ public class Node implements Closeable {
 				pool = connectionPools[queueIndex];
 			}
 		}
-		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+		throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 	}
 
@@ -712,7 +712,7 @@ public class Node implements Closeable {
 		}
 
 		if (pool.total >= pool.capacity) {
-			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+			throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
 					"Node " + this + " event loop " + index + " max connections " + pool.capacity + " would be exceeded.");
 		}
 		pool.total++;

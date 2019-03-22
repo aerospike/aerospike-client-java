@@ -17,9 +17,7 @@
 package com.aerospike.client.command;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -28,8 +26,8 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Replica;
 
 public final class BatchNode {
 
@@ -49,12 +47,14 @@ public final class BatchNode {
 			keysPerNode = 10;
 		}
 
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
 
 		for (int i = 0; i < keys.length; i++) {
-			Partition partition = new Partition(keys[i]);
-			Node node = getNode(cluster, policy, partition, 0);
+			Node node = Partition.getNodeBatchRead(cluster, keys[i], replica, replicaSC, 0, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -67,7 +67,14 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys, int sequence, BatchNode batchSeed) {
+	public static List<BatchNode> generateList(
+		Cluster cluster,
+		BatchPolicy policy,
+		Key[] keys,
+		int sequenceAP,
+		int sequenceSC,
+		BatchNode batchSeed
+	) {
 		Node[] nodes = cluster.getNodes();
 
 		if (nodes.length == 0) {
@@ -83,13 +90,16 @@ public final class BatchNode {
 			keysPerNode = 10;
 		}
 
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
 
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
-			Partition partition = new Partition(keys[offset]);
-			Node node = getNode(cluster, policy, partition, sequence);
+
+			Node node = Partition.getNodeBatchRead(cluster, keys[offset], replica, replicaSC, sequenceAP, sequenceSC);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -119,12 +129,14 @@ public final class BatchNode {
 			keysPerNode = 10;
 		}
 
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
 
 		for (int i = 0; i < max; i++) {
-			Partition partition = new Partition(records.get(i).key);
-			Node node = getNode(cluster, policy, partition, 0);
+			Node node = Partition.getNodeBatchRead(cluster, records.get(i).key, replica, replicaSC, 0, 0);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -137,7 +149,14 @@ public final class BatchNode {
 		return batchNodes;
 	}
 
-	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records, int sequence, BatchNode batchSeed) {
+	public static List<BatchNode> generateList(
+		Cluster cluster,
+		BatchPolicy policy,
+		List<BatchRead> records,
+		int sequenceAP,
+		int sequenceSC,
+		BatchNode batchSeed
+	) {
 		Node[] nodes = cluster.getNodes();
 
 		if (nodes.length == 0) {
@@ -153,13 +172,16 @@ public final class BatchNode {
 			keysPerNode = 10;
 		}
 
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
 		// Split keys by server node.
 		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
 
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
-			Partition partition = new Partition(records.get(offset).key);
-			Node node = getNode(cluster, policy, partition, sequence);
+
+			Node node = Partition.getNodeBatchRead(cluster, records.get(offset).key, replica, replicaSC, sequenceAP, sequenceSC);
 			BatchNode batchNode = findBatchNode(batchNodes, node);
 
 			if (batchNode == null) {
@@ -170,83 +192,6 @@ public final class BatchNode {
 			}
 		}
 		return batchNodes;
-	}
-
-	private static Node getNode(Cluster cluster, BatchPolicy policy, Partition partition, int sequence) {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(partition.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(partition.namespace, map.size());
-		}
-
-		if (partitions.cpMode && ! policy.linearizeRead) {
-			// Strong Consistency namespaces always use master node when read policy is sequential.
-			return cluster.getMasterNode(partitions, partition);
-		}
-
-		switch (policy.replica) {
-		case SEQUENCE:
-			return getSequenceNode(cluster, partitions, partition, sequence);
-
-		case PREFER_RACK:
-			return getRackNode(cluster, partitions, partition, sequence);
-
-		default:
-		case MASTER:
-			return cluster.getMasterNode(partitions, partition);
-
-		case MASTER_PROLES:
-			return cluster.getMasterProlesNode(partitions, partition);
-
-		case RANDOM:
-			return cluster.getRandomNode();
-		}
-	}
-
-	private static final Node getSequenceNode(Cluster cluster, Partitions partitions, Partition partition, int sequence) {
-		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
-			Node node = replicas[index].get(partition.partitionId);
-
-			if (node != null && node.isActive()) {
-				return node;
-			}
-			sequence++;
-		}
-		Node[] nodeArray = cluster.getNodes();
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
-	}
-
-	private static Node getRackNode(Cluster cluster, Partitions partitions, Partition partition, int sequence) {
-		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-		Node fallback = null;
-
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
-			Node node = replicas[index].get(partition.partitionId);
-
-			if (node != null && node.isActive()) {
-				if (node.hasRack(partition.namespace, cluster.rackId)) {
-					return node;
-				}
-
-				if (fallback == null) {
-					fallback = node;
-				}
-			}
-			sequence++;
-		}
-
-		if (fallback != null) {
-			return fallback;
-		}
-
-		Node[] nodeArray = cluster.getNodes();
-		throw new AerospikeException.InvalidNode(nodeArray.length, partition);
 	}
 
 	private static BatchNode findBatchNode(List<BatchNode> nodes, Node node) {

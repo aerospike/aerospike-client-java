@@ -374,8 +374,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.WRITE);
-		command.execute(cluster, policy, key, null, false);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
+		command.execute(cluster, policy, false);
 	}
 
 	/**
@@ -397,7 +397,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.WRITE);
+		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.WRITE);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -420,8 +420,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.APPEND);
-		command.execute(cluster, policy, key, null, false);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
+		command.execute(cluster, policy, false);
 	}
 
 	/**
@@ -444,7 +444,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.APPEND);
+		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.APPEND);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -463,8 +463,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.PREPEND);
-		command.execute(cluster, policy, key, null, false);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
+		command.execute(cluster, policy, false);
 	}
 
 	/**
@@ -487,7 +487,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.PREPEND);
+		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.PREPEND);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -510,8 +510,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommand command = new WriteCommand(policy, key, bins, Operation.Type.ADD);
-		command.execute(cluster, policy, key, null, false);
+		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
+		command.execute(cluster, policy, false);
 	}
 
 	/**
@@ -534,7 +534,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncWrite command = new AsyncWrite(listener, policy, key, bins, Operation.Type.ADD);
+		AsyncWrite command = new AsyncWrite(cluster, listener, policy, key, bins, Operation.Type.ADD);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -555,8 +555,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		DeleteCommand command = new DeleteCommand(policy, key);
-		command.execute(cluster, policy, key, null, false);
+		DeleteCommand command = new DeleteCommand(cluster, policy, key);
+		command.execute(cluster, policy, false);
 		return command.existed();
 	}
 
@@ -577,7 +577,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncDelete command = new AsyncDelete(listener, policy, key);
+		AsyncDelete command = new AsyncDelete(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -662,8 +662,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		TouchCommand command = new TouchCommand(policy, key);
-		command.execute(cluster, policy, key, null, false);
+		TouchCommand command = new TouchCommand(cluster, policy, key);
+		command.execute(cluster, policy, false);
 	}
 
 	/**
@@ -683,7 +683,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncTouch command = new AsyncTouch(listener, policy, key);
+		AsyncTouch command = new AsyncTouch(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -704,8 +704,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ExistsCommand command = new ExistsCommand(policy, key);
-		command.execute(cluster, policy, key, null, true);
+		ExistsCommand command = new ExistsCommand(cluster, policy, key);
+		command.execute(cluster, policy, true);
 		return command.exists();
 	}
 
@@ -726,7 +726,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		AsyncExists command = new AsyncExists(listener, policy, key);
+		AsyncExists command = new AsyncExists(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -814,8 +814,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommand command = new ReadCommand(policy, key, null);
-		command.execute(cluster, policy, key, null, true);
+		ReadCommand command = new ReadCommand(cluster, policy, key, null);
+		command.execute(cluster, policy, true);
 		return command.getRecord();
 	}
 
@@ -836,7 +836,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		AsyncRead command = new AsyncRead(listener, policy, key, null, true);
+		AsyncRead command = new AsyncRead(cluster, listener, policy, key, null);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -854,8 +854,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommand command = new ReadCommand(policy, key, binNames);
-		command.execute(cluster, policy, key, null, true);
+		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
+		command.execute(cluster, policy, true);
 		return command.getRecord();
 	}
 
@@ -877,7 +877,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		AsyncRead command = new AsyncRead(listener, policy, key, binNames, true);
+		AsyncRead command = new AsyncRead(cluster, listener, policy, key, binNames);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -894,8 +894,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadHeaderCommand command = new ReadHeaderCommand(policy, key);
-		command.execute(cluster, policy, key, null, true);
+		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
+		command.execute(cluster, policy, true);
 		return command.getRecord();
 	}
 
@@ -916,7 +916,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		AsyncReadHeader command = new AsyncReadHeader(listener, policy, key);
+		AsyncReadHeader command = new AsyncReadHeader(cluster, listener, policy, key);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -952,7 +952,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
 				MultiCommand command = new Batch.ReadListCommand(null, batchNode, policy, records);
-				command.execute(cluster, policy, null, batchNode.node, true);
+				command.execute(cluster, policy, true);
 			}
 		}
 		else {
@@ -967,7 +967,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 			for (BatchNode batchNode : batchNodes) {
 				MultiCommand command = new Batch.ReadListCommand(executor, batchNode, policy, records);
-				executor.addCommand(batchNode.node, command);
+				executor.addCommand(command);
 			}
 			executor.execute(policy.maxConcurrentThreads);
 		}
@@ -1284,8 +1284,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.respondAllOps) {
 			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
-		command.setArgs(policy, args);
-		command.execute(cluster, policy, key, null, false);
+		command.setArgs(cluster, policy, args);
+		command.execute(cluster, policy, !args.hasWrite);
 		return command.getRecord();
 	}
 
@@ -1325,7 +1325,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.respondAllOps) {
 			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
-		command.setArgs(policy, args);
+		command.setArgs(cluster, policy, args);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -1372,10 +1372,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.concurrentNodes) {
 			Executor executor = new Executor(cluster, policy, nodes.length);
 
-			for (Node node : nodes)
-			{
-				ScanCommand command = new ScanCommand(policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
-				executor.addCommand(node, command);
+			for (Node node : nodes) {
+				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
+				executor.addCommand(command);
 				first = false;
 			}
 
@@ -1383,8 +1382,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		else {
 			for (Node node : nodes) {
-				ScanCommand command = new ScanCommand(policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
-				command.execute(cluster, policy, node);
+				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
+				command.execute(cluster, policy);
 				first = false;
 			}
 		}
@@ -1465,8 +1464,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(node, namespace) : 0;
 		long taskId = RandomShift.instance().nextLong();
 
-		ScanCommand command = new ScanCommand(policy, namespace, setName, callback, binNames, taskId, clusterKey, true);
-		command.execute(cluster, policy, node);
+		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, true);
+		command.execute(cluster, policy);
 	}
 
 	//---------------------------------------------------------------
@@ -1603,8 +1602,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		ExecuteCommand command = new ExecuteCommand(policy, key, packageName, functionName, functionArgs);
-		command.execute(cluster, policy, key, null, false);
+		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, functionArgs);
+		command.execute(cluster, policy, false);
 
 		Record record = command.getRecord();
 
@@ -1664,7 +1663,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		AsyncExecute command = new AsyncExecute(listener, policy, key, packageName, functionName, functionArgs);
+		AsyncExecute command = new AsyncExecute(cluster, listener, policy, key, packageName, functionName, functionArgs);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -1708,8 +1707,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		for (Node node : nodes)
 		{
-			ServerCommand command = new ServerCommand(policy, statement);
-			executor.addCommand(node, command);
+			ServerCommand command = new ServerCommand(node, policy, statement);
+			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
 		return new ExecuteTask(cluster, policy, statement);

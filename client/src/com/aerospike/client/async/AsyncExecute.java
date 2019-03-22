@@ -21,6 +21,9 @@ import java.util.Map;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -32,6 +35,7 @@ public final class AsyncExecute extends AsyncRead {
 	private final Value[] args;
 
 	public AsyncExecute(
+		Cluster cluster,
 		ExecuteListener listener,
 		WritePolicy writePolicy,
 		Key key,
@@ -39,12 +43,17 @@ public final class AsyncExecute extends AsyncRead {
 		String functionName,
 		Value[] args
 	) {
-		super(null, writePolicy, key, null, false);
+		super(null, writePolicy, key, false, Partition.write(cluster, writePolicy, key));
 		this.executeListener = listener;
 		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.args = args;
+	}
+
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return partition.getNodeWrite(cluster);
 	}
 
 	@Override
@@ -55,6 +64,12 @@ public final class AsyncExecute extends AsyncRead {
 	@Override
 	protected void handleNotFound(int resultCode) {
     	throw new AerospikeException(resultCode);
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryWrite(timeout);
+		return true;
 	}
 
 	@Override

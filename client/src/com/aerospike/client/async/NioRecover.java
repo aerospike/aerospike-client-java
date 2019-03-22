@@ -45,7 +45,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 	public NioRecover(NioCommand cmd) {
 		AsyncCommand a = cmd.command;
 		this.eventLoop = cmd.eventLoop;
-		this.node = a.node;
+		this.node = cmd.node;
 		this.eventState = cmd.eventState;
 		this.conn = cmd.conn;
 		this.byteBuffer = cmd.byteBuffer;

@@ -22,20 +22,30 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class WriteCommand extends SyncCommand {
 	private final WritePolicy policy;
 	private final Key key;
+	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 
-	public WriteCommand(WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
+	public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
 		this.policy = policy;
 		this.key = key;
+		this.partition = Partition.write(cluster, policy, key);
 		this.bins = bins;
 		this.operation = operation;
+	}
+
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return partition.getNodeWrite(cluster);
 	}
 
 	@Override
@@ -53,5 +63,11 @@ public final class WriteCommand extends SyncCommand {
 	    if (resultCode != 0) {
 	    	throw new AerospikeException(resultCode);
 	    }
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryWrite(timeout);
+		return true;
 	}
 }

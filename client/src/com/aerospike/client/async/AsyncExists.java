@@ -19,6 +19,8 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
@@ -26,12 +28,19 @@ import com.aerospike.client.policy.Policy;
 public final class AsyncExists extends AsyncCommand {
 	private final ExistsListener listener;
 	private final Key key;
+	private final Partition partition;
 	private boolean exists;
 
-	public AsyncExists(ExistsListener listener, Policy policy, Key key) {
-		super(policy, new Partition(key), null, true);
+	public AsyncExists(Cluster cluster, ExistsListener listener, Policy policy, Key key) {
+		super(policy, true, true);
 		this.listener = listener;
 		this.key = key;
+		this.partition = Partition.read(cluster, policy, key);
+	}
+
+	@Override
+	Node getNode(Cluster cluster) {
+		return partition.getNodeRead(cluster);
 	}
 
 	@Override
@@ -56,6 +65,12 @@ public final class AsyncExists extends AsyncCommand {
 				throw new AerospikeException(resultCode);
 			}
 		}
+		return true;
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryRead(timeout);
 		return true;
 	}
 

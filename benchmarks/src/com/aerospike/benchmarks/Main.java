@@ -47,7 +47,8 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
-import com.aerospike.client.policy.ConsistencyLevel;
+import com.aerospike.client.policy.ReadModeAP;
+import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
@@ -104,10 +105,10 @@ public class Main implements Log.Callback {
 
 		Options options = new Options();
 		options.addOption("h", "hosts", true,
-			"List of seed hosts in format:\n" +
+			"List of seed hosts in format: " +
 			"hostname1[:tlsname][:port1],...\n" +
 			"The tlsname is only used when connecting with a secure TLS enabled server. " +
-			"If the port is not specified, the default port is used.\n" +
+			"If the port is not specified, the default port is used. " +
 			"IPv6 addresses must be enclosed in square brackets.\n" +
 			"Default: localhost\n" +
 			"Examples:\n" +
@@ -128,11 +129,6 @@ public class Main implements Log.Callback {
 			"will read and update randomly across the values between startkey and " +
 			"startkey + num_keys.  startkey can be set using '-S' or '-startkey'."
 			);
-
-		// key type has been changed to integer, so this option is no longer relevant.
-		// Leave in (and ignore) so existing benchmark scripts do not break.
-		options.addOption("l", "keylength", true, "Not used anymore since key is an integer.");
-
 		options.addOption("b", "bins", true,
 			"Set the number of Aerospike bins. " +
 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
@@ -172,9 +168,9 @@ public class Main implements Log.Callback {
 			"      form business transactions with 1000 reads, 200 writes with a variation (+/-) of 20%\n\n"
 			);
 		options.addOption("e", "expirationTime", true,
-			"Set expiration time of each record in seconds." +
-			" -1: Never expire, " +
-			"  0: Default to namespace," +
+			"Set expiration time of each record in seconds.\n" +
+			" -1: Never expire\n" +
+			"  0: Default to namespace expiration time\n" +
 			" >0: Actual given expiration time"
 			);
 		options.addOption("g", "throughput", true,
@@ -210,12 +206,16 @@ public class Main implements Log.Callback {
 				"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
 				"Use 'rackId' option to set rack."
 				);
-		options.addOption("consistencyLevel", true,
-				"How replicas should be consulted in a read operation to provide the desired consistency guarantee. " +
+		options.addOption("readModeAP", true,
+				"Read consistency level when in AP mode.\n" +
 				"Values:  one | all.  Default: one"
 				);
+		options.addOption("readModeSC", true,
+				"Read consistency level when in SC (strong consistency) mode.\n" +
+				"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
+				);
 		options.addOption("commitLevel", true,
-				"Desired replica consistency guarantee when committing a transaction on the server. " +
+				"Desired replica consistency guarantee when committing a transaction on the server.\n" +
 				"Values:  all | master.  Default: all"
 				);
 
@@ -662,17 +662,20 @@ public class Main implements Log.Callback {
 			args.readPolicy.replica = Replica.MASTER_PROLES;
 		}
 
-		if (line.hasOption("consistencyLevel")) {
-			String level = line.getOptionValue("consistencyLevel");
+		if (line.hasOption("readModeAP")) {
+			String level = line.getOptionValue("readModeAP").toUpperCase();
+			ReadModeAP mode = ReadModeAP.valueOf(level);
+			args.readPolicy.readModeAP = mode;
+			args.writePolicy.readModeAP = mode;
+			args.batchPolicy.readModeAP = mode;
+		}
 
-			if (level.equals("all")) {
-				args.readPolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;
-				args.writePolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;
-				args.batchPolicy.consistencyLevel = ConsistencyLevel.CONSISTENCY_ALL;
-			}
-			else if (! level.equals("one")) {
-				throw new Exception("Invalid consistencyLevel: " + level);
-			}
+		if (line.hasOption("readModeSC")) {
+			String level = line.getOptionValue("readModeSC").toUpperCase();
+			ReadModeSC mode = ReadModeSC.valueOf(level);
+			args.readPolicy.readModeSC = mode;
+			args.writePolicy.readModeSC = mode;
+			args.batchPolicy.readModeSC = mode;
 		}
 
 		if (line.hasOption("commitLevel")) {
@@ -864,7 +867,8 @@ public class Main implements Log.Callback {
 					);
 
 			System.out.println(
-					"    consistencyLevel: " + args.readPolicy.consistencyLevel
+					"    readModeAP: " + args.readPolicy.readModeAP
+					+ ", readModeSC: " + args.readPolicy.readModeSC
 					+ ", replica: " + args.readPolicy.replica
 					+ ", reportNotFound: " + args.reportNotFound);
 		}

@@ -38,6 +38,7 @@ public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 10;  // 10 MB
 
 	private BufferedInputStream bis;
+	private final Node node;
 	protected final String namespace;
 	private final long clusterKey;
 	private int receiveSize;
@@ -52,33 +53,46 @@ public abstract class MultiCommand extends SyncCommand {
 	private byte state;
 	protected volatile boolean valid = true;
 
-	protected MultiCommand(boolean stopOnNotFound) {
+	protected MultiCommand(Node node, boolean stopOnNotFound) {
+		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
 		this.namespace = null;
 		this.clusterKey = 0;
 		this.first = false;
 	}
 
-	protected MultiCommand(String namespace, long clusterKey, boolean first) {
+	protected MultiCommand(Node node, String namespace, long clusterKey, boolean first) {
+		this.node = node;
 		this.stopOnNotFound = true;
 		this.namespace = namespace;
 		this.clusterKey = clusterKey;
 		this.first = first;
 	}
 
-	public final void execute(Cluster cluster, Policy policy, Node node) {
+	public final void execute(Cluster cluster, Policy policy) {
 		if (clusterKey != 0) {
 			if (! first) {
 				QueryValidate.validate(node, namespace, clusterKey);
 			}
-			super.execute(cluster, policy, null, node, true);
+			super.execute(cluster, policy, true);
 			QueryValidate.validate(node, namespace, clusterKey);
 		}
 		else {
-			super.execute(cluster, policy, null, node, true);
+			super.execute(cluster, policy, true);
 		}
 	}
 
+	@Override
+	protected Node getNode(Cluster cluster) {
+		return node;
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		return true;
+	}
+
+	@Override
 	protected final void parseResult(Connection conn) throws IOException {
 		// Read socket into receive buffer one record at a time.  Do not read entire receive size
 		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest

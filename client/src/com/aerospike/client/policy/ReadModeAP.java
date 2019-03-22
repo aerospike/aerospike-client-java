@@ -17,17 +17,19 @@
 package com.aerospike.client.policy;
 
 /**
+ * Read policy for AP (availability) namespaces.
+ * <p>
  * How duplicates should be consulted in a read operation.
  * Only makes a difference during migrations and only applicable in AP mode.
  */
-public enum ConsistencyLevel {
+public enum ReadModeAP {
 	/**
-	 * Involve master only in the read operation.
+	 * Involve single node in the read operation.
 	 */
-	CONSISTENCY_ONE,
+	ONE,
 
 	/**
 	 * Involve all duplicates in the read operation.
 	 */
-	CONSISTENCY_ALL
+	ALL
 }

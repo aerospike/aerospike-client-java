@@ -48,7 +48,7 @@ public final class NettyRecover implements TimerTask {
 	public NettyRecover(NettyCommand cmd) {
 		AsyncCommand a = cmd.command;
 		this.eventLoop = cmd.eventLoop;
-		this.node = a.node;
+		this.node = cmd.node;
 		this.eventState = cmd.eventState;
 		this.conn = cmd.conn;
 		this.dataBuffer = a.dataBuffer;  // take ownership of dataBuffer.

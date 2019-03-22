@@ -20,6 +20,7 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.InfoListener;
@@ -28,12 +29,14 @@ import com.aerospike.client.policy.Policy;
 
 public final class AsyncInfoCommand extends AsyncCommand {
 	private final InfoListener listener;
+	private final Node node;
 	private final String[] commands;
 	private Map<String,String> map;
 
 	public AsyncInfoCommand(InfoListener listener, InfoPolicy policy, Node node, String... commands) {
-		super(createPolicy(policy), node, false, true);
+		super(createPolicy(policy), false, true);
 		this.listener = listener;
+		this.node = node;
 		this.commands = commands;
 	}
 
@@ -47,6 +50,11 @@ public final class AsyncInfoCommand extends AsyncCommand {
 			p.setTimeout(policy.timeout);
 		}
 		return p;
+	}
+
+	@Override
+	Node getNode(Cluster cluster) {
+		return node;
 	}
 
 	@Override
@@ -75,6 +83,11 @@ public final class AsyncInfoCommand extends AsyncCommand {
 	protected final boolean parseResult() {
 		Info info = new Info(dataBuffer, receiveSize);
 		map = info.parseMultiResponse();
+		return true;
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
 		return true;
 	}
 

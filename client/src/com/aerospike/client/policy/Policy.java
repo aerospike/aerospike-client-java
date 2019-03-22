@@ -27,16 +27,22 @@ public class Policy {
 	public Priority priority = Priority.DEFAULT;
 
 	/**
-	 * How replicas should be consulted in a read operation to provide the desired
-	 * consistency guarantee.
+	 * Read policy for AP (availability) namespaces.
 	 * <p>
-	 * Default: {@link ConsistencyLevel#CONSISTENCY_ONE}
+	 * Default: {@link ReadModeAP#ONE}
 	 */
-	public ConsistencyLevel consistencyLevel = ConsistencyLevel.CONSISTENCY_ONE;
+	public ReadModeAP readModeAP = ReadModeAP.ONE;
+
+	/**
+	 * Read policy for SC (strong consistency) namespaces.
+	 * <p>
+	 * Default: {@link ReadModeSC#SESSION}
+	 */
+	public ReadModeSC readModeSC = ReadModeSC.SESSION;
 
 	/**
 	 * Replica algorithm used to determine the target node for a single record command.
-	 * Batch, scan and query are not affected by replica algorithms.
+	 * Scan and query are not affected by replica algorithms.
 	 * <p>
 	 * Default: {@link Replica#SEQUENCE}
 	 */
@@ -162,18 +168,12 @@ public class Policy {
 	public boolean sendKey;
 
 	/**
-	 * Force reads to be linearized for server namespaces that support strong consistency mode.
-	 * <p>
-	 * Default: false
-	 */
-	public boolean linearizeRead;
-
-	/**
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
 		this.priority = other.priority;
-		this.consistencyLevel = other.consistencyLevel;
+		this.readModeAP = other.readModeAP;
+		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
 		this.socketTimeout = other.socketTimeout;
 		this.totalTimeout = other.totalTimeout;
@@ -181,7 +181,6 @@ public class Policy {
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
 		this.sendKey = other.sendKey;
-		this.linearizeRead = other.linearizeRead;
 	}
 
 	/**

@@ -18,6 +18,8 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
@@ -26,12 +28,19 @@ public final class AsyncTouch extends AsyncCommand {
 	private final WriteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;
+	private final Partition partition;
 
-	public AsyncTouch(WriteListener listener, WritePolicy writePolicy, Key key) {
-		super(writePolicy, new Partition(key), null, false);
+	public AsyncTouch(Cluster cluster, WriteListener listener, WritePolicy writePolicy, Key key) {
+		super(writePolicy, false, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
+		this.partition = Partition.write(cluster, writePolicy, key);
+	}
+
+	@Override
+	Node getNode(Cluster cluster) {
+		return partition.getNodeWrite(cluster);
 	}
 
 	@Override
@@ -48,6 +57,12 @@ public final class AsyncTouch extends AsyncCommand {
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}
+		return true;
+	}
+
+	@Override
+	boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryWrite(timeout);
 		return true;
 	}
 

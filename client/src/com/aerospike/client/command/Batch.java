@@ -26,6 +26,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
 
 public final class Batch {
@@ -33,17 +34,11 @@ public final class Batch {
 	// ReadList
 	//-------------------------------------------------------
 
-	public static final class ReadListCommand extends MultiCommand {
-		private final Executor parent;
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	public static final class ReadListCommand extends BatchCommand {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
-			super(false);
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, policy);
 			this.records = records;
 		}
 
@@ -67,28 +62,13 @@ public final class Batch {
 		}
 
 		@Override
-		protected boolean shouldRetryBatch() {
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new ReadListCommand(parent, batchNode, policy, records);
 		}
 
 		@Override
-		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
-			// Retry requires keys for this node to be split among other nodes.
-			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			// Run batch requests sequentially in same thread.
-			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new ReadListCommand(parent, batchNode, policy, records);
-				command.sequence = sequence;
-				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
-			}
-			return true;
+		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+			return BatchNode.generateList(cluster, policy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -96,10 +76,7 @@ public final class Batch {
 	// GetArray
 	//-------------------------------------------------------
 
-	public static final class GetArrayCommand extends MultiCommand {
-		private final Executor parent;
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	public static final class GetArrayCommand extends BatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Record[] records;
@@ -114,10 +91,7 @@ public final class Batch {
 			Record[] records,
 			int readAttr
 		) {
-			super(false);
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, policy);
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
@@ -142,28 +116,13 @@ public final class Batch {
 		}
 
 		@Override
-		protected boolean shouldRetryBatch() {
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
 		}
 
 		@Override
-		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
-			// Retry requires keys for this node to be split among other nodes.
-			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys, sequence, batch);
-
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
-				return false;
-			}
-
-			// Run batch requests sequentially in same thread.
-			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
-				command.sequence = sequence;
-				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
-			}
-			return true;
+		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+			return BatchNode.generateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -171,10 +130,7 @@ public final class Batch {
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public static final class ExistsArrayCommand extends MultiCommand {
-		private final Executor parent;
-		private final BatchNode batch;
-		private final BatchPolicy policy;
+	public static final class ExistsArrayCommand extends BatchCommand {
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
@@ -185,10 +141,7 @@ public final class Batch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(false);
-			this.parent = parent;
-			this.batch = batch;
-			this.policy = policy;
+			super(parent, batch, policy);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
@@ -213,15 +166,61 @@ public final class Batch {
 		}
 
 		@Override
-		protected boolean shouldRetryBatch() {
-			return (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) && (parent == null || ! parent.isDone());
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
 		}
 
 		@Override
-		protected boolean retryBatch(Cluster cluster, int socketTimeout, int totalTimeout, long deadline, int iteration, int commandSentCounter) {
+		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+			return BatchNode.generateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+		}
+	}
+
+	//-------------------------------------------------------
+	// Batch Base Command
+	//-------------------------------------------------------
+
+	private static abstract class BatchCommand extends MultiCommand {
+		final Executor parent;
+		final BatchNode batch;
+		final BatchPolicy policy;
+		int sequenceAP;
+		int sequenceSC;
+
+		public BatchCommand(Executor parent, BatchNode batch, BatchPolicy policy) {
+			super(batch.node, false);
+			this.parent = parent;
+			this.batch = batch;
+			this.policy = policy;
+		}
+
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			if (! ((policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) &&
+				   (parent == null || ! parent.isDone()))) {
+				// Perform regular retry to same node.
+				return true;
+			}
+			sequenceAP++;
+
+			if (! timeout || policy.readModeSC != ReadModeSC.LINEARIZE) {
+				sequenceSC++;
+			}
+			return false;
+		}
+
+		@Override
+		protected boolean retryBatch(
+			Cluster cluster,
+			int socketTimeout,
+			int totalTimeout,
+			long deadline,
+			int iteration,
+			int commandSentCounter
+		) {
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys, sequence, batch);
+			List<BatchNode> batchNodes = generateBatchNodes(cluster);
 
 			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
 				// Batch node is the same.  Go through normal retry.
@@ -230,11 +229,15 @@ public final class Batch {
 
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
-				command.sequence = sequence;
-				command.execute(cluster, policy, null, batchNode.node, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+				BatchCommand command = createCommand(batchNode);
+				command.sequenceAP = sequenceAP;
+				command.sequenceSC = sequenceSC;
+				command.execute(cluster, policy, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
 			}
 			return true;
 		}
+
+		abstract BatchCommand createCommand(BatchNode batchNode);
+		abstract List<BatchNode> generateBatchNodes(Cluster cluster);
 	}
 }

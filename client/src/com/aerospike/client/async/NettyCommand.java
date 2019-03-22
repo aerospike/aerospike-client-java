@@ -60,6 +60,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final Cluster cluster;
 	final AsyncCommand command;
 	final EventState eventState;
+	Node node;
 	NettyConnection conn;
 	HashedWheelTimeout timeoutTask;
 	long totalDeadline;
@@ -248,7 +249,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		iteration++;
 
 		try {
-			Node node = command.getNode(cluster);
+			node = command.getNode(cluster);
 			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
 
 			if (conn != null) {
@@ -319,7 +320,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.initBuffer();
 
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster, command.node.getSessionToken());
+		command.dataOffset = admin.setAuthenticate(cluster, node.getSessionToken());
 		writeByteBuffer();
 	}
 
@@ -444,7 +445,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// Authentication failed. Session token probably expired.
 			// Signal tend thread to perform node login, so future
 			// transactions do not fail.
-			command.node.signalLogin();
+			node.signalLogin();
 
 			// This is a rare event because the client tracks session
 			// expiration and will relogin before session expiration.
@@ -649,8 +650,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 		recoverConnection();
 
 		// Attempt retry.
-		command.shiftSequenceOnRead();
-
 		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
 
 		if (hasTotalTimeout) {
@@ -668,11 +667,14 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		long deadline = currentTime + timeout;
 
-		if (command.retryBatch(this, deadline)) {
-			// Batch retried in separate commands.  Complete this command.
-			timeoutTask = null;
-			close();
-			return;
+		if (! command.prepareRetry(true)) {
+			// Batch may be retried in separate commands.
+			if (command.retryBatch(this, deadline)) {
+				// Batch retried in separate commands.  Complete this command.
+				timeoutTask = null;
+				close();
+				return;
+			}
 		}
 
 		eventLoop.timer.restoreTimeout(timeoutTask, deadline);
@@ -732,8 +734,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		closeConnection();
-		command.sequence++;
-		retry(ae, true);
+		retry(ae, false, true);
 	}
 
 	protected final void onServerTimeout() {
@@ -742,13 +743,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		putConnection();
-		command.shiftSequenceOnRead();
 
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
-		retry(ae, false);
+		retry(ae, true, false);
 	}
 
-	private final void retry(AerospikeException ae, boolean queueCommand) {
+	private final void retry(AerospikeException ae, boolean isTimeout, boolean queueCommand) {
 		// Check maxRetries.
 		if (iteration > command.policy.maxRetries) {
 			// Fail command.
@@ -807,21 +807,24 @@ public final class NettyCommand implements Runnable, TimerTask {
 					if (state == AsyncCommand.COMPLETE) {
 						return;
 					}
-					retry(d);
+					retry(isTimeout, d);
 				}
 			});
 		}
 		else {
 			// Retry command immediately.
-			retry(deadline);
+			retry(isTimeout, deadline);
 		}
 	}
 
-	private final void retry(long deadline) {
-		if (command.retryBatch(this, deadline)) {
-			// Batch retried in separate commands.  Complete this command.
-			close();
-			return;
+	private final void retry(boolean isTimeout, long deadline) {
+		if (! command.prepareRetry(isTimeout)) {
+			// Batch may be retried in separate commands.
+			if (command.retryBatch(this, deadline)) {
+				// Batch retried in separate commands.  Complete this command.
+				close();
+				return;
+			}
 		}
 
 		if (usingSocketTimeout) {
@@ -849,7 +852,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void notifyFailure(AerospikeException ae) {
 		try {
-			ae.setNode(command.node);
+			ae.setNode(node);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isRead, commandSentCounter);
 
@@ -873,7 +876,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
 		handler.command = null;
 		conn.updateLastUsed();
-		command.node.putAsyncConnection(conn, eventState.index);
+		node.putAsyncConnection(conn, eventState.index);
 	}
 
 	private final void fail() {
@@ -883,11 +886,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
-			command.node.closeAsyncConnection(conn, eventState.index);
+			node.closeAsyncConnection(conn, eventState.index);
 			conn = null;
 		}
 		else if (connectInProgress) {
-			command.node.decrAsyncConnection(eventState.index);
+			node.decrAsyncConnection(eventState.index);
 			connectInProgress = false;
 		}
 	}
@@ -935,7 +938,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
 
-			String tlsName = command.command.node.getHost().tlsName;
+			String tlsName = command.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
 

@@ -21,17 +21,17 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 public final class Partitions {
 	public final AtomicReferenceArray<Node>[] replicas;
 	final int[] regimes;
-	public final boolean cpMode;
+	public final boolean scMode;
 
 	@SuppressWarnings("unchecked")
-	public Partitions(int partitionCount, int replicaCount, boolean cpMode) {
+	public Partitions(int partitionCount, int replicaCount, boolean scMode) {
 		this.replicas = new AtomicReferenceArray[replicaCount];
 
 		for (int i = 0; i < replicaCount; i++) {
 			this.replicas[i] = new AtomicReferenceArray<Node>(partitionCount);
 		}
 		this.regimes = new int[partitionCount];
-		this.cpMode = cpMode;
+		this.scMode = scMode;
 	}
 
 	/**
@@ -61,6 +61,6 @@ public final class Partitions {
 			}
 		}
 		this.regimes = other.regimes;
-		this.cpMode = other.cpMode;
+		this.scMode = other.scMode;
 	}
 }

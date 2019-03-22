@@ -21,6 +21,7 @@ import java.io.IOException;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
@@ -30,8 +31,8 @@ public final class QueryRecordCommand extends MultiCommand {
 	private final Statement statement;
 	private final RecordSet recordSet;
 
-	public QueryRecordCommand(QueryPolicy policy, Statement statement, RecordSet recordSet, long clusterKey, boolean first) {
-		super(statement.namespace, clusterKey, first);
+	public QueryRecordCommand(Node node, QueryPolicy policy, Statement statement, RecordSet recordSet, long clusterKey, boolean first) {
+		super(node, statement.namespace, clusterKey, first);
 		this.policy = policy;
 		this.statement = statement;
 		this.recordSet = recordSet;

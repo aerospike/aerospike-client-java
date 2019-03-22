@@ -20,6 +20,7 @@ import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.WritePolicy;
@@ -28,8 +29,8 @@ public final class ServerCommand extends MultiCommand {
 	private final WritePolicy writePolicy;
 	private final Statement statement;
 
-	public ServerCommand(WritePolicy policy, Statement statement) {
-		super(true);
+	public ServerCommand(Node node, WritePolicy policy, Statement statement) {
+		super(node, true);
 		this.writePolicy = policy;
 		this.statement = statement;
 	}

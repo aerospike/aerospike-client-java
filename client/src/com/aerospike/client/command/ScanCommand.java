@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.ScanPolicy;
 
 public final class ScanCommand extends MultiCommand {
@@ -32,6 +33,7 @@ public final class ScanCommand extends MultiCommand {
 	private final long taskId;
 
 	public ScanCommand(
+		Node node,
 		ScanPolicy policy,
 		String namespace,
 		String setName,
@@ -41,7 +43,7 @@ public final class ScanCommand extends MultiCommand {
 		long clusterKey,
 		boolean first
 	) {
-		super(namespace, clusterKey, first);
+		super(node, namespace, clusterKey, first);
 		this.policy = policy;
 		this.setName = setName;
 		this.callback = callback;

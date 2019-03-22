@@ -45,11 +45,11 @@ public final class BatchExecutor {
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
 					MultiCommand command = new Batch.GetArrayCommand(null, batchNode, policy, keys, binNames, records, readAttr);
-					command.execute(cluster, policy, null, batchNode.node, true);
+					command.execute(cluster, policy, true);
 				}
 				else {
 					MultiCommand command = new Batch.ExistsArrayCommand(null, batchNode, policy, keys, existsArray);
-					command.execute(cluster, policy, null, batchNode.node, true);
+					command.execute(cluster, policy, true);
 				}
 			}
 		}
@@ -67,11 +67,11 @@ public final class BatchExecutor {
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
 					MultiCommand command = new Batch.GetArrayCommand(executor, batchNode, policy, keys, binNames, records, readAttr);
-					executor.addCommand(batchNode.node, command);
+					executor.addCommand(command);
 				}
 				else {
 					MultiCommand command = new Batch.ExistsArrayCommand(executor, batchNode, policy, keys, existsArray);
-					executor.addCommand(batchNode.node, command);
+					executor.addCommand(command);
 				}
 			}
 			executor.execute(policy.maxConcurrentThreads);

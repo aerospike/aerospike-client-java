@@ -34,6 +34,7 @@ import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
 
 public final class AsyncBatch {
@@ -77,7 +78,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ReadListCommand extends BaseCommand {
+	private static final class ReadListCommand extends AsyncBatchCommand {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(
@@ -110,7 +111,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new ReadListCommand(parent, batchNode, batchPolicy, records);
 		}
@@ -118,7 +119,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -160,7 +161,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ReadSequenceCommand extends BaseCommand {
+	private static final class ReadSequenceCommand extends AsyncBatchCommand {
 		private final BatchSequenceListener listener;
 		private final List<BatchRead> records;
 
@@ -197,7 +198,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new ReadSequenceCommand(parent, batchNode, batchPolicy, listener, records);
 		}
@@ -205,7 +206,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -213,7 +214,7 @@ public final class AsyncBatch {
 	// GetArray
 	//-------------------------------------------------------
 
-	public static final class GetArrayExecutor extends BaseExecutor {
+	public static final class GetArrayExecutor extends AsyncBatchExecutor {
 		private final RecordArrayListener listener;
 		private final Record[] recordArray;
 
@@ -250,7 +251,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class GetArrayCommand extends BaseCommand {
+	private static final class GetArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Record[] records;
@@ -290,7 +291,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new GetArrayCommand(parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
 		}
@@ -298,7 +299,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -306,7 +307,7 @@ public final class AsyncBatch {
 	// GetSequence
 	//-------------------------------------------------------
 
-	public static final class GetSequenceExecutor extends BaseExecutor {
+	public static final class GetSequenceExecutor extends AsyncBatchExecutor {
 		private final RecordSequenceListener listener;
 
 		public GetSequenceExecutor(
@@ -343,7 +344,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class GetSequenceCommand extends BaseCommand {
+	private static final class GetSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final RecordSequenceListener listener;
@@ -389,7 +390,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new GetSequenceCommand(parent, batchNode, batchPolicy, keys, binNames, listener, readAttr);
 		}
@@ -397,7 +398,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -405,7 +406,7 @@ public final class AsyncBatch {
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public static final class ExistsArrayExecutor extends BaseExecutor {
+	public static final class ExistsArrayExecutor extends AsyncBatchExecutor {
 		private final ExistsArrayListener listener;
 		private final boolean[] existsArray;
 
@@ -440,7 +441,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ExistsArrayCommand extends BaseCommand {
+	private static final class ExistsArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
@@ -476,7 +477,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new ExistsArrayCommand(parent, batchNode, batchPolicy, keys, existsArray);
 		}
@@ -484,7 +485,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -492,7 +493,7 @@ public final class AsyncBatch {
 	// ExistsSequence
 	//-------------------------------------------------------
 
-	public static final class ExistsSequenceExecutor extends BaseExecutor {
+	public static final class ExistsSequenceExecutor extends AsyncBatchExecutor {
 		private final ExistsSequenceListener listener;
 
 		public ExistsSequenceExecutor(
@@ -525,7 +526,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class ExistsSequenceCommand extends BaseCommand {
+	private static final class ExistsSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
 
@@ -563,7 +564,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected AsyncMultiCommand createCommand(BatchNode batchNode)
+		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
 			return new ExistsSequenceCommand(parent, batchNode, batchPolicy, keys, listener);
 		}
@@ -571,7 +572,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequence, batch);
+			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -579,12 +580,12 @@ public final class AsyncBatch {
 	// Batch Base Executor
 	//-------------------------------------------------------
 
-	private static abstract class BaseExecutor extends AsyncMultiExecutor {
+	private static abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
 		protected final Key[] keys;
 		protected final List<BatchNode> batchNodes;
 		protected final int taskSize;
 
-		public BaseExecutor(EventLoop eventLoop, Cluster cluster, BatchPolicy policy, Key[] keys) {
+		public AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, BatchPolicy policy, Key[] keys) {
 			super(eventLoop, cluster);
 			this.keys = keys;
 			this.batchNodes = BatchNode.generateList(cluster, policy, keys);
@@ -596,12 +597,14 @@ public final class AsyncBatch {
 	// Batch Base Command
 	//-------------------------------------------------------
 
-	private static abstract class BaseCommand extends AsyncMultiCommand
+	private static abstract class AsyncBatchCommand extends AsyncMultiCommand
 	{
-		protected final BatchNode batch;
-		protected final BatchPolicy batchPolicy;
+		final BatchNode batch;
+		final BatchPolicy batchPolicy;
+		int sequenceAP;
+		int sequenceSC;
 
-		public BaseCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy)
+		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy)
 		{
 			super(parent, batch.node, batchPolicy, false);
 			this.batch = batch;
@@ -609,11 +612,21 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected boolean retryBatch(Runnable other, long deadline) {
+		protected boolean prepareRetry(boolean timeout) {
 			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
-				return false;
+				// Perform regular retry to same node.
+				return true;
 			}
+			sequenceAP++;
 
+			if (! timeout || policy.readModeSC != ReadModeSC.LINEARIZE) {
+				sequenceSC++;
+			}
+			return false;
+		}
+
+		@Override
+		protected boolean retryBatch(Runnable other, long deadline) {
 			// Retry requires keys for this node to be split among other nodes.
 			// This can cause an exponential number of commands.
 			List<BatchNode> batchNodes = generateBatchNodes();
@@ -627,15 +640,16 @@ public final class AsyncBatch {
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
-				AsyncMultiCommand cmd = createCommand(batchNode);
-				cmd.sequence = sequence;
+				AsyncBatchCommand cmd = createCommand(batchNode);
+				cmd.sequenceAP = sequenceAP;
+				cmd.sequenceSC = sequenceSC;
 				cmds[count++] = cmd;
 			}
 			parent.executeBatchRetry(cmds, this, other, deadline);
 			return true;
 		}
 
-		abstract AsyncMultiCommand createCommand(BatchNode batchNode);
+		abstract AsyncBatchCommand createCommand(BatchNode batchNode);
 		abstract List<BatchNode> generateBatchNodes();
 	}
 }

@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 public final class Executor {
@@ -47,8 +46,8 @@ public final class Executor {
 		completedCount = new AtomicInteger();
 	}
 
-	public void addCommand(Node node, MultiCommand command) {
-		threads.add(new ExecutorThread(node, command));
+	public void addCommand(MultiCommand command) {
+		threads.add(new ExecutorThread(command));
 	}
 
 	public void execute(int maxConcurrent) throws AerospikeException {
@@ -125,18 +124,16 @@ public final class Executor {
 	}
 
     private final class ExecutorThread implements Runnable {
-		private final Node node;
 		private final MultiCommand command;
 
-		public ExecutorThread(Node node, MultiCommand command) {
-			this.node = node;
+		public ExecutorThread(MultiCommand command) {
 			this.command = command;
 		}
 
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy, node);
+					command.execute(cluster, policy);
 				}
 				threadCompleted();
 			}

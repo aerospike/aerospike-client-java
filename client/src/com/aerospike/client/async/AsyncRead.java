@@ -23,6 +23,8 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -33,13 +35,28 @@ public class AsyncRead extends AsyncCommand {
 	private final RecordListener listener;
 	protected final Key key;
 	private final String[] binNames;
+	protected Partition partition;
 	protected Record record;
 
-	public AsyncRead(RecordListener listener, Policy policy, Key key, String[] binNames, boolean isRead) {
-		super(policy, new Partition(key), null, isRead);
+	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, String[] binNames) {
+		super(policy, true, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
+		this.partition = Partition.read(cluster, policy, key);
+	}
+
+	public AsyncRead(RecordListener listener, Policy policy, Key key, boolean isRead, Partition partition) {
+		super(policy, isRead, true);
+		this.listener = listener;
+		this.key = key;
+		this.binNames = null;
+		this.partition = partition;
+	}
+
+	@Override
+	Node getNode(Cluster cluster) {
+		return partition.getNodeRead(cluster);
 	}
 
 	@Override
@@ -76,6 +93,12 @@ public class AsyncRead extends AsyncCommand {
         	}
         }
         return true;
+	}
+
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryRead(timeout);
+		return true;
 	}
 
 	protected void handleNotFound(int resultCode) {

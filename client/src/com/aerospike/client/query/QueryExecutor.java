@@ -72,8 +72,8 @@ public abstract class QueryExecutor {
 
 		// Initialize threads.
 		for (int i = 0; i < nodes.length; i++) {
-			MultiCommand command = createCommand(clusterKey, first);
-			threads[i] = new QueryThread(nodes[i], command);
+			MultiCommand command = createCommand(nodes[i], clusterKey, first);
+			threads[i] = new QueryThread(command);
 			first = false;
 		}
 	}
@@ -132,18 +132,16 @@ public abstract class QueryExecutor {
 	}
 
 	private final class QueryThread implements Runnable {
-		private final Node node;
 		private final MultiCommand command;
 
-		public QueryThread(Node node, MultiCommand command) {
-			this.node = node;
+		public QueryThread(MultiCommand command) {
 			this.command = command;
 		}
 
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy, node);
+					command.execute(cluster, policy);
 				}
 				threadCompleted();
 			}
@@ -161,7 +159,7 @@ public abstract class QueryExecutor {
 		}
 	}
 
-	protected abstract MultiCommand createCommand(long clusterKey, boolean first);
+	protected abstract MultiCommand createCommand(Node node, long clusterKey, boolean first);
 	protected abstract void sendCancel();
 	protected abstract void sendCompleted();
 }
