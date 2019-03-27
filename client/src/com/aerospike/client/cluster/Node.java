@@ -713,7 +713,8 @@ public class Node implements Closeable {
 
 		if (pool.total >= pool.capacity) {
 			throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
-					"Node " + this + " event loop " + index + " max connections " + pool.capacity + " would be exceeded.");
+					"Node " + this + " event loop " + index + " of " + cluster.eventLoops.getSize() +
+					" max connections " + pool.capacity + " would be exceeded.");
 		}
 		pool.total++;
 		return null;
