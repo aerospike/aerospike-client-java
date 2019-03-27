@@ -27,7 +27,6 @@ public class Console implements Log.Callback {
 	private static final SimpleDateFormat Formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
 
 	public Console() {
-		Log.setLevel(Level.INFO);
 		Log.setCallback(this);
 	}
 
