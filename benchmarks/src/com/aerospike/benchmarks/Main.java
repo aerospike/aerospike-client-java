@@ -289,6 +289,7 @@ public class Main implements Log.Callback {
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
+		options.addOption("sendKey", false, "Send key to server");
 
 		// parse the command line arguments
 		CommandLineParser parser = new PosixParser();
@@ -831,6 +832,10 @@ public class Main implements Log.Callback {
 				udfValues[index++] = Value.get(value);
 			}
 			args.udfValues = udfValues;
+		}
+
+		if (line.hasOption("sendKey")) {
+			args.writePolicy.sendKey = true;
 		}
 
 		System.out.println("Benchmark: " + this.hosts[0]
