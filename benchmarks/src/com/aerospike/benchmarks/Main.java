@@ -269,7 +269,7 @@ public class Main implements Log.Callback {
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 		options.addOption("tp", "tlsProtocols", true,
 				"Allow TLS protocols\n" +
-				"Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
+				"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
 				"Default: TLSv1.2"
 				);
 		options.addOption("tlsCiphers", "tlsCipherSuite", true,

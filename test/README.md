@@ -22,7 +22,7 @@ Usage:
                           Default: null (default cipher list provided by JVM)
     -tp,--tlsProtocols <arg>
                           Allow TLS protocols
-                          Values:  SSLv3,TLSv1,TLSv1.1,TLSv1.2 separated by comma
+                          Values:  TLSv1.1,TLSv1.2 separated by comma
                           Default: TLSv1.2
     -tr,--tlsRevoke <arg> 
                           Revoke certificates identified by their serial number
