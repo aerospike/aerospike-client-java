@@ -577,7 +577,7 @@ public final class Info {
 			offset = 0;
 		}
 		catch (IOException ioe) {
-			throw new AerospikeException(ioe);
+			throw new AerospikeException.Connection(ioe);
 		}
 	}
 

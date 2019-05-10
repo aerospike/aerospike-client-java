@@ -619,8 +619,11 @@ public class Node implements Closeable {
 						closeConnection(conn);
 						throw ae;
 					}
+					catch (IOException ioe) {
+						closeConnection(conn);
+						throw new AerospikeException.Connection(ioe);
+					}
 					catch (Exception e) {
-						// Socket not authenticated.  Do not put back into pool.
 						closeConnection(conn);
 						throw new AerospikeException(e);
 					}

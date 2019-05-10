@@ -853,6 +853,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private final void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setNode(node);
+			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isRead, commandSentCounter);
 

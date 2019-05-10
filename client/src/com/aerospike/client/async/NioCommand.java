@@ -255,7 +255,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 		catch (IOException ioe) {
 			eventState.errors++;
-			onNetworkError(new AerospikeException(ioe), true);
+			onNetworkError(new AerospikeException.Connection(ioe), true);
 		}
 		catch (Exception e) {
 			// Fail without retry on unknown errors.
@@ -294,7 +294,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
         	}
         }
         catch (IOException ioe) {
-        	onNetworkError(new AerospikeException(ioe), false);
+        	onNetworkError(new AerospikeException.Connection(ioe), false);
         }
         catch (Exception e) {
 			onApplicationError(new AerospikeException(e));
@@ -838,6 +838,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	private final void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setNode(node);
+			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isRead, commandSentCounter);
 

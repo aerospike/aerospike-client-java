@@ -27,6 +27,7 @@ public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
 	protected Node node;
+	protected Policy policy;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
 	protected int iteration = -1;
 	protected boolean inDoubt;
@@ -66,7 +67,7 @@ public class AerospikeException extends RuntimeException {
 
 	@Override
 	public String getMessage() {
-		StringBuilder sb = new StringBuilder();
+		StringBuilder sb = new StringBuilder(512);
 		String message = super.getMessage();
 
 		sb.append("Error ");
@@ -75,6 +76,15 @@ public class AerospikeException extends RuntimeException {
 		if (iteration >= 0) {
 			sb.append(',');
 			sb.append(iteration);
+		}
+
+		if (policy != null) {
+			sb.append(',');
+			sb.append(policy.socketTimeout);
+			sb.append(',');
+			sb.append(policy.totalTimeout);
+			sb.append(',');
+			sb.append(policy.maxRetries);
 		}
 
 		if (inDoubt) {
@@ -116,6 +126,20 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public final void setNode(Node node) {
 		this.node = node;
+	}
+
+	/**
+	 * Get transaction policy.  Will be null for non-transaction exceptions.
+	 */
+	public final Policy getPolicy() {
+		return policy;
+	}
+
+	/**
+	 * Set transaction policy.
+	 */
+	public final void setPolicy(Policy policy) {
+		this.policy = policy;
 	}
 
 	/**
@@ -206,9 +230,32 @@ public class AerospikeException extends RuntimeException {
 			if (iteration == -1) {
 				return "Client timeout: " + timeout;
 			}
-			String type = client ? "Client" : "Server";
-			return type + " timeout: socket=" + socketTimeout + " total=" + timeout + " iteration=" + iteration +
-				" node=" + node + " inDoubt=" + inDoubt;
+
+			StringBuilder sb = new StringBuilder(512);
+
+			if (client) {
+				sb.append("Client");
+			}
+			else {
+				sb.append("Server");
+			}
+			sb.append(" timeout:");
+			sb.append(" iteration=");
+			sb.append(iteration);
+			sb.append(" socket=");
+			sb.append(socketTimeout);
+			sb.append(" total=");
+			sb.append(timeout);
+
+			if (policy != null) {
+				sb.append(" maxRetries=");
+				sb.append(policy.maxRetries);
+			}
+			sb.append(" node=");
+			sb.append(node);
+			sb.append(" inDoubt=");
+			sb.append(inDoubt);
+			return sb.toString();
 		}
 	}
 
@@ -246,10 +293,6 @@ public class AerospikeException extends RuntimeException {
 
 		public Connection(Exception e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, e);
-		}
-
-		public Connection(int resultCode, String message) {
-			super(resultCode, message);
 		}
 	}
 

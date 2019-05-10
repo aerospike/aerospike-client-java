@@ -72,6 +72,7 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				if (cluster.isActive()) {
 					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+					ae.setPolicy(policy);
 					ae.setIteration(iteration);
 					ae.setInDoubt(isRead, commandSentCounter);
 					throw ae;
@@ -153,7 +154,7 @@ public abstract class SyncCommand extends Command {
 					// IO errors are considered temporary anomalies.  Retry.
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
-					exception = new AerospikeException(ioe);
+					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 				}
 			}
@@ -170,6 +171,7 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
 				ae.setNode(node);
+				ae.setPolicy(policy);
 				ae.setIteration(iteration);
 				ae.setInDoubt(isRead, commandSentCounter);
 
@@ -228,6 +230,7 @@ public abstract class SyncCommand extends Command {
 
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
 		exception.setNode(node);
+		exception.setPolicy(policy);
 		exception.setIteration(iteration);
 		exception.setInDoubt(isRead, commandSentCounter);
 
