@@ -725,7 +725,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
 		closeConnection();
-		retry(ae, false, queueCommand);
+		retry(ae, queueCommand);
 	}
 
 	protected final void onServerTimeout() {
@@ -733,10 +733,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		node.putAsyncConnection(conn, eventLoop.index);
 
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
-		retry(ae, true, false);
+		retry(ae, false);
 	}
 
-	private final void retry(AerospikeException ae, boolean isTimeout, boolean queueCommand) {
+	private final void retry(AerospikeException ae, boolean queueCommand) {
 		// Check maxRetries.
 		if (iteration > command.policy.maxRetries) {
 			// Fail command.
@@ -795,18 +795,18 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 					if (state == AsyncCommand.COMPLETE) {
 						return;
 					}
-					retry(isTimeout, d);
+					retry(ae, d);
 				}
 			});
 		}
 		else {
 			// Retry command immediately.
-			retry(isTimeout, deadline);
+			retry(ae, deadline);
 		}
 	}
 
-	private final void retry(boolean isTimeout, long deadline) {
-		if (! command.prepareRetry(isTimeout)) {
+	private final void retry(AerospikeException ae, long deadline) {
+		if (! command.prepareRetry(ae.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 			// Batch may be retried in separate commands.
 			if (command.retryBatch(this, deadline)) {
 				// Batch retried in separate commands.  Complete this command.

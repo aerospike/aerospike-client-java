@@ -19,6 +19,7 @@ package com.aerospike.client.cluster;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.net.SocketTimeoutException;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -605,6 +606,11 @@ public class Node implements Closeable {
 							throw new AerospikeException("Authentication failed");
 						}
 					}
+					catch (AerospikeException ae) {
+						// Socket not authenticated.  Do not put back into pool.
+						closeConnection(conn);
+						throw ae;
+					}
 					catch (Connection.ReadTimeout crt) {
 						if (timeoutDelay > 0) {
 							cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt));
@@ -614,18 +620,20 @@ public class Node implements Closeable {
 						}
 						throw crt;
 					}
-					catch (AerospikeException ae) {
-						// Socket not authenticated.  Do not put back into pool.
+					catch (RuntimeException re) {
 						closeConnection(conn);
-						throw ae;
+						throw re;
+					}
+					catch (SocketTimeoutException ste) {
+						closeConnection(conn);
+						// This is really a socket write timeout, but the calling
+						// method's catch handler just identifies error as a client
+						// timeout, which is what we need.
+						throw new Connection.ReadTimeout(null, 0, 0, (byte)0, true);
 					}
 					catch (IOException ioe) {
 						closeConnection(conn);
 						throw new AerospikeException.Connection(ioe);
-					}
-					catch (Exception e) {
-						closeConnection(conn);
-						throw new AerospikeException(e);
 					}
 				}
 				return conn;
@@ -653,7 +661,7 @@ public class Node implements Closeable {
 				pool = connectionPools[queueIndex];
 			}
 		}
-		throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
+		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
 	}
 
@@ -715,7 +723,7 @@ public class Node implements Closeable {
 		}
 
 		if (pool.total >= pool.capacity) {
-			throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
+			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Node " + this + " event loop " + index + " of " + cluster.eventLoops.getSize() +
 					" max connections " + pool.capacity + " would be exceeded.");
 		}

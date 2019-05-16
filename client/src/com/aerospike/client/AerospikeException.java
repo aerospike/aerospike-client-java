@@ -294,6 +294,10 @@ public class AerospikeException extends RuntimeException {
 		public Connection(Exception e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, e);
 		}
+
+		public Connection(int resultCode, String message) {
+			super(resultCode, message);
+		}
 	}
 
 	/**

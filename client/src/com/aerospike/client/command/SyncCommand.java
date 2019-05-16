@@ -213,7 +213,7 @@ public abstract class SyncCommand extends Command {
 
 			iteration++;
 
-			if (! prepareRetry(isClientTimeout || exception.getResultCode() == ResultCode.TIMEOUT)) {
+			if (! prepareRetry(isClientTimeout || exception.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 				// Batch may be retried in separate commands.
 				if (retryBatch(cluster, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
 					// Batch was retried in separate commands.  Complete this command.
