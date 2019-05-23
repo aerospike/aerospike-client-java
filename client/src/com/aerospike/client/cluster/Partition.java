@@ -190,12 +190,19 @@ public final class Partition {
 	private Node getRackNode(Cluster cluster) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 		Node fallback = null;
+		boolean retry = (sequence > 0);
 
-		for (int i = 0; i < replicas.length; i++) {
+		for (int i = 1; i <= replicas.length; i++) {
 			int index = Math.abs(sequence % replicas.length);
 			Node node = replicas[index].get(partitionId);
 
 			if (node != null && node.isActive()) {
+				// If fallback exists, do not retry on node where command failed,
+				// even if fallback is not on the same rack.
+				if (retry && fallback != null && i == replicas.length) {
+					return fallback;
+				}
+
 				if (node.hasRack(namespace, cluster.rackId)) {
 					return node;
 				}
