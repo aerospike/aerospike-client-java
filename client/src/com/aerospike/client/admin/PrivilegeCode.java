@@ -42,7 +42,7 @@ public enum PrivilegeCode {
 	DATA_ADMIN(2, Role.DataAdmin),
 
 	/**
-	 * User can read data only.
+	 * User can read data.
 	 */
 	READ(10, Role.Read),
 
@@ -54,7 +54,12 @@ public enum PrivilegeCode {
 	/**
 	 * User can read and write data through user defined functions.
 	 */
-	READ_WRITE_UDF(12, Role.ReadWriteUdf);
+	READ_WRITE_UDF(12, Role.ReadWriteUdf),
+
+	/**
+	 * User can write data.
+	 */
+	WRITE(13, Role.Write);
 
 	/**
 	 * Privilege code ID used in wire protocol.
@@ -96,6 +101,9 @@ public enum PrivilegeCode {
 
 		case 12:
 			return READ_WRITE_UDF;
+
+		case 13:
+			return WRITE;
 
 		default:
 			throw new AerospikeException("Invalid privilege code: " + id);

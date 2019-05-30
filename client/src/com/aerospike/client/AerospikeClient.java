@@ -2092,6 +2092,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Create user defined role with optional privileges and whitelist.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			optional list of privileges assigned to role.
+	 * @param whitelist				optional list of allowable IP addresses assigned to role.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.createRole(cluster, policy, roleName, privileges, whitelist);
+	}
+	/**
 	 * Drop user defined role.
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
@@ -2127,6 +2141,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.revokePrivileges(cluster, policy, roleName, privileges);
+	}
+
+	/**
+	 * Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param whitelist				list of allowable IP addresses or null.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void setWhitelist(AdminPolicy policy, String roleName, List<String> whitelist) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.setWhitelist(cluster, policy, roleName, whitelist);
 	}
 
 	/**

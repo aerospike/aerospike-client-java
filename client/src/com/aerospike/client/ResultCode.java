@@ -254,6 +254,11 @@ public final class ResultCode {
 	public static final int INVALID_CREDENTIAL = 65;
 
 	/**
+	 * Login session expired.
+	 */
+	public static final int EXPIRED_SESSION = 66;
+
+	/**
 	 * Role name is invalid.
 	 */
 	public static final int INVALID_ROLE = 70;
@@ -269,6 +274,11 @@ public final class ResultCode {
 	public static final int INVALID_PRIVILEGE = 72;
 
 	/**
+	 * Invalid IP address whitelist.
+	 */
+	public static final int INVALID_WHITELIST = 73;
+
+	/**
 	 * User must be authentication before performing database operations.
 	 */
 	public static final int NOT_AUTHENTICATED = 80;
@@ -277,6 +287,11 @@ public final class ResultCode {
 	 * User does not possess the required role to perform the database operation.
 	 */
 	public static final int ROLE_VIOLATION = 81;
+
+	/**
+	 * Command not allowed because sender IP address not whitelisted.
+	 */
+	public static final int NOT_WHITELISTED = 82;
 
 	/**
 	 * A user defined function returned an error code.
@@ -526,6 +541,9 @@ public final class ResultCode {
 		case INVALID_CREDENTIAL:
 			return "Invalid credential";
 
+		case EXPIRED_SESSION:
+			return "Login session expired";
+
 		case INVALID_ROLE:
 			return "Invalid role";
 
@@ -535,11 +553,17 @@ public final class ResultCode {
 		case INVALID_PRIVILEGE:
 			return "Invalid privilege";
 
+		case INVALID_WHITELIST:
+			return "Invalid whitelist";
+
 		case NOT_AUTHENTICATED:
 			return "Not authenticated";
 
 		case ROLE_VIOLATION:
 			return "Role violation";
+
+		case NOT_WHITELISTED:
+			return "Command not whitelisted";
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";

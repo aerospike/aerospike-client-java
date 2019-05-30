@@ -50,6 +50,7 @@ public class AdminCommand {
 	private static final byte DROP_ROLE = 11;
 	private static final byte GRANT_PRIVILEGES = 12;
 	private static final byte REVOKE_PRIVILEGES = 13;
+	private static final byte SET_WHITELIST = 14;
 	private static final byte QUERY_ROLES = 16;
 	private static final byte LOGIN = 20;
 
@@ -64,6 +65,7 @@ public class AdminCommand {
 	private static final byte ROLES = 10;
 	private static final byte ROLE = 11;
 	private static final byte PRIVILEGES = 12;
+	private static final byte WHITELIST = 13;
 
 	// Misc
 	private static final long MSG_VERSION = 2L;
@@ -272,6 +274,30 @@ public class AdminCommand {
 		executeCommand(cluster, policy);
 	}
 
+	public void createRole(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist) throws AerospikeException {
+		int fieldCount = 1;
+
+		if (privileges != null && privileges.size() > 0) {
+			fieldCount++;
+		}
+
+		if (whitelist != null && whitelist.size() > 0) {
+			fieldCount++;
+		}
+
+		writeHeader(CREATE_ROLE, fieldCount);
+		writeField(ROLE, roleName);
+
+		if (privileges != null && privileges.size() > 0) {
+			writePrivileges(privileges);
+		}
+
+		if (whitelist != null && whitelist.size() > 0) {
+			writeWhitelist(whitelist);
+		}
+		executeCommand(cluster, policy);
+	}
+
 	public void dropRole(Cluster cluster, AdminPolicy policy, String roleName) throws AerospikeException {
 		writeHeader(DROP_ROLE, 1);
 		writeField(ROLE, roleName);
@@ -289,6 +315,19 @@ public class AdminCommand {
 		writeHeader(REVOKE_PRIVILEGES, 2);
 		writeField(ROLE, roleName);
 		writePrivileges(privileges);
+		executeCommand(cluster, policy);
+	}
+
+	public void setWhitelist(Cluster cluster, AdminPolicy policy, String roleName, List<String> whitelist) throws AerospikeException {
+		int fieldCount = (whitelist != null && whitelist.size() > 0) ? 2 : 1;
+
+		writeHeader(SET_WHITELIST, fieldCount);
+		writeField(ROLE, roleName);
+
+		if (whitelist != null && whitelist.size() > 0) {
+			writeWhitelist(whitelist);
+		}
+
 		executeCommand(cluster, policy);
 	}
 
@@ -341,6 +380,25 @@ public class AdminCommand {
 
 		int size = offset - dataOffset - FIELD_HEADER_SIZE;
 		writeFieldHeader(PRIVILEGES, size);
+		dataOffset = offset;
+	}
+
+	private void writeWhitelist(List<String> whitelist) {
+		int offset = dataOffset + FIELD_HEADER_SIZE;
+		boolean comma = false;
+
+		for (String address : whitelist) {
+			if (comma) {
+				dataBuffer[offset++] = ',';
+			}
+			else {
+				comma = true;
+			}
+			offset += Buffer.stringToUtf8(address, dataBuffer, offset);
+		}
+
+		int size = offset - dataOffset - FIELD_HEADER_SIZE;
+		writeFieldHeader(WHITELIST, size);
 		dataOffset = offset;
 	}
 
@@ -580,18 +638,26 @@ public class AdminCommand {
 					else if (id == PRIVILEGES) {
 						parsePrivileges(role);
 					}
+					else if (id == WHITELIST) {
+						role.whitelist = parseWhitelist(len);
+					}
 					else {
 						super.dataOffset += len;
 					}
 				}
 
-				if (role.name == null && role.privileges == null) {
-					continue;
+				if (role.name == null) {
+					throw new AerospikeException(ResultCode.INVALID_ROLE);
 				}
 
 				if (role.privileges == null) {
 					role.privileges = new ArrayList<Privilege>(0);
 				}
+
+				if (role.whitelist == null) {
+					role.whitelist = new ArrayList<String>(0);
+				}
+
 				list.add(role);
 			}
 			return 0;
@@ -616,6 +682,36 @@ public class AdminCommand {
 				}
 				role.privileges.add(priv);
 			}
+		}
+
+		private List<String> parseWhitelist(int len) {
+			ArrayList<String> list = new ArrayList<String>();
+			StringBuilder sb = new StringBuilder(256);
+			int begin = super.dataOffset;
+			int max = super.dataOffset + len;
+			int l;
+
+			while (super.dataOffset < max) {
+				if (super.dataBuffer[super.dataOffset] == ',') {
+					l = super.dataOffset - begin;
+
+					if (l > 0) {
+						String s = Buffer.utf8ToString(super.dataBuffer, begin, l, sb);
+						list.add(s);
+					}
+					begin = ++super.dataOffset;
+				}
+				else {
+					super.dataOffset++;
+				}
+			}
+			l = super.dataOffset - begin;
+
+			if (l > 0) {
+				String s = Buffer.utf8ToString(super.dataBuffer, begin, l, sb);
+				list.add(s);
+			}
+			return list;
 		}
 	}
 }

@@ -53,6 +53,11 @@ public final class Role {
 	public static final String ReadWriteUdf = "read-write-udf";
 
 	/**
+	 * Allow write transactions.
+	 */
+	public static final String Write = "write";
+
+	/**
 	 * Role name.
 	 */
 	public String name;
@@ -61,4 +66,9 @@ public final class Role {
 	 * List of assigned privileges.
 	 */
 	public List<Privilege> privileges;
+
+	/**
+	 * List of allowable IP addresses.
+	 */
+	public List<String> whitelist;
 }
