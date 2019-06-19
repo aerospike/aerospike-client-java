@@ -122,7 +122,9 @@ public class Main implements Log.Callback {
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
 		options.addOption("bns","batchNamespaces", true, "Set batch namespaces. Default is regular namespace.");
         options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
-		options.addOption("k", "keys", true,
+        options.addOption("c", "clusterName", true, "Set expected cluster name.");
+
+        options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
 			"number of keys, starting from value = startkey. Otherwise, the client " +
@@ -399,6 +401,10 @@ public class Main implements Log.Callback {
 		}
 		else {
 			args.setName = "testset";
+		}
+
+		if (line.hasOption("clusterName")) {
+			clientPolicy.clusterName = line.getOptionValue("clusterName");
 		}
 
 		if (line.hasOption("keys")) {
