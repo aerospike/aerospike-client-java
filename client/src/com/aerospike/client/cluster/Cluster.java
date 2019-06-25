@@ -268,18 +268,17 @@ public class Cluster implements Runnable, Closeable {
 		// Validate first seed.
 		Host seed = seeds[0];
 		NodeValidator nv = new NodeValidator();
-		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>();
+		Node node = null;
 
 		try {
-			nv.seedNodes(this, seed, nodesToAdd);
+			node = nv.seedNode(this, seed);
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Seed " + seed + " failed: " + e.getMessage(), e);
 		}
 
 		// Add seed node to nodes.
-		addNodes(nodesToAdd);
-		Node node = nodes[0];
+		addNode(node);
 
 		// Initialize partitionMaps.
 		Peers peers = new Peers(nodes.length + 16, 16);
@@ -422,7 +421,7 @@ public class Cluster implements Runnable, Closeable {
 		// All node additions/deletions are performed in tend thread.
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
-			seedNodes(failIfNotConnected);
+			seedNode(failIfNotConnected);
 		}
 
 		// Initialize tend iteration node statistics.
@@ -507,23 +506,22 @@ public class Cluster implements Runnable, Closeable {
 		processRecoverQueue();
 	}
 
-	private final boolean seedNodes(boolean failIfNotConnected) throws AerospikeException {
+	private final boolean seedNode(boolean failIfNotConnected) throws AerospikeException {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		Exception[] exceptions = null;
-
-		// Add all nodes at once to avoid copying entire array multiple times.
-		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(seedArray.length + 16);
 
 		for (int i = 0; i < seedArray.length; i++) {
 			Host seed = seedArray[i];
 
 			try {
 				NodeValidator nv = new NodeValidator();
-				nv.seedNodes(this, seed, nodesToAdd);
+				Node node = nv.seedNode(this, seed);
+				addNode(node);
+				return true;
 			}
 			catch (Exception e) {
-				// Store exception and try next host
+				// Store exception and try next seed.
 				if (failIfNotConnected) {
 					if (exceptions == null) {
 						exceptions = new Exception[seedArray.length];
@@ -538,11 +536,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		if (nodesToAdd.size() > 0) {
-			addNodes(nodesToAdd);
-			return true;
-		}
-		else if (failIfNotConnected) {
+		if (failIfNotConnected) {
 			StringBuilder sb = new StringBuilder(500);
 			sb.append("Failed to connect to host(s): ");
 			sb.append(System.lineSeparator());
@@ -622,6 +616,15 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * Add single node using copy on write semantics.
+	 */
+	private final void addNode(Node node) {
+		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(1);
+		nodesToAdd.put(node.getName(), node);
+		addNodes(nodesToAdd);
 	}
 
 	/**

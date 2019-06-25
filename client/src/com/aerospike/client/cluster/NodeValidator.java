@@ -43,38 +43,26 @@ public final class NodeValidator {
 	int features;
 
 	/**
-	 * Add node(s) referenced by seed host aliases. In most cases, aliases reference
-	 * a single node.  If round robin DNS configuration is used, the seed host may have
-	 * several addresses that reference different nodes in the cluster.
+	 * Return first valid node referenced by seed host aliases. In most cases, aliases
+	 * reference a single node.  If round robin DNS configuration is used, the seed host
+	 * may have several addresses that reference different nodes in the cluster.
 	 */
-	public void seedNodes(Cluster cluster, Host host, HashMap<String,Node> nodesToAdd) throws Exception {
+	public Node seedNode(Cluster cluster, Host host) throws Exception {
 		InetAddress[] addresses = getAddresses(host);
-
 		Exception exception = null;
-		boolean found = false;
 
-		// Try all addresses because they might point to different nodes.
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, true);
-				found = true;
 
-				if (! nodesToAdd.containsKey(name)) {
-					// New node found.
-					// Only set aliases when they were not set by load balancer detection logic.
-					if (this.aliases == null) {
-						setAliases(addresses, host.tlsName, host.port);
-					}
-					Node node = cluster.createNode(this);
-					nodesToAdd.put(name, node);
+				// Only add address alias when not set by load balancer detection logic.
+				if (this.aliases == null) {
+					setAliases(address, host.tlsName, host.port);
 				}
-				else {
-					// Node already referenced. Close connection.
-					primaryConn.close();
-				}
+				return cluster.createNode(this);
 			}
 			catch (Exception e) {
-				// Log and continue to next alias.
+				// Log exception and continue to next alias.
 				if (Log.debugEnabled()) {
 					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
 				}
@@ -85,11 +73,9 @@ public final class NodeValidator {
 			}
 		}
 
-		if (! found) {
-			// Exception can't be null here because getAddresses() will throw exception
-			// if aliases length is zero.
-			throw exception;
-		}
+		// Exception can't be null here because getAddresses() will throw exception
+		// if aliases length is zero.
+		throw exception;
 	}
 
 	/**
@@ -97,17 +83,16 @@ public final class NodeValidator {
 	 */
 	public void validateNode(Cluster cluster, Host host) throws Exception {
 		InetAddress[] addresses = getAddresses(host);
-
 		Exception exception = null;
 
 		for (InetAddress address : addresses) {
 			try {
 				validateAddress(cluster, address, host.tlsName, host.port, false);
-				setAliases(addresses, host.tlsName, host.port);
+				setAliases(address, host.tlsName, host.port);
 				return;
 			}
 			catch (Exception e) {
-				// Log and continue to next alias.
+				// Log exception and continue to next alias.
 				if (Log.debugEnabled()) {
 					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
 				}
@@ -357,7 +342,7 @@ public final class NodeValidator {
 							}
 
 							// Authenticated connection.  Set real host.
-							setAliases(addresses, tlsName, h.port);
+							setAliases(address, tlsName, h.port);
 							this.primaryHost = new Host(address.getHostAddress(), tlsName, h.port);
 							this.primaryAddress = socketAddress;
 							this.primaryConn.close();
@@ -386,13 +371,10 @@ public final class NodeValidator {
 		}
 	}
 
-	private void setAliases(InetAddress[] addresses, String tlsName, int port) {
-		// Add capacity for current address aliases plus IPV6 address and hostname.
-		this.aliases = new ArrayList<Host>(addresses.length + 2);
-
-		for (InetAddress address : addresses) {
-			this.aliases.add(new Host(address.getHostAddress(), tlsName, port));
-		}
+	private void setAliases(InetAddress address, String tlsName, int port) {
+		// Add capacity for current address plus IPV6 address and hostname.
+		this.aliases = new ArrayList<Host>(3);
+		this.aliases.add(new Host(address.getHostAddress(), tlsName, port));
 	}
 
 	private static final class SwitchClear {
