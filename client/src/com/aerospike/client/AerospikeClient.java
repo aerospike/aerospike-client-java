@@ -201,7 +201,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	/**
 	 * Initialize Aerospike client with suitable hosts to seed the cluster map.
 	 * The client policy is used to set defaults and size internal data structures.
-	 * For each host connection that succeeds, the client will:
+	 * For the first host connection that succeeds, the client will:
 	 * <p>
 	 * - Add host to the cluster map <br>
 	 * - Request host's list of other nodes in cluster <br>

@@ -648,15 +648,19 @@ public class Main implements Log.Callback {
 
 			if (replica.equals("master")) {
 				args.readPolicy.replica = Replica.MASTER;
+				args.batchPolicy.replica = Replica.MASTER;
 			}
 			else if (replica.equals("any")) {
 				args.readPolicy.replica = Replica.MASTER_PROLES;
+				args.batchPolicy.replica = Replica.MASTER_PROLES;
 			}
 			else if (replica.equals("sequence")) {
 				args.readPolicy.replica = Replica.SEQUENCE;
+				args.batchPolicy.replica = Replica.SEQUENCE;
 			}
 			else if (replica.equals("preferRack")) {
 				args.readPolicy.replica = Replica.PREFER_RACK;
+				args.batchPolicy.replica = Replica.PREFER_RACK;
 				clientPolicy.rackAware = true;
 			}
 			else {
