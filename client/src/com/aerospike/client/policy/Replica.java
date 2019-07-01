@@ -42,7 +42,7 @@ public enum Replica {
 	SEQUENCE,
 
 	/**
-	 * Try node on the same rack as the client first.  If there are no nodes on the
+	 * Try node on the same rack as the client first.  If timeout or there are no nodes on the
 	 * same rack, use SEQUENCE instead.
 	 * <p>
 	 * {@link ClientPolicy#rackAware}, {@link ClientPolicy#rackId}, and server rack
