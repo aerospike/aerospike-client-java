@@ -22,7 +22,8 @@ package com.aerospike.client.policy;
 public final class InfoPolicy {
 	/**
 	 * Info command socket timeout in milliseconds.
-	 * Default is one second timeout.
+	 * <p>
+	 * Default: 1000
 	 */
 	public int timeout;
 

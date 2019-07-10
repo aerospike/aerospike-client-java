@@ -27,17 +27,23 @@ import com.aerospike.client.async.EventLoops;
 public class ClientPolicy {
 	/**
 	 * Optional event loops to use in asynchronous commands.
+	 * <p>
+	 * Default: null (async methods are disabled)
 	 */
 	public EventLoops eventLoops;
 
 	/**
 	 * User authentication to cluster.  Leave null for clusters running without restricted access.
+	 * <p>
+	 * Default: null
 	 */
 	public String user;
 
 	/**
 	 * Password authentication to cluster.  The password will be stored by the client and sent to server
 	 * in hashed format.  Leave null for clusters running without restricted access.
+	 * <p>
+	 * Default: null
 	 */
 	public String password;
 
@@ -45,13 +51,15 @@ public class ClientPolicy {
 	 * Expected cluster name.  If not null, server nodes must return this cluster name in order to
 	 * join the client's view of the cluster. Should only be set when connecting to servers that
 	 * support the "cluster-name" info command.
+	 * <p>
+	 * Default: null
 	 */
 	public String clusterName;
 
 	/**
 	 * Authentication mode used when user/password is defined.
 	 * <p>
-	 * Default: INTERNAL
+	 * Default: AuthMode.INTERNAL
 	 */
 	public AuthMode authMode = AuthMode.INTERNAL;
 
@@ -59,7 +67,7 @@ public class ClientPolicy {
 	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection
 	 * to the server host for the first time.
 	 * <p>
-	 * Default: 1000ms
+	 * Default: 1000
 	 */
 	public int timeout = 1000;
 
@@ -67,7 +75,7 @@ public class ClientPolicy {
 	 * Login timeout in milliseconds.  The timeout is used when user authentication is enabled and
 	 * a node login is being performed.
 	 * <p>
-	 * Default: 5000ms
+	 * Default: 5000
 	 */
 	public int loginTimeout = 5000;
 
@@ -107,17 +115,21 @@ public class ClientPolicy {
 	 * stack will always be the least used.  These connections are checked for maxSocketIdle
 	 * once every 30 tend iterations (usually 30 seconds).
 	 * <p>
-	 * Default: 55 seconds
+	 * Default: 55
 	 */
 	public int maxSocketIdle = 55;
 
 	/**
-	 * Interval in milliseconds between cluster tends by maintenance thread.  Default: 1 second
+	 * Interval in milliseconds between cluster tends by maintenance thread.
+	 * <p>
+	 * Default: 1000
 	 */
 	public int tendInterval = 1000;
 
 	/**
-	 * Throw exception if all seed connections fail on cluster instantiation.  Default: true
+	 * Throw exception if all seed connections fail on cluster instantiation.
+	 * <p>
+	 * Default: true
 	 */
 	public boolean failIfNotConnected = true;
 
@@ -154,6 +166,7 @@ public class ClientPolicy {
 	/**
 	 * TLS secure connection policy for TLS enabled servers.
 	 * TLS connections are only supported for AerospikeClient synchronous commands.
+	 * <p>
 	 * Default: null (Use normal sockets)
 	 */
 	public TlsPolicy tlsPolicy;
@@ -165,6 +178,8 @@ public class ClientPolicy {
 	 * <p>
 	 * The key is the IP address returned from friend info requests to other servers.  The
 	 * value is the real IP address used to connect to the server.
+	 * <p>
+	 * Default: null (no IP address translation)
 	 */
 	public Map<String,String> ipMap;
 
@@ -183,6 +198,8 @@ public class ClientPolicy {
 	 *	});
 	 * </pre>
 	 * Daemon threads automatically terminate when the program terminates.
+	 * <p>
+	 * Default: null (use Executors.newCachedThreadPool)
 	 */
 	public ExecutorService threadPool;
 
@@ -194,6 +211,8 @@ public class ClientPolicy {
 	 * closed. This shared threadPool should be shutdown manually before the program
 	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is
 	 * constructed to use daemon threads.
+	 * <p>
+	 * Default: false
 	 */
 	public boolean sharedThreadPool;
 
@@ -201,9 +220,8 @@ public class ClientPolicy {
 	 * Should use "services-alternate" instead of "services" in info request during cluster
 	 * tending.  "services-alternate" returns server configured external IP addresses that client
 	 * uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
-	 * Default: false (use original "services" info request).
 	 * <p>
-	 * "services-alternate" is available with Aerospike Server versions >= 3.7.1.
+	 * Default: false (use original "services" info request)
 	 */
 	public boolean useServicesAlternate;
 

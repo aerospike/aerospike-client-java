@@ -23,12 +23,16 @@ package com.aerospike.client.policy;
 public final class WritePolicy extends Policy {
 	/**
 	 * Qualify how to handle writes where the record already exists.
+	 * <p>
+	 * Default: RecordExistsAction.UPDATE
 	 */
 	public RecordExistsAction recordExistsAction = RecordExistsAction.UPDATE;
 
 	/**
 	 * Qualify how to handle record writes based on record generation. The default (NONE)
 	 * indicates that the generation is not used to restrict writes.
+	 * <p>
+	 * Default: GenerationPolicy.NONE
 	 */
 	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
 
@@ -36,13 +40,18 @@ public final class WritePolicy extends Policy {
 	 * Desired consistency guarantee when committing a transaction on the server. The default
 	 * (COMMIT_ALL) indicates that the server should wait for master and all replica commits to
 	 * be successful before returning success to the client.
+	 * <p>
+	 * Default: CommitLevel.COMMIT_ALL
 	 */
 	public CommitLevel commitLevel = CommitLevel.COMMIT_ALL;
 
 	/**
 	 * Expected generation. Generation is the number of times a record has been modified
 	 * (including creation) on the server. If a write operation is creating a record,
-	 * the expected generation would be <code>0</code>.
+	 * the expected generation would be <code>0</code>. This field is only relevant when
+	 * generationPolicy is not NONE.
+	 * <p>
+	 * Default: 0
 	 */
 	public int generation;
 
@@ -57,6 +66,8 @@ public final class WritePolicy extends Policy {
 	 * <li>0: Default to namespace configuration variable "default-ttl" on the server.</li>
 	 * <li>> 0: Actual ttl in seconds.<br></li>
 	 * </ul>
+	 * <p>
+	 * Default: 0
 	 */
 	public int expiration;
 

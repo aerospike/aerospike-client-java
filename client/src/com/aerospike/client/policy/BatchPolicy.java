@@ -47,6 +47,8 @@ public final class BatchPolicy extends Policy {
 	 * </li>
 	 * </ul>
 	 * Asynchronous batch requests ignore this field and always issue all node requests in parallel.
+	 * <p>
+	 * Default: 1
 	 */
 	public int maxConcurrentThreads = 1;
 
@@ -61,6 +63,7 @@ public final class BatchPolicy extends Policy {
 	 * <p>
 	 * Inline processing can introduce the possibility of unfairness because the server
 	 * can process the entire batch before moving onto the next command.
+	 * <p>
 	 * Default: true
 	 */
 	public boolean allowInline = true;
@@ -69,6 +72,7 @@ public final class BatchPolicy extends Policy {
 	 * Send set name field to server for every key in the batch for batch index protocol.
 	 * This is only necessary when authentication is enabled and security roles are defined
 	 * on a per set basis.
+	 * <p>
 	 * Default: false
 	 */
 	public boolean sendSetName;

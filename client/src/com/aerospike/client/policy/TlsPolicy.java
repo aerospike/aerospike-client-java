@@ -50,12 +50,14 @@ public final class TlsPolicy {
 	 * Allowable TLS ciphers that the client can use for secure connections.
 	 * Available cipher names can be obtained by {@link javax.net.ssl.SSLSocket#getSupportedCipherSuites()}
 	 * Multiple ciphers can be specified.
+	 * <p>
 	 * Default: null (Allow default ciphers defined by JVM)
 	 */
 	public String[] ciphers;
 
 	/**
 	 * Reject certificates whose serial numbers match a serial number in this array.
+	 * <p>
 	 * Default: null (Do not exclude by certificate serial number)
 	 */
 	public BigInteger[] revokeCertificates;
@@ -63,6 +65,7 @@ public final class TlsPolicy {
 	/**
 	 * Use TLS connections only for login authentication.  All other communication with
 	 * the server will be done with non-TLS connections.
+	 * <p>
 	 * Default: false (Use TLS connections for all communication with server.)
 	 */
 	public boolean forLoginOnly;

@@ -22,7 +22,8 @@ package com.aerospike.client.policy;
 public final class ScanPolicy extends Policy {
 	/**
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
-	 * Default is 100.
+	 * <p>
+	 * Default: 100
 	 */
 	public int scanPercent = 100;
 
@@ -33,23 +34,30 @@ public final class ScanPolicy extends Policy {
 	 * be issued until all 16 nodes have been scanned.
 	 * <p>
 	 * This field is only relevant when concurrentNodes is true.
-	 * Default (0) is to issue requests to all server nodes in parallel.
+	 * <p>
+	 * Default: 0 (issue requests to all server nodes in parallel)
 	 */
 	public int maxConcurrentNodes;
 
 	/**
-	 * Issue scan requests in parallel or serially.
+	 * Should scan requests be issued in parallel.
+	 * <p>
+	 * Default: true
 	 */
 	public boolean concurrentNodes = true;
 
 	/**
-	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
+	 * Should bin data be retrieved. If false, only record digests (and user keys
 	 * if stored on the server) are retrieved.
+	 * <p>
+	 * Default: true
 	 */
 	public boolean includeBinData = true;
 
 	/**
 	 * Terminate scan if cluster in migration state.
+	 * <p>
+	 * Default: false
 	 */
 	public boolean failOnClusterChange;
 

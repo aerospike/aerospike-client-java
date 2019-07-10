@@ -25,7 +25,8 @@ public class QueryPolicy extends Policy {
 	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries
 	 * will be made to 8 nodes in parallel.  When a query completes, a new query will
 	 * be issued until all 16 nodes have been queried.
-	 * Default (0) is to issue requests to all server nodes in parallel.
+	 * <p>
+	 * Default: 0 (issue requests to all server nodes in parallel)
 	 */
 	public int maxConcurrentNodes;
 
@@ -34,17 +35,23 @@ public class QueryPolicy extends Policy {
 	 * Records received from multiple server nodes will be placed in a queue.
 	 * A separate thread consumes these records in parallel.
 	 * If the queue is full, the producer threads will block until records are consumed.
+	 * <p>
+	 * Default: 5000
 	 */
 	public int recordQueueSize = 5000;
 
 	/**
-	 * Indicates if bin data is retrieved. If false, only record digests (and user keys
+	 * Should bin data be retrieved. If false, only record digests (and user keys
 	 * if stored on the server) are retrieved.
+	 * <p>
+	 * Default: true
 	 */
 	public boolean includeBinData = true;
 
 	/**
 	 * Terminate query if cluster is in migration state.
+	 * <p>
+	 * Default: false
 	 */
 	public boolean failOnClusterChange;
 

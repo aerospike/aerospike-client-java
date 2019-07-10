@@ -20,9 +20,10 @@ package com.aerospike.client.policy;
  * Policy attributes used for user administration commands.
  */
 public final class AdminPolicy {
-
 	/**
 	 * User administration command socket timeout in milliseconds.
+	 * <p>
+	 * Default: 0 (no timeout)
 	 */
 	public int timeout;
 
