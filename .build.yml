@@ -12,3 +12,4 @@ build:
       - mvn -f client/pom.xml javadoc:javadoc javadoc:jar
     artifact:
       - client/target/*.jar
+      - benchmarks/target/*.jar
