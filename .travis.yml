@@ -4,7 +4,7 @@ jdk:
 sudo: false
 os:
 - linux
-dist: trusty
+dist: xenial
 cache:
   directories:
   - $HOME/.m2
