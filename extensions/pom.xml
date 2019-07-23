@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>4.4.2</version>
+    <version>4.4.3</version>
   </parent>
   <artifactId>aerospike-client-extensions</artifactId>
   <packaging>pom</packaging>
