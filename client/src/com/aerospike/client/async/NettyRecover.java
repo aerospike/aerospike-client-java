@@ -90,7 +90,8 @@ public final class NettyRecover implements TimerTask {
 
 		// Replace channel handler.
 		ChannelPipeline p = conn.channel.pipeline();
-		p.removeLast();
+		NettyCommand.InboundHandler handler = (NettyCommand.InboundHandler)p.removeLast();
+		handler.command = null;
 		p.addLast(new InboundHandler(this));
 
 		timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
@@ -272,7 +273,18 @@ public final class NettyRecover implements TimerTask {
 
 	private final void recover() {
 		//System.out.println("" + tranId + " connection drained");
+
+		// Assign normal InboundHandler to connection.
+		ChannelPipeline p = conn.channel.pipeline();
+		p.removeLast();
+		p.addLast(new NettyCommand.InboundHandler());
+
+		// Put connection into pool.
+		conn.channel.config().setAutoRead(false);
+		conn.updateLastUsed();
 		node.putAsyncConnection(conn, eventLoop.index);
+
+		// Close recovery command.
 		close(true);
 	}
 

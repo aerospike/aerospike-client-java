@@ -284,6 +284,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 
 	private final void recover() {
 		//System.out.println("" + tranId + " connection drained");
+		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 		close(true);
 	}

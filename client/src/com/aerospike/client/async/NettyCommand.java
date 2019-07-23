@@ -260,6 +260,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 
 			connectInProgress = true;
+			final int itr = iteration;
 			final InboundHandler handler = new InboundHandler();
 			handler.command = this;
 
@@ -278,6 +279,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 			b.handler(new ChannelInitializer<SocketChannel>() {
 				@Override
 				public void initChannel(SocketChannel ch) {
+					if (! (state == AsyncCommand.CONNECT && itr == iteration)) {
+						// State mismatch. Timeout probably occurred.
+						// Connection count has already been decremented.
+						// Just close channel.
+						ch.close();
+						connectInProgress = false;
+						return;
+					}
+
 					conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
 					connectInProgress = false;
 					ChannelPipeline p = ch.pipeline();
@@ -887,6 +897,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
+			// Remove handler to ensure no more events can occur on connection.
+			InboundHandler handler = (InboundHandler)conn.channel.pipeline().removeLast();
+			handler.command = null;
 			node.closeAsyncConnection(conn, eventState.index);
 			conn = null;
 		}
@@ -912,8 +925,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		eventLoop.pending--;
 	}
 
-	private static class InboundHandler extends ChannelInboundHandlerAdapter {
-		private NettyCommand command;
+	static class InboundHandler extends ChannelInboundHandlerAdapter {
+		NettyCommand command;
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
