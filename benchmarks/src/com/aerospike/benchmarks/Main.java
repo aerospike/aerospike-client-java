@@ -90,7 +90,7 @@ public class Main implements Log.Callback {
 	private long nKeys;
 	private long startKey;
 	private int nThreads;
-	private int asyncMaxCommands = 200;
+	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
 	private boolean initialize;
