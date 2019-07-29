@@ -21,8 +21,8 @@ import java.math.BigInteger;
 import javax.net.ssl.SSLContext;
 
 /**
- * TLS connection policy.
- * Secure TLS connections are only supported for AerospikeClient synchronous commands.
+ * TLS connection policy.  Secure TLS connections are supported for
+ * synchronous commands and netty backed asynchronous commands.
  */
 public final class TlsPolicy {
 	/**
