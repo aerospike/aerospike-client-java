@@ -87,7 +87,9 @@ public final class Operation {
 		ADD(5),
 		APPEND(9),
 		PREPEND(10),
-		TOUCH(11);
+		TOUCH(11),
+		BIT_READ(12),
+		BIT_MODIFY(13);
 
 		public final int protocolType;
 

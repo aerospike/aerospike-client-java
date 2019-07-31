@@ -50,6 +50,7 @@ public class Node implements Closeable {
 
 	public static final int HAS_GEO	= (1 << 0);
 	public static final int HAS_TRUNCATE_NS = (1 << 1);
+	public static final int HAS_BIT_OP = (1 << 2);
 	public static final int HAS_PEERS = (1 << 4);
 	public static final int HAS_REPLICAS = (1 << 5);
 	public static final int HAS_CLUSTER_STABLE = (1 << 6);
@@ -876,6 +877,13 @@ public class Node implements Closeable {
 	 */
 	public final boolean hasPeers() {
 		return (features & HAS_PEERS) != 0;
+	}
+
+	/**
+	 * Does server support bit operations.
+	 */
+	public final boolean hasBitOperations() {
+		return (features & HAS_BIT_OP) != 0;
 	}
 
 	@Override

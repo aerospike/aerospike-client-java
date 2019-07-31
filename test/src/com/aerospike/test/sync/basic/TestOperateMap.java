@@ -36,6 +36,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapOperation;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.cdt.MapPolicy;
@@ -53,10 +54,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapPut() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey1");
 		client.delete(null, key);
 
@@ -112,10 +109,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapPutItems() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey2");
 		client.delete(null, key);
 
@@ -180,10 +173,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapMixed() {
 		// Test normal operations with map operations.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey2");
 		client.delete(null, key);
 
@@ -223,10 +212,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapSwitch() {
 		// Switch from unordered map to a key ordered map.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey4");
 		client.delete(null, key);
 
@@ -286,10 +271,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRank() {
 		// Test rank.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey6");
 		client.delete(null, key);
 
@@ -394,10 +375,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRemove() {
 		// Test remove.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey7");
 		client.delete(null, key);
 
@@ -453,10 +430,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapRemoveRange() {
 		// Test remove ranges.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey8");
 		client.delete(null, key);
 
@@ -502,10 +475,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapClear() {
 		// Test clear.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey9");
 		client.delete(null, key);
 
@@ -535,10 +504,6 @@ public class TestOperateMap extends TestSync {
 	@Test
 	public void operateMapScore() {
 		// Test score.
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey10");
 		client.delete(null, key);
 
@@ -602,10 +567,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapGetByList() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey11");
 		client.delete(null, key);
 
@@ -658,10 +619,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapInverted() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey12");
 		client.delete(null, key);
 
@@ -735,10 +692,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapRemoveByKeyListForNonExistingKey() throws Exception {
-		if (!args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey13");
 
 		expectedException.expect(AerospikeException.class);
@@ -755,10 +708,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapGetRelative() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey14");
 		client.delete(null, key);
 
@@ -865,10 +814,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapRemoveRelative() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey15");
 		client.delete(null, key);
 
@@ -940,10 +885,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapPartial() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey16");
 		client.delete(null, key);
 
@@ -982,10 +923,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapInfinity() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey17");
 		client.delete(null, key);
 
@@ -1021,10 +958,6 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateMapWildcard() {
-		if (! args.validateMap()) {
-			return;
-		}
-
 		Key key = new Key(args.namespace, args.set, "opmkey18");
 		client.delete(null, key);
 
@@ -1068,5 +1001,108 @@ public class TestOperateMap extends TestSync {
 
 		long v = (Long)results.get(i++);
 		assertEquals(9L, v);
+	}
+
+	@Test
+	public void operateNestedMap() {
+		Key key = new Key(args.namespace, args.set, "opmkey19");
+		client.delete(null, key);
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get("key11"), Value.get(9));
+		m1.put(Value.get("key12"), Value.get(4));
+
+		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		m2.put(Value.get("key21"), Value.get(3));
+		m2.put(Value.get("key22"), Value.get(5));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(m1));
+		inputMap.put(Value.get("key2"), Value.get(m2));
+
+		// Create maps.
+		client.put(null, key, new Bin(binName, inputMap));
+
+		// Set map value to 11 for map key "key21" inside of map key "key2"
+		// and retrieve all maps.
+		Record record = client.operate(null, key,
+				MapOperation.put(MapPolicy.Default, binName, Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2"))),
+				Operation.get(binName)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(2, count);
+
+		Map<?,?> map = (Map<?,?>)results.get(i++);
+		assertEquals(2, map.size());
+
+		map = (Map<?,?>)map.get("key2");
+		long v = (Long)map.get("key21");
+		assertEquals(11, v);
+		v = (Long)map.get("key22");
+		assertEquals(5, v);
+	}
+
+	@Test
+	public void operateDoubleNestedMap() {
+		Key key = new Key(args.namespace, args.set, "opmkey19");
+		client.delete(null, key);
+
+		Map<Value,Value> m11 = new HashMap<Value,Value>();
+		m11.put(Value.get("key111"), Value.get(1));
+
+		Map<Value,Value> m12 = new HashMap<Value,Value>();
+		m12.put(Value.get("key121"), Value.get(5));
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get("key11"), Value.get(m11));
+		m1.put(Value.get("key12"), Value.get(m12));
+
+		Map<Value,Value> m21 = new HashMap<Value,Value>();
+		m21.put(Value.get("key211"), Value.get(7));
+
+		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		m2.put(Value.get("key21"), Value.get(m21));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(m1));
+		inputMap.put(Value.get("key2"), Value.get(m2));
+
+		// Create maps.
+		client.put(null, key, new Bin(binName, inputMap));
+
+		// Set map value to 11 for map key "key21" inside of map key "key2"
+		// and retrieve all maps.
+		Record record = client.operate(null, key,
+				MapOperation.put(MapPolicy.Default, binName, Value.get("key121"), Value.get(11), CTX.mapKey(Value.get("key1")), CTX.mapRank(-1)),
+				Operation.get(binName)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(1, count);
+
+		Map<?,?> map = (Map<?,?>)results.get(i++);
+		assertEquals(2, map.size());
+
+		map = (Map<?,?>)map.get("key1");
+		assertEquals(2, map.size());
+
+		map = (Map<?,?>)map.get("key12");
+		assertEquals(1, map.size());
+
+		long v = (Long)map.get("key121");
+		assertEquals(11, v);
 	}
 }

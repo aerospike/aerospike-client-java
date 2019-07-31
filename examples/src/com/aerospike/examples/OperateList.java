@@ -20,9 +20,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
 
 public class OperateList extends Example {
@@ -35,18 +38,19 @@ public class OperateList extends Example {
 	 * Perform operations on a list bin.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(AerospikeClient client, Parameters params) {
 		if (! params.hasCDTList) {
 			console.info("CDT list functions are not supported by the connected Aerospike server.");
 			return;
 		}
 		runSimpleExample(client, params);
+		runNestedExample(client, params);
 	}
 
 	/**
 	 * Simple example of list functionality.
 	 */
-	public void runSimpleExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runSimpleExample(AerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "listkey");
 		String binName = params.getBinName("listbin");
 
@@ -80,5 +84,49 @@ public class OperateList extends Example {
 		for (Object value : list) {
 			console.info("Received: " + value);
 		}
+	}
+
+	/**
+	 * Operate on a list of lists.
+	 */
+	public void runNestedExample(AerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "listkey2");
+		String binName = params.getBinName("listbin");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(7));
+		l1.add(Value.get(9));
+		l1.add(Value.get(5));
+
+		List<Value> l2 = new ArrayList<Value>();
+		l2.add(Value.get(1));
+		l2.add(Value.get(2));
+		l2.add(Value.get(3));
+
+		List<Value> l3 = new ArrayList<Value>();
+		l3.add(Value.get(6));
+		l3.add(Value.get(5));
+		l3.add(Value.get(4));
+		l3.add(Value.get(1));
+
+		List<Value> inputList = new ArrayList<Value>();
+		inputList.add(Value.get(l1));
+		inputList.add(Value.get(l2));
+		inputList.add(Value.get(l3));
+
+		// Create list.
+		client.put(params.writePolicy, key, new Bin(binName, inputList));
+
+		// Append value to last list and retrieve all lists.
+		Record record = client.operate(params.writePolicy, key,
+				ListOperation.append(binName, Value.get(11), CTX.listIndex(-1)),
+				Operation.get(binName)
+				);
+
+		record = client.get(params.policy, key);
+		console.info("Record: " + record);
 	}
 }

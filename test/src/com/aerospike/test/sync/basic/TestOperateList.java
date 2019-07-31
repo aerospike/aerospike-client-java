@@ -33,6 +33,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListOrder;
 import com.aerospike.client.cdt.ListPolicy;
@@ -1010,5 +1011,134 @@ public class TestOperateList extends TestSync {
 
 		long v = (Long)items.get(1);
 		assertEquals(95L, v);
+	}
+
+	@Test
+	public void operateNestedList() {
+		Key key = new Key(args.namespace, args.set, "oplkey18");
+
+		client.delete(null, key);
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(7));
+		l1.add(Value.get(9));
+		l1.add(Value.get(5));
+
+		List<Value> l2 = new ArrayList<Value>();
+		l2.add(Value.get(1));
+		l2.add(Value.get(2));
+		l2.add(Value.get(3));
+
+		List<Value> l3 = new ArrayList<Value>();
+		l3.add(Value.get(6));
+		l3.add(Value.get(5));
+		l3.add(Value.get(4));
+		l3.add(Value.get(1));
+
+		List<Value> inputList = new ArrayList<Value>();
+		inputList.add(Value.get(l1));
+		inputList.add(Value.get(l2));
+		inputList.add(Value.get(l3));
+
+		// Create list.
+		client.put(null, key, new Bin(binName, inputList));
+
+		// Append value to last list and retrieve all lists.
+		Record record = client.operate(null, key,
+				ListOperation.append(binName, Value.get(11), CTX.listIndex(-1)),
+				Operation.get(binName)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(5, count);
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(3, list.size());
+
+		// Test last nested list.
+		list = (List<?>)list.get(2);
+		assertEquals(5, list.size());
+		assertEquals(6, (long)(Long)list.get(0));
+		assertEquals(5, (long)(Long)list.get(1));
+		assertEquals(4, (long)(Long)list.get(2));
+		assertEquals(1, (long)(Long)list.get(3));
+		assertEquals(11, (long)(Long)list.get(4));
+	}
+
+	@Test
+	public void operateNestedListMap() {
+		Key key = new Key(args.namespace, args.set, "oplkey19");
+
+		client.delete(null, key);
+
+		List<Value> l11 = new ArrayList<Value>();
+		l11.add(Value.get(7));
+		l11.add(Value.get(9));
+		l11.add(Value.get(5));
+
+		List<Value> l12 = new ArrayList<Value>();
+		l12.add(Value.get(13));
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(l11));
+		l1.add(Value.get(l12));
+
+		List<Value> l21 = new ArrayList<Value>();
+		l21.add(Value.get(9));
+
+		List<Value> l22 = new ArrayList<Value>();
+		l22.add(Value.get(2));
+		l22.add(Value.get(4));
+
+		List<Value> l23 = new ArrayList<Value>();
+		l23.add(Value.get(6));
+		l23.add(Value.get(1));
+		l23.add(Value.get(9));
+
+		List<Value> l2 = new ArrayList<Value>();
+		l2.add(Value.get(l21));
+		l2.add(Value.get(l22));
+		l2.add(Value.get(l23));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(l1));
+		inputMap.put(Value.get("key2"), Value.get(l2));
+
+		// Create list.
+		client.put(null, key, new Bin(binName, inputMap));
+
+		// Append value to last list and retrieve map.
+		Record record = client.operate(null, key,
+				ListOperation.append(binName, Value.get(11), CTX.mapKey(Value.get("key2")), CTX.listRank(0)),
+				Operation.get(binName)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(3, count);
+
+		Map<?,?> map = (Map<?,?>)results.get(i++);
+		assertEquals(2, map.size());
+
+		// Test affected nested list.
+		List<?> list = (List<?>)map.get("key2");
+		assertEquals(3, list.size());
+
+		list = (List<?>)list.get(1);
+		assertEquals(3, list.size());
+		assertEquals(2, (long)(Long)list.get(0));
+		assertEquals(4, (long)(Long)list.get(1));
+		assertEquals(11, (long)(Long)list.get(2));
 	}
 }

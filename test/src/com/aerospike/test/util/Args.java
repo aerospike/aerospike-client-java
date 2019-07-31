@@ -19,7 +19,6 @@ package com.aerospike.test.util;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
-import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -50,8 +49,7 @@ public class Args {
 	public String set;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
-	public boolean hasUdf;
-	public boolean hasMap;
+	public boolean hasBit;
 	public boolean singleBin;
 
 	public Args() {
@@ -201,30 +199,9 @@ public class Args {
 	 */
 	public void setServerSpecific(AerospikeClient client) {
 		Node node = client.getNodes()[0];
-		String featuresFilter = "features";
+		hasBit = node.hasBitOperations();
 		String namespaceFilter = "namespace/" + namespace;
-		Map<String,String> tokens = Info.request(null, node, featuresFilter, namespaceFilter);
-
-		String features = tokens.get(featuresFilter);
-		hasUdf = false;
-		hasMap = false;
-
-		if (features != null) {
-			String[] list = features.split(";");
-
-			for (String s : list) {
-				if (s.equals("udf")) {
-					hasUdf = true;
-					break;
-				}
-				else if (s.equals("cdt-map")) {
-					hasMap = true;
-					break;
-				}
-			}
-		}
-
-		String namespaceTokens = tokens.get(namespaceFilter);
+		String namespaceTokens = Info.request(null, node, namespaceFilter);
 
 		if (namespaceTokens == null) {
 			throw new AerospikeException(String.format(
@@ -259,9 +236,9 @@ public class Args {
 		return singleBin ? "" : name;
 	}
 
-	public boolean validateMap() {
-		if (! hasMap) {
-			System.out.println("Skip test because cdt-map not enabled on server");
+	public boolean validateBit() {
+		if (! hasBit) {
+			System.out.println("Skip test because bit operations not enabled on server");
 			return false;
 		}
 		return true;

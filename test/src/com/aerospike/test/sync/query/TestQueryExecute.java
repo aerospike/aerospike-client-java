@@ -87,7 +87,7 @@ public class TestQueryExecute extends TestSync {
 		stmt.setFilter(Filter.range(binName1, begin, end));
 
 		ExecuteTask task = client.execute(null, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
-		task.waitTillComplete();
+		task.waitTillComplete(3000, 3000);
 		validateRecords();
 	}
 

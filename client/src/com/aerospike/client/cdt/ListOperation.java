@@ -24,10 +24,11 @@ import com.aerospike.client.util.Packer;
 
 /**
  * List bin operations. Create list operations used by client operate command.
- * List operations support negative indexing.  If the index is negative, the
- * resolved index starts backwards from end of list.
  * <p>
- * Index/Range examples:
+ * List operations support negative indexing.  If the index is negative, the
+ * resolved index starts backwards from end of list. If an index is out of bounds,
+ * a parameter error will be returned. If a range is partially out of bounds, the
+ * valid part of the range will be returned. Index/Range examples:
  * <ul>
  * <li>Index 0: First item in list.</li>
  * <li>Index 4: Fifth item in list.</li>
@@ -38,8 +39,18 @@ import com.aerospike.client.util.Packer;
  * <li>Index -5 Count 4: Range between fifth to last item to second to last item inclusive.</li>
  * </ul>
  * <p>
- * If an index is out of bounds, a parameter error will be returned. If a range is partially
- * out of bounds, the valid part of the range will be returned.
+ * Nested CDT operations are supported by optional CTX context arguments.  Examples:
+ * <ul>
+ * <li>bin = [[7,9,5],[1,2,3],[6,5,4,1]]</li>
+ * <li>Append 11 to last list.</li>
+ * <li>ListOperation.append("bin", Value.get(11), CTX.listIndex(-1))</li>
+ * <li>bin result = [[7,9,5],[1,2,3],[6,5,4,1,11]]</li>
+ * <li></li>
+ * <li>bin = {key1=[[7,9,5],[13]], key2=[[9],[2,4],[6,1,9]], key3=[[6,5]]}</li>
+ * <li>Append 11 to lowest ranked list in map identified by "key2".</li>
+ * <li>ListOperation.append("bin", Value.get(11), CTX.mapKey(Value.get("key2")), CTX.listRank(0))</li>
+ * <li>bin result = {key1=[[7,9,5],[13]], key2=[[9],[2,4,11],[6,1,9]], key3=[[6,5]]}</li>
+ * </ul>
  */
 public class ListOperation {
 	private static final int SET_TYPE = 0;
@@ -80,8 +91,8 @@ public class ListOperation {
 	 * Create set list order operation.
 	 * Server sets list order.  Server returns null.
 	 */
-	public static Operation setOrder(String binName, ListOrder order) {
-		return CDT.createOperation(SET_TYPE, Operation.Type.CDT_MODIFY, binName, order.attributes);
+	public static Operation setOrder(String binName, ListOrder order, CTX... ctx) {
+		return CDT.createOperation(SET_TYPE, Operation.Type.CDT_MODIFY, binName, ctx, order.attributes);
 	}
 
 	/**
@@ -89,10 +100,9 @@ public class ListOperation {
 	 * Server appends value to end of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation append(String binName, Value value) {
+	public static Operation append(String binName, Value value, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(APPEND);
-		packer.packArrayBegin(1);
+		CDT.init(packer, ctx, APPEND, 1);
 		value.pack(packer);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
@@ -102,10 +112,9 @@ public class ListOperation {
 	 * Server appends value to list bin.
 	 * Server returns list size.
 	 */
-	public static Operation append(ListPolicy policy, String binName, Value value) {
+	public static Operation append(ListPolicy policy, String binName, Value value, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(APPEND);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, APPEND, 3);
 		value.pack(packer);
 		packer.packInt(policy.attributes);
 		packer.packInt(policy.flags);
@@ -117,10 +126,9 @@ public class ListOperation {
 	 * Server appends each input list item to end of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation appendItems(String binName, List<Value> list) {
+	public static Operation appendItems(String binName, List<Value> list, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(APPEND_ITEMS);
-		packer.packArrayBegin(1);
+		CDT.init(packer, ctx, APPEND_ITEMS, 1);
 		packer.packValueList(list);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
 	}
@@ -130,10 +138,9 @@ public class ListOperation {
 	 * Server appends each input list item to list bin.
 	 * Server returns list size.
 	 */
-	public static Operation appendItems(ListPolicy policy, String binName, List<Value> list) {
+	public static Operation appendItems(ListPolicy policy, String binName, List<Value> list, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(APPEND_ITEMS);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, APPEND_ITEMS, 3);
 		packer.packValueList(list);
 		packer.packInt(policy.attributes);
 		packer.packInt(policy.flags);
@@ -145,8 +152,8 @@ public class ListOperation {
 	 * Server inserts value to specified index of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation insert(String binName, int index, Value value) {
-		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value);
+	public static Operation insert(String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 	}
 
 	/**
@@ -154,8 +161,8 @@ public class ListOperation {
 	 * Server inserts value to specified index of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation insert(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+	public static Operation insert(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(INSERT, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.flags);
 	}
 
 	/**
@@ -163,10 +170,9 @@ public class ListOperation {
 	 * Server inserts each input list item starting at specified index of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation insertItems(String binName, int index, List<Value> list) {
+	public static Operation insertItems(String binName, int index, List<Value> list, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(INSERT_ITEMS);
-		packer.packArrayBegin(2);
+		CDT.init(packer, ctx, INSERT_ITEMS, 2);
 		packer.packInt(index);
 		packer.packValueList(list);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
@@ -177,10 +183,9 @@ public class ListOperation {
 	 * Server inserts each input list item starting at specified index of list bin.
 	 * Server returns list size.
 	 */
-	public static Operation insertItems(ListPolicy policy, String binName, int index, List<Value> list) {
+	public static Operation insertItems(ListPolicy policy, String binName, int index, List<Value> list, CTX... ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(INSERT_ITEMS);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, INSERT_ITEMS, 3);
 		packer.packInt(index);
 		packer.packValueList(list);
 		packer.packInt(policy.flags);
@@ -192,8 +197,8 @@ public class ListOperation {
 	 * Server increments list[index] by 1.
 	 * Server returns list[index] after incrementing.
 	 */
-	public static Operation increment(String binName, int index) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index);
+	public static Operation increment(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index);
 	}
 
 	/**
@@ -201,8 +206,8 @@ public class ListOperation {
 	 * Server increments list[index] by 1.
 	 * Server returns list[index] after incrementing.
 	 */
-	public static Operation increment(ListPolicy policy, String binName, int index) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, Value.get(1), policy.attributes, policy.flags);
+	public static Operation increment(ListPolicy policy, String binName, int index, CTX... ctx) {
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, Value.get(1), policy.attributes, policy.flags);
 	}
 
 	/**
@@ -211,8 +216,8 @@ public class ListOperation {
 	 * Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
 	 * Server returns list[index] after incrementing.
 	 */
-	public static Operation increment(String binName, int index, Value value) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value);
+	public static Operation increment(String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 	}
 
 	/**
@@ -221,24 +226,24 @@ public class ListOperation {
 	 * Value should be integer(IntegerValue, LongValue) or double(DoubleValue, FloatValue).
 	 * Server returns list[index] after incrementing.
 	 */
-	public static Operation increment(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, index, value, policy.attributes, policy.flags);
+	public static Operation increment(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(INCREMENT, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.attributes, policy.flags);
 	}
 
 	/**
 	 * Create list pop operation.
 	 * Server returns item at specified index and removes item from list bin.
 	 */
-	public static Operation pop(String binName, int index) {
-		return CDT.createOperation(POP, Operation.Type.CDT_MODIFY, binName, index);
+	public static Operation pop(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(POP, Operation.Type.CDT_MODIFY, binName, ctx, index);
 	}
 
 	/**
 	 * Create list pop range operation.
 	 * Server returns "count" items starting at specified index and removes items from list bin.
 	 */
-	public static Operation popRange(String binName, int index, int count) {
-		return CDT.createOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, index, count);
+	public static Operation popRange(String binName, int index, int count, CTX... ctx) {
+		return CDT.createOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 	}
 
 	/**
@@ -246,8 +251,8 @@ public class ListOperation {
 	 * Server returns items starting at specified index to the end of list and removes those items
 	 * from list bin.
 	 */
-	public static Operation popRange(String binName, int index) {
-		return CDT.createOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, index);
+	public static Operation popRange(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(POP_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 	}
 
 	/**
@@ -255,8 +260,8 @@ public class ListOperation {
 	 * Server removes item at specified index from list bin.
 	 * Server returns number of items removed.
 	 */
-	public static Operation remove(String binName, int index) {
-		return CDT.createOperation(REMOVE, Operation.Type.CDT_MODIFY, binName, index);
+	public static Operation remove(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(REMOVE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 	}
 
 	/**
@@ -264,8 +269,8 @@ public class ListOperation {
 	 * Server removes "count" items starting at specified index from list bin.
 	 * Server returns number of items removed.
 	 */
-	public static Operation removeRange(String binName, int index, int count) {
-		return CDT.createOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, index, count);
+	public static Operation removeRange(String binName, int index, int count, CTX... ctx) {
+		return CDT.createOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 	}
 
 	/**
@@ -273,8 +278,8 @@ public class ListOperation {
 	 * Server removes items starting at specified index to the end of list.
 	 * Server returns number of items removed.
 	 */
-	public static Operation removeRange(String binName, int index) {
-		return CDT.createOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, index);
+	public static Operation removeRange(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(REMOVE_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, index);
 	}
 
 	/**
@@ -282,8 +287,8 @@ public class ListOperation {
 	 * Server sets item value at specified index in list bin.
 	 * Server does not return a result by default.
 	 */
-	public static Operation set(String binName, int index, Value value) {
-		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value);
+	public static Operation set(String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, ctx, index, value);
 	}
 
 	/**
@@ -291,8 +296,8 @@ public class ListOperation {
 	 * Server sets item value at specified index in list bin.
 	 * Server does not return a result by default.
 	 */
-	public static Operation set(ListPolicy policy, String binName, int index, Value value) {
-		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, index, value, policy.flags);
+	public static Operation set(ListPolicy policy, String binName, int index, Value value, CTX... ctx) {
+		return CDT.createOperation(SET, Operation.Type.CDT_MODIFY, binName, ctx, index, value, policy.flags);
 	}
 
 	/**
@@ -301,8 +306,8 @@ public class ListOperation {
 	 * and count range.  If the range is out of bounds, then all items will be removed.
 	 * Server returns list size after trim.
 	 */
-	public static Operation trim(String binName, int index, int count) {
-		return CDT.createOperation(TRIM, Operation.Type.CDT_MODIFY, binName, index, count);
+	public static Operation trim(String binName, int index, int count, CTX... ctx) {
+		return CDT.createOperation(TRIM, Operation.Type.CDT_MODIFY, binName, ctx, index, count);
 	}
 
 	/**
@@ -310,8 +315,8 @@ public class ListOperation {
 	 * Server removes all items in list bin.
 	 * Server does not return a result by default.
 	 */
-	public static Operation clear(String binName) {
-		return CDT.createOperation(CLEAR, Operation.Type.CDT_MODIFY, binName);
+	public static Operation clear(String binName, CTX... ctx) {
+		return CDT.createOperation(CLEAR, Operation.Type.CDT_MODIFY, binName, ctx);
 	}
 
 	/**
@@ -322,24 +327,24 @@ public class ListOperation {
 	 * @param binName	server bin name
 	 * @param sortFlags sort flags. See {@link ListSortFlags}.
 	 */
-	public static Operation sort(String binName, int sortFlags) {
-		return CDT.createOperation(SORT, Operation.Type.CDT_MODIFY, binName, sortFlags);
+	public static Operation sort(String binName, int sortFlags, CTX... ctx) {
+		return CDT.createOperation(SORT, Operation.Type.CDT_MODIFY, binName, ctx, sortFlags);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes list items identified by value and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByValue(String binName, Value value, int returnType) {
-		return CDT.createOperation(REMOVE_BY_VALUE, Operation.Type.CDT_MODIFY, binName, returnType, value);
+	public static Operation removeByValue(String binName, Value value, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_VALUE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, value);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes list items identified by values and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByValueList(String binName, List<Value> values, int returnType) {
-		return CDT.createOperation(REMOVE_BY_VALUE_LIST, Operation.Type.CDT_MODIFY, binName, returnType, values);
+	public static Operation removeByValueList(String binName, List<Value> values, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_VALUE_LIST, Operation.Type.CDT_MODIFY, binName, ctx, returnType, values);
 	}
 
 	/**
@@ -350,8 +355,8 @@ public class ListOperation {
 	 * <p>
 	 * Server returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType) {
-		return CDT.createRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.CDT_MODIFY, binName, valueBegin, valueEnd, returnType);
+	public static Operation removeByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType, CTX... ctx) {
+		return CDT.createRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.CDT_MODIFY, binName, ctx, valueBegin, valueEnd, returnType);
 	}
 
 	/**
@@ -370,8 +375,8 @@ public class ListOperation {
 	 * <li>(3,-3) = [0,4,5,9,11,15]</li>
 	 * </ul>
 	 */
-	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
-		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank);
+	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, value, rank);
 	}
 
 	/**
@@ -390,16 +395,16 @@ public class ListOperation {
 	 * <li>(3,-3,2) = []</li>
 	 * </ul>
 	 */
-	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
-		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, value, rank, count);
+	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, value, rank, count);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes list item identified by index and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByIndex(String binName, int index, int returnType) {
-		return CDT.createOperation(REMOVE_BY_INDEX, Operation.Type.CDT_MODIFY, binName, returnType, index);
+	public static Operation removeByIndex(String binName, int index, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_INDEX, Operation.Type.CDT_MODIFY, binName, ctx, returnType, index);
 	}
 
 	/**
@@ -407,24 +412,24 @@ public class ListOperation {
 	 * Server removes list items starting at specified index to the end of list and returns removed
 	 * data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByIndexRange(String binName, int index, int returnType) {
-		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, index);
+	public static Operation removeByIndexRange(String binName, int index, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, index);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes "count" list items starting at specified index and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByIndexRange(String binName, int index, int count, int returnType) {
-		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, index, count);
+	public static Operation removeByIndexRange(String binName, int index, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, index, count);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes list item identified by rank and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByRank(String binName, int rank, int returnType) {
-		return CDT.createOperation(REMOVE_BY_RANK, Operation.Type.CDT_MODIFY, binName, returnType, rank);
+	public static Operation removeByRank(String binName, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_RANK, Operation.Type.CDT_MODIFY, binName, ctx, returnType, rank);
 	}
 
 	/**
@@ -432,56 +437,56 @@ public class ListOperation {
 	 * Server removes list items starting at specified rank to the last ranked item and returns removed
 	 * data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByRankRange(String binName, int rank, int returnType) {
-		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, rank);
+	public static Operation removeByRankRange(String binName, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, rank);
 	}
 
 	/**
 	 * Create list remove operation.
 	 * Server removes "count" list items starting at specified rank and returns removed data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation removeByRankRange(String binName, int rank, int count, int returnType) {
-		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, returnType, rank, count);
+	public static Operation removeByRankRange(String binName, int rank, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.CDT_MODIFY, binName, ctx, returnType, rank, count);
 	}
 
 	/**
 	 * Create list size operation.
 	 * Server returns size of list.
 	 */
-	public static Operation size(String binName) {
-		return CDT.createOperation(SIZE, Operation.Type.CDT_READ, binName);
+	public static Operation size(String binName, CTX... ctx) {
+		return CDT.createOperation(SIZE, Operation.Type.CDT_READ, binName, ctx);
 	}
 
 	/**
 	 * Create list get operation.
 	 * Server returns item at specified index in list bin.
 	 */
-	public static Operation get(String binName, int index) {
-		return CDT.createOperation(GET, Operation.Type.CDT_READ, binName, index);
+	public static Operation get(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(GET, Operation.Type.CDT_READ, binName, ctx, index);
 	}
 
 	/**
 	 * Create list get range operation.
 	 * Server returns "count" items starting at specified index in list bin.
 	 */
-	public static Operation getRange(String binName, int index, int count) {
-		return CDT.createOperation(GET_RANGE, Operation.Type.CDT_READ, binName, index, count);
+	public static Operation getRange(String binName, int index, int count, CTX... ctx) {
+		return CDT.createOperation(GET_RANGE, Operation.Type.CDT_READ, binName, ctx, index, count);
 	}
 
 	/**
 	 * Create list get range operation.
 	 * Server returns items starting at index to the end of list.
 	 */
-	public static Operation getRange(String binName, int index) {
-		return CDT.createOperation(GET_RANGE, Operation.Type.CDT_READ, binName, index);
+	public static Operation getRange(String binName, int index, CTX... ctx) {
+		return CDT.createOperation(GET_RANGE, Operation.Type.CDT_READ, binName, ctx, index);
 	}
 
 	/**
 	 * Create list get by value operation.
 	 * Server selects list items identified by value and returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByValue(String binName, Value value, int returnType) {
-		return CDT.createOperation(GET_BY_VALUE, Operation.Type.CDT_READ, binName, returnType, value);
+	public static Operation getByValue(String binName, Value value, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_VALUE, Operation.Type.CDT_READ, binName, ctx, returnType, value);
 	}
 
 	/**
@@ -492,16 +497,16 @@ public class ListOperation {
 	 * <p>
 	 * Server returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType) {
-		return CDT.createRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.CDT_READ, binName, valueBegin, valueEnd, returnType);
+	public static Operation getByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType, CTX... ctx) {
+		return CDT.createRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.CDT_READ, binName, ctx, valueBegin, valueEnd, returnType);
 	}
 
 	/**
 	 * Create list get by value list operation.
 	 * Server selects list items identified by values and returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByValueList(String binName, List<Value> values, int returnType) {
-		return CDT.createOperation(GET_BY_VALUE_LIST, Operation.Type.CDT_READ, binName, returnType, values);
+	public static Operation getByValueList(String binName, List<Value> values, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_VALUE_LIST, Operation.Type.CDT_READ, binName, ctx, returnType, values);
 	}
 
 	/**
@@ -520,8 +525,8 @@ public class ListOperation {
 	 * <li>(3,-3) = [0,4,5,9,11,15]</li>
 	 * </ul>
 	 */
-	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int returnType) {
-		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank);
+	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, value, rank);
 	}
 
 	/**
@@ -540,8 +545,8 @@ public class ListOperation {
 	 * <li>(3,-3,2) = []</li>
 	 * </ul>
 	 */
-	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType) {
-		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, value, rank, count);
+	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, value, rank, count);
 	}
 
 	/**
@@ -549,8 +554,8 @@ public class ListOperation {
 	 * Server selects list item identified by index and returns selected data specified by returnType
 	 * (See {@link ListReturnType}).
 	 */
-	public static Operation getByIndex(String binName, int index, int returnType) {
-		return CDT.createOperation(GET_BY_INDEX, Operation.Type.CDT_READ, binName, returnType, index);
+	public static Operation getByIndex(String binName, int index, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_INDEX, Operation.Type.CDT_READ, binName, ctx, returnType, index);
 	}
 
 	/**
@@ -558,8 +563,8 @@ public class ListOperation {
 	 * Server selects list items starting at specified index to the end of list and returns selected
 	 * data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByIndexRange(String binName, int index, int returnType) {
-		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, returnType, index);
+	public static Operation getByIndexRange(String binName, int index, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, index);
 	}
 
 	/**
@@ -567,16 +572,16 @@ public class ListOperation {
 	 * Server selects "count" list items starting at specified index and returns selected data specified
 	 * by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByIndexRange(String binName, int index, int count, int returnType) {
-		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, returnType, index, count);
+	public static Operation getByIndexRange(String binName, int index, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, index, count);
 	}
 
 	/**
 	 * Create list get by rank operation.
 	 * Server selects list item identified by rank and returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByRank(String binName, int rank, int returnType) {
-		return CDT.createOperation(GET_BY_RANK, Operation.Type.CDT_READ, binName, returnType, rank);
+	public static Operation getByRank(String binName, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_RANK, Operation.Type.CDT_READ, binName, ctx, returnType, rank);
 	}
 
 	/**
@@ -584,15 +589,15 @@ public class ListOperation {
 	 * Server selects list items starting at specified rank to the last ranked item and returns selected
 	 * data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByRankRange(String binName, int rank, int returnType) {
-		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, rank);
+	public static Operation getByRankRange(String binName, int rank, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, rank);
 	}
 
 	/**
 	 * Create list get by rank range operation.
 	 * Server selects "count" list items starting at specified rank and returns selected data specified by returnType (See {@link ListReturnType}).
 	 */
-	public static Operation getByRankRange(String binName, int rank, int count, int returnType) {
-		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, returnType, rank, count);
+	public static Operation getByRankRange(String binName, int rank, int count, int returnType, CTX... ctx) {
+		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.CDT_READ, binName, ctx, returnType, rank, count);
 	}
 }

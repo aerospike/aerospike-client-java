@@ -32,6 +32,7 @@ import com.aerospike.test.sync.basic.TestExpire;
 import com.aerospike.test.sync.basic.TestGeneration;
 import com.aerospike.test.sync.basic.TestListMap;
 import com.aerospike.test.sync.basic.TestOperate;
+import com.aerospike.test.sync.basic.TestOperateBit;
 import com.aerospike.test.sync.basic.TestOperateList;
 import com.aerospike.test.sync.basic.TestOperateMap;
 import com.aerospike.test.sync.basic.TestPutGet;
@@ -65,6 +66,7 @@ import com.aerospike.test.util.Args;
 	TestExpire.class,
 	TestTouch.class,
 	TestOperate.class,
+	TestOperateBit.class,
 	TestOperateList.class,
 	TestOperateMap.class,
 	TestDeleteBin.class,

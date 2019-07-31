@@ -24,62 +24,56 @@ import com.aerospike.client.util.Packer;
 
 public abstract class CDT {
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
+		CDT.init(packer, ctx, command, 0);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(1);
+		CDT.init(packer, ctx, command, 1);
 		packer.packInt(v1);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, int v2) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, int v2) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(2);
+		CDT.init(packer, ctx, command, 2);
 		packer.packInt(v1);
 		packer.packInt(v2);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, int v2, int v3) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, int v2, int v3) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, command, 3);
 		packer.packInt(v1);
 		packer.packInt(v2);
 		packer.packInt(v3);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, Value v2) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(2);
+		CDT.init(packer, ctx, command, 2);
 		packer.packInt(v1);
 		v2.pack(packer);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2, int v3) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, Value v2, int v3) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, command, 3);
 		packer.packInt(v1);
 		v2.pack(packer);
 		packer.packInt(v3);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, Value v2, int v3, int v4) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, Value v2, int v3, int v4) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(4);
+		CDT.init(packer, ctx, command, 4);
 		packer.packInt(v1);
 		v2.pack(packer);
 		packer.packInt(v3);
@@ -87,44 +81,63 @@ public abstract class CDT {
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, int v1, List<Value> v2) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, int v1, List<Value> v2) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(2);
+		CDT.init(packer, ctx, command, 2);
 		packer.packInt(v1);
 		packer.packValueList(v2);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createOperation(int command, Operation.Type type, String binName, Value v1, Value v2, int v3) {
+	protected static Operation createOperation(int command, Operation.Type type, String binName, CTX[] ctx, Value v1, Value v2, int v3) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
-		packer.packArrayBegin(3);
+		CDT.init(packer, ctx, command, 3);
 		v1.pack(packer);
 		v2.pack(packer);
 		packer.packInt(v3);
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
 	}
 
-	protected static Operation createRangeOperation(int command, Operation.Type type, String binName, Value begin, Value end, int returnType) {
+	protected static Operation createRangeOperation(int command, Operation.Type type, String binName, CTX[] ctx, Value begin, Value end, int returnType) {
 		Packer packer = new Packer();
-		packer.packRawShort(command);
 
 		if (begin == null) {
 			begin = Value.getAsNull();
 		}
 
 		if (end == null) {
-			packer.packArrayBegin(2);
+			CDT.init(packer, ctx, command, 2);
 			packer.packInt(returnType);
 			begin.pack(packer);
 		}
 		else {
-			packer.packArrayBegin(3);
+			CDT.init(packer, ctx, command, 3);
 			packer.packInt(returnType);
 			begin.pack(packer);
 			end.pack(packer);
 		}
 		return new Operation(type, binName, Value.get(packer.toByteArray()));
+	}
+
+	protected static void init(Packer packer, CTX[] ctx, int command, int count) {
+		if (ctx != null && ctx.length > 0) {
+			packer.packArrayBegin(3);
+			packer.packInt(0xff);
+			packer.packArrayBegin(ctx.length * 2);
+
+			for (CTX c : ctx) {
+				packer.packInt(c.id);
+				c.value.pack(packer);
+			}
+			packer.packArrayBegin(count + 1);
+			packer.packInt(command);
+		}
+		else {
+			packer.packRawShort(command);
+
+			if (count > 0) {
+				packer.packArrayBegin(count);
+			}
+		}
 	}
 }

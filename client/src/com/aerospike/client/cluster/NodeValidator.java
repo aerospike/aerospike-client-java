@@ -263,6 +263,9 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "truncate-namespace", 0, len)) {
 					this.features |= Node.HAS_TRUNCATE_NS;
 				}
+				else if (featuresString.regionMatches(begin, "blob-bits", 0, len)) {
+					this.features |= Node.HAS_BIT_OP;
+				}
 				begin = end + 1;
 			}
 		}

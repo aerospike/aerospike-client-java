@@ -23,9 +23,12 @@ import java.util.List;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapOperation;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
@@ -48,6 +51,7 @@ public class OperateMap extends Example {
 		runSimpleExample(client, params);
 		runScoreExample(client, params);
 		runListRangeExample(client, params);
+		runNestedExample(client, params);
 	}
 
 	/**
@@ -188,6 +192,42 @@ public class OperateMap extends Example {
 				MapOperation.removeByValueRange(binName, null, Value.get(end), MapReturnType.COUNT)
 				);
 
+		console.info("Record: " + record);
+	}
+
+	/**
+	 * Operate on a map of maps.
+	 */
+	public void runNestedExample(AerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mapkey2");
+		String binName = params.getBinName("mapbin");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get("key11"), Value.get(9));
+		m1.put(Value.get("key12"), Value.get(4));
+
+		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		m2.put(Value.get("key21"), Value.get(3));
+		m2.put(Value.get("key22"), Value.get(5));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(m1));
+		inputMap.put(Value.get("key2"), Value.get(m2));
+
+		// Create maps.
+		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+
+		// Set map value to 11 for map key "key21" inside of map key "key2"
+		// and retrieve all maps.
+		Record record = client.operate(params.writePolicy, key,
+				MapOperation.put(MapPolicy.Default, binName, Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2"))),
+				Operation.get(binName)
+				);
+
+		record = client.get(params.policy, key);
 		console.info("Record: " + record);
 	}
 }

@@ -103,6 +103,11 @@ public final class ResultCode {
 	public static final int KEY_EXISTS_ERROR = 5;
 
 	/**
+	 * Bin already exists on a create-only operation.
+	 */
+	public static final int BIN_EXISTS_ERROR = 6;
+
+	/**
 	 * Expected cluster was not received.
 	 */
 	public static final int CLUSTER_KEY_MISMATCH = 7;
@@ -154,6 +159,11 @@ public final class ResultCode {
 	public static final int UNSUPPORTED_FEATURE = 16;
 
 	/**
+	 * Bin not found on update-only operation.
+	 */
+	public static final int BIN_NOT_FOUND = 17;
+
+	/**
 	 * Device not keeping up with writes.
 	 */
 	public static final int DEVICE_OVERLOAD = 18;
@@ -174,19 +184,30 @@ public final class ResultCode {
 	public static final int BIN_NAME_TOO_LONG = 21;
 
 	/**
-	 *	Operation not allowed at this time.
+	 * Operation not allowed at this time.
 	 */
 	public static final int FAIL_FORBIDDEN = 22;
 
 	/**
-	 *	Map element not found in UPDATE_ONLY write mode.
+	 * Map element not found in UPDATE_ONLY write mode.
 	 */
 	public static final int ELEMENT_NOT_FOUND = 23;
 
 	/**
-	 *	Map element exists in CREATE_ONLY write mode.
+	 * Map element exists in CREATE_ONLY write mode.
 	 */
 	public static final int ELEMENT_EXISTS = 24;
+
+	/**
+	 * Attempt to use an Enterprise feature on a Community server or a server
+	 * without the applicable feature key.
+	 */
+	public static final int ENTERPRISE_ONLY = 25;
+
+	/**
+	 * The operation cannot be applied to the current bin value on the server.
+	 */
+	public static final int OP_NOT_APPLICABLE = 26;
 
 	/**
 	 * There are no more records left for query.
@@ -451,6 +472,9 @@ public final class ResultCode {
 		case KEY_EXISTS_ERROR:
 			return "Key already exists";
 
+		case BIN_EXISTS_ERROR:
+			return "Bin already exists";
+
 		case CLUSTER_KEY_MISMATCH:
 			return "Cluster key mismatch";
 
@@ -481,6 +505,9 @@ public final class ResultCode {
 		case UNSUPPORTED_FEATURE:
 			return "Unsupported Server Feature";
 
+		case BIN_NOT_FOUND:
+			return "Bin not found";
+
 		case DEVICE_OVERLOAD:
 			return "Device overload";
 
@@ -501,6 +528,12 @@ public final class ResultCode {
 
 		case ELEMENT_EXISTS:
 			return "Map key exists";
+
+		case ENTERPRISE_ONLY:
+			return "Enterprise only";
+
+		case OP_NOT_APPLICABLE:
+			return "Operation not applicable";
 
 		case QUERY_END:
 			return "Query end";
