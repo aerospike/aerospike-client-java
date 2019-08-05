@@ -76,9 +76,6 @@ public class AdminCommand {
 	private static final int RESULT_CODE = 9;
 	private static final int QUERY_END = 50;
 
-	// Result Codes
-	private static final int INVALID_COMMAND = 54;
-
 	byte[] dataBuffer;
 	int dataOffset;
 
@@ -128,9 +125,14 @@ public class AdminCommand {
 			int result = dataBuffer[RESULT_CODE] & 0xFF;
 
 			if (result != 0) {
-				if (result == INVALID_COMMAND) {
+				if (result == ResultCode.INVALID_COMMAND) {
 					// New login not supported.  Try old authentication.
 					authenticateOld(cluster, conn);
+					return;
+				}
+
+				if (result == ResultCode.SECURITY_NOT_ENABLED) {
+					// Server does not require login.
 					return;
 				}
 
@@ -187,7 +189,8 @@ public class AdminCommand {
 		conn.write(dataBuffer, dataOffset);
 		conn.readFully(dataBuffer, HEADER_SIZE, Command.STATE_READ_AUTH_HEADER);
 
-		return (dataBuffer[RESULT_CODE] & 0xFF) == 0;
+		int result = dataBuffer[RESULT_CODE] & 0xFF;
+		return result == 0 || result == ResultCode.SECURITY_NOT_ENABLED;
 	}
 
 	public int setAuthenticate(Cluster cluster, byte[] sessionToken) {

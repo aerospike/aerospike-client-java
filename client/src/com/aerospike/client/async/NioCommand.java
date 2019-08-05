@@ -438,7 +438,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	private final void readAuthBody() {
 		int resultCode = byteBuffer.get(1) & 0xFF;
 
-		if (resultCode != 0) {
+		if (resultCode != 0 && resultCode != ResultCode.SECURITY_NOT_ENABLED) {
 			// Authentication failed. Session token probably expired.
 			// Signal tend thread to perform node login, so future
 			// transactions do not fail.
