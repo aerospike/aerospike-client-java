@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -49,15 +48,9 @@ public final class Batch {
 
 		@Override
 		protected void parseRow(Key key) throws IOException {
-			BatchRead record = records.get(batchIndex);
-
-			if (Arrays.equals(key.digest, record.key.digest)) {
-				if (resultCode == 0) {
-					record.record = parseRecord();
-				}
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
+			if (resultCode == 0) {
+				BatchRead record = records.get(batchIndex);
+				record.record = parseRecord();
 			}
 		}
 
@@ -105,13 +98,8 @@ public final class Batch {
 
 		@Override
 		protected void parseRow(Key key) throws IOException {
-			if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-				if (resultCode == 0) {
-					records[batchIndex] = parseRecord();
-				}
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
+			if (resultCode == 0) {
+				records[batchIndex] = parseRecord();
 			}
 		}
 
@@ -157,12 +145,7 @@ public final class Batch {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
-			if (Arrays.equals(key.digest, keys[batchIndex].digest)) {
-				existsArray[batchIndex] = resultCode == 0;
-			}
-			else {
-				throw new AerospikeException.Parse("Unexpected batch key returned: " + key.namespace + ',' + Buffer.bytesToHexString(key.digest) + ',' + batchIndex);
-			}
+			existsArray[batchIndex] = resultCode == 0;
 		}
 
 		@Override
