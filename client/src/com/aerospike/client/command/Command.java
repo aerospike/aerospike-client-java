@@ -93,6 +93,12 @@ public abstract class Command {
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 
 		for (Bin bin : bins) {
 			estimateOperationSize(bin);
@@ -100,6 +106,10 @@ public abstract class Command {
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 
 		for (Bin bin : bins) {
 			writeOperation(bin, operation);
@@ -110,19 +120,39 @@ public abstract class Command {
 	public void setDelete(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 		end();
 	}
 
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		estimateOperationSize();
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 		writeOperation(Operation.Type.TOUCH);
 		end();
 	}
@@ -130,18 +160,38 @@ public abstract class Command {
 	public final void setExists(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		sizeBuffer();
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 		end();
 	}
 
-	public final void setRead(Policy policy, Key key) {
+	private final void setRead(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		sizeBuffer();
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 		end();
 	}
 
@@ -149,6 +199,12 @@ public abstract class Command {
 		if (binNames != null) {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
+			int predSize = 0;
+
+			if (policy.predExp != null) {
+				predSize = estimatePredExp(policy.predExp);
+				fieldCount++;
+			}
 
 			for (String binName : binNames) {
 				estimateOperationSize(binName);
@@ -156,6 +212,10 @@ public abstract class Command {
 			sizeBuffer();
 			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
+
+			if (policy.predExp != null) {
+				writePredExp(policy.predExp, predSize);
+			}
 
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
@@ -170,10 +230,20 @@ public abstract class Command {
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		estimateOperationSize((String)null);
 		sizeBuffer();
 		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 		end();
 	}
 
@@ -231,11 +301,21 @@ public abstract class Command {
 	public final void setOperate(WritePolicy policy, Key key, Operation[] operations, OperateArgs args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 		dataOffset += args.size;
 		sizeBuffer();
 
 		writeHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.length);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
 
 		for (Operation operation : operations) {
 			writeOperation(operation);
@@ -247,12 +327,24 @@ public abstract class Command {
 		throws AerospikeException {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
+
 		byte[] argBytes = Packer.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 
 		sizeBuffer();
 		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
+
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -263,10 +355,18 @@ public abstract class Command {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
-		final int fieldCount = policy.sendSetName ? 2 : 1;
+		final int fieldCountRow = policy.sendSetName ? 2 : 1;
 		BatchRead prev = null;
 
 		begin();
+		int fieldCount = 1;
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
+
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
 	    for (int i = 0; i < max; i++) {
@@ -310,8 +410,12 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
-		writeHeader(policy, Command.INFO1_READ | Command.INFO1_BATCH, 0, 1, 0);
+		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
+
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 
@@ -348,7 +452,7 @@ public abstract class Command {
 
 				if (binNames != null && binNames.length != 0) {
 			    	dataBuffer[dataOffset++] = (byte)readAttr;
-					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
 				    dataOffset += 2;
 					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
 				    dataOffset += 2;
@@ -364,7 +468,7 @@ public abstract class Command {
 				}
 				else {
 			    	dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
-					Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
 				    dataOffset += 2;
 					Buffer.shortToBytes(0, dataBuffer, dataOffset);
 				    dataOffset += 2;
@@ -387,7 +491,7 @@ public abstract class Command {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
-		final int fieldCount = policy.sendSetName ? 2 : 1;
+		final int fieldCountRow = policy.sendSetName ? 2 : 1;
 
 		// Calculate size of bin names.
 		int binNameSize = 0;
@@ -402,6 +506,13 @@ public abstract class Command {
 
 		// Estimate buffer size.
 		begin();
+		int fieldCount = 1;
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
 	    dataOffset += FIELD_HEADER_SIZE + 5;
 
 	    Key prev = null;
@@ -435,7 +546,12 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, 1, 0);
+		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
+		}
+
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 
@@ -465,7 +581,7 @@ public abstract class Command {
 				// Write full header, namespace and bin names.
 		    	dataBuffer[dataOffset++] = 0;  // do not repeat
 		    	dataBuffer[dataOffset++] = (byte)readAttr;
-				Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+				Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
 			    dataOffset += 2;
 				Buffer.shortToBytes(operationCount, dataBuffer, dataOffset);
 			    dataOffset += 2;
@@ -503,6 +619,13 @@ public abstract class Command {
 			fieldCount++;
 		}
 
+		int predSize = 0;
+
+		if (policy.predExp != null) {
+			predSize = estimatePredExp(policy.predExp);
+			fieldCount++;
+		}
+
 		// Estimate scan options size.
 		dataOffset += 2 + FIELD_HEADER_SIZE;
 		fieldCount++;
@@ -537,6 +660,10 @@ public abstract class Command {
 
 		if (setName != null) {
 			writeField(setName, FieldType.TABLE);
+		}
+
+		if (policy.predExp != null) {
+			writePredExp(policy.predExp, predSize);
 		}
 
 		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
@@ -639,10 +766,12 @@ public abstract class Command {
 		PredExp[] predExp = statement.getPredExp();
 		int predSize = 0;
 
+		if (policy.predExp != null && predExp == null) {
+			predExp = policy.predExp;
+		}
+
 		if (predExp != null) {
-			dataOffset += FIELD_HEADER_SIZE;
-			predSize = PredExp.estimateSize(predExp);
-			dataOffset += predSize;
+			predSize = estimatePredExp(predExp);
 			fieldCount++;
 		}
 
@@ -743,8 +872,7 @@ public abstract class Command {
 		}
 
 		if (predExp != null) {
-			writeFieldHeader(predSize, FieldType.PREDEXP);
-			dataOffset = PredExp.write(predExp, dataBuffer, dataOffset);
+			writePredExp(predExp, predSize);
 		}
 
 		if (statement.getFunctionName() != null) {
@@ -795,6 +923,12 @@ public abstract class Command {
 		dataOffset += Buffer.estimateSizeUtf8(functionName) + FIELD_HEADER_SIZE;
 		dataOffset += bytes.length + FIELD_HEADER_SIZE;
 		return 3;
+	}
+
+	private final int estimatePredExp(PredExp[] predExp) {
+		int sz = PredExp.estimateSize(predExp);
+		dataOffset += sz + FIELD_HEADER_SIZE;
+		return sz;
 	}
 
 	private final void estimateOperationSize(Bin bin) throws AerospikeException {
@@ -948,6 +1082,11 @@ public abstract class Command {
 		if (policy.sendKey) {
 			writeField(key.userKey, FieldType.KEY);
 		}
+	}
+
+	private final void writePredExp(PredExp[] predExp, int predSize) {
+		writeFieldHeader(predSize, FieldType.PREDEXP);
+		dataOffset = PredExp.write(predExp, dataBuffer, dataOffset);
 	}
 
 	private final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {

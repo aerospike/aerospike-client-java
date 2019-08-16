@@ -115,6 +115,9 @@ public final class Statement {
 	 * Predicate expression filters may occur on any bin in the record.
 	 * Requires Aerospike Server versions >= 3.12
 	 * <p>
+	 * This method is redundant because PredExp can now be set in the base Policy for
+	 * any transaction (including queries).
+	 * <p>
 	 * Postfix notation is described here:
 	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
 	 * <p>
@@ -143,7 +146,7 @@ public final class Statement {
 	 * stmt.setPredExp(
 	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
-	 *   PredExp.integerGreater(),
+	 *   PredExp.integerGreater()
 	 * );
      * </pre>
 	 */

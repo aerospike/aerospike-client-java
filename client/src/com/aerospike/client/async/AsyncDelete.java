@@ -58,16 +58,23 @@ public final class AsyncDelete extends AsyncCommand {
 
 		if (resultCode == 0) {
 			existed = true;
+			return true;
 		}
-		else {
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				existed = false;
-			}
-			else {
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			existed = false;
+			return true;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			existed = true;
+			return true;
 		}
-		return true;
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

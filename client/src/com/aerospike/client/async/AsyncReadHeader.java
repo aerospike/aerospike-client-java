@@ -60,16 +60,21 @@ public final class AsyncReadHeader extends AsyncCommand {
 			int generation = Buffer.bytesToInt(dataBuffer, 6);
 			int expiration = Buffer.bytesToInt(dataBuffer, 10);
 			record = new Record(null, generation, expiration);
+			return true;
 		}
-		else {
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				record = null;
-			}
-			else {
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			return true;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			return true;
 		}
-		return true;
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.query.PredExp;
+
 /**
  * Transaction policy attributes used in all database commands.
  */
@@ -47,6 +49,14 @@ public class Policy {
 	 * Default: {@link Replica#SEQUENCE}
 	 */
 	public Replica replica = Replica.SEQUENCE;
+
+	/**
+	 * Optional predicate expression filter in postfix notation. If the predicate
+	 * expression exists and evaluates to false, the transaction is ignored.
+	 * <p>
+	 * Default: null
+	 */
+	public PredExp[] predExp;
 
 	/**
 	 * Socket idle timeout in milliseconds when processing a database command.
@@ -168,6 +178,17 @@ public class Policy {
 	public boolean sendKey;
 
 	/**
+	 * Throw exception if {@link #predExp} is defined and that filter evaluates
+	 * to false (transaction ignored).  The {@link com.aerospike.client.AerospikeException}
+	 * will contain result code {@link com.aerospike.client.ResultCode#FILTERED_OUT}.
+	 * <p>
+	 * This field is not applicable to batch, scan or query commands.
+	 * <p>
+	 * Default: false
+	 */
+	public boolean failOnFilteredOut;
+
+	/**
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
@@ -175,12 +196,14 @@ public class Policy {
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
+		this.predExp = other.predExp;
 		this.socketTimeout = other.socketTimeout;
 		this.totalTimeout = other.totalTimeout;
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
 		this.sendKey = other.sendKey;
+		this.failOnFilteredOut = other.failOnFilteredOut;
 	}
 
 	/**
@@ -211,4 +234,26 @@ public class Policy {
 			this.socketTimeout = totalTimeout;
 		}
 	}
+
+	/**
+	 * Set predicate expression filter in postfix notation. If the predicate
+	 * expression exists and evaluates to false, the transaction is ignored.
+	 * <p>
+	 * Postfix notation is described here:
+	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+	 * <p>
+	 * Example:
+	 * <pre>
+	 * // Record last update time > 2017-01-15
+	 * policy.setPredExp(
+	 *   PredExp.recLastUpdate(),
+	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
+	 *   PredExp.integerGreater()
+	 * );
+     * </pre>
+	 */
+	public final void setPredExp(PredExp... predExp) {
+		this.predExp = predExp;
+	}
 }
+

@@ -210,6 +210,11 @@ public final class ResultCode {
 	public static final int OP_NOT_APPLICABLE = 26;
 
 	/**
+	 * The transaction was not performed because the predexp was false.
+	 */
+	public static final int FILTERED_OUT = 27;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -318,11 +323,6 @@ public final class ResultCode {
 	 * A user defined function returned an error code.
 	 */
 	public static final int UDF_BAD_RESPONSE = 100;
-
-	/**
-	 * The requested item in a large collection was not found.
-	 */
-	public static final int LARGE_ITEM_NOT_FOUND = 125;
 
 	/**
 	 * Batch functionality has been disabled.
@@ -535,6 +535,9 @@ public final class ResultCode {
 		case OP_NOT_APPLICABLE:
 			return "Operation not applicable";
 
+		case FILTERED_OUT:
+			return "Transaction filtered out by predexp";
+
 		case QUERY_END:
 			return "Query end";
 
@@ -600,9 +603,6 @@ public final class ResultCode {
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";
-
-		case LARGE_ITEM_NOT_FOUND:
-			return "Large collection item not found";
 
 		case BATCH_DISABLED:
 			return "Batch functionality has been disabled";

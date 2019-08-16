@@ -75,24 +75,35 @@ public class AsyncRead extends AsyncCommand {
 		int opCount = Buffer.bytesToShort(dataBuffer, 20);
 		dataOffset = Command.MSG_REMAINING_HEADER_SIZE;
 
-        if (resultCode == 0) {
-            if (opCount == 0) {
-            	// Bin data was not returned.
-            	record = new Record(null, generation, expiration);
-            }
-            else {
-            	record = parseRecord(opCount, fieldCount, generation, expiration);
-            }
-        }
-        else {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-        		handleNotFound(resultCode);
-        	}
-        	else {
-        		throw new AerospikeException(resultCode);
-        	}
-        }
-        return true;
+		if (resultCode == 0) {
+	        if (opCount == 0) {
+	        	// Bin data was not returned.
+	        	record = new Record(null, generation, expiration);
+	        	return true;
+	        }
+	        record = parseRecord(opCount, fieldCount, generation, expiration);
+			return true;
+		}
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+    		handleNotFound(resultCode);
+			return true;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(resultCode);
+			}
+			return true;
+		}
+
+    	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			record = parseRecord(opCount, fieldCount, generation, expiration);
+			handleUdfError(resultCode);
+			return true;
+    	}
+
+    	throw new AerospikeException(resultCode);
 	}
 
 	@Override
@@ -105,12 +116,35 @@ public class AsyncRead extends AsyncCommand {
 		// Do nothing in default case. Record will be null.
 	}
 
+	private final void handleUdfError(int resultCode) {
+		String ret = (String)record.bins.get("FAILURE");
+
+		if (ret == null) {
+	    	throw new AerospikeException(resultCode);
+		}
+
+		String message;
+		int code;
+
+		try {
+			String[] list = ret.split(":");
+			code = Integer.parseInt(list[2].trim());
+			message = list[0] + ':' + list[1] + ' ' + list[3];
+		}
+		catch (Exception e) {
+			// Use generic exception if parse error occurs.
+        	throw new AerospikeException(resultCode, ret);
+		}
+
+		throw new AerospikeException(code, message);
+	}
+
 	private final Record parseRecord(
 		int opCount,
 		int fieldCount,
 		int generation,
 		int expiration
-	) throws AerospikeException {
+	) {
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		if (fieldCount > 0) {

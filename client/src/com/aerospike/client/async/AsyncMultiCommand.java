@@ -70,7 +70,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
 
 			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
 					if (stopOnNotFound) {
 						return true;
 					}

@@ -56,16 +56,23 @@ public final class AsyncExists extends AsyncCommand {
 
 		if (resultCode == 0) {
 			exists = true;
+			return true;
 		}
-		else {
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				exists = false;
-			}
-			else {
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			exists = false;
+			return true;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			exists = true;
+			return true;
 		}
-		return true;
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

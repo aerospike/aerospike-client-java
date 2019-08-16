@@ -55,33 +55,33 @@ import com.aerospike.test.util.Args;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-	TestServerInfo.class,
-	TestPutGet.class,
-	TestReplace.class,
 	TestAdd.class,
 	TestAppend.class,
 	TestBatch.class,
-	TestGeneration.class,
-	TestSerialize.class,
+	TestDeleteBin.class,
 	TestExpire.class,
-	TestTouch.class,
+	TestGeneration.class,
+	TestListMap.class,
 	TestOperate.class,
 	TestOperateBit.class,
 	TestOperateList.class,
 	TestOperateMap.class,
-	TestDeleteBin.class,
+	TestPutGet.class,
+	TestReplace.class,
 	TestScan.class,
-	TestListMap.class,
+	TestSerialize.class,
+	TestServerInfo.class,
+	TestTouch.class,
 	TestUDF.class,
-	TestQueryInteger.class,
-	TestQueryString.class,
-	TestQueryFilter.class,
-	TestQuerySum.class,
 	TestQueryAverage.class,
-	TestQueryExecute.class,
 	TestQueryCollection.class,
+	TestQueryExecute.class,
+	TestQueryFilter.class,
+	TestQueryInteger.class,
+	TestQueryKey.class,
 	TestQueryPredExp.class,
-	TestQueryKey.class
+	TestQueryString.class,
+	TestQuerySum.class
 })
 public class SuiteSync {
 	public static AerospikeClient client = null;

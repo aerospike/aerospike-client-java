@@ -31,7 +31,7 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
-	private final Policy policy;
+	protected Policy policy;
 	protected final Key key;
 	protected Partition partition;
 	private final String[] binNames;
@@ -44,8 +44,8 @@ public class ReadCommand extends SyncCommand {
 		this.partition = Partition.read(cluster, policy, key);
 	}
 
-	public ReadCommand(Key key, Partition partition) {
-		this.policy = null;
+	public ReadCommand(Policy policy, Key key, Partition partition) {
+		this.policy = policy;
 		this.key = key;
 		this.binNames = null;
 		this.partition = partition;
@@ -108,26 +108,35 @@ public class ReadCommand extends SyncCommand {
     		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
         }
 
-        if (resultCode != 0) {
-        	if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.LARGE_ITEM_NOT_FOUND) {
-        		handleNotFound(resultCode);
-        		return;
-        	}
+		if (resultCode == 0) {
+	        if (opCount == 0) {
+	        	// Bin data was not returned.
+	        	record = new Record(null, generation, expiration);
+	        	return;
+	        }
+	        record = parseRecord(opCount, fieldCount, generation, expiration);
+			return;
+		}
 
-        	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-				record = parseRecord(opCount, fieldCount, generation, expiration);
-				handleUdfError(resultCode);
-				return;
-        	}
-        	throw new AerospikeException(resultCode);
-        }
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+    		handleNotFound(resultCode);
+			return;
+		}
 
-        if (opCount == 0) {
-        	// Bin data was not returned.
-        	record = new Record(null, generation, expiration);
-        	return;
-        }
-        record = parseRecord(opCount, fieldCount, generation, expiration);
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(resultCode);
+			}
+			return;
+		}
+
+    	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			record = parseRecord(opCount, fieldCount, generation, expiration);
+			handleUdfError(resultCode);
+			return;
+    	}
+
+    	throw new AerospikeException(resultCode);
 	}
 
 	@Override
@@ -140,7 +149,7 @@ public class ReadCommand extends SyncCommand {
 		// Do nothing in default case. Record will be null.
 	}
 
-	private void handleUdfError(int resultCode) throws AerospikeException {
+	private void handleUdfError(int resultCode) {
 		String ret = (String)record.bins.get("FAILURE");
 
 		if (ret == null) {
@@ -153,11 +162,6 @@ public class ReadCommand extends SyncCommand {
 		try {
 			String[] list = ret.split(":");
 			code = Integer.parseInt(list[2].trim());
-
-			if (code == ResultCode.LARGE_ITEM_NOT_FOUND) {
-				record = null;
-				return;
-			}
 			message = list[0] + ':' + list[1] + ' ' + list[3];
 		}
 		catch (Exception e) {
@@ -173,7 +177,7 @@ public class ReadCommand extends SyncCommand {
 		int fieldCount,
 		int generation,
 		int expiration
-	) throws AerospikeException {
+	)  {
 		Map<String,Object> bins = new HashMap<String,Object>();
 	    int receiveOffset = 0;
 

@@ -33,11 +33,12 @@ public final class OperateCommand extends ReadCommand {
 	private OperateArgs args;
 
 	public OperateCommand(Key key, Operation[] operations) {
-		super(key, null);
+		super(null, key, null);
 		this.operations = operations;
 	}
 
 	public void setArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args) {
+		super.policy = writePolicy;
 		this.writePolicy = writePolicy;
 		this.args = args;
 

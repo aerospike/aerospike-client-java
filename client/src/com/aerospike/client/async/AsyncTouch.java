@@ -18,6 +18,7 @@ package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
@@ -54,10 +55,18 @@ public final class AsyncTouch extends AsyncCommand {
 
 		int resultCode = dataBuffer[5] & 0xFF;
 
-		if (resultCode != 0) {
-			throw new AerospikeException(resultCode);
+		if (resultCode == 0) {
+			return true;
 		}
-		return true;
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(resultCode);
+			}
+			return true;
+		}
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

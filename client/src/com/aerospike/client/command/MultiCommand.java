@@ -130,7 +130,7 @@ public abstract class MultiCommand extends SyncCommand {
 			// The only valid server return codes are "ok" and "not found".
 			// If other return codes are received, then abort the batch.
 			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
 					if (stopOnNotFound) {
 						return false;
 					}

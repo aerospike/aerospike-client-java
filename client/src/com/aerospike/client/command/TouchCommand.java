@@ -20,6 +20,7 @@ import java.io.IOException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -54,9 +55,18 @@ public final class TouchCommand extends SyncCommand {
 
 		int resultCode = dataBuffer[13] & 0xFF;
 
-	    if (resultCode != 0) {
-	    	throw new AerospikeException(resultCode);
-	    }
+		if (resultCode == 0) {
+			return;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(resultCode);
+			}
+			return;
+		}
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

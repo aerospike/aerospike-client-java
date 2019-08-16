@@ -57,19 +57,25 @@ public class ReadHeaderCommand extends SyncCommand {
 
 		int resultCode = dataBuffer[13] & 0xFF;
 
-        if (resultCode == 0) {
-    		int generation = Buffer.bytesToInt(dataBuffer, 14);
-    		int expiration = Buffer.bytesToInt(dataBuffer, 18);
-        	record = new Record(null, generation, expiration);
-        }
-        else {
-			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				record = null;
-			}
-			else {
+		if (resultCode == 0) {
+			int generation = Buffer.bytesToInt(dataBuffer, 14);
+			int expiration = Buffer.bytesToInt(dataBuffer, 18);
+			record = new Record(null, generation, expiration);
+			return;
+		}
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			return;
+		}
+
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
+			return;
 		}
+
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override
