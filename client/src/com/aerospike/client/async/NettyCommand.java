@@ -317,6 +317,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void channelActive() {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+
 		if (cluster.getUser() != null) {
 			writeAuth();
 		}

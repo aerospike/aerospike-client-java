@@ -90,8 +90,7 @@ public final class NettyRecover implements TimerTask {
 
 		// Replace channel handler.
 		ChannelPipeline p = conn.channel.pipeline();
-		NettyCommand.InboundHandler handler = (NettyCommand.InboundHandler)p.removeLast();
-		handler.command = null;
+		p.removeLast();
 		p.addLast(new InboundHandler(this));
 
 		timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
