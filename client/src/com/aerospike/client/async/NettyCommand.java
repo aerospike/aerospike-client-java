@@ -897,9 +897,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
-			// Remove handler to ensure no more events can occur on connection.
-			InboundHandler handler = (InboundHandler)conn.channel.pipeline().removeLast();
-			handler.command = null;
 			node.closeAsyncConnection(conn, eventState.index);
 			conn = null;
 		}
