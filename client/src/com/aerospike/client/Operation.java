@@ -70,10 +70,17 @@ public final class Operation {
 	}
 
 	/**
-	 * Create touch database operation.
+	 * Create touch record database operation.
 	 */
 	public static Operation touch() {
 		return new Operation(Type.TOUCH);
+	}
+
+	/**
+	 * Create delete record database operation.
+	 */
+	public static Operation delete() {
+		return new Operation(Type.DELETE);
 	}
 
 	public static enum Type {
@@ -89,7 +96,8 @@ public final class Operation {
 		PREPEND(10),
 		TOUCH(11),
 		BIT_READ(12),
-		BIT_MODIFY(13);
+		BIT_MODIFY(13),
+		DELETE(14);
 
 		public final int protocolType;
 
