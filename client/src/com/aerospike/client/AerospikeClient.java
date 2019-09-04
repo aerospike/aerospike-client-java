@@ -1668,13 +1668,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	//----------------------------------------------------------
-	// Query/Execute UDF
+	// Query/Execute
 	//----------------------------------------------------------
 
 	/**
 	 * Apply user defined function on records that match the statement filter.
 	 * Records are not returned to the client.
-	 * This asynchronous server call will return before command is complete.
+	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
@@ -1705,8 +1705,45 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		Executor executor = new Executor(cluster, policy, nodes.length);
 
-		for (Node node : nodes)
-		{
+		for (Node node : nodes) {
+			ServerCommand command = new ServerCommand(node, policy, statement);
+			executor.addCommand(command);
+		}
+		executor.execute(nodes.length);
+		return new ExecuteTask(cluster, policy, statement);
+	}
+
+	/**
+	 * Apply operations on records that match the statement filter.
+	 * Records are not returned to the client.
+	 * This asynchronous server call will return before the command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * ExecuteTask instance.
+	 *
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param statement				record filter
+	 * @param operations			list of operations to be performed on selected records
+	 * @throws AerospikeException	if command fails
+	 */
+	public final ExecuteTask execute(
+		WritePolicy policy,
+		Statement statement,
+		Operation... operations
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		statement.setOperations(operations);
+		statement.prepare(false);
+
+		Node[] nodes = cluster.getNodes();
+		if (nodes.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
+		}
+
+		Executor executor = new Executor(cluster, policy, nodes.length);
+
+		for (Node node : nodes) {
 			ServerCommand command = new ServerCommand(node, policy, statement);
 			executor.addCommand(command);
 		}

@@ -27,6 +27,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
@@ -129,6 +130,53 @@ public class TestQueryExecute extends TestSync {
 				count++;
 			}
 			assertEquals(expectedSize, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryExecuteOperate() {
+		int begin = 3;
+		int end = 9;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setFilter(Filter.range(binName1, begin, end));
+
+		Bin bin = new Bin("foo", "bar");
+
+		ExecuteTask task = client.execute(null, stmt, Operation.put(bin));
+		task.waitTillComplete(3000, 3000);
+
+		String expected = bin.value.toString();
+
+		stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setFilter(Filter.range(binName1, begin, end));
+
+		RecordSet rs = client.query(null, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				Record record = rs.getRecord();
+				String value = record.getString(bin.name);
+
+				if (value == null) {
+					fail("Bin " + bin.name + " not found");
+				}
+
+				if (! value.equals(expected)) {
+					fail("Data mismatch. Expected " + expected + ". Received " + value);
+				}
+				count++;
+			}
+			assertEquals(end - begin + 1, count);
 		}
 		finally {
 			rs.close();

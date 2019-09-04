@@ -933,13 +933,13 @@ public interface IAerospikeClient extends Closeable {
 	) throws AerospikeException;
 
 	//----------------------------------------------------------
-	// Query/Execute UDF
+	// Query/Execute
 	//----------------------------------------------------------
 
 	/**
 	 * Apply user defined function on records that match the statement filter.
 	 * Records are not returned to the client.
-	 * This asynchronous server call will return before command is complete.
+	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
@@ -956,6 +956,24 @@ public interface IAerospikeClient extends Closeable {
 		String packageName,
 		String functionName,
 		Value... functionArgs
+	) throws AerospikeException;
+
+	/**
+	 * Apply operations on records that match the statement filter.
+	 * Records are not returned to the client.
+	 * This asynchronous server call will return before the command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * ExecuteTask instance.
+	 *
+	 * @param policy				write configuration parameters, pass in null for defaults
+	 * @param statement				record filter
+	 * @param operations			list of operations to be performed on selected records
+	 * @throws AerospikeException	if command fails
+	 */
+	public ExecuteTask execute(
+		WritePolicy policy,
+		Statement statement,
+		Operation... operations
 	) throws AerospikeException;
 
 	//--------------------------------------------------------

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.query;
 
+import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.RandomShift;
 
@@ -34,6 +35,7 @@ public final class Statement {
 	String packageName;
 	String functionName;
 	Value[] functionArgs;
+	Operation[] operations;
 	long taskId;
 	boolean returnData;
 
@@ -240,6 +242,20 @@ public final class Statement {
 	 */
 	public Value[] getFunctionArgs() {
 		return functionArgs;
+	}
+
+	/**
+	 * Set operations to be performed on query/execute.
+	 */
+	public void setOperations(Operation[] operations) {
+		this.operations = operations;
+	}
+
+	/**
+	 * Return operations to be performed on query/execute.
+	 */
+	public Operation[] getOperations() {
+		return this.operations;
 	}
 
 	/**

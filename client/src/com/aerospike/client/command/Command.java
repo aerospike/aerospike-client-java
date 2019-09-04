@@ -619,6 +619,11 @@ public abstract class Command {
 			fieldCount++;
 		}
 
+		if (policy.recordsPerSecond > 0) {
+			dataOffset += 4 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		int predSize = 0;
 
 		if (policy.predExp != null) {
@@ -662,6 +667,10 @@ public abstract class Command {
 			writeField(setName, FieldType.TABLE);
 		}
 
+		if (policy.recordsPerSecond > 0) {
+			writeField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+		}
+
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
 		}
@@ -678,14 +687,10 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
 		// Write scan socket idle timeout.
-		writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
-		Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
-		dataOffset += 4;
+		writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
 
 		// Write taskId field
-		writeFieldHeader(8, FieldType.TRAN_ID);
-		Buffer.longToBytes(taskId, dataBuffer, dataOffset);
-		dataOffset += 8;
+		writeField(taskId, FieldType.TRAN_ID);
 
 		if (binNames != null) {
 			for (String binName : binNames) {
@@ -700,6 +705,7 @@ public abstract class Command {
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
+		int recordsPerSecond = write ? 0 : ((QueryPolicy)policy).recordsPerSecond;
 
 		begin();
 
@@ -761,6 +767,12 @@ public abstract class Command {
 			// Estimate scan timeout size.
 			dataOffset += 4 + FIELD_HEADER_SIZE;
 			fieldCount++;
+
+			// Estimate records per second size.
+			if (recordsPerSecond > 0) {
+				dataOffset += 4 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
 		}
 
 		PredExp[] predExp = statement.getPredExp();
@@ -790,20 +802,33 @@ public abstract class Command {
 			fieldCount += 4;
 		}
 
-		if (filter == null) {
-			if (binNames != null) {
-				for (String binName : binNames) {
-					estimateOperationSize(binName);
-				}
+		// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
+		Operation[] operations = statement.getOperations();
+
+		if (operations != null) {
+			for (Operation operation : operations) {
+				estimateOperationSize(operation);
+			}
+		}
+		else if (binNames != null && filter == null) {
+			for (String binName : binNames) {
+				estimateOperationSize(binName);
 			}
 		}
 
 		sizeBuffer();
 
-		int operationCount = (filter == null && binNames != null)? binNames.length : 0;
+		int operationCount = 0;
+
+		if (operations != null) {
+			operationCount = operations.length;
+		}
+		else if (binNames != null && filter == null) {
+			operationCount = binNames.length;
+		}
 
 		if (write) {
-			writeHeader((WritePolicy)policy, Command.INFO1_READ, Command.INFO2_WRITE, fieldCount, operationCount);
+			writeHeader((WritePolicy)policy, 0, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 		else {
 			QueryPolicy qp = (QueryPolicy)policy;
@@ -824,9 +849,7 @@ public abstract class Command {
 		}
 
 		// Write taskId field
-		writeFieldHeader(8, FieldType.TRAN_ID);
-		Buffer.longToBytes(statement.getTaskId(), dataBuffer, dataOffset);
-		dataOffset += 8;
+		writeField(statement.getTaskId(), FieldType.TRAN_ID);
 
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
@@ -866,9 +889,12 @@ public abstract class Command {
 			dataBuffer[dataOffset++] = (byte)100;
 
 			// Write scan socket idle timeout.
-			writeFieldHeader(4, FieldType.SCAN_TIMEOUT);
-			Buffer.intToBytes(policy.socketTimeout, dataBuffer, dataOffset);
-			dataOffset += 4;
+			writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
+
+			// Write records per second.
+			if (recordsPerSecond > 0) {
+				writeField(recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+			}
 		}
 
 		if (predExp != null) {
@@ -883,12 +909,15 @@ public abstract class Command {
 			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
 		}
 
-		// Scan bin names are specified after all fields.
-		if (filter == null) {
-			if (binNames != null) {
-				for (String binName : binNames) {
-					writeOperation(binName, Operation.Type.READ);
-				}
+		if (operations != null) {
+			for (Operation operation : operations) {
+				writeOperation(operation);
+			}
+		}
+		else if (binNames != null && filter == null) {
+			// Scan bin names are specified after all fields.
+			for (String binName : binNames) {
+				writeOperation(binName, Operation.Type.READ);
 			}
 		}
 
@@ -1151,9 +1180,21 @@ public abstract class Command {
 	}
 
 	public final void writeField(byte[] bytes, int type) {
-	    System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
-	    writeFieldHeader(bytes.length, type);
+		System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
+		writeFieldHeader(bytes.length, type);
 		dataOffset += bytes.length;
+	}
+
+	public final void writeField(int val, int type) {
+		writeFieldHeader(4, type);
+		Buffer.intToBytes(val, dataBuffer, dataOffset);
+		dataOffset += 4;
+	}
+
+	public final void writeField(long val, int type) {
+		writeFieldHeader(8, type);
+		Buffer.longToBytes(val, dataBuffer, dataOffset);
+		dataOffset += 8;
 	}
 
 	public final void writeFieldHeader(int size, int type) {

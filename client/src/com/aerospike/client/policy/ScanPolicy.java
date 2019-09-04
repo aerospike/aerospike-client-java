@@ -28,6 +28,14 @@ public final class ScanPolicy extends Policy {
 	public int scanPercent = 100;
 
 	/**
+	 * Limit returned records per second (rps) rate for each server.
+	 * Do not apply rps limit if recordsPerSecond is zero.
+	 * <p>
+	 * Default: 0
+	 */
+	public int recordsPerSecond;
+
+	/**
 	 * Maximum number of concurrent requests to server nodes at any point in time.
 	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then scan requests
 	 * will be made to 8 nodes in parallel.  When a scan completes, a new scan request will
@@ -67,6 +75,7 @@ public final class ScanPolicy extends Policy {
 	public ScanPolicy(ScanPolicy other) {
 		super(other);
 		this.scanPercent = other.scanPercent;
+		this.recordsPerSecond = other.recordsPerSecond;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.concurrentNodes = other.concurrentNodes;
 		this.includeBinData = other.includeBinData;
