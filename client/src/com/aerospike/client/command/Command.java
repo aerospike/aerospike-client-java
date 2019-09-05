@@ -804,28 +804,22 @@ public abstract class Command {
 
 		// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
 		Operation[] operations = statement.getOperations();
+		int operationCount = 0;
 
 		if (operations != null) {
 			for (Operation operation : operations) {
 				estimateOperationSize(operation);
 			}
+			operationCount = operations.length;
 		}
 		else if (binNames != null && filter == null) {
 			for (String binName : binNames) {
 				estimateOperationSize(binName);
 			}
+			operationCount = binNames.length;
 		}
 
 		sizeBuffer();
-
-		int operationCount = 0;
-
-		if (operations != null) {
-			operationCount = operations.length;
-		}
-		else if (binNames != null && filter == null) {
-			operationCount = binNames.length;
-		}
 
 		if (write) {
 			writeHeader((WritePolicy)policy, 0, Command.INFO2_WRITE, fieldCount, operationCount);
