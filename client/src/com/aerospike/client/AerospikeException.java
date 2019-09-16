@@ -26,8 +26,8 @@ import com.aerospike.client.policy.Policy;
 public class AerospikeException extends RuntimeException {
 	private static final long serialVersionUID = 1L;
 
-	protected Node node;
-	protected Policy policy;
+	protected transient Node node;
+	protected transient Policy policy;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
 	protected int iteration = -1;
 	protected boolean inDoubt;
