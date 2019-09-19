@@ -660,27 +660,43 @@ public final class Info {
 		return responses;
 	}
 
-	private void checkError(String str) throws AerospikeException
-	{
-		if (str.startsWith("ERROR:"))
-		{
+	private void checkError(String str) {
+		if (str.startsWith("ERROR:")) {
+			// Parse format: ERROR:[<code>:][<message>][\n]
+			int len = str.length();
+
+			if (str.charAt(len - 1) == '\n') {
+				len--;
+			}
+
 			int begin = 6;
 			int end = str.indexOf(':', begin);
-			int code = -1;
+
+			if (end < 0) {
+				end = len;
+			}
+
+			int code = ResultCode.SERVER_ERROR;
+
+			if (end > begin) {
+				try {
+					code = Integer.parseInt(str.substring(begin, end));
+					begin = end + 1;
+				}
+				catch (Exception e) {
+					// Show full string after "ERROR:" if code is invalid.
+					// Do not change begin offset.
+				}
+			}
+			else {
+				begin = end + 1;
+			}
+			end = len;
+
 			String message = "";
 
-			if (end >= 0)
-			{
-				code = Integer.parseInt(str.substring(begin, end));
-
-				if (str.charAt(str.length() - 1) == '\n')
-				{
-					message = str.substring(end + 1, str.length() - 1);
-				}
-				else
-				{
-					message = str.substring(end + 1);
-				}
+			if (end > begin) {
+				message = str.substring(begin, end);
 			}
 			throw new AerospikeException(code, message);
 		}
