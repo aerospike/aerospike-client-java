@@ -107,7 +107,7 @@ public final class Pool {
 	/**
 	 * Close connections that are idle for more than maxSocketIdle.
 	 */
-	public void closeIdle() {
+	public void closeIdle(Node node) {
 		while (true) {
 			// Lock on each iteration to give fairness to other
 			// threads polling for connections.
@@ -141,7 +141,7 @@ public final class Pool {
 
 			// Close connection outside of lock.
 			total.getAndDecrement();
-			conn.close();
+			conn.close(node);
 		}
 	}
 

@@ -58,6 +58,11 @@ public final class Connection implements Closeable {
 		this(address, timeoutMillis, TimeUnit.SECONDS.toNanos(55), null);
 	}
 
+	public Connection(InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool, Node node) throws AerospikeException.Connection {
+		this(address, timeoutMillis, maxSocketIdle, pool);
+		node.connsOpened.getAndIncrement();
+	}
+
 	public Connection(InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
 		this.maxSocketIdle = maxSocketIdle;
 		this.pool = pool;
@@ -93,6 +98,11 @@ public final class Connection implements Closeable {
 		catch (Exception e) {
 			throw new AerospikeException.Connection(e);
 		}
+	}
+
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool, Node node) throws AerospikeException.Connection {
+		this(policy, tlsName, address, timeoutMillis, maxSocketIdle, pool);
+		node.connsOpened.getAndIncrement();
 	}
 
 	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
@@ -305,6 +315,14 @@ public final class Connection implements Closeable {
 
 	public void updateLastUsed() {
 		lastUsed = System.nanoTime();
+	}
+
+	/**
+	 * Close socket and associated streams after updating node statistics.
+	 */
+	public void close(Node node) {
+		node.connsClosed.getAndIncrement();
+		close();
 	}
 
 	/**

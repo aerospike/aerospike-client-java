@@ -70,6 +70,10 @@ public class Node implements Closeable {
 	private byte[] sessionToken;
 	private long sessionExpiration;
 	private volatile Map<String,Integer> racks;
+	final AtomicInteger connsOpened;
+	final AtomicInteger connsClosed;
+	public int asyncConnsOpened;
+	public int asyncConnsClosed;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
@@ -99,6 +103,8 @@ public class Node implements Closeable {
 		this.sessionToken = nv.sessionToken;
 		this.sessionExpiration = nv.sessionExpiration;
 		this.features = nv.features;
+		this.connsOpened = new AtomicInteger(1);
+		this.connsClosed = new AtomicInteger(0);
 
 		// Create sync connection pools.
 		connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -149,8 +155,8 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null) :
-					new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null);
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this) :
+					new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this);
 
 				if (cluster.user != null) {
 					try {
@@ -166,11 +172,11 @@ public class Node implements Closeable {
 						}
 					}
 					catch (AerospikeException ae) {
-						tendConnection.close();
+						tendConnection.close(this);
 						throw ae;
 					}
 					catch (Exception e) {
-						tendConnection.close();
+						tendConnection.close(this);
 						throw new AerospikeException(e);
 					}
 				}
@@ -520,7 +526,7 @@ public class Node implements Closeable {
 		failures++;
 
 		if (! tendConnection.isClosed()) {
-			tendConnection.close();
+			tendConnection.close(this);
 		}
 
 		// Only log message if cluster is still active.
@@ -591,8 +597,8 @@ public class Node implements Closeable {
 				// Create new connection.
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool) :
-						new Connection(address, timeoutMillis, cluster.maxSocketIdleNanos, pool);
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool, this) :
+						new Connection(address, timeoutMillis, cluster.maxSocketIdleNanos, pool, this);
 				}
 				catch (RuntimeException re) {
 					pool.total.getAndDecrement();
@@ -684,12 +690,12 @@ public class Node implements Closeable {
 	 */
 	public final void closeConnection(Connection conn) {
 		conn.pool.total.getAndDecrement();
-		conn.close();
+		conn.close(this);
 	}
 
 	public final void closeIdleConnections() {
 		for (Pool pool : connectionPools) {
-			pool.closeIdle();
+			pool.closeIdle(this);
 		}
 	}
 
@@ -708,7 +714,7 @@ public class Node implements Closeable {
 			}
 			inUse += tmp;
 		}
-		return new ConnectionStats(inUse, inPool);
+		return new ConnectionStats(inUse, inPool, connsOpened.get(), connsClosed.get());
 	}
 
 	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {
@@ -738,6 +744,7 @@ public class Node implements Closeable {
 
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
 		asyncConnectionPools[index].total--;
+		asyncConnsClosed++;
 		conn.close();
 	}
 
@@ -759,17 +766,19 @@ public class Node implements Closeable {
 			// Pop connection from queue.
 			queue.pollLast();
 			pool.total--;
+			asyncConnsClosed++;
 			conn.close();
 		}
 	}
 
 	public final ConnectionStats getAsyncConnectionStats() {
+		// Warning: cross-thread references are made without a lock
+		// for queue, asyncConnsOpened and asyncConnsClosed.
 		int inUse = 0;
 		int inPool = 0;
 
 		if (asyncConnectionPools != null) {
 			for (AsyncPool pool : asyncConnectionPools) {
-				// Warning: cross-thread reference without a lock.
 				int tmp =  pool.queue.size();
 
 				// Timing issues may cause values to go negative. Adjust.
@@ -785,7 +794,7 @@ public class Node implements Closeable {
 				inUse += tmp;
 			}
 		}
-		return new ConnectionStats(inUse, inPool);
+		return new ConnectionStats(inUse, inPool, asyncConnsOpened, asyncConnsClosed);
 	}
 
 	/**

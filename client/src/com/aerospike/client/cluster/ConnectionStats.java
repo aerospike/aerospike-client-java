@@ -31,17 +31,29 @@ public final class ConnectionStats {
 	public final int inPool;
 
 	/**
+	 * Total number of node connections opened since node creation.
+	 */
+	public final int opened;
+
+	/**
+	 * Total number of node connections closed since node creation.
+	 */
+	public final int closed;
+
+	/**
 	 * Connection statistics constructor.
 	 */
-	public ConnectionStats(int inUse, int inPool) {
+	public ConnectionStats(int inUse, int inPool, int opened, int closed) {
 		this.inUse = inUse;
 		this.inPool = inPool;
+		this.opened = opened;
+		this.closed = closed;
 	}
 
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return "" + inUse + ',' + inPool;
+		return "" + inUse + ',' + inPool + ',' + opened + ',' + closed;
 	}
 }

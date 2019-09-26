@@ -239,6 +239,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 			try {
 				conn = new NioConnection(node.getAddress(), cluster.maxSocketIdleNanos);
+				node.asyncConnsOpened++;
 			}
 			catch (Exception e) {
 				node.decrAsyncConnection(eventLoop.index);
