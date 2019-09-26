@@ -37,6 +37,7 @@ public final class Statement {
 	Value[] functionArgs;
 	Operation[] operations;
 	long taskId;
+	int recordsPerSecond;
 	boolean returnData;
 
 	/**
@@ -175,6 +176,22 @@ public final class Statement {
 	 */
 	public long getTaskId() {
 		return taskId;
+	}
+
+	/**
+	 * Limit returned records per second (rps) rate for each server.
+	 * Do not apply rps limit if recordsPerSecond is zero (default).
+	 * Currently only applicable to a query without a defined filter.
+	 */
+	public void setRecordsPerSecond(int recordsPerSecond) {
+		this.recordsPerSecond = recordsPerSecond;
+	}
+
+	/**
+	 * Return records per second.
+	 */
+	public int getRecordsPerSecond() {
+		return recordsPerSecond;
 	}
 
 	/**

@@ -705,7 +705,6 @@ public abstract class Command {
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
-		int recordsPerSecond = write ? 0 : ((QueryPolicy)policy).recordsPerSecond;
 
 		begin();
 
@@ -769,7 +768,7 @@ public abstract class Command {
 			fieldCount++;
 
 			// Estimate records per second size.
-			if (recordsPerSecond > 0) {
+			if (statement.getRecordsPerSecond() > 0) {
 				dataOffset += 4 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
@@ -886,8 +885,8 @@ public abstract class Command {
 			writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
 
 			// Write records per second.
-			if (recordsPerSecond > 0) {
-				writeField(recordsPerSecond, FieldType.RECORDS_PER_SECOND);
+			if (statement.getRecordsPerSecond() > 0) {
+				writeField(statement.getRecordsPerSecond(), FieldType.RECORDS_PER_SECOND);
 			}
 		}
 
