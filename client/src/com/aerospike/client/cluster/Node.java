@@ -72,8 +72,6 @@ public class Node implements Closeable {
 	private volatile Map<String,Integer> racks;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
-	public int asyncConnsOpened;
-	public int asyncConnsClosed;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
@@ -738,13 +736,16 @@ public class Node implements Closeable {
 		return null;
 	}
 
+	public final void connectionOpened(int index) {
+		asyncConnectionPools[index].opened++;
+	}
+
 	public final void putAsyncConnection(AsyncConnection conn, int index) {
 		asyncConnectionPools[index].queue.addFirst(conn);
 	}
 
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
-		asyncConnectionPools[index].total--;
-		asyncConnsClosed++;
+		asyncConnectionPools[index].connectionClosed();
 		conn.close();
 	}
 
@@ -765,20 +766,21 @@ public class Node implements Closeable {
 
 			// Pop connection from queue.
 			queue.pollLast();
-			pool.total--;
-			asyncConnsClosed++;
+			pool.connectionClosed();
 			conn.close();
 		}
 	}
 
 	public final ConnectionStats getAsyncConnectionStats() {
-		// Warning: cross-thread references are made without a lock
-		// for queue, asyncConnsOpened and asyncConnsClosed.
 		int inUse = 0;
 		int inPool = 0;
+		int opened = 0;
+		int closed = 0;
 
 		if (asyncConnectionPools != null) {
 			for (AsyncPool pool : asyncConnectionPools) {
+				// Warning: cross-thread references are made without a lock
+				// for pool's queue, opened and closed.
 				int tmp =  pool.queue.size();
 
 				// Timing issues may cause values to go negative. Adjust.
@@ -792,9 +794,11 @@ public class Node implements Closeable {
 					tmp = 0;
 				}
 				inUse += tmp;
+				opened += pool.opened;
+				closed += pool.closed;
 			}
 		}
-		return new ConnectionStats(inUse, inPool, asyncConnsOpened, asyncConnsClosed);
+		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
 
 	/**
@@ -982,10 +986,17 @@ public class Node implements Closeable {
 		public final ArrayDeque<AsyncConnection> queue;
 		public final int capacity;
 		public int total;
+		public int opened;
+		public int closed;
 
 		private AsyncPool(int capacity) {
 			this.capacity = capacity;
 			this.queue = new ArrayDeque<AsyncConnection>(capacity);
+		}
+
+		private void connectionClosed() {
+			total--;
+			closed++;
 		}
 	}
 }
