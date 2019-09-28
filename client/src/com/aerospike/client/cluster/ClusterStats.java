@@ -59,7 +59,7 @@ public final class ClusterStats {
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
 
-		sb.append("nodes (inUse,inPool):");
+		sb.append("nodes (inUse,inPool,opened,closed):");
 		sb.append(System.lineSeparator());
 
 		for (NodeStats stat : nodes) {
