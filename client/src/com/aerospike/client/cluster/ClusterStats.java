@@ -59,7 +59,7 @@ public final class ClusterStats {
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
 
-		sb.append("nodes (inUse,inPool,opened,closed):");
+		sb.append("nodes(inUse,inPool,opened,closed):");
 		sb.append(System.lineSeparator());
 
 		for (NodeStats stat : nodes) {
@@ -68,7 +68,7 @@ public final class ClusterStats {
 		}
 
 		if (eventLoops != null) {
-			sb.append("event loops (processSize,queueSize): ");
+			sb.append("eventLoops(processSize,queueSize): ");
 
 			for (int i = 0; i < eventLoops.length; i++) {
 				EventLoopStats stat = eventLoops[i];
