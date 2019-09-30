@@ -54,6 +54,18 @@ public final class NioEventLoops implements EventLoops {
 	 * @param size		number of event loops to create
 	 */
 	public NioEventLoops(EventPolicy policy, int size) throws AerospikeException {
+		this(policy, size, false, "aerospike-nio-event-loop");
+	}
+
+	/**
+	 * Create direct NIO event loops.
+	 *
+	 * @param policy	event loop policy
+	 * @param size		number of event loops to create
+	 * @param daemon	true if the associated threads should run as a daemons
+	 * @param poolName	event loop thread pool name
+	 */
+	public NioEventLoops(EventPolicy policy, int size, boolean daemon, String poolName) throws AerospikeException {
 		if (policy.minTimeout < 5) {
 			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
 		}
@@ -72,7 +84,7 @@ public final class NioEventLoops implements EventLoops {
 
 		for (int i = 0; i < eventLoops.length; i++) {
 			try {
-				eventLoops[i] = new NioEventLoop(policy, provider, i);
+				eventLoops[i] = new NioEventLoop(policy, provider, i, daemon, poolName);
 			}
 			catch (IOException ioe) {
                 for (int j = 0; j < i; j++) {
