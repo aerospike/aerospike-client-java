@@ -736,7 +736,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		retry(ae, false);
 	}
 
-	private final void retry(AerospikeException ae, boolean queueCommand) {
+	private final void retry(final AerospikeException ae, boolean queueCommand) {
 		// Check maxRetries.
 		if (iteration > command.policy.maxRetries) {
 			// Fail command.

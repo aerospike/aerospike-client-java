@@ -488,7 +488,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 
 			if (eventLoops != null) {
-				for (EventLoop eventLoop : eventLoops.getArray()) {
+				for (final EventLoop eventLoop : eventLoops.getArray()) {
 					eventLoop.execute(new Runnable() {
 						public void run() {
 							final Node[] nodeArray = nodes;
