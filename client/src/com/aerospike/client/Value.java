@@ -21,6 +21,7 @@ import java.io.ObjectOutputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
 import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaDouble;
@@ -29,6 +30,7 @@ import org.luaj.vm2.LuaNil;
 import org.luaj.vm2.LuaString;
 import org.luaj.vm2.LuaValue;
 
+import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 import com.aerospike.client.lua.LuaBytes;
@@ -129,6 +131,13 @@ public abstract class Value {
 	 */
 	public static Value get(Map<?,?> value) {
 		return (value == null)? NullValue.INSTANCE : new MapValue(value);
+	}
+
+	/**
+	 * Get sorted map or null value instance.
+	 */
+	public static Value get(List<? extends Entry<?,?>> value, MapOrder mapOrder) {
+		return (value == null)? NullValue.INSTANCE : new SortedMapValue(value, mapOrder);
 	}
 
 	/**
@@ -1301,6 +1310,76 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return map.hashCode();
+		}
+	}
+
+	/**
+	 * Sorted map value.
+	 */
+	public static final class SortedMapValue extends Value {
+		private final List<? extends Entry<?,?>> list;
+		private byte[] bytes;
+		private final MapOrder order;
+
+		public SortedMapValue(List<? extends Entry<?,?>> list, MapOrder order)  {
+			this.list = list;
+			this.order = order;
+		}
+
+		@Override
+		public int estimateSize() throws AerospikeException {
+			bytes = Packer.pack(list, order);
+			return bytes.length;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {
+			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
+			return bytes.length;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packMap(list, order);
+		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: map");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.MAP;
+		}
+
+		@Override
+		public Object getObject() {
+			return list;
+		}
+
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return instance.getLuaList(list);
+		}
+
+		@Override
+		public String toString() {
+			return list.toString();
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			if (other == null || ! this.getClass().equals(other.getClass())) {
+				return false;
+			}
+			SortedMapValue o = (SortedMapValue)other;
+			return this.order == o.order && this.list.equals(o.list);
+		}
+
+		@Override
+		public int hashCode() {
+	        return list.hashCode();
 		}
 	}
 

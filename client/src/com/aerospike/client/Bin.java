@@ -18,7 +18,9 @@ package com.aerospike.client;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 
+import com.aerospike.client.cdt.MapOrder;
 
 /**
  * Column name/value pair.
@@ -176,6 +178,20 @@ public final class Bin {
 	public Bin(String name, Map<?,?> value) {
 		this.name = name;
 		this.value = Value.get(value);
+	}
+
+	/**
+	 * Create a map bin from a list of key/value entries.  The value will be serialized as a
+	 * server map type with specified mapOrder.  For servers configured as "single-bin", enter
+	 * a null or empty name.
+	 *
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		list of key/value entries already in desired sorted order
+	 * @param mapOrder	map sorted order
+	 */
+	public Bin(String name, List<? extends Entry<?,?>> value, MapOrder mapOrder) {
+		this.name = name;
+		this.value = Value.get(value, mapOrder);
 	}
 
 	/**

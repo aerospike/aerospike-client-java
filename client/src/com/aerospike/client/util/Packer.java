@@ -26,6 +26,7 @@ import java.util.Map.Entry;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 
@@ -62,6 +63,17 @@ public final class Packer {
 		try {
 			Packer packer = new Packer();
 			packer.packMap(val);
+			return packer.toByteArray();
+		}
+		catch (Exception e) {
+			throw new AerospikeException.Serialize(e);
+		}
+	}
+
+	public static byte[] pack(List<? extends Entry<?,?>> val, MapOrder order) throws AerospikeException {
+		try {
+			Packer packer = new Packer();
+			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
 		catch (Exception e) {
@@ -121,6 +133,27 @@ public final class Packer {
 	public void packMap(Map<?,?> map) {
 		packMapBegin(map.size());
 		for (Entry<?,?> entry : map.entrySet()) {
+			packObject(entry.getKey());
+			packObject(entry.getValue());
+		}
+	}
+
+	public void packMap(List<? extends Entry<?,?>> list, MapOrder order) {
+		int attr = order.attributes;
+
+		if (attr > 0) {
+			// Map is sorted.
+			packMapBegin(list.size() + 1);
+			packByte(0xc7);
+			packByte(0);
+			packByte(attr);
+			packByte(0xc0);
+		}
+		else {
+			packMapBegin(list.size());
+		}
+
+		for (Entry<?,?> entry : list) {
 			packObject(entry.getKey());
 			packObject(entry.getValue());
 		}

@@ -19,17 +19,23 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.junit.Test;
 
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Value;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
+import com.aerospike.client.cdt.MapOrder;
+import com.aerospike.client.policy.RecordExistsAction;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
 public class TestListMap extends TestSync {
@@ -197,5 +203,38 @@ public class TestListMap extends TestSync {
 		assertEquals(2, receivedInner2.size());
 		assertEquals("string2", receivedInner2.get(0));
 		assertEquals(5L, receivedInner2.get(1));
+	}
+
+	@Test
+	public void sortedMapReplace() {
+		Key key = new Key(args.namespace, args.set, "mapkey3");
+		client.delete(null, key);
+
+		List<Entry<Integer, String>> list = new ArrayList<Entry<Integer,String>>();
+		list.add(new AbstractMap.SimpleEntry<Integer,String>(1, "s1"));
+		list.add(new AbstractMap.SimpleEntry<Integer,String>(2, "s2"));
+		list.add(new AbstractMap.SimpleEntry<Integer,String>(3, "s3"));
+
+		WritePolicy policy = new WritePolicy();
+		policy.recordExistsAction = RecordExistsAction.REPLACE;
+
+		Bin bin = new Bin("mapbin", list, MapOrder.KEY_VALUE_ORDERED);
+		client.put(policy, key, bin);
+
+		Record record = client.get(null, key, bin.name);
+		//System.out.println(record);
+
+		// It's unfortunate that the client returns a tree map here because
+		// KEY_VALUE_ORDERED is sorted by key and then by value.  TreeMap
+		// does not support this sorting behavior...
+		//
+		// TODO: Return List<Entry<?,?>> for KEY_VALUE_ORDERED maps.  This
+		// would be a breaking change.
+		TreeMap<?,?> receivedMap = (TreeMap<?,?>)record.getValue(bin.name);
+
+		assertEquals(3, receivedMap.size());
+		assertEquals("s1", receivedMap.get((long)1));
+		assertEquals("s2", receivedMap.get((long)2));
+		assertEquals("s3", receivedMap.get((long)3));
 	}
 }
