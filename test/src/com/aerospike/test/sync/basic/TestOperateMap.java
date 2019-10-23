@@ -1051,7 +1051,7 @@ public class TestOperateMap extends TestSync {
 
 	@Test
 	public void operateDoubleNestedMap() {
-		Key key = new Key(args.namespace, args.set, "opmkey19");
+		Key key = new Key(args.namespace, args.set, "opmkey20");
 		client.delete(null, key);
 
 		Map<Value,Value> m11 = new HashMap<Value,Value>();
@@ -1104,5 +1104,47 @@ public class TestOperateMap extends TestSync {
 
 		long v = (Long)map.get("key121");
 		assertEquals(11, v);
+	}
+
+	@Test
+	public void operateNestedMapValue() {
+		Key key = new Key(args.namespace, args.set, "opmkey21");
+		client.delete(null, key);
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get(1), Value.get("in"));
+		m1.put(Value.get(3), Value.get("order"));
+		m1.put(Value.get(2), Value.get("key"));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("first"), Value.get(m1));
+
+		MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT);
+
+		// Create nested maps that are all sorted and lookup by map value.
+		Record record = client.operate(null, key,
+				MapOperation.putItems(mapPolicy, binName, inputMap),
+				MapOperation.put(mapPolicy, binName, Value.get("first"), Value.get(m1)),
+				MapOperation.getByKey(binName, Value.get(3), MapReturnType.KEY_VALUE, CTX.mapValue(Value.get(m1)))
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(1, count);
+
+		count = (Long)results.get(i++);
+		assertEquals(1, count);
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(1, list.size());
+
+		Entry<?,?> entry = (Entry<?,?>)list.get(0);
+		assertEquals(3L, entry.getKey());
+		assertEquals("order", entry.getValue());
 	}
 }
