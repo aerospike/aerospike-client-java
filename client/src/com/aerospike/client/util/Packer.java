@@ -19,6 +19,7 @@ package com.aerospike.client.util;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -295,7 +296,17 @@ public final class Packer {
 			return;
 		}
 
+		if (obj instanceof ByteBuffer) {
+			packByteBuffer((ByteBuffer) obj);
+			return;
+		}
+
 		packBlob(obj);
+	}
+
+	public void packByteBuffer(ByteBuffer bb) {
+		byte[] b = bb.array();
+		packBytes(b);
 	}
 
 	public void packLong(long val) {

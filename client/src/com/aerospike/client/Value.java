@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -75,6 +76,13 @@ public abstract class Value {
 	 */
 	public static Value get(byte[] value, int offset, int length) {
 		return (value == null)? NullValue.INSTANCE : new ByteSegmentValue(value, offset, length);
+	}
+
+	/**
+	 * Get byte segment or null value instance.
+	 */
+	public static Value get(ByteBuffer bb) {
+		return (bb == null)? NullValue.INSTANCE : new BytesValue(bb.array());
 	}
 
 	/**
@@ -220,6 +228,11 @@ public abstract class Value {
 
 		if (value instanceof Map<?,?>) {
         	return new MapValue((Map<?,?>)value);
+		}
+
+		if (value instanceof ByteBuffer) {
+			ByteBuffer bb = (ByteBuffer)value;
+        	return new BytesValue(bb.array());
 		}
 
 		return new BlobValue(value);
