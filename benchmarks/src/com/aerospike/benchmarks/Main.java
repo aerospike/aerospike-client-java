@@ -121,9 +121,16 @@ public class Main implements Log.Callback {
 		options.addOption("P", "password", true, "Password");
 		options.addOption("n", "namespace", true, "Set the Aerospike namespace. Default: test");
 		options.addOption("bns","batchNamespaces", true, "Set batch namespaces. Default is regular namespace.");
-        options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
-        options.addOption("c", "clusterName", true, "Set expected cluster name.");
+		options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
+		options.addOption("c", "clusterName", true, "Set expected cluster name.");
 
+		options.addOption("lt", "loginTimeout", true,
+			"Set expected loginTimeout in milliseconds. The timeout is used when user " +
+			"authentication is enabled and a node login is being performed. Default: 5000"
+			);
+		options.addOption("ct", "connectTimeout", true,
+			"Set initial host connection timeout on node startup in milliseconds. Default: 1000"
+			);
         options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
@@ -341,6 +348,14 @@ public class Main implements Log.Callback {
 		else {
 			this.hosts = new Host[1];
 			this.hosts[0] = new Host("127.0.0.1", this.port);
+		}
+
+		if (line.hasOption("loginTimeout")) {
+			clientPolicy.loginTimeout = Integer.parseInt(line.getOptionValue("loginTimeout"));
+		}
+
+		if (line.hasOption("connectTimeout")) {
+			clientPolicy.timeout = Integer.parseInt(line.getOptionValue("connectTimeout"));
 		}
 
         if (line.hasOption("tls")) {
