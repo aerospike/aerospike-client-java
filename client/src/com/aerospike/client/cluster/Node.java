@@ -618,7 +618,9 @@ public class Node implements Closeable {
 					}
 					catch (Connection.ReadTimeout crt) {
 						if (timeoutDelay > 0) {
-							cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt));
+							// The connection state is always STATE_READ_AUTH_HEADER here which does not reference
+							// isSingle, so just pass in true for isSingle in ConnectionRecover.
+							cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
 						}
 						else {
 							closeConnection(conn);
@@ -634,7 +636,7 @@ public class Node implements Closeable {
 						// This is really a socket write timeout, but the calling
 						// method's catch handler just identifies error as a client
 						// timeout, which is what we need.
-						throw new Connection.ReadTimeout(null, 0, 0, (byte)0, true);
+						throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
 					}
 					catch (IOException ioe) {
 						closeConnection(conn);

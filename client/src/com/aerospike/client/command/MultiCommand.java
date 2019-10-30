@@ -16,32 +16,29 @@
  */
 package com.aerospike.client.command;
 
-import java.io.BufferedInputStream;
-import java.io.EOFException;
 import java.io.IOException;
-import java.net.SocketTimeoutException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.Connection.ReadTimeout;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.QueryValidate;
 
 public abstract class MultiCommand extends SyncCommand {
-	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 10;  // 10 MB
+	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
-	private BufferedInputStream bis;
 	private final Node node;
 	protected final String namespace;
 	private final long clusterKey;
-	private int receiveSize;
 	protected int resultCode;
 	protected int generation;
 	protected int expiration;
@@ -50,7 +47,6 @@ public abstract class MultiCommand extends SyncCommand {
 	protected int opCount;
 	private final boolean stopOnNotFound;
 	private final boolean first;
-	private byte state;
 	protected volatile boolean valid = true;
 
 	protected MultiCommand(Node node, boolean stopOnNotFound) {
@@ -83,6 +79,11 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	@Override
+	protected boolean isSingle() {
+		return false;
+	}
+
+	@Override
 	protected Node getNode(Cluster cluster) {
 		return node;
 	}
@@ -94,23 +95,107 @@ public abstract class MultiCommand extends SyncCommand {
 
 	@Override
 	protected final void parseResult(Connection conn) throws IOException {
-		// Read socket into receive buffer one record at a time.  Do not read entire receive size
-		// because the thread local receive buffer would be too big.  Also, scan callbacks can nest
-		// further database commands which contend with the receive buffer.
-		bis = new BufferedInputStream(conn.getInputStream());
-		boolean status = true;
+		// Read blocks of records.  Do not use thread local receive buffer because each
+		// block will likely be too big for a cache.  Also, scan callbacks can nest
+		// further database commands which would contend with the thread local receive buffer.
+		// Instead, use separate heap allocated buffers.
+		byte[] buf = null;
+		byte[] ubuf = null;
+		int receiveSize;
 
-    	while (status) {
-			// Read header.
-    		state = Command.STATE_READ_HEADER;
-    		dataOffset = 0;
-    		readBytes(8);
+		while (true) {
+			// Read header
+			byte[] protoBuf = new byte[8];
+			conn.readFully(protoBuf, 8, Command.STATE_READ_HEADER);
 
-			long size = Buffer.bytesToLong(dataBuffer, 0);
-			receiveSize = ((int) (size & 0xFFFFFFFFFFFFL));
+			long proto = Buffer.bytesToLong(protoBuf, 0);
+			int size = (int)(proto & 0xFFFFFFFFFFFFL);
 
-	        if (receiveSize > 0) {
-		    	status = parseGroup();
+			if (size <= 0) {
+				continue;
+			}
+
+			// Prepare buffer
+			if (buf == null || size > buf.length) {
+				// Corrupted data streams can result in a huge length.
+				// Do a sanity check here.
+				if (size > MAX_BUFFER_SIZE) {
+					throw new AerospikeException("Invalid proto size: " + size);
+				}
+
+				int capacity = (size + 16383) & ~16383; // Round up in 16KB increments.
+				buf = new byte[capacity];
+			}
+
+			// Read remaining message bytes in group.
+			try {
+				conn.readFully(buf, size, Command.STATE_READ_DETAIL);
+			}
+			catch (ReadTimeout rt) {
+				if (rt.offset >= 4) {
+					throw rt;
+				}
+
+				// First 4 bytes of detail contains whether this is the last
+				// group to be sent.  Consider this as part of header.
+				// Copy proto back into buffer to complete header.
+				byte[] b = new byte[12];
+				int count = 0;
+
+				for (int i = 0; i < 8; i++) {
+					b[count++] = protoBuf[i];
+				}
+
+				for (int i = 0; i < rt.offset; i++) {
+					b[count++] = buf[i];
+				}
+
+				throw new ReadTimeout(b, rt.offset + 8, count, Command.STATE_READ_HEADER);
+			}
+
+			long type = (proto >> 48) & 0xff;
+
+			if (type == Command.AS_MSG_TYPE) {
+				dataBuffer = buf;
+				dataOffset = 0;
+				receiveSize = size;
+			}
+			else if (type == Command.MSG_TYPE_COMPRESSED) {
+				int usize = (int)Buffer.bytesToLong(buf, 0);
+
+				if (ubuf == null || usize > ubuf.length) {
+					if (usize > MAX_BUFFER_SIZE) {
+						throw new AerospikeException("Invalid proto size: " + usize);
+					}
+
+					int capacity = (usize + 16383) & ~16383; // Round up in 16KB increments.
+					ubuf = new byte[capacity];
+				}
+
+				Inflater inf = new Inflater();
+				inf.setInput(buf, 8, size - 8);
+				int rsize;
+
+				try {
+					rsize = inf.inflate(ubuf);
+				}
+				catch (DataFormatException dfe) {
+					throw new AerospikeException.Serialize(dfe);
+				}
+
+				if (rsize != usize) {
+					throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+				}
+				dataBuffer = ubuf;
+				dataOffset = 8;
+				receiveSize = usize - 8;
+			}
+			else {
+				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+			}
+
+			if (! parseGroup(receiveSize)) {
+				break;
 			}
 		}
 	}
@@ -118,17 +203,10 @@ public abstract class MultiCommand extends SyncCommand {
 	/**
 	 * Parse all records in the group.
 	 */
-	private final boolean parseGroup() throws IOException {
-		//Parse each message response and add it to the result array
-		state = Command.STATE_READ_DETAIL;
-		dataOffset = 0;
-
+	private final boolean parseGroup(int receiveSize) throws IOException {
 		while (dataOffset < receiveSize) {
-			readBytes(MSG_REMAINING_HEADER_SIZE);
-			resultCode = dataBuffer[5] & 0xFF;
+			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
 
-			// The only valid server return codes are "ok" and "not found".
-			// If other return codes are received, then abort the batch.
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
 					if (stopOnNotFound) {
@@ -140,18 +218,17 @@ public abstract class MultiCommand extends SyncCommand {
 				}
 			}
 
-			byte info3 = dataBuffer[3];
-
 			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
+			if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0) {
 				return false;
 			}
+			generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
+			expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
+			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset + 14);
+			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset + 18);
+			opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
 
-			generation = Buffer.bytesToInt(dataBuffer, 6);
-			expiration = Buffer.bytesToInt(dataBuffer, 10);
-			batchIndex = Buffer.bytesToInt(dataBuffer, 14);
-			fieldCount = Buffer.bytesToShort(dataBuffer, 18);
-			opCount = Buffer.bytesToShort(dataBuffer, 20);
+			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 
 			Key key = parseKey(fieldCount);
 			parseRow(key);
@@ -159,110 +236,26 @@ public abstract class MultiCommand extends SyncCommand {
 		return true;
 	}
 
-	protected final Key parseKey(int fieldCount) throws AerospikeException, IOException {
-		byte[] digest = null;
-		String namespace = null;
-		String setName = null;
-		Value userKey = null;
-
-		for (int i = 0; i < fieldCount; i++) {
-			readBytes(4);
-			int fieldlen = Buffer.bytesToInt(dataBuffer, 0);
-			readBytes(fieldlen);
-			int fieldtype = dataBuffer[0];
-			int size = fieldlen - 1;
-
-			switch (fieldtype) {
-			case FieldType.DIGEST_RIPE:
-				digest = new byte[size];
-				System.arraycopy(dataBuffer, 1, digest, 0, size);
-				break;
-
-			case FieldType.NAMESPACE:
-				namespace = Buffer.utf8ToString(dataBuffer, 1, size);
-				break;
-
-			case FieldType.TABLE:
-				setName = Buffer.utf8ToString(dataBuffer, 1, size);
-				break;
-
-			case FieldType.KEY:
-				userKey = Buffer.bytesToKeyValue(dataBuffer[1], dataBuffer, 2, size-1);
-				break;
-			}
-		}
-		return new Key(namespace, digest, setName, userKey);
-	}
-
-	/**
-	 * Parses the given byte buffer and populate the result object.
-	 * Returns the number of bytes that were parsed from the given buffer.
-	 */
-	protected final Record parseRecord()
-		throws AerospikeException, IOException {
-
+	protected final Record parseRecord() {
 		Map<String,Object> bins = null;
 
 		for (int i = 0 ; i < opCount; i++) {
-			readBytes(8);
-			int opSize = Buffer.bytesToInt(dataBuffer, 0);
-			byte particleType = dataBuffer[5];
-			byte nameSize = dataBuffer[7];
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			byte particleType = dataBuffer[dataOffset+5];
+			byte nameSize = dataBuffer[dataOffset+7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
+			dataOffset += 4 + 4 + nameSize;
 
-			readBytes(nameSize);
-			String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
-
-			int particleBytesSize = opSize - (4 + nameSize);
-			readBytes(particleBytesSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+			int particleBytesSize = (int) (opSize - (4 + nameSize));
+	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 
 			if (bins == null) {
 				bins = new HashMap<String,Object>();
 			}
 			bins.put(name, value);
-		}
-		return new Record(bins, generation, expiration);
-	}
-
-	protected final void readBytes(int length) throws IOException {
-		if (length > dataBuffer.length) {
-			// Corrupted data streams can result in a huge length.
-			// Do a sanity check here.
-			if (length > MAX_BUFFER_SIZE) {
-				throw new IllegalArgumentException("Invalid readBytes length: " + length);
-			}
-			dataBuffer = new byte[length];
-		}
-
-		int pos = 0;
-		int count;
-
-		while (pos < length) {
-			try {
-				count = bis.read(dataBuffer, pos, length - pos);
-			}
-			catch (SocketTimeoutException ste) {
-				if (state == Command.STATE_READ_DETAIL && dataOffset < 4) {
-					// First 4 bytes of detail contains whether this is the last
-					// group to be sent.  Consider this as part of header.
-					// Copy recieve size back into buffer to complete header.
-					for (int i = 0; i < dataOffset; i++) {
-						dataBuffer[8 + i] = dataBuffer[i];
-					}
-					dataOffset += 8;
-					long size = receiveSize | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-					Buffer.longToBytes(size, dataBuffer, 0);
-					state = Command.STATE_READ_HEADER;
-				}
-				throw new Connection.ReadTimeout(dataBuffer, dataOffset, receiveSize, state, false);
-			}
-
-			if (count < 0) {
-		    	throw new EOFException();
-			}
-			pos += count;
-			dataOffset += count;
-		}
+	    }
+	    return new Record(bins, generation, expiration);
 	}
 
 	public void stop() {

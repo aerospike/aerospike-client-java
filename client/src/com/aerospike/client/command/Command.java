@@ -44,6 +44,7 @@ public abstract class Command {
 	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
 	public static final int INFO1_READ_MODE_AP_ALL	= (1 << 6); // Involve all replicas in read operation.
+	public static final int INFO1_COMPRESS_RESPONSE	= (1 << 7); // Tell server to compress it's response.
 
 	public static final int INFO2_WRITE				= (1 << 0); // Create or update record
 	public static final int INFO2_DELETE			= (1 << 1); // Fling a record into the belly of Moloch.
@@ -86,6 +87,7 @@ public abstract class Command {
 	public static final int DIGEST_SIZE = 20;
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
+	public static final long MSG_TYPE_COMPRESSED = 4L;
 
 	public byte[] dataBuffer;
 	public int dataOffset;
@@ -104,7 +106,7 @@ public abstract class Command {
 			estimateOperationSize(bin);
 		}
 		sizeBuffer();
-		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, bins.length);
+		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -127,7 +129,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeader(policy, 0, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
+		writeHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -147,7 +149,7 @@ public abstract class Command {
 		}
 		estimateOperationSize();
 		sizeBuffer();
-		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 1);
+		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -167,7 +169,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -186,7 +188,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeader(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+		writeHeaderRead(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -210,7 +212,7 @@ public abstract class Command {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
-			writeHeader(policy, Command.INFO1_READ, 0, fieldCount, binNames.length);
+			writeHeaderRead(policy, Command.INFO1_READ, fieldCount, binNames.length);
 			writeKey(policy, key);
 
 			if (policy.predExp != null) {
@@ -238,7 +240,7 @@ public abstract class Command {
 		}
 		estimateOperationSize((String)null);
 		sizeBuffer();
-		writeHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, 0, fieldCount, 0);
+		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -310,7 +312,7 @@ public abstract class Command {
 		dataOffset += args.size;
 		sizeBuffer();
 
-		writeHeader(policy, args.readAttr, args.writeAttr, fieldCount, operations.length);
+		writeHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, operations.length);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -338,7 +340,7 @@ public abstract class Command {
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 
 		sizeBuffer();
-		writeHeader(policy, 0, Command.INFO2_WRITE, fieldCount, 0);
+		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -410,7 +412,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+		writeHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
@@ -546,7 +548,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeader(policy, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+		writeHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
@@ -657,7 +659,7 @@ public abstract class Command {
 		}
 
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeader(policy, readAttr, 0, fieldCount, operationCount);
+		writeHeaderRead(policy, readAttr, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -821,12 +823,12 @@ public abstract class Command {
 		sizeBuffer();
 
 		if (write) {
-			writeHeader((WritePolicy)policy, 0, Command.INFO2_WRITE, fieldCount, operationCount);
+			writeHeaderWrite((WritePolicy)policy, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 		else {
 			QueryPolicy qp = (QueryPolicy)policy;
 			int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-			writeHeader(policy, readAttr, 0, fieldCount, operationCount);
+			writeHeaderRead(policy, readAttr, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
@@ -972,9 +974,70 @@ public abstract class Command {
 	}
 
 	/**
-	 * Header write for write operations.
+	 * Header write for write commands.
 	 */
-	protected final void writeHeader(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
+	protected final void writeHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount) {
+        // Set flags.
+		int generation = 0;
+		int infoAttr = 0;
+
+		switch (policy.recordExistsAction) {
+		case UPDATE:
+			break;
+		case UPDATE_ONLY:
+    		infoAttr |= Command.INFO3_UPDATE_ONLY;
+			break;
+		case REPLACE:
+			infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
+			break;
+		case REPLACE_ONLY:
+			infoAttr |= Command.INFO3_REPLACE_ONLY;
+			break;
+		case CREATE_ONLY:
+    		writeAttr |= Command.INFO2_CREATE_ONLY;
+			break;
+		}
+
+		switch (policy.generationPolicy) {
+		case NONE:
+			break;
+		case EXPECT_GEN_EQUAL:
+    		generation = policy.generation;
+    		writeAttr |= Command.INFO2_GENERATION;
+			break;
+		case EXPECT_GEN_GT:
+    		generation = policy.generation;
+    		writeAttr |= Command.INFO2_GENERATION_GT;
+			break;
+		}
+
+		if (policy.commitLevel == CommitLevel.COMMIT_MASTER) {
+    		infoAttr |= Command.INFO3_COMMIT_MASTER;
+		}
+
+		if (policy.durableDelete) {
+			writeAttr |= Command.INFO2_DURABLE_DELETE;
+		}
+
+    	// Write all header data except total size which must be written last.
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)0;
+		dataBuffer[10] = (byte)writeAttr;
+		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = 0; // unused
+		dataBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(generation, dataBuffer, 14);
+		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+	}
+
+	/**
+	 * Header write for operate command.
+	 */
+	protected final void writeHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
         // Set flags.
 		int generation = 0;
 		int infoAttr = 0;
@@ -1035,6 +1098,10 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
+		if (policy.compressResponse) {
+			readAttr |= Command.INFO1_COMPRESS_RESPONSE;
+		}
+
     	// Write all header data except total size which must be written last.
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
@@ -1051,9 +1118,52 @@ public abstract class Command {
 	}
 
 	/**
-	 * Generic header write.
+	 * Header write for read commands.
 	 */
-	protected final void writeHeader(Policy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
+	protected final void writeHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount) {
+		int infoAttr = 0;
+
+		switch (policy.readModeSC) {
+		case SESSION:
+			break;
+		case LINEARIZE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE;
+			break;
+		case ALLOW_REPLICA:
+			infoAttr |= Command.INFO3_SC_READ_RELAX;
+			break;
+		case ALLOW_UNAVAILABLE:
+			infoAttr |= Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
+			break;
+		}
+
+		if (policy.readModeAP == ReadModeAP.ALL) {
+			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
+		}
+
+		if (policy.compressResponse) {
+			readAttr |= Command.INFO1_COMPRESS_RESPONSE;
+		}
+
+		// Write all header data except total size which must be written last.
+		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9] = (byte)readAttr;
+		dataBuffer[10] = (byte)0;
+		dataBuffer[11] = (byte)infoAttr;
+
+		for (int i = 12; i < 22; i++) {
+			dataBuffer[i] = 0;
+		}
+		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+	}
+
+	/**
+	 * Header write for read header commands.
+	 */
+	protected final void writeHeaderReadHeader(Policy policy, int readAttr, int fieldCount, int operationCount) {
 		int infoAttr = 0;
 
 		switch (policy.readModeSC) {
@@ -1077,7 +1187,7 @@ public abstract class Command {
 		// Write all header data except total size which must be written last.
 		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9] = (byte)readAttr;
-		dataBuffer[10] = (byte)writeAttr;
+		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
 
 		for (int i = 12; i < 22; i++) {
@@ -1209,6 +1319,44 @@ public abstract class Command {
 	public static void LogPolicy(Policy p) {
 		Log.debug("Policy: " + "socketTimeout=" + p.socketTimeout + " totalTimeout=" + p.totalTimeout + " maxRetries=" + p.maxRetries +
 				" sleepBetweenRetries=" + p.sleepBetweenRetries);
+	}
+
+	protected final Key parseKey(int fieldCount) {
+		byte[] digest = null;
+		String namespace = null;
+		String setName = null;
+		Value userKey = null;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int fieldtype = dataBuffer[dataOffset++];
+			int size = fieldlen - 1;
+
+			switch (fieldtype) {
+			case FieldType.DIGEST_RIPE:
+				digest = new byte[size];
+				System.arraycopy(dataBuffer, dataOffset, digest, 0, size);
+				break;
+
+			case FieldType.NAMESPACE:
+				namespace = Buffer.utf8ToString(dataBuffer, dataOffset, size);
+				break;
+
+			case FieldType.TABLE:
+				setName = Buffer.utf8ToString(dataBuffer, dataOffset, size);
+				break;
+
+			case FieldType.KEY:
+				int type = dataBuffer[dataOffset++];
+				size--;
+				userKey = Buffer.bytesToKeyValue(type, dataBuffer, dataOffset, size);
+				break;
+			}
+			dataOffset += size;
+		}
+		return new Key(namespace, digest, setName, userKey);
 	}
 
 	protected abstract void sizeBuffer();

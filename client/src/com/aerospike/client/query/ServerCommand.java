@@ -46,14 +46,11 @@ public final class ServerCommand extends MultiCommand {
 		// Keep parsing logic to empty socket buffer just in case server does
 		// send records back.
 		for (int i = 0 ; i < opCount; i++) {
-    		readBytes(8);
-			int opSize = Buffer.bytesToInt(dataBuffer, 0);
-			byte nameSize = dataBuffer[7];
-
-			readBytes(nameSize);
-
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 7;
+			byte nameSize = dataBuffer[dataOffset++];
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
-			readBytes(particleBytesSize);
+			dataOffset += nameSize + particleBytesSize;
 	    }
 
 		if (! valid) {

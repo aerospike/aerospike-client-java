@@ -273,12 +273,12 @@ public final class Connection implements Closeable {
 				count = in.read(buffer, offset, length - offset);
 			}
 			catch (SocketTimeoutException ste) {
-				throw new ReadTimeout(buffer, offset, length, state, true);
+				throw new ReadTimeout(buffer, offset, length, state);
 			}
 
-			if (count < 0)
+			if (count < 0) {
 				throw new EOFException();
-
+			}
 			offset += count;
 		}
 	}
@@ -348,15 +348,13 @@ public final class Connection implements Closeable {
 		public final int offset;
 		public final int length;
 		public final byte state;
-		public final boolean isSingle;
 
-		public ReadTimeout(byte[] buffer, int offset, int length, byte state, boolean isSingle)  {
+		public ReadTimeout(byte[] buffer, int offset, int length, byte state)  {
 			super("timeout");
 			this.buffer = buffer;
 			this.offset = offset;
 			this.length = length;
 			this.state = state;
-			this.isSingle = isSingle;
 		}
 	}
 }

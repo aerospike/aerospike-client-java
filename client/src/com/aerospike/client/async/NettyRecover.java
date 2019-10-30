@@ -18,6 +18,7 @@ package com.aerospike.client.async;
 
 import java.util.concurrent.TimeUnit;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
@@ -206,12 +207,22 @@ public final class NettyRecover implements TimerTask {
 			dataSize = 8 - offset;
 			byteBuffer.readBytes(dataBuffer, offset, dataSize);
 			readableBytes -= dataSize;
-			length = ((int)(Buffer.bytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL));
+			long proto = Buffer.bytesToLong(dataBuffer, 0);
+			length = ((int)(proto & 0xFFFFFFFFFFFFL));
 
 			if (length == 0) {
 				// Read next header.
 				offset = 0;
 				continue;
+			}
+
+			boolean compressed = ((proto >> 48) & 0xff) == Command.MSG_TYPE_COMPRESSED;
+
+			if (compressed) {
+				// Do not recover connections with compressed data because that would
+				// require saving large buffers with associated state and performing decompression
+				// just to drain the connection.
+				throw new AerospikeException("Recovering connections with compressed multi-record data is not supported");
 			}
 
 			state = AsyncCommand.COMMAND_READ_BODY;
@@ -238,6 +249,10 @@ public final class NettyRecover implements TimerTask {
 			readableBytes -= len;
 			offset += len;
 
+			// Warning: The following code assumes multi-record responses always end with a separate proto
+			// that only contains one header with the info3 last group bit.  This is always true for batch
+			// and scan, but query does not conform.  Therefore, connection recovery for queries will
+			// likely fail.
 			byte info3 = dataBuffer[len - 1];
 
 			if ((info3 & Command.INFO3_LAST) != 0) {

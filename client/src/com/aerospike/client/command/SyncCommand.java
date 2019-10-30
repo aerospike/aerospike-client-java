@@ -130,7 +130,7 @@ public abstract class SyncCommand extends Command {
 				}
 				catch (Connection.ReadTimeout crt) {
 					if (policy.timeoutDelay > 0) {
-						cluster.recoverConnection(new ConnectionRecover(conn, node, policy.timeoutDelay, crt));
+						cluster.recoverConnection(new ConnectionRecover(conn, node, policy.timeoutDelay, crt, isSingle()));
 					}
 					else {
 						node.closeConnection(conn);
@@ -264,6 +264,10 @@ public abstract class SyncCommand extends Command {
 		int commandSentCounter
 	) {
 		return false;
+	}
+
+	protected boolean isSingle() {
+		return true;
 	}
 
 	protected abstract Node getNode(Cluster cluster);

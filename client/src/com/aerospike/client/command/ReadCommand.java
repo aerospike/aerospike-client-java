@@ -19,6 +19,8 @@ package com.aerospike.client.command;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -64,23 +66,15 @@ public class ReadCommand extends SyncCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+		conn.readFully(dataBuffer, 8, Command.STATE_READ_HEADER);
 
-        // A number of these are commented out because we just don't care enough to read
-        // that section of the header. If we do care, uncomment and check!
 		long sz = Buffer.bytesToLong(dataBuffer, 0);
-		byte headerLength = dataBuffer[8];
-//		byte info1 = header[9];
-//		byte info2 = header[10];
-//      byte info3 = header[11];
-//      byte unused = header[12];
-		int resultCode = dataBuffer[13] & 0xFF;
-		int generation = Buffer.bytesToInt(dataBuffer, 14);
-		int expiration = Buffer.bytesToInt(dataBuffer, 18);
-//		int transactionTtl = get_ntohl(header, 22);
-		int fieldCount = Buffer.bytesToShort(dataBuffer, 26); // almost certainly 0
-		int opCount = Buffer.bytesToShort(dataBuffer, 28);
-		int receiveSize = ((int) (sz & 0xFFFFFFFFFFFFL)) - headerLength;
+		int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
+
+		if (receiveSize <= 0) {
+			throw new AerospikeException("Invalid receive size: " + receiveSize);
+		}
+
 		/*
 		byte version = (byte) (((int)(sz >> 56)) & 0xff);
 		if (version != MSG_VERSION) {
@@ -89,7 +83,6 @@ public class ReadCommand extends SyncCommand {
 			}
 		}
 
-		byte type = (byte) (((int)(sz >> 48)) & 0xff);
 		if (type != MSG_TYPE) {
 			if (Log.debugEnabled()) {
 				Log.debug("read header: incorrect message type, aborting receive");
@@ -103,23 +96,62 @@ public class ReadCommand extends SyncCommand {
 		}*/
 
 		// Read remaining message bytes.
-        if (receiveSize > 0) {
-        	sizeBuffer(receiveSize);
-    		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
-        }
+		sizeBuffer(receiveSize);
+		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+		long type = (sz >> 48) & 0xff;
+
+		if (type == Command.AS_MSG_TYPE) {
+			dataOffset = 5;
+		}
+		else if (type == Command.MSG_TYPE_COMPRESSED) {
+			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
+			byte[] buf = new byte[usize];
+
+			Inflater inf = new Inflater();
+			inf.setInput(dataBuffer, 8, receiveSize - 8);
+			int rsize;
+
+			try {
+				rsize = inf.inflate(buf);
+			}
+			catch (DataFormatException dfe) {
+				throw new AerospikeException.Serialize(dfe);
+			}
+
+			if (rsize != usize) {
+				throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+			}
+
+			dataBuffer = buf;
+			dataOffset = 13;
+		}
+		else {
+			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+		}
+
+		int resultCode = dataBuffer[dataOffset] & 0xFF;
+		dataOffset++;
+		int generation = Buffer.bytesToInt(dataBuffer, dataOffset);
+		dataOffset += 4;
+		int expiration = Buffer.bytesToInt(dataBuffer, dataOffset);
+		dataOffset += 8;
+		int fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+		dataOffset += 2;
+		int opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+		dataOffset += 2;
 
 		if (resultCode == 0) {
-	        if (opCount == 0) {
-	        	// Bin data was not returned.
-	        	record = new Record(null, generation, expiration);
-	        	return;
-	        }
-	        record = parseRecord(opCount, fieldCount, generation, expiration);
+		    if (opCount == 0) {
+		    	// Bin data was not returned.
+		    	record = new Record(null, generation, expiration);
+		    	return;
+		    }
+		    record = parseRecord(opCount, fieldCount, generation, expiration);
 			return;
 		}
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-    		handleNotFound(resultCode);
+			handleNotFound(resultCode);
 			return;
 		}
 
@@ -130,13 +162,13 @@ public class ReadCommand extends SyncCommand {
 			return;
 		}
 
-    	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
 			record = parseRecord(opCount, fieldCount, generation, expiration);
 			handleUdfError(resultCode);
 			return;
-    	}
+		}
 
-    	throw new AerospikeException(resultCode);
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override
@@ -179,28 +211,27 @@ public class ReadCommand extends SyncCommand {
 		int expiration
 	)  {
 		Map<String,Object> bins = new HashMap<String,Object>();
-	    int receiveOffset = 0;
 
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		if (fieldCount > 0) {
 			// Just skip over all the fields
 			for (int i = 0; i < fieldCount; i++) {
-				int fieldSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
-				receiveOffset += 4 + fieldSize;
+				int fieldSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+				dataOffset += 4 + fieldSize;
 			}
 		}
 
 		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, receiveOffset);
-			byte particleType = dataBuffer[receiveOffset+5];
-			byte nameSize = dataBuffer[receiveOffset+7];
-			String name = Buffer.utf8ToString(dataBuffer, receiveOffset+8, nameSize);
-			receiveOffset += 4 + 4 + nameSize;
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			byte particleType = dataBuffer[dataOffset + 5];
+			byte nameSize = dataBuffer[dataOffset + 7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, receiveOffset, particleBytesSize);
-			receiveOffset += particleBytesSize;
+	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+	        dataOffset += particleBytesSize;
 			addBin(bins, name, value);
 	    }
 	    return new Record(bins, generation, expiration);

@@ -68,12 +68,12 @@ public class AsyncRead extends AsyncCommand {
 	protected final boolean parseResult() {
 		validateHeaderSize();
 
-		int resultCode = dataBuffer[5] & 0xFF;
-		int generation = Buffer.bytesToInt(dataBuffer, 6);
-		int expiration = Buffer.bytesToInt(dataBuffer, 10);
-		int fieldCount = Buffer.bytesToShort(dataBuffer, 18);
-		int opCount = Buffer.bytesToShort(dataBuffer, 20);
-		dataOffset = Command.MSG_REMAINING_HEADER_SIZE;
+		int resultCode = dataBuffer[dataOffset + 5] & 0xFF;
+		int generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
+		int expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
+		int fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset + 18);
+		int opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
+		dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 
 		if (resultCode == 0) {
 	        if (opCount == 0) {

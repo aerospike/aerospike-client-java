@@ -178,6 +178,13 @@ public class Policy {
 	public boolean sendKey;
 
 	/**
+	 * Tell the server to compress it's response using zlib.
+	 * <p>
+	 * Default: false
+	 */
+	public boolean compressResponse;
+
+	/**
 	 * Throw exception if {@link #predExp} is defined and that filter evaluates
 	 * to false (transaction ignored).  The {@link com.aerospike.client.AerospikeException}
 	 * will contain result code {@link com.aerospike.client.ResultCode#FILTERED_OUT}.
@@ -203,6 +210,7 @@ public class Policy {
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
 		this.sendKey = other.sendKey;
+		this.compressResponse = other.compressResponse;
 		this.failOnFilteredOut = other.failOnFilteredOut;
 	}
 

@@ -63,9 +63,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 
 	@Override
 	final boolean parseResult() {
-		// Parse each message response and add it to the result array
-		dataOffset = 0;
-
 		while (dataOffset < receiveSize) {
 			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
 

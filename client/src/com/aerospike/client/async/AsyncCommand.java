@@ -17,10 +17,13 @@
 package com.aerospike.client.async;
 
 import java.util.ArrayDeque;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 
@@ -45,12 +48,19 @@ public abstract class AsyncCommand extends Command {
 	int receiveSize;
 	boolean isRead;
 	final boolean isSingle;
+	boolean compressed;
 	boolean valid = true;
 
 	public AsyncCommand(Policy policy, boolean isRead, boolean isSingle) {
 		this.policy = policy;
 		this.isRead = isRead;
 		this.isSingle = isSingle;
+	}
+
+	final int parseProto(long proto) {
+		compressed = (((proto >> 48) & 0xFF) == Command.MSG_TYPE_COMPRESSED);
+		receiveSize = (int)(proto & 0xFFFFFFFFFFFFL);
+		return receiveSize;
 	}
 
 	final void initBuffer() {
@@ -116,6 +126,36 @@ public abstract class AsyncCommand extends Command {
 		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
 			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
 		}
+	}
+
+	final boolean parseCommandResult() {
+		if (compressed) {
+			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
+			byte[] buf = new byte[usize];
+
+			Inflater inf = new Inflater();
+			inf.setInput(dataBuffer, 8, receiveSize - 8);
+			int rsize;
+
+			try {
+				rsize = inf.inflate(buf);
+			}
+			catch (DataFormatException dfe) {
+				throw new AerospikeException.Serialize(dfe);
+			}
+
+			if (rsize != usize) {
+				throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+			}
+
+			dataBuffer = buf;
+			dataOffset = 8;
+			receiveSize = usize - 8;
+		}
+		else {
+			dataOffset = 0;
+		}
+		return parseResult();
 	}
 
 	final void stop() {

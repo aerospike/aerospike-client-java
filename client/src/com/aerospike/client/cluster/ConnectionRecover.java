@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 
@@ -34,12 +35,12 @@ public final class ConnectionRecover {
 	private int timeoutDelay;
 	private int offset;
 	private int length;
-	private final boolean isSingle;
-	private final boolean checkReturnCode;
+	private boolean isSingle;
+	private boolean checkReturnCode;
 	private boolean lastGroup;
 	private byte state;
 
-	public ConnectionRecover(Connection conn, Node node, int timeoutDelay, Connection.ReadTimeout crt) {
+	public ConnectionRecover(Connection conn, Node node, int timeoutDelay, Connection.ReadTimeout crt, boolean isSingle) {
 		//tranId = Counter.getAndIncrement();
 		//System.out.println("" + tranId + " timeout:" + crt.state + ',' + crt.offset + ',' + crt.length);
 		this.conn = conn;
@@ -47,64 +48,60 @@ public final class ConnectionRecover {
 		this.timeoutDelay = timeoutDelay;
 		this.offset = crt.offset;
 
-		switch (crt.state) {
-		case Command.STATE_READ_AUTH_HEADER:
-			this.length = 10;
-			this.isSingle = true;
-			this.checkReturnCode = true;
-			this.state = Command.STATE_READ_HEADER;
-
-			if (offset >= length) {
-				if (crt.buffer[length - 1] != 0) {
-					// Authentication failed.
-					//System.out.println("" + tranId + " invalid user/password:");
-					abort();
-					return;
-				}
-				length = getSize(crt.buffer) - (offset - 8);
-				offset = 0;
-				state = Command.STATE_READ_DETAIL;
-			}
-			else if (offset > 0) {
-				copyHeaderBuf(crt.buffer);
-			}
-			break;
-
-		case Command.STATE_READ_HEADER:
-			this.length = crt.isSingle ? 8 : 12;
-			this.isSingle = crt.isSingle;
-			this.checkReturnCode = false;
-			this.state = crt.state;
-
-			if (offset >= length) {
-				if (! isSingle) {
-					checkLastGroup(crt.buffer);
-				}
-				length = getSize(crt.buffer) - (offset - 8);
-				offset = 0;
-				state = Command.STATE_READ_DETAIL;
-			}
-			else if (offset > 0) {
-				copyHeaderBuf(crt.buffer);
-			}
-			break;
-
-		case Command.STATE_READ_DETAIL:
-		default:
-			this.length = crt.length;
-			this.isSingle = crt.isSingle;
-			this.checkReturnCode = false;
-			this.state = crt.state;
-			break;
-		}
-
-		conn.updateLastUsed();
-
 		try {
+			switch (crt.state) {
+			case Command.STATE_READ_AUTH_HEADER:
+				this.length = 10;
+				this.isSingle = true;
+				this.checkReturnCode = true;
+				this.state = Command.STATE_READ_HEADER;
+
+				if (offset >= length) {
+					if (crt.buffer[length - 1] != 0) {
+						// Authentication failed.
+						//System.out.println("" + tranId + " invalid user/password:");
+						abort();
+						return;
+					}
+					length = getSize(crt.buffer) - (offset - 8);
+					offset = 0;
+					state = Command.STATE_READ_DETAIL;
+				}
+				else if (offset > 0) {
+					copyHeaderBuf(crt.buffer);
+				}
+				break;
+
+			case Command.STATE_READ_HEADER:
+				// Extend header length to 12 for multi-record responses to include
+				// last group info3 bit at offset 11.
+				this.length = isSingle ? 8 : 12;
+				this.isSingle = isSingle;
+				this.checkReturnCode = false;
+				this.state = crt.state;
+
+				if (offset >= length) {
+					parseProto(crt.buffer, offset);
+				}
+				else if (offset > 0) {
+					copyHeaderBuf(crt.buffer);
+				}
+				break;
+
+			case Command.STATE_READ_DETAIL:
+			default:
+				this.length = crt.length;
+				this.isSingle = isSingle;
+				this.checkReturnCode = false;
+				this.state = crt.state;
+				break;
+			}
+
+			conn.updateLastUsed();
 			conn.setTimeout(1);
 		}
 		catch (Exception e) {
-			//System.out.println("" + tranId + " set timeout failed");
+			//System.out.println("" + tranId + " init failed: " + e.getMessage());
 			abort();
 		}
 	}
@@ -213,12 +210,7 @@ public final class ConnectionRecover {
 				return;
 			}
 		}
-		else if (! isSingle) {
-			checkLastGroup(b);
-		}
-		length = getSize(b) - (length - 8);
-		offset = 0;
-		state = Command.STATE_READ_DETAIL;
+		parseProto(b, length);
 	}
 
 	private void drainDetail(byte[] buf) throws IOException {
@@ -246,15 +238,37 @@ public final class ConnectionRecover {
 	}
 
 	private int getSize(byte[] buf) {
-		long sz = Buffer.bytesToLong(buf, 0);
-		return (int)(sz & 0xFFFFFFFFFFFFL);
+		long proto = Buffer.bytesToLong(buf, 0);
+		return (int)(proto & 0xFFFFFFFFFFFFL);
 	}
 
-	private void checkLastGroup(byte[] buf) {
-		byte info3 = buf[length - 1];
+	private void parseProto(byte[] buf, int bytesRead) {
+		long proto = Buffer.bytesToLong(buf, 0);
 
-		if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
-			lastGroup = true;
+		if (! isSingle) {
+			// The last group trailer will never be compressed.
+			boolean compressed = ((proto >> 48) & 0xff) == Command.MSG_TYPE_COMPRESSED;
+
+			if (compressed) {
+				// Do not recover connections with compressed data because that would
+				// require saving large buffers with associated state and performing decompression
+				// just to drain the connection.
+				throw new AerospikeException("Recovering connections with compressed multi-record data is not supported");
+			}
+
+			// Warning: The following code assumes multi-record responses always end with a separate proto
+			// that only contains one header with the info3 last group bit.  This is always true for batch
+			// and scan, but query does not conform.  Therefore, connection recovery for queries will
+			// likely fail.
+			byte info3 = buf[length - 1];
+
+			if ((info3 & Command.INFO3_LAST) == Command.INFO3_LAST) {
+				lastGroup = true;
+			}
 		}
+		int size = (int)(proto & 0xFFFFFFFFFFFFL);
+		length = size - (bytesRead - 8);
+		offset = 0;
+		state = Command.STATE_READ_DETAIL;
 	}
 }

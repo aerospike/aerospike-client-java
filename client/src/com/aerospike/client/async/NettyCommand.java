@@ -485,13 +485,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 		dataSize = 8 - command.dataOffset;
 		byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 		readableBytes -= dataSize;
-		command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 
-		if (command.receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive size: " + command.receiveSize);
-		}
+		int receiveSize = command.parseProto(Buffer.bytesToLong(command.dataBuffer, 0));
 
-		command.sizeBuffer(command.receiveSize);
+		command.sizeBuffer(receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;
 
 		if (readableBytes <= 0) {
@@ -499,11 +496,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 
-		dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes;
+		dataSize = (readableBytes >= receiveSize)? receiveSize : readableBytes;
 		byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 		command.dataOffset = dataSize;
 
-		if (command.dataOffset >= command.receiveSize) {
+		if (command.dataOffset >= receiveSize) {
 			parseSingleBody();
 		}
 	}
@@ -522,7 +519,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void parseSingleBody() {
-		command.parseResult();
+		command.parseCommandResult();
 		finish();
 	}
 
@@ -546,31 +543,32 @@ public final class NettyCommand implements Runnable, TimerTask {
 			dataSize = 8 - command.dataOffset;
 			byteBuffer.readBytes(command.dataBuffer, command.dataOffset, dataSize);
 			readableBytes -= dataSize;
-			command.receiveSize = ((int)(Buffer.bytesToLong(command.dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 
-			if (command.receiveSize == 0) {
+			int receiveSize = command.parseProto(Buffer.bytesToLong(command.dataBuffer, 0));
+
+			if (receiveSize == 0) {
 				// Read next header.
 				command.dataOffset = 0;
 				continue;
 			}
 
-			command.sizeBuffer(command.receiveSize);
+			command.sizeBuffer(receiveSize);
 			state = AsyncCommand.COMMAND_READ_BODY;
 
 			if (readableBytes <= 0) {
 				return;
 			}
 
-			dataSize = (readableBytes >= command.receiveSize)? command.receiveSize : readableBytes;
+			dataSize = (readableBytes >= receiveSize)? receiveSize : readableBytes;
 			byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 			readableBytes -= dataSize;
 			command.dataOffset = dataSize;
 
-			if (command.dataOffset < command.receiveSize) {
+			if (command.dataOffset < receiveSize) {
 				return;
 			}
 
-			if (command.parseResult()) {
+			if (command.parseCommandResult()) {
 				finish();
 				return;
 			}
@@ -597,7 +595,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 
-		if (command.parseResult()) {
+		if (command.parseCommandResult()) {
 			finish();
 			return;
 		}

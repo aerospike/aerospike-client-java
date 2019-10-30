@@ -456,15 +456,16 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private final void readSingleHeader() throws IOException {
 		byteBuffer.position(0);
-		command.receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
 
-		if (command.receiveSize <= byteBuffer.capacity()) {
+		int receiveSize = command.parseProto(byteBuffer.getLong());
+
+		if (receiveSize <= byteBuffer.capacity()) {
 			byteBuffer.clear();
 		}
 		else {
-			byteBuffer = NioEventLoop.createByteBuffer(command.receiveSize);
+			byteBuffer = NioEventLoop.createByteBuffer(receiveSize);
 		}
-		byteBuffer.limit(command.receiveSize);
+		byteBuffer.limit(receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;
 
 		if (conn.read(byteBuffer)) {
@@ -477,7 +478,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		command.sizeBuffer(command.receiveSize);
 		byteBuffer.position(0);
 		byteBuffer.get(command.dataBuffer, 0, command.receiveSize);
-		command.parseResult();
+		command.parseCommandResult();
 		command.putBuffer();
 		finish();
 	}
@@ -531,9 +532,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private final boolean parseGroupHeader() {
 		byteBuffer.position(0);
-		command.receiveSize = ((int) (byteBuffer.getLong() & 0xFFFFFFFFFFFFL));
 
-		if (command.receiveSize <= 0) {
+		int receiveSize = command.parseProto(byteBuffer.getLong());
+
+		if (receiveSize <= 0) {
 			// Received zero length block. Read next header.
 			byteBuffer.clear();
 			byteBuffer.limit(8);
@@ -541,12 +543,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			return false;
 		}
 
-		command.sizeBuffer(command.receiveSize);
+		command.sizeBuffer(receiveSize);
 		command.dataOffset = 0;
 		byteBuffer.clear();
 
-		if (command.receiveSize < byteBuffer.capacity()) {
-			byteBuffer.limit(command.receiveSize);
+		if (receiveSize < byteBuffer.capacity()) {
+			byteBuffer.limit(receiveSize);
 		}
 		state = AsyncCommand.COMMAND_READ_BODY;
 		return true;
@@ -561,7 +563,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			byteBuffer.clear();
 
 			if (command.dataOffset >= command.receiveSize) {
-				if (command.parseResult()) {
+				if (command.parseCommandResult()) {
 					finish();
 					return false;
 				}

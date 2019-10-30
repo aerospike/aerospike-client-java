@@ -65,20 +65,20 @@ public final class QueryAggregateCommand extends MultiCommand {
 		}
 
 		// Parse aggregateValue.
-		readBytes(8);
-		int opSize = Buffer.bytesToInt(dataBuffer, 0);
-		byte particleType = dataBuffer[5];
-		byte nameSize = dataBuffer[7];
+		int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+		dataOffset += 5;
+		byte particleType = dataBuffer[dataOffset];
+		dataOffset += 2;
+		byte nameSize = dataBuffer[dataOffset++];
 
-		readBytes(nameSize);
-		String name = Buffer.utf8ToString(dataBuffer, 0, nameSize);
+		String name = Buffer.utf8ToString(dataBuffer, dataOffset, nameSize);
+		dataOffset += nameSize;
 
 		int particleBytesSize = (int) (opSize - (4 + nameSize));
-		readBytes(particleBytesSize);
 
 		if (! name.equals("SUCCESS")) {
 			if (name.equals("FAILURE")) {
-				Object value = Buffer.bytesToParticle(particleType, dataBuffer, 0, particleBytesSize);
+				Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 				throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
 			}
 			else {
@@ -86,7 +86,8 @@ public final class QueryAggregateCommand extends MultiCommand {
 			}
 		}
 
-		LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, 0, particleBytesSize);
+		LuaValue aggregateValue = instance.getLuaValue(particleType, dataBuffer, dataOffset, particleBytesSize);
+		dataOffset += particleBytesSize;
 
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
