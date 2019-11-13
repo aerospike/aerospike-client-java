@@ -17,6 +17,7 @@
 package com.aerospike.client.command;
 
 import java.util.List;
+import java.util.zip.Deflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -85,6 +86,7 @@ public abstract class Command {
 	public static final int OPERATION_HEADER_SIZE = 8;
 	public static final int MSG_REMAINING_HEADER_SIZE = 22;
 	public static final int DIGEST_SIZE = 20;
+	public static final int COMPRESS_THRESHOLD = 128;
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
 	public static final long MSG_TYPE_COMPRESSED = 4L;
@@ -117,6 +119,7 @@ public abstract class Command {
 			writeOperation(bin, operation);
 		}
 		end();
+		compress(policy);
 	}
 
 	public void setDelete(WritePolicy policy, Key key) {
@@ -323,6 +326,7 @@ public abstract class Command {
 			writeOperation(operation);
 		}
 		end();
+		compress(policy);
 	}
 
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args)
@@ -351,6 +355,7 @@ public abstract class Command {
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
 		end();
+		compress(policy);
 	}
 
 	public final void setBatchRead(BatchPolicy policy, List<BatchRead> records, BatchNode batch) {
@@ -487,6 +492,7 @@ public abstract class Command {
 		// Write real field size.
 		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 		end();
+		compress(policy);
 	}
 
 	public final void setBatchRead(BatchPolicy policy, Key[] keys, BatchNode batch, String[] binNames, int readAttr) {
@@ -605,6 +611,7 @@ public abstract class Command {
 		// Write real field size.
 		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 		end();
+		compress(policy);
 	}
 
 	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames, long taskId) {
@@ -965,7 +972,7 @@ public abstract class Command {
 		dataOffset += operation.value.estimateSize();
 	}
 
-	protected final void estimateOperationSize(String binName) {
+	private final void estimateOperationSize(String binName) {
 		dataOffset += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
 	}
 
@@ -976,7 +983,7 @@ public abstract class Command {
 	/**
 	 * Header write for write commands.
 	 */
-	protected final void writeHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount) {
         // Set flags.
 		int generation = 0;
 		int infoAttr = 0;
@@ -1037,7 +1044,7 @@ public abstract class Command {
 	/**
 	 * Header write for operate command.
 	 */
-	protected final void writeHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
         // Set flags.
 		int generation = 0;
 		int infoAttr = 0;
@@ -1098,7 +1105,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		if (policy.compressResponse) {
+		if (policy.compress) {
 			readAttr |= Command.INFO1_COMPRESS_RESPONSE;
 		}
 
@@ -1120,7 +1127,7 @@ public abstract class Command {
 	/**
 	 * Header write for read commands.
 	 */
-	protected final void writeHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount) {
 		int infoAttr = 0;
 
 		switch (policy.readModeSC) {
@@ -1141,7 +1148,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		if (policy.compressResponse) {
+		if (policy.compress) {
 			readAttr |= Command.INFO1_COMPRESS_RESPONSE;
 		}
 
@@ -1163,7 +1170,7 @@ public abstract class Command {
 	/**
 	 * Header write for read header commands.
 	 */
-	protected final void writeHeaderReadHeader(Policy policy, int readAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderReadHeader(Policy policy, int readAttr, int fieldCount, int operationCount) {
 		int infoAttr = 0;
 
 		switch (policy.readModeSC) {
@@ -1247,7 +1254,7 @@ public abstract class Command {
         dataOffset += nameLength + valueLength;
 	}
 
-	protected final void writeOperation(String name, Operation.Type operation) {
+	private final void writeOperation(String name, Operation.Type operation) {
         int nameLength = Buffer.stringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 
         Buffer.intToBytes(nameLength + 4, dataBuffer, dataOffset);
@@ -1268,7 +1275,7 @@ public abstract class Command {
         dataBuffer[dataOffset++] = 0;
 	}
 
-	public final void writeField(Value value, int type) throws AerospikeException {
+	private final void writeField(Value value, int type) throws AerospikeException {
 		int offset = dataOffset + FIELD_HEADER_SIZE;
 		dataBuffer[offset++] = (byte)value.getType();
 	    int len = value.write(dataBuffer, offset) + 1;
@@ -1276,44 +1283,64 @@ public abstract class Command {
 		dataOffset += len;
 	}
 
-	public final void writeField(String str, int type) {
+	private final void writeField(String str, int type) {
 		int len = Buffer.stringToUtf8(str, dataBuffer, dataOffset + FIELD_HEADER_SIZE);
 		writeFieldHeader(len, type);
 		dataOffset += len;
 	}
 
-	public final void writeField(byte[] bytes, int type) {
+	private final void writeField(byte[] bytes, int type) {
 		System.arraycopy(bytes, 0, dataBuffer, dataOffset + FIELD_HEADER_SIZE, bytes.length);
 		writeFieldHeader(bytes.length, type);
 		dataOffset += bytes.length;
 	}
 
-	public final void writeField(int val, int type) {
+	private final void writeField(int val, int type) {
 		writeFieldHeader(4, type);
 		Buffer.intToBytes(val, dataBuffer, dataOffset);
 		dataOffset += 4;
 	}
 
-	public final void writeField(long val, int type) {
+	private final void writeField(long val, int type) {
 		writeFieldHeader(8, type);
 		Buffer.longToBytes(val, dataBuffer, dataOffset);
 		dataOffset += 8;
 	}
 
-	public final void writeFieldHeader(int size, int type) {
+	private final void writeFieldHeader(int size, int type) {
 		Buffer.intToBytes(size+1, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = (byte)type;
 	}
 
-	protected final void begin() {
+	private final void begin() {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	protected final void end() {
+	private final void end() {
 		// Write total size of message which is the current offset.
-		long size = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
-		Buffer.longToBytes(size, dataBuffer, 0);
+		long proto = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
+		Buffer.longToBytes(proto, dataBuffer, 0);
+	}
+
+	private final void compress(Policy policy) {
+		if (policy.compress && dataOffset > COMPRESS_THRESHOLD) {
+			Deflater def = new Deflater();
+			def.setInput(dataBuffer, 0, dataOffset);
+			def.finish();
+
+			byte[] cbuf = new byte[dataOffset];
+			int csize = def.deflate(cbuf, 16, dataOffset - 16);
+
+			// Use compressed buffer if compression completed within original buffer size.
+			if (def.finished()) {
+				long proto = (csize + 8) | (CL_MSG_VERSION << 56) | (MSG_TYPE_COMPRESSED << 48);
+				Buffer.longToBytes(proto, cbuf, 0);
+				Buffer.longToBytes(dataOffset, cbuf, 8);
+				dataBuffer = cbuf;
+				dataOffset = csize + 16;
+			}
+		}
 	}
 
 	public static void LogPolicy(Policy p) {

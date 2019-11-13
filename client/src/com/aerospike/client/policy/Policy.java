@@ -178,11 +178,16 @@ public class Policy {
 	public boolean sendKey;
 
 	/**
-	 * Tell the server to compress it's response using zlib.
+	 * Use zlib compression on write or batch read commands when the command buffer size is greater
+	 * than 128 bytes.  In addition, tell the server to compress it's response on read commands.
+	 * The server response compression threshold is also 128 bytes.
+	 * <p>
+	 * This option will increase cpu and memory usage (for extra compressed buffers), but
+	 * decrease the size of data sent over the network.
 	 * <p>
 	 * Default: false
 	 */
-	public boolean compressResponse;
+	public boolean compress;
 
 	/**
 	 * Throw exception if {@link #predExp} is defined and that filter evaluates
@@ -210,7 +215,7 @@ public class Policy {
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
 		this.sendKey = other.sendKey;
-		this.compressResponse = other.compressResponse;
+		this.compress = other.compress;
 		this.failOnFilteredOut = other.failOnFilteredOut;
 	}
 

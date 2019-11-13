@@ -89,12 +89,6 @@ public abstract class SyncCommand extends Command {
 					// Set command buffer.
 					writeBuffer();
 
-					// Check if total timeout needs to be changed in send buffer.
-					if (totalTimeout != policy.totalTimeout) {
-						// Reset timeout in send buffer (destined for server) and socket.
-						Buffer.intToBytes(totalTimeout, dataBuffer, 22);
-					}
-
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
 					commandSentCounter++;

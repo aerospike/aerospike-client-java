@@ -128,7 +128,7 @@ public class QueryExecute extends Example {
 		stmt.setFilter(Filter.range(binName1, begin, end));
 
 		ExecuteTask task = client.execute(params.writePolicy, stmt, "record_example", "processRecord", Value.get(binName1), Value.get(binName2), Value.get(100));
-		task.waitTillComplete();
+		task.waitTillComplete(3000, 3000);
 	}
 
 	private void validateRecords(
