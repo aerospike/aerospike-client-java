@@ -78,6 +78,9 @@ public class ScanSeries extends Example implements ScanCallback {
 
 	@Override
 	public void scanCallback(Key key, Record record) {
+		// It's not necessary to make this callback thread-safe because ScanNode()
+		// is used in series and only one node thread is processing results at any
+		// point in time.
 		Metrics metrics = setMap.get(key.setName);
 
 		if (metrics == null) {
@@ -86,20 +89,6 @@ public class ScanSeries extends Example implements ScanCallback {
 		metrics.count++;
 		metrics.total++;
 		setMap.put(key.setName, metrics);
-
-		/*
-		System.out.print(key.namespace + ',' + key.setName + ',' + Buffer.bytesToHexString(key.digest));
-
-		if (record.bins != null) {
-			for (Entry<String,Object> entry : record.bins.entrySet()) {
-				System.out.print(',');
-				System.out.print(entry.getKey());
-				System.out.print(',');
-				System.out.print(entry.getValue());
-			}
-		}
-		System.out.println();
-		*/
 	}
 
 	private static class Metrics {

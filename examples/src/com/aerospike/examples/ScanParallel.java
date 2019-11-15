@@ -54,6 +54,9 @@ public class ScanParallel extends Example implements ScanCallback {
 
 	@Override
 	public void scanCallback(Key key, Record record) {
+		// Scan callbacks must ensure thread safety when ScanAll() is used with
+		// ScanPolicy concurrentNodes set to true (default).  In this case, parallel
+		// node threads will be sending data to this callback.
 		int count = recordCount.incrementAndGet();
 
 		if ((count % 10000) == 0) {
