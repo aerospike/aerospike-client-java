@@ -1679,7 +1679,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter
+	 * @param statement				record filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			function name
 	 * @param functionArgs			to pass to function name, if any
@@ -1721,7 +1722,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter
+	 * @param statement				record filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @param operations			list of operations to be performed on selected records
 	 * @throws AerospikeException	if command fails
 	 */
@@ -1761,7 +1763,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
@@ -1784,7 +1787,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) throws AerospikeException {
@@ -1800,7 +1804,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
@@ -1826,7 +1831,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * udf file = <udf dir>/<package name>.lua
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
@@ -1855,7 +1861,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if query fails
 	 */
 	public final ResultSet queryAggregate(QueryPolicy policy, Statement statement) throws AerospikeException {
@@ -1879,7 +1886,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param statement				database query command
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query
 	 * @throws AerospikeException	if query fails
 	 */
