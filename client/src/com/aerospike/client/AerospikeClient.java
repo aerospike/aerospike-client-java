@@ -1991,7 +1991,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param indexName				name of secondary index
-	 * @throws AerospikeException	if index create fails
+	 * @throws AerospikeException	if index drop fails
 	 */
 	public final IndexTask dropIndex(
 		Policy policy,
@@ -2023,6 +2023,29 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		parseInfoError("Drop index failed", response);
 		return null;
+	}
+
+	/**
+	 * Checks whether secondary index exists.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index exists fails
+	 */
+	public boolean indexExists(
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
+	) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		String command = "sindex/" + namespace + '/' + indexName;
+		String response = sendInfoCommand(policy, command);
+		return !response.startsWith("FAIL:201");
 	}
 
 	//-------------------------------------------------------

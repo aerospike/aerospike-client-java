@@ -1,9 +1,5 @@
 package com.aerospike.helper.query;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Info;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.helper.model.Index;
@@ -35,7 +31,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     private void dropIndexIfExists(String indexName, String namespace, String set) {
-        if (indexExists(TestQueryEngine.NAMESPACE, indexName)) {
+        if (client.indexExists(null, namespace, set, indexName)) {
             wait(client.dropIndex(null, namespace, set, indexName));
         }
     }
@@ -136,13 +132,4 @@ public class IndexTests extends AerospikeAwareTests {
         task.waitTillComplete();
     }
 
-    private boolean indexExists(String namespace, String indexName) {
-        Node[] nodes = client.getNodes();
-        if (nodes.length == 0) {
-            throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-        }
-        Node node = nodes[0];
-        String response = Info.request(node, "sindex/" + namespace + '/' + indexName);
-        return !response.startsWith("FAIL:201");
-    }
 }

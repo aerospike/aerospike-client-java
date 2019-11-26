@@ -1139,13 +1139,29 @@ public interface IAerospikeClient extends Closeable {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param indexName				name of secondary index
-	 * @throws AerospikeException	if index create fails
+	 * @throws AerospikeException	if index drop fails
 	 */
 	public IndexTask dropIndex(
 		Policy policy,
 		String namespace,
 		String setName,
 		String indexName
+	) throws AerospikeException;
+
+    /**
+     * Checks whether secondary index exists.
+     *
+     * @param policy				generic configuration parameters, pass in null for defaults
+     * @param namespace				namespace - equivalent to database name
+     * @param setName				optional set name - equivalent to database table
+     * @param indexName				name of secondary index
+     * @throws AerospikeException	if index exists fails
+     */
+	public boolean indexExists(
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
 	) throws AerospikeException;
 
 	//-------------------------------------------------------
