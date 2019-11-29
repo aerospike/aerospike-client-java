@@ -676,7 +676,19 @@ public class Node implements Closeable {
 	 * @param conn					socket connection
 	 */
 	public final void putConnection(Connection conn) {
-		conn.updateLastUsed();
+		putConnection(conn, true);
+	}
+
+	/**
+	 * Put connection back into connection pool.
+	 *
+	 * @param conn					socket connection
+	 * @param shouldUpdate          flag to indicate if connection last used time should be updated
+	 */
+	public final void putConnection(Connection conn, boolean shouldUpdate) {
+	    if (shouldUpdate) {
+	    	conn.updateLastUsed();
+	    }
 
 		if (! active || ! conn.pool.offer(conn)) {
 			closeConnection(conn);

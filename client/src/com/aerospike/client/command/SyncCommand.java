@@ -95,6 +95,11 @@ public abstract class SyncCommand extends Command {
 						Buffer.intToBytes(totalTimeout, dataBuffer, 22);
 					}
 
+					// Update last used now, and not when putting connection back in pool.
+					// Otherwise, server proto-fd-idle-ms will always reset the time before the client does
+					// This can cause EOFException thrown from client, especially with slow query consumers.
+					conn.updateLastUsed();
+
 					// Send command.
 					conn.write(dataBuffer, dataOffset);
 					commandSentCounter++;
@@ -103,7 +108,7 @@ public abstract class SyncCommand extends Command {
 					parseResult(conn);
 
 					// Put connection back in pool.
-					node.putConnection(conn);
+					node.putConnection(conn, false);
 
 					// Command has completed successfully.  Exit method.
 					return;
@@ -111,7 +116,7 @@ public abstract class SyncCommand extends Command {
 				catch (AerospikeException ae) {
 					if (ae.keepConnection()) {
 						// Put connection back in pool.
-						node.putConnection(conn);
+					    node.putConnection(conn, false);
 					}
 					else {
 						// Close socket to flush out possible garbage.  Do not put back in pool.
