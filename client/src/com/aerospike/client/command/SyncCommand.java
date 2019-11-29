@@ -116,7 +116,7 @@ public abstract class SyncCommand extends Command {
 				catch (AerospikeException ae) {
 					if (ae.keepConnection()) {
 						// Put connection back in pool.
-					    node.putConnection(conn, false);
+						node.putConnection(conn, false);
 					}
 					else {
 						// Close socket to flush out possible garbage.  Do not put back in pool.
