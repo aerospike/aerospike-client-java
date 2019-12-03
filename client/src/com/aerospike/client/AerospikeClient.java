@@ -1999,7 +1999,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param indexName				name of secondary index
-	 * @throws AerospikeException	if index create fails
+	 * @throws AerospikeException	if index drop fails
 	 */
 	public final IndexTask dropIndex(
 		Policy policy,

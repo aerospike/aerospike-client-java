@@ -266,6 +266,9 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "blob-bits", 0, len)) {
 					this.features |= Node.HAS_BIT_OP;
 				}
+				else if (featuresString.regionMatches(begin, "sindex-exists", 0, len)) {
+					this.features |= Node.HAS_INDEX_EXISTS;
+				}
 				begin = end + 1;
 			}
 		}
