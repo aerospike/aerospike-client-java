@@ -679,8 +679,6 @@ public class Node implements Closeable {
 	 * @param conn					socket connection
 	 */
 	public final void putConnection(Connection conn) {
-		conn.updateLastUsed();
-
 		if (! active || ! conn.pool.offer(conn)) {
 			closeConnection(conn);
 		}

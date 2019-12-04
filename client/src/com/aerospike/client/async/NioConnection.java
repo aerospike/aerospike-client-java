@@ -156,6 +156,9 @@ public final class NioConnection implements AsyncConnection, Closeable {
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);
+	}
+
+	public void updateLastUsed() {
 		lastUsed = System.nanoTime();
 	}
 

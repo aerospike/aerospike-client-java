@@ -446,6 +446,7 @@ public class AdminCommand {
 		try {
 			conn.write(dataBuffer, dataOffset);
 			conn.readFully(dataBuffer, HEADER_SIZE);
+			conn.updateLastUsed();
 			node.putConnection(conn);
 		}
 		catch (Exception e) {
@@ -499,6 +500,7 @@ public class AdminCommand {
 					dataBuffer = ThreadLocalData.resizeBuffer(receiveSize);
 				}
 				conn.readFully(dataBuffer, receiveSize);
+				conn.updateLastUsed();
 				status = parseBlock(receiveSize);
 			}
 		}

@@ -519,6 +519,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void parseSingleBody() {
+		conn.updateLastUsed();
 		command.parseCommandResult();
 		finish();
 	}
@@ -568,6 +569,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 
+			conn.updateLastUsed();
+
 			if (command.parseCommandResult()) {
 				finish();
 				return;
@@ -594,6 +597,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (command.dataOffset < command.receiveSize) {
 			return;
 		}
+
+		conn.updateLastUsed();
 
 		if (command.parseCommandResult()) {
 			finish();
@@ -889,7 +894,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 		conn.channel.config().setAutoRead(false);
 		InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
 		handler.command = null;
-		conn.updateLastUsed();
 		node.putAsyncConnection(conn, eventState.index);
 	}
 

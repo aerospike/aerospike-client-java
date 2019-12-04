@@ -174,6 +174,7 @@ public final class ConnectionRecover {
 
 	private void recover() {
 		//System.out.println("" + tranId + " connection drained");
+		conn.updateLastUsed();
 		node.putConnection(conn);
 		state = Command.STATE_COMPLETE;
 	}

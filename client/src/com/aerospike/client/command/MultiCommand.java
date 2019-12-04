@@ -130,6 +130,7 @@ public abstract class MultiCommand extends SyncCommand {
 			// Read remaining message bytes in group.
 			try {
 				conn.readFully(buf, size, Command.STATE_READ_DETAIL);
+				conn.updateLastUsed();
 			}
 			catch (ReadTimeout rt) {
 				if (rt.offset >= 4) {

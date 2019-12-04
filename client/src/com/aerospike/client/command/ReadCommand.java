@@ -98,6 +98,8 @@ public class ReadCommand extends SyncCommand {
 		// Read remaining message bytes.
 		sizeBuffer(receiveSize);
 		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
+		conn.updateLastUsed();
+
 		long type = (sz >> 48) & 0xff;
 
 		if (type == Command.AS_MSG_TYPE) {

@@ -53,6 +53,7 @@ public final class DeleteCommand extends SyncCommand {
 	protected void parseResult(Connection conn) throws IOException {
 		// Read header.
 		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+		conn.updateLastUsed();
 
 		int resultCode = dataBuffer[13] & 0xFF;
 

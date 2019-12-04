@@ -554,9 +554,6 @@ public final class Info {
 	/**
 	 * Issue request and set results buffer. This method is used internally.
 	 * The static request methods should be used instead.
-	 *
-	 * @param conn			socket connection to server node
-	 * @throws IOException	if socket send or receive fails
 	 */
 	private void sendCommand(Connection conn) throws AerospikeException {
 		try {
@@ -574,6 +571,7 @@ public final class Info {
 			length = (int)(size & 0xFFFFFFFFFFFFL);
 			resizeBuffer(length);
 			conn.readFully(buffer, length);
+			conn.updateLastUsed();
 			offset = 0;
 		}
 		catch (IOException ioe) {
