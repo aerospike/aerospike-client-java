@@ -16,10 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.Closeable;
-import java.util.Calendar;
-import java.util.List;
-
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
@@ -33,6 +29,8 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.IndexListener;
+import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -52,6 +50,10 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+
+import java.io.Closeable;
+import java.util.Calendar;
+import java.util.List;
 
 /**
  * This interface's sole purpose is to allow mock frameworks to operate on
@@ -1138,6 +1140,32 @@ public interface IAerospikeClient extends Closeable {
 	) throws AerospikeException;
 
 	/**
+	 * Asynchronously create complex secondary index to be used on bins containing collections.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				underlying data type of secondary index
+	 * @param indexCollectionType	index collection type
+	 * @throws AerospikeException	if index create fails
+	 */
+	void createIndex(
+			EventLoop eventLoop,
+			IndexListener listener,
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName,
+			String binName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType
+	) throws AerospikeException;
+
+	/**
 	 * Delete secondary index.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
@@ -1149,11 +1177,33 @@ public interface IAerospikeClient extends Closeable {
 	 * @param indexName				name of secondary index
 	 * @throws AerospikeException	if index drop fails
 	 */
-	public IndexTask dropIndex(
-		Policy policy,
-		String namespace,
-		String setName,
-		String indexName
+	IndexTask dropIndex(
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
+	) throws AerospikeException;
+
+	/**
+	 * Delete secondary index.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results, pass in null for fire and forget
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index create fails
+	 */
+	void dropIndex(
+			EventLoop eventLoop,
+			IndexListener listener,
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
 	) throws AerospikeException;
 
 	//-------------------------------------------------------
@@ -1283,4 +1333,21 @@ public interface IAerospikeClient extends Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public List<Role> queryRoles(AdminPolicy policy) throws AerospikeException;
+
+	/**
+	 * Asynchronously access server's info monitoring protocol.
+	 * <p>
+	 * The info protocol is a name/value pair based system, where an individual
+	 * database server node is queried to determine its configuration and status.
+	 * The list of supported names can be found at:
+	 * <p>
+	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+	 * <p>
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				batch configuration parameters, pass in null for defaults
+	 * @param node				    list of info commans
+	 * @param commands				list of info commans
+	 */
+	void info(EventLoop eventLoop, InfoListener listener, InfoPolicy policy, Node node, String... commands);
 }

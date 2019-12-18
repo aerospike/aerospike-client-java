@@ -16,20 +16,53 @@
  */
 package com.aerospike.client.reactor;
 
-import com.aerospike.client.*;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
+import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
+import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
+import com.aerospike.client.Value;
+import com.aerospike.client.async.AsyncIndexTask;
 import com.aerospike.client.async.EventLoops;
-import com.aerospike.client.policy.*;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.reactor.dto.KeyExists;
 import com.aerospike.client.reactor.dto.KeyObject;
 import com.aerospike.client.reactor.dto.KeysExists;
 import com.aerospike.client.reactor.dto.KeysRecords;
-import com.aerospike.client.reactor.listeners.*;
+import com.aerospike.client.reactor.listeners.ReactorBatchListListener;
+import com.aerospike.client.reactor.listeners.ReactorBatchSequenceListener;
+import com.aerospike.client.reactor.listeners.ReactorDeleteListener;
+import com.aerospike.client.reactor.listeners.ReactorExecuteListener;
+import com.aerospike.client.reactor.listeners.ReactorExistsArrayListener;
+import com.aerospike.client.reactor.listeners.ReactorExistsListener;
+import com.aerospike.client.reactor.listeners.ReactorExistsSequenceListener;
+import com.aerospike.client.reactor.listeners.ReactorIndexListener;
+import com.aerospike.client.reactor.listeners.ReactorInfoListener;
+import com.aerospike.client.reactor.listeners.ReactorRecordArrayListener;
+import com.aerospike.client.reactor.listeners.ReactorRecordListener;
+import com.aerospike.client.reactor.listeners.ReactorRecordSequenceListener;
+import com.aerospike.client.reactor.listeners.ReactorTaskStatusListener;
+import com.aerospike.client.reactor.listeners.ReactorWriteListener;
+import com.aerospike.client.task.Task;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+
+import static java.util.Collections.singletonList;
 
 /**
  * Instantiate an <code>AerospikeReactorClient</code> object to access an Aerospike
@@ -288,5 +321,69 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 		return Mono.create(sink -> aerospikeClient.execute(
 				eventLoops.next(), new ReactorExecuteListener(sink),
 				policy, key, packageName, functionName, functionArgs));
+	}
+
+	@Override
+	public Mono<String> info(InfoPolicy infoPolicy, Node node, String command){
+		return info(infoPolicy, node, singletonList(command))
+				.flatMap(resultMap -> {
+					if(resultMap.containsKey(command)){
+						String result = resultMap.get(command);
+						return Mono.just(result != null ? result : "");
+					} else {
+						return Mono.error(new AerospikeException(String.format("Unknown info command: [%s]", command)));
+					}
+				});
+	}
+
+	@Override
+	public Mono<Map<String,String>> info(InfoPolicy infoPolicy, Node node, List<String> commands){
+		return Mono.create(sink -> aerospikeClient.info(eventLoops.next(),
+				new ReactorInfoListener(sink), infoPolicy, node, commands.toArray(new String[0])));
+    }
+
+	@Override
+	public Mono<Void> createIndex(Policy policy,
+								  String namespace, String setName, String indexName, String binName,
+								  IndexType indexType, IndexCollectionType indexCollectionType){
+		return waitTillComplete(
+				createIndexImpl(policy, namespace, setName, indexName, binName, indexType, indexCollectionType),
+				policy != null ? new InfoPolicy(policy) : aerospikeClient.getInfoPolicyDefault());
+	}
+
+	@Override
+	public Mono<Void> dropIndex(Policy policy, String namespace, String setName, String indexName){
+		return waitTillComplete(
+				dropIndexImpl(policy, namespace, setName, indexName),
+				policy != null ? new InfoPolicy(policy) : aerospikeClient.getInfoPolicyDefault());
+	}
+
+	private Mono<AsyncIndexTask> createIndexImpl(Policy policy,
+											 String namespace, String setName, String indexName, String binName,
+											 IndexType indexType, IndexCollectionType indexCollectionType){
+		return  Mono.create(sink -> aerospikeClient.createIndex(eventLoops.next(),
+				new ReactorIndexListener(sink), policy, namespace, setName, indexName, binName,
+				indexType, indexCollectionType));
+	}
+
+	private Mono<AsyncIndexTask> dropIndexImpl(Policy policy,
+												 String namespace, String setName, String indexName){
+		return  Mono.create(sink -> aerospikeClient.dropIndex(eventLoops.next(),
+				new ReactorIndexListener(sink), policy, namespace, setName, indexName));
+	}
+
+	private Mono<Void> waitTillComplete(Mono<AsyncIndexTask> asyncIndexTaskMono, InfoPolicy infoPolicy){
+		 return asyncIndexTaskMono.flatMapMany(indexTask ->
+				Flux.fromArray(aerospikeClient.getNodes())
+						.flatMap(node -> queryIndexStatus(infoPolicy, indexTask, node)
+								.delayElement(Duration.ofMillis(100))
+								.repeat()
+								.takeWhile(status -> status == Task.IN_PROGRESS)
+						)).then();
+	}
+
+	private Mono<Integer> queryIndexStatus(InfoPolicy infoPolicy, AsyncIndexTask indexTask, Node node){
+		return Mono.create(sink -> indexTask.queryStatus(eventLoops.next(), infoPolicy, node,
+				new ReactorTaskStatusListener(sink)));
 	}
 }
