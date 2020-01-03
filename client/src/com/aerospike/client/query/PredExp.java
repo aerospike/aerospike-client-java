@@ -407,6 +407,46 @@ public abstract class PredExp implements Serializable {
 	private static final int MAPKEY_ITERATE_AND = 254;
 	private static final int MAPVAL_ITERATE_AND = 255;
 
+	private static final String operationToString(int operation) {
+		switch (operation) {
+			case AND: return "AND";
+			case OR: return "OR";
+			case NOT: return "NOT";
+			case INTEGER_VALUE: return "INTEGER_VALUE";
+			case STRING_VALUE: return "STRING_VALUE";
+			case GEOJSON_VALUE: return "GEOJSON_VALUE";
+			case INTEGER_BIN: return "INTEGER_BIN";
+			case STRING_BIN: return "STRING_BIN";
+			case GEOJSON_BIN: return "GEOJSON_BIN";
+			case LIST_BIN: return "LIST_BIN";
+			case MAP_BIN: return "MAP_BIN";
+			case INTEGER_VAR: return "INTEGER_VAR";
+			case STRING_VAR: return "STRING_VAR";
+			case GEOJSON_VAR: return "GEOJSON_VAR";
+			case RECSIZE: return "RECSIZE";
+			case LAST_UPDATE: return "LAST_UPDATE";
+			case VOID_TIME: return "VOID_TIME";
+			case DIGEST_MODULO: return "DIGEST_MODULO";
+			case INTEGER_EQUAL: return "INTEGER_EQUAL";
+			case INTEGER_UNEQUAL: return "INTEGER_UNEQUAL";
+			case INTEGER_GREATER: return "INTEGER_GREATER";
+			case INTEGER_GREATEREQ: return "INTEGER_GREATEREQ";
+			case INTEGER_LESS: return "INTEGER_LESS";
+			case INTEGER_LESSEQ: return "INTEGER_LESSEQ";
+			case STRING_EQUAL: return "STRING_EQUAL";
+			case STRING_UNEQUAL: return "STRING_UNEQUAL";
+			case STRING_REGEX: return "STRING_REGEX";
+			case GEOJSON_WITHIN: return "GEOJSON_WITHIN";
+			case GEOJSON_CONTAINS: return "GEOJSON_CONTAINS";
+			case LIST_ITERATE_OR: return "LIST_ITERATE_OR";
+			case MAPKEY_ITERATE_OR: return "MAPKEY_ITERATE_OR";
+			case MAPVAL_ITERATE_OR: return "MAPVAL_ITERATE_OR";
+			case LIST_ITERATE_AND: return "LIST_ITERATE_AND";
+			case MAPKEY_ITERATE_AND: return "MAPKEY_ITERATE_AND";
+			case MAPVAL_ITERATE_AND: return "MAPVAL_ITERATE_AND";
+			default: return "UNKNOWN";
+		}
+	}
 	private static final long NANOS_PER_MILLIS = 1000000L;
 
 	/**
@@ -474,6 +514,10 @@ public abstract class PredExp implements Serializable {
 			offset += 8;
 			return offset;
 		}
+		
+		public String toString() {
+			return operationToString(type) + "(" + value + ")";
+		}
 	}
 
 	private static final class StringValue extends PredExp {
@@ -501,6 +545,10 @@ public abstract class PredExp implements Serializable {
 			Buffer.intToBytes(len, buf, offset);
 			offset += 4 + len;
 			return offset;
+		}
+		
+		public String toString() {
+			return operationToString(type) + "(\"" + value + "\")";
 		}
 	}
 
@@ -539,6 +587,10 @@ public abstract class PredExp implements Serializable {
 			offset += len;
 			return offset;
 		}
+		
+		public String toString() {
+			return operationToString(type) + "(" + value + ")";
+		}
 	}
 
 	private static final class AndOr extends PredExp {
@@ -570,6 +622,11 @@ public abstract class PredExp implements Serializable {
 			offset += 2;
 			return offset;
 		}
+		
+		public String toString() {
+			return operationToString(op) + "(" + nexp + ")";
+		}
+
 	}
 
 	private static final class Op extends PredExp {
@@ -594,6 +651,10 @@ public abstract class PredExp implements Serializable {
 			Buffer.intToBytes(0, buf, offset);
 			offset += 4;
 			return offset;
+		}
+		
+		public String toString() {
+			return operationToString(op);
 		}
 	}
 
@@ -625,6 +686,10 @@ public abstract class PredExp implements Serializable {
 			Buffer.intToBytes(flags, buf, offset);
 			offset += 4;
 			return offset;
+		}
+		
+		public String toString() {
+			return operationToString(op) + "(" + flags + ")";
 		}
 	}
 }
