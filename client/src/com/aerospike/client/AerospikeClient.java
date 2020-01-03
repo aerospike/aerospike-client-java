@@ -32,6 +32,8 @@ import com.aerospike.client.async.AsyncBatch;
 import com.aerospike.client.async.AsyncDelete;
 import com.aerospike.client.async.AsyncExecute;
 import com.aerospike.client.async.AsyncExists;
+import com.aerospike.client.async.AsyncIndexTask;
+import com.aerospike.client.async.AsyncInfoCommand;
 import com.aerospike.client.async.AsyncOperate;
 import com.aerospike.client.async.AsyncQueryExecutor;
 import com.aerospike.client.async.AsyncRead;
@@ -69,6 +71,8 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.IndexListener;
+import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -1900,6 +1904,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return executor.getResultSet();
 	}
 
+	//--------------------------------------------------------
+	// Secondary Index functions
+	//--------------------------------------------------------
+
 	/**
 	 * Create scalar secondary index.
 	 * This asynchronous server call will return before command is complete.
@@ -1953,40 +1961,53 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
-		StringBuilder sb = new StringBuilder(500);
-		sb.append("sindex-create:ns=");
-		sb.append(namespace);
-
-		if (setName != null && setName.length() > 0) {
-			sb.append(";set=");
-			sb.append(setName);
-		}
-
-		sb.append(";indexname=");
-		sb.append(indexName);
-		sb.append(";numbins=1");
-
-		if (indexCollectionType != IndexCollectionType.DEFAULT) {
-			sb.append(";indextype=");
-			sb.append(indexCollectionType);
-		}
-
-		sb.append(";indexdata=");
-		sb.append(binName);
-		sb.append(",");
-		sb.append(indexType);
-		sb.append(";priority=normal");
+		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType);
 
 		// Send index command to one node. That node will distribute the command to other nodes.
-		String response = sendInfoCommand(policy, sb.toString());
+		String response = sendInfoCommand(policy, command);
 
 		if (response.equalsIgnoreCase("OK")) {
 			// Return task that could optionally be polled for completion.
 			return new IndexTask(cluster, policy, namespace, indexName, true);
 		}
 
-		parseInfoError("Create index failed", response);
-		return null;
+		int code = parseIndexErrorCode(response);
+		throw new AerospikeException(code, "Create index failed: " + response);
+	}
+
+	/**
+	 * Asynchronously create complex secondary index to be used on bins containing collections.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				underlying data type of secondary index
+	 * @param indexCollectionType	index collection type
+	 * @throws AerospikeException	if index create fails
+	 */
+	public final void createIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType);
+		sendIndexInfoCommand(eventLoop, listener, policy, namespace, indexName, command, true);
 	}
 
 	/**
@@ -2011,26 +2032,86 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
-		StringBuilder sb = new StringBuilder(500);
-		sb.append("sindex-delete:ns=");
-		sb.append(namespace);
-
-		if (setName != null && setName.length() > 0) {
-			sb.append(";set=");
-			sb.append(setName);
-		}
-		sb.append(";indexname=");
-		sb.append(indexName);
+		String command = buildDropIndexInfoCommand(namespace, setName, indexName);
 
 		// Send index command to one node. That node will distribute the command to other nodes.
-		String response = sendInfoCommand(policy, sb.toString());
+		String response = sendInfoCommand(policy, command);
 
 		if (response.equalsIgnoreCase("OK")) {
 			return new IndexTask(cluster, policy, namespace, indexName, false);
 		}
 
-		parseInfoError("Drop index failed", response);
-		return null;
+		int code = parseIndexErrorCode(response);
+		throw new AerospikeException(code, "Drop index failed: " + response);
+	}
+
+	/**
+	 * Asynchronously delete secondary index.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index drop fails
+	 */
+	public final void dropIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		String command = buildDropIndexInfoCommand(namespace, setName, indexName);
+		sendIndexInfoCommand(eventLoop, listener, policy, namespace, indexName, command, false);
+	}
+
+	//-----------------------------------------------------------------
+	// Async Info functions (sync info functions located in Info class)
+	//-----------------------------------------------------------------
+
+	/**
+	 * Asynchronously make info commands.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The info protocol is a name/value pair based system, where an individual
+	 * database server node is queried to determine its configuration and status.
+	 * The list of supported info commands can be found at:
+	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param node					server node to execute command, pass in null for random node
+	 * @param commands				list of info commands
+	 * @throws AerospikeException	if info commands fail
+	 */
+	public final void info(
+		EventLoop eventLoop,
+		InfoListener listener,
+		InfoPolicy policy,
+		Node node,
+		String... commands
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = infoPolicyDefault;
+		}
+
+		if (node == null) {
+			node = cluster.getRandomNode();
+		}
+
+		AsyncInfoCommand command = new AsyncInfoCommand(listener, policy, node, commands);
+		eventLoop.execute(cluster, command);
 	}
 
 	//-------------------------------------------------------
@@ -2252,6 +2333,54 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	// Internal Methods
 	//-------------------------------------------------------
 
+	private static String buildCreateIndexInfoCommand(
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType
+	) {
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("sindex-create:ns=");
+		sb.append(namespace);
+
+		if (setName != null && setName.length() > 0) {
+			sb.append(";set=");
+			sb.append(setName);
+		}
+
+		sb.append(";indexname=");
+		sb.append(indexName);
+		sb.append(";numbins=1");
+
+		if (indexCollectionType != IndexCollectionType.DEFAULT) {
+			sb.append(";indextype=");
+			sb.append(indexCollectionType);
+		}
+
+		sb.append(";indexdata=");
+		sb.append(binName);
+		sb.append(",");
+		sb.append(indexType);
+		sb.append(";priority=normal");
+		return sb.toString();
+	}
+
+	private static String buildDropIndexInfoCommand(String namespace, String setName, String indexName) {
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("sindex-delete:ns=");
+		sb.append(namespace);
+
+		if (setName != null && setName.length() > 0) {
+			sb.append(";set=");
+			sb.append(setName);
+		}
+		sb.append(";indexname=");
+		sb.append(indexName);
+		return sb.toString();
+	}
+
 	private String sendInfoCommand(Policy policy, String command) {
 		Node node = cluster.getRandomNode();
 		Connection conn = node.getConnection(policy.socketTimeout);
@@ -2268,20 +2397,54 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return info.getValue();
 	}
 
-	private void parseInfoError(String prefix, String response) {
-		String message = prefix + ": " + response;
-		String[] list = response.split(":");
+	private void sendIndexInfoCommand(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String indexName,
+		String command,
+		boolean isCreate
+	) {
+		info(eventLoop, new InfoListener() {
+			@Override
+			public void onSuccess(Map<String,String> map) {
+				String response = map.values().iterator().next();
 
-		if (list.length >= 2 && list[0].equals("FAIL")) {
-			int code = 0;
+				if (response.equalsIgnoreCase("OK")) {
+					// Return task that could optionally be polled for completion.
+					listener.onSuccess(new AsyncIndexTask(AerospikeClient.this, namespace, indexName, isCreate));
+				}
+				else {
+					int code = parseIndexErrorCode(response);
+					String type = isCreate ? "Create" : "Drop";
+					listener.onFailure(new AerospikeException(code, type + " index failed: " + response));
+				}
+			}
 
-			try {
+			@Override
+			public void onFailure(AerospikeException ae) {
+				listener.onFailure(ae);
+			}
+		}, new InfoPolicy(policy), cluster.getRandomNode(), command);
+	}
+
+	private static int parseIndexErrorCode(String response) {
+		int code = 0;
+
+		try {
+			String[] list = response.split(":");
+
+			if (list.length >= 2 && list[0].equals("FAIL")) {
 				code = Integer.parseInt(list[1]);
 			}
-			catch (Exception ex) {
-			}
-			throw new AerospikeException(code, message);
 		}
-		throw new AerospikeException(message);
+		catch (Exception ex) {
+		}
+
+		if (code == 0) {
+			code = ResultCode.SERVER_ERROR;
+		}
+		return code;
 	}
 }

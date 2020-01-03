@@ -491,11 +491,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.sizeBuffer(receiveSize);
 		state = AsyncCommand.COMMAND_READ_BODY;
 
-		if (readableBytes <= 0) {
-			command.dataOffset = 0;
-			return;
-		}
-
 		dataSize = (readableBytes >= receiveSize)? receiveSize : readableBytes;
 		byteBuffer.readBytes(command.dataBuffer, 0, dataSize);
 		command.dataOffset = dataSize;

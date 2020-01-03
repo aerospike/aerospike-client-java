@@ -16,8 +16,21 @@
  */
 package com.aerospike.client.reactor;
 
-import com.aerospike.client.*;
-import com.aerospike.client.policy.*;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
+import com.aerospike.client.Bin;
+import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
+import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.IndexCollectionType;
+import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.reactor.dto.KeyExists;
@@ -29,6 +42,7 @@ import reactor.core.publisher.Mono;
 
 import java.io.Closeable;
 import java.util.List;
+import java.util.Map;
 
 
 public interface IAerospikeReactorClient extends Closeable{
@@ -594,4 +608,65 @@ public interface IAerospikeReactorClient extends Closeable{
 	 */
 	Mono<KeyObject> execute(WritePolicy policy, Key key,
 								   String packageName, String functionName, Value... functionArgs) throws AerospikeException;
+
+	/**
+	 * Reactively access server's info monitoring protocol.
+	 * <p>
+	 * The info protocol is a name/value pair based system, where an individual
+	 * database server node is queried to determine its configuration and status.
+	 * The list of supported names can be found at:
+	 * <p>
+	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+	 * <p>
+	 *
+	 */
+	Mono<String> info(InfoPolicy infoPolicy, Node node, String command);
+
+	/**
+	 * Reactively access server's info monitoring protocol.
+	 * <p>
+	 * The info protocol is a name/value pair based system, where an individual
+	 * database server node is queried to determine its configuration and status.
+	 * The list of supported names can be found at:
+	 * <p>
+	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+	 * <p>
+	 *
+	 */
+	Mono<Map<String,String>> info(InfoPolicy infoPolicy, Node node, List<String> commands);
+
+	/**
+	 * Reactively create complex secondary index to be used on bins containing collections.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				underlying data type of secondary index
+	 * @param indexCollectionType	index collection type
+	 * @throws AerospikeException	if index create fails
+	 */
+	Mono<Void> createIndex(Policy policy,
+						   String namespace, String setName, String indexName, String binName,
+			               IndexType indexType, IndexCollectionType indexCollectionType);
+
+	/**
+	 * Reactively delete secondary index.
+	 * This asynchronous server call will return before command is complete.
+	 * The user can optionally wait for command completion by using the returned
+	 * IndexTask instance.
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index create fails
+	 */
+	Mono<Void> dropIndex(
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
+	);
+
 }

@@ -33,6 +33,8 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.IndexListener;
+import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -1089,6 +1091,10 @@ public interface IAerospikeClient extends Closeable {
 	 */
 	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException;
 
+	//--------------------------------------------------------
+	// Secondary Index functions
+	//--------------------------------------------------------
+
 	/**
 	 * Create scalar secondary index.
 	 * This asynchronous server call will return before command is complete.
@@ -1138,6 +1144,34 @@ public interface IAerospikeClient extends Closeable {
 	) throws AerospikeException;
 
 	/**
+	 * Asynchronously create complex secondary index to be used on bins containing collections.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @param binName				bin name that data is indexed on
+	 * @param indexType				underlying data type of secondary index
+	 * @param indexCollectionType	index collection type
+	 * @throws AerospikeException	if index create fails
+	 */
+	public void createIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType
+	) throws AerospikeException;
+
+	/**
 	 * Delete secondary index.
 	 * This asynchronous server call will return before command is complete.
 	 * The user can optionally wait for command completion by using the returned
@@ -1154,6 +1188,57 @@ public interface IAerospikeClient extends Closeable {
 		String namespace,
 		String setName,
 		String indexName
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously delete secondary index.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param indexName				name of secondary index
+	 * @throws AerospikeException	if index drop fails
+	 */
+	public void dropIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName
+	) throws AerospikeException;
+
+	//-----------------------------------------------------------------
+	// Async Info functions (sync info functions located in Info class)
+	//-----------------------------------------------------------------
+
+	/**
+	 * Asynchronously make info commands.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The info protocol is a name/value pair based system, where an individual
+	 * database server node is queried to determine its configuration and status.
+	 * The list of supported info commands can be found at:
+	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param node					server node to execute command, pass in null for random node
+	 * @param commands				list of info commands
+	 * @throws AerospikeException	if info commands fail
+	 */
+	public void info(
+		EventLoop eventLoop,
+		InfoListener listener,
+		InfoPolicy policy,
+		Node node,
+		String... commands
 	) throws AerospikeException;
 
 	//-------------------------------------------------------

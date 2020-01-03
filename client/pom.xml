@@ -113,6 +113,7 @@
             <include>com/aerospike/client/admin/PrivilegeCode.java</include>
             <include>com/aerospike/client/admin/Role.java</include>
             <include>com/aerospike/client/admin/User.java</include>
+            <include>com/aerospike/client/async/AsyncIndexTask.java</include>
             <include>com/aerospike/client/async/EventLoop.java</include>
             <include>com/aerospike/client/async/EventLoopBase.java</include>
             <include>com/aerospike/client/async/EventLoops.java</include>
