@@ -29,7 +29,7 @@
 
     <netty.version>4.1.11.Final</netty.version>
     <luaj-jse.version>3.0</luaj-jse.version>
-    <jbcrypt.version>0.3m</jbcrypt.version>
+    <jbcrypt.version>0.4</jbcrypt.version>
     <servlet-api.version>2.4</servlet-api.version>
     <commons-cli.version>1.2</commons-cli.version>
     <junit.version>4.12</junit.version>
