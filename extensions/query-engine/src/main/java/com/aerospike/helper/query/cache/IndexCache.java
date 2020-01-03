@@ -43,16 +43,26 @@ public class IndexCache implements AutoCloseable {
         this.indexCache = Arrays.stream(client.getNodes())
                 .filter(Node::isActive)
                 .findFirst()
-                .map(node -> Info.request(infoPolicy, node, SINDEX))
-                .filter(indexString -> !indexString.isEmpty())
-                .map(indexString -> Arrays.stream(indexString.split(";")))
-                .orElse(Stream.empty())
-                .map(indexInfoParser::parse)
-                .collect(collectingAndThen(
-                        toMap(this::getIndexKey, index -> index),
-                        Collections::unmodifiableMap));
+                .map(node -> Info.request(infoPolicy, node, buildGetIndexesCommand()))
+                .map(response -> parseIndexesInfo(response, indexInfoParser))
+                .orElse(Collections.emptyMap());
 
         log.debug("Loaded indexes: {}", indexCache);
+    }
+
+    static Map<IndexKey, Index> parseIndexesInfo(String infoResponse, IndexInfoParser indexInfoParser){
+        if(infoResponse.isEmpty()){
+            return Collections.emptyMap();
+        }
+        return Arrays.stream(infoResponse.split(";"))
+                .map(indexInfoParser::parse)
+                .collect(collectingAndThen(
+                        toMap(IndexCache::buildIndexKey, index -> index),
+                        Collections::unmodifiableMap));
+    }
+
+    public static String buildGetIndexesCommand(){
+        return SINDEX;
     }
 
     @Override
@@ -60,7 +70,7 @@ public class IndexCache implements AutoCloseable {
         this.indexCache = Collections.emptyMap();
     }
 
-    private IndexKey getIndexKey(Index index) {
+    private static IndexKey buildIndexKey(Index index) {
         return new IndexKey(index.getNamespace(), index.getSet(), index.getBin());
     }
 }

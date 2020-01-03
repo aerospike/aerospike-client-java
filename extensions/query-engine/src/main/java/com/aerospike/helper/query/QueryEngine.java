@@ -36,6 +36,9 @@ import org.slf4j.LoggerFactory;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
+
+import static com.aerospike.helper.query.Qualifier.FilterOperation.*;
 
 /**
  * This class provides a multi-filter query engine that
@@ -108,13 +111,13 @@ public class QueryEngine implements Closeable {
 		registerUDF();
 	}
 
-	private static WritePolicy getInsertPolicy(WritePolicy writePolicyDefault) {
+	static WritePolicy getInsertPolicy(WritePolicy writePolicyDefault) {
 		WritePolicy insertPolicy = new WritePolicy(writePolicyDefault);
 		insertPolicy.recordExistsAction = RecordExistsAction.CREATE_ONLY;
 		return insertPolicy;
 	}
 
-	private static WritePolicy getUpdatePolicy(WritePolicy writePolicyDefault) {
+	static WritePolicy getUpdatePolicy(WritePolicy writePolicyDefault) {
 		WritePolicy updatePolicy = new WritePolicy(writePolicyDefault);
 		updatePolicy.recordExistsAction = RecordExistsAction.UPDATE_ONLY;
 		return updatePolicy;
@@ -201,6 +204,23 @@ public class QueryEngine implements Closeable {
 		/*
 		 *  query with filters
 		 */
+		updateStatement(stmt, qualifiers, indexCache::getIndex);
+
+		RecordSet rs;
+		if (null == node){
+			rs = client.query(queryPolicy, stmt);
+		} else{
+			rs = client.queryNode(queryPolicy, stmt, node);
+		}
+		return new KeyRecordIterator(stmt.getNamespace(), rs);
+
+	}
+
+	static void updateStatement(Statement stmt, Qualifier[] qualifiers,
+								Function<IndexKey, Optional<Index>> indexCache){
+		/*
+		 *  query with filters
+		 */
 		for (int i = 0; i < qualifiers.length; i++) {
 			Qualifier qualifier = qualifiers[i];
 
@@ -214,7 +234,7 @@ public class QueryEngine implements Closeable {
 						break;
 					}
 				}
-			} else if (isIndexedBin(stmt, qualifier)) {
+			} else if (isIndexedBin(stmt, qualifier, indexCache)) {
 				Filter filter = qualifier.asFilter();
 				if (filter != null) {
 					stmt.setFilter(filter);
@@ -224,13 +244,7 @@ public class QueryEngine implements Closeable {
 					 * the query iterator.
 					 */
 					if (qualifiers.length == 1) {
-						RecordSet rs;
-						if (null == node){
-							rs = client.query(queryPolicy, stmt);
-						} else{
-							rs = client.queryNode(queryPolicy, stmt, node);
-						}
-						return new KeyRecordIterator(stmt.getNamespace(), rs);
+						return;
 					}
 					break;
 				}
@@ -242,13 +256,7 @@ public class QueryEngine implements Closeable {
 			predexps = buildPredExp(qualifiers).toArray(new PredExp[0]);
 			if(predexps.length > 0) {
 				stmt.setPredExp(predexps);
-				RecordSet rs;
-				if(null == node){
-					rs = client.query(queryPolicy, stmt);
-				}else{
-					rs = client.queryNode(queryPolicy, stmt, node);
-				}
-				return new KeyRecordIterator(stmt.getNamespace(), rs);
+				return;
 			}else{
 				throw new QualifierException("Failed to build Query");
 			}
@@ -257,23 +265,18 @@ public class QueryEngine implements Closeable {
 		}
 	}
 
+	private static final EnumSet<Qualifier.FilterOperation> INDEXED_OPERATIONS = EnumSet.of(
+			EQ, BETWEEN, GT, GTEQ, LT, LTEQ);
 
-
-	protected boolean isIndexedBin(Statement stmt, Qualifier qualifier) {
+	private static boolean isIndexedBin(Statement stmt, Qualifier qualifier,
+										Function<IndexKey, Optional<Index>> indexCache) {
 		if(null == qualifier.getField()) return false;
-		Optional<Index> index = indexCache.getIndex(getIndexKey(stmt, qualifier));
-		if (!index.isPresent())
-			return false;
 
-		switch (qualifier.getOperation()){
-			case EQ: case BETWEEN: case GT: case GTEQ: case LT: case LTEQ:
-				return true;
-			default:
-				return false;
-		}
+		return INDEXED_OPERATIONS.contains(qualifier.getOperation())
+				&& indexCache.apply(getIndexKey(stmt, qualifier)).isPresent();
 	}
 
-	private IndexKey getIndexKey(Statement stmt, Qualifier qualifier) {
+	private static IndexKey getIndexKey(Statement stmt, Qualifier qualifier) {
 		return new IndexKey(stmt.getNamespace(), stmt.getSetName(), qualifier.getField());
 	}
 
@@ -445,7 +448,7 @@ public class QueryEngine implements Closeable {
 		return map;
 	}
 
-	protected List<PredExp> buildPredExp(Qualifier[] qualifiers) throws PredExpException{
+	protected static List<PredExp> buildPredExp(Qualifier[] qualifiers) throws PredExpException{
 		List<PredExp> pes = new ArrayList<PredExp>();
 		int qCount = 0;
 		for(Qualifier q : qualifiers){

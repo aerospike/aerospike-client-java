@@ -16,6 +16,8 @@
  */
 package com.aerospike.helper.query;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -25,8 +27,6 @@ import java.util.Map.Entry;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
@@ -38,8 +38,6 @@ import com.aerospike.helper.query.Qualifier.FilterOperation;
  * Tests to ensure that Qualifiers are built successfully for non indexed bins.
  */
 public class QualifierTests extends HelperTests{
-	/*
-	 */
 
 	/*
 	 * These bins should not be indexed.
@@ -217,11 +215,12 @@ public class QualifierTests extends HelperTests{
 		assertThat(orangeCount).isEqualTo(recordsWithColourCounts.get(orange));
 	}
 
+	@Test
 	public void testStringEQIgnoreCaseQualifier() throws IOException {
 			long orangeCount = 0l;
 			String orange = "orange";
-			
-			Qualifier stringEqQualifier = new Qualifier("color", FilterOperation.EQ, Value.get("ORANGE"));
+
+			Qualifier stringEqQualifier = new Qualifier("color", FilterOperation.EQ, true, Value.get("ORANGE"));
 			KeyRecordIterator it = queryEngine.select(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, null, stringEqQualifier);
 			try{
 				while (it.hasNext()){
@@ -230,7 +229,7 @@ public class QualifierTests extends HelperTests{
 					if (color.equals(orange)) {
 						orangeCount++;
 					}
-					assertThat(color.compareToIgnoreCase(orange) == 0);
+					assertThat(color.compareToIgnoreCase(orange) == 0).isTrue();
 				}
 			} finally {
 				it.close();
@@ -253,7 +252,7 @@ public class QualifierTests extends HelperTests{
 				if (color.equals("blue")) {
 					blueCount++;
 				}
-				assertThat(color.startsWith(bluePrefix));
+				assertThat(color.startsWith(bluePrefix)).isTrue();
 			}
 		} finally {
 			it.close();
@@ -276,7 +275,7 @@ public class QualifierTests extends HelperTests{
 				if (color.equals(blue)) {
 					blueCount++;
 				}
-				assertThat(color.startsWith(blue));
+				assertThat(color.startsWith(blue)).isTrue();
 			}
 		} finally {
 			it.close();
@@ -299,7 +298,7 @@ public class QualifierTests extends HelperTests{
 				if (color.equals("blue")) {
 					blueCount++;
 				}
-				assertThat(color.startsWith(blue));
+				assertThat(color.startsWith(blue)).isTrue();
 			}
 		} finally {
 			it.close();
@@ -323,7 +322,7 @@ public class QualifierTests extends HelperTests{
 				if (color.equals(green)) {
 					greenCount++;
 				}
-				assertThat(color.endsWith(greenEnding));
+				assertThat(color.endsWith(greenEnding)).isTrue();
 			}
 		} finally {
 			it.close();
@@ -354,7 +353,7 @@ public class QualifierTests extends HelperTests{
 		// Make sure that our query returned all of the records we expected.
 		assertThat(greenCount).isEqualTo(recordsWithColourCounts.get(green));
 	}
-	
+
 	@Test
 	public void testBetweenQualifier() throws IOException {
 		long age26Count = 0l;
@@ -384,12 +383,12 @@ public class QualifierTests extends HelperTests{
 		assertThat(age27Count).isEqualTo(recordsWithAgeCounts.get(27));
 		assertThat(age28Count).isEqualTo(recordsWithAgeCounts.get(28));
 	}
-	
+
 	@Test
 	public void testContainingQualifier() throws IOException {
 		String[] hasLColors =  Arrays.stream(colours)
 				.filter(c -> c.contains("l")).toArray(String[]::new);
-		
+
 		Map<String, Long>lColorCounts = new HashMap<>();
 		for(String color: hasLColors) {
 			lColorCounts.put(color, 0l);
@@ -407,16 +406,16 @@ public class QualifierTests extends HelperTests{
 		} finally {
 			it.close();
 		}
-		
+
 		for (Entry<String, Long> colorCountEntry: lColorCounts.entrySet()) {
 			assertThat(colorCountEntry.getValue()).isEqualTo(recordsWithColourCounts.get(colorCountEntry.getKey()));
 		}
 	}
-	
+
 	@Test
 	public void testInQualifier() throws IOException {
 		String[] inColours = new String[] {colours[0], colours[2]};
-		
+
 		Map<String, Long>lColorCounts = new HashMap<>();
 		for(String color: inColours) {
 			lColorCounts.put(color, 0l);
@@ -434,12 +433,12 @@ public class QualifierTests extends HelperTests{
 		} finally {
 			it.close();
 		}
-		
+
 		for (Entry<String, Long> colorCountEntry: lColorCounts.entrySet()) {
 			assertThat(colorCountEntry.getValue()).isEqualTo(recordsWithColourCounts.get(colorCountEntry.getKey()));
 		}
 	}
-	
+
 	@Test
 	public void testListContainsQualifier() throws IOException {
 		String searchColor = colours[0];
@@ -528,7 +527,7 @@ public class QualifierTests extends HelperTests{
 		// so there are an equal amount of records with the map {"color" => #} as with a color == "color"
 		assertThat(colorCount).isEqualTo(recordsWithColourCounts.get(searchColor));
 	}
-	
+
 	@Test
 	public void testMapValuesContainsQualifier() throws IOException {
 		String searchColor = colours[0];
@@ -554,7 +553,7 @@ public class QualifierTests extends HelperTests{
 		// so there are an equal amount of records with the map {"color" => #} as with a color == "color"
 		assertThat(colorCount).isEqualTo(recordsWithColourCounts.get(searchColor));
 	}
-	
+
 	@Test
 	public void testMapKeysBetweenQualifier() throws IOException {
 		long ageStart = ages[0]; // 25

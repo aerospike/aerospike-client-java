@@ -16,6 +16,7 @@
   <modules>
     <module>query-engine</module>
     <module>reactor-client</module>
+    <module>reactor-query-engine</module>
   </modules>
 
 </project>

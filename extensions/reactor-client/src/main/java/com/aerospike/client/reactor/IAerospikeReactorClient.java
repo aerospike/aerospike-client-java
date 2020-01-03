@@ -47,6 +47,18 @@ import java.util.Map;
 
 public interface IAerospikeReactorClient extends Closeable{
 
+	Policy getReadPolicyDefault();
+
+	WritePolicy getWritePolicyDefault();
+
+	ScanPolicy getScanPolicyDefault();
+
+	QueryPolicy getQueryPolicyDefault();
+
+	BatchPolicy getBatchPolicyDefault();
+
+	InfoPolicy getInfoPolicyDefault();
+
 	/**
 	 * Reactively read entire record for specified key.
 	 * This method registers the command with an event loop and returns.
@@ -98,6 +110,18 @@ public interface IAerospikeReactorClient extends Closeable{
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	Mono<KeyRecord> get(Policy policy, Key key) throws AerospikeException;
+
+	/**
+	 * Reactively read record header and bins for specified key.
+	 * <p>
+	 * The policy can be used to specify timeouts.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param key					unique record identifier
+	 * @param binNames				bins to retrieve
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	Mono<KeyRecord> get(Policy policy, Key key, String[] binNames) throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.

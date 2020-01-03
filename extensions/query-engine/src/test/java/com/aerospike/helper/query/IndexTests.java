@@ -41,7 +41,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void refreshIndexes_findsNewlyCreatedIndex() throws Exception {
+    public void refreshIndexes_findsNewlyCreatedIndex() {
         Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1));
         assertThat(index).isEmpty();
 
@@ -61,7 +61,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void refreshIndexes_removesDeletedIndex() throws Exception {
+    public void refreshIndexes_removesDeletedIndex() {
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME, BIN_1, IndexType.NUMERIC));
 
         queryEngine.refreshIndexes();
@@ -76,7 +76,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void refreshIndexes_indexWithoutSetCanBeParsed() throws Exception {
+    public void refreshIndexes_indexWithoutSetCanBeParsed() {
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, null, INDEX_NAME_2, BIN_2, IndexType.STRING));
 
         queryEngine.refreshIndexes();
@@ -93,7 +93,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void refreshIndexes_indexWithGeoTypeCanBeParsed() throws Exception {
+    public void refreshIndexes_indexWithGeoTypeCanBeParsed() {
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME_3, BIN_3, IndexType.GEO2DSPHERE));
 
         queryEngine.refreshIndexes();
@@ -110,7 +110,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void refreshIndexes_multipleIndexesCanBeParsed() throws Exception {
+    public void refreshIndexes_multipleIndexesCanBeParsed() {
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME, BIN_1, IndexType.NUMERIC));
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, null, INDEX_NAME_2, BIN_2, IndexType.STRING));
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME_3, BIN_3, IndexType.GEO2DSPHERE));
@@ -124,7 +124,7 @@ public class IndexTests extends AerospikeAwareTests {
     }
 
     @Test
-    public void getIndex_returnsEmptyForNonExistingIndex() throws Exception {
+    public void getIndex_returnsEmptyForNonExistingIndex() {
         Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1));
         assertThat(index).isEmpty();
     }

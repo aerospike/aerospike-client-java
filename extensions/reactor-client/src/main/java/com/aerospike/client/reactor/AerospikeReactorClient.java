@@ -107,8 +107,13 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 
 	@Override
 	public final Mono<KeyRecord> get(Policy policy, Key key) throws AerospikeException {
+		return get(policy, key, null);
+	}
+
+	@Override
+	public final Mono<KeyRecord> get(Policy policy, Key key, String[] binNames) throws AerospikeException {
 		return Mono.create(sink -> aerospikeClient.get(
-				eventLoops.next(), new ReactorRecordListener(sink), policy, key));
+				eventLoops.next(), new ReactorRecordListener(sink), policy, key, binNames));
 	}
 
 	@Override
@@ -387,4 +392,35 @@ public class AerospikeReactorClient implements IAerospikeReactorClient{
 		return Mono.create(sink -> indexTask.queryStatus(eventLoops.next(), infoPolicy, node,
 				new ReactorTaskStatusListener(sink)));
 	}
+
+	@Override
+	public Policy getReadPolicyDefault() {
+		return aerospikeClient.getReadPolicyDefault();
+	}
+
+	@Override
+	public WritePolicy getWritePolicyDefault() {
+		return aerospikeClient.getWritePolicyDefault();
+	}
+
+	@Override
+	public ScanPolicy getScanPolicyDefault() {
+		return aerospikeClient.getScanPolicyDefault();
+	}
+
+	@Override
+	public QueryPolicy getQueryPolicyDefault() {
+		return aerospikeClient.getQueryPolicyDefault();
+	}
+
+	@Override
+	public BatchPolicy getBatchPolicyDefault() {
+		return aerospikeClient.getBatchPolicyDefault();
+	}
+
+	@Override
+	public InfoPolicy getInfoPolicyDefault() {
+		return aerospikeClient.getInfoPolicyDefault();
+	}
+
 }
