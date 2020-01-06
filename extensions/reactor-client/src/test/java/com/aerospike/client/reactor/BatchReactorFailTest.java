@@ -57,8 +57,7 @@ public class BatchReactorFailTest extends ReactorFailTest {
 		policy.expiration = 2592000;
 
 		Mono.zip(
-				IntStream.iterate(0, i -> i + 1)
-						.limit(size)
+				IntStream.range(0, size)
 						.mapToObj(i -> {
 							final Key key = new Key(args.namespace, args.set, keyPrefix + (i + 1));
 							sendKeys[i] = key;

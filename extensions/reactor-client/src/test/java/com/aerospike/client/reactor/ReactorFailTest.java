@@ -18,6 +18,7 @@ package com.aerospike.client.reactor;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.*;
 import com.aerospike.client.reactor.util.Args;
 import org.junit.After;
@@ -28,10 +29,13 @@ import org.netcrusher.tcp.TcpCrusherBuilder;
 
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 abstract public class ReactorFailTest extends ReactorTest{
 
-	TcpCrusher proxy;
+	List<TcpCrusher> proxies;
 	AerospikeReactorClient proxyReactorClient;
 
 	public ReactorFailTest(Args args) {
@@ -41,31 +45,23 @@ abstract public class ReactorFailTest extends ReactorTest{
 	@Before
 	public void initProxy(){
 
+		ClientPolicy policy = new ClientPolicy();
+		policy.eventLoops = eventLoops;
+		policy.user = args.user;
+		policy.password = args.password;
+		policy.authMode = args.authMode;
+		policy.tlsPolicy = args.tlsPolicy;
+		policy.timeout = 100;
+
+		AerospikeClient discoveryClient = new AerospikeClient(policy, new Host(args.host, args.port));
+
+		initProxiesForAllNodes(discoveryClient);
+
 		try {
-			NioReactor reactor = new NioReactor();
 
-			proxy = TcpCrusherBuilder.builder()
-					.withReactor(reactor)
-					.withBindAddress("localhost", getFreePort())
-					.withConnectAddress(args.host, args.port)
-					.buildAndOpen();
-		} catch (IOException e){
-			eventLoops.close();
-			throw new RuntimeException(e);
-		}
-
-		try {
-
-			ClientPolicy policy = new ClientPolicy();
-			policy.eventLoops = eventLoops;
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.authMode = args.authMode;
-			policy.tlsPolicy = args.tlsPolicy;
-
-			Host[] hosts = Host.parseHosts(
-					proxy.getBindAddress().getHostName(),
-					proxy.getBindAddress().getPort());
+			Host[] hosts = proxies.stream()
+					.map(proxy -> new Host(proxy.getBindAddress().getHostName(), proxy.getBindAddress().getPort()))
+					.toArray(Host[]::new);
 
 			AerospikeClient proxyClient = new AerospikeClient(policy, hosts);
 			this.proxyReactorClient = new AerospikeReactorClient(proxyClient, eventLoops);
@@ -73,14 +69,36 @@ abstract public class ReactorFailTest extends ReactorTest{
 		}
 		catch (Throwable e) {
 			try {
-				proxy.close();
+				proxies.forEach(TcpCrusher::close);
 			} catch (Exception e1) {
 				e1.printStackTrace();
 			}
 			throw new RuntimeException(e);
 		}
 
-		proxy.freeze();
+		proxies.forEach(TcpCrusher::freeze);
+	}
+
+	private void initProxiesForAllNodes(AerospikeClient discoveryClient) {
+		try {
+			NioReactor reactor = new NioReactor();
+			proxies = Stream.of(discoveryClient.getNodes())
+					.map(Node::getHost)
+					.map(host -> {
+						try {
+							return TcpCrusherBuilder.builder()
+									.withReactor(reactor)
+									.withBindAddress("localhost", getFreePort())
+									.withConnectAddress(host.name, host.port)
+									.buildAndOpen();
+						} catch (IOException e) {
+							throw new RuntimeException(e);
+						}
+					}).collect(Collectors.toList());
+		} catch (IOException e){
+			eventLoops.close();
+			throw new RuntimeException(e);
+		}
 	}
 
 	private int getFreePort() throws IOException {
@@ -91,8 +109,10 @@ abstract public class ReactorFailTest extends ReactorTest{
 
 	@After
 	public void destroyProxy()  {
-		proxy.unfreeze();
-		proxy.close();
+		proxies.forEach(proxy -> {
+			proxy.unfreeze();
+			proxy.close();
+		});
 	}
 
 	Policy strictReadPolicy() {

@@ -235,7 +235,7 @@ public class QualifierTests extends HelperTests{
 				it.close();
 			}
 			// Make sure that our query returned all of the records we expected.
-			assertThat(orangeCount).isEqualTo(recordsWithColourCounts.get(orange));
+		assertThat(orangeCount).isEqualTo(recordsWithColourCounts.get(orange));
 	}
 
 	@Test

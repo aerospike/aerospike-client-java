@@ -65,6 +65,9 @@ import com.aerospike.helper.query.cache.IndexInfoParser;
 import com.aerospike.helper.query.cache.IndexKey;
 import com.aerospike.helper.query.cache.IndexedField;
 import com.aerospike.helper.query.cache.InternalIndexOperations;
+import java.util.function.Function;
+
+import static com.aerospike.helper.query.Qualifier.FilterOperation.*;
 
 /**
  * This class provides a multi-filter query engine that
