@@ -3,6 +3,7 @@ package com.aerospike.helper.query;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.RecordExistsAction;
+import com.aerospike.client.task.IndexTask;
 import org.junit.After;
 import org.junit.Before;
 
@@ -29,4 +30,12 @@ public abstract class AerospikeAwareTests {
     public void tearDown() throws Exception {
         queryEngine.close();
     }
+
+    protected static void wait(IndexTask task) {
+        if (task == null) {
+            throw new IllegalStateException("task can not be null");
+        }
+        task.waitTillComplete();
+    }
+
 }

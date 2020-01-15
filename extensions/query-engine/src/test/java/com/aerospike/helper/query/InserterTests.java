@@ -14,14 +14,9 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.query.Statement;
-import com.aerospike.helper.query.KeyQualifier;
-import com.aerospike.helper.query.QueryEngine;
 
 public class InserterTests extends HelperTests{
 
-	public InserterTests() {
-		super();
-	}
 	@Before
 	public void setUp() throws Exception {
 //		if (this.useAuth){

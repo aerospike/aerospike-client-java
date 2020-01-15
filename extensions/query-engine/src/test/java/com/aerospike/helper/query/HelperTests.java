@@ -1,23 +1,27 @@
 package com.aerospike.helper.query;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.After;
-import org.junit.Before;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.task.IndexTask;
+import org.junit.After;
+import org.junit.Before;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 //@RunWith(Parameterized.class)
 public abstract class HelperTests extends AerospikeAwareTests {
+
+	protected static final String BLUE = "blue";
+	protected static final String ORANGE = "orange";
+	protected static final String GREEN = "green";
+	protected static final String RED = "red";
+	protected static final String YELLOW = "yellow";
 
 	// These values are added to Lists and Maps to avoid single item collections.
 	// Tests should ignore them for assertion purposes
@@ -25,17 +29,17 @@ public abstract class HelperTests extends AerospikeAwareTests {
 	protected static final String skipColorValue = "SKIP_THIS_COLOR";
 
 	protected int[] ages = new int[]{25,26,27,28,29};
-	protected String[] colours = new String[]{"blue","red","yellow","green","orange"};
+	protected String[] colours = new String[]{BLUE, RED, YELLOW, GREEN, ORANGE};
 	protected String[] animals = new String[]{"cat","dog","mouse","snake","lion"};
 
 	protected String geoSet = "geo-set", geoBinName = "querygeobin";
 	protected String specialCharBin = "scBin";
 	private static final String keyPrefix = "querykey";
 
-	protected Map<Integer, Long> recordsWithAgeCounts;
-	protected Map<String, Long> recordsWithColourCounts;
-	protected Map<String, Long> recordsWithAnimalCounts;
-	protected Map<Long, Long> recordsModTenCounts;
+	protected Map<Integer, Integer> recordsWithAgeCounts;
+	protected Map<String, Integer> recordsWithColourCounts;
+	protected Map<String, Integer> recordsWithAnimalCounts;
+	protected Map<Long, Integer> recordsModTenCounts;
 
 	@Before
 	public void setUp() throws Exception {
@@ -107,9 +111,9 @@ public abstract class HelperTests extends AerospikeAwareTests {
 	private static String buildGeoValue(double lg, double lat) {
 		StringBuilder ptsb = new StringBuilder();
 		ptsb.append("{ \"type\": \"Point\", \"coordinates\": [");
-		ptsb.append(String.valueOf(lg));
+		ptsb.append(lg);
 		ptsb.append(", ");
-		ptsb.append(String.valueOf(lat));
+		ptsb.append(lat);
 		ptsb.append("] }");
 		return ptsb.toString();
 	}
@@ -117,26 +121,25 @@ public abstract class HelperTests extends AerospikeAwareTests {
 	private void initializeMaps() {
 		recordsWithAgeCounts = new HashMap<>();
 		for (int age: ages) {
-			recordsWithAgeCounts.put(age, 0l);
+			recordsWithAgeCounts.put(age, 0);
 		}
 		recordsWithColourCounts = new HashMap<>();
 		for (String colour: colours) {
-			recordsWithColourCounts.put(colour, 0l);
+			recordsWithColourCounts.put(colour, 0);
 		}
 		recordsWithAnimalCounts = new HashMap<>();
 		for (String animal: animals) {
-			recordsWithAnimalCounts.put(animal, 0l);
+			recordsWithAnimalCounts.put(animal, 0);
 		}
 		recordsModTenCounts = new HashMap<>();
 		for (long i = 0; i < 10; i++) {
-			recordsModTenCounts.put(i, 0l);
+			recordsModTenCounts.put(i, 0);
 		}
 	}
 	
-	protected void tryDropIndex(String namespace, String setName, String indexName, int waitTime) {
+	protected void tryDropIndex(String namespace, String setName, String indexName) {
 		try {
-			IndexTask indexDropTask = client.dropIndex(null, namespace, null, indexName);
-			indexDropTask.waitTillComplete(waitTime);
+			wait(client.dropIndex(null, namespace, setName, indexName));
 		}  catch (AerospikeException e) {
 			if (e.getResultCode() != ResultCode.INDEX_NOTFOUND) {
 				throw e;
@@ -148,8 +151,7 @@ public abstract class HelperTests extends AerospikeAwareTests {
 
 	protected void tryCreateIndex(String namespace, String setName, String indexName, String binName, IndexType indexType) {
 		try {
-			IndexTask task = this.client.createIndex(null, namespace, setName, indexName, binName, indexType);
-			task.waitTillComplete(50);
+			wait(this.client.createIndex(null, namespace, setName, indexName, binName, indexType));
 		} catch (AerospikeException e) {
 			if (e.getResultCode() != ResultCode.INDEX_FOUND) {
 				throw(e);
@@ -162,8 +164,7 @@ public abstract class HelperTests extends AerospikeAwareTests {
 	protected void tryCreateIndex(String namespace, String setName, String indexName, String binName, IndexType indexType, 
 			IndexCollectionType collectionType) {
 		try {
-			IndexTask task = this.client.createIndex(null, namespace, setName, indexName, binName, indexType, collectionType);
-			task.waitTillComplete(50);
+			wait(this.client.createIndex(null, namespace, setName, indexName, binName, indexType, collectionType));
 		} catch (AerospikeException e) {
 			if (e.getResultCode() != ResultCode.INDEX_FOUND) {
 				throw(e);

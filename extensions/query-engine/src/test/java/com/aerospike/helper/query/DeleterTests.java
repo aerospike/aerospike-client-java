@@ -11,14 +11,9 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.query.Statement;
-import com.aerospike.helper.query.KeyQualifier;
-import com.aerospike.helper.query.Qualifier;
 
-public class DeleterTests extends HelperTests{
+public class DeleterTests extends HelperTests {
 
-	public DeleterTests() {
-		super();
-	}
 	@Test
 	public void deleteByKey(){
 		for (int x = 1; x <= TestQueryEngine.RECORD_COUNT; x++){

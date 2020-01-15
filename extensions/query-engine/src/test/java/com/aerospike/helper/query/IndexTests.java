@@ -129,13 +129,6 @@ public class IndexTests extends AerospikeAwareTests {
         assertThat(index).isEmpty();
     }
 
-    private static void wait(IndexTask task) {
-        if (task == null) {
-            throw new IllegalStateException("task can not be null");
-        }
-        task.waitTillComplete();
-    }
-
     private boolean indexExists(String namespace, String indexName) {
         Node[] nodes = client.getNodes();
         if (nodes.length == 0) {
