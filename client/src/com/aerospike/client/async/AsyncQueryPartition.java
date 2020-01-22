@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,35 +19,57 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.query.PartitionTracker;
+import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 
-public final class AsyncQuery extends AsyncMultiCommand {
+public final class AsyncQueryPartition extends AsyncMultiCommand {
 	private final RecordSequenceListener listener;
 	private final Statement statement;
+	private final PartitionTracker tracker;
+	private final NodePartitions nodePartitions;
 
-	public AsyncQuery(
+	public AsyncQueryPartition(
 		AsyncMultiExecutor parent,
-		Node node,
 		QueryPolicy policy,
 		RecordSequenceListener listener,
-		Statement statement
+		Statement statement,
+		PartitionTracker tracker,
+		NodePartitions nodePartitions
 	) {
-		super(parent, node, policy, policy.socketTimeout, policy.totalTimeout);
+		super(parent, nodePartitions.node, policy, tracker.socketTimeout, tracker.totalTimeout);
 		this.listener = listener;
 		this.statement = statement;
+		this.tracker = tracker;
+		this.nodePartitions = nodePartitions;
 	}
 
 	@Override
 	protected void writeBuffer() throws AerospikeException {
-		setQuery(policy, statement, false, null);
+		setQuery(policy, statement, false, nodePartitions);
 	}
 
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {
+		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
+			tracker.partitionDone(nodePartitions, generation);
+			return;
+		}
+		tracker.setDigest(key);
+
 		Record record = parseRecord();
 		listener.onRecord(key, record);
+	}
+
+	@Override
+	protected void onFailure(AerospikeException ae) {
+		if (tracker.shouldRetry(ae)) {
+			parent.childSuccess(node);
+			return;
+		}
+		parent.childFailure(ae);
 	}
 }

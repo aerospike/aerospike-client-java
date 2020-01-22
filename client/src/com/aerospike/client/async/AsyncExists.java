@@ -32,7 +32,7 @@ public final class AsyncExists extends AsyncCommand {
 	private boolean exists;
 
 	public AsyncExists(Cluster cluster, ExistsListener listener, Policy policy, Key key) {
-		super(policy, true, true);
+		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);

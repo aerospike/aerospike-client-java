@@ -25,6 +25,8 @@ public final class FieldType {
 	public final static int SCAN_OPTIONS = 8;
 	public final static int SCAN_TIMEOUT = 9;
 	public final static int RECORDS_PER_SECOND = 10;
+	public final static int PID_ARRAY = 11;
+	public final static int DIGEST_ARRAY = 12;
 	public final static int INDEX_NAME = 21;
 	public final static int INDEX_RANGE = 22;
 	public final static int INDEX_FILTER = 23;

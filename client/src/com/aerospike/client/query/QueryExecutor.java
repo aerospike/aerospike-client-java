@@ -21,15 +21,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 
-public abstract class QueryExecutor {
+public abstract class QueryExecutor implements IQueryExecutor {
 
-	private final Cluster cluster;
+	protected final Cluster cluster;
 	protected final QueryPolicy policy;
 	protected final Statement statement;
 	private final Node[] nodes;
@@ -40,24 +39,13 @@ public abstract class QueryExecutor {
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
 
-	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
+	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) {
 		this.cluster = cluster;
 		this.policy = policy;
 		this.statement = statement;
+		this.nodes = nodes;
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
-
-		if (node == null) {
-			nodes = cluster.getNodes();
-
-			if (nodes.length == 0) {
-				throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Query failed because cluster is empty.");
-			}
-		}
-		else {
-			nodes = new Node[] {node};
-		}
-
 		this.threadPool = cluster.getThreadPool();
 		this.threads = new QueryThread[nodes.length];
 
@@ -106,7 +94,8 @@ public abstract class QueryExecutor {
 		}
 	}
 
-	protected final void stopThreads(Exception cause) {
+	@Override
+	public final void stopThreads(Exception cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
 	    	exception = cause;
@@ -119,7 +108,8 @@ public abstract class QueryExecutor {
 		}
     }
 
-	protected final void checkForException() throws AerospikeException {
+	@Override
+	public final void checkForException() {
 		// Throw an exception if an error occurred.
 		if (exception != null) {
 			if (exception instanceof AerospikeException) {
@@ -141,7 +131,7 @@ public abstract class QueryExecutor {
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy);
+					command.executeAndValidate();
 				}
 				threadCompleted();
 			}

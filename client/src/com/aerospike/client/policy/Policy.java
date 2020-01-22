@@ -140,7 +140,12 @@ public class Policy {
 	 * <p>
 	 * Default for read: 2 (initial attempt + 2 retries = 3 attempts)
 	 * <p>
-	 * Default for write/query/scan: 0 (no retries)
+	 * Default for write: 0 (no retries)
+	 * <p>
+	 * Default for partition scan or query with null filter: 5
+	 * (6 attempts. See {@link ScanPolicy#ScanPolicy()} comments.)
+	 * <p>
+	 * No default for legacy scan/query. No retries are allowed for these commands.
 	 */
 	public int maxRetries = 2;
 

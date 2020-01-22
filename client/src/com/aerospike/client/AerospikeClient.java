@@ -36,9 +36,11 @@ import com.aerospike.client.async.AsyncIndexTask;
 import com.aerospike.client.async.AsyncInfoCommand;
 import com.aerospike.client.async.AsyncOperate;
 import com.aerospike.client.async.AsyncQueryExecutor;
+import com.aerospike.client.async.AsyncQueryPartitionExecutor;
 import com.aerospike.client.async.AsyncRead;
 import com.aerospike.client.async.AsyncReadHeader;
 import com.aerospike.client.async.AsyncScanExecutor;
+import com.aerospike.client.async.AsyncScanPartitionExecutor;
 import com.aerospike.client.async.AsyncTouch;
 import com.aerospike.client.async.AsyncWrite;
 import com.aerospike.client.async.EventLoop;
@@ -61,7 +63,7 @@ import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.RegisterCommand;
-import com.aerospike.client.command.ScanCommand;
+import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.listener.BatchListListener;
@@ -87,9 +89,11 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.QueryAggregateExecutor;
+import com.aerospike.client.query.QueryPartitionExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
-import com.aerospike.client.query.QueryValidate;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.ServerCommand;
@@ -97,7 +101,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 /**
@@ -379,7 +382,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
-		command.execute(cluster, policy, false);
+		command.execute();
 	}
 
 	/**
@@ -425,7 +428,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
-		command.execute(cluster, policy, false);
+		command.execute();
 	}
 
 	/**
@@ -468,7 +471,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
-		command.execute(cluster, policy, false);
+		command.execute();
 	}
 
 	/**
@@ -515,7 +518,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
-		command.execute(cluster, policy, false);
+		command.execute();
 	}
 
 	/**
@@ -560,7 +563,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		DeleteCommand command = new DeleteCommand(cluster, policy, key);
-		command.execute(cluster, policy, false);
+		command.execute();
 		return command.existed();
 	}
 
@@ -667,7 +670,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		TouchCommand command = new TouchCommand(cluster, policy, key);
-		command.execute(cluster, policy, false);
+		command.execute();
 	}
 
 	/**
@@ -709,7 +712,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 		ExistsCommand command = new ExistsCommand(cluster, policy, key);
-		command.execute(cluster, policy, true);
+		command.execute();
 		return command.exists();
 	}
 
@@ -818,8 +821,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommand command = new ReadCommand(cluster, policy, key, null);
-		command.execute(cluster, policy, true);
+		ReadCommand command = new ReadCommand(cluster, policy, key);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -859,7 +862,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 		ReadCommand command = new ReadCommand(cluster, policy, key, binNames);
-		command.execute(cluster, policy, true);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -899,7 +902,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = readPolicyDefault;
 		}
 		ReadHeaderCommand command = new ReadHeaderCommand(cluster, policy, key);
-		command.execute(cluster, policy, true);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -955,8 +958,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new Batch.ReadListCommand(null, batchNode, policy, records);
-				command.execute(cluster, policy, true);
+				MultiCommand command = new Batch.ReadListCommand(cluster, null, batchNode, policy, records);
+				command.execute();
 			}
 		}
 		else {
@@ -967,10 +970,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			// This should not be necessary here because it happens in Executor which does a
 			// volatile write (completedCount.incrementAndGet()) at the end of write threads
 			// and a synchronized waitTillComplete() in this thread.
-			Executor executor = new Executor(cluster, policy, batchNodes.size());
+			Executor executor = new Executor(cluster, batchNodes.size());
 
 			for (BatchNode batchNode : batchNodes) {
-				MultiCommand command = new Batch.ReadListCommand(executor, batchNode, policy, records);
+				MultiCommand command = new Batch.ReadListCommand(cluster, executor, batchNode, policy, records);
 				executor.addCommand(command);
 			}
 			executor.execute(policy.maxConcurrentThreads);
@@ -1272,24 +1275,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException {
-		OperateArgs args = new OperateArgs();
-		OperateCommand command = new OperateCommand(key, operations);
-		command.estimateOperate(operations, args);
-
-		if (policy == null) {
-			if (args.hasWrite) {
-				policy = writePolicyDefault;
-			}
-			else {
-				policy = operatePolicyReadDefault;
-			}
-		}
-
-		if (policy.respondAllOps) {
-			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-		}
-		command.setArgs(cluster, policy, args);
-		command.execute(cluster, policy, !args.hasWrite);
+		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateCommand command = new OperateCommand(cluster, key, args);
+		command.execute();
 		return command.getRecord();
 	}
 
@@ -1313,23 +1301,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException {
-		OperateArgs args = new OperateArgs();
-		AsyncOperate command = new AsyncOperate(listener, key, operations);
-		command.estimateOperate(operations, args);
-
-		if (policy == null) {
-			if (args.hasWrite) {
-				policy = writePolicyDefault;
-			}
-			else {
-				policy = operatePolicyReadDefault;
-			}
-		}
-
-		if (policy.respondAllOps) {
-			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-		}
-		command.setArgs(cluster, policy, args);
+		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		AsyncOperate command = new AsyncOperate(listener, key, args);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -1350,7 +1323,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
@@ -1359,37 +1331,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
-		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
-		}
+		Node[] nodes = cluster.validateNodes();
 
-		Node[] nodes = cluster.getNodes();
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Scan failed because cluster is empty.");
-		}
-
-		// Detect cluster migrations when performing scan.
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], namespace) : 0;
-		long taskId = RandomShift.instance().nextLong();
-		boolean first = true;
-
-		if (policy.concurrentNodes) {
-			Executor executor = new Executor(cluster, policy, nodes.length);
-
-			for (Node node : nodes) {
-				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
-				executor.addCommand(command);
-				first = false;
-			}
-
-			executor.execute(policy.maxConcurrentNodes);
+		if (PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
 		}
 		else {
-			for (Node node : nodes) {
-				ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, first);
-				command.execute(cluster, policy);
-				first = false;
-			}
+			ScanExecutor.scanNodes(cluster, policy, namespace, setName, binNames, callback, nodes);
 		}
 	}
 
@@ -1407,14 +1356,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames) throws AerospikeException {
+	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames)
+		throws AerospikeException {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
-		new AsyncScanExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames);
+
+		Node[] nodes = cluster.validateNodes();
+
+		if (PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
+		}
+		else {
+			new AsyncScanExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, nodes);
+		}
 	}
 
 	/**
@@ -1430,7 +1388,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames)
@@ -1451,8 +1408,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if scan fails
 	 */
 	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {
@@ -1460,16 +1416,76 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
-		if (policy.scanPercent <= 0 || policy.scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + policy.scanPercent);
+		if (node.hasPartitionScan()) {
+			PartitionTracker tracker = new PartitionTracker(policy, node);
+			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
+		}
+		else {
+			ScanExecutor.scanNodes(cluster, policy, namespace, setName, binNames, callback, new Node[] {node});
+		}
+	}
+
+	/**
+	 * Read records in specified namespace, set and partition filter.
+	 * <p>
+	 * This call will block until the scan is complete - callbacks are made
+	 * within the scope of this call.
+	 *
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param callback				read callback method - called with record data
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * @throws AerospikeException	if scan fails
+	 */
+	public final void scanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, ScanCallback callback, String... binNames)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = scanPolicyDefault;
 		}
 
-		// Detect cluster migrations when performing scan.
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(node, namespace) : 0;
-		long taskId = RandomShift.instance().nextLong();
+		Node[] nodes = cluster.validateNodes();
 
-		ScanCommand command = new ScanCommand(node, policy, namespace, setName, callback, binNames, taskId, clusterKey, true);
-		command.execute(cluster, policy);
+		if (PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPartitions() not supported");
+		}
+	}
+
+	/**
+	 * Asynchronously read records in specified namespace, set and partition filter.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void scanPartitions(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, String... binNames)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = scanPolicyDefault;
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		if (PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPartitions() not supported");
+		}
 	}
 
 	//---------------------------------------------------------------
@@ -1607,7 +1623,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, functionArgs);
-		command.execute(cluster, policy, false);
+		command.execute();
 
 		Record record = command.getRecord();
 
@@ -1703,15 +1719,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 		statement.prepare(false);
 
-		Node[] nodes = cluster.getNodes();
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
-
-		Executor executor = new Executor(cluster, policy, nodes.length);
+		Node[] nodes = cluster.validateNodes();
+		Executor executor = new Executor(cluster, nodes.length);
 
 		for (Node node : nodes) {
-			ServerCommand command = new ServerCommand(node, policy, statement);
+			ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
@@ -1742,15 +1754,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		statement.setOperations(operations);
 		statement.prepare(false);
 
-		Node[] nodes = cluster.getNodes();
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
-
-		Executor executor = new Executor(cluster, policy, nodes.length);
+		Node[] nodes = cluster.validateNodes();
+		Executor executor = new Executor(cluster, nodes.length);
 
 		for (Node node : nodes) {
-			ServerCommand command = new ServerCommand(node, policy, statement);
+			ServerCommand command = new ServerCommand(cluster, node, policy, statement);
 			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
@@ -1776,9 +1784,21 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, null);
-		executor.execute();
-		return executor.getRecordSet();
+
+		Node[] nodes = cluster.validateNodes();
+
+		// A scan will be performed if the secondary index filter is null.
+		// Check if scan and partition scan is supported.
+		if (statement.getFilter() == null && PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
+			return executor.getRecordSet();
+		}
+		else {
+			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
+			executor.execute();
+			return executor.getRecordSet();
+		}
 	}
 
 	/**
@@ -1795,11 +1815,23 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) throws AerospikeException {
+	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
+		throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		new AsyncQueryExecutor(eventLoop, listener, cluster, policy, statement);
+
+		Node[] nodes = cluster.validateNodes();
+
+		// A scan will be performed if the secondary index filter is null.
+		// Check if scan and partition scan is supported.
+		if (statement.getFilter() == null && PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
+		}
+		else {
+			new AsyncQueryExecutor(eventLoop, listener, cluster, policy, statement, nodes);
+		}
 	}
 
 	/**
@@ -1807,7 +1839,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * records on a queue in a separate thread.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query
@@ -1818,9 +1850,84 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, node);
-		executor.execute();
-		return executor.getRecordSet();
+
+		// A scan will be performed if the secondary index filter is null.
+		// Check if scan and partition scan is supported.
+		if (statement.getFilter() == null && node.hasPartitionScan()) {
+			PartitionTracker tracker = new PartitionTracker(policy, node);
+			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, 1, tracker);
+			return executor.getRecordSet();
+		}
+		else {
+			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, new Node[] {node});
+			executor.execute();
+			return executor.getRecordSet();
+		}
+	}
+
+	/**
+	 * Execute query for specified partitions and return record iterator.  The query executor puts
+	 * records on a queue in separate threads.  The calling thread concurrently pops records off
+	 * the queue through the record iterator.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @throws AerospikeException	if query fails
+	 */
+	public final RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		// A scan will be performed if the secondary index filter is null.
+		// Check if scan and partition scan is supported.
+		if (statement.getFilter() == null && PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
+			return executor.getRecordSet();
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "queryPartitions() not supported");
+		}
+	}
+
+	/**
+	 * Asynchronously execute query for specified partitions.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @throws AerospikeException	if query fails
+	 */
+	public final void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		// A scan will be performed if the secondary index filter is null.
+		// Check if scan and partition scan is supported.
+		if (statement.getFilter() == null && PartitionTracker.hasPartitionScan(nodes)) {
+			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "queryPartitions() not supported");
+		}
 	}
 
 	/**
@@ -1834,7 +1941,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param packageName			server package where user defined function resides
@@ -1864,7 +1971,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if query fails
@@ -1873,8 +1980,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
+
+		Node[] nodes = cluster.validateNodes();
 		statement.prepare(true);
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, null);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
 		return executor.getResultSet();
 	}
 
@@ -1889,7 +1998,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query
@@ -1900,7 +2009,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 		statement.prepare(true);
-		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, node);
+		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, new Node[] {node});
 		return executor.getResultSet();
 	}
 

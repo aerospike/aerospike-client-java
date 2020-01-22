@@ -572,7 +572,7 @@ public final class AsyncBatch {
 
 		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy)
 		{
-			super(parent, batch.node, batchPolicy, false);
+			super(parent, batch.node, batchPolicy);
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
 		}

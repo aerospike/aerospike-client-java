@@ -24,11 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.policy.Policy;
 
 public final class Executor {
-	private final Cluster cluster;
-	private final Policy policy;
 	private final List<ExecutorThread> threads;
 	private final ExecutorService threadPool;
 	private volatile Exception exception;
@@ -37,9 +34,7 @@ public final class Executor {
 	private int maxConcurrentThreads;
 	private boolean completed;
 
-	public Executor(Cluster cluster, Policy policy, int capacity) {
-		this.cluster = cluster;
-		this.policy = policy;
+	public Executor(Cluster cluster, int capacity) {
 		threads = new ArrayList<ExecutorThread>(capacity);
 		threadPool = cluster.getThreadPool();
 		done = new AtomicBoolean();
@@ -50,7 +45,7 @@ public final class Executor {
 		threads.add(new ExecutorThread(command));
 	}
 
-	public void execute(int maxConcurrent) throws AerospikeException {
+	public void execute(int maxConcurrent) {
 		// Initialize maximum number of nodes to query in parallel.
 		maxConcurrentThreads = (maxConcurrent == 0 || maxConcurrent >= threads.size())? threads.size() : maxConcurrent;
 
@@ -133,7 +128,7 @@ public final class Executor {
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.execute(cluster, policy);
+					command.execute();
 				}
 				threadCompleted();
 			}

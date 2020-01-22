@@ -19,10 +19,8 @@ package com.aerospike.client.command;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
@@ -32,11 +30,7 @@ import com.aerospike.client.policy.Replica;
 public final class BatchNode {
 
 	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, Key[] keys) {
-		Node[] nodes = cluster.getNodes();
-
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
+		Node[] nodes = cluster.validateNodes();
 
 		// Create initial key capacity for each node as average + 25%.
 		int keysPerNode = keys.length / nodes.length;
@@ -75,11 +69,7 @@ public final class BatchNode {
 		int sequenceSC,
 		BatchNode batchSeed
 	) {
-		Node[] nodes = cluster.getNodes();
-
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
+		Node[] nodes = cluster.validateNodes();
 
 		// Create initial key capacity for each node as average + 25%.
 		int keysPerNode = batchSeed.offsetsSize / nodes.length;
@@ -113,11 +103,7 @@ public final class BatchNode {
 	}
 
 	public static List<BatchNode> generateList(Cluster cluster, BatchPolicy policy, List<BatchRead> records) {
-		Node[] nodes = cluster.getNodes();
-
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
+		Node[] nodes = cluster.validateNodes();
 
 		// Create initial key capacity for each node as average + 25%.
 		int max = records.size();
@@ -157,11 +143,7 @@ public final class BatchNode {
 		int sequenceSC,
 		BatchNode batchSeed
 	) {
-		Node[] nodes = cluster.getNodes();
-
-		if (nodes.length == 0) {
-			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Command failed because cluster is empty.");
-		}
+		Node[] nodes = cluster.validateNodes();
 
 		// Create initial key capacity for each node as average + 25%.
 		int keysPerNode = batchSeed.offsetsSize / nodes.length;

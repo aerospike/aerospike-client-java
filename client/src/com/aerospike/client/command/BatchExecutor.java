@@ -44,12 +44,12 @@ public final class BatchExecutor {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(null, batchNode, policy, keys, binNames, records, readAttr);
-					command.execute(cluster, policy, true);
+					MultiCommand command = new Batch.GetArrayCommand(cluster, null, batchNode, policy, keys, binNames, records, readAttr);
+					command.execute();
 				}
 				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(null, batchNode, policy, keys, existsArray);
-					command.execute(cluster, policy, true);
+					MultiCommand command = new Batch.ExistsArrayCommand(cluster, null, batchNode, policy, keys, existsArray);
+					command.execute();
 				}
 			}
 		}
@@ -61,16 +61,16 @@ public final class BatchExecutor {
 			// This should not be necessary here because it happens in Executor which does a
 			// volatile write (completedCount.incrementAndGet()) at the end of write threads
 			// and a synchronized waitTillComplete() in this thread.
-			Executor executor = new Executor(cluster, policy, batchNodes.size() * 2);
+			Executor executor = new Executor(cluster, batchNodes.size() * 2);
 
 			// Initialize threads.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(executor, batchNode, policy, keys, binNames, records, readAttr);
+					MultiCommand command = new Batch.GetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, records, readAttr);
 					executor.addCommand(command);
 				}
 				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(executor, batchNode, policy, keys, existsArray);
+					MultiCommand command = new Batch.ExistsArrayCommand(cluster, executor, batchNode, policy, keys, existsArray);
 					executor.addCommand(command);
 				}
 			}

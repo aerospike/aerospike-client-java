@@ -36,6 +36,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	final AsyncMultiExecutor parent;
 	final Node node;
 	int groups;
+	int info3;
 	int resultCode;
 	int generation;
 	int expiration;
@@ -44,11 +45,24 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	int opCount;
 	final boolean stopOnNotFound;
 
-	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean stopOnNotFound) {
-		super(policy, true, false);
+	/**
+	 * Batch constructor.
+	 */
+	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy) {
+		super(policy, false);
 		this.parent = parent;
 		this.node = node;
-		this.stopOnNotFound = stopOnNotFound;
+		this.stopOnNotFound = false;
+	}
+
+	/**
+	 * Scan/Query constructor.
+	 */
+	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, int socketTimeout, int totalTimeout) {
+		super(policy, socketTimeout, totalTimeout);
+		this.parent = parent;
+		this.node = node;
+		this.stopOnNotFound = true;
 	}
 
 	@Override
@@ -64,7 +78,10 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	@Override
 	final boolean parseResult() {
 		while (dataOffset < receiveSize) {
-			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
+			dataOffset += 3;
+			info3 = dataBuffer[dataOffset] & 0xFF;
+			dataOffset += 2;
+			resultCode = dataBuffer[dataOffset] & 0xFF;
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
@@ -78,16 +95,20 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			}
 
 			// If this is the end marker of the response, do not proceed further
-			if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0) {
+			if ((info3 & Command.INFO3_LAST) != 0) {
 				return true;
 			}
-			generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
-			expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
-			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset + 14);
-			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset + 18);
-			opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
-
-			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+			dataOffset++;
+			generation = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			expiration = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
 
 			Key key = parseKey();
 			parseRow(key);
@@ -164,7 +185,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	}
 
 	@Override
-	protected final void onFailure(AerospikeException e) {
+	protected void onFailure(AerospikeException e) {
 		parent.childFailure(e);
 	}
 

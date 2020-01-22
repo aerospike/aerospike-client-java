@@ -16,32 +16,34 @@
  */
 package com.aerospike.client.query;
 
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class ServerCommand extends MultiCommand {
-	private final WritePolicy writePolicy;
 	private final Statement statement;
 
-	public ServerCommand(Node node, WritePolicy policy, Statement statement) {
-		super(node, true);
-		this.writePolicy = policy;
+	public ServerCommand(Cluster cluster, Node node, WritePolicy writePolicy, Statement statement) {
+		super(cluster, writePolicy, node, true);
 		this.statement = statement;
 	}
 
 	@Override
-	protected final void writeBuffer() throws AerospikeException {
-		setQuery(writePolicy, statement, true);
+	protected boolean isWrite() {
+		return true;
 	}
 
 	@Override
-	protected void parseRow(Key key) throws IOException {
+	protected final void writeBuffer() {
+		setQuery(policy, statement, true, null);
+	}
+
+	@Override
+	protected void parseRow(Key key) {
 		// Server commands (Query/Execute UDF) should only send back a return code.
 		// Keep parsing logic to empty socket buffer just in case server does
 		// send records back.

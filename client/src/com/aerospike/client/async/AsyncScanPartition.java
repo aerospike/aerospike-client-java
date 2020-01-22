@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -14,61 +14,72 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
+package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ScanCallback;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Command;
+import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.query.PartitionTracker;
+import com.aerospike.client.query.PartitionTracker.NodePartitions;
 
-public final class ScanCommand extends MultiCommand {
+public final class AsyncScanPartition extends AsyncMultiCommand {
 	private final ScanPolicy scanPolicy;
+	private final RecordSequenceListener listener;
+	private final String namespace;
 	private final String setName;
 	private final String[] binNames;
-	private final ScanCallback callback;
 	private final long taskId;
+	private final PartitionTracker tracker;
+	private final NodePartitions nodePartitions;
 
-	public ScanCommand(
-		Cluster cluster,
-		Node node,
+	public AsyncScanPartition(
+		AsyncMultiExecutor parent,
 		ScanPolicy scanPolicy,
+		RecordSequenceListener listener,
 		String namespace,
 		String setName,
 		String[] binNames,
-		ScanCallback callback,
 		long taskId,
-		long clusterKey,
-		boolean first
+		PartitionTracker tracker,
+		NodePartitions nodePartitions
 	) {
-		super(cluster, scanPolicy, node, namespace, clusterKey, first);
+		super(parent, nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout);
 		this.scanPolicy = scanPolicy;
+		this.listener = listener;
+		this.namespace = namespace;
 		this.setName = setName;
 		this.binNames = binNames;
-		this.callback = callback;
 		this.taskId = taskId;
-	}
-
-	@Override
-	public void execute() {
-		executeAndValidate();
+		this.tracker = tracker;
+		this.nodePartitions = nodePartitions;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setScan(scanPolicy, namespace, setName, binNames, taskId, null);
+		setScan(scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
 	}
 
 	@Override
 	protected void parseRow(Key key) {
-		Record record = parseRecord();
-
-		if (! valid) {
-			throw new AerospikeException.ScanTerminated();
+		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
+			tracker.partitionDone(nodePartitions, generation);
+			return;
 		}
+		tracker.setDigest(key);
 
-		callback.scanCallback(key, record);
+		Record record = parseRecord();
+		listener.onRecord(key, record);
+	}
+
+	@Override
+	protected void onFailure(AerospikeException ae) {
+		if (tracker.shouldRetry(ae)) {
+			parent.childSuccess(node);
+			return;
+		}
+		parent.childFailure(ae);
 	}
 }

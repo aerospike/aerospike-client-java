@@ -33,28 +33,34 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
-	protected Policy policy;
 	protected final Key key;
-	protected Partition partition;
+	protected final Partition partition;
 	private final String[] binNames;
 	private Record record;
 
+	public ReadCommand(Cluster cluster, Policy policy, Key key) {
+		super(cluster, policy);
+		this.key = key;
+		this.binNames = null;
+		this.partition = Partition.read(cluster, policy, key);
+	}
+
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
-		this.policy = policy;
+		super(cluster, policy);
 		this.key = key;
 		this.binNames = binNames;
 		this.partition = Partition.read(cluster, policy, key);
 	}
 
-	public ReadCommand(Policy policy, Key key, Partition partition) {
-		this.policy = policy;
+	public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition) {
+		super(cluster, policy);
 		this.key = key;
 		this.binNames = null;
 		this.partition = partition;
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected Node getNode() {
 		return partition.getNodeRead(cluster);
 	}
 

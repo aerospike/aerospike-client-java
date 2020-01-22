@@ -78,7 +78,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.eventState = cluster.eventState[loop.index];
 		this.command = command;
 		command.bufferQueue = loop.bufferQueue;
-		hasTotalTimeout = command.policy.totalTimeout > 0;
+		hasTotalTimeout = command.totalTimeout > 0;
 
 		if (eventLoop.eventLoop.inEventLoop() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
@@ -86,7 +86,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		else {
 			if (hasTotalTimeout) {
-				totalDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
+				totalDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.totalTimeout);
 			}
 			state = AsyncCommand.REGISTERED;
 			eventLoop.execute(this);
@@ -164,7 +164,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				}
 			}
 			else {
-				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.totalTimeout);
+				totalDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.totalTimeout);
 			}
 		}
 
@@ -192,8 +192,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (hasTotalTimeout) {
 			long deadline;
 
-			if (command.policy.socketTimeout > 0) {
-				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+			if (command.socketTimeout > 0) {
+				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
 				if (deadline < totalDeadline) {
 					usingSocketTimeout = true;
@@ -207,9 +207,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
 		}
-		else if (command.policy.socketTimeout > 0) {
+		else if (command.socketTimeout > 0) {
 			usingSocketTimeout = true;
-			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout));
+			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout));
 		}
 
 		eventLoop.pending++;
@@ -224,8 +224,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	final void executeCommandFromDelayQueue() {
-		if (command.policy.socketTimeout > 0) {
-			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+		if (command.socketTimeout > 0) {
+			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
 			if (hasTotalTimeout) {
 				if (socketDeadline < totalDeadline) {
@@ -629,7 +629,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					// Event(s) received within socket timeout period.
 					eventReceived = false;
 
-					long deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+					long deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
 					if (deadline >= totalDeadline) {
 						// Transition to total timeout.
@@ -647,14 +647,14 @@ public final class NettyCommand implements Runnable, TimerTask {
 				// Event(s) received within socket timeout period.
 				eventReceived = false;
 
-				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
 				return;
 			}
 		}
 
 		// Check maxRetries.
-		if (iteration > command.policy.maxRetries) {
+		if (iteration > command.maxRetries) {
 			totalTimeout();
 			return;
 		}
@@ -663,7 +663,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		recoverConnection();
 
 		// Attempt retry.
-		long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+		long timeout = TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
 		if (hasTotalTimeout) {
 			long remaining = totalDeadline - currentTime;
@@ -763,7 +763,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void retry(final AerospikeException ae, boolean queueCommand) {
 		// Check maxRetries.
-		if (iteration > command.policy.maxRetries) {
+		if (iteration > command.maxRetries) {
 			// Fail command.
 			close();
 			notifyFailure(ae);
@@ -792,7 +792,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (usingSocketTimeout) {
 			// Socket timeout in effect.
 			timeoutTask.cancel();
-			long timeout = TimeUnit.MILLISECONDS.toNanos(command.policy.socketTimeout);
+			long timeout = TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
 			if (hasTotalTimeout) {
 				long remaining = totalDeadline - currentTime;
@@ -868,7 +868,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			ae.setNode(node);
 			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
-			ae.setInDoubt(command.isRead, commandSentCounter);
+			ae.setInDoubt(command.isWrite(), commandSentCounter);
 
 			if (Log.debugEnabled()) {
 				Command.LogPolicy(command.policy);

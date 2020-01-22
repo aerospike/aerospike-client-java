@@ -43,12 +43,17 @@ public final class AsyncExecute extends AsyncRead {
 		String functionName,
 		Value[] args
 	) {
-		super(null, writePolicy, key, false, Partition.write(cluster, writePolicy, key));
+		super(null, writePolicy, key, Partition.write(cluster, writePolicy, key));
 		this.executeListener = listener;
 		this.writePolicy = writePolicy;
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.args = args;
+	}
+
+	@Override
+	boolean isWrite() {
+		return true;
 	}
 
 	@Override

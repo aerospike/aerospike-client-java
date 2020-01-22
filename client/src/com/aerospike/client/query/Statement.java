@@ -276,6 +276,13 @@ public final class Statement {
 	}
 
 	/**
+	 * Set whether command returns data.
+	 */
+	public void setReturnData(boolean returnData) {
+		this.returnData = returnData;
+	}
+
+	/**
 	 * Does command return data.
 	 */
 	public boolean returnData() {

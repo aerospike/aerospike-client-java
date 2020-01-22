@@ -21,36 +21,22 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.policy.WritePolicy;
 
 public final class AsyncOperate extends AsyncRead {
-	private final Operation[] operations;
-	private WritePolicy writePolicy;
-	private OperateArgs args;
+	private final OperateArgs args;
 
-	public AsyncOperate(RecordListener listener, Key key, Operation[] operations) {
-		super(listener, null, key, false, null);
-		this.operations = operations;
+	public AsyncOperate(RecordListener listener, Key key, OperateArgs args) {
+		super(listener, args.writePolicy, key, args.partition);
+		this.args = args;
 	}
 
-	public void setArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args) {
-		super.policy = writePolicy;
-		this.writePolicy = writePolicy;
-		this.args = args;
-
-		if (args.hasWrite) {
-			partition = Partition.write(cluster, writePolicy, key);
-		}
-		else {
-			super.isRead = true;
-			partition = Partition.read(cluster, writePolicy, key);
-		}
+	@Override
+	boolean isWrite() {
+		return args.hasWrite;
 	}
 
 	@Override
@@ -60,7 +46,7 @@ public final class AsyncOperate extends AsyncRead {
 
 	@Override
 	protected void writeBuffer() {
-		setOperate(writePolicy, key, operations, args);
+		setOperate(args.writePolicy, key, args);
 	}
 
 	@Override

@@ -167,6 +167,11 @@ public abstract class AsyncMultiExecutor {
 		}
 	}
 
+	final void reset() {
+		this.completedCount = 0;
+		this.done = false;
+	}
+
 	private final void initFailure(AerospikeException ae) {
 		onFailure(ae);
 	}

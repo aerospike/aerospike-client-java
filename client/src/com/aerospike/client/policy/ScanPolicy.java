@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
+
 /**
  * Container object for optional parameters used in scan operations.
  */
@@ -84,9 +87,30 @@ public final class ScanPolicy extends Policy {
 
 	/**
 	 * Default constructor.
+	 * <p>
+	 * Set maxRetries for scans on server versions >= 4.9. All other
+	 * scans are not retried.
+	 * <p>
+	 * The latest servers support retries on individual data partitions.
+	 * This feature is useful when a cluster is migrating and partition(s)
+	 * are missed or incomplete on the first scan attempt.
+	 * <p>
+	 * If the first scan attempt misses 2 of 4096 partitions, then only
+	 * those 2 partitions are retried in the next scan attempt from the
+	 * last key digest received for each respective partition.  A higher
+	 * default maxRetries is used because it's wasteful to invalidate
+	 * all scan results because a single partition was missed.
 	 */
 	public ScanPolicy() {
-		// Scans should not retry.
-		super.maxRetries = 0;
+		super.maxRetries = 5;
+	}
+
+	/**
+	 * Verify policies fields are within range.
+	 */
+	public void validate() {
+		if (scanPercent <= 0 || scanPercent > 100) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + scanPercent);
+		}
 	}
 }

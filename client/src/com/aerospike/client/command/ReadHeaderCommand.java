@@ -29,19 +29,18 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
 public class ReadHeaderCommand extends SyncCommand {
-	private final Policy policy;
 	private final Key key;
 	private final Partition partition;
 	private Record record;
 
 	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
-		this.policy = policy;
+		super(cluster, policy);
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected Node getNode() {
 		return partition.getNodeRead(cluster);
 	}
 

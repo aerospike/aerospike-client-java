@@ -269,6 +269,9 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "sindex-exists", 0, len)) {
 					this.features |= Node.HAS_INDEX_EXISTS;
 				}
+				else if (featuresString.regionMatches(begin, "pscans", 0, len)) {
+					this.features |= Node.HAS_PARTITION_SCAN;
+				}
 				begin = end + 1;
 			}
 		}

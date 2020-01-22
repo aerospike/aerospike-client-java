@@ -21,43 +21,30 @@ import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateCommand extends ReadCommand {
-	private final Operation[] operations;
-	private WritePolicy writePolicy;
-	private OperateArgs args;
+	private final OperateArgs args;
 
-	public OperateCommand(Key key, Operation[] operations) {
-		super(null, key, null);
-		this.operations = operations;
-	}
-
-	public void setArgs(Cluster cluster, WritePolicy writePolicy, OperateArgs args) {
-		super.policy = writePolicy;
-		this.writePolicy = writePolicy;
+	public OperateCommand(Cluster cluster, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key, args.partition);
 		this.args = args;
-
-		if (args.hasWrite) {
-			partition = Partition.write(cluster, writePolicy, key);
-		}
-		else {
-			partition = Partition.read(cluster, writePolicy, key);
-		}
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected boolean isWrite() {
+		return args.hasWrite;
+	}
+
+	@Override
+	protected Node getNode() {
 		return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setOperate(writePolicy, key, operations, args);
+		setOperate(args.writePolicy, key, args);
 	}
 
 	@Override

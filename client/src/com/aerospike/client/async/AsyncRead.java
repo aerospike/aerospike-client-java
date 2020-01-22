@@ -35,19 +35,19 @@ public class AsyncRead extends AsyncCommand {
 	private final RecordListener listener;
 	protected final Key key;
 	private final String[] binNames;
-	protected Partition partition;
+	protected final Partition partition;
 	protected Record record;
 
 	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, String[] binNames) {
-		super(policy, true, true);
+		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
 		this.partition = Partition.read(cluster, policy, key);
 	}
 
-	public AsyncRead(RecordListener listener, Policy policy, Key key, boolean isRead, Partition partition) {
-		super(policy, isRead, true);
+	public AsyncRead(RecordListener listener, Policy policy, Key key, Partition partition) {
+		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;

@@ -48,6 +48,7 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.PartitionFilter;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
@@ -748,7 +749,6 @@ public interface IAerospikeClient extends Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
@@ -768,10 +768,10 @@ public interface IAerospikeClient extends Closeable {
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames) throws AerospikeException;
+	public void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Read all records in specified namespace and set for one node only.
@@ -786,7 +786,6 @@ public interface IAerospikeClient extends Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
 	 * @throws AerospikeException	if scan fails
 	 */
 	public void scanNode(ScanPolicy policy, String nodeName, String namespace, String setName, ScanCallback callback, String... binNames)
@@ -804,10 +803,44 @@ public interface IAerospikeClient extends Closeable {
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
-	 * 								Aerospike 2 servers ignore this parameter.
-	 * @throws AerospikeException	if transaction fails
+	 * @throws AerospikeException	if scan fails
 	 */
 	public void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames)
+		throws AerospikeException;
+
+	/**
+	 * Read records in specified namespace, set and partition filter.
+	 * <p>
+	 * This call will block until the scan is complete - callbacks are made
+	 * within the scope of this call.
+	 *
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param callback				read callback method - called with record data
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * @throws AerospikeException	if scan fails
+	 */
+	public void scanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, ScanCallback callback, String... binNames)
+		throws AerospikeException;
+
+	/**
+	 * Asynchronously read records in specified namespace, set and partition filter.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				scan configuration parameters, pass in null for defaults
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param namespace				namespace - equivalent to database name
+	 * @param setName				optional set name - equivalent to database table
+	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void scanPartitions(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, String... binNames)
 		throws AerospikeException;
 
 	//---------------------------------------------------------------
@@ -989,7 +1022,7 @@ public interface IAerospikeClient extends Closeable {
 	 * records on a queue in separate threads.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @return						record iterator
@@ -1011,14 +1044,15 @@ public interface IAerospikeClient extends Closeable {
 	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) throws AerospikeException;
+	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
+		throws AerospikeException;
 
 	/**
 	 * Execute query on a single server node and return record iterator.  The query executor puts
 	 * records on a queue in a separate thread.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query
@@ -1026,6 +1060,38 @@ public interface IAerospikeClient extends Closeable {
 	 * @throws AerospikeException	if query fails
 	 */
 	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException;
+
+	/**
+	 * Execute query for specified partitions and return record iterator.  The query executor puts
+	 * records on a queue in separate threads.  The calling thread concurrently pops records off
+	 * the queue through the record iterator.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @throws AerospikeException	if query fails
+	 */
+	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		throws AerospikeException;
+
+	/**
+	 * Asynchronously execute query for specified partitions.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 *
+	 * @param eventLoop				event loop that will process the command
+	 * @param listener				where to send results
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query filter. Statement instance is not suitable for
+	 * 								reuse since it's modified in this method.
+	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @throws AerospikeException	if query fails
+	 */
+	public void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
+		throws AerospikeException;
 
 	/**
 	 * Execute query, apply statement's aggregation function, and return result iterator. The query
@@ -1038,7 +1104,7 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * udf file = <udf dir>/<package name>.lua
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param packageName			server package where user defined function resides
@@ -1065,7 +1131,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if query fails
@@ -1083,7 +1149,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
 	 * @param node					server node to execute query

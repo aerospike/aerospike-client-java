@@ -33,11 +33,16 @@ public final class AsyncDelete extends AsyncCommand {
 	private boolean existed;
 
 	public AsyncDelete(Cluster cluster, DeleteListener listener, WritePolicy writePolicy, Key key) {
-		super(writePolicy, false, true);
+		super(writePolicy, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
+	}
+
+	@Override
+	boolean isWrite() {
+		return true;
 	}
 
 	@Override

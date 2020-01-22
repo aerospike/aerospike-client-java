@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,35 +21,59 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
-import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.query.PartitionTracker.NodePartitions;
 
-public final class QueryRecordCommand extends MultiCommand {
+public final class QueryPartitionCommand extends MultiCommand {
 
 	private final Statement statement;
 	private final RecordSet recordSet;
+	private final PartitionTracker tracker;
+	private final NodePartitions nodePartitions;
 
-	public QueryRecordCommand(
+	public QueryPartitionCommand(
 		Cluster cluster,
 		Node node,
-		QueryPolicy policy,
+		Policy policy,
 		Statement statement,
 		RecordSet recordSet,
-		long clusterKey,
-		boolean first
+		PartitionTracker tracker,
+		NodePartitions nodePartitions
 	) {
-		super(cluster, policy, node, statement.namespace, clusterKey, first);
+		super(cluster, policy, nodePartitions.node, statement.namespace, tracker.socketTimeout, tracker.totalTimeout);
 		this.statement = statement;
 		this.recordSet = recordSet;
+		this.tracker = tracker;
+		this.nodePartitions = nodePartitions;
+	}
+
+	@Override
+	public void execute() {
+		try {
+			executeCommand();
+		}
+		catch (AerospikeException ae) {
+			if (! tracker.shouldRetry(ae)) {
+				throw ae;
+			}
+		}
 	}
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(policy, statement, false, null);
+		setQuery(policy, statement, false, nodePartitions);
 	}
 
 	@Override
 	protected void parseRow(Key key) {
+		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
+			tracker.partitionDone(nodePartitions, generation);
+			return;
+		}
+		tracker.setDigest(key);
+
 		Record record = parseRecord();
 
 		if (! valid) {

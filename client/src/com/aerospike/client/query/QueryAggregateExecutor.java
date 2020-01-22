@@ -22,7 +22,6 @@ import java.util.concurrent.BlockingQueue;
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
@@ -40,8 +39,8 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 	private final ResultSet resultSet;
 	private LuaInstance lua;
 
-	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node) throws AerospikeException {
-		super(cluster, policy, statement, node);
+	public QueryAggregateExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) {
+		super(cluster, policy, statement, nodes);
 		inputQueue = new ArrayBlockingQueue<LuaValue>(500);
 		resultSet = new ResultSet(this, policy.recordQueueSize);
 
@@ -84,7 +83,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 		}
 	}
 
-	public void runThreads() throws AerospikeException {
+	public void runThreads() {
 		try {
 			// Start thread queries to each node.
 			startThreads();
@@ -112,7 +111,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 
 	@Override
 	protected MultiCommand createCommand(Node node, long clusterKey, boolean first) {
-		return new QueryAggregateCommand(node, policy, statement, lua, inputQueue, clusterKey, first);
+		return new QueryAggregateCommand(cluster, node, policy, statement, lua, inputQueue, clusterKey, first);
 	}
 
 	@Override

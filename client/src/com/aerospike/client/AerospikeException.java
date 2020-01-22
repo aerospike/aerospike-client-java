@@ -175,8 +175,8 @@ public class AerospikeException extends RuntimeException {
 	 * even though this exception was generated.  This may be the case when a
 	 * client error occurs (like timeout) after the command was sent to the server.
 	 */
-	public final void setInDoubt(boolean isRead, int commandSentCounter) {
-		if (!isRead && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0)))) {
+	public final void setInDoubt(boolean isWrite, int commandSentCounter) {
+		if (isWrite && (commandSentCounter > 1 || (commandSentCounter == 1 && (resultCode == ResultCode.TIMEOUT || resultCode <= 0)))) {
 			this.inDoubt = true;
 		}
 	}
@@ -214,6 +214,15 @@ public class AerospikeException extends RuntimeException {
 			this.socketTimeout = policy.socketTimeout;
 			this.timeout = policy.totalTimeout;
 			this.client = client;
+		}
+
+		public Timeout(Policy policy, int iteration) {
+			super(ResultCode.TIMEOUT);
+			super.node = node;
+			super.iteration = iteration;
+			this.socketTimeout = policy.socketTimeout;
+			this.timeout = policy.totalTimeout;
+			this.client = true;
 		}
 
 		public Timeout(Node node, int totalTimeout) {
@@ -309,6 +318,10 @@ public class AerospikeException extends RuntimeException {
 		public InvalidNode(int clusterSize, Partition partition) {
 			super(ResultCode.INVALID_NODE_ERROR,
 				(clusterSize == 0) ? "Cluster is empty" : "Node not found for partition " + partition);
+		}
+
+		public InvalidNode(int partitionId) {
+			super(ResultCode.INVALID_NODE_ERROR, "Node not found for partition " + partitionId);
 		}
 
 		public InvalidNode(String message) {

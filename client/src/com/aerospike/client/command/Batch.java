@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -36,18 +35,24 @@ public final class Batch {
 	public static final class ReadListCommand extends BatchCommand {
 		private final List<BatchRead> records;
 
-		public ReadListCommand(Executor parent, BatchNode batch, BatchPolicy policy, List<BatchRead> records) {
-			super(parent, batch, policy);
+		public ReadListCommand(
+			Cluster cluster,
+			Executor parent,
+			BatchNode batch,
+			BatchPolicy policy,
+			List<BatchRead> records
+		) {
+			super(cluster, parent, batch, policy);
 			this.records = records;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, records, batch);
+			setBatchRead(batchPolicy, records, batch);
 		}
 
 		@Override
-		protected void parseRow(Key key) throws IOException {
+		protected void parseRow(Key key) {
 			if (resultCode == 0) {
 				BatchRead record = records.get(batchIndex);
 				record.record = parseRecord();
@@ -56,12 +61,12 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new ReadListCommand(parent, batchNode, policy, records);
+			return new ReadListCommand(cluster, parent, batchNode, batchPolicy, records);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
-			return BatchNode.generateList(cluster, policy, records, sequenceAP, sequenceSC, batch);
+			return BatchNode.generateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -76,6 +81,7 @@ public final class Batch {
 		private final int readAttr;
 
 		public GetArrayCommand(
+			Cluster cluster,
 			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
@@ -84,7 +90,7 @@ public final class Batch {
 			Record[] records,
 			int readAttr
 		) {
-			super(parent, batch, policy);
+			super(cluster, parent, batch, policy);
 			this.keys = keys;
 			this.binNames = binNames;
 			this.records = records;
@@ -93,11 +99,11 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
 		}
 
 		@Override
-		protected void parseRow(Key key) throws IOException {
+		protected void parseRow(Key key) {
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
 			}
@@ -105,12 +111,12 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new GetArrayCommand(parent, batchNode, policy, keys, binNames, records, readAttr);
+			return new GetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
-			return BatchNode.generateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.generateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -123,24 +129,25 @@ public final class Batch {
 		private final boolean[] existsArray;
 
 		public ExistsArrayCommand(
+			Cluster cluster,
 			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, batch, policy);
+			super(cluster, parent, batch, policy);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(policy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
-		protected void parseRow(Key key) throws IOException {
+		protected void parseRow(Key key) {
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
@@ -150,12 +157,12 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new ExistsArrayCommand(parent, batchNode, policy, keys, existsArray);
+			return new ExistsArrayCommand(cluster, parent, batchNode, batchPolicy, keys, existsArray);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
-			return BatchNode.generateList(cluster, policy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNode.generateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -166,27 +173,27 @@ public final class Batch {
 	private static abstract class BatchCommand extends MultiCommand {
 		final Executor parent;
 		final BatchNode batch;
-		final BatchPolicy policy;
+		final BatchPolicy batchPolicy;
 		int sequenceAP;
 		int sequenceSC;
 
-		public BatchCommand(Executor parent, BatchNode batch, BatchPolicy policy) {
-			super(batch.node, false);
+		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy) {
+			super(cluster, batchPolicy, batch.node, false);
 			this.parent = parent;
 			this.batch = batch;
-			this.policy = policy;
+			this.batchPolicy = batchPolicy;
 		}
 
 		@Override
 		protected boolean prepareRetry(boolean timeout) {
-			if (! ((policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK) &&
+			if (! ((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
 				   (parent == null || ! parent.isDone()))) {
 				// Perform regular retry to same node.
 				return true;
 			}
 			sequenceAP++;
 
-			if (! timeout || policy.readModeSC != ReadModeSC.LINEARIZE) {
+			if (! timeout || batchPolicy.readModeSC != ReadModeSC.LINEARIZE) {
 				sequenceSC++;
 			}
 			return false;
@@ -215,7 +222,12 @@ public final class Batch {
 				BatchCommand command = createCommand(batchNode);
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
-				command.execute(cluster, policy, true, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter);
+				command.socketTimeout = socketTimeout;
+				command.totalTimeout = totalTimeout;
+				command.iteration = iteration;
+				command.commandSentCounter = commandSentCounter;
+				command.deadline = deadline;
+				command.executeCommand();
 			}
 			return true;
 		}

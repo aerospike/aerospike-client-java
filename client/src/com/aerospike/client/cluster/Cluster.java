@@ -34,6 +34,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoopStats;
@@ -770,6 +771,16 @@ public class Cluster implements Runnable, Closeable {
 	public final Node[] getNodes() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
+		return nodeArray;
+	}
+
+	public final Node[] validateNodes() {
+		// Must copy array reference for copy on write semantics to work.
+		Node[] nodeArray = nodes;
+
+		if (nodeArray.length == 0) {
+			throw new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, "Cluster is empty");
+		}
 		return nodeArray;
 	}
 

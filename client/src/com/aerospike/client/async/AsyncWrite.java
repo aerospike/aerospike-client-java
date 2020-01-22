@@ -43,13 +43,18 @@ public final class AsyncWrite extends AsyncCommand {
 		Bin[] bins,
 		Operation.Type operation
 	) {
-		super(writePolicy, false, true);
+		super(writePolicy, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
 		this.bins = bins;
 		this.operation = operation;
+	}
+
+	@Override
+	boolean isWrite() {
+		return true;
 	}
 
 	@Override

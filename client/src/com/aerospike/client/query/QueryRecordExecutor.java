@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.query;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.MultiCommand;
@@ -26,9 +25,8 @@ public final class QueryRecordExecutor extends QueryExecutor {
 
 	private final RecordSet recordSet;
 
-	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node node)
-		throws AerospikeException {
-		super(cluster, policy, statement, node);
+	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) {
+		super(cluster, policy, statement, nodes);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
 		statement.prepare(true);
 		initializeThreads();
@@ -40,7 +38,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 
 	@Override
 	protected MultiCommand createCommand(Node node, long clusterKey, boolean first) {
-		return new QueryRecordCommand(node, policy, statement, recordSet, clusterKey, first);
+		return new QueryRecordCommand(cluster, node, policy, statement, recordSet, clusterKey, first);
 	}
 
 	@Override

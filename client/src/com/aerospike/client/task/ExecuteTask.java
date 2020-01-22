@@ -45,11 +45,7 @@ public final class ExecuteTask extends Task {
 	@Override
 	public int queryStatus() throws AerospikeException {
 		// All nodes must respond with complete to be considered done.
-		Node[] nodes = cluster.getNodes();
-
-		if (nodes.length == 0) {
-			throw new AerospikeException("Cluster is empty");
-		}
+		Node[] nodes = cluster.validateNodes();
 
 		String module = (scan) ? "scan" : "query";
 		String command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;

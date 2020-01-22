@@ -28,25 +28,31 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class DeleteCommand extends SyncCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final Key key;
 	private final Partition partition;
 	private boolean existed;
 
-	public DeleteCommand(Cluster cluster, WritePolicy policy, Key key) {
-		this.policy = policy;
+	public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key) {
+		super(cluster, writePolicy);
+		this.writePolicy = writePolicy;
 		this.key = key;
-		this.partition = Partition.write(cluster, policy, key);
+		this.partition = Partition.write(cluster, writePolicy, key);
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected boolean isWrite() {
+		return true;
+	}
+
+	@Override
+	protected Node getNode() {
 		return partition.getNodeWrite(cluster);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setDelete(policy, key);
+		setDelete(writePolicy, key);
 	}
 
 	@Override
@@ -68,7 +74,7 @@ public final class DeleteCommand extends SyncCommand {
 		}
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			if (writePolicy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
 			existed = true;

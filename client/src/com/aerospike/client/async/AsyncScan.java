@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
@@ -24,7 +23,7 @@ import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
 
 public final class AsyncScan extends AsyncMultiCommand {
-	private final ScanPolicy policy;
+	private final ScanPolicy scanPolicy;
 	private final RecordSequenceListener listener;
 	private final String namespace;
 	private final String setName;
@@ -34,15 +33,15 @@ public final class AsyncScan extends AsyncMultiCommand {
 	public AsyncScan(
 		AsyncMultiExecutor parent,
 		Node node,
-		ScanPolicy policy,
+		ScanPolicy scanPolicy,
 		RecordSequenceListener listener,
 		String namespace,
 		String setName,
 		String[] binNames,
 		long taskId
 	) {
-		super(parent, node, policy, true);
-		this.policy = policy;
+		super(parent, node, scanPolicy, scanPolicy.socketTimeout, scanPolicy.totalTimeout);
+		this.scanPolicy = scanPolicy;
 		this.listener = listener;
 		this.namespace = namespace;
 		this.setName = setName;
@@ -51,12 +50,12 @@ public final class AsyncScan extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
-		setScan(policy, namespace, setName, binNames, taskId);
+	protected void writeBuffer() {
+		setScan(scanPolicy, namespace, setName, binNames, taskId, null);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {
+	protected void parseRow(Key key) {
 		Record record = parseRecord();
 		listener.onRecord(key, record);
 	}

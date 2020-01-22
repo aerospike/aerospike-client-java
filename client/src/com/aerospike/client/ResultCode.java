@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Max retries limit reached.
+	 */
+	public static final int MAX_RETRIES_EXCEEDED = -11;
+
+	/**
 	 * Client serialization error.
 	 */
 	public static final int SERIALIZE_ERROR = -10;
@@ -423,6 +428,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+
+		case MAX_RETRIES_EXCEEDED:
+			return "Max retries exceeded";
 
 		case SERIALIZE_ERROR:
 			return "Serialize error";

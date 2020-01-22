@@ -30,28 +30,34 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class WriteCommand extends SyncCommand {
-	private final WritePolicy policy;
+	private final WritePolicy writePolicy;
 	private final Key key;
 	private final Partition partition;
 	private final Bin[] bins;
 	private final Operation.Type operation;
 
-	public WriteCommand(Cluster cluster, WritePolicy policy, Key key, Bin[] bins, Operation.Type operation) {
-		this.policy = policy;
+	public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
+		super(cluster, writePolicy);
+		this.writePolicy = writePolicy;
 		this.key = key;
-		this.partition = Partition.write(cluster, policy, key);
+		this.partition = Partition.write(cluster, writePolicy, key);
 		this.bins = bins;
 		this.operation = operation;
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected boolean isWrite() {
+		return true;
+	}
+
+	@Override
+	protected Node getNode() {
 		return partition.getNodeWrite(cluster);
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setWrite(policy, operation, key, bins);
+		setWrite(writePolicy, operation, key, bins);
 	}
 
 	@Override
@@ -67,7 +73,7 @@ public final class WriteCommand extends SyncCommand {
 		}
 
 		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			if (writePolicy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
 			return;

@@ -33,13 +33,38 @@ import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {
 	// private static final AtomicLong TranCounter = new AtomicLong();
+	protected final Cluster cluster;
+	protected final Policy policy;
+	final int maxRetries;
+	int socketTimeout;
+	int totalTimeout;
+	int iteration = 1;
+	int commandSentCounter;
+	long deadline;
 
-	public final void execute(Cluster cluster, Policy policy, boolean isRead) {
-		//final long tranId = TranCounter.getAndIncrement();
-		long deadline = 0;
-		int socketTimeout = policy.socketTimeout;
-		int totalTimeout = policy.totalTimeout;
+	/**
+	 * Default constructor.
+	 */
+	public SyncCommand(Cluster cluster, Policy policy) {
+		this.cluster = cluster;
+		this.policy = policy;
+		this.maxRetries = policy.maxRetries;
+		this.socketTimeout = policy.socketTimeout;
+		this.totalTimeout = policy.totalTimeout;
+	}
 
+	/**
+	 * Scan/Query constructor.
+	 */
+	public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout) {
+		this.cluster = cluster;
+		this.policy = policy;
+		this.maxRetries = 0;
+		this.socketTimeout = socketTimeout;
+		this.totalTimeout = totalTimeout;
+	}
+
+	public void execute() {
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
 
@@ -47,19 +72,11 @@ public abstract class SyncCommand extends Command {
 				socketTimeout = totalTimeout;
 			}
 		}
-		execute(cluster, policy, isRead, socketTimeout, totalTimeout, deadline, 1, 0);
+		executeCommand();
 	}
 
-	public final void execute(
-		final Cluster cluster,
-		final Policy policy,
-		final boolean isRead,
-		int socketTimeout,
-		int totalTimeout,
-		final long deadline,
-		int iteration,
-		int commandSentCounter
-	) {
+	public final void executeCommand() {
+		//final long tranId = TranCounter.getAndIncrement();
 		Node node;
 		AerospikeException exception = null;
 		boolean isClientTimeout;
@@ -67,14 +84,14 @@ public abstract class SyncCommand extends Command {
 		// Execute command until successful, timed out or maximum iterations have been reached.
 		while (true) {
 			try {
-				node = getNode(cluster);
+				node = getNode();
 			}
 			catch (AerospikeException ae) {
 				if (cluster.isActive()) {
 					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
 					ae.setPolicy(policy);
 					ae.setIteration(iteration);
-					ae.setInDoubt(isRead, commandSentCounter);
+					ae.setInDoubt(isWrite(), commandSentCounter);
 					throw ae;
 				}
 				else {
@@ -167,7 +184,7 @@ public abstract class SyncCommand extends Command {
 				ae.setNode(node);
 				ae.setPolicy(policy);
 				ae.setIteration(iteration);
-				ae.setInDoubt(isRead, commandSentCounter);
+				ae.setInDoubt(isWrite(), commandSentCounter);
 
 				if (Log.debugEnabled()) {
 					LogPolicy(policy);
@@ -176,7 +193,7 @@ public abstract class SyncCommand extends Command {
 			}
 
 			// Check maxRetries.
-			if (iteration > policy.maxRetries) {
+			if (iteration > maxRetries) {
 				break;
 			}
 
@@ -226,7 +243,7 @@ public abstract class SyncCommand extends Command {
 		exception.setNode(node);
 		exception.setPolicy(policy);
 		exception.setIteration(iteration);
-		exception.setInDoubt(isRead, commandSentCounter);
+		exception.setInDoubt(isWrite(), commandSentCounter);
 
 		if (Log.debugEnabled()) {
 			LogPolicy(policy);
@@ -264,7 +281,11 @@ public abstract class SyncCommand extends Command {
 		return true;
 	}
 
-	protected abstract Node getNode(Cluster cluster);
+	protected boolean isWrite() {
+		return false;
+	}
+
+	protected abstract Node getNode();
 	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 	protected abstract boolean prepareRetry(boolean timeout);

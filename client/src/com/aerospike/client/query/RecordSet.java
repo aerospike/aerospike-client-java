@@ -23,7 +23,6 @@ import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 
 /**
@@ -34,7 +33,7 @@ import com.aerospike.client.Record;
 public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	public static final KeyRecord END = new KeyRecord(null, null);
 
-	private final QueryExecutor executor;
+	private final IQueryExecutor executor;
 	private final BlockingQueue<KeyRecord> queue;
 	private KeyRecord record;
 	private volatile boolean valid = true;
@@ -42,7 +41,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	/**
 	 * Initialize record set with underlying producer/consumer queue.
 	 */
-	protected RecordSet(QueryExecutor executor, int capacity) {
+	protected RecordSet(IQueryExecutor executor, int capacity) {
 		this.executor = executor;
 		this.queue = new ArrayBlockingQueue<KeyRecord>(capacity);
 	}
@@ -69,9 +68,11 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		catch (InterruptedException ie) {
 			valid = false;
 
+			/*
 			if (Log.debugEnabled()) {
 				Log.debug("RecordSet " + executor.statement.taskId + " take interrupted");
 			}
+			*/
 			return false;
 		}
 
@@ -140,9 +141,11 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			return true;
 		}
 		catch (InterruptedException ie) {
+			/*
 			if (Log.debugEnabled()) {
 				Log.debug("RecordSet " + executor.statement.taskId + " put interrupted");
 			}
+			*/
 
 			// Valid may have changed.  Check again.
 			if (valid) {
@@ -165,9 +168,11 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			// Queue must be full. Remove one item to make room.
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.
+				/*
 				if (Log.debugEnabled()) {
 					Log.debug("RecordSet " + executor.statement.taskId + " both offer and poll failed on abort");
 				}
+				*/
 				break;
 			}
 		}

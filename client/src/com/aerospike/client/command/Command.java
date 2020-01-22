@@ -37,6 +37,8 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.query.PartitionTracker.NodePartitions;
+import com.aerospike.client.query.PartitionTracker.PartitionStatus;
 import com.aerospike.client.util.Packer;
 
 public abstract class Command {
@@ -57,6 +59,7 @@ public abstract class Command {
 
 	public static final int INFO3_LAST				= (1 << 0); // This is the last of a multi-part message.
 	public static final int INFO3_COMMIT_MASTER		= (1 << 1); // Commit to master only before declaring success.
+	public static final int INFO3_PARTITION_DONE	= (1 << 2); // Partition is complete response in scan.
 	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
 	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
 	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
@@ -252,58 +255,7 @@ public abstract class Command {
 		end();
 	}
 
-	public final void estimateOperate(Operation[] operations, OperateArgs args) {
-		boolean readBin = false;
-		boolean readHeader = false;
-		boolean respondAllOps = false;
-
-		for (Operation operation : operations) {
-			switch (operation.type) {
-			case BIT_READ:
-			case MAP_READ:
-				// Map operations require respondAllOps to be true.
-				respondAllOps = true;
-				// Fall through to read.
-			case CDT_READ:
-			case READ:
-				args.readAttr |= Command.INFO1_READ;
-
-				// Read all bins if no bin is specified.
-				if (operation.binName == null) {
-					args.readAttr |= Command.INFO1_GET_ALL;
-				}
-				readBin = true;
-				break;
-
-			case READ_HEADER:
-				args.readAttr |= Command.INFO1_READ;
-				readHeader = true;
-				break;
-
-			case BIT_MODIFY:
-			case MAP_MODIFY:
-				// Map operations require respondAllOps to be true.
-				respondAllOps = true;
-				// Fall through to write.
-			default:
-				args.writeAttr = Command.INFO2_WRITE;
-				args.hasWrite = true;
-				break;
-			}
-			estimateOperationSize(operation);
-		}
-		args.size = dataOffset;
-
-		if (readHeader && ! readBin) {
-			args.readAttr |= Command.INFO1_NOBINDATA;
-		}
-
-		if (respondAllOps) {
-			args.writeAttr |= Command.INFO2_RESPOND_ALL_OPS;
-		}
-	}
-
-	public final void setOperate(WritePolicy policy, Key key, Operation[] operations, OperateArgs args) {
+	public final void setOperate(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 		int predSize = 0;
@@ -315,14 +267,14 @@ public abstract class Command {
 		dataOffset += args.size;
 		sizeBuffer();
 
-		writeHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, operations.length);
+		writeHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
 		}
 
-		for (Operation operation : operations) {
+		for (Operation operation : args.operations) {
 			writeOperation(operation);
 		}
 		end();
@@ -614,9 +566,23 @@ public abstract class Command {
 		compress(policy);
 	}
 
-	public final void setScan(ScanPolicy policy, String namespace, String setName, String[] binNames, long taskId) {
+	public final void setScan(
+		ScanPolicy policy,
+		String namespace,
+		String setName,
+		String[] binNames,
+		long taskId,
+		NodePartitions nodePartitions
+	) {
 		begin();
 		int fieldCount = 0;
+		int partsFullSize = 0;
+		int partsPartialSize = 0;
+
+		if (nodePartitions != null) {
+			partsFullSize = nodePartitions.partsFull.size() * 2;
+			partsPartialSize = nodePartitions.partsPartial.size() * 20;
+		}
 
 		if (namespace != null) {
 			dataOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
@@ -625,6 +591,16 @@ public abstract class Command {
 
 		if (setName != null) {
 			dataOffset += Buffer.estimateSizeUtf8(setName) + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		if (partsFullSize > 0) {
+			dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		if (partsPartialSize > 0) {
+			dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 
@@ -676,6 +652,24 @@ public abstract class Command {
 			writeField(setName, FieldType.TABLE);
 		}
 
+		if (partsFullSize > 0) {
+			writeFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+			for (PartitionStatus part : nodePartitions.partsFull) {
+				Buffer.shortToLittleBytes(part.id, dataBuffer, dataOffset);
+				dataOffset += 2;
+			}
+		}
+
+		if (partsPartialSize > 0) {
+			writeFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
+
+			for (PartitionStatus part : nodePartitions.partsPartial) {
+				System.arraycopy(part.digest, 0, dataBuffer, dataOffset, 20);
+				dataOffset += 20;
+			}
+		}
+
 		if (policy.recordsPerSecond > 0) {
 			writeField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 		}
@@ -709,11 +703,13 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setQuery(Policy policy, Statement statement, boolean write) {
+	public final void setQuery(Policy policy, Statement statement, boolean write, NodePartitions nodePartitions) {
 		byte[] functionArgBuffer = null;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
+		int partsFullSize = 0;
+		int partsPartialSize = 0;
 
 		begin();
 
@@ -768,6 +764,21 @@ public abstract class Command {
 		}
 		else {
 			// Calling query with no filters is more efficiently handled by a primary index scan.
+			if (nodePartitions != null) {
+				partsFullSize = nodePartitions.partsFull.size() * 2;
+				partsPartialSize = nodePartitions.partsPartial.size() * 20;
+			}
+
+			if (partsFullSize > 0) {
+				dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			if (partsPartialSize > 0) {
+				dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
 			// Estimate scan options size.
 			dataOffset += 2 + FIELD_HEADER_SIZE;
 			fieldCount++;
@@ -879,6 +890,24 @@ public abstract class Command {
 		}
 		else {
 			// Calling query with no filters is more efficiently handled by a primary index scan.
+			if (partsFullSize > 0) {
+				writeFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+				for (PartitionStatus part : nodePartitions.partsFull) {
+					Buffer.shortToLittleBytes(part.id, dataBuffer, dataOffset);
+					dataOffset += 2;
+				}
+			}
+
+			if (partsPartialSize > 0) {
+				writeFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
+
+				for (PartitionStatus part : nodePartitions.partsPartial) {
+					System.arraycopy(part.digest, 0, dataBuffer, dataOffset, 20);
+					dataOffset += 20;
+				}
+			}
+
 			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
 			byte priority = (byte)policy.priority.ordinal();
 			priority <<= 4;

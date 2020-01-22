@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.query;
 
-import java.io.IOException;
 import java.util.concurrent.BlockingQueue;
 
 import org.luaj.vm2.LuaValue;
@@ -24,6 +23,7 @@ import org.luaj.vm2.LuaValue;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
@@ -32,12 +32,12 @@ import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateCommand extends MultiCommand {
 
-	private final QueryPolicy policy;
 	private final Statement statement;
 	private final LuaInstance instance;
 	private final BlockingQueue<LuaValue> inputQueue;
 
 	public QueryAggregateCommand(
+		Cluster cluster,
 		Node node,
 		QueryPolicy policy,
 		Statement statement,
@@ -46,8 +46,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 		long clusterKey,
 		boolean first
 	) {
-		super(node, statement.namespace, clusterKey, first);
-		this.policy = policy;
+		super(cluster, policy, node, statement.namespace, clusterKey, first);
 		this.statement = statement;
 		this.instance = instance;
 		this.inputQueue = inputQueue;
@@ -55,11 +54,11 @@ public final class QueryAggregateCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() throws AerospikeException {
-		setQuery(policy, statement, false);
+		setQuery(policy, statement, false, null);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws IOException {
+	protected void parseRow(Key key) {
 		if (opCount != 1) {
 			throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
 		}

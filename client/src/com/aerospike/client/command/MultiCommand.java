@@ -39,6 +39,7 @@ public abstract class MultiCommand extends SyncCommand {
 	private final Node node;
 	protected final String namespace;
 	private final long clusterKey;
+	protected int info3;
 	protected int resultCode;
 	protected int generation;
 	protected int expiration;
@@ -49,7 +50,11 @@ public abstract class MultiCommand extends SyncCommand {
 	private final boolean first;
 	protected volatile boolean valid = true;
 
-	protected MultiCommand(Node node, boolean stopOnNotFound) {
+	/**
+	 * Batch and server execute constructor.
+	 */
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean stopOnNotFound) {
+		super(cluster, policy);
 		this.node = node;
 		this.stopOnNotFound = stopOnNotFound;
 		this.namespace = null;
@@ -57,7 +62,23 @@ public abstract class MultiCommand extends SyncCommand {
 		this.first = false;
 	}
 
-	protected MultiCommand(Node node, String namespace, long clusterKey, boolean first) {
+	/**
+	 * Partition scan/query constructor.
+	 */
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, int socketTimeout, int totalTimeout) {
+		super(cluster, policy, socketTimeout, totalTimeout);
+		this.node = node;
+		this.stopOnNotFound = true;
+		this.namespace = namespace;
+		this.clusterKey = 0;
+		this.first = false;
+	}
+
+	/**
+	 * Legacy scan/query constructor.
+	 */
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, long clusterKey, boolean first) {
+		super(cluster, policy, policy.socketTimeout, policy.totalTimeout);
 		this.node = node;
 		this.stopOnNotFound = true;
 		this.namespace = namespace;
@@ -65,16 +86,16 @@ public abstract class MultiCommand extends SyncCommand {
 		this.first = first;
 	}
 
-	public final void execute(Cluster cluster, Policy policy) {
+	public void executeAndValidate() {
 		if (clusterKey != 0) {
 			if (! first) {
 				QueryValidate.validate(node, namespace, clusterKey);
 			}
-			super.execute(cluster, policy, true);
+			super.execute();
 			QueryValidate.validate(node, namespace, clusterKey);
 		}
 		else {
-			super.execute(cluster, policy, true);
+			super.execute();
 		}
 	}
 
@@ -84,7 +105,7 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	@Override
-	protected Node getNode(Cluster cluster) {
+	protected Node getNode() {
 		return node;
 	}
 
@@ -206,7 +227,10 @@ public abstract class MultiCommand extends SyncCommand {
 	 */
 	private final boolean parseGroup(int receiveSize) throws IOException {
 		while (dataOffset < receiveSize) {
-			resultCode = dataBuffer[dataOffset + 5] & 0xFF;
+			dataOffset += 3;
+			info3 = dataBuffer[dataOffset] & 0xFF;
+			dataOffset += 2;
+			resultCode = dataBuffer[dataOffset] & 0xFF;
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
@@ -220,16 +244,20 @@ public abstract class MultiCommand extends SyncCommand {
 			}
 
 			// If this is the end marker of the response, do not proceed further
-			if ((dataBuffer[dataOffset + 3] & Command.INFO3_LAST) != 0) {
+			if ((info3 & Command.INFO3_LAST) != 0) {
 				return false;
 			}
-			generation = Buffer.bytesToInt(dataBuffer, dataOffset + 6);
-			expiration = Buffer.bytesToInt(dataBuffer, dataOffset + 10);
-			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset + 14);
-			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset + 18);
-			opCount = Buffer.bytesToShort(dataBuffer, dataOffset + 20);
-
-			dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
+			dataOffset++;
+			generation = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			expiration = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			batchIndex = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+			fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
+			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
+			dataOffset += 2;
 
 			Key key = parseKey(fieldCount);
 			parseRow(key);
@@ -267,5 +295,5 @@ public abstract class MultiCommand extends SyncCommand {
 		return valid;
 	}
 
-	protected abstract void parseRow(Key key) throws IOException;
+	protected abstract void parseRow(Key key);
 }

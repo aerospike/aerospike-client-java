@@ -57,13 +57,25 @@ public class AsyncScan extends AsyncExample {
 				console.info("Elapsed time: " + seconds + " seconds");
 				double performance = Math.round((double)recordCount / seconds);
 				console.info("Records/second: " + performance);
+				notifyComplete();
 			}
 
 			@Override
 			public void onFailure(AerospikeException e) {
 				console.error("Scan failed: " + Util.getErrorMessage(e));
+				notifyComplete();
 			}
 
 		}, policy, params.namespace, params.set);
+
+		// Wait until scan finishes before closing cluster.  This is only necessary
+		// when running the async scan example from the command line (which closes the
+		// cluster after control is relinquished by this example).
+
+		// The async scan will continue to run after cluster close if the scan was
+		// initiated before cluster close.  The problem is cluster close shuts down
+		// cluster tending immediately so any data partition migrations will not be
+		// received by the client when performing the scan.
+		waitTillComplete();
 	}
 }

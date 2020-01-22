@@ -32,11 +32,16 @@ public final class AsyncTouch extends AsyncCommand {
 	private final Partition partition;
 
 	public AsyncTouch(Cluster cluster, WriteListener listener, WritePolicy writePolicy, Key key) {
-		super(writePolicy, false, true);
+		super(writePolicy, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
+	}
+
+	@Override
+	boolean isWrite() {
+		return true;
 	}
 
 	@Override

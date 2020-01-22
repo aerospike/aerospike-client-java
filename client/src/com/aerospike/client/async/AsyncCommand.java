@@ -45,16 +45,34 @@ public abstract class AsyncCommand extends Command {
 
 	Policy policy;
 	ArrayDeque<byte[]> bufferQueue;
+	final int maxRetries;
+	final int socketTimeout;
+	final int totalTimeout;
 	int receiveSize;
-	boolean isRead;
 	final boolean isSingle;
 	boolean compressed;
 	boolean valid = true;
 
-	public AsyncCommand(Policy policy, boolean isRead, boolean isSingle) {
+	/**
+	 * Default constructor.
+	 */
+	public AsyncCommand(Policy policy, boolean isSingle) {
 		this.policy = policy;
-		this.isRead = isRead;
+		this.maxRetries = policy.maxRetries;
+		this.socketTimeout = policy.socketTimeout;
+		this.totalTimeout = policy.totalTimeout;
 		this.isSingle = isSingle;
+	}
+
+	/**
+	 * Scan/Query constructor.
+	 */
+	public AsyncCommand(Policy policy, int socketTimeout, int totalTimeout) {
+		this.policy = policy;
+		this.maxRetries = 0;
+		this.socketTimeout = socketTimeout;
+		this.totalTimeout = totalTimeout;
+		this.isSingle = false;
 	}
 
 	final int parseProto(long proto) {
@@ -164,6 +182,10 @@ public abstract class AsyncCommand extends Command {
 
 	boolean retryBatch(Runnable command, long deadline) {
 		// Override this method in batch to regenerate node assignments.
+		return false;
+	}
+
+	boolean isWrite() {
 		return false;
 	}
 
