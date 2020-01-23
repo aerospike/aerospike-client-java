@@ -252,7 +252,7 @@ public final class PartitionTracker {
 		}
 	}
 
-	public static class NodePartitions {
+	public static final class NodePartitions {
 		public final Node node;
 		public final List<PartitionStatus> partsFull;
 		public final List<PartitionStatus> partsPartial;
@@ -274,7 +274,7 @@ public final class PartitionTracker {
 		}
 	}
 
-	public static class PartitionStatus {
+	public static final class PartitionStatus {
 		public byte[] digest;
 		public final int id;
 		public boolean done;

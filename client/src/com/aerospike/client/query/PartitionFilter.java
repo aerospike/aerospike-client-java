@@ -16,10 +16,14 @@
  */
 package com.aerospike.client.query;
 
+import java.io.Serializable;
+
 /**
  * Partition filter used in scan/query.
  */
-public final class PartitionFilter {
+public final class PartitionFilter implements Serializable {
+	private static final long serialVersionUID = 1L;
+
 	/**
 	 * Filter by partition id.
 	 *
