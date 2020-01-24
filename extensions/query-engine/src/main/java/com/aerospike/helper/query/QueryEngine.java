@@ -216,6 +216,51 @@ public class QueryEngine implements Closeable {
 
 	}
 
+	/**
+	 * Select query over a range of partitions.
+	 * @param stmt
+	 * @param metaOnly
+	 * @param partitionFilter
+	 * @param qualifiers
+	 * @return
+	 */
+	public KeyRecordIterator selectByPartition(Statement stmt, boolean metaOnly, PartitionFilter partitionFilter, Qualifier... qualifiers) {
+
+		/*
+		 * no filters
+		 */
+		if (qualifiers == null || qualifiers.length == 0) {
+			RecordSet recordSet = this.client.queryPartitions(queryPolicy, stmt,partitionFilter);
+			return new KeyRecordIterator(stmt.getNamespace(), recordSet);
+		}
+		/*
+		 * singleton using primary key
+		 */
+		if (qualifiers != null && qualifiers.length == 1 && qualifiers[0] instanceof KeyQualifier) {
+			KeyQualifier kq = (KeyQualifier) qualifiers[0];
+			Key key = kq.makeKey(stmt.getNamespace(), stmt.getSetName());
+			Record record = null;
+			if (metaOnly)
+				record = this.client.getHeader(null, key);
+			else
+				record = this.client.get(null, key, stmt.getBinNames());
+			if (record == null) {
+				return new KeyRecordIterator(stmt.getNamespace());
+			} else {
+				KeyRecord keyRecord = new KeyRecord(key, record);
+				return new KeyRecordIterator(stmt.getNamespace(), keyRecord);
+			}
+		}
+		/*
+		 *  query with filters
+		 */
+		updateStatement(stmt, qualifiers, indexCache::getIndex);
+		RecordSet rs=client.queryPartitions(queryPolicy, stmt, partitionFilter);
+
+		return new KeyRecordIterator(stmt.getNamespace(), rs);
+
+	}
+
 	static void updateStatement(Statement stmt, Qualifier[] qualifiers,
 								Function<IndexKey, Optional<Index>> indexCache){
 		/*
