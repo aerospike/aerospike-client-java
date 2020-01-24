@@ -1,21 +1,17 @@
 package com.aerospike.helper.query.cache;
 
-import com.aerospike.client.query.IndexType;
-
 import java.util.Objects;
 
-public class IndexKey {
+public class IndexedField {
 
     private final String namespace;
     private final String set;
     private final String field;
-    private final IndexType type;
 
-    public IndexKey(String namespace, String set, String field, IndexType type) {
+    public IndexedField(String namespace, String set, String field) {
         this.namespace = namespace;
         this.set = set;
         this.field = field;
-        this.type = type;
     }
 
     public String getNamespace() {
@@ -30,23 +26,18 @@ public class IndexKey {
         return field;
     }
 
-    public IndexType getType() {
-        return type;
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        IndexKey indexKey = (IndexKey) o;
-        return Objects.equals(namespace, indexKey.namespace) &&
-                Objects.equals(set, indexKey.set) &&
-                Objects.equals(field, indexKey.field) &&
-                type == indexKey.type;
+        IndexedField that = (IndexedField) o;
+        return Objects.equals(namespace, that.namespace) &&
+                Objects.equals(set, that.set) &&
+                Objects.equals(field, that.field);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(namespace, set, field, type);
+        return Objects.hash(namespace, set, field);
     }
 }

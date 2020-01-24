@@ -23,7 +23,7 @@ public class UsersTests extends HelperTests{
 
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		createUsers();
 		super.setUp();
 

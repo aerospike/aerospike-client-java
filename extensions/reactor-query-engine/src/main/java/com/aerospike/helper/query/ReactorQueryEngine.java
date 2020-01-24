@@ -23,6 +23,7 @@ import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.reactor.IAerospikeReactorClient;
 import com.aerospike.helper.query.cache.IndexInfoParser;
+import com.aerospike.helper.query.cache.InternalIndexOperations;
 import com.aerospike.helper.query.cache.ReactorIndexCache;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -53,7 +54,7 @@ public class ReactorQueryEngine implements Closeable {
 	 */
 	public ReactorQueryEngine(IAerospikeReactorClient client) {
 		this(client, client.getQueryPolicyDefault(),
-				new ReactorIndexCache(client, client.getInfoPolicyDefault(), new IndexInfoParser()));
+				new ReactorIndexCache(client, client.getInfoPolicyDefault(), new InternalIndexOperations(new IndexInfoParser())));
 	}
 
 	public ReactorQueryEngine(IAerospikeReactorClient client,
@@ -134,7 +135,7 @@ public class ReactorQueryEngine implements Closeable {
 		/*
 		 *  query with filters
 		 */
-		updateStatement(stmt, qualifiers, indexCache::getIndex);
+		updateStatement(stmt, qualifiers, indexCache::hasIndexFor);
 
 		return client.query(queryPolicy, stmt);
 	}

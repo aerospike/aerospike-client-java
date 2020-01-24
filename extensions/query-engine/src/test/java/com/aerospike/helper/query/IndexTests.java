@@ -3,8 +3,10 @@ package com.aerospike.helper.query;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.query.IndexType;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.query.cache.IndexKey;
@@ -27,9 +29,10 @@ public class IndexTests extends AerospikeAwareTests {
 
     @Override
     @Before
-    public void setUp() throws Exception {
+    public void setUp() {
         dropIndexIfExists(INDEX_NAME, TestQueryEngine.NAMESPACE, SET);
         dropIndexIfExists(INDEX_NAME_2, TestQueryEngine.NAMESPACE, null);
+        dropIndexIfExists(INDEX_NAME_2, TestQueryEngine.NAMESPACE, SET);
         dropIndexIfExists(INDEX_NAME_3, TestQueryEngine.NAMESPACE, SET);
         super.setUp();
     }
@@ -42,14 +45,14 @@ public class IndexTests extends AerospikeAwareTests {
 
     @Test
     public void refreshIndexes_findsNewlyCreatedIndex() {
-        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1));
+        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC));
         assertThat(index).isEmpty();
 
         wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME, BIN_1, IndexType.NUMERIC));
 
         queryEngine.refreshIndexes();
 
-        index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1));
+        index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC));
         assertThat(index).isPresent()
                 .hasValueSatisfying(value -> {
                     assertThat(value.getName()).isEqualTo(INDEX_NAME);
@@ -66,13 +69,13 @@ public class IndexTests extends AerospikeAwareTests {
 
         queryEngine.refreshIndexes();
 
-        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1))).isPresent();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC))).isPresent();
 
         wait(client.dropIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME));
 
         queryEngine.refreshIndexes();
 
-        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1))).isEmpty();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC))).isEmpty();
     }
 
     @Test
@@ -81,7 +84,7 @@ public class IndexTests extends AerospikeAwareTests {
 
         queryEngine.refreshIndexes();
 
-        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, null, BIN_2));
+        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, null, BIN_2, IndexType.STRING));
         assertThat(index).isPresent()
                 .hasValueSatisfying(value -> {
                     assertThat(value.getName()).isEqualTo(INDEX_NAME_2);
@@ -98,7 +101,7 @@ public class IndexTests extends AerospikeAwareTests {
 
         queryEngine.refreshIndexes();
 
-        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_3));
+        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_3, IndexType.GEO2DSPHERE));
         assertThat(index).isPresent()
                 .hasValueSatisfying(value -> {
                     assertThat(value.getName()).isEqualTo(INDEX_NAME_3);
@@ -117,15 +120,61 @@ public class IndexTests extends AerospikeAwareTests {
 
         queryEngine.refreshIndexes();
 
-        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1))).isPresent();
-        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, null, BIN_2))).isPresent();
-        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_3))).isPresent();
-        assertThat(queryEngine.getIndex(new IndexKey("unknown", null, "unknown"))).isEmpty();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC))).isPresent();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, null, BIN_2, IndexType.STRING))).isPresent();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_3, IndexType.GEO2DSPHERE))).isPresent();
+        assertThat(queryEngine.getIndex(new IndexKey("unknown", null, "unknown", IndexType.NUMERIC))).isEmpty();
+    }
+
+    @Test
+    public void refreshIndexes_indexesForTheSameBinCanBeParsed() {
+        wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME, BIN_1, IndexType.NUMERIC));
+        wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME_2, BIN_1, IndexType.STRING));
+
+        queryEngine.refreshIndexes();
+
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC))).hasValueSatisfying(value -> {
+            assertThat(value.getName()).isEqualTo(INDEX_NAME);
+            assertThat(value.getNamespace()).isEqualTo(TestQueryEngine.NAMESPACE);
+            assertThat(value.getSet()).isEqualTo(SET);
+            assertThat(value.getBin()).isEqualTo(BIN_1);
+            assertThat(value.getType()).isEqualTo(IndexType.NUMERIC);
+        });
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.STRING))).hasValueSatisfying(value -> {
+            assertThat(value.getName()).isEqualTo(INDEX_NAME_2);
+            assertThat(value.getNamespace()).isEqualTo(TestQueryEngine.NAMESPACE);
+            assertThat(value.getSet()).isEqualTo(SET);
+            assertThat(value.getBin()).isEqualTo(BIN_1);
+            assertThat(value.getType()).isEqualTo(IndexType.STRING);
+        });
+
+    }
+
+    @Test
+    public void isIndexedBin_returnsTrueForIndexedField() {
+        wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME, BIN_1, IndexType.NUMERIC));
+        wait(client.createIndex(null, TestQueryEngine.NAMESPACE, SET, INDEX_NAME_2, BIN_2, IndexType.NUMERIC));
+        queryEngine.refreshIndexes();
+
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC))).isPresent();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.NUMERIC))).isPresent();
+    }
+
+    @Test
+    public void isIndexedBin_returnsFalseForNonIndexedField() {
+        Statement stmt = new Statement();
+        stmt.setNamespace(TestQueryEngine.NAMESPACE);
+        stmt.setSetName(SET);
+        Qualifier qualifier = new Qualifier(BIN_2, Qualifier.FilterOperation.EQ, Value.get(10));
+
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.NUMERIC))).isEmpty();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.STRING))).isEmpty();
+        assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.GEO2DSPHERE))).isEmpty();
     }
 
     @Test
     public void getIndex_returnsEmptyForNonExistingIndex() {
-        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1));
+        Optional<Index> index = queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_1, IndexType.NUMERIC));
         assertThat(index).isEmpty();
     }
 
