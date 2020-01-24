@@ -815,7 +815,7 @@ public interface IAerospikeClient extends Closeable {
 	 * within the scope of this call.
 	 *
 	 * @param policy				scan configuration parameters, pass in null for defaults
-	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param partitionFilter		filter on a subset of data partitions
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param callback				read callback method - called with record data
@@ -834,7 +834,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
-	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param partitionFilter		filter on a subset of data partitions
 	 * @param namespace				namespace - equivalent to database name
 	 * @param setName				optional set name - equivalent to database table
 	 * @param binNames				optional bin to retrieve. All bins will be returned if not specified.
@@ -1069,7 +1069,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
-	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
 	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
@@ -1087,7 +1087,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
 	 * 								reuse since it's modified in this method.
-	 * @param partitionFilter		filter on a subset of data partitions.
+	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
 	public void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)

@@ -40,7 +40,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		QueryPolicy policy,
 		Statement statement,
 		PartitionTracker tracker
-	) throws AerospikeException {
+	) {
 		super(eventLoop, cluster);
 		this.policy = policy;
 		this.listener = listener;

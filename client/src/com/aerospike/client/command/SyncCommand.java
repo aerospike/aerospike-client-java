@@ -197,7 +197,7 @@ public abstract class SyncCommand extends Command {
 				break;
 			}
 
-			if (policy.totalTimeout > 0) {
+			if (totalTimeout > 0) {
 				// Check for total timeout.
 				long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
 

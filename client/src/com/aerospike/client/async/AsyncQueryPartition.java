@@ -48,12 +48,12 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 	}
 
 	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setQuery(policy, statement, false, nodePartitions);
 	}
 
 	@Override
-	protected void parseRow(Key key) throws AerospikeException {
+	protected void parseRow(Key key) {
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
 			tracker.partitionDone(nodePartitions, generation);
 			return;

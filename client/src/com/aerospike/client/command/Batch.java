@@ -65,7 +65,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+		protected List<BatchNode> generateBatchNodes() {
 			return BatchNode.generateList(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
@@ -115,7 +115,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+		protected List<BatchNode> generateBatchNodes() {
 			return BatchNode.generateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
@@ -161,7 +161,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected List<BatchNode> generateBatchNodes(Cluster cluster) {
+		protected List<BatchNode> generateBatchNodes() {
 			return BatchNode.generateList(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
@@ -210,7 +210,7 @@ public final class Batch {
 		) {
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
-			List<BatchNode> batchNodes = generateBatchNodes(cluster);
+			List<BatchNode> batchNodes = generateBatchNodes();
 
 			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
 				// Batch node is the same.  Go through normal retry.
@@ -233,6 +233,6 @@ public final class Batch {
 		}
 
 		abstract BatchCommand createCommand(BatchNode batchNode);
-		abstract List<BatchNode> generateBatchNodes(Cluster cluster);
+		abstract List<BatchNode> generateBatchNodes();
 	}
 }
