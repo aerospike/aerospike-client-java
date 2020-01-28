@@ -7,44 +7,44 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
 
-import java.util.Collections;
-import java.util.Map;
 import java.util.Optional;
 
-import static com.aerospike.helper.query.cache.IndexCache.buildGetIndexesCommand;
-import static com.aerospike.helper.query.cache.IndexCache.parseIndexesInfo;
+import static com.aerospike.helper.query.cache.InternalIndexOperations.Cache;
 
 public class ReactorIndexCache implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(ReactorIndexCache.class);
 
+    private volatile Cache cache = Cache.empty();
     private final IAerospikeReactorClient client;
     private final InfoPolicy infoPolicy;
-    private final IndexInfoParser indexInfoParser;
+    private final InternalIndexOperations indexOperations;
 
-    private volatile Map<IndexKey, Index> indexCache = Collections.emptyMap();
-
-    public ReactorIndexCache(IAerospikeReactorClient client, InfoPolicy infoPolicy, IndexInfoParser indexInfoParser) {
+    public ReactorIndexCache(IAerospikeReactorClient client, InfoPolicy infoPolicy, InternalIndexOperations indexOperations) {
         this.client = client;
         this.infoPolicy = infoPolicy;
-        this.indexInfoParser = indexInfoParser;
+        this.indexOperations = indexOperations;
     }
 
     public Optional<Index> getIndex(IndexKey indexKey) {
-        return Optional.ofNullable(this.indexCache.get(indexKey));
+        return Optional.ofNullable(this.cache.indexes.get(indexKey));
+    }
+
+    public boolean hasIndexFor(IndexedField indexedField) {
+        return this.cache.indexedFields.contains(indexedField);
     }
 
     public Mono<Void> refreshIndexes() {
-        return client.info(infoPolicy, null, buildGetIndexesCommand())
+        return client.info(infoPolicy, null, indexOperations.buildGetIndexesCommand())
                 .doOnSubscribe(subscription -> log.trace("Loading indexes"))
-                .doOnNext(indexInfo ->  {
-                    this.indexCache = parseIndexesInfo(indexInfo, indexInfoParser);
-                    log.debug("Loaded indexes: {}", indexCache);
+                .doOnNext(indexInfo -> {
+                    this.cache = indexOperations.parseIndexesInfo(indexInfo);
+                    log.debug("Loaded indexes: {}", cache.indexes);
                 }).then();
     }
 
     @Override
     public void close() {
-        this.indexCache = Collections.emptyMap();
+        this.cache = Cache.empty();
     }
 }

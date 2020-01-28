@@ -30,6 +30,8 @@ import com.aerospike.helper.model.Namespace;
 import com.aerospike.helper.query.cache.IndexCache;
 import com.aerospike.helper.query.cache.IndexInfoParser;
 import com.aerospike.helper.query.cache.IndexKey;
+import com.aerospike.helper.query.cache.IndexedField;
+import com.aerospike.helper.query.cache.InternalIndexOperations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -37,6 +39,7 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.*;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import static com.aerospike.helper.query.Qualifier.FilterOperation.*;
 
@@ -53,6 +56,8 @@ public class QueryEngine implements Closeable {
 
 	protected static final String QUERY_MODULE = "as_utility"; //DO NOT use decimal places in the module name
 	protected static final String AS_UTILITY_PATH = QUERY_MODULE + ".lua";
+	private static final EnumSet<Qualifier.FilterOperation> INDEXED_OPERATIONS = EnumSet.of(
+			EQ, BETWEEN, GT, GTEQ, LT, LTEQ);
 	protected static Logger log = LoggerFactory.getLogger(QueryEngine.class);
 	protected AerospikeClient client;
 	private final IndexCache indexCache;
@@ -96,7 +101,7 @@ public class QueryEngine implements Closeable {
 				getInsertPolicy(client.writePolicyDefault),
 				client.queryPolicyDefault,
 				client.infoPolicyDefault,
-				new IndexCache(client, client.infoPolicyDefault, new IndexInfoParser()));
+				new IndexCache(client, client.infoPolicyDefault, new InternalIndexOperations(new IndexInfoParser())));
 	}
 
 	public QueryEngine(AerospikeClient client, WritePolicy updatePolicy, WritePolicy insertPolicy,
@@ -204,7 +209,7 @@ public class QueryEngine implements Closeable {
 		/*
 		 *  query with filters
 		 */
-		updateStatement(stmt, qualifiers, indexCache::getIndex);
+		updateStatement(stmt, qualifiers, indexCache::hasIndexFor);
 
 		RecordSet rs;
 		if (null == node){
@@ -254,7 +259,7 @@ public class QueryEngine implements Closeable {
 		/*
 		 *  query with filters
 		 */
-		updateStatement(stmt, qualifiers, indexCache::getIndex);
+		updateStatement(stmt, qualifiers, indexCache::hasIndexFor);
 		RecordSet rs=client.queryPartitions(queryPolicy, stmt, partitionFilter);
 
 		return new KeyRecordIterator(stmt.getNamespace(), rs);
@@ -262,7 +267,7 @@ public class QueryEngine implements Closeable {
 	}
 
 	static void updateStatement(Statement stmt, Qualifier[] qualifiers,
-								Function<IndexKey, Optional<Index>> indexCache){
+								Predicate<IndexedField> indexPresent){
 		/*
 		 *  query with filters
 		 */
@@ -279,7 +284,7 @@ public class QueryEngine implements Closeable {
 						break;
 					}
 				}
-			} else if (isIndexedBin(stmt, qualifier, indexCache)) {
+			} else if (isIndexedBin(stmt, qualifier, indexPresent)) {
 				Filter filter = qualifier.asFilter();
 				if (filter != null) {
 					stmt.setFilter(filter);
@@ -310,19 +315,12 @@ public class QueryEngine implements Closeable {
 		}
 	}
 
-	private static final EnumSet<Qualifier.FilterOperation> INDEXED_OPERATIONS = EnumSet.of(
-			EQ, BETWEEN, GT, GTEQ, LT, LTEQ);
-
 	private static boolean isIndexedBin(Statement stmt, Qualifier qualifier,
-										Function<IndexKey, Optional<Index>> indexCache) {
-		if(null == qualifier.getField()) return false;
+										Predicate<IndexedField> indexPresent) {
+        if(null == qualifier.getField()) return false;
 
 		return INDEXED_OPERATIONS.contains(qualifier.getOperation())
-				&& indexCache.apply(getIndexKey(stmt, qualifier)).isPresent();
-	}
-
-	private static IndexKey getIndexKey(Statement stmt, Qualifier qualifier) {
-		return new IndexKey(stmt.getNamespace(), stmt.getSetName(), qualifier.getField());
+				&& indexPresent.test(new IndexedField(stmt.getNamespace(), stmt.getSetName(), qualifier.getField()));
 	}
 
 	/*

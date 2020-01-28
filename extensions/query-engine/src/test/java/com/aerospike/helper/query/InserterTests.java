@@ -23,7 +23,7 @@ public class InserterTests extends HelperTests{
 		super();
 	}
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 //		if (this.useAuth){
 //			clientPolicy = new ClientPolicy();
 //			clientPolicy.failIfNotConnected = true;

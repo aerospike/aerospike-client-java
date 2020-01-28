@@ -38,7 +38,7 @@ public abstract class HelperTests extends AerospikeAwareTests {
 	protected Map<Long, Long> recordsModTenCounts;
 
 	@Before
-	public void setUp() throws Exception {
+	public void setUp() {
 		super.setUp();
 		int i = 0;
 		Key key = new Key(TestQueryEngine.NAMESPACE, TestQueryEngine.SET_NAME, "selector-test:"+ 10);
