@@ -183,11 +183,10 @@ public class Policy {
 	public boolean sendKey;
 
 	/**
-	 * Use zlib compression on write or batch read commands when the command buffer size is greater
-	 * than 128 bytes.  In addition, tell the server to compress it's response on read commands.
-	 * The server response compression threshold is also 128 bytes.
+	 * Use zlib compression on command buffers sent to the server and responses received
+	 * from the server when the buffer size is greater than 128 bytes.
 	 * <p>
-	 * This option will increase cpu and memory usage (for extra compressed buffers), but
+	 * This option will increase cpu and memory usage (for extra compressed buffers),but
 	 * decrease the size of data sent over the network.
 	 * <p>
 	 * Default: false
