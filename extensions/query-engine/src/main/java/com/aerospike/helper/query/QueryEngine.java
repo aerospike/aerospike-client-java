@@ -16,13 +16,46 @@
  */
 package com.aerospike.helper.query;
 
-import com.aerospike.client.*;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.BETWEEN;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.EQ;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.GT;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.GTEQ;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.LT;
+import static com.aerospike.helper.query.Qualifier.FilterOperation.LTEQ;
+
+import java.io.Closeable;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.TreeMap;
+import java.util.function.Predicate;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Bin;
+import com.aerospike.client.Info;
+import com.aerospike.client.Key;
+import com.aerospike.client.Language;
+import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.query.*;
+import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.KeyRecord;
+import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PredExp;
+import com.aerospike.client.query.RecordSet;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.model.Module;
@@ -32,16 +65,6 @@ import com.aerospike.helper.query.cache.IndexInfoParser;
 import com.aerospike.helper.query.cache.IndexKey;
 import com.aerospike.helper.query.cache.IndexedField;
 import com.aerospike.helper.query.cache.InternalIndexOperations;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.Closeable;
-import java.io.IOException;
-import java.util.*;
-import java.util.function.Function;
-import java.util.function.Predicate;
-
-import static com.aerospike.helper.query.Qualifier.FilterOperation.*;
 
 /**
  * This class provides a multi-filter query engine that
@@ -217,51 +240,6 @@ public class QueryEngine implements Closeable {
 		} else{
 			rs = client.queryNode(queryPolicy, stmt, node);
 		}
-		return new KeyRecordIterator(stmt.getNamespace(), rs);
-
-	}
-
-	/**
-	 * Select query over a range of partitions.
-	 * @param stmt
-	 * @param metaOnly
-	 * @param partitionFilter
-	 * @param qualifiers
-	 * @return
-	 */
-	public KeyRecordIterator selectByPartition(Statement stmt, boolean metaOnly, PartitionFilter partitionFilter, Qualifier... qualifiers) {
-
-		/*
-		 * no filters
-		 */
-		if (qualifiers == null || qualifiers.length == 0) {
-			RecordSet recordSet = this.client.queryPartitions(queryPolicy, stmt,partitionFilter);
-			return new KeyRecordIterator(stmt.getNamespace(), recordSet);
-		}
-		/*
-		 * singleton using primary key
-		 */
-		if (qualifiers != null && qualifiers.length == 1 && qualifiers[0] instanceof KeyQualifier) {
-			KeyQualifier kq = (KeyQualifier) qualifiers[0];
-			Key key = kq.makeKey(stmt.getNamespace(), stmt.getSetName());
-			Record record = null;
-			if (metaOnly)
-				record = this.client.getHeader(null, key);
-			else
-				record = this.client.get(null, key, stmt.getBinNames());
-			if (record == null) {
-				return new KeyRecordIterator(stmt.getNamespace());
-			} else {
-				KeyRecord keyRecord = new KeyRecord(key, record);
-				return new KeyRecordIterator(stmt.getNamespace(), keyRecord);
-			}
-		}
-		/*
-		 *  query with filters
-		 */
-		updateStatement(stmt, qualifiers, indexCache::getIndex);
-		RecordSet rs=client.queryPartitions(queryPolicy, stmt, partitionFilter);
-
 		return new KeyRecordIterator(stmt.getNamespace(), rs);
 
 	}
