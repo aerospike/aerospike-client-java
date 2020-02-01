@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,7 +24,6 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
-import com.aerospike.client.policy.Priority;
 import com.aerospike.client.policy.ScanPolicy;
 
 public class ScanSeries extends Example implements ScanCallback {
@@ -42,11 +41,10 @@ public class ScanSeries extends Example implements ScanCallback {
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		console.info("Scan series: namespace=" + params.namespace + " set=" + params.set);
 
-		// Use low scan priority.  This will take more time, but it will reduce
+		// Limit scan to recordsPerSecond.  This will take more time, but it will reduce
 		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
-		policy.maxRetries = 1;
-		policy.priority = Priority.LOW;
+		policy.recordsPerSecond = 5000;
 
 		List<String> nodeList = client.getNodeNames();
 		long begin = System.currentTimeMillis();

@@ -35,10 +35,10 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
-import com.aerospike.client.query.PredExp;
-import com.aerospike.client.query.Statement;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.PartitionTracker.PartitionStatus;
+import com.aerospike.client.query.PredExp;
+import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 
 public abstract class Command {
@@ -679,13 +679,18 @@ public abstract class Command {
 		}
 
 		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-		byte priority = (byte)policy.priority.ordinal();
-		priority <<= 4;
 
-		if (policy.failOnClusterChange) {
-			priority |= 0x08;
+		byte priority = 0;
+
+		// Only set priority/failOnClusterChange for server versions < 4.9.
+		if (nodePartitions == null) {
+			priority = (byte)policy.priority.ordinal();
+			priority <<= 4;
+
+			if (policy.failOnClusterChange) {
+				priority |= 0x08;
+			}
 		}
-
 		dataBuffer[dataOffset++] = priority;
 		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
@@ -909,13 +914,18 @@ public abstract class Command {
 			}
 
 			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-			byte priority = (byte)policy.priority.ordinal();
-			priority <<= 4;
 
-			if (! write && ((QueryPolicy)policy).failOnClusterChange) {
-				priority |= 0x08;
+			byte priority = 0;
+
+			// Only set priority/failOnClusterChange for server versions < 4.9.
+			if (nodePartitions == null) {
+				priority = (byte)policy.priority.ordinal();
+				priority <<= 4;
+
+				if (! write && ((QueryPolicy)policy).failOnClusterChange) {
+					priority |= 0x08;
+				}
 			}
-
 			dataBuffer[dataOffset++] = priority;
 			dataBuffer[dataOffset++] = (byte)100;
 

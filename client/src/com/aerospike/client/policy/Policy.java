@@ -24,7 +24,10 @@ import com.aerospike.client.query.PredExp;
 public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
-	 * Currently, only used for scans.
+	 * Only used for scans on server versions < 4.9.
+	 * <p>
+	 * Priority is obsolete and will eventually be removed.
+	 * Use {@link ScanPolicy#recordsPerSecond} instead of priority.
 	 */
 	public Priority priority = Priority.DEFAULT;
 

@@ -50,6 +50,7 @@ public class QueryPolicy extends Policy {
 
 	/**
 	 * Terminate query if cluster is in migration state.
+	 * Only used for server versions < 4.9.
 	 * <p>
 	 * Default: false
 	 */

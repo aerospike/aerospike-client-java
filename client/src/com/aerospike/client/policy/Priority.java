@@ -18,6 +18,7 @@ package com.aerospike.client.policy;
 
 /**
  * Priority of operations on database server.
+ * This enum is obsolete and will eventually be removed.
  */
 public enum Priority {
 	/**

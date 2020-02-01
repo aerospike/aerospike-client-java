@@ -67,6 +67,7 @@ public final class ScanPolicy extends Policy {
 
 	/**
 	 * Terminate scan if cluster in migration state.
+	 * Only used for server versions < 4.9.
 	 * <p>
 	 * Default: false
 	 */

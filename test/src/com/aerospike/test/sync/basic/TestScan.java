@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 Aerospike, Inc.
+ * Copyright 2012-2020 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,6 @@ import org.junit.Test;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
-import com.aerospike.client.policy.Priority;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.test.sync.TestSync;
 
@@ -40,12 +39,7 @@ public class TestScan extends TestSync implements ScanCallback {
 
 	@Test
 	public void scanSeries() {
-		// Use low scan priority.  This will take more time, but it will reduce
-		// the load on the server.
 		ScanPolicy policy = new ScanPolicy();
-		policy.maxRetries = 1;
-		policy.priority = Priority.LOW;
-
 		List<String> nodeList = client.getNodeNames();
 
 		for (String nodeName : nodeList) {
