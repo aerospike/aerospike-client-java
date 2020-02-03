@@ -124,6 +124,9 @@ public class Cluster implements Runnable, Closeable {
 	// Login timeout.
 	public final int loginTimeout;
 
+	// Rack id.
+	public final int rackId;
+
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
 
@@ -143,8 +146,7 @@ public class Cluster implements Runnable, Closeable {
 	// Request server rack ids.
 	final boolean rackAware;
 
-	// Rack id.
-	public final int rackId;
+	public boolean hasPartitionScan;
 
 	private boolean asyncComplete;
 
@@ -657,6 +659,7 @@ public class Cluster implements Runnable, Closeable {
 				aliases.put(alias, node);
 			}
 		}
+		hasPartitionScan = Cluster.supportsPartitionScan(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -718,6 +721,7 @@ public class Cluster implements Runnable, Closeable {
 			System.arraycopy(nodeArray, 0, nodeArray2, 0, count);
 			nodeArray = nodeArray2;
 		}
+		hasPartitionScan = Cluster.supportsPartitionScan(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -911,6 +915,19 @@ public class Cluster implements Runnable, Closeable {
 				this.password = password;
 			}
 		}
+	}
+
+	private static boolean supportsPartitionScan(Node[] nodes) {
+		if (nodes.length == 0) {
+			return false;
+		}
+
+		for (Node node : nodes) {
+			if (! node.hasPartitionScan()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public final ExecutorService getThreadPool() {

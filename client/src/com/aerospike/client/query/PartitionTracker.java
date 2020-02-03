@@ -119,15 +119,6 @@ public final class PartitionTracker {
 		this.sleepBetweenRetries = sleepBetweenRetries;
 	}
 
-	public static boolean hasPartitionScan(Node[] nodes) {
-		for (Node node : nodes) {
-			if (! node.hasPartitionScan()) {
-				return false;
-			}
-		}
-		return true;
-	}
-
 	public List<NodePartitions> assignPartitionsToNodes(Cluster cluster, String namespace) {
 		// System.out.println("Round " + iteration);
 		List<NodePartitions> list = new ArrayList<NodePartitions>(nodeCapacity);
