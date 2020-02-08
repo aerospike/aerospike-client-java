@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message GetSequenceRequest {
+    string namespace = 1;
+    string sequence = 2;
+}
+
+message GetSequenceResponse {
+    int32 errorCode = 1;
+    int32 value = 2;
+}
+
+service GetSequenceService {
+    rpc getSequence(GetSequenceRequest) returns (GetSequenceResponse);
+}

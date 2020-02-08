@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DropIndexRequest {
+    string namespace = 1;
+    string index = 2;
+}
+
+message DropIndexResponse {
+    int32 errorCode = 1;
+}
+
+service DropIndexService {
+    rpc dropIndex(DropIndexRequest) returns (DropIndexResponse);
+}

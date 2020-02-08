@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message LogoutRequest {
+}
+
+message LogoutResponse {
+    int32 errorCode = 1;
+}
+
+service LogoutService {
+    rpc logout(LogoutRequest) returns (LogoutResponse);
+}

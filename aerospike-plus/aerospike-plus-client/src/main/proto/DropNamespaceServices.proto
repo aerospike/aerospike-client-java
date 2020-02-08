@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DropNamespaceRequest {
+    string namespace = 1;
+}
+
+message DropNamespaceResponse {
+    int32 errorCode = 1;
+}
+
+service DropNamespaceService {
+    rpc dropNamespace(DropNamespaceRequest) returns (DropNamespaceResponse);
+}

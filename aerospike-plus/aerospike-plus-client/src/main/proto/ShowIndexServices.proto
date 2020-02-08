@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message ShowIndexRequest {
+    string namespace = 1;
+}
+
+message ShowIndexResponse {
+    int32 errorCode = 1;
+    map<string, string> indexs = 2;
+}
+
+service ShowIndexService {
+    rpc showIndex(ShowIndexRequest) returns (ShowIndexResponse);
+}

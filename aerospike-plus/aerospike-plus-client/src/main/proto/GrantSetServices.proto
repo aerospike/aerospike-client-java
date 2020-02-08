@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message GrantSetRequest {
+    string user = 1;
+    string namespace = 2;
+    string set = 3;
+    enum SetPermission {
+        SELECT = 0;
+        PUT = 1;
+        DELETE = 2;
+    }
+    SetPermission permission = 4;
+    bool isRevoke = 5;
+}
+
+message GrantSetResponse {
+    int32 errorCode = 1;
+}
+
+service GrantSetService {
+    rpc grantSet(GrantSetRequest) returns (GrantSetResponse);
+}

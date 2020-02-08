@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DropSequenceRequest {
+    string namespace = 1;
+    string sequence = 2;
+}
+
+message DropSequenceResponse {
+    int32 errorCode = 1;
+}
+
+service DropSequenceService {
+    rpc dropSequence(DropSequenceRequest) returns (DropSequenceResponse);
+}

@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DeleteUserRequest {
+    string name = 1;
+}
+
+message DeleteUserResponse {
+    int32 errorCode = 1;
+}
+
+service DeleteUserService {
+    rpc deleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+}

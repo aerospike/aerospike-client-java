@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message CreateSetRequest {
+    string namespace = 1;
+    string set = 2;
+    string key = 3;
+    map<string, string> stringParams = 4;
+}
+
+message CreateSetResponse {
+    int32 setId = 1;
+    int32 errorCode = 2;
+}
+
+service CreateSetService {
+    rpc createSet(CreateSetRequest) returns (CreateSetResponse);
+}

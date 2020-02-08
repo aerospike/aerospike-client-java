@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message ShowNamespaceRequest {
+}
+
+message ShowNamespaceResponse {
+    int32 errorCode = 1;
+    map<string, string> namespaces = 2;
+}
+
+service ShowNamespaceService {
+    rpc showNamespace(ShowNamespaceRequest) returns (ShowNamespaceResponse);
+}

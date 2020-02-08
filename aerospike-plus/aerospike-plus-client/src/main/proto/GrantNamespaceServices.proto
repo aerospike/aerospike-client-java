@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message GrantNamespaceRequest {
+    string user = 1;
+    string namespace = 2;
+    enum NamespaceRole {
+        OWNER = 0;
+        DQL = 1;
+        DML = 2;
+        DDL = 3;
+    }
+    NamespaceRole role = 3;
+    bool isRevoke = 4;
+}
+
+message GrantNamespaceResponse {
+    int32 errorCode = 1;
+}
+
+service GrantNamespaceService {
+    rpc grantNamespace(GrantNamespaceRequest) returns (GrantNamespaceResponse);
+}

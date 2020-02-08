@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message CreateSequenceRequest {
+    string namespace = 1;
+    string sequence = 2;
+    int32 start = 3;
+}
+
+message CreateSequenceResponse {
+    int32 errorCode = 1;
+}
+
+service CreateSequenceService {
+    rpc createSequence(CreateSequenceRequest) returns (CreateSequenceResponse);
+}

@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message CreateIndexRequest {
+    string namespace = 1;
+    string set = 2;
+    string bin = 3;
+    string index = 4;
+    enum IndexType {
+        NUMERIC = 0;
+        STRING = 1;
+        GEO2DSPHERE = 2;
+    }
+    IndexType indexType = 5;
+}
+
+message CreateIndexResponse {
+    int32 errorCode = 1;
+}
+
+service CreateIndexService {
+    rpc createIndex(CreateIndexRequest) returns (CreateIndexResponse);
+}

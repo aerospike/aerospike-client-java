@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message PutRequest {
+    enum RecordExistsAction {
+        CREATE_ONLY = 0;
+        UPDATE = 1;
+        UPDATE_ONLY = 2;
+        REPLACE = 3;
+        REPLACE_ONLY = 4;
+    }
+    RecordExistsAction writePolicy = 1;
+    int32 expiration = 2;
+    string namespace = 3;
+    string set = 4;
+    string key = 5;
+    map<string, string> stringParams = 6;
+    map<string, int32> intParams = 7;
+    map<string, int64> longParams = 8;
+    map<string, float> floatParams = 9;
+    map<string, double> doubleParams = 10;
+    map<string, bool> booleanParams = 11;
+    map<string, bytes> bytesParams = 12;
+}
+
+message PutResponse {
+    int32 errorCode = 1;
+}
+
+service PutService {
+    rpc put(PutRequest) returns (PutResponse);
+}

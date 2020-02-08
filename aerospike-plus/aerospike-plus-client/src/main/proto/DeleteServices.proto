@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DeleteRequest {
+    string namespace = 1;
+    string set = 2;
+    string key = 3;
+}
+
+message DeleteResponse {
+    int32 errorCode = 1;
+}
+
+service DeleteService {
+    rpc delete(DeleteRequest) returns (DeleteResponse);
+}

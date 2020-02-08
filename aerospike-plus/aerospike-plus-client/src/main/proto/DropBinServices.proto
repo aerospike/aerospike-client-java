@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DropBinRequest {
+    string namespace = 1;
+    string set = 2;
+    string bin = 3;
+}
+
+message DropBinResponse {
+    int32 errorCode = 1;
+}
+
+service DropBinService {
+    rpc dropBin(DropBinRequest) returns (DropBinResponse);
+}

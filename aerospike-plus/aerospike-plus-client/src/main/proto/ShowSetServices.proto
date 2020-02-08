@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message ShowSetRequest {
+    string namespace = 1;
+}
+
+message ShowSetResponse {
+    int32 errorCode = 1;
+    map<string, string> sets = 2;
+}
+
+service ShowSetService {
+    rpc showSet(ShowSetRequest) returns (ShowSetResponse);
+}

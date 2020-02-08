@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message RenameNamespaceRequest {
+    string oldName = 1;
+    string newName = 2;
+}
+
+message RenameNamespaceResponse {
+    int32 errorCode = 1;
+}
+
+service RenameNamespaceService {
+    rpc renameNamespace(RenameNamespaceRequest) returns (RenameNamespaceResponse);
+}

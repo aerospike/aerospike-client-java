@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message TruncateNamespaceRequest {
+    string namespace = 1;
+}
+
+message TruncateNamespaceResponse {
+    int32 errorCode = 1;
+}
+
+service TruncateNamespaceService {
+    rpc truncateNamespace(TruncateNamespaceRequest) returns (TruncateNamespaceResponse);
+}

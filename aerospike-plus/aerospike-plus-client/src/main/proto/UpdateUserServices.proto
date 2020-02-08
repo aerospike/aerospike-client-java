@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message UpdateUserRequest {
+    string name = 1;
+    string password = 2;
+    enum Role {
+        USER = 0;
+        ADMIN = 1;
+    }
+    Role role = 3;
+}
+
+message UpdateUserResponse {
+    int32 errorCode = 1;
+}
+
+service UpdateUserService {
+    rpc updateUser(UpdateUserRequest) returns (UpdateUserResponse);
+}

@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message GetRequest {
+    string namespace = 1;
+    string set = 2;
+    string key = 3;
+    int32 timeout = 4;
+}
+
+message GetResponse {
+    int32 errorCode = 1;
+    map<string, string> stringBin = 2;
+    map<string, int32> intBin = 3;
+    map<string, int64> longBin = 4;
+    map<string, float> floatBin = 5;
+    map<string, double> doubleBin = 6;
+    map<string, bool> booleanBin = 7;
+    map<string, bytes> bytesBin = 8;
+}
+
+service GetService {
+    rpc get(GetRequest) returns (GetResponse);
+}

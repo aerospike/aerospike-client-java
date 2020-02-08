@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message ShowSequenceRequest {
+    string namespace = 1;
+}
+
+message ShowSequenceResponse {
+    int32 errorCode = 1;
+    map<string, string> sequences = 2;
+}
+
+service ShowSequenceService {
+    rpc showSequence(ShowSequenceRequest) returns (ShowSequenceResponse);
+}

@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message LoginRequest {
+    string userName = 1;
+}
+
+message LoginResponse {
+    string authenToken = 1;
+    int32 errorCode = 2;
+}
+
+service LoginService {
+    rpc login(LoginRequest) returns (LoginResponse);
+}

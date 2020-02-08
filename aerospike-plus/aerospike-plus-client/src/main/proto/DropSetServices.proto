@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message DropSetRequest {
+    string namespace = 1;
+    string set = 2;
+}
+
+message DropSetResponse {
+    int32 errorCode = 1;
+}
+
+service DropSetService {
+    rpc dropSet(DropSetRequest) returns (DropSetResponse);
+}

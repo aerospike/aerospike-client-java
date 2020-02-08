@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message RenameSetRequest {
+    string namespace = 1;
+    string oldSet = 2;
+    string newSet = 3;
+}
+
+message RenameSetResponse {
+    int32 errorCode = 1;
+}
+
+service RenameSetService {
+    rpc renameSet(RenameSetRequest) returns (RenameSetResponse);
+}

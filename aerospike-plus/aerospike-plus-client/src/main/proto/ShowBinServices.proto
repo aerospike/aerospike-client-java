@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message ShowBinRequest {
+    string namespace = 1;
+    string set = 2;
+}
+
+message ShowBinResponse {
+    int32 errorCode = 1;
+    map<string, string> bins = 2;
+}
+
+service ShowBinService {
+    rpc showBin(ShowBinRequest) returns (ShowBinResponse);
+}

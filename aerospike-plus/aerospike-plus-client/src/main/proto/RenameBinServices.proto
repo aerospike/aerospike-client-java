@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package com.ltv.aerospike.api.proto;
+
+message RenameBinRequest {
+    string namespace = 1;
+    string set = 2;
+    string oldBin = 3;
+    string newBin = 4;
+}
+
+message RenameBinResponse {
+    int32 errorCode = 1;
+}
+
+service RenameBinService {
+    rpc renameBin(RenameBinRequest) returns (RenameBinResponse);
+}
