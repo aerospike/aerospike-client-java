@@ -1,21 +1,21 @@
 package com.aerospike.helper.query;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.Optional;
+
+import org.junit.Before;
+import org.junit.Test;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.helper.model.Index;
 import com.aerospike.helper.query.cache.IndexKey;
-import org.junit.Before;
-import org.junit.Test;
-
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 public class IndexTests extends AerospikeAwareTests {
 
@@ -165,7 +165,6 @@ public class IndexTests extends AerospikeAwareTests {
         Statement stmt = new Statement();
         stmt.setNamespace(TestQueryEngine.NAMESPACE);
         stmt.setSetName(SET);
-        Qualifier qualifier = new Qualifier(BIN_2, Qualifier.FilterOperation.EQ, Value.get(10));
 
         assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.NUMERIC))).isEmpty();
         assertThat(queryEngine.getIndex(new IndexKey(TestQueryEngine.NAMESPACE, SET, BIN_2, IndexType.STRING))).isEmpty();

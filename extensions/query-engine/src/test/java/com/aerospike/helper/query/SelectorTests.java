@@ -1,13 +1,13 @@
 package com.aerospike.helper.query;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 import org.junit.Assert;
 import org.junit.Test;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
@@ -16,7 +16,6 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.KeyRecord;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.task.IndexTask;
 import com.aerospike.helper.query.Qualifier.FilterOperation;
 
 public class SelectorTests extends HelperTests{
