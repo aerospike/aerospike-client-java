@@ -18,11 +18,14 @@ package com.aerospike.client.query;
 
 import java.io.Serializable;
 
+import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Partition;
+
 /**
  * Partition filter used in scan/query.
  */
 public final class PartitionFilter implements Serializable {
-	private static final long serialVersionUID = 1L;
+	private static final long serialVersionUID = 2L;
 
 	/**
 	 * Filter by partition id.
@@ -31,6 +34,16 @@ public final class PartitionFilter implements Serializable {
 	 */
 	public static PartitionFilter id(int id) {
 		return new PartitionFilter(id, 1);
+	}
+
+	/**
+	 * Return records after key's digest in partition containing the digest.
+	 * Note that digest order is not the same as userKey order.
+	 *
+	 * @param key		return records after this key's digest
+	 */
+	public static PartitionFilter after(Key key) {
+		return new PartitionFilter(key.digest);
 	}
 
 	/**
@@ -45,9 +58,17 @@ public final class PartitionFilter implements Serializable {
 
 	final int begin;
 	final int count;
+	final byte[] digest;
 
 	private PartitionFilter(int begin, int count) {
 		this.begin = begin;
 		this.count = count;
+		this.digest = null;
+	}
+
+	private PartitionFilter(byte[] digest) {
+		this.begin = Partition.getPartitionId(digest);
+		this.count = 1;
+		this.digest = digest;
 	}
 }

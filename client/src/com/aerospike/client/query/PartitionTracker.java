@@ -27,14 +27,13 @@ import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 
 public final class PartitionTracker {
 	private final PartitionStatus[] partitionsAll;
 	private final int partitionBegin;
-	private final int partitionCount;
 	private final int nodeCapacity;
 	private final Node nodeFilter;
 	private List<NodePartitions> nodePartitionsList;
@@ -48,7 +47,6 @@ public final class PartitionTracker {
 
 	public PartitionTracker(Policy policy, Node[] nodes) {
 		this.partitionBegin = 0;
-		this.partitionCount = Node.PARTITIONS;
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
 
@@ -56,16 +54,15 @@ public final class PartitionTracker {
 		int ppn = Node.PARTITIONS / nodes.length;
 		ppn += ppn >>> 2;
 		this.partitionsCapacity = ppn;
-		this.partitionsAll = init(policy);
+		this.partitionsAll = init(policy, Node.PARTITIONS, null);
 	}
 
 	public PartitionTracker(Policy policy, Node nodeFilter) {
 		this.partitionBegin = 0;
-		this.partitionCount = Node.PARTITIONS;
 		this.nodeCapacity = 1;
 		this.nodeFilter = nodeFilter;
-		this.partitionsCapacity = this.partitionCount;
-		this.partitionsAll = init(policy);
+		this.partitionsCapacity = Node.PARTITIONS;
+		this.partitionsAll = init(policy, Node.PARTITIONS, null);
 	}
 
 	public PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter) {
@@ -87,18 +84,21 @@ public final class PartitionTracker {
 		}
 
 		this.partitionBegin = filter.begin;
-		this.partitionCount = filter.count;
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
-		this.partitionsCapacity = this.partitionCount;
-		this.partitionsAll = init(policy);
+		this.partitionsCapacity = filter.count;
+		this.partitionsAll = init(policy, filter.count, filter.digest);
 	}
 
-	private PartitionStatus[] init(Policy policy) {
+	private PartitionStatus[] init(Policy policy, int partitionCount, byte[] digest) {
 		PartitionStatus[] partsAll = new PartitionStatus[partitionCount];
 
 		for (int i = 0; i < partitionCount; i++) {
 			partsAll[i] = new PartitionStatus(partitionBegin + i);
+		}
+
+		if (digest != null) {
+			partsAll[0].digest = digest;
 		}
 
 		sleepBetweenRetries = policy.sleepBetweenRetries;
@@ -181,7 +181,7 @@ public final class PartitionTracker {
 	}
 
 	public void setDigest(Key key) {
-		int partitionId = (Buffer.littleBytesToInt(key.digest, 0) & 0xFFFF) % Node.PARTITIONS;
+		int partitionId = Partition.getPartitionId(key.digest);
 		partitionsAll[partitionId - partitionBegin].digest = key.digest;
 	}
 
