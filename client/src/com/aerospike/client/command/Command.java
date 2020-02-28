@@ -96,6 +96,24 @@ public abstract class Command {
 
 	public byte[] dataBuffer;
 	public int dataOffset;
+	public final int maxRetries;
+	public final int serverTimeout;
+	public int socketTimeout;
+	public int totalTimeout;
+
+	public Command(int socketTimeout, int totalTimeout, int maxRetries) {
+		this.maxRetries = maxRetries;
+		this.totalTimeout = totalTimeout;
+
+		if (totalTimeout > 0) {
+			this.socketTimeout = (socketTimeout < totalTimeout && socketTimeout > 0)? socketTimeout : totalTimeout;
+			this.serverTimeout = this.socketTimeout;
+		}
+		else {
+			this.socketTimeout = socketTimeout;
+			this.serverTimeout = 0;
+		}
+	}
 
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
 		begin();
@@ -194,7 +212,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeaderRead(policy, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
+		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.predExp != null) {
@@ -218,7 +236,7 @@ public abstract class Command {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
-			writeHeaderRead(policy, Command.INFO1_READ, fieldCount, binNames.length);
+			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, fieldCount, binNames.length);
 			writeKey(policy, key);
 
 			if (policy.predExp != null) {
@@ -369,7 +387,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
@@ -506,7 +524,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
 
 		if (policy.predExp != null) {
 			writePredExp(policy.predExp, predSize);
@@ -642,7 +660,7 @@ public abstract class Command {
 		}
 
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, readAttr, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -851,7 +869,7 @@ public abstract class Command {
 		else {
 			QueryPolicy qp = (QueryPolicy)policy;
 			int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-			writeHeaderRead(policy, readAttr, fieldCount, operationCount);
+			writeHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
@@ -1074,7 +1092,7 @@ public abstract class Command {
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
-		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -1157,7 +1175,7 @@ public abstract class Command {
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
-		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -1166,7 +1184,7 @@ public abstract class Command {
 	/**
 	 * Header write for read commands.
 	 */
-	private final void writeHeaderRead(Policy policy, int readAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderRead(Policy policy, int timeout, int readAttr, int fieldCount, int operationCount) {
 		int infoAttr = 0;
 
 		switch (policy.readModeSC) {
@@ -1200,7 +1218,7 @@ public abstract class Command {
 		for (int i = 12; i < 22; i++) {
 			dataBuffer[i] = 0;
 		}
-		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.intToBytes(timeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
@@ -1239,7 +1257,7 @@ public abstract class Command {
 		for (int i = 12; i < 22; i++) {
 			dataBuffer[i] = 0;
 		}
-		Buffer.intToBytes(policy.totalTimeout, dataBuffer, 22);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;

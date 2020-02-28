@@ -45,9 +45,6 @@ public abstract class AsyncCommand extends Command {
 
 	Policy policy;
 	ArrayDeque<byte[]> bufferQueue;
-	final int maxRetries;
-	final int socketTimeout;
-	final int totalTimeout;
 	int receiveSize;
 	final boolean isSingle;
 	boolean compressed;
@@ -57,10 +54,8 @@ public abstract class AsyncCommand extends Command {
 	 * Default constructor.
 	 */
 	public AsyncCommand(Policy policy, boolean isSingle) {
+		super(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		this.policy = policy;
-		this.maxRetries = policy.maxRetries;
-		this.socketTimeout = policy.socketTimeout;
-		this.totalTimeout = policy.totalTimeout;
 		this.isSingle = isSingle;
 	}
 
@@ -68,10 +63,8 @@ public abstract class AsyncCommand extends Command {
 	 * Scan/Query constructor.
 	 */
 	public AsyncCommand(Policy policy, int socketTimeout, int totalTimeout) {
+		super(socketTimeout, totalTimeout, 0);
 		this.policy = policy;
-		this.maxRetries = 0;
-		this.socketTimeout = socketTimeout;
-		this.totalTimeout = totalTimeout;
 		this.isSingle = false;
 	}
 

@@ -35,9 +35,6 @@ public abstract class SyncCommand extends Command {
 	// private static final AtomicLong TranCounter = new AtomicLong();
 	protected final Cluster cluster;
 	protected final Policy policy;
-	final int maxRetries;
-	int socketTimeout;
-	int totalTimeout;
 	int iteration = 1;
 	int commandSentCounter;
 	long deadline;
@@ -46,31 +43,23 @@ public abstract class SyncCommand extends Command {
 	 * Default constructor.
 	 */
 	public SyncCommand(Cluster cluster, Policy policy) {
+		super(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		this.cluster = cluster;
 		this.policy = policy;
-		this.maxRetries = policy.maxRetries;
-		this.socketTimeout = policy.socketTimeout;
-		this.totalTimeout = policy.totalTimeout;
 	}
 
 	/**
 	 * Scan/Query constructor.
 	 */
 	public SyncCommand(Cluster cluster, Policy policy, int socketTimeout, int totalTimeout) {
+		super(socketTimeout, totalTimeout, 0);
 		this.cluster = cluster;
 		this.policy = policy;
-		this.maxRetries = 0;
-		this.socketTimeout = socketTimeout;
-		this.totalTimeout = totalTimeout;
 	}
 
 	public void execute() {
 		if (totalTimeout > 0) {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(totalTimeout);
-
-			if (socketTimeout == 0 || socketTimeout > totalTimeout) {
-				socketTimeout = totalTimeout;
-			}
 		}
 		executeCommand();
 	}
