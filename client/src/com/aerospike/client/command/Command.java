@@ -596,10 +596,12 @@ public abstract class Command {
 		int fieldCount = 0;
 		int partsFullSize = 0;
 		int partsPartialSize = 0;
+		long maxRecords = 0;
 
 		if (nodePartitions != null) {
 			partsFullSize = nodePartitions.partsFull.size() * 2;
 			partsPartialSize = nodePartitions.partsPartial.size() * 20;
+			maxRecords = nodePartitions.recordMax;
 		}
 
 		if (namespace != null) {
@@ -622,6 +624,11 @@ public abstract class Command {
 			fieldCount++;
 		}
 
+		if (maxRecords > 0) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		if (policy.recordsPerSecond > 0) {
 			dataOffset += 4 + FIELD_HEADER_SIZE;
 			fieldCount++;
@@ -634,9 +641,12 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-		// Estimate scan options size.
-		dataOffset += 2 + FIELD_HEADER_SIZE;
-		fieldCount++;
+		// Only set scan options for server versions < 4.9.
+		if (nodePartitions == null) {
+			// Estimate scan options size.
+			dataOffset += 2 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
 
 		// Estimate scan timeout size.
 		dataOffset += 4 + FIELD_HEADER_SIZE;
@@ -688,6 +698,10 @@ public abstract class Command {
 			}
 		}
 
+		if (maxRecords > 0) {
+			writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
+		}
+
 		if (policy.recordsPerSecond > 0) {
 			writeField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 		}
@@ -696,21 +710,19 @@ public abstract class Command {
 			writePredExp(policy.predExp, predSize);
 		}
 
-		writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-
-		byte priority = 0;
-
-		// Only set priority/failOnClusterChange for server versions < 4.9.
+		// Only set scan options for server versions < 4.9.
 		if (nodePartitions == null) {
-			priority = (byte)policy.priority.ordinal();
+			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+
+			byte priority = (byte)policy.priority.ordinal();
 			priority <<= 4;
 
 			if (policy.failOnClusterChange) {
 				priority |= 0x08;
 			}
+			dataBuffer[dataOffset++] = priority;
+			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		}
-		dataBuffer[dataOffset++] = priority;
-		dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 
 		// Write scan socket idle timeout.
 		writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
@@ -733,6 +745,7 @@ public abstract class Command {
 		int binNameSize = 0;
 		int partsFullSize = 0;
 		int partsPartialSize = 0;
+		long maxRecords = 0;
 
 		begin();
 
@@ -790,6 +803,7 @@ public abstract class Command {
 			if (nodePartitions != null) {
 				partsFullSize = nodePartitions.partsFull.size() * 2;
 				partsPartialSize = nodePartitions.partsPartial.size() * 20;
+				maxRecords = nodePartitions.recordMax;
 			}
 
 			if (partsFullSize > 0) {
@@ -802,9 +816,18 @@ public abstract class Command {
 				fieldCount++;
 			}
 
-			// Estimate scan options size.
-			dataOffset += 2 + FIELD_HEADER_SIZE;
-			fieldCount++;
+			// Estimate max records size;
+			if (maxRecords > 0) {
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
+			// Only set scan options for server versions < 4.9.
+			if (nodePartitions == null) {
+				// Estimate scan options size.
+				dataOffset += 2 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
 
 			// Estimate scan timeout size.
 			dataOffset += 4 + FIELD_HEADER_SIZE;
@@ -931,21 +954,23 @@ public abstract class Command {
 				}
 			}
 
-			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+			if (maxRecords > 0) {
+				writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
+			}
 
-			byte priority = 0;
-
-			// Only set priority/failOnClusterChange for server versions < 4.9.
+			// Only set scan options for server versions < 4.9.
 			if (nodePartitions == null) {
-				priority = (byte)policy.priority.ordinal();
+				writeFieldHeader(2, FieldType.SCAN_OPTIONS);
+
+				byte priority = (byte)policy.priority.ordinal();
 				priority <<= 4;
 
 				if (! write && ((QueryPolicy)policy).failOnClusterChange) {
 					priority |= 0x08;
 				}
+				dataBuffer[dataOffset++] = priority;
+				dataBuffer[dataOffset++] = (byte)100;
 			}
-			dataBuffer[dataOffset++] = priority;
-			dataBuffer[dataOffset++] = (byte)100;
 
 			// Write scan socket idle timeout.
 			writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);

@@ -78,7 +78,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			tracker.partitionDone(nodePartitions, generation);
 			return;
 		}
-		tracker.setDigest(key);
+		tracker.setDigest(nodePartitions, key);
 
 		Record record = parseRecord();
 

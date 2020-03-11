@@ -24,7 +24,22 @@ import com.aerospike.client.ResultCode;
  */
 public final class ScanPolicy extends Policy {
 	/**
+	 * Approximate number of records to return to client. This number is divided by the
+	 * number of nodes involved in the scan.  The actual number of records returned
+	 * may be less than maxRecords if node record counts are small and unbalanced across
+	 * nodes.
+	 * <p>
+	 * This field is supported on server versions >= 4.9.
+	 * <p>
+	 * Default: 0 (do not limit record count)
+	 */
+	public long maxRecords;
+
+	/**
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
+	 * <p>
+	 * This field is supported on server versions < 4.9.
+	 * For server versions >= 4.9, use {@link maxRecords}.
 	 * <p>
 	 * Default: 100
 	 */
@@ -78,6 +93,7 @@ public final class ScanPolicy extends Policy {
 	 */
 	public ScanPolicy(ScanPolicy other) {
 		super(other);
+		this.maxRecords = other.maxRecords;
 		this.scanPercent = other.scanPercent;
 		this.recordsPerSecond = other.recordsPerSecond;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;

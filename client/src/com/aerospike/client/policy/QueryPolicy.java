@@ -21,6 +21,18 @@ package com.aerospike.client.policy;
  */
 public class QueryPolicy extends Policy {
 	/**
+	 * Approximate number of records to return to client. This number is divided by the
+	 * number of nodes involved in the query.  The actual number of records returned
+	 * may be less than maxRecords if node record counts are small and unbalanced across
+	 * nodes.
+	 * <p>
+	 * This field is supported on server versions >= 4.9.
+	 * <p>
+	 * Default: 0 (do not limit record count)
+	 */
+	public long maxRecords;
+
+	/**
 	 * Maximum number of concurrent requests to server nodes at any point in time.
 	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries
 	 * will be made to 8 nodes in parallel.  When a query completes, a new query will
@@ -61,6 +73,7 @@ public class QueryPolicy extends Policy {
 	 */
 	public QueryPolicy(QueryPolicy other) {
 		super(other);
+		this.maxRecords = other.maxRecords;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.recordQueueSize = other.recordQueueSize;
 		this.includeBinData = other.includeBinData;

@@ -30,20 +30,32 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ScanPolicy;
 
 public final class PartitionTracker {
 	private final PartitionStatus[] partitionsAll;
+	private final int partitionsCapacity;
 	private final int partitionBegin;
 	private final int nodeCapacity;
 	private final Node nodeFilter;
 	private List<NodePartitions> nodePartitionsList;
-	private int partitionsCapacity;
-	private int partitionsRequested;
+	private long maxRecords;
 	private int sleepBetweenRetries;
 	public int socketTimeout;
 	public int totalTimeout;
 	public int iteration = 1;
 	private long deadline;
+
+	public PartitionTracker(ScanPolicy policy, Node[] nodes) {
+		this((Policy)policy, nodes);
+		this.maxRecords = policy.maxRecords;
+	}
+
+	public PartitionTracker(QueryPolicy policy, Node[] nodes) {
+		this((Policy)policy, nodes);
+		this.maxRecords = policy.maxRecords;
+	}
 
 	public PartitionTracker(Policy policy, Node[] nodes) {
 		this.partitionBegin = 0;
@@ -57,12 +69,32 @@ public final class PartitionTracker {
 		this.partitionsAll = init(policy, Node.PARTITIONS, null);
 	}
 
+	public PartitionTracker(ScanPolicy policy, Node nodeFilter) {
+		this((Policy)policy, nodeFilter);
+		this.maxRecords = policy.maxRecords;
+	}
+
+	public PartitionTracker(QueryPolicy policy, Node nodeFilter) {
+		this((Policy)policy, nodeFilter);
+		this.maxRecords = policy.maxRecords;
+	}
+
 	public PartitionTracker(Policy policy, Node nodeFilter) {
 		this.partitionBegin = 0;
 		this.nodeCapacity = 1;
 		this.nodeFilter = nodeFilter;
 		this.partitionsCapacity = Node.PARTITIONS;
 		this.partitionsAll = init(policy, Node.PARTITIONS, null);
+	}
+
+	public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter) {
+		this((Policy)policy, nodes, filter);
+		this.maxRecords = policy.maxRecords;
+	}
+
+	public PartitionTracker(QueryPolicy policy, Node[] nodes, PartitionFilter filter) {
+		this((Policy)policy, nodes, filter);
+		this.maxRecords = policy.maxRecords;
 	}
 
 	public PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter) {
@@ -120,7 +152,7 @@ public final class PartitionTracker {
 	}
 
 	public List<NodePartitions> assignPartitionsToNodes(Cluster cluster, String namespace) {
-		// System.out.println("Round " + iteration);
+		//System.out.println("Round " + iteration);
 		List<NodePartitions> list = new ArrayList<NodePartitions>(nodeCapacity);
 
 		HashMap<String,Partitions> map = cluster.partitionMap;
@@ -131,7 +163,6 @@ public final class PartitionTracker {
 		}
 
 		AtomicReferenceArray<Node> master = partitions.replicas[0];
-		partitionsRequested = 0;
 
 		for (PartitionStatus part : partitionsAll) {
 			if (! part.done) {
@@ -148,17 +179,35 @@ public final class PartitionTracker {
 					continue;
 				}
 
-				NodePartitions nps = findNode(list, node);
+				NodePartitions np = findNode(list, node);
 
-				if (nps == null) {
+				if (np == null) {
 					// If the partition map is in a transitional state, multiple
 					// NodePartitions instances (each with different partitions)
 					// may be created for a single node.
-					nps = new NodePartitions(node, partitionsCapacity);
-					list.add(nps);
+					np = new NodePartitions(node, partitionsCapacity);
+					list.add(np);
 				}
-				nps.addPartition(part);
-				partitionsRequested++;
+				np.addPartition(part);
+			}
+		}
+
+		if (maxRecords > 0) {
+			// Distribute maxRecords across nodes.
+			int nodeSize = list.size();
+
+			if (maxRecords < nodeSize) {
+				// Only include nodes that have at least 1 record requested.
+				nodeSize = (int)maxRecords;
+				list = list.subList(0, nodeSize);
+			}
+
+			long max = maxRecords / nodeSize;
+			int rem = (int)(maxRecords - (max * nodeSize));
+
+			for (int i = 0; i < nodeSize; i++) {
+				NodePartitions np = list.get(i);
+				np.recordMax = i < rem ? max + 1 : max;
 			}
 		}
 		nodePartitionsList = list;
@@ -180,20 +229,26 @@ public final class PartitionTracker {
 		nodePartitions.partsReceived++;
 	}
 
-	public void setDigest(Key key) {
+	public void setDigest(NodePartitions nodePartitions, Key key) {
 		int partitionId = Partition.getPartitionId(key.digest);
 		partitionsAll[partitionId - partitionBegin].digest = key.digest;
+		nodePartitions.recordCount++;
 	}
 
 	public boolean isComplete(Policy policy) {
-		int partitionsReceived = 0;
+		long recordCount = 0;
+		int partsRequested = 0;
+		int partsReceived = 0;
 
 		for (NodePartitions np : nodePartitionsList) {
-			partitionsReceived += np.partsReceived;
-			// System.out.println("Node " + np.node + ' ' + " partsFull=" + np.partsFull.size() + " partsPartial=" + np.partsPartial.size() + " partsReceived=" + np.partsReceived);
+			recordCount += np.recordCount;
+			partsRequested += np.partsRequested;
+			partsReceived += np.partsReceived;
+			//System.out.println("Node " + np.node + " partsFull=" + np.partsFull.size() + " partsPartial=" + np.partsPartial.size() +
+			//	" partsReceived=" + np.partsReceived + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 		}
 
-		if (partitionsReceived >= partitionsRequested) {
+		if (partsReceived >= partsRequested || (maxRecords > 0 && recordCount >= maxRecords)) {
 			return true;
 		}
 
@@ -226,7 +281,9 @@ public final class PartitionTracker {
 		}
 
 		// Prepare for next iteration.
-		partitionsCapacity = partitionsRequested - partitionsReceived;
+		if (maxRecords > 0) {
+			maxRecords -= recordCount;
+		}
 		iteration++;
 		return false;
 	}
@@ -247,6 +304,9 @@ public final class PartitionTracker {
 		public final Node node;
 		public final List<PartitionStatus> partsFull;
 		public final List<PartitionStatus> partsPartial;
+		public long recordCount;
+		public long recordMax;
+		public int partsRequested;
 		public int partsReceived;
 
 		public NodePartitions(Node node, int capacity) {
@@ -262,6 +322,7 @@ public final class PartitionTracker {
 			else {
 				partsPartial.add(part);
 			}
+			partsRequested++;
 		}
 	}
 
