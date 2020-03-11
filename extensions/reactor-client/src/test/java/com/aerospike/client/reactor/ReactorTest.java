@@ -46,11 +46,11 @@ import io.netty.channel.nio.NioEventLoopGroup;
 @RunWith(Parameterized.class)
 abstract public class ReactorTest {
 
-	final Args args;
+	protected final Args args;
 
 	EventLoops eventLoops;
-	AerospikeReactorClient reactorClient;
-	AerospikeClient client;
+	protected AerospikeReactorClient reactorClient;
+	protected AerospikeClient client;
 
 	@Parameterized.Parameters(name = "{0}")
 	public static Iterable<Object[]> parameters() {
