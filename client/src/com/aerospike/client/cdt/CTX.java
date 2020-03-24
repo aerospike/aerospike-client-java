@@ -41,6 +41,13 @@ public final class CTX {
 	}
 
 	/**
+	 * Create list with given type at index offset.
+	 */
+	public static CTX listIndexCreate(int index, ListOrder order, boolean pad) {
+		return new CTX(0x10 | order.getFlag(pad), Value.get(index));
+	}
+
+	/**
 	 * Lookup list by rank.
 	 * <ul>
 	 * <li>0 = smallest value</li>
@@ -92,6 +99,13 @@ public final class CTX {
 	 */
 	public static CTX mapKey(Value key) {
 		return new CTX(0x22, key);
+	}
+
+	/**
+	 * Create map with given type at map key.
+	 */
+	public static CTX mapKeyCreate(Value key, MapOrder order) {
+		return new CTX(0x22 | order.flag, key);
 	}
 
 	/**

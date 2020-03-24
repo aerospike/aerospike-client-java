@@ -1141,4 +1141,64 @@ public class TestOperateList extends TestSync {
 		assertEquals(4, (long)(Long)list.get(1));
 		assertEquals(11, (long)(Long)list.get(2));
 	}
+
+	@Test
+	public void operateListCreateContext() {
+		Key key = new Key(args.namespace, args.set, "oplkey20");
+
+		client.delete(null, key);
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(7));
+		l1.add(Value.get(9));
+		l1.add(Value.get(5));
+
+		List<Value> l2 = new ArrayList<Value>();
+		l2.add(Value.get(1));
+		l2.add(Value.get(2));
+		l2.add(Value.get(3));
+
+		List<Value> l3 = new ArrayList<Value>();
+		l3.add(Value.get(6));
+		l3.add(Value.get(5));
+		l3.add(Value.get(4));
+		l3.add(Value.get(1));
+
+		List<Value> inputList = new ArrayList<Value>();
+		inputList.add(Value.get(l1));
+		inputList.add(Value.get(l2));
+		inputList.add(Value.get(l3));
+
+		// Create list.
+		Record record = client.operate(null, key,
+			ListOperation.appendItems(new ListPolicy(ListOrder.ORDERED, 0), binName, inputList),
+			Operation.get(binName)
+		);
+		//System.out.println("Record: " + record);
+
+		// Append value to new list created after the original 3 lists.
+		record = client.operate(null, key,
+			ListOperation.append(binName, Value.get(2), CTX.listIndexCreate(3, ListOrder.ORDERED, false)),
+			//ListOperation.create(binName, ListOrder.ORDERED, false, CTX.listIndex(3)),
+			//ListOperation.append(binName, Value.get(2), CTX.listIndex(3)),
+			Operation.get(binName)
+		);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 0;
+
+		long count = (Long)results.get(i++);
+		assertEquals(1, count);
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(4, list.size());
+
+		// Test last nested list.
+		list = (List<?>)list.get(1);
+		assertEquals(1, list.size());
+		assertEquals(2, (long)(Long)list.get(0));
+	}
 }

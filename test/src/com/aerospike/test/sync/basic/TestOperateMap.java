@@ -1147,4 +1147,50 @@ public class TestOperateMap extends TestSync {
 		assertEquals(3L, entry.getKey());
 		assertEquals("order", entry.getValue());
 	}
+
+	@Test
+	public void operateMapCreateContext() {
+		Key key = new Key(args.namespace, args.set, "opmkey22");
+		client.delete(null, key);
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get("key11"), Value.get(9));
+		m1.put(Value.get("key12"), Value.get(4));
+
+		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		m2.put(Value.get("key21"), Value.get(3));
+		m2.put(Value.get("key22"), Value.get(5));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(m1));
+		inputMap.put(Value.get("key2"), Value.get(m2));
+
+		// Create maps.
+		client.put(null, key, new Bin(binName, inputMap));
+
+		// Set map value to 11 for map key "key21" inside of map key "key2"
+		// and retrieve all maps.
+		Record record = client.operate(null, key,
+				MapOperation.create(binName, MapOrder.KEY_ORDERED, CTX.mapKey(Value.get("key3"))),
+				MapOperation.put(MapPolicy.Default, binName, Value.get("key31"), Value.get(99), CTX.mapKey(Value.get("key3"))),
+				//MapOperation.put(MapPolicy.Default, binName, Value.get("key31"), Value.get(99), CTX.mapKeyCreate(Value.get("key3"), MapOrder.KEY_ORDERED)),
+				Operation.get(binName)
+				);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		int i = 1;
+
+		long count = (Long)results.get(i++);
+		assertEquals(1, count);
+
+		Map<?,?> map = (Map<?,?>)results.get(i++);
+		assertEquals(3, map.size());
+
+		map = (Map<?,?>)map.get("key3");
+		long v = (Long)map.get("key31");
+		assertEquals(99, v);
+	}
 }

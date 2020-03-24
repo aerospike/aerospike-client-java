@@ -88,6 +88,24 @@ public class ListOperation {
 	private static final int REMOVE_BY_VALUE_REL_RANK_RANGE = 40;
 
 	/**
+	 * Create list create operation.
+	 * Server creates list at given context level. The context is allowed to be beyond list
+	 * boundaries only if pad is set to true.  In that case, nil list entries will be inserted to
+	 * satisfy the context position.
+	 */
+	public static Operation create(String binName, ListOrder order, boolean pad, CTX... ctx) {
+		// If context not defined, the set order for top-level bin list.
+		if (ctx == null || ctx.length == 0) {
+			return setOrder(binName, order);
+		}
+
+		Packer packer = new Packer();
+		CDT.init(packer, ctx, SET_TYPE, 1, order.getFlag(pad));
+		packer.packInt(order.attributes);
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
+	}
+
+	/**
 	 * Create set list order operation.
 	 * Server sets list order.  Server returns null.
 	 */

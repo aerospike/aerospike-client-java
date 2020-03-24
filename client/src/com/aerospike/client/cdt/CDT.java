@@ -140,4 +140,26 @@ public abstract class CDT {
 			}
 		}
 	}
+
+	protected static void init(Packer packer, CTX[] ctx, int command, int count, int flag) {
+		packer.packArrayBegin(3);
+		packer.packInt(0xff);
+		packer.packArrayBegin(ctx.length * 2);
+
+		CTX c;
+		int last = ctx.length - 1;
+
+		for (int i = 0; i < last; i++) {
+			c = ctx[i];
+			packer.packInt(c.id);
+			c.value.pack(packer);
+		}
+
+		c = ctx[last];
+		packer.packInt(c.id | flag);
+		c.value.pack(packer);
+
+		packer.packArrayBegin(count + 1);
+		packer.packInt(command);
+	}
 }

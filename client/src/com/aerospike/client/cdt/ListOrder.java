@@ -35,4 +35,8 @@ public enum ListOrder {
 	private ListOrder(int attributes) {
 		this.attributes = attributes;
 	}
+
+	int getFlag(boolean pad) {
+		return (attributes == 1)? 0xc0 : pad ? 0x80 : 0x40;
+	}
 }
