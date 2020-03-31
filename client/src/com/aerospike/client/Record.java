@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.aerospike.client.Value.GeoJSONValue;
+import com.aerospike.client.Value.HLLValue;
 
 /**
  * Container object for records.  Records are equivalent to rows.
@@ -160,7 +161,14 @@ public final class Record {
 	 * Get bin value as GeoJSON Value.
 	 */
 	public GeoJSONValue getGeoJSONValue(String name) {
-		return (GeoJSONValue) getValue(name);
+		return (GeoJSONValue)getValue(name);
+	}
+
+	/**
+	 * Get bin value as HLL Value.
+	 */
+	public HLLValue getHLLValue(String name) {
+		return (HLLValue)getValue(name);
 	}
 
 	/**

@@ -52,6 +52,7 @@ public final class OperateArgs {
 		for (Operation operation : operations) {
 			switch (operation.type) {
 			case BIT_READ:
+			case HLL_READ:
 			case MAP_READ:
 				// Map operations require respondAllOps to be true.
 				respondAllOps = true;
@@ -73,6 +74,7 @@ public final class OperateArgs {
 				break;
 
 			case BIT_MODIFY:
+			case HLL_MODIFY:
 			case MAP_MODIFY:
 				// Map operations require respondAllOps to be true.
 				respondAllOps = true;

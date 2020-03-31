@@ -31,12 +31,7 @@ public final class ParticleType {
 	//public static final int RUBY_BLOB = 10;
 	//public static final int PHP_BLOB = 11;
 	//public static final int ERLANG_BLOB = 12;
-	//public static final int SEGMENT_POINTER = 13;
-	//public static final int RTA_LIST = 14;
-	//public static final int RTA_DICT = 15;
-	//public static final int RTA_APPEND_DICT = 16;
-	//public static final int RTA_APPEND_LIST = 17;
-	//public static final int LUA_BLOB = 18;
+	public static final int HLL = 18;
 	public static final int MAP = 19;
 	public static final int LIST = 20;
 	public static final int GEOJSON = 23;

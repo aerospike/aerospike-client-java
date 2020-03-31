@@ -97,7 +97,9 @@ public final class Operation {
 		TOUCH(11),
 		BIT_READ(12),
 		BIT_MODIFY(13),
-		DELETE(14);
+		DELETE(14),
+		HLL_READ(15),
+		HLL_MODIFY(16);
 
 		public final int protocolType;
 

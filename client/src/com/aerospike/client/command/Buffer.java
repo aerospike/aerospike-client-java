@@ -71,6 +71,9 @@ public final class Buffer {
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
 
+		case ParticleType.HLL:
+			return Buffer.bytesToHLL(buf, offset, len);
+
 		case ParticleType.LIST:
 			return Unpacker.unpackObjectList(buf, offset, len);
 
@@ -358,6 +361,11 @@ public final class Buffer {
 		int ncells = bytesToShort(buf, offset + 1);
 		int hdrsz = 1 + 2 + (ncells * 8);
 		return Value.getAsGeoJSON(Buffer.utf8ToString(buf, offset + hdrsz, len - hdrsz));
+	}
+
+	public static Object bytesToHLL(byte[] buf, int offset, int len) {
+		byte[] bytes = Arrays.copyOfRange(buf, offset, offset+len);
+		return Value.getAsHLL(bytes);
 	}
 
 	public static Object bytesToNumber(byte[] buf, int offset, int len) {

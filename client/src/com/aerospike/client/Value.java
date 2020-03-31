@@ -170,6 +170,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get HyperLogLog or null value instance.
+	 */
+	public static Value getAsHLL(byte[] value) {
+		return (value == null)? NullValue.INSTANCE : new HLLValue(value);
+	}
+
+	/**
 	 * Get null value instance.
 	 */
 	public static Value getAsNull() {
@@ -1125,6 +1132,74 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 	        return value.hashCode();
+		}
+	}
+
+	/**
+	 * HyperLogLog value.
+	 */
+	public static final class HLLValue extends Value {
+		private final byte[] bytes;
+
+		public HLLValue(byte[] bytes) {
+			this.bytes = bytes;
+		}
+
+		@Override
+		public int estimateSize() {
+			return bytes.length;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {
+			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
+			return bytes.length;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packBytes(bytes);
+		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: HLL");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.HLL;
+		}
+
+		@Override
+		public Object getObject() {
+			return bytes;
+		}
+
+		public byte[] getBytes() {
+			return bytes;
+		}
+
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return new LuaBytes(instance, bytes);
+		}
+
+		@Override
+		public String toString() {
+			return Buffer.bytesToHexString(bytes);
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				Arrays.equals(this.bytes, ((HLLValue)other).bytes));
+		}
+
+		@Override
+		public int hashCode() {
+			return Arrays.hashCode(bytes);
 		}
 	}
 
