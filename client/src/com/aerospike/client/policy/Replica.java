@@ -18,8 +18,7 @@ package com.aerospike.client.policy;
 
 /**
  * Defines algorithm used to determine the target node for a command.
- * The replica algorithm only affects single record commands.
- * Batch, scan and query are not affected by replica algorithm.
+ * Scan and query are not affected by replica algorithm.
  */
 public enum Replica {
 	/**
