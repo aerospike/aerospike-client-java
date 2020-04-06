@@ -39,7 +39,7 @@ public final class ScanPolicy extends Policy {
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
 	 * <p>
 	 * This field is supported on server versions < 4.9.
-	 * For server versions >= 4.9, use {@link maxRecords}.
+	 * For server versions >= 4.9, use {@link ScanPolicy#maxRecords}.
 	 * <p>
 	 * Default: 100
 	 */
