@@ -123,6 +123,7 @@ public class Main implements Log.Callback {
 		options.addOption("bns","batchNamespaces", true, "Set batch namespaces. Default is regular namespace.");
 		options.addOption("s", "set", true, "Set the Aerospike set name. Default: testset");
 		options.addOption("c", "clusterName", true, "Set expected cluster name.");
+		options.addOption("servicesAlternate", false, "Set to enable use of services-alternate instead of services in info request during cluster tending");
 
 		options.addOption("lt", "loginTimeout", true,
 			"Set expected loginTimeout in milliseconds. The timeout is used when user " +
@@ -420,6 +421,10 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("clusterName")) {
 			clientPolicy.clusterName = line.getOptionValue("clusterName");
+		}
+
+		if (line.hasOption("servicesAlternate")) {
+			clientPolicy.useServicesAlternate = true;
 		}
 
 		if (line.hasOption("keys")) {
