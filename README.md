@@ -8,7 +8,6 @@ Aerospike Java client.  This package contains full source code for these project
 * benchmarks:       Java client benchmarks.
 * servlets:         Java client web servlet example.
 * test:             Java client unit tests.
-* extensions:       Java client extension libraries.
 
 Prerequisites:
 
@@ -29,5 +28,3 @@ Maven build scripts are also provided.
 Build instructions:
 
     ./build_all
-
-Optional extensions are built separately.
