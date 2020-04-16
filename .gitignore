@@ -11,3 +11,4 @@ apidocs
 *.out
 *.jar
 *.iml
+.idea/

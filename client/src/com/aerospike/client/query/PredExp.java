@@ -364,7 +364,7 @@ public abstract class PredExp implements Serializable {
 	 * PredExp.integerValue(500)
 	 * PredExp.integerGreater()
 	 * PredExp.mapBin("m")
-	 * PredExp.mapKeyIterateAnd("v")
+	 * PredExp.mapValIterateAnd("v")
 	 * </pre>
 	 */
 	public static PredExp mapValIterateAnd(String varName) {
