@@ -103,6 +103,13 @@ public final class ScanPolicy extends Policy {
 	}
 
 	/**
+	 * Copy scan policy from another policy.
+	 */
+	public ScanPolicy(Policy other) {
+		super(other);
+	}
+
+	/**
 	 * Default constructor.
 	 * <p>
 	 * Set maxRetries for scans on server versions >= 4.9. All other
