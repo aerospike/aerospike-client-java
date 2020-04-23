@@ -26,7 +26,9 @@ public class QueryPolicy extends Policy {
 	 * may be less than maxRecords if node record counts are small and unbalanced across
 	 * nodes.
 	 * <p>
-	 * This field is supported on server versions >= 4.9.
+	 * maxRecords is supported on server versions >= 4.9 for scans only.  maxRecords
+	 * exists here because query methods will convert into a scan when the query
+	 * filter is null.  maxRecords is ignored when the query contains a filter.
 	 * <p>
 	 * Default: 0 (do not limit record count)
 	 */
