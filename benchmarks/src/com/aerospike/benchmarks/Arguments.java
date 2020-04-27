@@ -22,7 +22,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
-
+import java.util.Random;
 
 public class Arguments {
 	public String namespace;
@@ -104,8 +104,45 @@ public class Arguments {
 		case 'D':
 			return Value.get(System.currentTimeMillis());
 
+		case 'R':
+			spec.size = Math.abs(spec.size / 8);
+			// ... relies on size being a multiple of 8, which it will be.
+			spec.rand_pct = Math.abs(spec.rand_pct);
+			long[] data = new long[spec.size];
+			int idx = 0;
+			int rand_pct = spec.rand_pct;
+			if (rand_pct < 100) {
+				int n_zeros = (spec.size * (100 - rand_pct)) / 100;
+				int n_rands = spec.size - n_zeros;
+				for (int z = n_zeros; z != 0; z--) {
+					data[idx++] = 0;
+				}
+				for (int r = n_rands; r != 0; r--) {
+					data[idx++] = xorshift128plus();
+				}
+			}
+			while (idx < spec.size) {
+				data[idx++] = xorshift128plus();
+			}
+			return Value.get(data);
+
 		default:
 			return Value.getAsNull();
 		}
+	}
+
+	private static long xorshift128plus() {
+		Random random = new Random();
+		long tl_seed0 = ((long)random.nextInt() << 32) | (long)random.nextInt();
+		long tl_seed1 = ((long)random.nextInt() << 32) | (long)random.nextInt();
+
+		long s1 = tl_seed0;
+		long s0 = tl_seed1;
+
+		tl_seed0 = s0;
+		s1 ^= s1 << 23;
+		tl_seed1 = s1 ^ s0 ^ (s1 >> 17) ^ (s0 >> 26);
+
+		return tl_seed1 + s0;
 	}
 }

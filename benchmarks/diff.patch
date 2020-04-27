@@ -1,0 +1,105 @@
+diff --git a/benchmarks/src/com/aerospike/benchmarks/Arguments.java b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/Arguments.java
+index a033307..b62ad3f 100644
+--- a/benchmarks/src/com/aerospike/benchmarks/Arguments.java
++++ b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/Arguments.java
+@@ -22,7 +22,7 @@ import com.aerospike.client.policy.BatchPolicy;
+ import com.aerospike.client.policy.Policy;
+ import com.aerospike.client.policy.WritePolicy;
+ import com.aerospike.client.util.RandomShift;
+-
++import java.util.Random;
+ 
+ public class Arguments {
+ 	public String namespace;
+@@ -104,8 +104,45 @@ public class Arguments {
+ 		case 'D':
+ 			return Value.get(System.currentTimeMillis());
+ 
++		case 'R':
++			spec.size = Math.abs(spec.size / 8);
++			// ... relies on size being a multiple of 8, which it will be.
++			spec.rand_pct = Math.abs(spec.rand_pct);
++			long[] data = new long[spec.size];
++			int idx = 0;
++			int rand_pct = spec.rand_pct;
++			if (rand_pct < 100) {
++				int n_zeros = (spec.size * (100 - rand_pct)) / 100;
++				int n_rands = spec.size - n_zeros;
++				for (int z = n_zeros; z != 0; z--) {
++					data[idx++] = 0;
++				}
++				for (int r = n_rands; r != 0; r--) {
++					data[idx++] = xorshift128plus();
++				}
++			}
++			while (idx < spec.size) {
++				data[idx++] = xorshift128plus();
++			}
++			return Value.get(data);
++
+ 		default:
+ 			return Value.getAsNull();
+ 		}
+ 	}
++
++	private static long xorshift128plus() {
++		Random random = new Random();
++		long tl_seed0 = ((long)random.nextInt() << 32) | (long)random.nextInt();
++		long tl_seed1 = ((long)random.nextInt() << 32) | (long)random.nextInt();
++
++		long s1 = tl_seed0;
++		long s0 = tl_seed1;
++
++		tl_seed0 = s0;
++		s1 ^= s1 << 23;
++		tl_seed1 = s1 ^ s0 ^ (s1 >> 17) ^ (s0 >> 26);
++
++		return tl_seed1 + s0;
++	}
+ }
+diff --git a/benchmarks/src/com/aerospike/benchmarks/DBObjectSpec.java b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/DBObjectSpec.java
+index f65d8f1..f8e1408 100644
+--- a/benchmarks/src/com/aerospike/benchmarks/DBObjectSpec.java
++++ b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/DBObjectSpec.java
+@@ -19,4 +19,5 @@ package com.aerospike.benchmarks;
+ class DBObjectSpec {
+ 	char type;
+ 	int size;
++	int rand_pct;
+ }
+diff --git a/benchmarks/src/com/aerospike/benchmarks/Main.java b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/Main.java
+index 84d9c87..265ec60 100644
+--- a/benchmarks/src/com/aerospike/benchmarks/Main.java
++++ b/home/citrusleaf/tong/aerospike-client-java/benchmarks2/src/com/aerospike/benchmarks/Main.java
+@@ -143,7 +143,7 @@ public class Main implements Log.Callback {
+ 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
+ 			);
+ 		options.addOption("o", "objectSpec", true,
+-			"I | S:<size> | B:<size>\n" +
++			"I | S:<size> | B:<size> | R:<size>:<rand_pct>\n" +
+ 			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
+ 			"for integer, 'S' for string, or 'B' for Java blob. If type is 'I' (integer), " +
+ 			"do not set a size (integers are always 8 bytes). If object_type is 'S' " +
+@@ -487,6 +487,9 @@ public class Main implements Log.Callback {
+ 				dbobj.type = objarr[0].charAt(0);
+ 				if (objarr.length > 1) {
+ 					dbobj.size = Integer.parseInt(objarr[1]);
++					if (objarr.length == 3) {
++						dbobj.rand_pct = Integer.parseInt(objarr[2]);
++					}
+ 				}
+ 				args.objectSpec[i] = dbobj;
+ 			}
+@@ -945,7 +948,11 @@ public class Main implements Log.Callback {
+ 			case 'B':
+ 				System.out.println("byte[" + spec.size + "]");
+ 				break;
+-			}
++
++			case 'R':
++			        System.out.println("random[" + spec.size + "]");
++                                break;
++                        }
+ 			binCount++;
+ 		}
+ 
