@@ -144,7 +144,7 @@ public class Main implements Log.Callback {
 			"Each bin will contain an object defined with -o. The default is single bin (-b 1)."
 			);
 		options.addOption("o", "objectSpec", true,
-			"I | S:<size> | B:<size>\n" +
+			"I | S:<size> | B:<size> | R:<size>:<rand_pct>\n" +
 			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
 			"for integer, 'S' for string, or 'B' for Java blob. If type is 'I' (integer), " +
 			"do not set a size (integers are always 8 bytes). If object_type is 'S' " +
@@ -492,6 +492,9 @@ public class Main implements Log.Callback {
 				dbobj.type = objarr[0].charAt(0);
 				if (objarr.length > 1) {
 					dbobj.size = Integer.parseInt(objarr[1]);
+					if (objarr.length == 3) {
+						dbobj.rand_pct = Integer.parseInt(objarr[2]);
+					}
 				}
 				args.objectSpec[i] = dbobj;
 			}
@@ -949,6 +952,10 @@ public class Main implements Log.Callback {
 
 			case 'B':
 				System.out.println("byte[" + spec.size + "]");
+				break;
+
+			case 'R':
+				System.out.println("random[" + spec.size + "]");
 				break;
 			}
 			binCount++;

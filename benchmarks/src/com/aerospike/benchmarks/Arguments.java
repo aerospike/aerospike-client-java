@@ -101,6 +101,28 @@ public class Arguments {
             }
 			return Value.get(sb.toString());
 
+		case 'R':
+			spec.size = Math.abs(spec.size / 8);
+			// ... relies on size being a multiple of 8, which it will be.
+			spec.rand_pct = Math.abs(spec.rand_pct);
+			long[] data = new long[spec.size];
+			int idx = 0;
+			int rand_pct = spec.rand_pct;
+			if (rand_pct < 100) {
+				int n_zeros = (spec.size * (100 - rand_pct)) / 100;
+				int n_rands = spec.size - n_zeros;
+				for (int z = n_zeros; z != 0; z--) {
+					data[idx++] = 0;
+				}
+				for (int r = n_rands; r != 0; r--) {
+					data[idx++] = random.nextLong();
+				}
+			}
+			while (idx < spec.size) {
+				data[idx++] = random.nextLong();
+			}
+			return Value.get(data);
+
 		case 'D':
 			return Value.get(System.currentTimeMillis());
 
