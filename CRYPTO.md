@@ -3,7 +3,7 @@ GNU Crypto vs Bouncy Castle
 
 A RipeMD-160 hash is performed on every key sent to an Aerospike Server.
 AerospikeClient uses GNU Crypto's RipeMD-160 hash algorithm by default due to 
-it's superior performance over Bouncy Castle's algorithm.  The overall
+its superior performance over Bouncy Castle's algorithm.  The overall
 AerospikeClient performance difference is much less noticeable because the hash
 is only one of many factors that determine performance.
 
