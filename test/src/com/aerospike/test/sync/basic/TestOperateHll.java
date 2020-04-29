@@ -49,91 +49,91 @@ public class TestOperateHll extends TestSync {
 			new Key(args.namespace, args.set, "ophkey0"),
 			new Key(args.namespace, args.set, "ophkey1"),
 			new Key(args.namespace, args.set, "ophkey2")};
-	private static final int n_entries = 1 << 18;
+	private static final int nEntries = 1 << 18;
 
-	private static final int minIndexBits = 4;
-	private static final int maxIndexBits = 16;
-	private static final int minMinhashBits = 4;
-	private static final int maxMinhashBits = 51;
+	private static final int minNIndexBits = 4;
+	private static final int maxNIndexBits = 16;
+	private static final int minNMinhashBits = 4;
+	private static final int maxNMinhashBits = 51;
 
 	private static final ArrayList<Value> entries = new ArrayList<Value>();
-	private static final ArrayList<Integer> legalIndexBits = new ArrayList<Integer>();
+	private static final ArrayList<Integer> legalNIndexBits = new ArrayList<Integer>();
 	private static final ArrayList<ArrayList<Integer>> legalDescriptions = new ArrayList<ArrayList<Integer>>();
 	private static final ArrayList<ArrayList<Integer>> illegalDescriptions = new ArrayList<ArrayList<Integer>>();
 
 	@BeforeClass
 	public static void createData() {
-		for (int i = 0; i < n_entries; i++) {
+		for (int i = 0; i < nEntries; i++) {
 			entries.add(new StringValue("key " + i));
 		}
 
-		for (int index_bits = minIndexBits; index_bits <= maxIndexBits; index_bits += 4) {
-			int combined_bits = maxMinhashBits + index_bits;
-			int max_allowed_minhash_bits = maxMinhashBits;
+		for (int nIndexBits = minNIndexBits; nIndexBits <= maxNIndexBits; nIndexBits += 4) {
+			int nCombinedBits = maxNMinhashBits + nIndexBits;
+			int maxAllowedNMinhashBits = maxNMinhashBits;
 
-			if (combined_bits > 64) {
-				max_allowed_minhash_bits -= combined_bits - 64;
+			if (nCombinedBits > 64) {
+				maxAllowedNMinhashBits -= nCombinedBits - 64;
 			}
 
-			int mid_minhash_bits = (max_allowed_minhash_bits + index_bits) / 2;
-			ArrayList<Integer> legal_zero = new ArrayList<Integer>();
-			ArrayList<Integer> legal_min = new ArrayList<Integer>();
-			ArrayList<Integer> legal_mid = new ArrayList<Integer>();
-			ArrayList<Integer> legal_max = new ArrayList<Integer>();
+			int midNMinhashBits = (maxAllowedNMinhashBits + nIndexBits) / 2;
+			ArrayList<Integer> legalZero = new ArrayList<Integer>();
+			ArrayList<Integer> legalMin = new ArrayList<Integer>();
+			ArrayList<Integer> legalMid = new ArrayList<Integer>();
+			ArrayList<Integer> legalMax = new ArrayList<Integer>();
 
-			legalIndexBits.add(index_bits);
-			legal_zero.add(index_bits);
-			legal_min.add(index_bits);
-			legal_mid.add(index_bits);
-			legal_max.add(index_bits);
+			legalNIndexBits.add(nIndexBits);
+			legalZero.add(nIndexBits);
+			legalMin.add(nIndexBits);
+			legalMid.add(nIndexBits);
+			legalMax.add(nIndexBits);
 
-			legal_zero.add(0);
-			legal_min.add(minMinhashBits);
-			legal_mid.add(mid_minhash_bits);
-			legal_max.add(max_allowed_minhash_bits);
+			legalZero.add(0);
+			legalMin.add(minNMinhashBits);
+			legalMid.add(midNMinhashBits);
+			legalMax.add(maxAllowedNMinhashBits);
 
-			legalDescriptions.add(legal_zero);
-			legalDescriptions.add(legal_min);
-			legalDescriptions.add(legal_mid);
-			legalDescriptions.add(legal_max);
+			legalDescriptions.add(legalZero);
+			legalDescriptions.add(legalMin);
+			legalDescriptions.add(legalMid);
+			legalDescriptions.add(legalMax);
 		}
 
-		for (int index_bits = minIndexBits - 1; index_bits <= maxIndexBits + 5; index_bits += 4) {
-			if (index_bits < minIndexBits || index_bits > maxIndexBits) {
-				ArrayList<Integer> illegal_zero = new ArrayList<Integer>();
-				ArrayList<Integer> illegal_min = new ArrayList<Integer>();
-				ArrayList<Integer> illegal_max = new ArrayList<Integer>();
+		for (int indexBits = minNIndexBits - 1; indexBits <= maxNIndexBits + 5; indexBits += 4) {
+			if (indexBits < minNIndexBits || indexBits > maxNIndexBits) {
+				ArrayList<Integer> illegalZero = new ArrayList<Integer>();
+				ArrayList<Integer> illegalMin = new ArrayList<Integer>();
+				ArrayList<Integer> illegalMax = new ArrayList<Integer>();
 
-				illegal_zero.add(index_bits);
-				illegal_min.add(index_bits);
-				illegal_max.add(index_bits);
+				illegalZero.add(indexBits);
+				illegalMin.add(indexBits);
+				illegalMax.add(indexBits);
 
-				illegal_zero.add(0);
-				illegal_min.add(minMinhashBits - 1);
-				illegal_max.add(maxMinhashBits);
+				illegalZero.add(0);
+				illegalMin.add(minNMinhashBits - 1);
+				illegalMax.add(maxNMinhashBits);
 
-				illegalDescriptions.add(illegal_zero);
-				illegalDescriptions.add(illegal_min);
-				illegalDescriptions.add(illegal_max);
+				illegalDescriptions.add(illegalZero);
+				illegalDescriptions.add(illegalMin);
+				illegalDescriptions.add(illegalMax);
 			}
 			else {
-				ArrayList<Integer> illegal_min = new ArrayList<Integer>();
-				ArrayList<Integer> illegal_max = new ArrayList<Integer>();
-				ArrayList<Integer> illegal_max1 = new ArrayList<Integer>();
+				ArrayList<Integer> illegalMin = new ArrayList<Integer>();
+				ArrayList<Integer> illegalMax = new ArrayList<Integer>();
+				ArrayList<Integer> illegalMax1 = new ArrayList<Integer>();
 
-				illegal_min.add(index_bits);
-				illegal_max.add(index_bits);
+				illegalMin.add(indexBits);
+				illegalMax.add(indexBits);
 
-				illegal_min.add(minMinhashBits - 1);
-				illegal_max.add(maxMinhashBits + 1);
+				illegalMin.add(minNMinhashBits - 1);
+				illegalMax.add(maxNMinhashBits + 1);
 
-				illegalDescriptions.add(illegal_min);
-				illegalDescriptions.add(illegal_max);
+				illegalDescriptions.add(illegalMin);
+				illegalDescriptions.add(illegalMax);
 
-				if (index_bits + maxMinhashBits > 64) {
-					illegal_max1.add(index_bits);
-					illegal_max1.add(1 + maxMinhashBits - (64 - (index_bits + maxMinhashBits)));
-					illegalDescriptions.add(illegal_max1);
+				if (indexBits + maxNMinhashBits > 64) {
+					illegalMax1.add(indexBits);
+					illegalMax1.add(1 + maxNMinhashBits - (64 - (indexBits + maxNMinhashBits)));
+					illegalDescriptions.add(illegalMax1);
 				}
 			}
 		}
@@ -175,42 +175,42 @@ public class TestOperateHll extends TestSync {
 		return record;
 	}
 
-	public boolean checkBits(int index_bits, int minhash_bits) {
-		return ! (index_bits < minIndexBits || index_bits > maxIndexBits ||
-				(minhash_bits != 0 && minhash_bits < minMinhashBits) ||
-				minhash_bits > maxMinhashBits || index_bits + minhash_bits > 64);
+	public boolean checkBits(int nIndexBits, int nMinhashBits) {
+		return ! (nIndexBits < minNIndexBits || nIndexBits > maxNIndexBits ||
+				(nMinhashBits != 0 && nMinhashBits < minNMinhashBits) ||
+				nMinhashBits > maxNMinhashBits || nIndexBits + nMinhashBits > 64);
 	}
 
-	public double relativeCountError(int n_index_bits) {
-		return 1.04 / Math.sqrt(Math.pow(2, n_index_bits));
+	public double relativeCountError(int nIndexBits) {
+		return 1.04 / Math.sqrt(Math.pow(2, nIndexBits));
 	}
 
-	public void assertDescription(String msg, List<?>description, int index_bits, int minhash_bits) {
-		assertEquals(msg, index_bits, (long)(Long) description.get(0));
-		assertEquals(msg, minhash_bits, (long)(Long) description.get(1));
+	public void assertDescription(String msg, List<?>description, int nIndexBits, int nMinhashBits) {
+		assertEquals(msg, nIndexBits, (long)(Long) description.get(0));
+		assertEquals(msg, nMinhashBits, (long)(Long) description.get(1));
 	}
 
-	public void assertInit(int index_bits, int minhash_bits, boolean should_pass) {
-		String msg = "Fail - index_bits " + index_bits + " minhash_bits " + minhash_bits;
+	public void assertInit(int nIndexBits, int nMinhashBits, boolean shouldPass) {
+		String msg = "Fail - nIndexBits " + nIndexBits + " nMinhashBits " + nMinhashBits;
 		HLLPolicy p = HLLPolicy.Default;
 		Operation[] ops = new Operation[] {
-				HLLOperation.init(p, binName, index_bits, minhash_bits),
+				HLLOperation.init(p, binName, nIndexBits, nMinhashBits),
 				HLLOperation.getCount(binName),
 				HLLOperation.refreshCount(binName),
 				HLLOperation.describe(binName)};
 
-		if (! should_pass) {
+		if (! shouldPass) {
 			assertThrows(msg, key, AerospikeException.class, ResultCode.PARAMETER_ERROR, ops);
 			return;
 		}
 
 		Record record = assertSuccess(msg, key, ops);
-		List<?> result_list = record.getList(binName);
-		long count = (Long)result_list.get(1);
-		long count1 = (Long)result_list.get(2);
-		List<?> description = (List<?>)result_list.get(3);
+		List<?> resultList = record.getList(binName);
+		long count = (Long)resultList.get(1);
+		long count1 = (Long)resultList.get(2);
+		List<?> description = (List<?>)resultList.get(3);
 
-		assertDescription(msg, description, index_bits, minhash_bits);
+		assertDescription(msg, description, nIndexBits, nMinhashBits);
 		assertEquals(0, count);
 		assertEquals(0, count1);
 	}
@@ -230,102 +230,102 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateHLLFlags() {
-		int index_bits = 4;
+		int nIndexBits = 4;
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits));
 
 		// create_only
 		HLLPolicy c = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
 
-		assertSuccess("create_only", key, HLLOperation.init(c, binName, index_bits));
+		assertSuccess("create_only", key, HLLOperation.init(c, binName, nIndexBits));
 		assertThrows("create_only - error", key, AerospikeException.class, ResultCode.BIN_EXISTS_ERROR,
-				HLLOperation.init(c, binName, index_bits));
+				HLLOperation.init(c, binName, nIndexBits));
 
 		// update_only
 		HLLPolicy u = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY);
 
-		assertSuccess("update_only", key, HLLOperation.init(u, binName, index_bits));
+		assertSuccess("update_only", key, HLLOperation.init(u, binName, nIndexBits));
 		assertSuccess("remove bin", key, Operation.put(Bin.asNull(binName)));
 		assertThrows("update_only - error", key, AerospikeException.class, ResultCode.BIN_NOT_FOUND,
-				HLLOperation.init(u, binName, index_bits));
+				HLLOperation.init(u, binName, nIndexBits));
 
 		// create_only no_fail
 		HLLPolicy cn = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
 
-		assertSuccess("create_only nofail", key, HLLOperation.init(cn, binName, index_bits));
-		assertSuccess("create_only nofail - no error", key, HLLOperation.init(cn, binName, index_bits));
+		assertSuccess("create_only nofail", key, HLLOperation.init(cn, binName, nIndexBits));
+		assertSuccess("create_only nofail - no error", key, HLLOperation.init(cn, binName, nIndexBits));
 
 		// update_only no_fail
 		HLLPolicy un = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY | HLLWriteFlags.NO_FAIL);
 
-		assertSuccess("update_only nofail", key, HLLOperation.init(un, binName, index_bits));
+		assertSuccess("update_only nofail", key, HLLOperation.init(un, binName, nIndexBits));
 		assertSuccess("remove bin", key, Operation.put(Bin.asNull(binName)));
-		assertSuccess("update_only nofail - no error", key, HLLOperation.init(un, binName, index_bits));
+		assertSuccess("update_only nofail - no error", key, HLLOperation.init(un, binName, nIndexBits));
 
 		// fold
-		assertSuccess("create_only", key, HLLOperation.init(c, binName, index_bits));
+		assertSuccess("create_only", key, HLLOperation.init(c, binName, nIndexBits));
 
 		HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
 
 		assertThrows("fold", key, AerospikeException.class, ResultCode.PARAMETER_ERROR,
-				HLLOperation.init(f, binName, index_bits));
+				HLLOperation.init(f, binName, nIndexBits));
 	}
 
 	@Test
 	public void badReInit() {
 		HLLPolicy p = HLLPolicy.Default;
 
-		assertSuccess("create min max", key, Operation.delete(), HLLOperation.init(p, binName, maxIndexBits, 0));
+		assertSuccess("create min max", key, Operation.delete(), HLLOperation.init(p, binName, maxNIndexBits, 0));
 		assertThrows("create_only", key, AerospikeException.class, ResultCode.OP_NOT_APPLICABLE,
-				HLLOperation.init(p, binName, -1, maxMinhashBits));
+				HLLOperation.init(p, binName, -1, maxNMinhashBits));
 	}
 
-	public boolean isWithinRelativeError(long expected, long estimate, double relative_error) {
-		return expected * (1 - relative_error) <= estimate || estimate <= expected * (1 + relative_error);
+	public boolean isWithinRelativeError(long expected, long estimate, double relativeError) {
+		return expected * (1 - relativeError) <= estimate || estimate <= expected * (1 + relativeError);
 	}
 
-	public void assertHLLCount(String msg, int index_bits, long hll_count, long expected) {
-		double count_err_6sigma = relativeCountError(index_bits) * 6;
+	public void assertHLLCount(String msg, int nIndexBits, long hllCount, long expected) {
+		double countErr6Sigma = relativeCountError(nIndexBits) * 6;
 
-		msg = msg + " - err " + count_err_6sigma + " count " + hll_count + " expected " + expected + " index_bits " +
-				index_bits;
+		msg = msg + " - err " + countErr6Sigma + " count " + hllCount + " expected " + expected + " nIndexBits " +
+				nIndexBits;
 
 		printDebug(msg);
-		assertTrue(msg, isWithinRelativeError(expected, hll_count, count_err_6sigma));
+		assertTrue(msg, isWithinRelativeError(expected, hllCount, countErr6Sigma));
 	}
 
-	public void assertAddInit(int index_bits, int minhash_bits) {
+	public void assertAddInit(int nIndexBits, int nMinhashBits) {
 		client.delete(null, key);
 
-		String msg = "Fail - index_bits " + index_bits + " minhash_bits " + minhash_bits;
+		String msg = "Fail - nIdexBits " + nIndexBits + " nMinhashBits " + nMinhashBits;
 		HLLPolicy p = HLLPolicy.Default;
 		Operation[] ops = new Operation[] {
-				HLLOperation.add(p, binName, entries, index_bits, minhash_bits),
+				HLLOperation.add(p, binName, entries, nIndexBits, nMinhashBits),
 				HLLOperation.getCount(binName),
 				HLLOperation.refreshCount(binName),
 				HLLOperation.describe(binName),
 				HLLOperation.add(p, binName, entries),
 		};
 
-		if (!checkBits(index_bits, minhash_bits)) {
+		if (!checkBits(nIndexBits, nMinhashBits)) {
 			assertThrows(msg, key, AerospikeException.class, ResultCode.PARAMETER_ERROR, ops);
 			return;
 		}
 
 		Record record = assertSuccess(msg, key, ops);
-		List<?> result_list = record.getList(binName);
-		long count = (Long) result_list.get(1);
-		long count1 = (Long) result_list.get(2);
-		List<?> description = (List<?>) result_list.get(3);
-		long n_added = (Long) result_list.get(4);
+		List<?> resultList = record.getList(binName);
+		long count = (Long) resultList.get(1);
+		long count1 = (Long) resultList.get(2);
+		List<?> description = (List<?>) resultList.get(3);
+		long nAdded = (Long) resultList.get(4);
 
-		assertDescription(msg, description, index_bits, minhash_bits);
-		assertHLLCount(msg, index_bits, count, entries.size());
+		assertDescription(msg, description, nIndexBits, nMinhashBits);
+		assertHLLCount(msg, nIndexBits, count, entries.size());
 		assertEquals(count, count1);
-		assertEquals(n_added, 0);
+		assertEquals(nAdded, 0);
 	}
 
 	@Test
@@ -337,64 +337,64 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateAddFlags() {
-		int index_bits = 4;
+		int nIndexBits = 4;
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits));
 
 		// create_only
 		HLLPolicy c = new HLLPolicy(HLLWriteFlags.CREATE_ONLY);
 
-		assertSuccess("create_only", key, HLLOperation.add(c, binName, entries, index_bits));
+		assertSuccess("create_only", key, HLLOperation.add(c, binName, entries, nIndexBits));
 		assertThrows("create_only - error", key, AerospikeException.class, ResultCode.BIN_EXISTS_ERROR,
-				HLLOperation.add(c, binName, entries, index_bits));
+				HLLOperation.add(c, binName, entries, nIndexBits));
 
 		// update_only
 		HLLPolicy u = new HLLPolicy(HLLWriteFlags.UPDATE_ONLY);
 
 		assertThrows("update_only - error", key, AerospikeException.class, ResultCode.PARAMETER_ERROR,
-				HLLOperation.add(u, binName, entries, index_bits));
+				HLLOperation.add(u, binName, entries, nIndexBits));
 
 		// create_only no_fail
 		HLLPolicy cn = new HLLPolicy(HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL);
 
-		assertSuccess("create_only nofail", key, HLLOperation.add(cn, binName, entries, index_bits));
-		assertSuccess("create_only nofail - no error", key, HLLOperation.add(cn, binName, entries, index_bits));
+		assertSuccess("create_only nofail", key, HLLOperation.add(cn, binName, entries, nIndexBits));
+		assertSuccess("create_only nofail - no error", key, HLLOperation.add(cn, binName, entries, nIndexBits));
 
 		// fold
-		assertSuccess("init", key, HLLOperation.init(HLLPolicy.Default, binName, index_bits));
+		assertSuccess("init", key, HLLOperation.init(HLLPolicy.Default, binName, nIndexBits));
 
 		HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
 
 		assertThrows("fold", key, AerospikeException.class, ResultCode.PARAMETER_ERROR,
-				HLLOperation.add(f, binName, entries, index_bits));
+				HLLOperation.add(f, binName, entries, nIndexBits));
 	}
 
-	public void assertFold(List<Value> vals0, List<Value> vals1, int index_bits) {
-		String msg = "Fail - index_bits " + index_bits;
+	public void assertFold(List<Value> vals0, List<Value> vals1, int nIndexBits) {
+		String msg = "Fail - nIndexBits " + nIndexBits;
 		HLLPolicy p = HLLPolicy.Default;
 
-		for (int ix = minIndexBits; ix <= index_bits; ix++) {
-			if (!checkBits(index_bits, 0) || ! checkBits(ix, 0)) {
+		for (int ix = minNIndexBits; ix <= nIndexBits; ix++) {
+			if (!checkBits(nIndexBits, 0) || ! checkBits(ix, 0)) {
 				assertTrue("Expected valid inputs: " + msg, false);
 			}
 
 			Record recorda = assertSuccess(msg, key,
 					Operation.delete(),
-					HLLOperation.add(p, binName, vals0, index_bits),
+					HLLOperation.add(p, binName, vals0, nIndexBits),
 					HLLOperation.getCount(binName),
 					HLLOperation.refreshCount(binName),
 					HLLOperation.describe(binName));
 
-			List<?> resulta_list = recorda.getList(binName);
-			long counta = (Long) resulta_list.get(1);
-			long counta1 = (Long) resulta_list.get(2);
-			List<?> descriptiona = (List<?>) resulta_list.get(3);
+			List<?> resultAList = recorda.getList(binName);
+			long counta = (Long) resultAList.get(1);
+			long counta1 = (Long) resultAList.get(2);
+			List<?> descriptiona = (List<?>) resultAList.get(3);
 
-			assertDescription(msg, descriptiona, index_bits, 0);
-			assertHLLCount(msg, index_bits, counta, vals0.size());
+			assertDescription(msg, descriptiona, nIndexBits, 0);
+			assertHLLCount(msg, nIndexBits, counta, vals0.size());
 			assertEquals(counta, counta1);
 
 			Record recordb = assertSuccess(msg, key,
@@ -405,13 +405,13 @@ public class TestOperateHll extends TestSync {
 					HLLOperation.getCount(binName),
 					HLLOperation.describe(binName));
 
-			List<?> resultb_list = recordb.getList(binName);
-			long countb = (Long) resultb_list.get(1);
-			long n_added0 = (Long) resultb_list.get(2);
-			long countb1 = (Long) resultb_list.get(4);
-			List<?> descriptionb = (List<?>) resultb_list.get(5);
+			List<?> resultBList = recordb.getList(binName);
+			long countb = (Long) resultBList.get(1);
+			long nAdded0 = (Long) resultBList.get(2);
+			long countb1 = (Long) resultBList.get(4);
+			List<?> descriptionb = (List<?>) resultBList.get(5);
 
-			assertEquals(0, n_added0);
+			assertEquals(0, nAdded0);
 			assertDescription(msg, descriptionb, ix, 0);
 			assertHLLCount(msg, ix, countb, vals0.size());
 			assertHLLCount(msg, ix, countb1, vals0.size() + vals1.size());
@@ -423,83 +423,82 @@ public class TestOperateHll extends TestSync {
 		List<Value> vals0 = new ArrayList<Value>();
 		List<Value> vals1 = new ArrayList<Value>();
 
-		for (int i = 0; i < n_entries / 2; i++) {
+		for (int i = 0; i < nEntries / 2; i++) {
 			vals0.add(new StringValue("key " + i));
 		}
 
-		for (int i = n_entries / 2; i < n_entries; i++) {
+		for (int i = nEntries / 2; i < nEntries; i++) {
 			vals1.add(new StringValue("key " + i));
 		}
 
-		for (int index_bits = 4; index_bits < maxIndexBits; index_bits++) {
-			assertFold(vals0, vals1, index_bits);
+		for (int nIndexBits = 4; nIndexBits < maxNIndexBits; nIndexBits++) {
+			assertFold(vals0, vals1, nIndexBits);
 		}
 	}
 
 	@Test
 	public void operateFoldExists() {
-		int index_bits = 10;
-		int fold_down = 4;
-		int fold_up = 16;
+		int nIndexBits = 10;
+		int foldDown = 4;
+		int foldUp = 16;
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits),
-				HLLOperation.init(HLLPolicy.Default, binName, index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits),
+				HLLOperation.init(HLLPolicy.Default, binName, nIndexBits));
 
 		// Exists.
-		assertSuccess("exists fold down", key, HLLOperation.fold(binName, fold_down));
+		assertSuccess("exists fold down", key, HLLOperation.fold(binName, foldDown));
 		assertThrows("exists fold up", key, AerospikeException.class, ResultCode.OP_NOT_APPLICABLE,
-				HLLOperation.fold(binName, fold_up));
+				HLLOperation.fold(binName, foldUp));
 
 		// Does not exist.
 		assertSuccess("remove bin", key, Operation.put(Bin.asNull(binName)));
 
 		assertThrows("create_only - error", key, AerospikeException.class, ResultCode.BIN_NOT_FOUND,
-				HLLOperation.fold(binName, fold_down));
+				HLLOperation.fold(binName, foldDown));
 	}
 
-	public void assertSetUnion(List<List<Value>> vals, int index_bits, boolean folding,
-			boolean allow_folding) {
-		String msg = "Fail - index_bits " + index_bits;
+	public void assertSetUnion(List<List<Value>> vals, int nIndexBits, boolean folding, boolean allowFolding) {
+		String msg = "Fail - nIndexBits " + nIndexBits;
 		HLLPolicy p = HLLPolicy.Default;
 		HLLPolicy u = HLLPolicy.Default;
 
-		if (allow_folding) {
+		if (allowFolding) {
 			u = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
 		}
 
-		long union_expected = 0;
+		long unionExpected = 0;
 		boolean folded = false;
 
 		for (int i = 0; i < keys.length; i++) {
-			int ix = index_bits;
+			int ix = nIndexBits;
 
 			if (folding) {
 				ix -= i;
 
-				if (ix < minIndexBits) {
-					ix = minIndexBits;
+				if (ix < minNIndexBits) {
+					ix = minNIndexBits;
 				}
 
-				if (ix < index_bits) {
+				if (ix < nIndexBits) {
 					folded = true;
 				}
 			}
 
-			List<Value> sub_vals = vals.get(i);
+			List<Value> subVals = vals.get(i);
 
-			union_expected += sub_vals.size();
+			unionExpected += subVals.size();
 
 			Record record = assertSuccess(msg, keys[i],
 					Operation.delete(),
-					HLLOperation.add(p, binName, sub_vals, ix),
+					HLLOperation.add(p, binName, subVals, ix),
 					HLLOperation.getCount(binName));
-			List<?> result_list = record.getList(binName);
-			long count = (Long) result_list.get(1);
+			List<?> resultList = record.getList(binName);
+			long count = (Long) resultList.get(1);
 
-			assertHLLCount(msg, ix, count, sub_vals.size());
+			assertHLLCount(msg, ix, count, subVals.size());
 		}
 
 		ArrayList<HLLValue> hlls = new ArrayList<HLLValue>();
@@ -507,8 +506,8 @@ public class TestOperateHll extends TestSync {
 		for (int i = 0; i < keys.length; i++) {
 			Record record = assertSuccess(msg, keys[i],
 					Operation.get(binName), HLLOperation.getCount(binName));
-			List<?> result_list = record.getList(binName);
-			HLLValue hll = (HLLValue)result_list.get(0);
+			List<?> resultList = record.getList(binName);
+			HLLValue hll = (HLLValue)resultList.get(0);
 
 			assertNotEquals(null, hll);
 			hlls.add(hll);
@@ -516,7 +515,7 @@ public class TestOperateHll extends TestSync {
 
 		Operation[] ops = new Operation[] {
 				Operation.delete(),
-				HLLOperation.init(p, binName, index_bits),
+				HLLOperation.init(p, binName, nIndexBits),
 				HLLOperation.setUnion(u, binName, hlls),
 				HLLOperation.getCount(binName),
 				Operation.delete(), // And recreate it to test creating empty.
@@ -524,31 +523,31 @@ public class TestOperateHll extends TestSync {
 				HLLOperation.getCount(binName)
 		};
 
-		if (folded && ! allow_folding) {
+		if (folded && ! allowFolding) {
 			assertThrows(msg, key, AerospikeException.class, ResultCode.OP_NOT_APPLICABLE, ops);
 			return;
 		}
 
-		Record record_union = assertSuccess(msg, key, ops);
-		List<?> union_result_list = record_union.getList(binName);
-		long union_count = (Long) union_result_list.get(2);
-		long union_count2 = (Long) union_result_list.get(4);
+		Record recordUnion = assertSuccess(msg, key, ops);
+		List<?> unionResultList = recordUnion.getList(binName);
+		long unionCount = (Long) unionResultList.get(2);
+		long unionCount2 = (Long) unionResultList.get(4);
 
-		assertHLLCount(msg, index_bits, union_count, union_expected);
-		assertEquals(msg, union_count, union_count2);
+		assertHLLCount(msg, nIndexBits, unionCount, unionExpected);
+		assertEquals(msg, unionCount, unionCount2);
 
 		for (int i = 0; i < keys.length; i++) {
-			List<Value> sub_vals = vals.get(i);
+			List<Value> subVals = vals.get(i);
 			Record record = assertSuccess(msg, key,
-					HLLOperation.add(p, binName, sub_vals, index_bits),
+					HLLOperation.add(p, binName, subVals, nIndexBits),
 					HLLOperation.getCount(binName));
-			List<?> result_list = record.getList(binName);
-			long n_added = (Long) result_list.get(0);
-			long count = (Long) result_list.get(1);
+			List<?> resultList = record.getList(binName);
+			long nAdded = (Long) resultList.get(0);
+			long count = (Long) resultList.get(1);
 
-			assertEquals(msg, 0, n_added);
-			assertEquals(msg, union_count, count);
-			assertHLLCount(msg, index_bits, count, union_expected);
+			assertEquals(msg, 0, nAdded);
+			assertEquals(msg, unionCount, count);
+			assertHLLCount(msg, nIndexBits, count, unionExpected);
 		}
 	}
 
@@ -557,38 +556,38 @@ public class TestOperateHll extends TestSync {
 		ArrayList<List<Value>> vals = new ArrayList<List<Value>>();
 
 		for (int i = 0; i < keys.length; i++) {
-			ArrayList<Value> sub_vals = new ArrayList<Value>();
+			ArrayList<Value> subVals = new ArrayList<Value>();
 
-			for (int j = 0; j < n_entries / 3; j++) {
-				sub_vals.add(new StringValue("key" + i + " " + j));
+			for (int j = 0; j < nEntries / 3; j++) {
+				subVals.add(new StringValue("key" + i + " " + j));
 			}
 
-			vals.add(sub_vals);
+			vals.add(subVals);
 		}
 
-		for (Integer index_bits : legalIndexBits) {
-			assertSetUnion(vals, index_bits, false, false);
-			assertSetUnion(vals, index_bits, false, true);
-			assertSetUnion(vals, index_bits, true, false);
-			assertSetUnion(vals, index_bits, true, true);
+		for (Integer nIndexBits : legalNIndexBits) {
+			assertSetUnion(vals, nIndexBits, false, false);
+			assertSetUnion(vals, nIndexBits, false, true);
+			assertSetUnion(vals, nIndexBits, true, false);
+			assertSetUnion(vals, nIndexBits, true, true);
 		}
 	}
 
 	@Test
 	public void operateSetUnionFlags() {
-		int index_bits = 6;
-		int low_n_bits = 4;
-		int high_n_bits = 8;
+		int nIndexBits = 6;
+		int lowNBits = 4;
+		int highNBits = 8;
 		String otherName = binName + "o";
 
 		// Keep record around win binName is removed.
 		ArrayList<HLLValue> hlls = new ArrayList<HLLValue>();
 		Record record = assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.add(HLLPolicy.Default, otherName, entries, index_bits),
+				HLLOperation.add(HLLPolicy.Default, otherName, entries, nIndexBits),
 				Operation.get(otherName));
-		List<?> result_list = record.getList(otherName);
-		HLLValue hll = (HLLValue) result_list.get(1);
+		List<?> resultList = record.getList(otherName);
+		HLLValue hll = (HLLValue) resultList.get(1);
 
 		hlls.add(hll);
 
@@ -624,23 +623,23 @@ public class TestOperateHll extends TestSync {
 		HLLPolicy f = new HLLPolicy(HLLWriteFlags.ALLOW_FOLD);
 
 		// fold down
-		assertSuccess("size up", key, HLLOperation.init(HLLPolicy.Default, binName, high_n_bits));
+		assertSuccess("size up", key, HLLOperation.init(HLLPolicy.Default, binName, highNBits));
 		assertSuccess("fold down to index_bits", key, HLLOperation.setUnion(f, binName, hlls));
 
 		// fold up
-		assertSuccess("size down", key, HLLOperation.init(HLLPolicy.Default, binName, low_n_bits));
+		assertSuccess("size down", key, HLLOperation.init(HLLPolicy.Default, binName, lowNBits));
 		assertSuccess("fold down to low_n_bits", key, HLLOperation.setUnion(f, binName, hlls));
 	}
 
 	@Test
 	public void operateRefreshCount() {
-		int index_bits = 6;
+		int nIndexBits = 6;
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits),
-				HLLOperation.init(HLLPolicy.Default, binName, index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits),
+				HLLOperation.init(HLLPolicy.Default, binName, nIndexBits));
 
 		// Exists.
 		assertSuccess("refresh zero count", key, HLLOperation.refreshCount(binName),
@@ -657,18 +656,18 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateGetCount() {
-		int index_bits = 6;
+		int nIndexBits = 6;
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits),
-				HLLOperation.add(HLLPolicy.Default, binName, entries, index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits),
+				HLLOperation.add(HLLPolicy.Default, binName, entries, nIndexBits));
 
 		// Exists.
 		Record record = assertSuccess("exists count", key, HLLOperation.getCount(binName));
 		long count = record.getLong(binName);
-		assertHLLCount("check count", index_bits, count, entries.size());
+		assertHLLCount("check count", nIndexBits, count, entries.size());
 
 		// Does not exist.
 		assertSuccess("remove bin", key, Operation.put(Bin.asNull(binName)));
@@ -678,62 +677,62 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateGetUnion() {
-		int index_bits = 14;
-		long expected_union_count = 0;
+		int nIndexBits = 14;
+		long expectedUnionCount = 0;
 		ArrayList<List<Value>> vals = new ArrayList<List<Value>>();
 		List<HLLValue> hlls = new ArrayList<HLLValue>();
 
 		for (int i = 0; i < keys.length; i++) {
-			ArrayList<Value> sub_vals = new ArrayList<Value>();
+			ArrayList<Value> subVals = new ArrayList<Value>();
 
-			for (int j = 0; j < n_entries / 3; j++) {
-				sub_vals.add(new StringValue("key" + i + " " + j));
+			for (int j = 0; j < nEntries / 3; j++) {
+				subVals.add(new StringValue("key" + i + " " + j));
 			}
 
 			Record record = assertSuccess("init other keys", keys[i],
 					Operation.delete(),
-					HLLOperation.add(HLLPolicy.Default, binName, sub_vals, index_bits),
+					HLLOperation.add(HLLPolicy.Default, binName, subVals, nIndexBits),
 					Operation.get(binName));
 
-			List<?> result_list = record.getList(binName);
-			hlls.add((HLLValue)result_list.get(1));
-			expected_union_count += sub_vals.size();
-			vals.add(sub_vals);
+			List<?> resultList = record.getList(binName);
+			hlls.add((HLLValue)resultList.get(1));
+			expectedUnionCount += subVals.size();
+			vals.add(subVals);
 		}
 
 		// Keep record around win binName is removed.
 		assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits),
-				HLLOperation.add(HLLPolicy.Default, binName, vals.get(0), index_bits));
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits),
+				HLLOperation.add(HLLPolicy.Default, binName, vals.get(0), nIndexBits));
 
 		Record record = assertSuccess("union and unionCount", key,
 				HLLOperation.getUnion(binName, hlls),
 				HLLOperation.getUnionCount(binName, hlls));
-		List<?> result_list = record.getList(binName);
-		long union_count = (Long)result_list.get(1);
+		List<?> resultList = record.getList(binName);
+		long unionCount = (Long)resultList.get(1);
 
-		assertHLLCount("verify union count", index_bits, union_count, expected_union_count);
+		assertHLLCount("verify union count", nIndexBits, unionCount, expectedUnionCount);
 
-		HLLValue union_hll = (HLLValue)result_list.get(0);
+		HLLValue unionHll = (HLLValue)resultList.get(0);
 
 		record = assertSuccess("", key,
-				Operation.put(new Bin(binName, union_hll)),
+				Operation.put(new Bin(binName, unionHll)),
 				HLLOperation.getCount(binName));
-		result_list = record.getList(binName);
-		long union_count_2 = (Long)result_list.get(1);
+		resultList = record.getList(binName);
+		long unionCount2 = (Long)resultList.get(1);
 
-		assertEquals("unions equal", union_count, union_count_2);
+		assertEquals("unions equal", unionCount, unionCount2);
 	}
 
 	@Test
 	public void getPut() {
 		for (ArrayList<Integer> desc : legalDescriptions) {
-			int index_bits = desc.get(0);
-			int minhash_bits = desc.get(1);
+			int nIndexBits = desc.get(0);
+			int nMinhashBits = desc.get(1);
 
 			assertSuccess("init record", key,
-					Operation.delete(), HLLOperation.init(HLLPolicy.Default, binName, index_bits, minhash_bits));
+					Operation.delete(), HLLOperation.init(HLLPolicy.Default, binName, nIndexBits, nMinhashBits));
 
 			Record record = client.get(null, key);
 			HLLValue hll = (HLLValue)record.getHLLValue(binName);
@@ -745,85 +744,84 @@ public class TestOperateHll extends TestSync {
 					HLLOperation.getCount(binName),
 					HLLOperation.describe(binName));
 
-			List<?> result_list = record.getList(binName);
-			long count = (Long)result_list.get(0);
-			List<?> description = (List<?>)result_list.get(1);
+			List<?> resultList = record.getList(binName);
+			long count = (Long)resultList.get(0);
+			List<?> description = (List<?>)resultList.get(1);
 
 			assertEquals(0, count);
-			assertDescription("Check description", description, index_bits, minhash_bits);
+			assertDescription("Check description", description, nIndexBits, nMinhashBits);
 		}
 	}
 
-	public double absoluteSimilarityError(int index_bits, int minhash_bits, double expected_similarity) {
-		double min_err_index = 1 / Math.sqrt(1 << index_bits);
-		double min_err_minhash = 6 * Math.pow(Math.E, minhash_bits * -1) / expected_similarity;
+	public double absoluteSimilarityError(int nIndexBits, int nMinhashBits, double expectedSimilarity) {
+		double minErrIndex = 1 / Math.sqrt(1 << nIndexBits);
+		double minErrMinhash = 6 * Math.pow(Math.E, nMinhashBits * -1) / expectedSimilarity;
 
-		printDebug("min_err_index " + min_err_index + " min_err_minhash " + min_err_minhash +
-				" index_bits " + index_bits + " minhash_bits " + minhash_bits + " expected_similarity "
-				+ expected_similarity);
+		printDebug("minErrIndex " + minErrIndex + " minErrMinhash " + minErrMinhash + " nIndexBits " + nIndexBits +
+				" nMinhashBits " + nMinhashBits + " expectedSimilarity " + expectedSimilarity);
 
-		return Math.max(min_err_index, min_err_minhash);
+		return Math.max(minErrIndex, minErrMinhash);
 	}
 
-	public void assertHMHSimilarity(String msg, int index_bits, int minhash_bits, double similarity,
-			double expected_similarity, long intersect_count, long expected_intersect_count) {
-		double sim_err_6sigma = 0;
+	public void assertHMHSimilarity(String msg, int nIndexBits, int nMinhashBits, double similarity,
+			double expectedSimilarity, long intersectCount, long expectedIntersectCount) {
+		double simErr6Sigma = 0;
 
-		if (minhash_bits != 0) {
-			sim_err_6sigma = 6 * absoluteSimilarityError(index_bits, minhash_bits, expected_similarity);
+		if (nMinhashBits != 0) {
+			simErr6Sigma = 6 * absoluteSimilarityError(nIndexBits, nMinhashBits, expectedSimilarity);
 		}
 
-		msg = msg + " - err " + sim_err_6sigma + " index_bits " + index_bits + " minhash_bits " + minhash_bits +
-				"\n\t- similarity " + similarity + " expected_similarity " + expected_similarity +
-				"\n\t- intersect_count " + intersect_count + " expected_intersect_count " + expected_intersect_count;
+		msg = msg + " - err " + simErr6Sigma + " nIindexBits " + nIndexBits + " nMinhashBits " + nMinhashBits +
+				"\n\t- similarity " + similarity + " expectedSimilarity " + expectedSimilarity +
+				"\n\t- intersectCount " + intersectCount + " expectedIntersectCount " + expectedIntersectCount;
 
 		printDebug(msg);
 
-		if (minhash_bits == 0) {
+		if (nMinhashBits == 0) {
 			return;
 		}
 
-		assertTrue(msg, sim_err_6sigma > Math.abs(expected_similarity - similarity));
-		assertTrue(msg, isWithinRelativeError(expected_intersect_count, intersect_count, sim_err_6sigma));
+		assertTrue(msg, simErr6Sigma > Math.abs(expectedSimilarity - similarity));
+		assertTrue(msg, isWithinRelativeError(expectedIntersectCount, intersectCount, simErr6Sigma));
 	}
 
-	public void assertSimilarityOp(double overlap, List<Value> common, List<List<Value>> vals, int index_bits,
-			int minhash_bits) {
+	public void assertSimilarityOp(double overlap, List<Value> common, List<List<Value>> vals, int nIndexBits,
+			int nMinhashBits) {
 		List<HLLValue> hlls = new ArrayList<HLLValue>();
 
 		for (int i = 0; i < keys.length; i++) {
 			Record record = assertSuccess("init other keys", keys[i],
 					Operation.delete(),
-					HLLOperation.add(HLLPolicy.Default, binName, vals.get(i), index_bits, minhash_bits),
-					HLLOperation.add(HLLPolicy.Default, binName, common, index_bits, minhash_bits),
+					HLLOperation.add(HLLPolicy.Default, binName, vals.get(i), nIndexBits, nMinhashBits),
+					HLLOperation.add(HLLPolicy.Default, binName, common, nIndexBits, nMinhashBits),
 					Operation.get(binName));
 
-			List<?> result_list = record.getList(binName);
-			hlls.add((HLLValue)result_list.get(2));
+			List<?> resultList = record.getList(binName);
+			hlls.add((HLLValue)resultList.get(2));
 		}
 
 		// Keep record around win binName is removed.
 		Record record = assertSuccess("other bin", key,
 				Operation.delete(),
-				HLLOperation.init(HLLPolicy.Default, binName + "other", index_bits, minhash_bits),
+				HLLOperation.init(HLLPolicy.Default, binName + "other", nIndexBits, nMinhashBits),
 				HLLOperation.setUnion(HLLPolicy.Default, binName, hlls),
 				HLLOperation.describe(binName));
-		List<?> result_list = record.getList(binName);
-		List<?> description = (List<?>)result_list.get(1);
+		List<?> resultList = record.getList(binName);
+		List<?> description = (List<?>)resultList.get(1);
 
-		assertDescription("check desc", description, index_bits, minhash_bits);
+		assertDescription("check desc", description, nIndexBits, nMinhashBits);
 
-		record = assertSuccess("similarity and intersect_count", key,
+		record = assertSuccess("similarity and intersectCount", key,
 				HLLOperation.getSimilarity(binName, hlls),
 				HLLOperation.getIntersectCount(binName, hlls));
-		result_list = record.getList(binName);
-		double sim = (Double)result_list.get(0);
-		long intersect_count = (Long)result_list.get(1);
-		double expected_similarity = overlap;
-		long expected_intersect_count = common.size();
+		resultList = record.getList(binName);
+		double sim = (Double)resultList.get(0);
+		long intersectCount = (Long)resultList.get(1);
+		double expectedSimilarity = overlap;
+		long expectedIntersectCount = common.size();
 
-		assertHMHSimilarity("check sim", index_bits, minhash_bits, sim, expected_similarity, intersect_count,
-				expected_intersect_count);
+		assertHMHSimilarity("check sim", nIndexBits, nMinhashBits, sim, expectedSimilarity, intersectCount,
+				expectedIntersectCount);
 	}
 
 	@Test
@@ -831,36 +829,131 @@ public class TestOperateHll extends TestSync {
 		double[] overlaps = new double[] {0.0001, 0.001, 0.01, 0.1, 0.5};
 
 		for (double overlap : overlaps) {
-			long expected_intersect_count = (long)(n_entries * overlap);
+			long expectedIntersectCount = (long)(nEntries * overlap);
 			ArrayList<Value> common = new ArrayList<Value>();
 
-			for (int i = 0; i < expected_intersect_count; i++) {
+			for (int i = 0; i < expectedIntersectCount; i++) {
 				common.add(new StringValue("common" + i));
 			}
 
 			ArrayList<List<Value>> vals = new ArrayList<List<Value>>();
-			long unique_entries_per_node = (n_entries - expected_intersect_count) / 3;
+			long uniqueEntriesPerNode = (nEntries - expectedIntersectCount) / 3;
 
 			for (int i = 0; i < keys.length; i++) {
-				ArrayList<Value> sub_vals = new ArrayList<Value>();
+				ArrayList<Value> subVals = new ArrayList<Value>();
 
-				for (int j = 0; j < unique_entries_per_node; j++) {
-					sub_vals.add(new StringValue("key" + i + " " + j));
+				for (int j = 0; j < uniqueEntriesPerNode; j++) {
+					subVals.add(new StringValue("key" + i + " " + j));
 				}
 
-				vals.add(sub_vals);
+				vals.add(subVals);
 			}
 
 			for (ArrayList<Integer> desc : legalDescriptions) {
-				int index_bits = desc.get(0);
-				int minhash_bits = desc.get(1);
+				int nIndexBits = desc.get(0);
+				int nMinhashBits = desc.get(1);
 
-				if (minhash_bits == 0) {
+				if (nMinhashBits == 0) {
 					continue;
 				}
 
-				assertSimilarityOp(overlap, common, vals, index_bits, minhash_bits);
+				assertSimilarityOp(overlap, common, vals, nIndexBits, nMinhashBits);
 			}
+		}
+	}
+
+	@Test
+	public void operateEmptySimilarity() {
+		for (ArrayList<Integer> desc : legalDescriptions) {
+			int nIndexBits = desc.get(0);
+			int nMinhashBits = desc.get(1);
+
+			Record record = assertSuccess("init", key,
+					Operation.delete(),
+					HLLOperation.init(HLLPolicy.Default, binName, nIndexBits, nMinhashBits),
+					Operation.get(binName));
+
+			List<?> resultList = record.getList(binName);
+			List<HLLValue> hlls = new ArrayList<HLLValue>();
+
+			hlls.add((HLLValue)resultList.get(1));
+
+			record = assertSuccess("test", key,
+					HLLOperation.getSimilarity(binName, hlls),
+					HLLOperation.getIntersectCount(binName, hlls));
+
+			resultList = record.getList(binName);
+
+			double sim = (Double)resultList.get(0);
+			long intersectCount = (Long)resultList.get(1);
+
+			String msg = "(" + nIndexBits + ", " + nMinhashBits + ")";
+
+			assertEquals(msg, 0, intersectCount);
+			assertEquals(msg, Double.NaN, sim, 0.0);
+		}
+	}
+
+	@Test
+	public void operateIntersectHLL() {
+		String otherBinName = binName + "other";
+
+		for (ArrayList<Integer> desc : legalDescriptions) {
+			int indexBits = desc.get(0);
+			int minhashBits = desc.get(1);
+
+			if (minhashBits != 0) {
+				break;
+			}
+
+			Record record = assertSuccess("init", key,
+					Operation.delete(),
+					HLLOperation.add(HLLPolicy.Default, binName, entries, indexBits, minhashBits),
+					Operation.get(binName),
+					HLLOperation.add(HLLPolicy.Default, otherBinName, entries, indexBits, 4),
+					Operation.get(otherBinName));
+
+			List<HLLValue> hlls = new ArrayList<HLLValue>();
+			List<HLLValue> hmhs = new ArrayList<HLLValue>();
+			List<?> resultList = record.getList(binName);
+
+			hlls.add((HLLValue)resultList.get(1));
+			hlls.add(hlls.get(0));
+
+			resultList = record.getList(otherBinName);
+			hmhs.add((HLLValue)resultList.get(1));
+			hmhs.add(hmhs.get(0));
+
+			record = assertSuccess("intersect", key,
+					HLLOperation.getIntersectCount(binName, hlls),
+					HLLOperation.getSimilarity(binName, hlls));
+			resultList = record.getList(binName);
+
+			long intersectCount = (Long)resultList.get(0);
+
+			assertTrue("intersect value too high", intersectCount < 1.8 * entries.size());
+
+			hlls.add(hlls.get(0));
+
+			assertThrows("Expect parameter error", key, AerospikeException.class, ResultCode.PARAMETER_ERROR,
+					HLLOperation.getIntersectCount(binName, hlls));
+			assertThrows("Expect parameter error", key, AerospikeException.class, ResultCode.PARAMETER_ERROR,
+					HLLOperation.getSimilarity(binName, hlls));
+
+			record = assertSuccess("intersect", key,
+					HLLOperation.getIntersectCount(binName, hmhs),
+					HLLOperation.getSimilarity(binName, hmhs));
+			resultList = record.getList(binName);
+			intersectCount = (Long)resultList.get(0);
+
+			assertTrue("intersect value too high", intersectCount < 1.8 * entries.size());
+
+			hmhs.add(hmhs.get(0));
+
+			assertThrows("Expect parameter error", key, AerospikeException.class, ResultCode.OP_NOT_APPLICABLE,
+					HLLOperation.getIntersectCount(binName, hmhs));
+			assertThrows("Expect parameter error", key, AerospikeException.class, ResultCode.OP_NOT_APPLICABLE,
+					HLLOperation.getSimilarity(binName, hmhs));
 		}
 	}
 }
