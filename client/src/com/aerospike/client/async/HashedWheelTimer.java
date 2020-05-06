@@ -87,6 +87,10 @@ public final class HashedWheelTimer implements Runnable {
 		schedule = new ScheduleTask(this);
 	}
 
+	public boolean isRunning() {
+		return scheduled;
+	}
+
 	public HashedWheelTimeout addTimeout(TimerTask task, long deadline) {
 		if (! scheduled) {
 			scheduled = true;

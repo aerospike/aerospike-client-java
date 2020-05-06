@@ -112,8 +112,17 @@ public class Cluster implements Runnable, Closeable {
 	// Maximum socket idle in nanoseconds.
 	public final long maxSocketIdleNanos;
 
-	// Size of node's synchronous connection pool.
-	protected final int connectionQueueSize;
+	// Minimum sync connections per node.
+	protected final int minConnsPerNode;
+
+	// Maximum sync connections per node.
+	protected final int maxConnsPerNode;
+
+	// Minimum async connections per node.
+	protected final int asyncMinConnsPerNode;
+
+	// Maximum async connections per node.
+	protected final int asyncMaxConnsPerNode;
 
 	// Sync connection pools per node.
 	protected final int connPoolsPerNode;
@@ -201,7 +210,20 @@ public class Cluster implements Runnable, Closeable {
 			this.user = null;
 		}
 
-		connectionQueueSize = policy.maxConnsPerNode;
+		minConnsPerNode = policy.minConnsPerNode;
+		maxConnsPerNode = policy.maxConnsPerNode;
+
+		if (minConnsPerNode > maxConnsPerNode) {
+			throw new AerospikeException("Invalid connection range: " + minConnsPerNode + " - " +  maxConnsPerNode);
+		}
+
+		asyncMinConnsPerNode = policy.asyncMinConnsPerNode;
+		asyncMaxConnsPerNode = (policy.asyncMaxConnsPerNode >= 0)? policy.asyncMaxConnsPerNode : policy.maxConnsPerNode;
+
+		if (asyncMinConnsPerNode > asyncMaxConnsPerNode) {
+			throw new AerospikeException("Invalid async connection range: " + asyncMinConnsPerNode + " - " +  asyncMaxConnsPerNode);
+		}
+
 		connPoolsPerNode = policy.connPoolsPerNode;
 		connectionTimeout = policy.timeout;
 		loginTimeout = policy.loginTimeout;
@@ -482,23 +504,24 @@ public class Cluster implements Runnable, Closeable {
 			addNodes(peers.nodes);
 		}
 
-		// Close idle connections every 30 tend intervals.
+		// Balance connections every 30 tend intervals.
 		if (++tendCount >= 30) {
 			tendCount = 0;
 
 			for (Node node : nodes) {
-				node.closeIdleConnections();
+				node.balanceConnections();
 			}
 
-			if (eventLoops != null) {
-				for (final EventLoop eventLoop : eventLoops.getArray()) {
+			if (eventState != null) {
+				for (EventState es : eventState) {
+					final EventLoop eventLoop = es.eventLoop;
+
 					eventLoop.execute(new Runnable() {
 						public void run() {
 							final Node[] nodeArray = nodes;
-							final int index = eventLoop.getIndex();
 
 							for (Node node : nodeArray) {
-								node.closeIdleAsyncConnections(index);
+								node.balanceAsyncConnections(eventLoop);
 							}
 						}
 					});

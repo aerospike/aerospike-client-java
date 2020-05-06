@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 
 /**
@@ -128,6 +129,13 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 				}
 			});
 		}
+	}
+
+	/**
+	 * Create async connector command.
+	 */
+	public AsyncConnector createConnector(Cluster cluster, Node node, AsyncConnector.Listener listener) {
+		return new NioConnector(this, cluster, node, listener);
 	}
 
 	/**

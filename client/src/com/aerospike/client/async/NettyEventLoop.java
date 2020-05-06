@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 
 /**
@@ -87,6 +88,13 @@ public final class NettyEventLoop extends EventLoopBase {
 	@Override
 	public void schedule(ScheduleTask task, long delay, TimeUnit unit) {
 		eventLoop.schedule(task, delay, unit);
+	}
+
+	/**
+	 * Create async connector command.
+	 */
+	public AsyncConnector createConnector(Cluster cluster, Node node, AsyncConnector.Listener listener) {
+		return new NettyConnector(this, cluster, node, listener);
 	}
 
 	/**

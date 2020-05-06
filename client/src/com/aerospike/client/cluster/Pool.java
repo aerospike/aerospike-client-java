@@ -31,17 +31,26 @@ public final class Pool {
 	private int head;
 	private int tail;
 	private int size;
+	private int minSize;
 	private final ReentrantLock lock;
 	final AtomicInteger total;  // total connections: inUse + inPool
 
-	public Pool(int capacity) {
-		conns = new Connection[capacity];
+	public Pool(int minSize, int maxSize) {
+		this.minSize = minSize;
+		conns = new Connection[maxSize];
 		lock = new ReentrantLock(false);
 		total = new AtomicInteger();
 	}
 
 	public int capacity() {
 		return conns.length;
+	}
+
+	/**
+	 * Return number of connections that might be closed.
+	 */
+	public int excess() {
+		return total.get() - minSize;
 	}
 
 	/**
@@ -105,10 +114,10 @@ public final class Pool {
 	}
 
 	/**
-	 * Close connections that are idle for more than maxSocketIdle.
+	 * Close connections that are idle for more than maxSocketIdle up to count.
 	 */
-	public void closeIdle(Node node) {
-		while (true) {
+	void closeIdle(Node node, int count) {
+		while (count > 0) {
 			// Lock on each iteration to give fairness to other
 			// threads polling for connections.
 			Connection conn;
@@ -142,6 +151,7 @@ public final class Pool {
 			// Close connection outside of lock.
 			total.getAndDecrement();
 			conn.close(node);
+			count--;
 		}
 	}
 

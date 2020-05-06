@@ -35,7 +35,10 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
 import com.aerospike.client.async.AsyncConnection;
+import com.aerospike.client.async.AsyncConnectorExecutor;
+import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventState;
+import com.aerospike.client.async.Monitor;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -106,31 +109,6 @@ public class Node implements Closeable {
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
 
-		// Create sync connection pools.
-		connectionPools = new Pool[cluster.connPoolsPerNode];
-		int max = cluster.connectionQueueSize / cluster.connPoolsPerNode;
-		int rem = cluster.connectionQueueSize - (max * cluster.connPoolsPerNode);
-
-		for (int i = 0; i < connectionPools.length; i++) {
-			int capacity = i < rem ? max + 1 : max;
-			connectionPools[i] = new Pool(capacity);
-		}
-
-		// Create async connection pools only if event loops have been defined.
-		if (cluster.eventState != null) {
-			asyncConnectionPools = new AsyncPool[cluster.eventState.length];
-			max = cluster.connectionQueueSize / asyncConnectionPools.length;
-			rem = cluster.connectionQueueSize - (max * asyncConnectionPools.length);
-
-			for (int i = 0; i <  cluster.eventState.length; i++) {
-				int capacity = i < rem ? max + 1 : max;
-				asyncConnectionPools[i] = new AsyncPool(capacity);
-			}
-		}
-		else {
-			asyncConnectionPools = null;
-		}
-
 		if (cluster.rackAware) {
 			this.racks = new HashMap<String,Integer>();
 		}
@@ -142,6 +120,76 @@ public class Node implements Closeable {
 		partitionGeneration = -1;
 		rebalanceGeneration = -1;
 		active = true;
+
+		// Create sync connection pools.
+		connectionPools = new Pool[cluster.connPoolsPerNode];
+		int min = cluster.minConnsPerNode / cluster.connPoolsPerNode;
+		int remMin = cluster.minConnsPerNode - (min * cluster.connPoolsPerNode);
+		int max = cluster.maxConnsPerNode / cluster.connPoolsPerNode;
+		int remMax = cluster.maxConnsPerNode - (max * cluster.connPoolsPerNode);
+
+		for (int i = 0; i < connectionPools.length; i++) {
+			int minSize = i < remMin ? min + 1 : min;
+			int maxSize = i < remMax ? max + 1 : max;
+
+			Pool pool = new Pool(minSize, maxSize);
+			connectionPools[i] = pool;
+
+			if (minSize > 0) {
+				createConnections(pool, minSize);
+			}
+		}
+
+		EventState[] eventState = cluster.eventState;
+
+		if (eventState == null) {
+			asyncConnectionPools = null;
+			return;
+		}
+
+		// Create async connection pools.
+		asyncConnectionPools = new AsyncPool[eventState.length];
+		min = cluster.asyncMinConnsPerNode / asyncConnectionPools.length;
+		remMin = cluster.asyncMinConnsPerNode - (min * asyncConnectionPools.length);
+		max = cluster.asyncMaxConnsPerNode / asyncConnectionPools.length;
+		remMax = cluster.asyncMaxConnsPerNode - (max * asyncConnectionPools.length);
+
+		for (int i = 0; i <  eventState.length; i++) {
+			int minSize = i < remMin ? min + 1 : min;
+			int maxSize = i < remMax ? max + 1 : max;
+			asyncConnectionPools[i] = new AsyncPool(minSize, maxSize);
+		}
+
+		if (cluster.asyncMinConnsPerNode <= 0) {
+			return;
+		}
+
+		// Preallocate connections.
+		final Monitor monitor = new Monitor();
+		final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
+		final int maxConcurrent = 50 / eventState.length + 1;
+
+		for (int i = 0; i <  eventState.length; i++) {
+			final int minSize = asyncConnectionPools[i].minSize;
+
+			if (minSize > 0) {
+				final EventLoop eventLoop = eventState[i].eventLoop;
+				final Node node = this;
+
+				eventLoop.execute(new Runnable() {
+					public void run() {
+						new AsyncConnectorExecutor(
+							eventLoop, cluster, node, minSize, maxConcurrent, monitor, eventLoopCount
+						);
+					}
+				});
+			}
+			else {
+				AsyncConnectorExecutor.eventLoopComplete(monitor, eventLoopCount);
+			}
+		}
+		// Wait until all async connections are created.
+		monitor.waitTillComplete();
 	}
 
 	/**
@@ -535,6 +583,59 @@ public class Node implements Closeable {
 		}
 	}
 
+	private void createConnections(Pool pool, int count) {
+		// Create sync connections.
+		while (count > 0) {
+			Connection conn;
+
+			try {
+				conn = createConnection(pool);
+			}
+			catch (Exception e) {
+				// Failing to create min connections is not considered fatal.
+				// Log failure and return.
+				if (Log.debugEnabled()) {
+					Log.debug("Failed to create connection: " + e.getMessage());
+				}
+				return;
+			}
+
+			if (pool.offer(conn)) {
+				pool.total.getAndIncrement();
+			}
+			else {
+				conn.close(this);
+				break;
+			}
+			count--;
+		}
+	}
+
+	private Connection createConnection(Pool pool) {
+		// Create sync connection.
+		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this) :
+				new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, pool, this);
+
+		if (cluster.user != null) {
+			try {
+				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+				if (! command.authenticate(cluster, conn, sessionToken)) {
+					throw new AerospikeException("Authentication failed");
+				}
+			}
+			catch (AerospikeException ae) {
+				conn.close(this);
+				throw ae;
+			}
+			catch (Exception e) {
+				conn.close(this);
+				throw new AerospikeException(e);
+			}
+		}
+		return conn;
+	}
+
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
@@ -671,7 +772,7 @@ public class Node implements Closeable {
 			}
 		}
 		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
-				"Node " + this + " max connections " + cluster.connectionQueueSize + " would be exceeded.");
+				"Node " + this + " max connections " + cluster.maxConnsPerNode + " would be exceeded.");
 	}
 
 	/**
@@ -693,9 +794,16 @@ public class Node implements Closeable {
 		conn.close(this);
 	}
 
-	public final void closeIdleConnections() {
+	final void balanceConnections() {
 		for (Pool pool : connectionPools) {
-			pool.closeIdle(this);
+			int excess = pool.excess();
+
+			if (excess > 0) {
+				pool.closeIdle(this, excess);
+			}
+			else if (excess < 0) {
+				createConnections(pool, -excess);
+			}
 		}
 	}
 
@@ -729,10 +837,10 @@ public class Node implements Closeable {
 			closeAsyncConnection(conn, index);
 		}
 
-		if (pool.total >= pool.capacity) {
+		if (pool.total >= pool.maxSize) {
 			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
 					"Node " + this + " event loop " + index + " of " + cluster.eventLoops.getSize() +
-					" max connections " + pool.capacity + " would be exceeded.");
+					" max connections " + pool.maxSize + " would be exceeded.");
 		}
 		pool.total++;
 		return null;
@@ -751,25 +859,50 @@ public class Node implements Closeable {
 		conn.close();
 	}
 
+	// Only call from AsyncConnector logic.
+	public final void addAsyncConnector(AsyncConnection conn, int index) {
+		asyncConnectionPools[index].add(conn);
+	}
+
+	// Only call from AsyncConnector logic.
+	public final void closeAsyncConnector(AsyncConnection conn, int index) {
+		asyncConnectionPools[index].close(conn);
+	}
+
 	public final void decrAsyncConnection(int index) {
 		asyncConnectionPools[index].total--;
 	}
 
-	public final void closeIdleAsyncConnections(int index) {
-		AsyncPool pool = asyncConnectionPools[index];
+	public final void balanceAsyncConnections(EventLoop eventLoop) {
+		AsyncPool pool = asyncConnectionPools[eventLoop.getIndex()];
+		int excess = pool.excess();
+
+		if (excess > 0) {
+			closeIdleAsyncConnections(pool, excess);
+		}
+		else if (excess < 0) {
+			// Allow only 5 concurrent connection requests because they will be done in the
+			// background and there is no immediate need for them to complete.
+			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 5, null, null);
+		}
+	}
+
+	private final void closeIdleAsyncConnections(AsyncPool pool, int count) {
 		ArrayDeque<AsyncConnection> queue = pool.queue;
-		AsyncConnection conn;
 
 		// Oldest connection is at end of queue.
-		while ((conn = queue.peekLast()) != null) {
-			if (conn.isCurrent()) {
-				return;
+		while (count > 0) {
+			AsyncConnection conn = queue.peekLast();
+
+			if (conn == null || conn.isCurrent()) {
+				break;
 			}
 
 			// Pop connection from queue.
 			queue.pollLast();
 			pool.connectionClosed();
 			conn.close();
+			count--;
 		}
 	}
 
@@ -1000,14 +1133,32 @@ public class Node implements Closeable {
 
 	private static final class AsyncPool {
 		public final ArrayDeque<AsyncConnection> queue;
-		public final int capacity;
+		public final int minSize;
+		public final int maxSize;
 		public int total;
 		public int opened;
 		public int closed;
 
-		private AsyncPool(int capacity) {
-			this.capacity = capacity;
-			this.queue = new ArrayDeque<AsyncConnection>(capacity);
+		private AsyncPool(int minSize, int maxSize) {
+			this.minSize = minSize;
+			this.maxSize = maxSize;
+			this.queue = new ArrayDeque<AsyncConnection>(maxSize);
+		}
+
+		private int excess() {
+			return total - minSize;
+		}
+
+		// Only call from AsyncConnector logic.
+		private void add(AsyncConnection conn) {
+			queue.addFirst(conn);
+			total++;
+		}
+
+		// Only call from AsyncConnector logic.
+		private void close(AsyncConnection conn) {
+			conn.close();
+			closed++;
 		}
 
 		private void connectionClosed() {

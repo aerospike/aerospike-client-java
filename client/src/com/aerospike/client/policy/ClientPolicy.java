@@ -80,9 +80,25 @@ public class ClientPolicy {
 	public int loginTimeout = 5000;
 
 	/**
-	 * Maximum number of connections allowed per server node.  Transactions will go through retry
-	 * logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum number of
-	 * connections would be exceeded.
+	 * Minimum number of synchronous connections allowed per server node.  Preallocate min connections
+	 * on client node creation.  The client will periodically allocate new connections if count falls
+	 * below min connections.
+	 * <p>
+	 * Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
+	 * The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
+	 * which can defeat the purpose of keeping connections in reserve for a future burst of activity.
+	 * <p>
+	 * If server proto-fd-idle-ms is changed, client {@link ClientPolicy#maxSocketIdle} should also be
+	 * changed to be a few seconds less than proto-fd-idle-ms.
+	 * <p>
+	 * Default: 0
+	 */
+	public int minConnsPerNode;
+
+	/**
+	 * Maximum number of synchronous connections allowed per server node.  Transactions will go
+	 * through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
+	 * number of connections would be exceeded.
 	 * <p>
 	 * The number of connections used per node depends on concurrent commands in progress
 	 * plus sub-commands used for parallel multi-node commands (batch, scan, and query).
@@ -91,6 +107,37 @@ public class ClientPolicy {
 	 * Default: 300
 	 */
 	public int maxConnsPerNode = 300;
+
+	/**
+	 * Minimum number of asynchronous connections allowed per server node.  Preallocate min connections
+	 * on client node creation.  The client will periodically allocate new connections if count falls
+	 * below min connections.
+	 * <p>
+	 * Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
+	 * The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
+	 * which can defeat the purpose of keeping connections in reserve for a future burst of activity.
+	 * <p>
+	 * If server proto-fd-idle-ms is changed, client {@link ClientPolicy#maxSocketIdle} should also be
+	 * changed to be a few seconds less than proto-fd-idle-ms.
+	 * <p>
+	 * Default: 0
+	 */
+	public int asyncMinConnsPerNode;
+
+	/**
+	 * Maximum number of asynchronous connections allowed per server node.  Transactions will go
+	 * through retry logic and potentially fail with "ResultCode.NO_MORE_CONNECTIONS" if the maximum
+	 * number of connections would be exceeded.
+	 * <p>
+	 * The number of connections used per node depends on concurrent commands in progress
+	 * plus sub-commands used for parallel multi-node commands (batch, scan, and query).
+	 * One connection will be used for each command.
+	 * <p>
+	 * If the value is -1, the value will be set to {@link ClientPolicy#maxConnsPerNode}.
+	 * <p>
+	 * Default: -1 (Use maxConnsPerNode)
+	 */
+	public int asyncMaxConnsPerNode = -1;
 
 	/**
 	 * Number of synchronous connection pools used for each node.  Machines with 8 cpu cores or
@@ -269,7 +316,10 @@ public class ClientPolicy {
 		this.authMode = other.authMode;
 		this.timeout = other.timeout;
 		this.loginTimeout = other.loginTimeout;
+		this.minConnsPerNode = other.minConnsPerNode;
 		this.maxConnsPerNode = other.maxConnsPerNode;
+		this.asyncMinConnsPerNode = other.asyncMinConnsPerNode;
+		this.asyncMaxConnsPerNode = other.asyncMaxConnsPerNode;
 		this.connPoolsPerNode = other.connPoolsPerNode;
 		this.maxSocketIdle = other.maxSocketIdle;
 		this.tendInterval = other.tendInterval;

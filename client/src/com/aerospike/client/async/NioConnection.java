@@ -69,9 +69,9 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		}
 	}
 
-	public void registerConnect(NioCommand command) {
+	public void registerConnect(NioEventLoop eventLoop, INioCommand command) {
 		try {
-			key = socketChannel.register(command.eventLoop.selector, SelectionKey.OP_CONNECT, command);
+			key = socketChannel.register(eventLoop.selector, SelectionKey.OP_CONNECT, command);
 		}
 		catch (ClosedChannelException e) {
 			throw new AerospikeException.Connection("SocketChannel register error: " + e.getMessage());

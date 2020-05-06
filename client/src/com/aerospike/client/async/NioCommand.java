@@ -247,7 +247,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			}
 
 			state = (cluster.getUser() != null) ? AsyncCommand.AUTH_WRITE : AsyncCommand.COMMAND_WRITE;
-			conn.registerConnect(this);
+			conn.registerConnect(eventLoop, this);
 			eventState.errors = 0;
 		}
 		catch (AerospikeException.Connection ac) {

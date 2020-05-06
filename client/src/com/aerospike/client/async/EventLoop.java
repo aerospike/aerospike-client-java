@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 
 /**
  * Aerospike event loop interface.
@@ -50,6 +51,11 @@ public interface EventLoop {
 	 * Schedule execution with a reusable ScheduleTask.
 	 */
 	public void schedule(ScheduleTask task, long delay, TimeUnit unit);
+
+	/**
+	 * Create async connector command.
+	 */
+	public AsyncConnector createConnector(Cluster cluster, Node node, AsyncConnector.Listener listener);
 
 	/**
 	 * Return the approximate number of commands currently being processed on
