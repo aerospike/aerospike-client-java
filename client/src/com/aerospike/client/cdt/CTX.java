@@ -25,7 +25,7 @@ import com.aerospike.client.Value;
  */
 public final class CTX {
 	/**
-	 * Lookup list by index offset.
+	 * Lookup list by base list's index offset.
 	 * <p>
 	 * If the index is negative, the resolved index starts backwards from end of list.
 	 * If an index is out of bounds, a parameter error will be returned.  Examples:
@@ -41,7 +41,10 @@ public final class CTX {
 	}
 
 	/**
-	 * Create list with given type at index offset.
+	 * Lookup list by base list's index offset. If the list at index offset is not found,
+	 * create it with the given sort order at that index offset. If pad is true and the
+	 * index offset is greater than the bounds of the base list, nil entries will be
+	 * inserted before the newly created list.
 	 */
 	public static CTX listIndexCreate(int index, ListOrder order, boolean pad) {
 		return new CTX(0x10 | order.getFlag(pad), Value.get(index));
@@ -95,14 +98,15 @@ public final class CTX {
 	}
 
 	/**
-	 * Lookup map by key.
+	 * Lookup map by base map's key.
 	 */
 	public static CTX mapKey(Value key) {
 		return new CTX(0x22, key);
 	}
 
 	/**
-	 * Create map with given type at map key.
+	 * Lookup map by base map's key. If the map at key is not found,
+	 * create it with the given sort order at that key.
 	 */
 	public static CTX mapKeyCreate(Value key, MapOrder order) {
 		return new CTX(0x22 | order.flag, key);
