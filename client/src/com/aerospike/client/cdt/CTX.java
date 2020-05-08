@@ -25,7 +25,7 @@ import com.aerospike.client.Value;
  */
 public final class CTX {
 	/**
-	 * Lookup list by base list's index offset.
+	 * Lookup list by index offset.
 	 * <p>
 	 * If the index is negative, the resolved index starts backwards from end of list.
 	 * If an index is out of bounds, a parameter error will be returned.  Examples:
@@ -98,7 +98,7 @@ public final class CTX {
 	}
 
 	/**
-	 * Lookup map by base map's key.
+	 * Lookup map by key.
 	 */
 	public static CTX mapKey(Value key) {
 		return new CTX(0x22, key);

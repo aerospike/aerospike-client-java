@@ -29,7 +29,10 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
+import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListOrder;
 import com.aerospike.client.cdt.MapOperation;
+import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 
@@ -52,6 +55,8 @@ public class OperateMap extends Example {
 		runScoreExample(client, params);
 		runListRangeExample(client, params);
 		runNestedExample(client, params);
+		runNestedMapCreateExample(client, params);
+		runNestedListCreateExample(client, params);
 	}
 
 	/**
@@ -226,6 +231,73 @@ public class OperateMap extends Example {
 				MapOperation.put(MapPolicy.Default, binName, Value.get("key21"), Value.get(11), CTX.mapKey(Value.get("key2"))),
 				Operation.get(binName)
 				);
+
+		record = client.get(params.policy, key);
+		console.info("Record: " + record);
+	}
+
+	public void runNestedMapCreateExample(AerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mapkey2");
+		String binName = params.getBinName("mapbin");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+
+		Map<Value,Value> m1 = new HashMap<Value,Value>();
+		m1.put(Value.get("key21"), Value.get(7));
+		m1.put(Value.get("key22"), Value.get(6));
+
+		Map<Value,Value> m2 = new HashMap<Value,Value>();
+		m2.put(Value.get("a"), Value.get(3));
+		m2.put(Value.get("c"), Value.get(5));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(m1));
+		inputMap.put(Value.get("key2"), Value.get(m2));
+
+		// Create maps.
+		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+
+		// Create key ordered map at "key2" only if map does not exist.
+		// Set map value to 4 for map key "key21" inside of map key "key2".
+		CTX ctx = CTX.mapKey(Value.get("key2"));
+		Record record = client.operate(params.writePolicy, key,
+			MapOperation.create(binName, MapOrder.KEY_VALUE_ORDERED, ctx),
+			MapOperation.put(MapPolicy.Default, binName, Value.get("b"), Value.get(4), ctx),
+			Operation.get(binName)
+			);
+
+		record = client.get(params.policy, key);
+		console.info("Record: " + record);
+	}
+
+	public void runNestedListCreateExample(AerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mapkey3");
+		String binName = params.getBinName("mapbin");
+
+		// Delete record if it already exists.
+		client.delete(params.writePolicy, key);
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(7));
+		l1.add(Value.get(9));
+		l1.add(Value.get(5));
+
+		Map<Value,Value> inputMap = new HashMap<Value,Value>();
+		inputMap.put(Value.get("key1"), Value.get(l1));
+
+		// Create maps.
+		client.put(params.writePolicy, key, new Bin(binName, inputMap));
+
+		// Create ordered list at map's "key2" only if list does not exist.
+		// Append 2,1 to ordered list.
+		CTX ctx = CTX.mapKey(Value.get("key2"));
+		Record record = client.operate(params.writePolicy, key,
+			ListOperation.create(binName, ListOrder.ORDERED, false, ctx),
+			ListOperation.append(binName, Value.get(2), ctx),
+			ListOperation.append(binName, Value.get(1), ctx),
+			Operation.get(binName)
+			);
 
 		record = client.get(params.policy, key);
 		console.info("Record: " + record);
