@@ -363,6 +363,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return cluster.getStats();
 	}
 
+	/**
+	 * Return operating cluster.
+	 */
+	public final Cluster getCluster() {
+		return cluster;
+	}
+
 	//-------------------------------------------------------
 	// Write Record Operations
 	//-------------------------------------------------------

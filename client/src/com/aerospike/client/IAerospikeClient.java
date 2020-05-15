@@ -24,6 +24,7 @@ import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.BatchListListener;
@@ -119,6 +120,11 @@ public interface IAerospikeClient extends Closeable {
 	 * Return operating cluster statistics.
 	 */
 	public ClusterStats getClusterStats();
+
+	/**
+	 * Return operating cluster.
+	 */
+	public Cluster getCluster();
 
 	//-------------------------------------------------------
 	// Write Record Operations
