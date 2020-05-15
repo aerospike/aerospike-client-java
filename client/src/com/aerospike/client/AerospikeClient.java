@@ -1785,7 +1785,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		statement.setOperations(operations);
+
+		if (operations.length > 0) {
+			statement.setOperations(operations);
+		}
 		statement.prepare(false);
 
 		Node[] nodes = cluster.validateNodes();
