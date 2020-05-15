@@ -367,6 +367,8 @@ public interface IAerospikeClient extends Closeable {
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -381,6 +383,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The returned boolean array is in positional order with the original key array order.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -396,6 +400,9 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each key's result is returned in separate onExists() calls.
+	 * <p>
+	 * If a batch request to a node fails, responses from other nodes will continue to
+	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -500,6 +507,8 @@ public interface IAerospikeClient extends Closeable {
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
 	 * This method requires Aerospike Server version >= 3.6.0.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
@@ -517,6 +526,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -536,6 +547,9 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, responses from other nodes will continue to
+	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -551,6 +565,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -567,6 +583,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -584,6 +602,9 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, responses from other nodes will continue to
+	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -598,6 +619,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -615,6 +638,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -633,6 +658,9 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, responses from other nodes will continue to
+	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -648,6 +676,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts and maximum concurrent threads.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -664,6 +694,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results
@@ -681,6 +713,9 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
 	 * The policy can be used to specify timeouts.
+	 * <p>
+	 * If a batch request to a node fails, responses from other nodes will continue to
+	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results

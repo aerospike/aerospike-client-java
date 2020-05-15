@@ -26,14 +26,23 @@ public abstract class AsyncMultiExecutor {
 	final Cluster cluster;
 	private AsyncMultiCommand[] commands;
 	private String namespace;
+	private AerospikeException exception;
 	private long clusterKey;
 	private int maxConcurrent;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
+	private final boolean stopOnFailure;
     boolean done;
 
 	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
+		this.stopOnFailure = true;
+	}
+
+	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster, boolean stopOnFailure) {
+		this.eventLoop = eventLoop;
+		this.cluster = cluster;
+		this.stopOnFailure = stopOnFailure;
 	}
 
 	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {
@@ -149,21 +158,36 @@ public abstract class AsyncMultiExecutor {
 			// All commands complete. Notify success if an exception has not already occurred.
 			if (! done) {
 				done = true;
-				onSuccess();
+
+				if (exception == null) {
+					onSuccess();
+				}
+				else {
+					onFailure(exception);
+				}
 			}
 		}
 	}
 
-	protected final void childFailure(AerospikeException ae) {
-		// There is no need to stop commands if all commands have already completed.
-		if (! done) {
-			done = true;
+	final void childFailure(AerospikeException ae) {
+		if (stopOnFailure) {
+			// There is no need to stop commands if all commands have already completed.
+			if (! done) {
+				done = true;
 
-			// Send stop signal to all commands.
-			for (AsyncMultiCommand command : commands) {
-				command.stop();
+				// Send stop signal to all commands.
+				for (AsyncMultiCommand command : commands) {
+					command.stop();
+				}
+				onFailure(ae);
 			}
-			onFailure(ae);
+		}
+		else {
+			// Batch sequence executors continue processing.
+			if (exception == null) {
+				exception = ae;
+			}
+			queryComplete();
 		}
 	}
 

@@ -129,7 +129,7 @@ public final class AsyncBatch {
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(eventLoop, cluster);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 
 			// Create commands.
@@ -214,7 +214,7 @@ public final class AsyncBatch {
 			String[] binNames,
 			int readAttr
 		) {
-			super(eventLoop, cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys, true);
 			this.recordArray = new Record[keys.length];
 			this.listener = listener;
 
@@ -301,7 +301,7 @@ public final class AsyncBatch {
 			String[] binNames,
 			int readAttr
 		) {
-			super(eventLoop, cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys, false);
 			this.listener = listener;
 
 			// Create commands.
@@ -394,7 +394,7 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsArrayListener listener
 		) {
-			super(eventLoop, cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys, true);
 			this.existsArray = new boolean[keys.length];
 			this.listener = listener;
 
@@ -475,7 +475,7 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(eventLoop, cluster, policy, keys);
+			super(eventLoop, cluster, policy, keys, false);
 			this.listener = listener;
 
 			// Create commands.
@@ -551,8 +551,14 @@ public final class AsyncBatch {
 		protected final List<BatchNode> batchNodes;
 		protected final int taskSize;
 
-		public AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, BatchPolicy policy, Key[] keys) {
-			super(eventLoop, cluster);
+		public AsyncBatchExecutor(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key[] keys,
+			boolean stopOnFailure
+		) {
+			super(eventLoop, cluster, stopOnFailure);
 			this.keys = keys;
 			this.batchNodes = BatchNode.generateList(cluster, policy, keys);
 			this.taskSize = batchNodes.size();
