@@ -40,6 +40,13 @@ public final class ExecuteTask extends Task {
 	}
 
 	/**
+	 * Return task id.
+	 */
+	public long getTaskId() {
+		return taskId;
+	}
+
+	/**
 	 * Query all nodes for task completion status.
 	 */
 	@Override
