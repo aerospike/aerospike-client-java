@@ -90,7 +90,7 @@ public final class NettyConnector extends AsyncConnector {
 					return;
 				}
 
-				conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
+				conn = new NettyConnection(ch);
 				node.connectionOpened(eventLoop.index);
 				ChannelPipeline p = ch.pipeline();
 

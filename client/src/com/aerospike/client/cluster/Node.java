@@ -169,7 +169,7 @@ public class Node implements Closeable {
 		final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
 		final int maxConcurrent = 50 / eventState.length + 1;
 
-		for (int i = 0; i <  eventState.length; i++) {
+		for (int i = 0; i < eventState.length; i++) {
 			final int minSize = asyncConnectionPools[i].minSize;
 
 			if (minSize > 0) {
@@ -203,8 +203,8 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this) :
-					new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this);
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, null, this) :
+					new Connection(address, cluster.connectionTimeout, null, this);
 
 				if (cluster.user != null) {
 					try {
@@ -614,8 +614,8 @@ public class Node implements Closeable {
 	private Connection createConnection(Pool pool) {
 		// Create sync connection.
 		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, null, this) :
-				new Connection(address, cluster.connectionTimeout, cluster.maxSocketIdleNanos, pool, this);
+				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, null, this) :
+				new Connection(address, cluster.connectionTimeout, pool, this);
 
 		if (cluster.user != null) {
 			try {
@@ -678,8 +678,8 @@ public class Node implements Closeable {
 
 			if (conn != null) {
 				// Found socket.
-				// Verify that socket is active and receive buffer is empty.
-				if (conn.isValid()) {
+				// Verify that socket is active.
+				if (cluster.isConnCurrentTran(conn.getLastUsed())) {
 					try {
 						conn.setTimeout(timeoutMillis);
 						return conn;
@@ -698,8 +698,8 @@ public class Node implements Closeable {
 				// Create new connection.
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, cluster.maxSocketIdleNanos, pool, this) :
-						new Connection(address, timeoutMillis, cluster.maxSocketIdleNanos, pool, this);
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, pool, this) :
+						new Connection(address, timeoutMillis, pool, this);
 				}
 				catch (RuntimeException re) {
 					pool.total.getAndDecrement();
@@ -831,7 +831,7 @@ public class Node implements Closeable {
 		AsyncConnection conn;
 
 		while ((conn = queue.pollFirst()) != null) {
-			if (conn.isValid(byteBuffer)) {
+			if (cluster.isConnCurrentTran(conn.getLastUsed()) && conn.isValid(byteBuffer)) {
 				return conn;
 			}
 			closeAsyncConnection(conn, index);
@@ -894,7 +894,7 @@ public class Node implements Closeable {
 		while (count > 0) {
 			AsyncConnection conn = queue.peekLast();
 
-			if (conn == null || conn.isCurrent()) {
+			if (conn == null || cluster.isConnCurrentTrim(conn.getLastUsed())) {
 				break;
 			}
 

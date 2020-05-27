@@ -24,39 +24,23 @@ import io.netty.channel.socket.SocketChannel;
  * Aerospike wrapper around netty channel.
  * Implements the Aerospike AsyncConnection interface.
  */
-public final class NettyConnection implements AsyncConnection {
+public final class NettyConnection extends AsyncConnection {
 
 	final SocketChannel channel;
-	private final long maxSocketIdle;
-	private long lastUsed;
 
     /**
      * Construct Aerospike channel wrapper from netty channel.
      */
-	public NettyConnection(SocketChannel channel, long maxSocketIdle) {
+	public NettyConnection(SocketChannel channel) {
 		this.channel = channel;
-		this.maxSocketIdle = maxSocketIdle;
 	}
 
 	/**
-	 * Is connection ready for another command.
+	 * Validate connection in a transaction.
 	 */
 	@Override
 	public boolean isValid(ByteBuffer notUsed) {
-		return (System.nanoTime() - lastUsed) <= maxSocketIdle && channel.isActive();
-	}
-
-	/**
-	 * Is connection idle time less than or equal to
-	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
-	 */
-	@Override
-	public boolean isCurrent() {
-		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
-	}
-
-	void updateLastUsed() {
-		lastUsed = System.nanoTime();
+		return channel.isActive();
 	}
 
 	/**

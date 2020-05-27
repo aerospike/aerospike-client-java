@@ -29,7 +29,6 @@ import java.net.SocketTimeoutException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
 import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
@@ -51,20 +50,18 @@ public final class Connection implements Closeable {
 	private final InputStream in;
 	private final OutputStream out;
 	protected final Pool pool;
-	private final long maxSocketIdle;
 	private volatile long lastUsed;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(address, timeoutMillis, TimeUnit.SECONDS.toNanos(55), null);
+		this(address, timeoutMillis, null);
 	}
 
-	public Connection(InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool, Node node) throws AerospikeException.Connection {
-		this(address, timeoutMillis, maxSocketIdle, pool);
+	public Connection(InetSocketAddress address, int timeoutMillis, Pool pool, Node node) throws AerospikeException.Connection {
+		this(address, timeoutMillis, pool);
 		node.connsOpened.getAndIncrement();
 	}
 
-	public Connection(InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
-		this.maxSocketIdle = maxSocketIdle;
+	public Connection(InetSocketAddress address, int timeoutMillis, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
 
 		try {
@@ -100,13 +97,12 @@ public final class Connection implements Closeable {
 		}
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool, Node node) throws AerospikeException.Connection {
-		this(policy, tlsName, address, timeoutMillis, maxSocketIdle, pool);
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Pool pool, Node node) throws AerospikeException.Connection {
+		this(policy, tlsName, address, timeoutMillis, pool);
 		node.connsOpened.getAndIncrement();
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, long maxSocketIdle, Pool pool) throws AerospikeException.Connection {
-		this.maxSocketIdle = maxSocketIdle;
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
 
 		try {
@@ -285,13 +281,6 @@ public final class Connection implements Closeable {
 
 	public int read(byte[] buffer, int pos, int length) throws IOException {
 		return in.read(buffer, pos, length);
-	}
-
-	/**
-	 * Is socket connected and used within specified limits.
-	 */
-	public boolean isValid() {
-		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
 	}
 
 	/**

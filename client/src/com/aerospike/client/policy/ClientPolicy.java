@@ -84,12 +84,9 @@ public class ClientPolicy {
 	 * on client node creation.  The client will periodically allocate new connections if count falls
 	 * below min connections.
 	 * <p>
-	 * Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
-	 * The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
-	 * which can defeat the purpose of keeping connections in reserve for a future burst of activity.
-	 * <p>
-	 * If server proto-fd-idle-ms is changed, client {@link ClientPolicy#maxSocketIdle} should also be
-	 * changed to be a few seconds less than proto-fd-idle-ms.
+	 * Server proto-fd-idle-ms and client {@link ClientPolicy#maxSocketIdle} should be set to zero
+	 * (no reap) if minConnsPerNode is greater than zero.  Reaping connections can defeat the purpose
+	 * of keeping connections in reserve for a future burst of activity.
 	 * <p>
 	 * Default: 0
 	 */
@@ -113,12 +110,9 @@ public class ClientPolicy {
 	 * on client node creation.  The client will periodically allocate new connections if count falls
 	 * below min connections.
 	 * <p>
-	 * Server proto-fd-idle-ms may also need to be increased substantially if min connections are defined.
-	 * The proto-fd-idle-ms default directs the server to close connections that are idle for 60 seconds
-	 * which can defeat the purpose of keeping connections in reserve for a future burst of activity.
-	 * <p>
-	 * If server proto-fd-idle-ms is changed, client {@link ClientPolicy#maxSocketIdle} should also be
-	 * changed to be a few seconds less than proto-fd-idle-ms.
+	 * Server proto-fd-idle-ms and client {@link ClientPolicy#maxSocketIdle} should be set to zero
+	 * (no reap) if asyncMinConnsPerNode is greater than zero.  Reaping connections can defeat the purpose
+	 * of keeping connections in reserve for a future burst of activity.
 	 * <p>
 	 * Default: 0
 	 */
@@ -152,15 +146,21 @@ public class ClientPolicy {
 
 	/**
 	 * Maximum socket idle in seconds.  Socket connection pools will discard sockets
-	 * that have been idle longer than the maximum.  The value is limited to 24 hours (86400).
-	 * <p>
-	 * It's important to set this value to a few seconds less than the server's proto-fd-idle-ms
-	 * (default 60000 milliseconds or 1 minute), so the client does not attempt to use a socket
-	 * that has already been reaped by the server.
+	 * that have been idle longer than the maximum.
 	 * <p>
 	 * Connection pools are now implemented by a LIFO stack.  Connections at the tail of the
 	 * stack will always be the least used.  These connections are checked for maxSocketIdle
 	 * once every 30 tend iterations (usually 30 seconds).
+	 * <p>
+	 * If server's proto-fd-idle-ms is greater than zero, then maxSocketIdle should be
+	 * at least a few seconds less than the server's proto-fd-idle-ms, so the client does not
+	 * attempt to use a socket that has already been reaped by the server.
+	 * <p>
+	 * If server's proto-fd-idle-ms is zero (no reap), then maxSocketIdle should also be zero.
+	 * Connections retrieved from a pool in transactions will not be checked for maxSocketIdle
+	 * when maxSocketIdle is zero.  Idle connections will still be trimmed down from peak
+	 * connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
+	 * hard-coded 55 second limit in the cluster tend thread.
 	 * <p>
 	 * Default: 55
 	 */

@@ -33,15 +33,11 @@ import com.aerospike.client.util.Util;
 /**
  * Asynchronous socket channel connection wrapper.
  */
-public final class NioConnection implements AsyncConnection, Closeable {
+public final class NioConnection extends AsyncConnection implements Closeable {
 	private final SocketChannel socketChannel;
 	private SelectionKey key;
-	private final long maxSocketIdle;
-	private long lastUsed;
 
-	public NioConnection(InetSocketAddress address, long maxSocketIdle) {
-		this.maxSocketIdle = maxSocketIdle;
-
+	public NioConnection(InetSocketAddress address) {
 		try {
 			socketChannel = SocketChannel.open();
 		}
@@ -120,15 +116,12 @@ public final class NioConnection implements AsyncConnection, Closeable {
 	}
 
 	/**
-	 * Is socket valid.  Return true if socket is connected and has no data in it's buffer.
-	 * Return false, if not connected, socket read error or has data in it's buffer.
+	 * Validate connection in a transaction.  Return true if socket is connected and
+	 * has no data in it's buffer.  Return false, if not connected, socket read error
+	 * or has data in it's buffer.
 	 */
 	@Override
 	public boolean isValid(ByteBuffer byteBuffer) {
-		if ((System.nanoTime() - lastUsed) > maxSocketIdle) {
-			return false;
-		}
-
 		// Do not use socketChannel.isOpen() or socketChannel.isConnected() because
 		// they do not take server actions on socket into account.
 		byteBuffer.position(0);
@@ -144,22 +137,9 @@ public final class NioConnection implements AsyncConnection, Closeable {
 		}
 	}
 
-	/**
-	 * Is connection idle time less than or equal to
-	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
-	 */
-	@Override
-	public boolean isCurrent() {
-		return (System.nanoTime() - lastUsed) <= maxSocketIdle;
-	}
-
 	public void unregister() {
 		key.interestOps(0);
 		key.attach(null);
-	}
-
-	public void updateLastUsed() {
-		lastUsed = System.nanoTime();
 	}
 
 	/**

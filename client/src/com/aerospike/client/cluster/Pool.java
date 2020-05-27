@@ -117,6 +117,8 @@ public final class Pool {
 	 * Close connections that are idle for more than maxSocketIdle up to count.
 	 */
 	void closeIdle(Node node, int count) {
+		final Cluster cluster = node.cluster;
+
 		while (count > 0) {
 			// Lock on each iteration to give fairness to other
 			// threads polling for connections.
@@ -133,7 +135,7 @@ public final class Pool {
 				final Connection[] conns = this.conns;
 				conn = conns[tail];
 
-				if (conn.isValid()) {
+				if (cluster.isConnCurrentTrim(conn.getLastUsed())) {
 					return;
 				}
 

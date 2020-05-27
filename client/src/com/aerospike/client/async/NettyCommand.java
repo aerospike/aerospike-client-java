@@ -288,7 +288,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 						return;
 					}
 
-					conn = new NettyConnection(ch, cluster.maxSocketIdleNanos);
+					conn = new NettyConnection(ch);
 					node.connectionOpened(eventLoop.index);
 					connectInProgress = false;
 					ChannelPipeline p = ch.pipeline();

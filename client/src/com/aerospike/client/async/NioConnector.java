@@ -43,7 +43,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 
 	@Override
 	public void createConnection() {
-		conn = new NioConnection(node.getAddress(), cluster.maxSocketIdleNanos);
+		conn = new NioConnection(node.getAddress());
 		node.connectionOpened(eventLoop.index);
 		conn.registerConnect(eventLoop, this);
 	}

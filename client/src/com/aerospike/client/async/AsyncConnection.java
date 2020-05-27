@@ -19,22 +19,26 @@ package com.aerospike.client.async;
 import java.nio.ByteBuffer;
 
 /**
- * Async connection interface.
+ * Async connection base class.
  */
-public interface AsyncConnection {
+public abstract class AsyncConnection {
+	private long lastUsed;
+
+	public final long getLastUsed() {
+		return lastUsed;
+	}
+
+	public final void updateLastUsed() {
+		lastUsed = System.nanoTime();
+	}
+
 	/**
 	 * Is connection ready for another command.
 	 */
-	public boolean isValid(ByteBuffer byteBuffer);
-
-	/**
-	 * Is connection idle time less than or equal to
-	 * {@link com.aerospike.client.policy.ClientPolicy#maxSocketIdle}.
-	 */
-	public boolean isCurrent();
+	public abstract boolean isValid(ByteBuffer byteBuffer);
 
 	/**
 	 * Close connection.
 	 */
-	public void close();
+	public abstract void close();
 }

@@ -48,8 +48,6 @@ import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
-	private static final int MaxSocketIdleSecondLimit = 60 * 60 * 24; // Limit maxSocketIdle to 24 hours
-
 	// Expected cluster name.
 	protected final String clusterName;
 
@@ -109,8 +107,11 @@ public class Cluster implements Runnable, Closeable {
 	// Extra event loop state for this cluster.
 	public final EventState[] eventState;
 
-	// Maximum socket idle in nanoseconds.
-	public final long maxSocketIdleNanos;
+	// Maximum socket idle to validate connections in transactions.
+	private final long maxSocketIdleNanosTran;
+
+	// Maximum socket idle to trim peak connections to min connections.
+	private final long maxSocketIdleNanosTrim;
 
 	// Minimum sync connections per node.
 	protected final int minConnsPerNode;
@@ -210,6 +211,19 @@ public class Cluster implements Runnable, Closeable {
 			this.user = null;
 		}
 
+		if (policy.maxSocketIdle < 0) {
+			throw new AerospikeException("Invalid maxSocketIdle: " + policy.maxSocketIdle);
+		}
+
+		if (policy.maxSocketIdle == 0) {
+			maxSocketIdleNanosTran = 0;
+			maxSocketIdleNanosTrim = TimeUnit.SECONDS.toNanos(55);
+		}
+		else {
+			maxSocketIdleNanosTran = TimeUnit.SECONDS.toNanos(policy.maxSocketIdle);
+			maxSocketIdleNanosTrim = maxSocketIdleNanosTran;
+		}
+
 		minConnsPerNode = policy.minConnsPerNode;
 		maxConnsPerNode = policy.maxConnsPerNode;
 
@@ -227,7 +241,6 @@ public class Cluster implements Runnable, Closeable {
 		connPoolsPerNode = policy.connPoolsPerNode;
 		connectionTimeout = policy.timeout;
 		loginTimeout = policy.loginTimeout;
-		maxSocketIdleNanos = TimeUnit.SECONDS.toNanos((policy.maxSocketIdle <= MaxSocketIdleSecondLimit)? policy.maxSocketIdle : MaxSocketIdleSecondLimit);
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 
@@ -830,6 +843,14 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return null;
+	}
+
+	public final boolean isConnCurrentTran(long lastUsed) {
+		return maxSocketIdleNanosTran == 0 || (System.nanoTime() - lastUsed) <= maxSocketIdleNanosTran;
+	}
+
+	public final boolean isConnCurrentTrim(long lastUsed) {
+		return (System.nanoTime() - lastUsed) <= maxSocketIdleNanosTrim;
 	}
 
 	public final void recoverConnection(ConnectionRecover cs) {
