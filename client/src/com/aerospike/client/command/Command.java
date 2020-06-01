@@ -45,6 +45,7 @@ public abstract class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.
+	public static final int INFO1_XDR				= (1 << 4); // Operation is being performed by XDR.
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
 	public static final int INFO1_READ_MODE_AP_ALL	= (1 << 6); // Involve all replicas in read operation.
 	public static final int INFO1_COMPRESS_RESPONSE	= (1 << 7); // Tell server to compress it's response.
@@ -1068,6 +1069,7 @@ public abstract class Command {
 	private final void writeHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount) {
         // Set flags.
 		int generation = 0;
+		int readAttr = 0;
 		int infoAttr = 0;
 
 		switch (policy.recordExistsAction) {
@@ -1108,9 +1110,13 @@ public abstract class Command {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
 		}
 
+		if (policy.xdr) {
+			readAttr |= Command.INFO1_XDR;
+		}
+
     	// Write all header data except total size which must be written last.
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
-		dataBuffer[9]  = (byte)0;
+		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
 		dataBuffer[12] = 0; // unused
@@ -1167,6 +1173,10 @@ public abstract class Command {
 
 		if (policy.durableDelete) {
 			writeAttr |= Command.INFO2_DURABLE_DELETE;
+		}
+
+		if (policy.xdr) {
+			readAttr |= Command.INFO1_XDR;
 		}
 
 		switch (policy.readModeSC) {

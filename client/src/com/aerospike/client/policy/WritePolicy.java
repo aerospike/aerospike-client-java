@@ -96,6 +96,14 @@ public final class WritePolicy extends Policy {
 	public boolean durableDelete;
 
 	/**
+	 * Operate in XDR mode.  Some external connectors may need to emulate an XDR client.
+	 * If enabled, an XDR bit is set for writes in the wire protocol.
+	 * <p>
+	 * Default: false.
+	 */
+	public boolean xdr;
+
+	/**
 	 * Copy write policy from another write policy.
 	 */
 	public WritePolicy(WritePolicy other) {
@@ -107,6 +115,7 @@ public final class WritePolicy extends Policy {
 		this.expiration = other.expiration;
 		this.respondAllOps = other.respondAllOps;
 		this.durableDelete = other.durableDelete;
+		this.xdr = other.xdr;
 	}
 
 	/**
