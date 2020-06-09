@@ -21,6 +21,7 @@ import java.security.cert.X509Certificate;
 import javax.net.ssl.SSLSession;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.cluster.Cluster;
@@ -28,6 +29,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.util.Util;
 
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
@@ -95,6 +97,7 @@ public final class NettyConnector extends AsyncConnector {
 				ChannelPipeline p = ch.pipeline();
 
 				if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
+					state = AsyncCommand.TLS_HANDSHAKE;
 					//InetSocketAddress address = node.getAddress();
 					//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
 					p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
@@ -106,10 +109,6 @@ public final class NettyConnector extends AsyncConnector {
 	}
 
 	private void channelActive() {
-		if (state == AsyncCommand.COMPLETE) {
-			return;
-		}
-
 		if (cluster.getUser() != null) {
 			writeAuth();
 		}
@@ -248,7 +247,11 @@ public final class NettyConnector extends AsyncConnector {
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
-	    	command.channelActive();
+			// Mark connection ready in regular (non TLS) mode.
+			// Otherwise, wait for TLS handshake to complete.
+			if (command.state == AsyncCommand.CONNECT) {
+				command.channelActive();
+			}
 		}
 
 	    @Override
@@ -275,10 +278,18 @@ public final class NettyConnector extends AsyncConnector {
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
 
 			Connection.validateServerCertificate(tlsPolicy, tlsName, cert);
+
+			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
+				command.channelActive();
+			}
 	    }
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+			if (command == null) {
+				Log.error("Connection exception: " + Util.getErrorMessage(cause));
+				return;
+			}
 			command.fail(new AerospikeException(cause));
 		}
 	}

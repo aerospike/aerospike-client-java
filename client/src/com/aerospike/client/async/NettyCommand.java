@@ -294,6 +294,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					ChannelPipeline p = ch.pipeline();
 
 					if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
+						state = AsyncCommand.TLS_HANDSHAKE;
 						//InetSocketAddress address = node.getAddress();
 						//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
 						p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
@@ -318,10 +319,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void channelActive() {
-		if (state == AsyncCommand.COMPLETE) {
-			return;
-		}
-
 		if (cluster.getUser() != null) {
 			writeAuth();
 		}
@@ -929,7 +926,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
-	    	command.channelActive();
+			// Mark connection ready in regular (non TLS) mode.
+			// Otherwise, wait for TLS handshake to complete.
+			if (command.state == AsyncCommand.CONNECT) {
+				command.channelActive();
+			}
 		}
 
 	    @Override
@@ -956,10 +957,19 @@ public final class NettyCommand implements Runnable, TimerTask {
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
 
 			Connection.validateServerCertificate(tlsPolicy, tlsName, cert);
+
+			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
+				command.channelActive();
+			}
 	    }
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+			if (command == null) {
+				Log.error("Connection exception: " + Util.getErrorMessage(cause));
+				return;
+			}
+
 			if (cause instanceof AerospikeException.Connection) {
 	        	command.onNetworkError((AerospikeException.Connection)cause);
 			}

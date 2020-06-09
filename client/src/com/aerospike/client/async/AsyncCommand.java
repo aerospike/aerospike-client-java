@@ -35,13 +35,14 @@ public abstract class AsyncCommand extends Command {
 	static final int REGISTERED = 1;
 	static final int DELAY_QUEUE = 2;
 	static final int CONNECT = 3;
-	static final int AUTH_WRITE = 4;
-	static final int AUTH_READ_HEADER = 5;
-	static final int AUTH_READ_BODY = 6;
-	static final int COMMAND_WRITE = 7;
-	static final int COMMAND_READ_HEADER = 8;
-	static final int COMMAND_READ_BODY = 9;
-	static final int COMPLETE = 10;
+	static final int TLS_HANDSHAKE = 4;
+	static final int AUTH_WRITE = 5;
+	static final int AUTH_READ_HEADER = 6;
+	static final int AUTH_READ_BODY = 7;
+	static final int COMMAND_WRITE = 8;
+	static final int COMMAND_READ_HEADER = 9;
+	static final int COMMAND_READ_BODY = 10;
+	static final int COMPLETE = 11;
 
 	Policy policy;
 	ArrayDeque<byte[]> bufferQueue;

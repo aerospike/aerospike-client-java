@@ -42,7 +42,7 @@ public final class Util {
 		}
 	}
 
-	public static String getErrorMessage(Exception e) {
+	public static String getErrorMessage(Throwable e) {
 		// Connection error messages don't need a stacktrace.
 		Throwable cause = e.getCause();
 		if (e instanceof SocketException || e instanceof AerospikeException.Connection ||
