@@ -178,6 +178,12 @@ public final class Packer {
     	packByteArray(b, 0, b.length);
     }
 
+	public void packBytes(byte[] b, int type) {
+    	packByteArrayBegin(b.length + 1);
+    	packByte(type);
+    	packByteArray(b, 0, b.length);
+    }
+
 	public void packBytes(byte[] b, int offset, int length) {
     	packByteArrayBegin(length + 1);
     	packByte(ParticleType.BLOB);

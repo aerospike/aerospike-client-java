@@ -19,6 +19,7 @@ package com.aerospike.client.lua;
 import org.luaj.vm2.LuaUserdata;
 
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.ParticleType;
 
 public final class LuaBytes extends LuaUserdata implements LuaData {
 
@@ -35,9 +36,14 @@ public final class LuaBytes extends LuaUserdata implements LuaData {
 	}
 
 	public LuaBytes(LuaInstance instance, byte[] bytes) {
+		this(instance, bytes, ParticleType.BLOB);
+	}
+
+	public LuaBytes(LuaInstance instance, byte[] bytes, int type) {
 		super(bytes);
 		this.bytes = bytes;
 		this.length = bytes.length;
+		this.type = type;
 		setmetatable(instance.getPackage("Bytes"));
 	}
 

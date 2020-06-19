@@ -16,6 +16,9 @@
  */
 package com.aerospike.client.command;
 
+/**
+ * Bin type for byte[] values.
+ */
 public final class ParticleType {
 	// Server particle types. Unsupported types are commented out.
 	public static final int NULL = 0;

@@ -72,6 +72,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get byte array with type or null value instance.
+	 */
+	public static Value get(byte[] value, int type) {
+		return (value == null)? NullValue.INSTANCE : new BytesValue(value, type);
+	}
+
+	/**
 	 * Get byte segment or null value instance.
 	 */
 	public static Value get(byte[] value, int offset, int length) {
@@ -368,15 +375,21 @@ public abstract class Value {
 	 */
 	public static final class BytesValue extends Value {
 		private final byte[] bytes;
+		private final int type;
 
 		public BytesValue(byte[] bytes) {
 			this.bytes = bytes;
+			this.type = ParticleType.BLOB;
+		}
+
+		public BytesValue(byte[] bytes, int type) {
+			this.bytes = bytes;
+			this.type = type;
 		}
 
 		@Override
 		public int estimateSize() {
 			return bytes.length;
-
 		}
 
 		@Override
@@ -387,12 +400,12 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packBytes(bytes);
+			packer.packBytes(bytes, type);
 		}
 
 		@Override
 		public int getType() {
-			return ParticleType.BLOB;
+			return type;
 		}
 
 		@Override
@@ -402,7 +415,7 @@ public abstract class Value {
 
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
-			return new LuaBytes(instance, bytes);
+			return new LuaBytes(instance, bytes, type);
 		}
 
 		@Override

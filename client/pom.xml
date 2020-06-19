@@ -106,6 +106,7 @@
             <include>com/aerospike/client/*</include>
             <include>com/aerospike/client/cdt/*</include>
             <include>com/aerospike/client/listener/*</include>
+            <include>com/aerospike/client/command/ParticleType.java</include>
             <include>com/aerospike/client/operation/*</include>
             <include>com/aerospike/client/policy/*</include>
             <include>com/aerospike/client/task/*</include>
