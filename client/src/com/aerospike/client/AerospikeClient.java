@@ -2278,7 +2278,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
 	 * @param password				user password in clear-text format
-	 * @param roles					variable arguments array of role names.  Predefined roles are listed in Role.cs
+	 * @param roles					variable arguments array of role names.  Predefined roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
@@ -2336,7 +2336,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
-	 * @param roles					role names.  Predefined roles are listed in Role.cs
+	 * @param roles					role names.  Predefined roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
@@ -2349,7 +2349,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @param user					user name
-	 * @param roles					role names.  Predefined roles are listed in Role.cs
+	 * @param roles					role names.  Predefined roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
 	public final void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
