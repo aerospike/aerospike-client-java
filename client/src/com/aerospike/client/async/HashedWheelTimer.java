@@ -34,6 +34,7 @@ package com.aerospike.client.async;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.Log;
+import com.aerospike.client.util.Util;
 
 /**
  * This HashedWheelTimer is a simplified version of netty's
@@ -165,7 +166,7 @@ public final class HashedWheelTimer implements Runnable {
 			    task.timeout();
 			} catch (Throwable t) {
 				if (Log.warnEnabled()) {
-					Log.warn("task.timeout() failed: " + t.getMessage());
+					Log.warn("task.timeout() failed: " + Util.getErrorMessage(t));
 				}
 			}
 		}

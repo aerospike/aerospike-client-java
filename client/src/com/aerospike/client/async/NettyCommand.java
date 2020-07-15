@@ -715,10 +715,16 @@ public final class NettyCommand implements Runnable, TimerTask {
 		if (command.policy.timeoutDelay > 0 && (
 			state == AsyncCommand.COMMAND_READ_HEADER || state == AsyncCommand.COMMAND_READ_BODY ||
 			state == AsyncCommand.AUTH_READ_HEADER || state == AsyncCommand.AUTH_READ_BODY)) {
-			// Create new command to drain connection.
-			new NettyRecover(this);
-			// NettyRecover took ownership of dataBuffer.
-			command.dataBuffer = null;
+			try {
+				// Create new command to drain connection.
+				new NettyRecover(this);
+				// NettyRecover took ownership of dataBuffer.
+				command.dataBuffer = null;
+			}
+			catch (Exception e) {
+				Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
+				closeConnection();
+			}
 		}
 		else {
 			closeConnection();
