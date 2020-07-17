@@ -39,7 +39,8 @@ public final class ScanPolicy extends Policy {
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
 	 * <p>
 	 * This field is supported on server versions < 4.9.
-	 * For server versions >= 4.9, use {@link ScanPolicy#maxRecords}.
+	 * Server versions >= 4.9 might allow scanPercent, but not in conjunction with
+	 * {@link ScanPolicy#maxRecords}. scanPercent is eventually slated for removal.
 	 * <p>
 	 * Default: 100
 	 */
@@ -134,7 +135,16 @@ public final class ScanPolicy extends Policy {
 	 */
 	public void validate() {
 		if (scanPercent <= 0 || scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scan percent: " + scanPercent);
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scanPercent: " + scanPercent);
+		}
+
+		if (maxRecords < 0) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
+		}
+
+		if (scanPercent != 100 && maxRecords != 0) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPercent(" + scanPercent +
+					") and maxRecords(" + maxRecords + ") are mutually exclusive");
 		}
 	}
 }
