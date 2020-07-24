@@ -560,6 +560,12 @@ public class Cluster implements Runnable, Closeable {
 				return true;
 			}
 			catch (Exception e) {
+				if (seed.tlsName != null && tlsPolicy == null) {
+					// Fail immediately for known configuration errors like this.
+					throw new AerospikeException.Connection("Seed host tlsName '" + seed.tlsName +
+						"' defined but client tlsPolicy not enabled", e);
+				}
+
 				// Store exception and try next seed.
 				if (failIfNotConnected) {
 					if (exceptions == null) {

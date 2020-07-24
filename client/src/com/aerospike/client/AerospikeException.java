@@ -53,6 +53,11 @@ public class AerospikeException extends RuntimeException {
 		this.inDoubt = inDoubt;
 	}
 
+	public AerospikeException(int resultCode, String message, Throwable e) {
+		super(message, e);
+		this.resultCode = resultCode;
+	}
+
 	public AerospikeException(String message, Throwable e) {
 		super(message, e);
 	}
@@ -302,6 +307,10 @@ public class AerospikeException extends RuntimeException {
 
 		public Connection(Exception e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, e);
+		}
+
+		public Connection(String message, Exception e) {
+			super(ResultCode.SERVER_NOT_AVAILABLE, message, e);
 		}
 
 		public Connection(int resultCode, String message) {
