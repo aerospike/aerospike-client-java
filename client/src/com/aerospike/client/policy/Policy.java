@@ -24,7 +24,7 @@ import com.aerospike.client.query.PredExp;
 public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
-	 * Only used for scans on server versions < 4.9.
+	 * Only used for scans on server versions &lt; 4.9.
 	 * <p>
 	 * Priority is obsolete and will eventually be removed.
 	 * Use {@link ScanPolicy#recordsPerSecond} instead of priority.
@@ -66,7 +66,7 @@ public class Policy {
 	 * <p>
 	 * If socketTimeout is zero and totalTimeout is non-zero, then socketTimeout will be set
 	 * to totalTimeout.  If both socketTimeout and totalTimeout are non-zero and
-	 * socketTimeout > totalTimeout, then socketTimeout will be set to totalTimeout. If both
+	 * socketTimeout &gt; totalTimeout, then socketTimeout will be set to totalTimeout. If both
 	 * socketTimeout and totalTimeout are zero, then there will be no socket idle limit.
 	 * <p>
 	 * If socketTimeout is non-zero and the socket has been idle for at least socketTimeout,
@@ -170,7 +170,7 @@ public class Policy {
 	 * Immediate write retries on node failure have been shown to consistently
 	 * result in errors.  If maxRetries is greater than zero on a write, then
 	 * sleepBetweenRetries should be set high enough to allow the cluster to
-	 * reform (>= 500ms).
+	 * reform (&gt;= 500ms).
 	 * <p>
 	 * Default: 0 (do not sleep between retries)
 	 */
@@ -264,7 +264,7 @@ public class Policy {
 	 * <p>
 	 * Example:
 	 * <pre>
-	 * // Record last update time > 2017-01-15
+	 * // Record last update time &gt; 2017-01-15
 	 * policy.setPredExp(
 	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),

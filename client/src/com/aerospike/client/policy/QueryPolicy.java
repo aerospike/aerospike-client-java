@@ -26,7 +26,7 @@ public class QueryPolicy extends Policy {
 	 * may be less than maxRecords if node record counts are small and unbalanced across
 	 * nodes.
 	 * <p>
-	 * maxRecords is supported on server versions >= 4.9 for scans only.  maxRecords
+	 * maxRecords is supported on server versions &gt;= 4.9 for scans only.  maxRecords
 	 * exists here because query methods will convert into a scan when the query
 	 * filter is null.  maxRecords is ignored when the query contains a filter.
 	 * <p>
@@ -64,7 +64,7 @@ public class QueryPolicy extends Policy {
 
 	/**
 	 * Terminate query if cluster is in migration state.
-	 * Only used for server versions < 4.9.
+	 * Only used for server versions &lt; 4.9.
 	 * <p>
 	 * Default: false
 	 */
@@ -86,7 +86,7 @@ public class QueryPolicy extends Policy {
 	 * Default constructor.
 	 * <p>
 	 * Set maxRetries for non-aggregation queries with a null filter on
-	 * server versions >= 4.9. All other queries are not retried.
+	 * server versions &gt;= 4.9. All other queries are not retried.
 	 * <p>
 	 * The latest servers support retries on individual data partitions.
 	 * This feature is useful when a cluster is migrating and partition(s)

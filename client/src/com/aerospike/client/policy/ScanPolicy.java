@@ -29,7 +29,7 @@ public final class ScanPolicy extends Policy {
 	 * may be less than maxRecords if node record counts are small and unbalanced across
 	 * nodes.
 	 * <p>
-	 * This field is supported on server versions >= 4.9.
+	 * This field is supported on server versions &gt;= 4.9.
 	 * <p>
 	 * Default: 0 (do not limit record count)
 	 */
@@ -38,8 +38,8 @@ public final class ScanPolicy extends Policy {
 	/**
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
 	 * <p>
-	 * This field is supported on server versions < 4.9.
-	 * Server versions >= 4.9 might allow scanPercent, but not in conjunction with
+	 * This field is supported on server versions &lt; 4.9.
+	 * Server versions &gt;= 4.9 might allow scanPercent, but not in conjunction with
 	 * {@link ScanPolicy#maxRecords}. scanPercent is eventually slated for removal.
 	 * <p>
 	 * Default: 100
@@ -83,7 +83,7 @@ public final class ScanPolicy extends Policy {
 
 	/**
 	 * Terminate scan if cluster in migration state.
-	 * Only used for server versions < 4.9.
+	 * Only used for server versions &lt; 4.9.
 	 * <p>
 	 * Default: false
 	 */
@@ -113,7 +113,7 @@ public final class ScanPolicy extends Policy {
 	/**
 	 * Default constructor.
 	 * <p>
-	 * Set maxRetries for scans on server versions >= 4.9. All other
+	 * Set maxRetries for scans on server versions &gt;= 4.9. All other
 	 * scans are not retried.
 	 * <p>
 	 * The latest servers support retries on individual data partitions.

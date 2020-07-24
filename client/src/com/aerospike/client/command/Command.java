@@ -642,7 +642,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-		// Only set scan options for server versions < 4.9 or if scanPercent was modified.
+		// Only set scan options for server versions &lt; 4.9 or if scanPercent was modified.
 		if (nodePartitions == null || policy.scanPercent < 100) {
 			// Estimate scan options size.
 			dataOffset += 2 + FIELD_HEADER_SIZE;
@@ -711,7 +711,7 @@ public abstract class Command {
 			writePredExp(policy.predExp, predSize);
 		}
 
-		// Only set scan options for server versions < 4.9 or if scanPercent was modified.
+		// Only set scan options for server versions &lt; 4.9 or if scanPercent was modified.
 		if (nodePartitions == null || policy.scanPercent < 100) {
 			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
 
@@ -823,7 +823,7 @@ public abstract class Command {
 				fieldCount++;
 			}
 
-			// Only set scan options for server versions < 4.9.
+			// Only set scan options for server versions &lt; 4.9.
 			if (nodePartitions == null) {
 				// Estimate scan options size.
 				dataOffset += 2 + FIELD_HEADER_SIZE;
@@ -959,7 +959,7 @@ public abstract class Command {
 				writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
 			}
 
-			// Only set scan options for server versions < 4.9.
+			// Only set scan options for server versions &lt; 4.9.
 			if (nodePartitions == null) {
 				writeFieldHeader(2, FieldType.SCAN_OPTIONS);
 

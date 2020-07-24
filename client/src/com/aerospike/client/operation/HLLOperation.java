@@ -25,7 +25,7 @@ import com.aerospike.client.util.Packer;
 
 /**
  * HyperLogLog (HLL) operations.
- * Requires server versions >= 4.9.
+ * Requires server versions &gt;= 4.9.
  * <p>
  * HyperLogLog operations on HLL items nested in lists/maps are not currently
  * supported by the server.

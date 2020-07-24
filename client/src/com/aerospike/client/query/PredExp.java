@@ -149,7 +149,7 @@ public abstract class PredExp implements Serializable {
 	 * Create record last update time predicate expressed in nanoseconds since 1970-01-01 epoch as 64 bit integer.
 	 * Example:
 	 * <pre>
-	 * // Record last update time >= 2017-01-15
+	 * // Record last update time &gt;= 2017-01-15
 	 * PredExp.recLastUpdate()
 	 * PredExp.integerValue(new GregorianCalendar(2017, 0, 15))
 	 * PredExp.integerGreaterEq()
@@ -209,28 +209,28 @@ public abstract class PredExp implements Serializable {
 	}
 
 	/**
-	 * Create 64 bit integer ">" operation predicate.
+	 * Create 64 bit integer "&gt;" operation predicate.
 	 */
 	public static PredExp integerGreater() {
 		return new Op(INTEGER_GREATER);
 	}
 
 	/**
-	 * Create 64 bit integer ">=" operation predicate.
+	 * Create 64 bit integer "&gt;=" operation predicate.
 	 */
 	public static PredExp integerGreaterEq() {
 		return new Op(INTEGER_GREATEREQ);
 	}
 
 	/**
-	 * Create 64 bit integer "<" operation predicate.
+	 * Create 64 bit integer "&lt;" operation predicate.
 	 */
 	public static PredExp integerLess() {
 		return new Op(INTEGER_LESS);
 	}
 
 	/**
-	 * Create 64 bit integer "<=" operation predicate.
+	 * Create 64 bit integer "&lt;=" operation predicate.
 	 */
 	public static PredExp integerLessEq() {
 		return new Op(INTEGER_LESSEQ);
@@ -328,7 +328,7 @@ public abstract class PredExp implements Serializable {
 	 * Create map key predicate where expression matches for all map keys.
 	 * Example:
 	 * <pre>
-	 * // Find records where all map keys k < 5 in map bin m.
+	 * // Find records where all map keys k &lt; 5 in map bin m.
 	 * PredExp.integerVar("k")
 	 * PredExp.integerValue(5)
 	 * PredExp.integerLess()
@@ -343,7 +343,7 @@ public abstract class PredExp implements Serializable {
 	/**
 	 * Create map predicate where expression matches for any map value.
 	 * <pre>
-	 * // Find records where any map value v > 100 in map bin m.
+	 * // Find records where any map value v &gt; 100 in map bin m.
 	 * PredExp.integerVar("v")
 	 * PredExp.integerValue(100)
 	 * PredExp.integerGreater()
@@ -359,7 +359,7 @@ public abstract class PredExp implements Serializable {
 	 * Create map predicate where expression matches for all map values.
 	 * Example:
 	 * <pre>
-	 * // Find records where all map values v > 500 in map bin m.
+	 * // Find records where all map values v &gt; 500 in map bin m.
 	 * PredExp.integerVar("v")
 	 * PredExp.integerValue(500)
 	 * PredExp.integerGreater()
@@ -514,7 +514,7 @@ public abstract class PredExp implements Serializable {
 			offset += 8;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(type) + "(" + value + ")";
 		}
@@ -546,7 +546,7 @@ public abstract class PredExp implements Serializable {
 			offset += 4 + len;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(type) + "(\"" + value + "\")";
 		}
@@ -587,7 +587,7 @@ public abstract class PredExp implements Serializable {
 			offset += len;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(type) + "(" + value + ")";
 		}
@@ -622,7 +622,7 @@ public abstract class PredExp implements Serializable {
 			offset += 2;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(op) + "(" + nexp + ")";
 		}
@@ -652,7 +652,7 @@ public abstract class PredExp implements Serializable {
 			offset += 4;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(op);
 		}
@@ -687,7 +687,7 @@ public abstract class PredExp implements Serializable {
 			offset += 4;
 			return offset;
 		}
-		
+
 		public String toString() {
 			return operationToString(op) + "(" + flags + ")";
 		}

@@ -44,7 +44,7 @@ public final class ThreadLocalData {
 	}
 
 	/**
-	 * Resize and return thread local buffer if the requested size <= 128 KB.
+	 * Resize and return thread local buffer if the requested size &lt;= 128 KB.
 	 * Otherwise, the thread local buffer will not be resized and a new
 	 * buffer will be returned from heap memory.
 	 * <p>

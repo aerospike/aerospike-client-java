@@ -37,8 +37,6 @@ import com.aerospike.client.util.ThreadLocalData;
  * The list of supported names can be found at:
  * <p>
  * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
- * <p>
- *
  */
 public final class Info {
 	//-------------------------------------------------------
@@ -185,7 +183,7 @@ public final class Info {
 	/**
 	 * Parse response in name/value pair format:
 	 * <p>
-	 * <command>\t<name1>=<value1>;<name2>=<value2>;...\n
+	 * {@code <command>\t<name1>=<value1>;<name2>=<value2>;...\n}
 	 *
 	 * @return				parser for name/value pairs
 	 */
@@ -703,7 +701,7 @@ public final class Info {
 	/**
 	 * Parser for responses in name/value pair format:
 	 * <p>
-	 * <command>\t<name1>=<value1>;<name2>=<value2>;...\n
+	 * {@code <command>\t<name1>=<value1>;<name2>=<value2>;...\n}
 	 */
 	public class NameValueParser {
 		private int nameBegin;

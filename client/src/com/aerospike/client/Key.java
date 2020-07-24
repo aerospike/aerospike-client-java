@@ -67,7 +67,7 @@ public final class Key {
 	 * </ul>
 	 * <p>
 	 * The key is converted to bytes to compute the digest.  The key's byte size is
-	 * limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
 	 * following:
 	 * <ul>
 	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
@@ -103,7 +103,7 @@ public final class Key {
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
 	 * <p>
-	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
 	 * following:
 	 * <ul>
 	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>
@@ -139,7 +139,7 @@ public final class Key {
 	 * <li>Explicitly store and retrieve the key in a bin.</li>
 	 * </ul>
 	 * <p>
-	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys > 8KB, do one of the
+	 * The key's byte size is limited to the current thread's buffer size (min 8KB).  To store keys &gt; 8KB, do one of the
 	 * following:
 	 * <ul>
 	 * <li>Set once: <pre>{@code ThreadLocalData.DefaultBufferSize = maxKeySize + maxSetNameSize + 1;}</pre></li>

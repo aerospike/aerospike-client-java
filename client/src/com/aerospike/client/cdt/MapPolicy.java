@@ -43,8 +43,8 @@ public final class MapPolicy {
 	 * Create unique key map with specified order when map does not exist.
 	 * Use specified write mode when writing map items.
 	 * <p>
-	 * This constructor should only be used for server versions < 4.3.
-	 * {@link MapPolicy#MapPolicy(MapOrder,int)} is recommended for server versions >= 4.3.
+	 * This constructor should only be used for server versions &lt; 4.3.
+	 * {@link MapPolicy#MapPolicy(MapOrder,int)} is recommended for server versions &gt;= 4.3.
 	 */
 	public MapPolicy(MapOrder order, MapWriteMode writeMode) {
 		this.attributes = order.attributes;

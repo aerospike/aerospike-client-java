@@ -40,7 +40,7 @@ public final class BatchPolicy extends Policy {
 	 * a thread pool).
 	 * </li>
 	 * <li>
-	 * > 0: Issue up to maxConcurrentThreads batch requests in parallel threads.  When a request
+	 * &gt; 0: Issue up to maxConcurrentThreads batch requests in parallel threads.  When a request
 	 * completes, a new request will be issued until all requests are complete.  This mode
 	 * prevents too many parallel threads being created for large cluster implementations.
 	 * The downside is extra threads will still need to be created (or taken from a thread pool).
@@ -57,7 +57,7 @@ public final class BatchPolicy extends Policy {
 	 * deems it to be appropriate.  If false, the batch will always be processed in separate
 	 * transaction threads.  This field is only relevant for the new batch index protocol.
 	 * <p>
-	 * For batch exists or batch reads of smaller sized records (<= 1K per record), inline
+	 * For batch exists or batch reads of smaller sized records (&lt;= 1K per record), inline
 	 * processing will be significantly faster on "in memory" namespaces.  The server disables
 	 * inline processing on disk based namespaces regardless of this policy field.
 	 * <p>

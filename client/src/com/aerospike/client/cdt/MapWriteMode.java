@@ -18,8 +18,8 @@ package com.aerospike.client.cdt;
 
 /**
  * Unique key map write type.
- * This enum should only be used for server versions < 4.3.
- * {@link MapWriteFlags} are recommended for server versions >= 4.3.
+ * This enum should only be used for server versions &lt; 4.3.
+ * {@link MapWriteFlags} are recommended for server versions &gt;= 4.3.
  */
 public enum MapWriteMode {
 	/**

@@ -224,7 +224,7 @@ public final class BitOperation {
 
 	/**
 	 * Create bit "add" operation.
-	 * Server adds value to byte[] bin starting at bitOffset for bitSize. BitSize must be <= 64.
+	 * Server adds value to byte[] bin starting at bitOffset for bitSize. BitSize must be &lt;= 64.
 	 * Signed indicates if bits should be treated as a signed number.
 	 * If add overflows/underflows, {@link BitOverflowAction} is used.
 	 * Server does not return a value.
@@ -252,7 +252,7 @@ public final class BitOperation {
 
 	/**
 	 * Create bit "subtract" operation.
-	 * Server subtracts value from byte[] bin starting at bitOffset for bitSize. BitSize must be <= 64.
+	 * Server subtracts value from byte[] bin starting at bitOffset for bitSize. BitSize must be &lt;= 64.
 	 * Signed indicates if bits should be treated as a signed number.
 	 * If add overflows/underflows, {@link BitOverflowAction} is used.
 	 * Server does not return a value.
@@ -280,7 +280,7 @@ public final class BitOperation {
 
 	/**
 	 * Create bit "setInt" operation.
-	 * Server sets value to byte[] bin starting at bitOffset for bitSize. Size must be <= 64.
+	 * Server sets value to byte[] bin starting at bitOffset for bitSize. Size must be &lt;= 64.
 	 * Server does not return a value.
 	 * Example:
 	 * <ul>

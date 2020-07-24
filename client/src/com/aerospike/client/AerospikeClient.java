@@ -1648,7 +1648,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The function operates on a single record.
 	 * The package name is used to locate the udf file location:
 	 * <p>
-	 * udf file = <server udf dir>/<package name>.lua
+	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1701,7 +1701,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The function operates on a single record.
 	 * The package name is used to locate the udf file location:
 	 * <p>
-	 * udf file = <server udf dir>/<package name>.lua
+	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
@@ -1983,7 +1983,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the Lua script files must also reside on both server and client.
 	 * The package name is used to locate the udf file location:
 	 * <p>
-	 * udf file = <udf dir>/<package name>.lua
+	 * {@code udf file = <udf dir>/<package name>.lua}
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for

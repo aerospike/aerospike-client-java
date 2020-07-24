@@ -116,7 +116,6 @@ public final class Statement {
 	 * Set optional predicate expression filters in postfix notation.
 	 * Predicate expression filters are applied on the query results on the server.
 	 * Predicate expression filters may occur on any bin in the record.
-	 * Requires Aerospike Server versions >= 3.12
 	 * <p>
 	 * This method is redundant because PredExp can now be set in the base Policy for
 	 * any transaction (including queries).
@@ -126,7 +125,7 @@ public final class Statement {
 	 * <p>
 	 * Example:
 	 * <pre>
-	 * // (c >= 11 and c <= 20) or (d > 3 and (d < 5)
+	 * // (c &gt;= 11 and c &lt;= 20) or (d &gt; 3 and (d &lt; 5)
      * stmt.setPredExp(
      *   PredExp.integerBin("c"),
      *   PredExp.integerValue(11),
@@ -145,7 +144,7 @@ public final class Statement {
      *   PredExp.or(2)
      * );
      *
-	 * // Record last update time > 2017-01-15
+	 * // Record last update time &gt; 2017-01-15
 	 * stmt.setPredExp(
 	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),

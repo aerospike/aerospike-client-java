@@ -18,7 +18,7 @@ package com.aerospike.client.cdt;
 
 /**
  * Map write bit flags.
- * Requires server versions >= 4.3.
+ * Requires server versions &gt;= 4.3.
  */
 public final class MapWriteFlags {
 	/**
