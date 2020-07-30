@@ -17,7 +17,7 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -266,7 +266,7 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	protected final Record parseRecord() {
-		Map<String,Object> bins = null;
+		Map<String,Object> bins = opCount == 0 ? null : new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
@@ -278,10 +278,6 @@ public abstract class MultiCommand extends SyncCommand {
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
 			dataOffset += particleBytesSize;
-
-			if (bins == null) {
-				bins = new HashMap<String,Object>();
-			}
 			bins.put(name, value);
 	    }
 	    return new Record(bins, generation, expiration);

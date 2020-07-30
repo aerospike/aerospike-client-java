@@ -17,7 +17,7 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
@@ -218,8 +218,6 @@ public class ReadCommand extends SyncCommand {
 		int generation,
 		int expiration
 	)  {
-		Map<String,Object> bins = new HashMap<String,Object>();
-
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		if (fieldCount > 0) {
@@ -229,6 +227,8 @@ public class ReadCommand extends SyncCommand {
 				dataOffset += 4 + fieldSize;
 			}
 		}
+
+		Map<String,Object> bins = new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
