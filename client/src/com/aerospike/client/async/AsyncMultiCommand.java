@@ -16,7 +16,7 @@
  */
 package com.aerospike.client.async;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
@@ -158,22 +158,22 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	}
 
 	protected final Record parseRecord() {
-		Map<String,Object> bins = null;
+		if (opCount <= 0) {
+		    return new Record(null, generation, expiration);
+		}
+
+		Map<String,Object> bins = new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			byte particleType = dataBuffer[dataOffset+5];
-			byte nameSize = dataBuffer[dataOffset+7];
-			String name = Buffer.utf8ToString(dataBuffer, dataOffset+8, nameSize);
+			byte particleType = dataBuffer[dataOffset + 5];
+			byte nameSize = dataBuffer[dataOffset + 7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
 			dataOffset += 4 + 4 + nameSize;
 
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
+			int particleBytesSize = opSize - (4 + nameSize);
 	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-			dataOffset += particleBytesSize;
-
-			if (bins == null) {
-				bins = new HashMap<String,Object>();
-			}
+	        dataOffset += particleBytesSize;
 			bins.put(name, value);
 	    }
 	    return new Record(bins, generation, expiration);
