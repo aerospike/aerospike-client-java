@@ -63,7 +63,7 @@ public final class Operation {
 	}
 
 	/**
-	 * Create integer add database operation.
+	 * Create integer/double add database operation.
 	 */
 	public static Operation add(Bin bin) {
 		return new Operation(Type.ADD, bin.name, bin.value);

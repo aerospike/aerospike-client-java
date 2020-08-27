@@ -510,10 +510,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Add integer bin values to existing record bin values.
+	 * Add integer/double bin values to existing record bin values.
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for integer values.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -529,13 +528,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Asynchronously add integer bin values to existing record bin values.
+	 * Asynchronously add integer/double bin values to existing record bin values.
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
-	 * This call only works for integer values.
 	 *
 	 * @param eventLoop				event loop that will process the command
 	 * @param listener				where to send results, pass in null for fire and forget
