@@ -33,6 +33,7 @@ import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
+	Node fallback;
 	String name;
 	List<Host> aliases;
 	Host primaryHost;
@@ -47,7 +48,16 @@ public final class NodeValidator {
 	 * reference a single node.  If round robin DNS configuration is used, the seed host
 	 * may have several addresses that reference different nodes in the cluster.
 	 */
-	public Node seedNode(Cluster cluster, Host host) throws Exception {
+	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Exception {
+		name = null;
+		aliases = null;
+		primaryHost = null;
+		primaryAddress = null;
+		primaryConn = null;
+		sessionToken = null;
+		sessionExpiration = 0;
+		features = 0;
+
 		InetAddress[] addresses = getAddresses(host);
 		Exception exception = null;
 
@@ -59,7 +69,12 @@ public final class NodeValidator {
 				if (this.aliases == null) {
 					setAliases(address, host.tlsName, host.port);
 				}
-				return cluster.createNode(this);
+
+				Node node = cluster.createNode(this);
+
+				if (validatePeers(peers, node)) {
+					return node;
+				}
 			}
 			catch (Exception e) {
 				// Log exception and continue to next alias.
@@ -73,9 +88,49 @@ public final class NodeValidator {
 			}
 		}
 
+		// Fallback signifies node exists, but is suspect.
+		// Return null so other seeds can be tried.
+		if (fallback != null) {
+			return null;
+		}
+
 		// Exception can't be null here because getAddresses() will throw exception
 		// if aliases length is zero.
 		throw exception;
+	}
+
+	private boolean validatePeers(Peers peers, Node node) {
+		if (peers == null) {
+			return true;
+		}
+
+		node.refresh(peers);
+
+		if (peers.genChanged) {
+			peers.refreshCount = 0;
+			node.refreshPeers(peers);
+		}
+
+		if (node.peersCount == 0) {
+			// Node is suspect because multiple seeds are used and node does not have any peers.
+			if (fallback == null) {
+				fallback = node;
+			}
+			else {
+				node.close();
+			}
+			return false;
+		}
+
+		// Node is valid. Drop fallback if it exists.
+		if (fallback != null) {
+			if (Log.infoEnabled()) {
+				Log.info("Skip orphan node: " + fallback);
+			}
+			fallback.close();
+			fallback = null;
+		}
+		return true;
 	}
 
 	/**

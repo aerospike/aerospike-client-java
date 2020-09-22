@@ -309,7 +309,7 @@ public class Cluster implements Runnable, Closeable {
 		Node node = null;
 
 		try {
-			node = nv.seedNode(this, seed);
+			node = nv.seedNode(this, seed, null);
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Seed " + seed + " failed: " + e.getMessage(), e);
@@ -457,11 +457,6 @@ public class Cluster implements Runnable, Closeable {
      */
 	private final void tend(boolean failIfNotConnected) throws AerospikeException {
 		// All node additions/deletions are performed in tend thread.
-		// If active nodes don't exist, seed cluster.
-		if (nodes.length == 0) {
-			seedNode(failIfNotConnected);
-		}
-
 		// Initialize tend iteration node statistics.
 		Peers peers = new Peers(nodes.length + 16, 16);
 
@@ -476,18 +471,24 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		// Refresh all known nodes.
-		for (Node node : nodes) {
-			node.refresh(peers);
+		// If active nodes don't exist, seed cluster.
+		if (nodes.length == 0) {
+			seedNode(peers, failIfNotConnected);
 		}
-
-		// Refresh peers when necessary.
-		if (peers.genChanged) {
-			// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
-			peers.refreshCount = 0;
-
+		else {
+			// Refresh all known nodes.
 			for (Node node : nodes) {
-				node.refreshPeers(peers);
+				node.refresh(peers);
+			}
+
+			// Refresh peers when necessary.
+			if (peers.genChanged) {
+				// Refresh peers for all nodes that responded the first time even if only one node's peers changed.
+				peers.refreshCount = 0;
+
+				for (Node node : nodes) {
+					node.refreshPeers(peers);
+				}
 			}
 		}
 
@@ -545,19 +546,22 @@ public class Cluster implements Runnable, Closeable {
 		processRecoverQueue();
 	}
 
-	private final boolean seedNode(boolean failIfNotConnected) throws AerospikeException {
+	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		Exception[] exceptions = null;
+		NodeValidator nv = new NodeValidator();
 
 		for (int i = 0; i < seedArray.length; i++) {
 			Host seed = seedArray[i];
 
 			try {
-				NodeValidator nv = new NodeValidator();
-				Node node = nv.seedNode(this, seed);
-				addNode(node);
-				return true;
+				Node node = nv.seedNode(this, seed, peers);
+
+				if (node != null) {
+					addNode(node);
+					return true;
+				}
 			}
 			catch (Exception e) {
 				if (seed.tlsName != null && tlsPolicy == null) {
@@ -579,6 +583,12 @@ public class Cluster implements Runnable, Closeable {
 					}
 				}
 			}
+		}
+
+		// No seeds valid. Use fallback node if it exists.
+		if (nv.fallback != null) {
+			addNode(nv.fallback);
+			return true;
 		}
 
 		if (failIfNotConnected) {
