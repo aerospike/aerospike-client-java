@@ -134,10 +134,6 @@ public class Node implements Closeable {
 
 			Pool pool = new Pool(minSize, maxSize);
 			connectionPools[i] = pool;
-
-			if (minSize > 0) {
-				createConnections(pool, minSize);
-			}
 		}
 
 		EventState[] eventState = cluster.eventState;
@@ -159,12 +155,23 @@ public class Node implements Closeable {
 			int maxSize = i < remMax ? max + 1 : max;
 			asyncConnectionPools[i] = new AsyncPool(minSize, maxSize);
 		}
+	}
 
-		if (cluster.asyncMinConnsPerNode <= 0) {
+	public final void createMinConnections() {
+		// Create sync connections.
+		for (Pool pool : connectionPools) {
+			if (pool.minSize > 0) {
+				createConnections(pool, pool.minSize);
+			}
+		}
+
+		EventState[] eventState = cluster.eventState;
+
+		if (eventState == null || cluster.asyncMinConnsPerNode <= 0) {
 			return;
 		}
 
-		// Preallocate connections.
+		// Create async connections.
 		final Monitor monitor = new Monitor();
 		final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
 		final int maxConcurrent = 50 / eventState.length + 1;

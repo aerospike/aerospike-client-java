@@ -596,15 +596,13 @@ public class Cluster implements Runnable, Closeable {
 			sb.append("Failed to connect to host(s): ");
 			sb.append(System.lineSeparator());
 
-			for (int i = 0; i < seedArray.length; i++)
-			{
+			for (int i = 0; i < seedArray.length; i++) {
 				sb.append(seedArray[i]);
 				sb.append(' ');
 
 				Exception ex = exceptions == null ? null : exceptions[i];
 
-				if (ex != null)
-				{
+				if (ex != null) {
 					sb.append(ex.getMessage());
 					sb.append(System.lineSeparator());
 				}
@@ -615,7 +613,9 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	protected Node createNode(NodeValidator nv) {
-		return new Node(this, nv);
+		Node node = new Node(this, nv);
+		node.createMinConnections();
+		return node;
 	}
 
 	private final ArrayList<Node> findNodesToRemove(int refreshCount) {
@@ -677,6 +677,8 @@ public class Cluster implements Runnable, Closeable {
 	 * Add single node using copy on write semantics.
 	 */
 	private final void addNode(Node node) {
+		node.createMinConnections();
+
 		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(1);
 		nodesToAdd.put(node.getName(), node);
 		addNodes(nodesToAdd);

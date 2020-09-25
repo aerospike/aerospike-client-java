@@ -70,7 +70,7 @@ public final class NodeValidator {
 					setAliases(address, host.tlsName, host.port);
 				}
 
-				Node node = cluster.createNode(this);
+				Node node = new Node(cluster, this);
 
 				if (validatePeers(peers, node)) {
 					return node;
@@ -104,11 +104,17 @@ public final class NodeValidator {
 			return true;
 		}
 
-		node.refresh(peers);
+		try {
+			node.refresh(peers);
 
-		if (peers.genChanged) {
-			peers.refreshCount = 0;
-			node.refreshPeers(peers);
+			if (peers.genChanged) {
+				peers.refreshCount = 0;
+				node.refreshPeers(peers);
+			}
+		}
+		catch (Exception e) {
+			node.close();
+			throw e;
 		}
 
 		if (node.peersCount == 0) {

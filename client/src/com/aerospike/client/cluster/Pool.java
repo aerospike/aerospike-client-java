@@ -31,7 +31,7 @@ public final class Pool {
 	private int head;
 	private int tail;
 	private int size;
-	private int minSize;
+	final int minSize;
 	private final ReentrantLock lock;
 	final AtomicInteger total;  // total connections: inUse + inPool
 
