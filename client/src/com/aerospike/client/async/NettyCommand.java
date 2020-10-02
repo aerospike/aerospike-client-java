@@ -245,7 +245,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void executeCommand() {
-		state = AsyncCommand.CONNECT;
+		state = AsyncCommand.CHANNEL_INIT;
 		iteration++;
 
 		try {
@@ -279,7 +279,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			b.handler(new ChannelInitializer<SocketChannel>() {
 				@Override
 				public void initChannel(SocketChannel ch) {
-					if (! (state == AsyncCommand.CONNECT && itr == iteration)) {
+					if (! (state == AsyncCommand.CHANNEL_INIT && itr == iteration)) {
 						// State mismatch. Timeout probably occurred.
 						// Connection count has already been decremented.
 						// Just close channel.
@@ -288,6 +288,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 						return;
 					}
 
+					state = AsyncCommand.CONNECT;
 					conn = new NettyConnection(ch);
 					node.connectionOpened(eventLoop.index);
 					connectInProgress = false;
@@ -712,23 +713,33 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private final void recoverConnection() {
-		if (command.policy.timeoutDelay > 0 && (
-			state == AsyncCommand.COMMAND_READ_HEADER || state == AsyncCommand.COMMAND_READ_BODY ||
-			state == AsyncCommand.AUTH_READ_HEADER || state == AsyncCommand.AUTH_READ_BODY)) {
-			try {
-				// Create new command to drain connection.
-				new NettyRecover(this);
-				// NettyRecover took ownership of dataBuffer.
-				command.dataBuffer = null;
-			}
-			catch (Exception e) {
-				Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
-				closeConnection();
+		if (command.policy.timeoutDelay > 0) {
+			switch (state) {
+			case AsyncCommand.CONNECT:
+			case AsyncCommand.TLS_HANDSHAKE:
+			case AsyncCommand.AUTH_READ_HEADER:
+			case AsyncCommand.AUTH_READ_BODY:
+			case AsyncCommand.COMMAND_READ_HEADER:
+			case AsyncCommand.COMMAND_READ_BODY:
+				try {
+					// Create new command to drain connection.
+					new NettyRecover(this);
+					// NettyRecover took ownership of dataBuffer.
+					command.dataBuffer = null;
+					return;
+				}
+				catch (Exception e) {
+					Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
+				}
+				break;
+
+			default:
+				break;
 			}
 		}
-		else {
-			closeConnection();
-		}
+
+		// Abort connection recovery.
+		closeConnection();
 	}
 
 	protected final void finish() {

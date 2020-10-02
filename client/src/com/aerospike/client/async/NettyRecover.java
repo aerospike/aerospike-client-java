@@ -16,73 +16,73 @@
  */
 package com.aerospike.client.async;
 
+import java.security.cert.X509Certificate;
 import java.util.concurrent.TimeUnit;
 
+import javax.net.ssl.SSLSession;
+
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.policy.TlsPolicy;
 
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
+import io.netty.handler.ssl.SslHandler;
+import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 
 public final class NettyRecover implements TimerTask {
 	//private static final AtomicInteger Counter = new AtomicInteger();
 
+	private final Cluster cluster;
 	private final NettyEventLoop eventLoop;
 	private final Node node;
 	private final EventState eventState;
 	private final NettyConnection conn;
 	private final HashedWheelTimeout timeoutTask;
-	private final byte[] dataBuffer;
-	//private int tranId;
+	private byte[] dataBuffer;
+	//private final int tranId;
 	private int offset;
 	private int length;
 	private int state;
 	private final boolean isSingle;
-	private final boolean checkReturnCode;
+	private final boolean saveBuffer;
 	private boolean isLastGroup;
 
 	public NettyRecover(NettyCommand cmd) {
-		AsyncCommand a = cmd.command;
+		this.cluster = cmd.cluster;
 		this.eventLoop = cmd.eventLoop;
 		this.node = cmd.node;
 		this.eventState = cmd.eventState;
 		this.conn = cmd.conn;
+		this.state = cmd.state;
+
+		AsyncCommand a = cmd.command;
 		this.dataBuffer = a.dataBuffer;  // take ownership of dataBuffer.
+		this.saveBuffer = (this.dataBuffer != null)? dataBuffer.length <= AsyncCommand.MAX_BUFFER_SIZE : false;
 		this.offset = a.dataOffset;
 		this.length = a.receiveSize;
+		this.isSingle = a.isSingle;
 
 		//tranId = Counter.getAndIncrement();
 		//System.out.println("" + tranId + " timeout:" + a.isSingle + ',' + cmd.state + ',' + offset + ',' + length);
 
-		if (cmd.state == AsyncCommand.AUTH_READ_HEADER) {
-			this.state = AsyncCommand.COMMAND_READ_HEADER;
-			this.isSingle = true;
-			this.checkReturnCode = true;
-		}
-		else if (cmd.state == AsyncCommand.AUTH_READ_BODY) {
-			this.state = AsyncCommand.COMMAND_READ_BODY;
-			this.isSingle = true;
-			this.checkReturnCode = true;
-
-			if (offset >= 2) {
-				if (dataBuffer[1] != 0) {
-					// Authentication failed.
-					//System.out.println("" + tranId + " invalid user/password:");
-					timeoutTask = null;
-					abort(false);
-					return;
-				}
-			}
-		}
-		else {
-			this.state = cmd.state;
-			this.isSingle = a.isSingle;
-			this.checkReturnCode = false;
+		if (cmd.state == AsyncCommand.AUTH_READ_BODY && offset >= 2 && dataBuffer[1] != 0) {
+			// Authentication failed.
+			//System.out.println("" + tranId + " invalid user/password:");
+			timeoutTask = null;
+			abort(false);
+			return;
 		}
 
 		// Do not check pending limit because connection may already have events.
@@ -113,12 +113,50 @@ public final class NettyRecover implements TimerTask {
 		abort(false);
 	}
 
+	private void channelActive() {
+		if (cluster.getUser() != null) {
+			writeAuth();
+		}
+		else {
+			recover();
+		}
+	}
+
+	private void writeAuth() {
+		state = AsyncCommand.AUTH_WRITE;
+		dataBuffer = new byte[512];
+
+		AdminCommand admin = new AdminCommand(dataBuffer);
+		int len = admin.setAuthenticate(cluster, node.getSessionToken());
+
+		ByteBuf byteBuffer = PooledByteBufAllocator.DEFAULT.directBuffer(len);
+		byteBuffer.clear();
+		byteBuffer.writeBytes(dataBuffer, 0, len);
+
+		ChannelFuture cf = conn.channel.writeAndFlush(byteBuffer);
+		cf.addListener(new ChannelFutureListener() {
+			@Override
+			public void operationComplete(ChannelFuture future) {
+				state = AsyncCommand.AUTH_READ_HEADER;
+				conn.channel.config().setAutoRead(true);
+			}
+		});
+	}
+
 	public void drain(ByteBuf byteBuffer) {
 		try {
 			switch (state) {
+			case AsyncCommand.AUTH_READ_HEADER:
+				drainSingleHeader(byteBuffer, AsyncCommand.AUTH_READ_BODY);
+				break;
+
+			case AsyncCommand.AUTH_READ_BODY:
+				drainSingleBody(byteBuffer);
+				break;
+
 			case AsyncCommand.COMMAND_READ_HEADER:
 				if (isSingle) {
-					drainSingleHeader(byteBuffer);
+					drainSingleHeader(byteBuffer, AsyncCommand.COMMAND_READ_BODY);
 				}
 				else {
 					drainMultiHeader(byteBuffer);
@@ -143,7 +181,7 @@ public final class NettyRecover implements TimerTask {
 		}
 	}
 
-	private final void drainSingleHeader(ByteBuf byteBuffer) {
+	private final void drainSingleHeader(ByteBuf byteBuffer, int nextState) {
 		int readableBytes = byteBuffer.readableBytes();
 		int dataSize = offset + readableBytes;
 
@@ -158,7 +196,7 @@ public final class NettyRecover implements TimerTask {
 		readableBytes -= dataSize;
 		length = ((int)(Buffer.bytesToLong(dataBuffer, 0) & 0xFFFFFFFFFFFFL));
 
-		state = AsyncCommand.COMMAND_READ_BODY;
+		state = nextState;
 		offset = 0;
 		drainSingleBody(byteBuffer);
 	}
@@ -166,7 +204,7 @@ public final class NettyRecover implements TimerTask {
 	private final void drainSingleBody(ByteBuf byteBuffer) {
 		int readableBytes = byteBuffer.readableBytes();
 
-		if (checkReturnCode && offset < 2 && offset + readableBytes >= 2) {
+		if (state == AsyncCommand.AUTH_READ_BODY && offset < 2 && offset + readableBytes >= 2) {
 			int len = 2 - offset;
 			byteBuffer.readBytes(dataBuffer, 0, len);
 			readableBytes -= len;
@@ -315,7 +353,7 @@ public final class NettyRecover implements TimerTask {
 			timeoutTask.cancel();
 		}
 
-		if (dataBuffer.length <= AsyncCommand.MAX_BUFFER_SIZE) {
+		if (saveBuffer) {
 			eventLoop.bufferQueue.addLast(dataBuffer);
 		}
 		state = AsyncCommand.COMPLETE;
@@ -331,9 +369,43 @@ public final class NettyRecover implements TimerTask {
 			this.command = command;
 		}
 
-	    @Override
+		@Override
+		public void channelActive(ChannelHandlerContext ctx) {
+			// Mark connection ready in regular (non TLS) mode.
+			// Otherwise, wait for TLS handshake to complete.
+			if (command.state == AsyncCommand.CONNECT) {
+				command.channelActive();
+			}
+		}
+
+		@Override
 	    public void channelRead(ChannelHandlerContext ctx, Object msg) {
 	    	command.drain((ByteBuf)msg);
+	    }
+
+	    @Override
+	    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+			if (! (evt instanceof SslHandshakeCompletionEvent)) {
+				return;
+			}
+
+			Throwable cause = ((SslHandshakeCompletionEvent)evt).cause();
+
+			if (cause != null) {
+				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
+			}
+
+			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
+
+			String tlsName = command.node.getHost().tlsName;
+			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
+			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
+
+			Connection.validateServerCertificate(tlsPolicy, tlsName, cert);
+
+			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
+				command.channelActive();
+			}
 	    }
 
 		@Override
