@@ -16,6 +16,9 @@
  */
 package com.aerospike.client;
 
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
+
 /**
  * Aerospike client logging facility. Logs can be filtered and message callbacks
  * can be defined to control how log messages are written.
@@ -84,6 +87,13 @@ public final class Log {
 	}
 
 	/**
+	 * Log messages to terminal standard output with timestamp, level and message.
+	 */
+	public static void setCallbackStandard() {
+		setCallback(new Log.Standard());
+	}
+
+	/**
 	 * Determine if warning log level is enabled.
 	 */
 	public static boolean warnEnabled() {
@@ -149,6 +159,15 @@ public final class Log {
 	public static void log(Level level, String message) {
 		if (gCallback != null && level.ordinal() <= gLevel.ordinal() ) {
 			gCallback.log(level, message);
+		}
+	}
+
+	private static class Standard implements Log.Callback {
+		private static final SimpleDateFormat Formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+
+		@Override
+		public void log(Level level, String message) {
+			System.out.println(Formatter.format(Calendar.getInstance().getTime()) + ' ' + level + ' ' + message);
 		}
 	}
 }
