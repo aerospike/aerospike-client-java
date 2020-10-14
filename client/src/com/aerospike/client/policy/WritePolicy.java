@@ -16,10 +16,13 @@
  */
 package com.aerospike.client.policy;
 
+import lombok.EqualsAndHashCode;
+
 /**
  * Container object for policy attributes used in write operations.
  * This object is passed into methods where database writes can occur.
  */
+@EqualsAndHashCode(callSuper = true)
 public final class WritePolicy extends Policy {
 	/**
 	 * Qualify how to handle writes where the record already exists.

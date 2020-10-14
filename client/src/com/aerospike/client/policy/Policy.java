@@ -17,10 +17,12 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.query.PredExp;
+import lombok.EqualsAndHashCode;
 
 /**
  * Transaction policy attributes used in all database commands.
  */
+@EqualsAndHashCode
 public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
