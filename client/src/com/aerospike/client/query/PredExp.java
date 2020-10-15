@@ -20,14 +20,12 @@ import java.io.Serializable;
 import java.util.Calendar;
 
 import com.aerospike.client.command.Buffer;
-import lombok.EqualsAndHashCode;
 
 /**
  * Predicate expression filter.
  * Predicate expression filters are applied on the query results on the server.
  * Predicate expression filters may occur on any bin in the record.
  */
-@EqualsAndHashCode
 public abstract class PredExp implements Serializable {
 	private static final long serialVersionUID = 8867524802639112680L;
 
