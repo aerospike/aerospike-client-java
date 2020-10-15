@@ -275,5 +275,60 @@ public class Policy {
 	public final void setPredExp(PredExp... predExp) {
 		this.predExp = predExp;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (compress ? 1231 : 1237);
+		result = prime * result + (failOnFilteredOut ? 1231 : 1237);
+		result = prime * result + maxRetries;
+		result = prime * result + ((priority == null) ? 0 : priority.hashCode());
+		result = prime * result + ((readModeAP == null) ? 0 : readModeAP.hashCode());
+		result = prime * result + ((readModeSC == null) ? 0 : readModeSC.hashCode());
+		result = prime * result + ((replica == null) ? 0 : replica.hashCode());
+		result = prime * result + (sendKey ? 1231 : 1237);
+		result = prime * result + sleepBetweenRetries;
+		result = prime * result + socketTimeout;
+		result = prime * result + timeoutDelay;
+		result = prime * result + totalTimeout;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Policy other = (Policy) obj;
+		if (compress != other.compress)
+			return false;
+		if (failOnFilteredOut != other.failOnFilteredOut)
+			return false;
+		if (maxRetries != other.maxRetries)
+			return false;
+		if (priority != other.priority)
+			return false;
+		if (readModeAP != other.readModeAP)
+			return false;
+		if (readModeSC != other.readModeSC)
+			return false;
+		if (replica != other.replica)
+			return false;
+		if (sendKey != other.sendKey)
+			return false;
+		if (sleepBetweenRetries != other.sleepBetweenRetries)
+			return false;
+		if (socketTimeout != other.socketTimeout)
+			return false;
+		if (timeoutDelay != other.timeoutDelay)
+			return false;
+		if (totalTimeout != other.totalTimeout)
+			return false;
+		return true;
+	}
 }
 

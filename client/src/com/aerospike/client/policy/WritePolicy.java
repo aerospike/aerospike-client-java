@@ -132,4 +132,47 @@ public final class WritePolicy extends Policy {
 		// Writes are not retried by default.
 		super.maxRetries = 0;
 	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = super.hashCode();
+		result = prime * result + ((commitLevel == null) ? 0 : commitLevel.hashCode());
+		result = prime * result + (durableDelete ? 1231 : 1237);
+		result = prime * result + expiration;
+		result = prime * result + generation;
+		result = prime * result + ((generationPolicy == null) ? 0 : generationPolicy.hashCode());
+		result = prime * result + ((recordExistsAction == null) ? 0 : recordExistsAction.hashCode());
+		result = prime * result + (respondAllOps ? 1231 : 1237);
+		result = prime * result + (xdr ? 1231 : 1237);
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (!super.equals(obj))
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		WritePolicy other = (WritePolicy) obj;
+		if (commitLevel != other.commitLevel)
+			return false;
+		if (durableDelete != other.durableDelete)
+			return false;
+		if (expiration != other.expiration)
+			return false;
+		if (generation != other.generation)
+			return false;
+		if (generationPolicy != other.generationPolicy)
+			return false;
+		if (recordExistsAction != other.recordExistsAction)
+			return false;
+		if (respondAllOps != other.respondAllOps)
+			return false;
+		if (xdr != other.xdr)
+			return false;
+		return true;
+	}
 }
