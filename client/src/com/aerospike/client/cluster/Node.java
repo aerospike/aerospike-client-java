@@ -51,16 +51,6 @@ public class Node implements Closeable {
 	 */
 	public static final int PARTITIONS = 4096;
 
-	public static final int HAS_GEO	= (1 << 0);
-	public static final int HAS_TRUNCATE_NS = (1 << 1);
-	public static final int HAS_BIT_OP = (1 << 2);
-	public static final int HAS_INDEX_EXISTS = (1 << 3);
-	public static final int HAS_PEERS = (1 << 4);
-	public static final int HAS_REPLICAS = (1 << 5);
-	public static final int HAS_CLUSTER_STABLE = (1 << 6);
-	public static final int HAS_LUT_NOW = (1 << 7);
-	public static final int HAS_PARTITION_SCAN = (1 << 8);
-
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
 
@@ -84,7 +74,7 @@ public class Node implements Closeable {
 	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
-	private final int features;
+	//private final int features;
 	protected boolean partitionChanged;
 	protected boolean rebalanceChanged;
 	protected volatile boolean performLogin;
@@ -105,7 +95,7 @@ public class Node implements Closeable {
 		this.tendConnection = nv.primaryConn;
 		this.sessionToken = nv.sessionToken;
 		this.sessionExpiration = nv.sessionExpiration;
-		this.features = nv.features;
+		//this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
 
@@ -242,35 +232,21 @@ public class Node implements Closeable {
 				}
 			}
 
-			if (peers.usePeers) {
-				String[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
-				HashMap<String,String> infoMap = Info.request(tendConnection, commands);
+			String[] commands = cluster.rackAware ? INFO_PERIODIC_REB : INFO_PERIODIC;
+			HashMap<String,String> infoMap = Info.request(tendConnection, commands);
 
-				verifyNodeName(infoMap);
-				verifyPeersGeneration(infoMap, peers);
-				verifyPartitionGeneration(infoMap);
+			verifyNodeName(infoMap);
+			verifyPeersGeneration(infoMap, peers);
+			verifyPartitionGeneration(infoMap);
 
-				if (cluster.rackAware) {
-					verifyRebalanceGeneration(infoMap);
-				}
-			}
-			else {
-				String[] commands = cluster.useServicesAlternate ?
-					new String[] {"node", "partition-generation", "services-alternate"} :
-					new String[] {"node", "partition-generation", "services"};
-
-				HashMap<String,String> infoMap = Info.request(tendConnection, commands);
-				verifyNodeName(infoMap);
-				verifyPartitionGeneration(infoMap);
-				addFriends(infoMap, peers);
+			if (cluster.rackAware) {
+				verifyRebalanceGeneration(infoMap);
 			}
 			peers.refreshCount++;
 			failures = 0;
 		}
 		catch (Exception e) {
-			if (peers.usePeers) {
-				peers.genChanged = true;
-			}
+			peers.genChanged = true;
 			refreshFailed(e);
 		}
 	}
@@ -351,92 +327,6 @@ public class Node implements Closeable {
 
 		if (rebalanceGeneration != gen) {
 			this.rebalanceChanged = true;
-		}
-	}
-
-	private final void addFriends(HashMap <String,String> infoMap, Peers peers) throws AerospikeException {
-		// Parse the service addresses and add the friends to the list.
-		String command = cluster.useServicesAlternate ? "services-alternate" : "services";
-		String friendString = infoMap.get(command);
-
-		if (friendString == null || friendString.length() == 0) {
-			peersCount = 0;
-			return;
-		}
-
-		String friendNames[] = friendString.split(";");
-		peersCount = friendNames.length;
-
-		for (String friend : friendNames) {
-			String friendInfo[] = friend.split(":");
-			String hostname = friendInfo[0];
-
-			if (cluster.ipMap != null) {
-				String alternativeHost = cluster.ipMap.get(hostname);
-
-				if (alternativeHost != null) {
-					hostname = alternativeHost;
-				}
-			}
-
-			int port = Integer.parseInt(friendInfo[1]);
-			Host host = new Host(hostname, port);
-
-			// Check global aliases for existing cluster.
-			Node node = cluster.aliases.get(host);
-
-			if (node == null) {
-				// Check local aliases for this tend iteration.
-				if (! peers.hosts.contains(host)) {
-					prepareFriend(host, peers);
-				}
-			}
-			else {
-				node.referenceCount++;
-			}
-		}
-	}
-
-	private final boolean prepareFriend(Host host, Peers peers) {
-		try {
-			NodeValidator nv = new NodeValidator();
-			nv.validateNode(cluster, host);
-
-			// Check for duplicate nodes in nodes slated to be added.
-			Node node = peers.nodes.get(nv.name);
-
-			if (node != null) {
-				// Duplicate node name found.  This usually occurs when the server
-				// services list contains both internal and external IP addresses
-				// for the same node.
-				nv.primaryConn.close();
-				peers.hosts.add(host);
-				node.aliases.add(host);
-				return true;
-			}
-
-			// Check for duplicate nodes in cluster.
-			node = cluster.nodesMap.get(nv.name);
-
-			if (node != null) {
-				nv.primaryConn.close();
-				peers.hosts.add(host);
-				node.aliases.add(host);
-				node.referenceCount++;
-				cluster.aliases.put(host, node);
-				return true;
-			}
-
-			node = cluster.createNode(nv);
-			peers.hosts.add(host);
-			peers.nodes.put(nv.name, node);
-			return true;
-		}
-		catch (Exception e) {
-			if (Log.warnEnabled()) {
-				Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
-			}
-			return false;
 		}
 	}
 
@@ -997,62 +887,6 @@ public class Node implements Closeable {
 		}
 
 		return r == rackId;
-	}
-
-	/**
-	 * Does server support cluster-stable info command.
-	 */
-	public final boolean hasClusterStable() {
-		return (features & HAS_CLUSTER_STABLE) != 0;
-	}
-
-	/**
-	 * Does server support lut=now in truncate info command.
-	 */
-	public final boolean hasLutNow() {
-		return (features & HAS_LUT_NOW) != 0;
-	}
-
-	/**
-	 * Does server support truncate-namespace info command.
-	 */
-	public final boolean hasTruncateNamespace() {
-		return (features & HAS_TRUNCATE_NS) != 0;
-	}
-
-	/**
-	 * Does server support replicas info command.
-	 */
-	public final boolean hasReplicas() {
-		return (features & HAS_REPLICAS) != 0;
-	}
-
-	/**
-	 * Does server support peers info command.
-	 */
-	public final boolean hasPeers() {
-		return (features & HAS_PEERS) != 0;
-	}
-
-	/**
-	 * Does server support bit operations.
-	 */
-	public final boolean hasBitOperations() {
-		return (features & HAS_BIT_OP) != 0;
-	}
-
-	/**
-	 * Does server support sindex-exists info command.
-	 */
-	public final boolean hasIndexExists() {
-		return (features & HAS_INDEX_EXISTS) != 0;
-	}
-
-	/**
-	 * Does server support partition scans.
-	 */
-	public final boolean hasPartitionScan() {
-		return (features & HAS_PARTITION_SCAN) != 0;
 	}
 
 	@Override

@@ -51,7 +51,7 @@ public final class IndexTask extends Task {
 		Node[] nodes = cluster.validateNodes();
 
 		for (Node node : nodes) {
-			if (isCreate || ! node.hasIndexExists()) {
+			if (isCreate) {
 				// Check index status.
 				if (statusCommand == null) {
 					statusCommand = buildStatusCommand(namespace, indexName);

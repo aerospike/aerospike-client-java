@@ -21,11 +21,9 @@ import java.util.List;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
-import com.aerospike.client.query.QueryValidate;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
@@ -77,41 +75,6 @@ public final class ScanExecutor {
 			if (policy.sleepBetweenRetries > 0) {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
-			}
-		}
-	}
-
-	public static void scanNodes(
-		Cluster cluster,
-		ScanPolicy policy,
-		String namespace,
-		String setName,
-		String[] binNames,
-		ScanCallback callback,
-		Node[] nodes
-	) {
-		policy.validate();
-
-		// Detect cluster migrations when performing scan.
-		long taskId = RandomShift.instance().nextLong();
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], namespace) : 0;
-		boolean first = true;
-
-		if (policy.concurrentNodes && nodes.length > 1) {
-			Executor executor = new Executor(cluster, nodes.length);
-
-			for (Node node : nodes) {
-				ScanCommand command = new ScanCommand(cluster, node, policy, namespace, setName, binNames, callback, taskId, clusterKey, first);
-				executor.addCommand(command);
-				first = false;
-			}
-			executor.execute(policy.maxConcurrentNodes);
-		}
-		else {
-			for (Node node : nodes) {
-				ScanCommand command = new ScanCommand(cluster, node, policy, namespace, setName, binNames, callback, taskId, clusterKey, first);
-				command.execute();
-				first = false;
 			}
 		}
 	}

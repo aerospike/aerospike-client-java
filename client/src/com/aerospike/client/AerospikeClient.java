@@ -39,7 +39,6 @@ import com.aerospike.client.async.AsyncQueryExecutor;
 import com.aerospike.client.async.AsyncQueryPartitionExecutor;
 import com.aerospike.client.async.AsyncRead;
 import com.aerospike.client.async.AsyncReadHeader;
-import com.aerospike.client.async.AsyncScanExecutor;
 import com.aerospike.client.async.AsyncScanPartitionExecutor;
 import com.aerospike.client.async.AsyncTouch;
 import com.aerospike.client.async.AsyncWrite;
@@ -628,27 +627,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			sb.append(set);
 		}
 		else {
-			// Servers >= 4.5.1.0 support truncate-namespace.
-			if (node.hasTruncateNamespace()) {
-				sb.append("truncate-namespace:namespace=");
-				sb.append(ns);
-			}
-			else {
-				sb.append("truncate:namespace=");
-				sb.append(ns);
-			}
+			sb.append("truncate-namespace:namespace=");
+			sb.append(ns);
 		}
 
 		if (beforeLastUpdate != null) {
 			sb.append(";lut=");
 			// Convert to nanoseconds since unix epoch (1970-01-01)
 			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);
-		}
-		else {
-			// Servers >= 4.3.1.4 and <= 4.5.0.1 require lut argument.
-			if (node.hasLutNow()) {
-				sb.append(";lut=now");
-			}
 		}
 
 		String response = Info.request(policy, node, sb.toString());
@@ -1371,14 +1357,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Node[] nodes = cluster.validateNodes();
-
-		if (cluster.hasPartitionScan) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
-			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
-		}
-		else {
-			ScanExecutor.scanNodes(cluster, policy, namespace, setName, binNames, callback, nodes);
-		}
+		PartitionTracker tracker = new PartitionTracker(policy, nodes);
+		ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
 	}
 
 	/**
@@ -1404,14 +1384,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Node[] nodes = cluster.validateNodes();
-
-		if (cluster.hasPartitionScan) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
-			new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
-		}
-		else {
-			new AsyncScanExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, nodes);
-		}
+		PartitionTracker tracker = new PartitionTracker(policy, nodes);
+		new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
 	}
 
 	/**
@@ -1455,13 +1429,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = scanPolicyDefault;
 		}
 
-		if (node.hasPartitionScan()) {
-			PartitionTracker tracker = new PartitionTracker(policy, node);
-			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
-		}
-		else {
-			ScanExecutor.scanNodes(cluster, policy, namespace, setName, binNames, callback, new Node[] {node});
-		}
+		PartitionTracker tracker = new PartitionTracker(policy, node);
+		ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
 	}
 
 	/**
@@ -1485,14 +1454,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Node[] nodes = cluster.validateNodes();
-
-		if (cluster.hasPartitionScan) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
-			ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
-		}
-		else {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPartitions() not supported");
-		}
+		PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+		ScanExecutor.scanPartitions(cluster, policy, namespace, setName, binNames, callback, tracker);
 	}
 
 	/**
@@ -1517,14 +1480,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Node[] nodes = cluster.validateNodes();
-
-		if (cluster.hasPartitionScan) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
-			new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
-		}
-		else {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPartitions() not supported");
-		}
+		PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+		new AsyncScanPartitionExecutor(eventLoop, cluster, policy, listener, namespace, setName, binNames, tracker);
 	}
 
 	//---------------------------------------------------------------
@@ -1830,8 +1787,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Node[] nodes = cluster.validateNodes();
 
 		// A scan will be performed if the secondary index filter is null.
-		// Check if scan and partition scan is supported.
-		if (statement.getFilter() == null && cluster.hasPartitionScan) {
+		if (statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, nodes);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
 			return executor.getRecordSet();
@@ -1866,8 +1822,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Node[] nodes = cluster.validateNodes();
 
 		// A scan will be performed if the secondary index filter is null.
-		// Check if scan and partition scan is supported.
-		if (statement.getFilter() == null && cluster.hasPartitionScan) {
+		if (statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, nodes);
 			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
 		}
@@ -1894,8 +1849,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		// A scan will be performed if the secondary index filter is null.
-		// Check if scan and partition scan is supported.
-		if (statement.getFilter() == null && node.hasPartitionScan()) {
+		if (statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, node);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, 1, tracker);
 			return executor.getRecordSet();
@@ -1927,8 +1881,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Node[] nodes = cluster.validateNodes();
 
 		// A scan will be performed if the secondary index filter is null.
-		// Check if scan and partition scan is supported.
-		if (statement.getFilter() == null && cluster.hasPartitionScan) {
+		if (statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
 			return executor.getRecordSet();
@@ -1962,8 +1915,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Node[] nodes = cluster.validateNodes();
 
 		// A scan will be performed if the secondary index filter is null.
-		// Check if scan and partition scan is supported.
-		if (statement.getFilter() == null && cluster.hasPartitionScan) {
+		if (statement.getFilter() == null) {
 			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
 			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
 		}

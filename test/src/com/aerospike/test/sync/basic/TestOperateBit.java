@@ -83,10 +83,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitBin() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		byte[] bit0 = new byte[] {(byte)0x80};
 		BitPolicy putMode = BitPolicy.Default;
 		BitPolicy updateMode = new BitPolicy(BitWriteFlags.UPDATE_ONLY);
@@ -116,10 +112,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSet() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 		byte[] bit0 = new byte[] {(byte)0x80};
 		byte[] bits1 = new byte[] {0x11, 0x22, 0x33};
@@ -152,10 +144,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitLShift() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -184,10 +172,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitRShift() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -210,10 +194,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitOr() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		byte[] bits1 = new byte[] {0x11, 0x22, 0x33};
 		BitPolicy putMode = new BitPolicy();
 
@@ -233,10 +213,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitXor() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		byte[] bits1 = new byte[] {0x11, 0x22, 0x33};
 		BitPolicy putMode = new BitPolicy();
 
@@ -256,10 +232,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAnd() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		byte[] bits1 = new byte[] {0x11, 0x22, 0x33};
 		BitPolicy putMode = new BitPolicy();
 
@@ -278,10 +250,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitNot() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -300,10 +268,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAdd() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -378,10 +342,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSub() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -456,10 +416,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSetInt() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy putMode = new BitPolicy();
 
 		assertBitModifyOperations(
@@ -497,10 +453,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitGet() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		client.delete(null, key);
 
 		byte[] bytes = new byte[] {(byte)0xC1, (byte)0xAA, (byte)0xAA};
@@ -567,10 +519,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitCount() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		assertBitReadOperation(
 			new byte[] {(byte)0xC1, (byte)0xAA, (byte)0xAB},
 			new Long[] {1l, 1l, 1l, 3l,
@@ -588,10 +536,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitLScan() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		assertBitReadOperation(
 			new byte[] {(byte)0xFF, (byte)0xFF, (byte)0xFF,
 						(byte)0xFF, 0x00, 0x00, 0x00, 0x00, 0x01},
@@ -623,10 +567,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitRScan() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		assertBitReadOperation(
 			new byte[] {(byte)0xFF, (byte)0xFF, (byte)0xFF, (byte)0xFF,
 						0x00, 0x00, 0x00, 0x00, 0x01},
@@ -658,10 +598,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitGetInt() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		assertBitReadOperation(
 			new byte[] {0x0F, 0x0F, 0x00},
 			new Long[] {15l, -1l,
@@ -779,10 +715,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSetEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -800,10 +732,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitLShiftEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -835,10 +763,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitRShiftEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		BitPolicy partial_policy = new BitPolicy(BitWriteFlags.PARTIAL);
 		int bin_sz = 15;
@@ -887,10 +811,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAndEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -908,10 +828,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitNotEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -928,10 +844,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitInsertEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 
@@ -947,10 +859,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAddEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -968,10 +876,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSubEx() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -990,10 +894,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitNullBlob() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		BitPolicy policy = new BitPolicy();
 		byte[] initial = new byte[]{};
 		byte[] buf = new byte[] {(byte)0x80};
@@ -1039,10 +939,6 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitResize() {
-		if (! args.validateBit()) {
-			return;
-		}
-
 		client.delete(null, key);
 
 		BitPolicy policy = new BitPolicy();

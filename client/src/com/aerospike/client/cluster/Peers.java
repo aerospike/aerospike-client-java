@@ -27,13 +27,11 @@ public final class Peers {
 	public final HashSet<Host> hosts;
 	public final HashMap<String,Node> nodes;
 	public int refreshCount;
-	public boolean usePeers;
 	public boolean genChanged;
 
 	public Peers(int peerCapacity, int addCapacity) {
 		peers = new ArrayList<Peer>(peerCapacity);
 		hosts = new HashSet<Host>(addCapacity);
 		nodes = new HashMap<String,Node>(addCapacity);
-		usePeers = true;
 	}
 }

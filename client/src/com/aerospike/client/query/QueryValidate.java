@@ -24,10 +24,6 @@ import com.aerospike.client.cluster.Node;
 public final class QueryValidate {
 
 	public static long validateBegin(Node node, String namespace) {
-		if (! node.hasClusterStable()) {
-			return 0;
-		}
-
 		// Fail when cluster is in migration.
 		String result = Info.request(node, "cluster-stable:namespace=" + namespace);
 
@@ -41,7 +37,7 @@ public final class QueryValidate {
 	}
 
 	public static void validate(Node node, String namespace, long expectedKey) {
-		if (expectedKey == 0 || ! node.hasClusterStable()) {
+		if (expectedKey == 0) {
 			return;
 		}
 

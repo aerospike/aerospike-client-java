@@ -30,7 +30,6 @@ import com.aerospike.client.util.Crypto;
  */
 public final class PartitionParser {
 	static final String PartitionGeneration = "partition-generation";
-	static final String ReplicasAll = "replicas-all";
 	static final String Replicas = "replicas";
 
 	private HashMap<String,Partitions> map;
@@ -50,14 +49,7 @@ public final class PartitionParser {
 		this.partitionCount = partitionCount;
 		this.map = map;
 
-		String command;
-		if (node.hasReplicas()) {
-			command = Replicas;
-		}
-		else {
-			command = ReplicasAll;
-		}
-
+		String command = Replicas;
 		Info info = new Info(conn, PartitionGeneration, command);
 		this.length = info.length;
 

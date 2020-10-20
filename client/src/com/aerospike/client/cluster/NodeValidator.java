@@ -296,7 +296,7 @@ public final class NodeValidator {
 			String featuresString = map.get("features");
 			int begin = 0;
 			int end = 0;
-			int len;
+			//int len;
 
 			while (end < featuresString.length()) {
 				end = featuresString.indexOf(';', begin);
@@ -304,6 +304,10 @@ public final class NodeValidator {
 				if (end < 0) {
 					end = featuresString.length();
 				}
+
+				// No features to process since all old features are known to be supported
+				// by required server 5.2.0.4+.
+				/*
 				len = end - begin;
 
 				if (featuresString.regionMatches(begin, "geo", 0, len)) {
@@ -333,6 +337,7 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "pscans", 0, len)) {
 					this.features |= Node.HAS_PARTITION_SCAN;
 				}
+				*/
 				begin = end + 1;
 			}
 		}

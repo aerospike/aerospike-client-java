@@ -49,7 +49,6 @@ public class Args {
 	public String set;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
-	public boolean hasBit;
 	public boolean singleBin;
 
 	public Args() {
@@ -199,7 +198,6 @@ public class Args {
 	 */
 	public void setServerSpecific(AerospikeClient client) {
 		Node node = client.getNodes()[0];
-		hasBit = node.hasBitOperations();
 		String namespaceFilter = "namespace/" + namespace;
 		String namespaceTokens = Info.request(null, node, namespaceFilter);
 
@@ -234,13 +232,5 @@ public class Args {
 	public String getBinName(String name) {
 		// Single bin servers don't need a bin name.
 		return singleBin ? "" : name;
-	}
-
-	public boolean validateBit() {
-		if (! hasBit) {
-			System.out.println("Skip test because bit operations not enabled on server");
-			return false;
-		}
-		return true;
 	}
 }

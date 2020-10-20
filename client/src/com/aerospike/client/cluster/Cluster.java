@@ -156,8 +156,6 @@ public class Cluster implements Runnable, Closeable {
 	// Request server rack ids.
 	final boolean rackAware;
 
-	public boolean hasPartitionScan;
-
 	private boolean asyncComplete;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
@@ -465,10 +463,6 @@ public class Cluster implements Runnable, Closeable {
 			node.referenceCount = 0;
 			node.partitionChanged = false;
 			node.rebalanceChanged = false;
-
-			if (! node.hasPeers()) {
-				peers.usePeers = false;
-			}
 		}
 
 		// If active nodes don't exist, seed cluster.
@@ -503,7 +497,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		if (peers.genChanged || ! peers.usePeers) {
+		if (peers.genChanged) {
 			// Handle nodes changes determined from refreshes.
 			ArrayList<Node> removeList = findNodesToRemove(peers.refreshCount);
 
@@ -713,7 +707,6 @@ public class Cluster implements Runnable, Closeable {
 				aliases.put(alias, node);
 			}
 		}
-		hasPartitionScan = Cluster.supportsPartitionScan(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -775,7 +768,6 @@ public class Cluster implements Runnable, Closeable {
 			System.arraycopy(nodeArray, 0, nodeArray2, 0, count);
 			nodeArray = nodeArray2;
 		}
-		hasPartitionScan = Cluster.supportsPartitionScan(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -977,19 +969,6 @@ public class Cluster implements Runnable, Closeable {
 				this.password = password;
 			}
 		}
-	}
-
-	private static boolean supportsPartitionScan(Node[] nodes) {
-		if (nodes.length == 0) {
-			return false;
-		}
-
-		for (Node node : nodes) {
-			if (! node.hasPartitionScan()) {
-				return false;
-			}
-		}
-		return true;
 	}
 
 	public final ExecutorService getThreadPool() {
