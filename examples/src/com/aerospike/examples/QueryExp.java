@@ -25,18 +25,19 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.exp.Exp;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.RegexFlag;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 
-public class QueryPredExp extends Example {
+public class QueryExp extends Example {
 
-	public QueryPredExp(Console console) {
+	public QueryExp(Console console) {
 		super(console);
 	}
 
@@ -121,7 +122,7 @@ public class QueryPredExp extends Example {
 		int begin = 10;
 		int end = 40;
 
-		console.info("Query Predicate: (bin2 > 126 && bin2 <= 140) or (bin2 = 360)");
+		console.info("Query Predicate: (bin2 > 126 && bin2 <= 140) || (bin2 = 360)");
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
@@ -132,21 +133,15 @@ public class QueryPredExp extends Example {
 
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
-		stmt.setPredExp(
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(126),
-			PredExp.integerGreater(),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(140),
-			PredExp.integerLessEq(),
-			PredExp.and(2),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(360),
-			PredExp.integerEqual(),
-			PredExp.or(2)
-			);
+		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		policy.filterExp = Exp.build(
+			Exp.or(
+				Exp.and(
+					Exp.gt(Exp.intBin("bin2"), Exp.val(126)),
+					Exp.le(Exp.intBin("bin2"), Exp.val(140))),
+				Exp.eq(Exp.intBin("bin2"), Exp.val(360))));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			while (rs.next()) {
@@ -168,25 +163,22 @@ public class QueryPredExp extends Example {
 		int begin = 10;
 		int end = 40;
 
-		console.info("Query Predicate: Record updated on 2017-01-15");
-		Calendar beginTime = new GregorianCalendar(2017, 0, 15);
-		Calendar endTime = new GregorianCalendar(2017, 0, 16);
+		console.info("Query Predicate: Record updated in 2020");
+		Calendar beginTime = new GregorianCalendar(2020, 0, 1);
+		Calendar endTime = new GregorianCalendar(2021, 0, 1);
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.recLastUpdate(),
-			PredExp.integerValue(beginTime),
-			PredExp.integerGreaterEq(),
-			PredExp.recLastUpdate(),
-			PredExp.integerValue(endTime),
-			PredExp.integerLess(),
-			PredExp.and(2)
-			);
 
-		RecordSet rs = client.query(null, stmt);
+		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		policy.filterExp = Exp.build(
+			Exp.and(
+				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
+				Exp.lt(Exp.lastUpdate(), Exp.val(endTime))));
+
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			while (rs.next()) {
@@ -214,13 +206,12 @@ public class QueryPredExp extends Example {
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.stringBin("bin3"),
-			PredExp.stringValue("prefix.*suffix"),
-			PredExp.stringRegex(RegexFlag.ICASE | RegexFlag.NEWLINE)
-			);
 
-		RecordSet rs = client.query(null, stmt);
+		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		policy.filterExp = Exp.build(
+			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
+
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			while (rs.next()) {

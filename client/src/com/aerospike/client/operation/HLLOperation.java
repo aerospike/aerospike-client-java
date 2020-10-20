@@ -21,11 +21,10 @@ import java.util.List;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
 import com.aerospike.client.Value.HLLValue;
-import com.aerospike.client.util.Packer;
+import com.aerospike.client.util.Pack;
 
 /**
  * HyperLogLog (HLL) operations.
- * Requires server versions &gt;= 4.9.
  * <p>
  * HyperLogLog operations on HLL items nested in lists/maps are not currently
  * supported by the server.
@@ -64,15 +63,11 @@ public final class HLLOperation {
 	 * @param policy			write policy, use {@link HLLPolicy#Default} for default
 	 * @param binName			name of bin
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
-	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 58 inclusive.
+	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 51 inclusive.
 	 */
 	public static Operation init(HLLPolicy policy, String binName, int indexBitCount, int minHashBitCount) {
-		Packer packer = new Packer();
-		init(packer, INIT, 3);
-		packer.packInt(indexBitCount);
-		packer.packInt(minHashBitCount);
-		packer.packInt(policy.flags);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.INIT, indexBitCount, minHashBitCount, policy.flags);
+		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -111,16 +106,11 @@ public final class HLLOperation {
 	 * @param binName			name of bin
 	 * @param list				list of values to be added
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
-	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 58 inclusive.
+	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 51 inclusive.
 	 */
 	public static Operation add(HLLPolicy policy, String binName, List<Value> list, int indexBitCount, int minHashBitCount) {
-		Packer packer = new Packer();
-		init(packer, ADD, 4);
-		packer.packValueList(list);
-		packer.packInt(indexBitCount);
-		packer.packInt(minHashBitCount);
-		packer.packInt(policy.flags);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);
+		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -133,11 +123,8 @@ public final class HLLOperation {
 	 * @param list				list of HLL objects
 	 */
 	public static Operation setUnion(HLLPolicy policy, String binName, List<HLLValue> list) {
-		Packer packer = new Packer();
-		init(packer, SET_UNION, 2);
-		packer.packList(list);
-		packer.packInt(policy.flags);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.SET_UNION, list, policy.flags);
+		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -147,9 +134,8 @@ public final class HLLOperation {
 	 * @param binName			name of bin
 	 */
 	public static Operation refreshCount(String binName) {
-		Packer packer = new Packer();
-		init(packer, SET_COUNT, 0);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.SET_COUNT);
+		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -162,10 +148,8 @@ public final class HLLOperation {
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
 	 */
 	public static Operation fold(String binName, int indexBitCount) {
-		Packer packer = new Packer();
-		init(packer, FOLD, 1);
-		packer.packInt(indexBitCount);
-		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.FOLD, indexBitCount);
+		return new Operation(Operation.Type.HLL_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -175,9 +159,8 @@ public final class HLLOperation {
 	 * @param binName			name of bin
 	 */
 	public static Operation getCount(String binName) {
-		Packer packer = new Packer();
-		init(packer, COUNT, 0);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.COUNT);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -189,10 +172,8 @@ public final class HLLOperation {
 	 * @param list				list of HLL objects
 	 */
 	public static Operation getUnion(String binName, List<HLLValue> list) {
-		Packer packer = new Packer();
-		init(packer, UNION, 1);
-		packer.packList(list);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.UNION, list);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -204,10 +185,8 @@ public final class HLLOperation {
 	 * @param list				list of HLL objects
 	 */
 	public static Operation getUnionCount(String binName, List<HLLValue> list) {
-		Packer packer = new Packer();
-		init(packer, UNION_COUNT, 1);
-		packer.packList(list);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.UNION_COUNT, list);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -219,10 +198,8 @@ public final class HLLOperation {
 	 * @param list				list of HLL objects
 	 */
 	public static Operation getIntersectCount(String binName, List<HLLValue> list) {
-		Packer packer = new Packer();
-		init(packer, INTERSECT_COUNT, 1);
-		packer.packList(list);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.INTERSECT_COUNT, list);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -233,10 +210,8 @@ public final class HLLOperation {
 	 * @param list				list of HLL objects
 	 */
 	public static Operation getSimilarity(String binName, List<HLLValue> list) {
-		Packer packer = new Packer();
-		init(packer, SIMILARITY, 1);
-		packer.packList(list);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(HLLOperation.SIMILARITY, list);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -247,13 +222,7 @@ public final class HLLOperation {
 	 * @param binName			name of bin
 	 */
 	public static Operation describe(String binName) {
-		Packer packer = new Packer();
-		init(packer, DESCRIBE, 0);
-		return new Operation(Operation.Type.HLL_READ, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static void init(Packer packer, int command, int count) {
-		packer.packArrayBegin(count + 1);
-		packer.packInt(command);
+		byte[] bytes = Pack.pack(HLLOperation.DESCRIBE);
+		return new Operation(Operation.Type.HLL_READ, binName, Value.get(bytes));
 	}
 }

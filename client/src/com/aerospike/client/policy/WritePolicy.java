@@ -32,6 +32,9 @@ public final class WritePolicy extends Policy {
 	 * Qualify how to handle record writes based on record generation. The default (NONE)
 	 * indicates that the generation is not used to restrict writes.
 	 * <p>
+	 * The server does not support this field for UDF execute() calls. The read-modify-write
+	 * usage model can still be enforced inside the UDF code itself.
+	 * <p>
 	 * Default: GenerationPolicy.NONE
 	 */
 	public GenerationPolicy generationPolicy = GenerationPolicy.NONE;
@@ -50,6 +53,9 @@ public final class WritePolicy extends Policy {
 	 * (including creation) on the server. If a write operation is creating a record,
 	 * the expected generation would be <code>0</code>. This field is only relevant when
 	 * generationPolicy is not NONE.
+	 * <p>
+	 * The server does not support this field for UDF execute() calls. The read-modify-write
+	 * usage model can still be enforced inside the UDF code itself.
 	 * <p>
 	 * Default: 0
 	 */

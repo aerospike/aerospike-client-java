@@ -39,8 +39,8 @@ Examples:
 
 Run a specific test:
 
-    # TestQueryPredExp is the test class name and queryPredicate2 is the test method.
-    ./run_tests -Dtest=TestQueryPredExp#queryPredicate2
+    # TestQueryFilterExp is the test class name and queryNot is the test method.
+    ./run_tests -Dtest=TestQueryFilterExp#queryNot
 
 TLS Examples:
 

@@ -173,18 +173,23 @@ public final class Packer {
     }
 
 	public void packBytes(byte[] b) {
+    	packByteArrayBegin(b.length);
+    	packByteArray(b, 0, b.length);
+	}
+
+	public void packParticleBytes(byte[] b) {
     	packByteArrayBegin(b.length + 1);
     	packByte(ParticleType.BLOB);
     	packByteArray(b, 0, b.length);
     }
 
-	public void packBytes(byte[] b, int type) {
+	public void packParticleBytes(byte[] b, int type) {
     	packByteArrayBegin(b.length + 1);
     	packByte(type);
     	packByteArray(b, 0, b.length);
     }
 
-	public void packBytes(byte[] b, int offset, int length) {
+	public void packParticleBytes(byte[] b, int offset, int length) {
     	packByteArrayBegin(length + 1);
     	packByte(ParticleType.BLOB);
     	packByteArray(b, offset, length);
@@ -216,21 +221,6 @@ public final class Packer {
 	}
 
 	private void packByteArrayBegin(int size) {
-		// Continue to pack byte arrays as strings until all servers/clients
-		// have been upgraded to handle new message pack binary type.
-		if (size < 32) {
-			packByte(0xa0 | size);
-		}
-		else if (size < 65536) {
-			packShort(0xda, size);
-		}
-		else {
-			packInt(0xdb, size);
-		}
-
-		// TODO: Replace with this code after all servers/clients
-		// have been upgraded to handle new message pack binary type.
-		/*
 		if (size < 32) {
 			packByte(0xa0 | size);
 		}
@@ -242,7 +232,7 @@ public final class Packer {
 		}
 		else {
 			packInt(0xc6, size);
-		}*/
+		}
 	}
 
 	public void packObject(Object obj) {
@@ -258,12 +248,12 @@ public final class Packer {
 		}
 
 		if (obj instanceof byte[]) {
-			packBytes((byte[]) obj);
+			packParticleBytes((byte[]) obj);
 			return;
 		}
 
 		if (obj instanceof String) {
-			packString((String) obj);
+			packParticleString((String) obj);
 			return;
 		}
 
@@ -312,7 +302,7 @@ public final class Packer {
 
 	public void packByteBuffer(ByteBuffer bb) {
 		byte[] b = bb.array();
-		packBytes(b);
+		packParticleBytes(b);
 	}
 
 	public void packLong(long val) {
@@ -400,18 +390,25 @@ public final class Packer {
     }
 
 	public void packString(String val) {
-		int size = Buffer.estimateSizeUtf8(val) + 1;
+		int size = Buffer.estimateSizeUtf8(val);
+		packStringBegin(size);
+		offset += Buffer.stringToUtf8(val, buffer, offset);
+	}
 
+	public void packParticleString(String val) {
+		int size = Buffer.estimateSizeUtf8(val) + 1;
+		packStringBegin(size);
+		buffer[offset++] = (byte)ParticleType.STRING;
+		offset += Buffer.stringToUtf8(val, buffer, offset);
+	}
+
+	private void packStringBegin(int size) {
 		if (size < 32) {
 			packByte(0xa0 | size);
 		}
-		// TODO: Enable this code after all servers/clients
-		// have been upgraded to handle 8 bit string length format.
-		/*
 		else if (size < 256) {
 			packByte(0xd9, size);
 		}
-		*/
 		else if (size < 65536) {
 			packShort(0xda, size);
 		}
@@ -422,11 +419,9 @@ public final class Packer {
 		if (offset + size > buffer.length) {
 			resize(size);
 		}
-		buffer[offset++] = (byte)ParticleType.STRING;
-		offset += Buffer.stringToUtf8(val, buffer, offset);
 	}
 
-	private void packByteArray(byte[] src, int srcOffset, int srcLength) {
+	public void packByteArray(byte[] src, int srcOffset, int srcLength) {
        	if (offset + srcLength > buffer.length) {
     		resize(srcLength);
     	}

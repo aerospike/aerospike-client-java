@@ -37,7 +37,7 @@ public enum BitOverflowAction {
 	 */
 	WRAP(4);
 
-	int flags;
+	public final int flags;
 
 	private BitOverflowAction(int flags) {
 		this.flags = flags;

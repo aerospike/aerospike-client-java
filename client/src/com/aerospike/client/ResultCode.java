@@ -215,7 +215,7 @@ public final class ResultCode {
 	public static final int OP_NOT_APPLICABLE = 26;
 
 	/**
-	 * The transaction was not performed because the predexp was false.
+	 * The transaction was not performed because the filter was false.
 	 */
 	public static final int FILTERED_OUT = 27;
 
@@ -544,7 +544,7 @@ public final class ResultCode {
 			return "Operation not applicable";
 
 		case FILTERED_OUT:
-			return "Transaction filtered out by predexp";
+			return "Transaction filtered out";
 
 		case QUERY_END:
 			return "Query end";

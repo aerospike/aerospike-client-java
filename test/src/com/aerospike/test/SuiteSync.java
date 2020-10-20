@@ -27,9 +27,12 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
+import com.aerospike.test.sync.basic.TestBitExp;
 import com.aerospike.test.sync.basic.TestDeleteBin;
 import com.aerospike.test.sync.basic.TestExpire;
 import com.aerospike.test.sync.basic.TestGeneration;
+import com.aerospike.test.sync.basic.TestHLLExp;
+import com.aerospike.test.sync.basic.TestListExp;
 import com.aerospike.test.sync.basic.TestListMap;
 import com.aerospike.test.sync.basic.TestOperate;
 import com.aerospike.test.sync.basic.TestOperateBit;
@@ -47,9 +50,11 @@ import com.aerospike.test.sync.query.TestQueryAverage;
 import com.aerospike.test.sync.query.TestQueryCollection;
 import com.aerospike.test.sync.query.TestQueryExecute;
 import com.aerospike.test.sync.query.TestQueryFilter;
+import com.aerospike.test.sync.query.TestQueryFilterExp;
+import com.aerospike.test.sync.query.TestQueryGeo;
 import com.aerospike.test.sync.query.TestQueryInteger;
 import com.aerospike.test.sync.query.TestQueryKey;
-import com.aerospike.test.sync.query.TestQueryPredExp;
+import com.aerospike.test.sync.query.TestQueryFilterSet;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.util.Args;
@@ -59,9 +64,12 @@ import com.aerospike.test.util.Args;
 	TestAdd.class,
 	TestAppend.class,
 	TestBatch.class,
+	TestBitExp.class,
 	TestDeleteBin.class,
 	TestExpire.class,
 	TestGeneration.class,
+	TestHLLExp.class,
+	TestListExp.class,
 	TestListMap.class,
 	TestOperate.class,
 	TestOperateBit.class,
@@ -79,9 +87,11 @@ import com.aerospike.test.util.Args;
 	TestQueryCollection.class,
 	TestQueryExecute.class,
 	TestQueryFilter.class,
+	TestQueryGeo.class,
 	TestQueryInteger.class,
 	TestQueryKey.class,
-	TestQueryPredExp.class,
+	TestQueryFilterExp.class,
+	TestQueryFilterSet.class,
 	TestQueryString.class,
 	TestQuerySum.class
 })

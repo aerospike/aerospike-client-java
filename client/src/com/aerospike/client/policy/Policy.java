@@ -16,7 +16,7 @@
  */
 package com.aerospike.client.policy;
 
-import com.aerospike.client.query.PredExp;
+import com.aerospike.client.exp.Expression;
 
 /**
  * Transaction policy attributes used in all database commands.
@@ -54,12 +54,17 @@ public class Policy {
 	public Replica replica = Replica.SEQUENCE;
 
 	/**
-	 * Optional predicate expression filter in postfix notation. If the predicate
-	 * expression exists and evaluates to false, the transaction is ignored.
+	 * Optional expression filter. If filterExp exists and evaluates to false, the
+	 * transaction is ignored.
 	 * <p>
 	 * Default: null
+	 * <p>
+	 * <pre>Example:{@code
+	 * Policy p = new Policy();
+	 * p.filterExp = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(11)));
+	 * }</pre>
 	 */
-	public PredExp[] predExp;
+	public Expression filterExp;
 
 	/**
 	 * Socket idle timeout in milliseconds when processing a database command.
@@ -197,7 +202,7 @@ public class Policy {
 	public boolean compress;
 
 	/**
-	 * Throw exception if {@link #predExp} is defined and that filter evaluates
+	 * Throw exception if {@link #filterExp} is defined and that filter evaluates
 	 * to false (transaction ignored).  The {@link com.aerospike.client.AerospikeException}
 	 * will contain result code {@link com.aerospike.client.ResultCode#FILTERED_OUT}.
 	 * <p>
@@ -215,7 +220,7 @@ public class Policy {
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
-		this.predExp = other.predExp;
+		this.filterExp = other.filterExp;
 		this.socketTimeout = other.socketTimeout;
 		this.totalTimeout = other.totalTimeout;
 		this.timeoutDelay = other.timeoutDelay;
@@ -255,33 +260,13 @@ public class Policy {
 		}
 	}
 
-	/**
-	 * Set predicate expression filter in postfix notation. If the predicate
-	 * expression exists and evaluates to false, the transaction is ignored.
-	 * <p>
-	 * Postfix notation is described here:
-	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
-	 * <p>
-	 * Example:
-	 * <pre>
-	 * // Record last update time &gt; 2017-01-15
-	 * policy.setPredExp(
-	 *   PredExp.recLastUpdate(),
-	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
-	 *   PredExp.integerGreater()
-	 * );
-     * </pre>
-	 */
-	public final void setPredExp(PredExp... predExp) {
-		this.predExp = predExp;
-	}
-
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + (compress ? 1231 : 1237);
 		result = prime * result + (failOnFilteredOut ? 1231 : 1237);
+		result = prime * result + ((filterExp == null) ? 0 : filterExp.hashCode());
 		result = prime * result + maxRetries;
 		result = prime * result + ((priority == null) ? 0 : priority.hashCode());
 		result = prime * result + ((readModeAP == null) ? 0 : readModeAP.hashCode());
@@ -307,6 +292,11 @@ public class Policy {
 		if (compress != other.compress)
 			return false;
 		if (failOnFilteredOut != other.failOnFilteredOut)
+			return false;
+		if (filterExp == null) {
+			if (other.filterExp != null)
+				return false;
+		} else if (!filterExp.equals(other.filterExp))
 			return false;
 		if (maxRetries != other.maxRetries)
 			return false;

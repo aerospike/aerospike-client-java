@@ -400,7 +400,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packBytes(bytes, type);
+			packer.packParticleBytes(bytes, type);
 		}
 
 		@Override
@@ -464,7 +464,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packBytes(bytes, offset, length);
+			packer.packParticleBytes(bytes, offset, length);
 		}
 
 		@Override
@@ -624,7 +624,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packString(value);
+			packer.packParticleString(value);
 		}
 
 		@Override
@@ -1171,7 +1171,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packBytes(bytes);
+			packer.packParticleBytes(bytes);
 		}
 
 		@Override

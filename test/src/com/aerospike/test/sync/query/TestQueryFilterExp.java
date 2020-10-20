@@ -31,16 +31,22 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.cdt.MapReturnType;
+import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ListExp;
+import com.aerospike.client.exp.MapExp;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
-import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
-public class TestQueryPredExp extends TestSync {
+public class TestQueryFilterExp extends TestSync {
 	private static final String setName = args.set + "p";
 	private static final String indexName = "pred";
 	private static final String keyPrefix = "pred";
@@ -62,6 +68,7 @@ public class TestQueryPredExp extends TestSync {
 			}
 		}
 
+		// Write records with string keys
 		for (int i = 1; i <= size; i++) {
 			Key key = new Key(args.namespace, setName, keyPrefix + i);
 			List<Integer> list = null;
@@ -104,7 +111,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate1() {
+	public void queryAndOr() {
 		int begin = 10;
 		int end = 45;
 
@@ -112,37 +119,20 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(40),
-			PredExp.integerGreater(),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(44),
-			PredExp.integerLess(),
-			PredExp.and(2),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(22),
-			PredExp.integerEqual(),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(9),
-			PredExp.integerEqual(),
-			PredExp.or(3),
-			PredExp.integerBin(binName),
-			PredExp.integerBin("bin2"),
-			PredExp.integerEqual(),
-			PredExp.and(2)
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.bin("bin2").greaterThan(40).and(Predicate.bin("bin2").lessThan(44))
-			.or(Predicate.bin("bin2").equal(22))
-			.or(Predicate.bin("bin2").equal(9))
-			.and(Predicate.bin(binName, Predicate.Type.INTEGER).equal(Predicate.bin("bin2")))
-			);
-		*/
+		// ((bin2 > 40 && bin2 < 44) || bin2 == 22 || bin2 == 9) && (binName == bin2)
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.and(
+				Exp.or(
+					Exp.and(
+						Exp.gt(Exp.intBin("bin2"), Exp.val(40)),
+						Exp.lt(Exp.intBin("bin2"), Exp.val(44))),
+					Exp.eq(Exp.intBin("bin2"), Exp.val(22)),
+					Exp.eq(Exp.intBin("bin2"), Exp.val(9))),
+				Exp.eq(Exp.intBin(binName), Exp.intBin("bin2"))));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -160,7 +150,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate2() {
+	public void queryNot() {
 		int begin = 10;
 		int end = 45;
 
@@ -168,24 +158,16 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(15),
-			PredExp.integerGreaterEq(),
-			PredExp.integerBin("bin2"),
-			PredExp.integerValue(42),
-			PredExp.integerLessEq(),
-			PredExp.and(2),
-			PredExp.not()
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.not(Predicate.bin("bin2").greaterThanOrEqual(15).and(Predicate.bin("bin2").lessThanOrEqual(42)))
-			);
-		*/
+		// ! (bin2 >= 15 && bin2 <= 42)
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.not(
+				Exp.and(
+					Exp.ge(Exp.intBin("bin2"), Exp.val(15)),
+					Exp.le(Exp.intBin("bin2"), Exp.val(42)))));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -203,7 +185,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate3() {
+	public void queryLastUpdate() {
 		int begin = 10;
 		int end = 45;
 
@@ -211,19 +193,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.recLastUpdate(),
-			PredExp.integerValue(System.currentTimeMillis() * 1000000L + 100),
-			PredExp.integerGreater()
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.recordLastUpdate().greaterThan(Predicate.nanos(System.currentTimeMillis() + 100))
-			);
-		*/
+		// record last update time > (currentTimeMillis() * 1000000L + 100)
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.gt(
+				Exp.lastUpdate(),
+				Exp.val(System.currentTimeMillis() * 1000000L + 100)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			//int count = 0;
@@ -242,7 +220,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate4() {
+	public void queryList1() {
 		int begin = 1;
 		int end = 10;
 
@@ -250,21 +228,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.integerVar("x"),
-			PredExp.integerValue(4),
-			PredExp.integerEqual(),
-			PredExp.listBin("listbin"),
-			PredExp.listIterateOr("x")
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.listInclude("listbin", "x", Predicate.var("x").equal(4))
-			);
-		*/
+		// List bin contains at least one integer item == 4
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.gt(
+				ListExp.getByValue(ListReturnType.COUNT, Exp.val(4), Exp.listBin("listbin")),
+				Exp.val(0)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -281,7 +253,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate5() {
+	public void queryList2() {
 		int begin = 1;
 		int end = 10;
 
@@ -289,21 +261,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.integerVar("x"),
-			PredExp.integerValue(5),
-			PredExp.integerUnequal(),
-			PredExp.listBin("listbin"),
-			PredExp.listIterateAnd("x")
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.listExclude("listbin", "x", Predicate.var("x").equal(5))
-			);
-		*/
+		// List bin does not contain integer item == 5
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				ListExp.getByValue(ListReturnType.COUNT, Exp.val(5), Exp.listBin("listbin")),
+				Exp.val(0)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -320,7 +286,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate6() {
+	public void queryList3() {
 		int begin = 1;
 		int end = 10;
 
@@ -328,21 +294,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.stringVar("x"),
-			PredExp.stringValue("B"),
-			PredExp.stringEqual(),
-			PredExp.mapBin("mapbin"),
-			PredExp.mapKeyIterateOr("x")
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.mapKeyInclude("mapbin", "x", Predicate.var("x").equal("B"))
-			);
-		*/
+		// list[4] == 20
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				ListExp.getByIndex(ListReturnType.VALUE, Exp.Type.INT, Exp.val(4), Exp.listBin("listbin")),
+				Exp.val(20)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -359,7 +319,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate7() {
+	public void queryMap1() {
 		int begin = 1;
 		int end = 10;
 
@@ -367,21 +327,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.stringVar("x"),
-			PredExp.stringValue("BBB"),
-			PredExp.stringEqual(),
-			PredExp.mapBin("mapbin"),
-			PredExp.mapValIterateOr("x")
-			);
 
-		/*
-		stmt.setPredicate(
-				Predicate.mapValueInclude("mapbin", "x", Predicate.var("x").equal("BBB"))
-				);
-		*/
+		// Map bin contains key "B"
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.gt(
+				MapExp.getByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.val("B"), Exp.mapBin("mapbin")),
+				Exp.val(0)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -398,7 +352,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate8() {
+	public void queryMap2() {
 		int begin = 1;
 		int end = 10;
 
@@ -406,21 +360,48 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.stringVar("x"),
-			PredExp.stringValue("D"),
-			PredExp.stringUnequal(),
-			PredExp.mapBin("mapbin"),
-			PredExp.mapKeyIterateAnd("x")
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.mapKeyExclude("mapbin", "x", Predicate.var("x").equal("D"))
-			);
-		*/
+		// Map bin contains value "BBB"
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.gt(
+				MapExp.getByValue(MapReturnType.COUNT, Exp.val("BBB"), Exp.mapBin("mapbin")),
+				Exp.val(0)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				//System.out.println(rs.getRecord().toString());
+				count++;
+			}
+			assertEquals(1, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryMap3() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// Map bin does not contains key "D"
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				MapExp.getByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.val("D"), Exp.mapBin("mapbin")),
+				Exp.val(0)));
+
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -437,7 +418,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate9() {
+	public void queryMap4() {
 		int begin = 1;
 		int end = 10;
 
@@ -445,21 +426,15 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.stringVar("x"),
-			PredExp.stringValue("AAA"),
-			PredExp.stringUnequal(),
-			PredExp.mapBin("mapbin"),
-			PredExp.mapValIterateAnd("x")
-			);
 
-		/*
-		stmt.setPredicate(
-			Predicate.mapValueExclude("mapbin", "x", Predicate.var("x").equal("AAA"))
-			);
-		*/
+		// Map bin does not contains value "AAA"
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				MapExp.getByValue(MapReturnType.COUNT, Exp.val("AAA"), Exp.mapBin("mapbin")),
+				Exp.val(0)));
 
-		RecordSet rs = client.query(null, stmt);
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -476,7 +451,7 @@ public class TestQueryPredExp extends TestSync {
 	}
 
 	@Test
-	public void queryPredicate10() {
+	public void queryMap5() {
 		int begin = 1;
 		int end = 10;
 
@@ -484,13 +459,90 @@ public class TestQueryPredExp extends TestSync {
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
 		stmt.setFilter(Filter.range(binName, begin, end));
-		stmt.setPredExp(
-			PredExp.recDigestModulo(3),
-			PredExp.integerValue(1),
-			PredExp.integerEqual()
-			);
 
-		RecordSet rs = client.query(null, stmt);
+		// Map bin contains keys "A" and "C".
+		QueryPolicy policy = new QueryPolicy();
+
+		List<String> list = new ArrayList<String>();
+		list.add("A");
+		list.add("C");
+
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				MapExp.size(
+					MapExp.getByKeyList(MapReturnType.KEY_VALUE, Exp.val(list), Exp.mapBin("mapbin"))),
+				Exp.val(2)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				//System.out.println(rs.getRecord().toString());
+				count++;
+			}
+			assertEquals(1, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryMap6() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// Map bin contains keys "A" and "C".
+		QueryPolicy policy = new QueryPolicy();
+
+		List<String> list = new ArrayList<String>();
+		list.add("A");
+		list.add("C");
+
+		policy.filterExp = Exp.build(
+			Exp.eq(
+				ListExp.size( // return type VALUE returns a list
+					MapExp.getByKeyList(MapReturnType.VALUE, Exp.val(list), Exp.mapBin("mapbin"))),
+				Exp.val(2)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				//System.out.println(rs.getRecord().toString());
+				count++;
+			}
+			assertEquals(1, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryDigestModulo() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// Record key digest % 3 == 1
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.eq(Exp.digestModulo(3), Exp.val(1)));
+
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
@@ -506,37 +558,90 @@ public class TestQueryPredExp extends TestSync {
 		}
 	}
 
-	/* Use this test only after servers have been patched.
 	@Test
-	public void queryPredicateAER5650() {
-		double lon = -122.0;
-		double lat = 37.5;
-		double radius = 50000.0;
-		String rgnstr =
-			String.format("{ \"type\": \"AeroCircle\", "
-						  + "\"coordinates\": [[%.8f, %.8f], %f] }",
-						  lon, lat, radius);
+	public void queryBinExists() {
+		int begin = 1;
+		int end = 10;
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(setName);
-		PredExp[] predexps = new PredExp[3];
-		predexps[0] = PredExp.geoJSONBin(binName);
-		predexps[1] = PredExp.geoJSONValue(rgnstr);
-		predexps[2] = PredExp.geoJSONWithin();
-		stmt.setPredExp(predexps);
-		RecordSet rs = client.query(null, stmt);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.binExists("bin2"));
+
+		RecordSet rs = client.query(policy, stmt);
 
 		try {
 			int count = 0;
 
 			while (rs.next()) {
-				//System.out.println(rs.getRecord().toString());
 				count++;
 			}
-			assertEquals(0, count);
+			assertEquals(10, count);
 		}
 		finally {
 			rs.close();
 		}
-	}*/
+	}
+
+	@Test
+	public void queryBinType() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.eq(Exp.binType("listbin"), Exp.val(ParticleType.LIST)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(9, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryDeviceSize() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// storage-engine could be memory for which deviceSize() returns zero.
+		// This just tests that the expression was sent correctly
+		// because all device sizes are effectively allowed.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.ge(Exp.deviceSize(), Exp.val(0)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(10, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
 }

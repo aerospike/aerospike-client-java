@@ -31,14 +31,15 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.query.PredExp;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.test.sync.TestSync;
 
-public class TestPredExp extends TestSync {
+public class TestFilterExp extends TestSync {
 	Key keyA = new Key(args.namespace, args.set, "A");
 	Key keyB = new Key(args.namespace, args.set, "B");
 
@@ -66,20 +67,10 @@ public class TestPredExp extends TestSync {
 		predAEq1RPolicy = new Policy();
 		predAEq1WPolicy = new WritePolicy();
 
-		predAEq1BPolicy.setPredExp(
-				PredExp.integerBin(binAName),
-				PredExp.integerValue(1),
-				PredExp.integerEqual());
-
-		predAEq1RPolicy.setPredExp(
-				PredExp.integerBin(binAName),
-				PredExp.integerValue(1),
-				PredExp.integerEqual());
-
-		predAEq1WPolicy.setPredExp(
-				PredExp.integerBin(binAName),
-				PredExp.integerValue(1),
-				PredExp.integerEqual());
+		Expression filter = Exp.build(Exp.eq(Exp.intBin(binAName), Exp.val(1)));
+		predAEq1BPolicy.filterExp = filter;
+		predAEq1RPolicy.filterExp = filter;
+		predAEq1WPolicy.filterExp = filter;
 
 		client.delete(null, keyA);
 		client.delete(null, keyB);

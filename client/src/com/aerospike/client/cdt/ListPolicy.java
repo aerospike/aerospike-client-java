@@ -25,8 +25,8 @@ public final class ListPolicy {
 	 */
 	public static final ListPolicy Default = new ListPolicy();
 
-	protected final int attributes;
-	protected final int flags;
+	public final int attributes;
+	public final int flags;
 
 	/**
 	 * Default constructor.

@@ -41,5 +41,5 @@ public final class FieldType {
 	public final static int QUERY_BINLIST = 40;
 	public final static int BATCH_INDEX = 41;
 	public final static int BATCH_INDEX_WITH_SET = 42;
-	public final static int PREDEXP = 43;
+	public final static int FILTER_EXP = 43;
 }

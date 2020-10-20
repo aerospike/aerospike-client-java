@@ -25,10 +25,10 @@ public final class MapPolicy {
 	 */
 	public static final MapPolicy Default = new MapPolicy();
 
-	protected final int attributes;
-	protected final int flags;
-	protected final int itemCommand;
-	protected final int itemsCommand;
+	public final int attributes;
+	public final int flags;
+	public final int itemCommand;
+	public final int itemsCommand;
 
 	/**
 	 * Default constructor.

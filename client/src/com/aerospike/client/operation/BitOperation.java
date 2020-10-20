@@ -18,6 +18,7 @@ package com.aerospike.client.operation;
 
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
@@ -64,7 +65,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation resize(BitPolicy policy, String binName, int byteSize, int resizeFlags) {
-		return createOperation(RESIZE, Operation.Type.BIT_MODIFY, binName, byteSize, policy.flags, resizeFlags);
+		byte[] bytes = Pack.pack(BitOperation.RESIZE, byteSize, policy.flags, resizeFlags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -80,12 +82,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation insert(BitPolicy policy, String binName, int byteOffset, byte[] value) {
-		Packer packer = new Packer();
-		init(packer, INSERT, 3);
-		packer.packInt(byteOffset);
-		packer.packBytes(value);
-		packer.packInt(policy.flags);
-		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(BitOperation.INSERT, byteOffset, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -101,7 +99,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation remove(BitPolicy policy, String binName, int byteOffset, int byteSize) {
-		return createOperation(REMOVE, Operation.Type.BIT_MODIFY, binName, byteOffset, byteSize, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.REMOVE, byteOffset, byteSize, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -118,7 +117,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation set(BitPolicy policy, String binName, int bitOffset, int bitSize, byte[] value) {
-		return createOperation(SET, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.SET, bitOffset, bitSize, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -135,7 +135,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation or(BitPolicy policy, String binName, int bitOffset, int bitSize, byte[] value) {
-		return createOperation(OR, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.OR, bitOffset, bitSize, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -152,7 +153,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation xor(BitPolicy policy, String binName, int bitOffset, int bitSize, byte[] value) {
-		return createOperation(XOR, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.XOR, bitOffset, bitSize, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -169,7 +171,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation and(BitPolicy policy, String binName, int bitOffset, int bitSize, byte[] value) {
-		return createOperation(AND, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, value, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.AND, bitOffset, bitSize, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -185,7 +188,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation not(BitPolicy policy, String binName, int bitOffset, int bitSize) {
-		return createOperation(NOT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.NOT, bitOffset, bitSize, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -202,7 +206,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation lshift(BitPolicy policy, String binName, int bitOffset, int bitSize, int shift) {
-		return createOperation(LSHIFT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, shift, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.LSHIFT, bitOffset, bitSize, shift, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -219,7 +224,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation rshift(BitPolicy policy, String binName, int bitOffset, int bitSize, int shift) {
-		return createOperation(RSHIFT, Operation.Type.BIT_MODIFY, binName, bitOffset, bitSize, shift, policy.flags);
+		byte[] bytes = Pack.pack(BitOperation.RSHIFT, bitOffset, bitSize, shift, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -247,7 +253,8 @@ public final class BitOperation {
 		boolean signed,
 		BitOverflowAction action
 	) {
-		return createMathOperation(ADD, policy, binName, bitOffset, bitSize, value, signed, action);
+		byte[] bytes = BitOperation.packMath(BitOperation.ADD, policy, bitOffset, bitSize, value, signed, action);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -275,7 +282,8 @@ public final class BitOperation {
 		boolean signed,
 		BitOverflowAction action
 	) {
-		return createMathOperation(SUBTRACT, policy, binName, bitOffset, bitSize, value, signed, action);
+		byte[] bytes = BitOperation.packMath(BitOperation.SUBTRACT, policy, bitOffset, bitSize, value, signed, action);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -292,13 +300,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation setInt(BitPolicy policy, String binName, int bitOffset, int bitSize, long value) {
-		Packer packer = new Packer();
-		init(packer, SET_INT, 4);
-		packer.packInt(bitOffset);
-		packer.packInt(bitSize);
-		packer.packLong(value);
-		packer.packInt(policy.flags);
-		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = Pack.pack(BitOperation.SET_INT, bitOffset, bitSize, value, policy.flags);
+		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -313,7 +316,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation get(String binName, int bitOffset, int bitSize) {
-		return createOperation(GET, Operation.Type.BIT_READ, binName, bitOffset, bitSize);
+		byte[] bytes = Pack.pack(BitOperation.GET, bitOffset, bitSize);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -328,7 +332,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation count(String binName, int bitOffset, int bitSize) {
-		return createOperation(COUNT, Operation.Type.BIT_READ, binName, bitOffset, bitSize);
+		byte[] bytes = Pack.pack(BitOperation.COUNT, bitOffset, bitSize);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -345,7 +350,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation lscan(String binName, int bitOffset, int bitSize, boolean value) {
-		return createOperation(LSCAN, Operation.Type.BIT_READ, binName, bitOffset, bitSize, value);
+		byte[] bytes = Pack.pack(BitOperation.LSCAN, bitOffset, bitSize, value);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -362,7 +368,8 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation rscan(String binName, int bitOffset, int bitSize, boolean value) {
-		return createOperation(RSCAN, Operation.Type.BIT_READ, binName, bitOffset, bitSize, value);
+		byte[] bytes = Pack.pack(BitOperation.RSCAN, bitOffset, bitSize, value);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -379,103 +386,13 @@ public final class BitOperation {
 	 * </ul>
 	 */
 	public static Operation getInt(String binName, int bitOffset, int bitSize, boolean signed) {
-		Packer packer = new Packer();
-		init(packer, GET_INT, signed ? 3 : 2);
-		packer.packInt(bitOffset);
-		packer.packInt(bitSize);
-
-		if (signed) {
-			packer.packInt(INT_FLAGS_SIGNED);
-		}
-		return new Operation(Operation.Type.BIT_READ, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = BitOperation.packGetInt(bitOffset, bitSize, signed);
+		return new Operation(Operation.Type.BIT_READ, binName, Value.get(bytes));
 	}
 
-	private static Operation createOperation(
-		int command,
-		Operation.Type type,
-		String binName,
-		int v1,
-		int v2
-	) {
-		Packer packer = new Packer();
-		init(packer, command, 2);
-		packer.packInt(v1);
-		packer.packInt(v2);
-		return new Operation(type, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static Operation createOperation(
-		int command,
-		Operation.Type type,
-		String binName,
-		int v1,
-		int v2,
-		boolean v3
-	) {
-		Packer packer = new Packer();
-		init(packer, command, 3);
-		packer.packInt(v1);
-		packer.packInt(v2);
-		packer.packBoolean(v3);
-		return new Operation(type, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static Operation createOperation(
-		int command,
-		Operation.Type type,
-		String binName,
-		int v1,
-		int v2,
-		int v3
-	) {
-		Packer packer = new Packer();
-		init(packer, command, 3);
-		packer.packInt(v1);
-		packer.packInt(v2);
-		packer.packInt(v3);
-		return new Operation(type, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static Operation createOperation(
-		int command,
-		Operation.Type type,
-		String binName,
-		int v1,
-		int v2,
-		int v3,
-		int v4
-	) {
-		Packer packer = new Packer();
-		init(packer, command, 4);
-		packer.packInt(v1);
-		packer.packInt(v2);
-		packer.packInt(v3);
-		packer.packInt(v4);
-		return new Operation(type, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static Operation createOperation(
-		int command,
-		Operation.Type type,
-		String binName,
-		int v1,
-		int v2,
-		byte[] v3,
-		int v4
-	) {
-		Packer packer = new Packer();
-		init(packer, command, 4);
-		packer.packInt(v1);
-		packer.packInt(v2);
-		packer.packBytes(v3);
-		packer.packInt(v4);
-		return new Operation(type, binName, Value.get(packer.toByteArray()));
-	}
-
-	private static Operation createMathOperation(
+	private static byte[] packMath(
 		int command,
 		BitPolicy policy,
-		String binName,
 		int bitOffset,
 		int bitSize,
 		long value,
@@ -483,7 +400,10 @@ public final class BitOperation {
 		BitOverflowAction action
 	) {
 		Packer packer = new Packer();
-		init(packer, command, 5);
+		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+		// Pack.init(packer, ctx);
+		packer.packArrayBegin(6);
+		packer.packInt(command);
 		packer.packInt(bitOffset);
 		packer.packInt(bitSize);
 		packer.packLong(value);
@@ -495,11 +415,21 @@ public final class BitOperation {
 			flags |= INT_FLAGS_SIGNED;
 		}
 		packer.packInt(flags);
-		return new Operation(Operation.Type.BIT_MODIFY, binName, Value.get(packer.toByteArray()));
+		return packer.toByteArray();
 	}
 
-	private static void init(Packer packer, int command, int count) {
-		packer.packArrayBegin(count + 1);
-		packer.packInt(command);
+	private static byte[] packGetInt(int bitOffset, int bitSize, boolean signed) {
+		Packer packer = new Packer();
+		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+		// Pack.init(packer, ctx);
+		packer.packArrayBegin(signed ? 4 : 3);
+		packer.packInt(GET_INT);
+		packer.packInt(bitOffset);
+		packer.packInt(bitSize);
+
+		if (signed) {
+			packer.packInt(INT_FLAGS_SIGNED);
+		}
+		return packer.toByteArray();
 	}
 }

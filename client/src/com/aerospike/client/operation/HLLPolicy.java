@@ -25,7 +25,7 @@ public final class HLLPolicy {
 	 */
 	public static final HLLPolicy Default = new HLLPolicy();
 
-	protected final int flags;
+	public final int flags;
 
 	/**
 	 * Use default {@link HLLWriteFlags} when performing {@link HLLOperation} operations.

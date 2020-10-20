@@ -21,10 +21,11 @@ import java.util.Map;
 
 import com.aerospike.client.Operation;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 
 /**
- * Unique key map bin operations. Create map operations used by the client operate command.
+ * Map bin operations. Create map operations used by the client operate command.
  * The default unique key map is unordered.
  * <p>
  * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
@@ -67,12 +68,12 @@ import com.aerospike.client.util.Packer;
  */
 public class MapOperation {
 	private static final int SET_TYPE = 64;
-	protected static final int ADD = 65;
-	protected static final int ADD_ITEMS = 66;
-	protected static final int PUT = 67;
-	protected static final int PUT_ITEMS = 68;
-	protected static final int REPLACE = 69;
-	protected static final int REPLACE_ITEMS = 70;
+	static final int ADD = 65;
+	static final int ADD_ITEMS = 66;
+	static final int PUT = 67;
+	static final int PUT_ITEMS = 68;
+	static final int REPLACE = 69;
+	static final int REPLACE_ITEMS = 70;
 	private static final int INCREMENT = 73;
 	private static final int DECREMENT = 74;
 	private static final int CLEAR = 75;
@@ -125,7 +126,8 @@ public class MapOperation {
 	 * The required map policy attributes can be changed after the map is created.
 	 */
 	public static Operation setMapPolicy(MapPolicy policy, String binName, CTX... ctx) {
-		return CDT.createOperation(SET_TYPE, Operation.Type.MAP_MODIFY, binName, ctx, policy.attributes);
+		byte[] bytes = Pack.pack(MapOperation.SET_TYPE, policy.attributes, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -140,7 +142,9 @@ public class MapOperation {
 		Packer packer = new Packer();
 
 		if (policy.flags != 0) {
-			CDT.init(packer, ctx, PUT, 4);
+			Pack.init(packer, ctx);
+			packer.packArrayBegin(5);
+			packer.packInt(MapOperation.PUT);
 			key.pack(packer);
 			value.pack(packer);
 			packer.packInt(policy.attributes);
@@ -149,18 +153,23 @@ public class MapOperation {
 		else {
 			if (policy.itemCommand == REPLACE) {
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				CDT.init(packer, ctx, policy.itemCommand, 2);
+				Pack.init(packer, ctx);
+				packer.packArrayBegin(3);
+				packer.packInt(policy.itemCommand);
 				key.pack(packer);
 				value.pack(packer);
 			}
 			else {
-				CDT.init(packer, ctx, policy.itemCommand, 3);
+				Pack.init(packer, ctx);
+				packer.packArrayBegin(4);
+				packer.packInt(policy.itemCommand);
 				key.pack(packer);
 				value.pack(packer);
 				packer.packInt(policy.attributes);
 			}
 		}
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -175,7 +184,9 @@ public class MapOperation {
 		Packer packer = new Packer();
 
 		if (policy.flags != 0) {
-			CDT.init(packer, ctx, PUT_ITEMS, 3);
+			Pack.init(packer, ctx);
+			packer.packArrayBegin(4);
+			packer.packInt(MapOperation.PUT_ITEMS);
 			packer.packValueMap(map);
 			packer.packInt(policy.attributes);
 			packer.packInt(policy.flags);
@@ -183,16 +194,21 @@ public class MapOperation {
 		else {
 			if (policy.itemsCommand == REPLACE_ITEMS) {
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				CDT.init(packer, ctx, policy.itemsCommand, 1);
+				Pack.init(packer, ctx);
+				packer.packArrayBegin(2);
+				packer.packInt(policy.itemsCommand);
 				packer.packValueMap(map);
 			}
 			else {
-				CDT.init(packer, ctx, policy.itemsCommand, 2);
+				Pack.init(packer, ctx);
+				packer.packArrayBegin(3);
+				packer.packInt(policy.itemsCommand);
 				packer.packValueMap(map);
 				packer.packInt(policy.attributes);
 			}
 		}
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = packer.toByteArray();
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -206,7 +222,8 @@ public class MapOperation {
 	 * {@link com.aerospike.client.cdt.MapWriteMode}.
 	 */
 	public static Operation increment(MapPolicy policy, String binName, Value key, Value incr, CTX... ctx) {
-		return CDT.createOperation(INCREMENT, Operation.Type.MAP_MODIFY, binName, ctx, key, incr, policy.attributes);
+		byte[] bytes = Pack.pack(MapOperation.INCREMENT, key, incr, policy.attributes, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -220,7 +237,8 @@ public class MapOperation {
 	 * {@link com.aerospike.client.cdt.MapWriteMode}.
 	 */
 	public static Operation decrement(MapPolicy policy, String binName, Value key, Value decr, CTX... ctx) {
-		return CDT.createOperation(DECREMENT, Operation.Type.MAP_MODIFY, binName, ctx, key, decr, policy.attributes);
+		byte[] bytes = Pack.pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -228,7 +246,8 @@ public class MapOperation {
 	 * Server removes all items in map.  Server returns null.
 	 */
 	public static Operation clear(String binName, CTX... ctx) {
-		return CDT.createOperation(CLEAR, Operation.Type.MAP_MODIFY, binName, ctx);
+		byte[] bytes = Pack.pack(MapOperation.CLEAR, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -236,7 +255,8 @@ public class MapOperation {
 	 * Server removes map item identified by key and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByKey(String binName, Value key, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_KEY, Operation.Type.MAP_MODIFY, binName, ctx, returnType, key);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_KEY, returnType, key, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -244,7 +264,8 @@ public class MapOperation {
 	 * Server removes map items identified by keys and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByKeyList(String binName, List<Value> keys, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_KEY_LIST, Operation.Type.MAP_MODIFY, binName, ctx, returnType, keys);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_KEY_LIST, returnType, keys, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -256,7 +277,8 @@ public class MapOperation {
 	 * Server returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByKeyRange(String binName, Value keyBegin, Value keyEnd, int returnType, CTX... ctx) {
-		return CDT.createRangeOperation(REMOVE_BY_KEY_INTERVAL, Operation.Type.MAP_MODIFY, binName, ctx, keyBegin, keyEnd, returnType);
+		byte[] bytes = CDT.packRangeOperation(MapOperation.REMOVE_BY_KEY_INTERVAL, returnType, keyBegin, keyEnd, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -275,7 +297,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation removeByKeyRelativeIndexRange(String binName, Value key, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, key, index);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, returnType, key, index, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -294,7 +317,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation removeByKeyRelativeIndexRange(String binName, Value key, int index, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, key, index, count);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_KEY_REL_INDEX_RANGE, returnType, key, index, count, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -302,7 +326,8 @@ public class MapOperation {
 	 * Server removes map items identified by value and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByValue(String binName, Value value, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_VALUE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, value);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_VALUE, returnType, value, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -310,7 +335,8 @@ public class MapOperation {
 	 * Server removes map items identified by values and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByValueList(String binName, List<Value> values, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_VALUE_LIST, Operation.Type.MAP_MODIFY, binName, ctx, returnType, values);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_VALUE_LIST, returnType, values, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -322,7 +348,8 @@ public class MapOperation {
 	 * Server returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType, CTX... ctx) {
-		return CDT.createRangeOperation(REMOVE_BY_VALUE_INTERVAL, Operation.Type.MAP_MODIFY, binName, ctx, valueBegin, valueEnd, returnType);
+		byte[] bytes = CDT.packRangeOperation(MapOperation.REMOVE_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -338,7 +365,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, value, rank);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -354,7 +382,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation removeByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, value, rank, count);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -362,7 +391,8 @@ public class MapOperation {
 	 * Server removes map item identified by index and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByIndex(String binName, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_INDEX, Operation.Type.MAP_MODIFY, binName, ctx, returnType, index);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_INDEX, returnType, index, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -371,7 +401,8 @@ public class MapOperation {
 	 * data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByIndexRange(String binName, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, index);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_INDEX_RANGE, returnType, index, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -379,7 +410,8 @@ public class MapOperation {
 	 * Server removes "count" map items starting at specified index and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByIndexRange(String binName, int index, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_INDEX_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, index, count);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_INDEX_RANGE, returnType, index, count, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -387,7 +419,8 @@ public class MapOperation {
 	 * Server removes map item identified by rank and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByRank(String binName, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_RANK, Operation.Type.MAP_MODIFY, binName, ctx, returnType, rank);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_RANK, returnType, rank, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -396,7 +429,8 @@ public class MapOperation {
 	 * data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByRankRange(String binName, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, rank);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_RANK_RANGE, returnType, rank, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -404,7 +438,8 @@ public class MapOperation {
 	 * Server removes "count" map items starting at specified rank and returns removed data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation removeByRankRange(String binName, int rank, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(REMOVE_BY_RANK_RANGE, Operation.Type.MAP_MODIFY, binName, ctx, returnType, rank, count);
+		byte[] bytes = Pack.pack(MapOperation.REMOVE_BY_RANK_RANGE, returnType, rank, count, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -412,7 +447,8 @@ public class MapOperation {
 	 * Server returns size of map.
 	 */
 	public static Operation size(String binName, CTX... ctx) {
-		return CDT.createOperation(SIZE, Operation.Type.MAP_READ, binName, ctx);
+		byte[] bytes = Pack.pack(MapOperation.SIZE, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -420,7 +456,8 @@ public class MapOperation {
 	 * Server selects map item identified by key and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByKey(String binName, Value key, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_KEY, Operation.Type.MAP_READ, binName, ctx, returnType, key);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_KEY, returnType, key, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -432,7 +469,8 @@ public class MapOperation {
 	 * Server returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByKeyRange(String binName, Value keyBegin, Value keyEnd, int returnType, CTX... ctx) {
-		return CDT.createRangeOperation(GET_BY_KEY_INTERVAL, Operation.Type.MAP_READ, binName, ctx, keyBegin, keyEnd, returnType);
+		byte[] bytes = CDT.packRangeOperation(MapOperation.GET_BY_KEY_INTERVAL, returnType, keyBegin, keyEnd, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -440,7 +478,8 @@ public class MapOperation {
 	 * Server selects map items identified by keys and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByKeyList(String binName, List<Value> keys, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_KEY_LIST, Operation.Type.MAP_READ, binName, ctx, returnType, keys);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_KEY_LIST, returnType, keys, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -459,7 +498,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation getByKeyRelativeIndexRange(String binName, Value key, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, key, index);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_KEY_REL_INDEX_RANGE, returnType, key, index, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -478,7 +518,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation getByKeyRelativeIndexRange(String binName, Value key, int index, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_KEY_REL_INDEX_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, key, index, count);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_KEY_REL_INDEX_RANGE, returnType, key, index, count, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -486,7 +527,8 @@ public class MapOperation {
 	 * Server selects map items identified by value and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByValue(String binName, Value value, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_VALUE, Operation.Type.MAP_READ, binName, ctx, returnType, value);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_VALUE, returnType, value, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -498,7 +540,8 @@ public class MapOperation {
 	 * Server returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByValueRange(String binName, Value valueBegin, Value valueEnd, int returnType, CTX... ctx) {
-		return CDT.createRangeOperation(GET_BY_VALUE_INTERVAL, Operation.Type.MAP_READ, binName, ctx, valueBegin, valueEnd, returnType);
+		byte[] bytes = CDT.packRangeOperation(MapOperation.GET_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -506,7 +549,8 @@ public class MapOperation {
 	 * Server selects map items identified by values and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByValueList(String binName, List<Value> values, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_VALUE_LIST, Operation.Type.MAP_READ, binName, ctx, returnType, values);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_VALUE_LIST, returnType, values, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -522,7 +566,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, value, rank);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -538,7 +583,8 @@ public class MapOperation {
 	 * </ul>
 	 */
 	public static Operation getByValueRelativeRankRange(String binName, Value value, int rank, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_VALUE_REL_RANK_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, value, rank, count);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -546,7 +592,8 @@ public class MapOperation {
 	 * Server selects map item identified by index and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByIndex(String binName, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_INDEX, Operation.Type.MAP_READ, binName, ctx, returnType, index);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_INDEX, returnType, index, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -555,7 +602,8 @@ public class MapOperation {
 	 * data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByIndexRange(String binName, int index, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, index);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_INDEX_RANGE, returnType, index, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -563,7 +611,8 @@ public class MapOperation {
 	 * Server selects "count" map items starting at specified index and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByIndexRange(String binName, int index, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_INDEX_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, index, count);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_INDEX_RANGE, returnType, index, count, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -571,7 +620,8 @@ public class MapOperation {
 	 * Server selects map item identified by rank and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByRank(String binName, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_RANK, Operation.Type.MAP_READ, binName, ctx, returnType, rank);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_RANK, returnType, rank, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -580,7 +630,8 @@ public class MapOperation {
 	 * data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByRankRange(String binName, int rank, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, rank);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_RANK_RANGE, returnType, rank, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 
 	/**
@@ -588,6 +639,7 @@ public class MapOperation {
 	 * Server selects "count" map items starting at specified rank and returns selected data specified by returnType (See {@link MapReturnType}).
 	 */
 	public static Operation getByRankRange(String binName, int rank, int count, int returnType, CTX... ctx) {
-		return CDT.createOperation(GET_BY_RANK_RANGE, Operation.Type.MAP_READ, binName, ctx, returnType, rank, count);
+		byte[] bytes = Pack.pack(MapOperation.GET_BY_RANK_RANGE, returnType, rank, count, ctx);
+		return new Operation(Operation.Type.MAP_READ, binName, Value.get(bytes));
 	}
 }

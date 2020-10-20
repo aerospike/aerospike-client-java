@@ -29,7 +29,6 @@ public final class Statement {
 	String indexName;
 	String[] binNames;
 	Filter filter;
-	PredExp[] predExp;
 	ClassLoader resourceLoader;
 	String resourcePath;
 	String packageName;
@@ -110,57 +109,6 @@ public final class Statement {
 	 */
 	public Filter getFilter() {
 		return filter;
-	}
-
-	/**
-	 * Set optional predicate expression filters in postfix notation.
-	 * Predicate expression filters are applied on the query results on the server.
-	 * Predicate expression filters may occur on any bin in the record.
-	 * <p>
-	 * This method is redundant because PredExp can now be set in the base Policy for
-	 * any transaction (including queries).
-	 * <p>
-	 * Postfix notation is described here:
-	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
-	 * <p>
-	 * Example:
-	 * <pre>
-	 * // (c &gt;= 11 and c &lt;= 20) or (d &gt; 3 and (d &lt; 5)
-     * stmt.setPredExp(
-     *   PredExp.integerBin("c"),
-     *   PredExp.integerValue(11),
-     *   PredExp.integerGreaterEq(),
-     *   PredExp.integerBin("c"),
-     *   PredExp.integerValue(20),
-     *   PredExp.integerLessEq(),
-     *   PredExp.and(2),
-     *   PredExp.integerBin("d"),
-     *   PredExp.integerValue(3),
-     *   PredExp.integerGreater(),
-     *   PredExp.integerBin("d"),
-     *   PredExp.integerValue(5),
-     *   PredExp.integerLess(),
-     *   PredExp.and(2),
-     *   PredExp.or(2)
-     * );
-     *
-	 * // Record last update time &gt; 2017-01-15
-	 * stmt.setPredExp(
-	 *   PredExp.recLastUpdate(),
-	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
-	 *   PredExp.integerGreater()
-	 * );
-     * </pre>
-	 */
-	public void setPredExp(PredExp... predExp) {
-		this.predExp = predExp;
-	}
-
-	/**
-	 * Return predicate expression filters.
-	 */
-	public PredExp[] getPredExp() {
-		return predExp;
 	}
 
 	/**

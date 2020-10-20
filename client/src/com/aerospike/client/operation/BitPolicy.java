@@ -25,7 +25,7 @@ public final class BitPolicy {
 	 */
 	public static final BitPolicy Default = new BitPolicy();
 
-	protected final int flags;
+	public final int flags;
 
 	/**
 	 * Use default {@link BitWriteFlags} when performing {@link BitOperation} operations.
