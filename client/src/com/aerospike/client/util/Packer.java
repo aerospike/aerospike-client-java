@@ -221,10 +221,10 @@ public final class Packer {
 	}
 
 	private void packByteArrayBegin(int size) {
-		if (size < 32) {
-			packByte(0xa0 | size);
-		}
-		else if (size < 256) {
+		// Use string header codes for byte arrays.
+		packStringBegin(size);
+		/*
+		if (size < 256) {
 			packByte(0xc4, size);
 		}
 		else if (size < 65536) {
@@ -233,6 +233,7 @@ public final class Packer {
 		else {
 			packInt(0xc6, size);
 		}
+		*/
 	}
 
 	public void packObject(Object obj) {
@@ -392,12 +393,20 @@ public final class Packer {
 	public void packString(String val) {
 		int size = Buffer.estimateSizeUtf8(val);
 		packStringBegin(size);
+
+		if (offset + size > buffer.length) {
+			resize(size);
+		}
 		offset += Buffer.stringToUtf8(val, buffer, offset);
 	}
 
 	public void packParticleString(String val) {
 		int size = Buffer.estimateSizeUtf8(val) + 1;
 		packStringBegin(size);
+
+		if (offset + size > buffer.length) {
+			resize(size);
+		}
 		buffer[offset++] = (byte)ParticleType.STRING;
 		offset += Buffer.stringToUtf8(val, buffer, offset);
 	}
@@ -414,10 +423,6 @@ public final class Packer {
 		}
 		else {
 			packInt(0xdb, size);
-		}
-
-		if (offset + size > buffer.length) {
-			resize(size);
 		}
 	}
 
