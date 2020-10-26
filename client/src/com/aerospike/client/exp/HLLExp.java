@@ -198,7 +198,7 @@ public final class HLLExp {
 	}
 
 	/**
-	 * Create expression that returns one if HLL bin may contain any item in the list.
+	 * Create expression that returns one if HLL bin may contain all items in the list.
 	 *
 	 * <pre>{@code
 	 * // Bin "a" may contain value "x"
