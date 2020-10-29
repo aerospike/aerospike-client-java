@@ -246,6 +246,22 @@ public abstract class Exp {
 	}
 
 	/**
+	 * Create expression that returns record size in memory. If server storage-engine is
+	 * not memory nor data-in-memory, then zero is returned. This expression usually evaluates
+	 * quickly because record meta data is cached in memory.
+	 * <p>
+	 * This method requires Aerospike Server version >= 5.3.0.
+	 *
+	 * <pre>{@code
+	 * // Record memory size >= 100 KB
+	 * Exp.ge(Exp.memorySize(), Exp.val(100 * 1024))
+     * }</pre>
+	 */
+	public static Exp memorySize() {
+		return new Cmd(MEMORY_SIZE);
+	}
+
+	/**
 	 * Create expression that returns record last update time expressed as 64 bit integer
 	 * nanoseconds since 1970-01-01 epoch. This expression usually evaluates quickly because
 	 * record meta data is cached in memory.
@@ -576,6 +592,7 @@ public abstract class Exp {
 	private static final int SET_NAME = 70;
 	private static final int KEY_EXISTS = 71;
 	private static final int IS_TOMBSTONE = 72;
+	private static final int MEMORY_SIZE = 73;
 
 	private static final int KEY = 80;
 	private static final int BIN = 81;

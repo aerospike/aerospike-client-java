@@ -644,4 +644,35 @@ public class TestQueryFilterExp extends TestSync {
 			rs.close();
 		}
 	}
+
+	@Test
+	public void queryMemorySize() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// storage-engine could be disk/device for which memorySize() returns zero.
+		// This just tests that the expression was sent correctly
+		// because all device sizes are effectively allowed.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.ge(Exp.memorySize(), Exp.val(0)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(10, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
 }
