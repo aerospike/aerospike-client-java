@@ -86,7 +86,6 @@ public final class ClusterStats {
 		sb.append("threadsInUse: " + threadsInUse);
 		sb.append(System.lineSeparator());
 		sb.append("recoverQueueSize: " + recoverQueueSize);
-		sb.append(System.lineSeparator());
 		return sb.toString();
 	}
 }
