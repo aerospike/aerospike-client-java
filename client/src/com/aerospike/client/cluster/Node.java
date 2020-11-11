@@ -51,6 +51,8 @@ public class Node implements Closeable {
 	 */
 	public static final int PARTITIONS = 4096;
 
+	public static final int HAS_PARTITION_SCAN = (1 << 0);
+
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
 
@@ -888,6 +890,15 @@ public class Node implements Closeable {
 
 		return r == rackId;
 	}
+
+	/**
+	 * Does server support partition scans.
+	 */
+	/*
+	public final boolean hasPartitionScan() {
+		return (features & HAS_PARTITION_SCAN) != 0;
+	}
+	*/
 
 	@Override
 	public final String toString() {

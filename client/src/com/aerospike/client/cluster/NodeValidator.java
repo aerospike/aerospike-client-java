@@ -296,7 +296,6 @@ public final class NodeValidator {
 			String featuresString = map.get("features");
 			int begin = 0;
 			int end = 0;
-			//int len;
 
 			while (end < featuresString.length()) {
 				end = featuresString.indexOf(';', begin);
@@ -305,44 +304,24 @@ public final class NodeValidator {
 					end = featuresString.length();
 				}
 
-				// No features to process since all old features are known to be supported
-				// by required server 5.2.0.4+.
-				/*
-				len = end - begin;
+				int len = end - begin;
 
-				if (featuresString.regionMatches(begin, "geo", 0, len)) {
-					this.features |= Node.HAS_GEO;
-				}
-				else if (featuresString.regionMatches(begin, "replicas", 0, len)) {
-					this.features |= Node.HAS_REPLICAS;
-				}
-				else if (featuresString.regionMatches(begin, "peers", 0, len)) {
-					this.features |= Node.HAS_PEERS;
-				}
-				else if (featuresString.regionMatches(begin, "cluster-stable", 0, len)) {
-					this.features |= Node.HAS_CLUSTER_STABLE;
-				}
-				else if (featuresString.regionMatches(begin, "lut-now", 0, len)) {
-					this.features |= Node.HAS_LUT_NOW;
-				}
-				else if (featuresString.regionMatches(begin, "truncate-namespace", 0, len)) {
-					this.features |= Node.HAS_TRUNCATE_NS;
-				}
-				else if (featuresString.regionMatches(begin, "blob-bits", 0, len)) {
-					this.features |= Node.HAS_BIT_OP;
-				}
-				else if (featuresString.regionMatches(begin, "sindex-exists", 0, len)) {
-					this.features |= Node.HAS_INDEX_EXISTS;
-				}
-				else if (featuresString.regionMatches(begin, "pscans", 0, len)) {
+				if (featuresString.regionMatches(begin, "pscans", 0, len)) {
 					this.features |= Node.HAS_PARTITION_SCAN;
 				}
-				*/
 				begin = end + 1;
 			}
 		}
 		catch (Exception e) {
 			// Unexpected exception. Use defaults.
+		}
+
+		// This client requires partition scan support. Partition scans were first
+		// supported in server version 4.9. Do not allow any server node into the
+		// cluster that is running server version < 4.9.
+		if ((this.features & Node.HAS_PARTITION_SCAN) == 0) {
+			throw new AerospikeException("Node " + this.name + ' ' + this.primaryHost +
+					" version < 4.9. This client requires server version >= 4.9");
 		}
 	}
 

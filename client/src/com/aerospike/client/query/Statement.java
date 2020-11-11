@@ -23,12 +23,14 @@ import com.aerospike.client.util.RandomShift;
 /**
  * Query statement parameters.
  */
+@SuppressWarnings("deprecation")
 public final class Statement {
 	String namespace;
 	String setName;
 	String indexName;
 	String[] binNames;
 	Filter filter;
+	PredExp[] predExp;
 	ClassLoader resourceLoader;
 	String resourcePath;
 	String packageName;
@@ -109,6 +111,67 @@ public final class Statement {
 	 */
 	public Filter getFilter() {
 		return filter;
+	}
+
+	/**
+	 * This method is deprecated and will eventually be removed.
+	 * Use {@link com.aerospike.client.policy.Policy#filterExp} instead.
+	 * <p>
+	 * Statement {@link com.aerospike.client.query.Statement#predExp} is mutually
+	 * exclusive with Policy {@link com.aerospike.client.policy.Policy#predExp} and
+	 * {@link com.aerospike.client.policy.Policy#filterExp}. If all are defined,
+	 * the Statement predExp will be used and the others will be ignored.
+	 * <p>
+	 * Set optional predicate expression filters in postfix notation.
+	 * Predicate expression filters are applied on the query results on the server.
+	 * Predicate expression filters may occur on any bin in the record.
+	 * <p>
+	 * This method is redundant because PredExp can now be set in the base Policy for
+	 * any transaction (including queries).
+	 * <p>
+	 * Postfix notation is described here:
+	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+	 * <p>
+	 * Example:
+	 * <pre>
+	 * // (c &gt;= 11 and c &lt;= 20) or (d &gt; 3 and (d &lt; 5)
+     * stmt.setPredExp(
+     *   PredExp.integerBin("c"),
+     *   PredExp.integerValue(11),
+     *   PredExp.integerGreaterEq(),
+     *   PredExp.integerBin("c"),
+     *   PredExp.integerValue(20),
+     *   PredExp.integerLessEq(),
+     *   PredExp.and(2),
+     *   PredExp.integerBin("d"),
+     *   PredExp.integerValue(3),
+     *   PredExp.integerGreater(),
+     *   PredExp.integerBin("d"),
+     *   PredExp.integerValue(5),
+     *   PredExp.integerLess(),
+     *   PredExp.and(2),
+     *   PredExp.or(2)
+     * );
+     *
+	 * // Record last update time &gt; 2017-01-15
+	 * stmt.setPredExp(
+	 *   PredExp.recLastUpdate(),
+	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
+	 *   PredExp.integerGreater()
+	 * );
+     * </pre>
+	 */
+	@Deprecated
+	public void setPredExp(PredExp... predExp) {
+		this.predExp = predExp;
+	}
+
+	/**
+	 * Return predicate expression filters.
+	 */
+	@Deprecated
+	public PredExp[] getPredExp() {
+		return predExp;
 	}
 
 	/**

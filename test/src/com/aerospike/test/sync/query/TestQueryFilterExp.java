@@ -47,10 +47,10 @@ import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryFilterExp extends TestSync {
-	private static final String setName = args.set + "p";
-	private static final String indexName = "pred";
-	private static final String keyPrefix = "pred";
-	private static final String binName = "predint";
+	private static final String setName = args.set + "flt";
+	private static final String indexName = "flt";
+	private static final String keyPrefix = "flt";
+	private static final String binName = "fltint";
 	private static final int size = 50;
 
 	@BeforeClass
@@ -551,7 +551,7 @@ public class TestQueryFilterExp extends TestSync {
 				//System.out.println(rs.getRecord().toString());
 				count++;
 			}
-			assertEquals(2, count);
+			assertEquals(4, count);
 		}
 		finally {
 			rs.close();

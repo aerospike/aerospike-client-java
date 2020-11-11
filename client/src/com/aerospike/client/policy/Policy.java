@@ -17,10 +17,12 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
+import com.aerospike.client.query.PredExp;
 
 /**
  * Transaction policy attributes used in all database commands.
  */
+@SuppressWarnings("deprecation")
 public class Policy {
 	/**
 	 * Priority of request relative to other transactions.
@@ -54,8 +56,26 @@ public class Policy {
 	public Replica replica = Replica.SEQUENCE;
 
 	/**
+	 * This field is deprecated and will eventually be removed.
+	 * Use {@link com.aerospike.client.policy.Policy#filterExp} instead.
+	 * <p>
+	 * Optional predicate expression filter in postfix notation. If the predicate
+	 * expression exists and evaluates to false, the transaction is ignored.
+	 * <p>
+	 * predExp and filterExp are mutually exclusive.  If both are defined, predExp
+	 * will be ignored.
+	 * <p>
+	 * Default: null
+	 */
+	@Deprecated
+	public PredExp[] predExp;
+
+	/**
 	 * Optional expression filter. If filterExp exists and evaluates to false, the
 	 * transaction is ignored.
+	 * <p>
+	 * predExp and filterExp are mutually exclusive.  If both are defined, predExp
+	 * will be ignored.
 	 * <p>
 	 * Default: null
 	 * <p>
@@ -220,6 +240,7 @@ public class Policy {
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
+		this.predExp = other.predExp;
 		this.filterExp = other.filterExp;
 		this.socketTimeout = other.socketTimeout;
 		this.totalTimeout = other.totalTimeout;
@@ -258,6 +279,31 @@ public class Policy {
 		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
 			this.socketTimeout = totalTimeout;
 		}
+	}
+
+	/**
+	 * This method is deprecated and will eventually be removed.
+	 * Use {@link com.aerospike.client.policy.Policy#filterExp} instead.
+	 * <p>
+	 * Set predicate expression filter in postfix notation. If the predicate
+	 * expression exists and evaluates to false, the transaction is ignored.
+	 * <p>
+	 * Postfix notation is described here:
+	 * <a href="http://wiki.c2.com/?PostfixNotation">http://wiki.c2.com/?PostfixNotation</a>
+	 * <p>
+	 * Example:
+	 * <pre>
+	 * // Record last update time &gt; 2017-01-15
+	 * policy.setPredExp(
+	 *   PredExp.recLastUpdate(),
+	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
+	 *   PredExp.integerGreater()
+	 * );
+     * </pre>
+	 */
+	@Deprecated
+	public final void setPredExp(PredExp... predExp) {
+		this.predExp = predExp;
 	}
 
 	@Override

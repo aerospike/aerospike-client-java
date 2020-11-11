@@ -19,12 +19,13 @@ package com.aerospike.client.exp;
 import java.io.Serializable;
 import java.util.Arrays;
 
+import com.aerospike.client.command.Command;
 import com.aerospike.client.util.Packer;
 
 /**
  * Packed expression byte instructions.
  */
-public final class Expression implements Serializable {
+public final class Expression implements CommandExp, Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private final byte[] bytes;
@@ -49,6 +50,24 @@ public final class Expression implements Serializable {
 	 */
 	public byte[] getBytes() {
 		return bytes;
+	}
+
+	/**
+	 * Estimate expression size in wire protocol.
+	 * For internal use only.
+	 */
+	public int size() {
+		return bytes.length + Command.FIELD_HEADER_SIZE;
+	}
+
+	/**
+	 * Write expression in wire protocol.
+	 * For internal use only.
+	 */
+	public int write(Command cmd) {
+		cmd.writeExpHeader(bytes.length);
+		System.arraycopy(bytes, 0, cmd.dataBuffer, cmd.dataOffset, bytes.length);
+		return cmd.dataOffset + bytes.length;
 	}
 
 	@Override
