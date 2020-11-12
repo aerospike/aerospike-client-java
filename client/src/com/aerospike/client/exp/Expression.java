@@ -20,6 +20,7 @@ import java.io.Serializable;
 import java.util.Arrays;
 
 import com.aerospike.client.command.Command;
+import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Packer;
 
 /**
@@ -50,6 +51,13 @@ public final class Expression implements CommandExp, Serializable {
 	 */
 	public byte[] getBytes() {
 		return bytes;
+	}
+
+	/**
+	 * Return byte instructions in base64 encoding.
+	 */
+	public String getBase64() {
+		return Crypto.encodeBase64(bytes);
 	}
 
 	/**
