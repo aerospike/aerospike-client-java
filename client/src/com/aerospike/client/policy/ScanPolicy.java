@@ -29,8 +29,6 @@ public final class ScanPolicy extends Policy {
 	 * may be less than maxRecords if node record counts are small and unbalanced across
 	 * nodes.
 	 * <p>
-	 * This field is supported on server versions &gt;= 4.9.
-	 * <p>
 	 * Default: 0 (do not limit record count)
 	 */
 	public long maxRecords;
@@ -38,9 +36,8 @@ public final class ScanPolicy extends Policy {
 	/**
 	 * Percent of data to scan.  Valid integer range is 1 to 100.
 	 * <p>
-	 * This field is supported on server versions &lt; 4.9.
-	 * Server versions &gt;= 4.9 might allow scanPercent, but not in conjunction with
-	 * {@link ScanPolicy#maxRecords}. scanPercent is eventually slated for removal.
+	 * Servers might allow scanPercent, but not in conjunction with {@link ScanPolicy#maxRecords}.
+	 * scanPercent is eventually slated for removal.
 	 * <p>
 	 * Default: 100
 	 */
@@ -82,11 +79,9 @@ public final class ScanPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
-	 * Terminate scan if cluster in migration state.
-	 * Only used for server versions &lt; 4.9.
-	 * <p>
-	 * Default: false
+	 * This field is no longer used and will eventually be removed.
 	 */
+	@Deprecated
 	public boolean failOnClusterChange;
 
 	/**
@@ -113,12 +108,10 @@ public final class ScanPolicy extends Policy {
 	/**
 	 * Default constructor.
 	 * <p>
-	 * Set maxRetries for scans on server versions &gt;= 4.9. All other
-	 * scans are not retried.
-	 * <p>
-	 * The latest servers support retries on individual data partitions.
-	 * This feature is useful when a cluster is migrating and partition(s)
-	 * are missed or incomplete on the first scan attempt.
+	 * Set maxRetries for scans. The latest servers support retries on
+	 * individual data partitions. This feature is useful when a cluster
+	 * is migrating and partition(s) are missed or incomplete on the first
+	 * scan attempt.
 	 * <p>
 	 * If the first scan attempt misses 2 of 4096 partitions, then only
 	 * those 2 partitions are retried in the next scan attempt from the
