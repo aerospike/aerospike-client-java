@@ -27,6 +27,7 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -1345,6 +1346,27 @@ public interface IAerospikeClient extends Closeable {
 		InfoPolicy policy,
 		Node node,
 		String... commands
+	) throws AerospikeException;
+
+	//-----------------------------------------------------------------
+	// XDR - Cross datacenter replication
+	//-----------------------------------------------------------------
+
+	/**
+	 * Set XDR filter for given datacenter name and namespace. The expression filter indicates
+	 * which records XDR should ship to the datacenter.
+	 *
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param datacenter			XDR datacenter name
+	 * @param namespace				namespace - equivalent to database name
+	 * @param filter				expression filter
+	 * @throws AerospikeException	if command fails
+	 */
+	public void setXDRFilter(
+		InfoPolicy policy,
+		String datacenter,
+		String namespace,
+		Expression filter
 	) throws AerospikeException;
 
 	//-------------------------------------------------------

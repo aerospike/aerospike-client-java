@@ -65,6 +65,7 @@ import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.WriteCommand;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
@@ -2215,6 +2216,43 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		AsyncInfoCommand command = new AsyncInfoCommand(listener, policy, node, commands);
 		eventLoop.execute(cluster, command);
+	}
+
+	//-----------------------------------------------------------------
+	// XDR - Cross datacenter replication
+	//-----------------------------------------------------------------
+
+	/**
+	 * Set XDR filter for given datacenter name and namespace. The expression filter indicates
+	 * which records XDR should ship to the datacenter.
+	 *
+	 * @param policy				info configuration parameters, pass in null for defaults
+	 * @param datacenter			XDR datacenter name
+	 * @param namespace				namespace - equivalent to database name
+	 * @param filter				expression filter
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void setXDRFilter(
+		InfoPolicy policy,
+		String datacenter,
+		String namespace,
+		Expression filter
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = infoPolicyDefault;
+		}
+
+		// Send XDR command to one node. That node will distribute the XDR command to other nodes.
+		String command = "xdr-set-filter:dc=" + datacenter + ";namespace=" + namespace + ";exp=" + filter.getBase64();
+		Node node = cluster.getRandomNode();
+		String response = Info.request(policy, node, command);
+
+		if (response.equalsIgnoreCase("ok")) {
+			return;
+		}
+
+		int code = parseIndexErrorCode(response);
+		throw new AerospikeException(code, "xdr-set-filter failed: " + response);
 	}
 
 	//-------------------------------------------------------
