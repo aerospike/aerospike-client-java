@@ -220,6 +220,11 @@ public final class ResultCode {
 	public static final int FILTERED_OUT = 27;
 
 	/**
+	 * Write command loses conflict to XDR.
+	 */
+	public static final int LOST_CONFLICT = 28;
+
+	/**
 	 * There are no more records left for query.
 	 */
 	public static final int QUERY_END = 50;
@@ -545,6 +550,9 @@ public final class ResultCode {
 
 		case FILTERED_OUT:
 			return "Transaction filtered out";
+
+		case LOST_CONFLICT:
+			return "Transaction failed due to conflict with XDR";
 
 		case QUERY_END:
 			return "Query end";
