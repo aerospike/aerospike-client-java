@@ -167,7 +167,7 @@ public class ClientPolicy {
 	public int maxSocketIdle = 55;
 
 	/**
-	 * Maximum number of errors allowed per node per {@link errorRateWindow} before backoff
+	 * Maximum number of errors allowed per node per {@link #errorRateWindow} before backoff
 	 * algorithm throws {@link com.aerospike.client.AerospikeException.Backoff} on database
 	 * commands to that node. If maxErrorRate is zero, there is no error limit and
 	 * the exception will never be thrown.
@@ -180,8 +180,8 @@ public class ClientPolicy {
 	public int maxErrorRate;
 
 	/**
-	 * The number of cluster tend iterations that defines the window for {@link maxErrorRate}.
-	 * One tend iteration is defined as {@link tendInterval} plus the time to tend all nodes.
+	 * The number of cluster tend iterations that defines the window for {@link #maxErrorRate}.
+	 * One tend iteration is defined as {@link #tendInterval} plus the time to tend all nodes.
 	 * At the end of tend iteration, the error count is reset to zero and backoff state is removed
 	 * on all nodes.
 	 * <p>

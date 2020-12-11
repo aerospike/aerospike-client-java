@@ -227,6 +227,9 @@ public class MapOperation {
 	}
 
 	/**
+	 * This method is deprecated. Use {@link #increment(MapPolicy, String, Value, Value, CTX...)}
+	 * with a negative value instead.
+	 * <p>
 	 * Create map decrement operation.
 	 * Server decrements values by decr for all items identified by key and returns final result.
 	 * Valid only for numbers.
@@ -236,6 +239,7 @@ public class MapOperation {
 	 * See policy {@link com.aerospike.client.cdt.MapPolicy} and write mode
 	 * {@link com.aerospike.client.cdt.MapWriteMode}.
 	 */
+	@Deprecated
 	public static Operation decrement(MapPolicy policy, String binName, Value key, Value decr, CTX... ctx) {
 		byte[] bytes = Pack.pack(MapOperation.DECREMENT, key, decr, policy.attributes, ctx);
 		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));

@@ -291,7 +291,7 @@ public class TestOperateMap extends TestSync {
 		// Increment some user scores.
 		record = client.operate(null, key,
 				MapOperation.increment(MapPolicy.Default, binName, Value.get("John"), Value.get(5)),
-				MapOperation.decrement(MapPolicy.Default, binName, Value.get("Jim"), Value.get(4))
+				MapOperation.increment(MapPolicy.Default, binName, Value.get("Jim"), Value.get(-4))
 				);
 
 		assertRecordFound(key, record);

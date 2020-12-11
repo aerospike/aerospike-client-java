@@ -124,7 +124,7 @@ public class OperateMap extends Example {
 		// Increment some user scores.
 		record = client.operate(params.writePolicy, key,
 				MapOperation.increment(MapPolicy.Default, binName, Value.get("John"), Value.get(5)),
-				MapOperation.decrement(MapPolicy.Default, binName, Value.get("Jim"), Value.get(4))
+				MapOperation.increment(MapPolicy.Default, binName, Value.get("Jim"), Value.get(-4))
 				);
 
 		console.info("Record: " + record);
