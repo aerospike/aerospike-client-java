@@ -606,7 +606,7 @@ public class Cluster implements Runnable, Closeable {
 
 		if (failIfNotConnected) {
 			StringBuilder sb = new StringBuilder(500);
-			sb.append("Failed to connect to host(s): ");
+			sb.append("Failed to connect to ["+ seedArray.length +"] host(s): ");
 			sb.append(System.lineSeparator());
 
 			for (int i = 0; i < seedArray.length; i++) {
