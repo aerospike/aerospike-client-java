@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Max errors limit reached.
+	 */
+	public static final int MAX_ERROR_RATE = -12;
+
+	/**
 	 * Max retries limit reached.
 	 */
 	public static final int MAX_RETRIES_EXCEEDED = -11;
@@ -433,6 +438,9 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+
+		case MAX_ERROR_RATE:
+			return "Max error rate exceeded";
 
 		case MAX_RETRIES_EXCEEDED:
 			return "Max retries exceeded";

@@ -128,6 +128,12 @@ public class Cluster implements Runnable, Closeable {
 	// Sync connection pools per node.
 	protected final int connPoolsPerNode;
 
+	// Max errors per node per errorRateWindow.
+	int maxErrorRate;
+
+	// Number of tend iterations defining window for maxErrorRate.
+	int errorRateWindow;
+
 	// Initial connection timeout.
 	public final int connectionTimeout;
 
@@ -237,6 +243,8 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		connPoolsPerNode = policy.connPoolsPerNode;
+		maxErrorRate = policy.maxErrorRate;
+		errorRateWindow = policy.errorRateWindow;
 		connectionTimeout = policy.timeout;
 		loginTimeout = policy.loginTimeout;
 		tendInterval = policy.tendInterval;
@@ -512,12 +520,14 @@ public class Cluster implements Runnable, Closeable {
 			addNodes(peers.nodes);
 		}
 
-		// Balance connections every 30 tend intervals.
-		if (++tendCount >= 30) {
-			tendCount = 0;
+		tendCount++;
 
+		// Balance connections every 30 tend iterations.
+		if (tendCount % 30 == 0) {
 			for (Node node : nodes) {
-				node.balanceConnections();
+				if (node.errorCountWithinLimit()) {
+					node.balanceConnections();
+				}
 			}
 
 			if (eventState != null) {
@@ -529,11 +539,20 @@ public class Cluster implements Runnable, Closeable {
 							final Node[] nodeArray = nodes;
 
 							for (Node node : nodeArray) {
-								node.balanceAsyncConnections(eventLoop);
+								if (node.errorCountWithinLimit()) {
+									node.balanceAsyncConnections(eventLoop);
+								}
 							}
 						}
 					});
 				}
+			}
+		}
+
+		// Reset connection error window for all nodes every connErrorWindow tend iterations.
+		if (maxErrorRate > 0 && tendCount % errorRateWindow == 0) {
+			for (Node node : nodes) {
+				node.resetErrorCount();
 			}
 		}
 
@@ -969,6 +988,26 @@ public class Cluster implements Runnable, Closeable {
 				this.password = password;
 			}
 		}
+	}
+
+	/**
+	 * Set max errors allowed within configurable window for all nodes.
+	 * For performance reasons, maxErrorRate is not declared volatile,
+	 * so we are relying on cache coherency for other threads to
+	 * recognize this change.
+	 */
+	public final void setMaxErrorRate(int rate) {
+		this.maxErrorRate = rate;
+	}
+
+	/**
+	 * The number of cluster tend iterations that defines the window for maxErrorRate.
+	 * For performance reasons, errorRateWindow is not declared volatile,
+	 * so we are relying on cache coherency for other threads to
+	 * recognize this change.
+	 */
+	public final void setErrorRateWindow(int window) {
+		this.errorRateWindow = window;
 	}
 
 	public final ExecutorService getThreadPool() {

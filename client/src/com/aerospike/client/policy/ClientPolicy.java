@@ -167,6 +167,29 @@ public class ClientPolicy {
 	public int maxSocketIdle = 55;
 
 	/**
+	 * Maximum number of errors allowed per node per {@link errorRateWindow} before backoff
+	 * algorithm throws {@link com.aerospike.client.AerospikeException.Backoff} on database
+	 * commands to that node. If maxErrorRate is zero, there is no error limit and
+	 * the exception will never be thrown.
+	 * <p>
+	 * The counted error types are any error that causes the connection to close (socket errors
+	 * and client timeouts) and {@link com.aerospike.client.ResultCode#DEVICE_OVERLOAD}.
+	 * <p>
+	 * Default: 0
+	 */
+	public int maxErrorRate;
+
+	/**
+	 * The number of cluster tend iterations that defines the window for {@link maxErrorRate}.
+	 * One tend iteration is defined as {@link tendInterval} plus the time to tend all nodes.
+	 * At the end of tend iteration, the error count is reset to zero and backoff state is removed
+	 * on all nodes.
+	 * <p>
+	 * Default: 1
+	 */
+	public int errorRateWindow = 1;
+
+	/**
 	 * Interval in milliseconds between cluster tends by maintenance thread.
 	 * <p>
 	 * Default: 1000
@@ -322,6 +345,8 @@ public class ClientPolicy {
 		this.asyncMaxConnsPerNode = other.asyncMaxConnsPerNode;
 		this.connPoolsPerNode = other.connPoolsPerNode;
 		this.maxSocketIdle = other.maxSocketIdle;
+		this.maxErrorRate = other.maxErrorRate;
+		this.errorRateWindow = other.errorRateWindow;
 		this.tendInterval = other.tendInterval;
 		this.failIfNotConnected = other.failIfNotConnected;
 		this.readPolicyDefault = new Policy(other.readPolicyDefault);

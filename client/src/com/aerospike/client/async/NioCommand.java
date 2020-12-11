@@ -228,6 +228,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 		try {
 			node = command.getNode(cluster);
+			node.validateErrorCount();
 			byteBuffer = eventLoop.getByteBuffer();
 			conn = (NioConnection)node.getAsyncConnection(eventLoop.index, byteBuffer);
 
@@ -253,6 +254,17 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		catch (AerospikeException.Connection ac) {
 			eventState.errors++;
 			onNetworkError(ac, true);
+		}
+		catch (AerospikeException.Backoff ab) {
+			eventState.errors++;
+			retry(ab, true);
+		}
+		catch (AerospikeException ae) {
+			// Fail without retry on non-connection errors.
+			eventState.errors++;
+			fail();
+			notifyFailure(ae);
+			eventLoop.tryDelayQueue();
 		}
 		catch (IOException ioe) {
 			eventState.errors++;
@@ -287,9 +299,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
         }
         catch (AerospikeException ae) {
         	if (ae.getResultCode() == ResultCode.TIMEOUT) {
-        		// Go through retry logic on server timeout
         		onServerTimeout();
         	}
+        	else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
+        		onDeviceOverload(ae);
+			}
         	else {
         		onApplicationError(ae);
         	}
@@ -739,6 +753,13 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		node.putAsyncConnection(conn, eventLoop.index);
 
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
+		retry(ae, false);
+	}
+
+	protected final void onDeviceOverload(AerospikeException ae) {
+		conn.unregister();
+		node.putAsyncConnection(conn, eventLoop.index);
+		node.incrErrorCount();
 		retry(ae, false);
 	}
 

@@ -53,15 +53,10 @@ public final class Connection implements Closeable {
 	private volatile long lastUsed;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(address, timeoutMillis, null);
+		this(address, timeoutMillis, null, null);
 	}
 
-	public Connection(InetSocketAddress address, int timeoutMillis, Pool pool, Node node) throws AerospikeException.Connection {
-		this(address, timeoutMillis, pool);
-		node.connsOpened.getAndIncrement();
-	}
-
-	public Connection(InetSocketAddress address, int timeoutMillis, Pool pool) throws AerospikeException.Connection {
+	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
 
 		try {
@@ -86,6 +81,10 @@ public final class Connection implements Closeable {
 			catch (Exception e) {
 				// socket.close() will close input/output streams according to doc.
 				socket.close();
+
+				if (node != null) {
+					node.incrErrorCount();
+				}
 				throw e;
 			}
 		}
@@ -97,12 +96,11 @@ public final class Connection implements Closeable {
 		}
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Pool pool, Node node) throws AerospikeException.Connection {
-		this(policy, tlsName, address, timeoutMillis, pool);
-		node.connsOpened.getAndIncrement();
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
+		this(policy, tlsName, address, timeoutMillis, null, null);
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Pool pool) throws AerospikeException.Connection {
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
 
 		try {
@@ -156,6 +154,10 @@ public final class Connection implements Closeable {
 			catch (Exception e) {
 				// socket.close() will close input/output streams according to doc.
 				socket.close();
+
+				if (node != null) {
+					node.incrErrorCount();
+				}
 				throw e;
 			}
 		}
@@ -304,14 +306,6 @@ public final class Connection implements Closeable {
 
 	public void updateLastUsed() {
 		lastUsed = System.nanoTime();
-	}
-
-	/**
-	 * Close socket and associated streams after updating node statistics.
-	 */
-	public void close(Node node) {
-		node.connsClosed.getAndIncrement();
-		close();
 	}
 
 	/**

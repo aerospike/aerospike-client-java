@@ -250,6 +250,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		try {
 			node = command.getNode(cluster);
+			node.validateErrorCount();
 			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
 
 			if (conn != null) {
@@ -309,6 +310,17 @@ public final class NettyCommand implements Runnable, TimerTask {
 		catch (AerospikeException.Connection ac) {
 			eventState.errors++;
 			onNetworkError(ac);
+		}
+		catch (AerospikeException.Backoff ab) {
+			eventState.errors++;
+			retry(ab, true);
+		}
+		catch (AerospikeException ae) {
+			// Fail without retry on non-connection errors.
+			eventState.errors++;
+			fail();
+			notifyFailure(ae);
+			eventLoop.tryDelayQueue();
 		}
 		catch (Exception e) {
 			// Fail without retry on unknown errors.
@@ -775,6 +787,16 @@ public final class NettyCommand implements Runnable, TimerTask {
 		retry(ae, false);
 	}
 
+	protected final void onDeviceOverload(AerospikeException ae) {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+
+		putConnection();
+		node.incrErrorCount();
+		retry(ae, false);
+	}
+
 	private final void retry(final AerospikeException ae, boolean queueCommand) {
 		// Check maxRetries.
 		if (iteration > command.maxRetries) {
@@ -994,8 +1016,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 				AerospikeException ae = (AerospikeException)cause;
 
 	        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
-	        		// Go through retry logic on server timeout
 	        		command.onServerTimeout();
+	        	}
+	        	else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
+	        		command.onDeviceOverload(ae);
 	        	}
 	        	else {
 		        	command.onApplicationError(ae);

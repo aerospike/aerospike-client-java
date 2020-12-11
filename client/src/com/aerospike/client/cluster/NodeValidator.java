@@ -189,8 +189,8 @@ public final class NodeValidator {
 
 		InetSocketAddress socketAddress = new InetSocketAddress(address, port);
 		Connection conn = (cluster.tlsPolicy != null) ?
-			new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
-			new Connection(socketAddress, cluster.connectionTimeout, null);
+			new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout) :
+			new Connection(socketAddress, cluster.connectionTimeout);
 
 		try {
 			if (cluster.user != null) {
@@ -384,8 +384,8 @@ public final class NodeValidator {
 					try {
 						InetSocketAddress socketAddress = new InetSocketAddress(address, h.port);
 						Connection conn = (cluster.tlsPolicy != null) ?
-							new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout, null) :
-							new Connection(socketAddress, cluster.connectionTimeout, null);
+							new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectionTimeout) :
+							new Connection(socketAddress, cluster.connectionTimeout);
 
 						try {
 							if (cluster.user != null) {
@@ -463,7 +463,7 @@ public final class NodeValidator {
 						try {
 							clearAddress = ia;
 							clearSocketAddress = new InetSocketAddress(clearAddress, clearHost.port);
-							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout, null);
+							clearConn = new Connection(clearSocketAddress, cluster.connectionTimeout);
 
 							try {
 								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());

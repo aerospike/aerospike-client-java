@@ -89,6 +89,7 @@ public abstract class SyncCommand extends Command {
 			}
 
 			try {
+				node.validateErrorCount();
 				Connection conn = node.getConnection(socketTimeout, policy.timeoutDelay);
 
 				try {
@@ -119,10 +120,16 @@ public abstract class SyncCommand extends Command {
 					}
 
 					if (ae.getResultCode() == ResultCode.TIMEOUT) {
-						// Go through retry logic on server timeout.
+						// Retry on server timeout.
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
+					}
+					else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
+						// Add to circuit breaker error count and retry.
+						exception = ae;
+						isClientTimeout = false;
+						node.incrErrorCount();
 					}
 					else {
 						throw ae;
@@ -166,6 +173,12 @@ public abstract class SyncCommand extends Command {
 				// Socket connection error has occurred. Retry.
 				// Log.info("Connection error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 				exception = ce;
+				isClientTimeout = false;
+			}
+			catch (AerospikeException.Backoff be) {
+				// Node is in backoff state. Retry, hopefully on another node.
+				// Log.info("Backoff error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+				exception = be;
 				isClientTimeout = false;
 			}
 			catch (AerospikeException ae) {

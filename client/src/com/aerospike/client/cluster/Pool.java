@@ -151,10 +151,14 @@ public final class Pool {
 			}
 
 			// Close connection outside of lock.
-			total.getAndDecrement();
-			conn.close(node);
+			closeIdle(node, conn);
 			count--;
 		}
+	}
+
+	void closeIdle(Node node, Connection conn) {
+		total.getAndDecrement();
+		node.closeIdleConnection(conn);
 	}
 
 	/**

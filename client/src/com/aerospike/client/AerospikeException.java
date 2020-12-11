@@ -384,11 +384,23 @@ public class AerospikeException extends RuntimeException {
 	 * Exception thrown when async command was rejected because the
 	 * async delay queue is full.
 	 */
-	public static final class AsyncQueueFull extends AerospikeException {
+	public static final class AsyncQueueFull extends Backoff {
 		private static final long serialVersionUID = 1L;
 
 		public AsyncQueueFull() {
 			super(ResultCode.ASYNC_QUEUE_FULL);
+		}
+	}
+
+	/**
+	 * Exception thrown when node is in backoff mode due to excessive
+	 * number of errors.
+	 */
+	public static class Backoff extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public Backoff(int resultCode) {
+			super(resultCode);
 		}
 	}
 }

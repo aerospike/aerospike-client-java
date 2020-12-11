@@ -69,6 +69,7 @@ public class Node implements Closeable {
 	private volatile Map<String,Integer> racks;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
+	private final AtomicInteger errorCount;
 	protected int connectionIter;
 	protected int peersGeneration;
 	protected int partitionGeneration;
@@ -100,6 +101,7 @@ public class Node implements Closeable {
 		//this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
+		this.errorCount = new AtomicInteger(0);
 
 		if (cluster.rackAware) {
 			this.racks = new HashMap<String,Integer>();
@@ -202,8 +204,10 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, null, this) :
-					new Connection(address, cluster.connectionTimeout, null, this);
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, this, null) :
+					new Connection(address, cluster.connectionTimeout, this, null);
+
+				connsOpened.getAndIncrement();
 
 				if (cluster.user != null) {
 					try {
@@ -219,11 +223,11 @@ public class Node implements Closeable {
 						}
 					}
 					catch (AerospikeException ae) {
-						tendConnection.close(this);
+						closeConnectionOnError(tendConnection);
 						throw ae;
 					}
 					catch (Exception e) {
-						tendConnection.close(this);
+						closeConnectionOnError(tendConnection);
 						throw new AerospikeException(e);
 					}
 				}
@@ -473,7 +477,7 @@ public class Node implements Closeable {
 		failures++;
 
 		if (! tendConnection.isClosed()) {
-			tendConnection.close(this);
+			closeConnectionOnError(tendConnection);
 		}
 
 		// Only log message if cluster is still active.
@@ -503,7 +507,7 @@ public class Node implements Closeable {
 				pool.total.getAndIncrement();
 			}
 			else {
-				conn.close(this);
+				closeIdleConnection(conn);
 				break;
 			}
 			count--;
@@ -513,8 +517,10 @@ public class Node implements Closeable {
 	private Connection createConnection(Pool pool) {
 		// Create sync connection.
 		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, null, this) :
-				new Connection(address, cluster.connectionTimeout, pool, this);
+				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, this, pool) :
+				new Connection(address, cluster.connectionTimeout, this, pool);
+
+		connsOpened.getAndIncrement();
 
 		if (cluster.user != null) {
 			try {
@@ -524,11 +530,11 @@ public class Node implements Closeable {
 				}
 			}
 			catch (AerospikeException ae) {
-				conn.close(this);
+				closeConnectionOnError(conn);
 				throw ae;
 			}
 			catch (Exception e) {
-				conn.close(this);
+				closeConnectionOnError(conn);
 				throw new AerospikeException(e);
 			}
 		}
@@ -590,15 +596,17 @@ public class Node implements Closeable {
 						throw new AerospikeException.Connection(e);
 					}
 				}
-				closeConnection(conn);
+				pool.closeIdle(this, conn);
 			}
 			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
 				// Create new connection.
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, pool, this) :
-						new Connection(address, timeoutMillis, pool, this);
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, this, pool) :
+						new Connection(address, timeoutMillis, this, pool);
+
+					connsOpened.getAndIncrement();
 				}
 				catch (RuntimeException re) {
 					pool.total.getAndDecrement();
@@ -686,11 +694,28 @@ public class Node implements Closeable {
 	}
 
 	/**
-	 * Close connection and decrement connection count.
+	 * Close pooled connection on error and decrement connection count.
 	 */
 	public final void closeConnection(Connection conn) {
 		conn.pool.total.getAndDecrement();
-		conn.close(this);
+		closeConnectionOnError(conn);
+	}
+
+	/**
+	 * Close any connection on error.
+	 */
+	public final void closeConnectionOnError(Connection conn) {
+		connsClosed.getAndIncrement();
+		incrErrorCount();
+		conn.close();
+	}
+
+	/**
+	 * Close connection without incrementing error count.
+	 */
+	public final void closeIdleConnection(Connection conn) {
+		connsClosed.getAndIncrement();
+		conn.close();
 	}
 
 	final void balanceConnections() {
@@ -730,10 +755,16 @@ public class Node implements Closeable {
 		AsyncConnection conn;
 
 		while ((conn = queue.pollFirst()) != null) {
-			if (cluster.isConnCurrentTran(conn.getLastUsed()) && conn.isValid(byteBuffer)) {
-				return conn;
+			if (! cluster.isConnCurrentTran(conn.getLastUsed())) {
+				closeAsyncIdleConnection(conn, index);
+				continue;
 			}
-			closeAsyncConnection(conn, index);
+
+			if (! conn.isValid(byteBuffer)) {
+				closeAsyncConnection(conn, index);
+				continue;
+			}
+			return conn;
 		}
 
 		if (pool.total >= pool.maxSize) {
@@ -753,7 +784,19 @@ public class Node implements Closeable {
 		asyncConnectionPools[index].queue.addFirst(conn);
 	}
 
+	/**
+	 * Close async connection on error.
+	 */
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
+		incrErrorCount();
+		asyncConnectionPools[index].connectionClosed();
+		conn.close();
+	}
+
+	/**
+	 * Close async connection without incrementing error count.
+	 */
+	public final void closeAsyncIdleConnection(AsyncConnection conn, int index) {
 		asyncConnectionPools[index].connectionClosed();
 		conn.close();
 	}
@@ -765,10 +808,12 @@ public class Node implements Closeable {
 
 	// Only call from AsyncConnector logic.
 	public final void closeAsyncConnector(AsyncConnection conn, int index) {
+		incrErrorCount();
 		asyncConnectionPools[index].close(conn);
 	}
 
 	public final void decrAsyncConnection(int index) {
+		incrErrorCount();
 		asyncConnectionPools[index].total--;
 	}
 
@@ -833,6 +878,26 @@ public class Node implements Closeable {
 			}
 		}
 		return new ConnectionStats(inUse, inPool, opened, closed);
+	}
+
+	public final void incrErrorCount() {
+		if (cluster.maxErrorRate > 0) {
+			errorCount.getAndIncrement();
+		}
+	}
+
+	public final void resetErrorCount() {
+		errorCount.set(0);
+	}
+
+	public final boolean errorCountWithinLimit() {
+		return cluster.maxErrorRate <= 0 || errorCount.get() <= cluster.maxErrorRate;
+	}
+
+	public final void validateErrorCount() {
+		if (! errorCountWithinLimit()) {
+			throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
+		}
 	}
 
 	/**
