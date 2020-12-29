@@ -253,14 +253,6 @@ public class Node implements Closeable {
 		}
 		catch (Exception e) {
 			peers.genChanged = true;
-			peersGeneration = -1;
-			partitionChanged = true;
-			partitionGeneration = -1;
-
-			if (cluster.rackAware) {
-				rebalanceChanged = true;
-				rebalanceGeneration = -1;
-			}
 			refreshFailed(e);
 		}
 	}
@@ -413,7 +405,6 @@ public class Node implements Closeable {
 			peers.refreshCount++;
 		}
 		catch (Exception e) {
-			peersGeneration = -1;
 			refreshFailed(e);
 		}
 	}
@@ -458,7 +449,6 @@ public class Node implements Closeable {
 			partitionGeneration = parser.getGeneration();
 		}
 		catch (Exception e) {
-			partitionGeneration = -1;
 			refreshFailed(e);
 		}
 	}
@@ -479,12 +469,17 @@ public class Node implements Closeable {
 			racks = parser.getRacks();
 		}
 		catch (Exception e) {
-			rebalanceGeneration = -1;
 			refreshFailed(e);
 		}
 	}
 
 	private final void refreshFailed(Exception e) {
+		peersGeneration = -1;
+		partitionGeneration = -1;
+
+		if (cluster.rackAware) {
+			rebalanceGeneration = -1;
+		}
 		failures++;
 
 		if (! tendConnection.isClosed()) {
