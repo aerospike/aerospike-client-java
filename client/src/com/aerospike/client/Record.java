@@ -126,7 +126,7 @@ public final class Record {
 	 */
 	public boolean getBoolean(String name) {
 		// The server always returns booleans as longs, so get long and convert.
-		return (getLong(name) != 0) ? true : false;
+		return getLong(name) != 0;
 	}
 
 	/**
@@ -144,8 +144,11 @@ public final class Record {
 	}
 
 	/**
+	 * This method is deprecated. Use {@link #getGeoJSONString(String)} instead.
+	 *
 	 * Get bin value as GeoJSON (backward compatibility).
 	 */
+	@Deprecated
 	public String getGeoJSON(String name) {
 		return getGeoJSONString(name);
 	}
@@ -154,7 +157,8 @@ public final class Record {
 	 * Get bin value as GeoJSON String.
 	 */
 	public String getGeoJSONString(String name) {
-		return getValue(name).toString();
+		Object value = getValue(name);
+		return (value != null) ? value.toString() : null;
 	}
 
 	/**
@@ -250,10 +254,7 @@ public final class Record {
 		if (generation != other.generation)
 			return false;
 		if (bins == null) {
-			if (other.bins != null)
-				return false;
-		} else if (!bins.equals(other.bins))
-			return false;
-		return true;
+			return other.bins == null;
+		} else return bins.equals(other.bins);
 	}
 }
