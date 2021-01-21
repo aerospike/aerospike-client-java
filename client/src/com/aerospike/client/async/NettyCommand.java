@@ -60,9 +60,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final Cluster cluster;
 	final AsyncCommand command;
 	final EventState eventState;
+	final HashedWheelTimeout timeoutTask;
+	TimeoutState timeoutState;
 	Node node;
 	NettyConnection conn;
-	HashedWheelTimeout timeoutTask;
 	long totalDeadline;
 	int state;
 	int iteration;
@@ -75,8 +76,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 	public NettyCommand(NettyEventLoop loop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = loop;
 		this.cluster = cluster;
-		this.eventState = cluster.eventState[loop.index];
 		this.command = command;
+		this.eventState = cluster.eventState[loop.index];
+		this.timeoutTask = new HashedWheelTimeout(this);
 		command.bufferQueue = loop.bufferQueue;
 		hasTotalTimeout = command.totalTimeout > 0;
 
@@ -99,6 +101,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.cluster = other.cluster;
 		this.command = command;
 		this.eventState = other.eventState;
+		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
 		this.iteration = other.iteration;
 		this.commandSentCounter = other.commandSentCounter;
@@ -116,10 +119,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 			return;
 		}
 
-		if (deadline > 0) {
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-		}
-
 		if (eventLoop.maxCommandsInProcess > 0) {
 			// Delay queue takes precedence over new commands.
 			eventLoop.executeFromDelayQueue();
@@ -132,12 +131,16 @@ public final class NettyCommand implements Runnable, TimerTask {
 					return;
 				}
 				eventLoop.delayQueue.addLast(this);
+
+				if (deadline > 0) {
+					eventLoop.timer.addTimeout(timeoutTask, deadline);
+				}
 				state = AsyncCommand.DELAY_QUEUE;
 				return;
 			}
 		}
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.BATCH_RETRY);
 	}
 
 	@Override
@@ -182,21 +185,22 @@ public final class NettyCommand implements Runnable, TimerTask {
 				eventLoop.delayQueue.addLast(this);
 
 				if (hasTotalTimeout) {
-					timeoutTask = eventLoop.timer.addTimeout(this, totalDeadline);
+					eventLoop.timer.addTimeout(timeoutTask, totalDeadline);
 				}
 				state = AsyncCommand.DELAY_QUEUE;
 				return;
 			}
 		}
 
+		long deadline = totalDeadline;
+
 		if (hasTotalTimeout) {
-			long deadline;
-
 			if (command.socketTimeout > 0) {
-				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
+				long socketDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
-				if (deadline < totalDeadline) {
+				if (socketDeadline < totalDeadline) {
 					usingSocketTimeout = true;
+					deadline = socketDeadline;
 				}
 				else {
 					deadline = totalDeadline;
@@ -205,15 +209,14 @@ public final class NettyCommand implements Runnable, TimerTask {
 			else {
 				deadline = totalDeadline;
 			}
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
 		}
 		else if (command.socketTimeout > 0) {
 			usingSocketTimeout = true;
-			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout));
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 		}
 
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.REGISTERED);
 	}
 
 	private final void queueError(AerospikeException ae) {
@@ -224,6 +227,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	final void executeCommandFromDelayQueue() {
+		long deadline = totalDeadline;
+
 		if (command.socketTimeout > 0) {
 			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
@@ -232,19 +237,19 @@ public final class NettyCommand implements Runnable, TimerTask {
 					// Transition from total timer to socket timer.
 					timeoutTask.cancel();
 					usingSocketTimeout = true;
-					eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+					deadline = socketDeadline;
 				}
 			}
 			else {
 				usingSocketTimeout = true;
-				timeoutTask = eventLoop.timer.addTimeout(this, socketDeadline);
+				deadline = socketDeadline;
 			}
 		}
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.DELAY_QUEUE);
 	}
 
-	private void executeCommand() {
+	private void executeCommand(long deadline, int tstate) {
 		state = AsyncCommand.CHANNEL_INIT;
 		iteration++;
 
@@ -254,6 +259,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
 
 			if (conn != null) {
+				setTimeoutTask(deadline, tstate);
 				InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
 				handler.command = this;
 				writeCommand();
@@ -261,6 +267,17 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 
 			connectInProgress = true;
+
+			if (command.policy.connectTimeout > 0) {
+				timeoutState = new TimeoutState(deadline, tstate);
+				deadline = timeoutState.start + TimeUnit.MILLISECONDS.toNanos(command.policy.connectTimeout);
+				timeoutTask.cancel();
+				eventLoop.timer.addTimeout(timeoutTask, deadline);
+			}
+			else {
+				setTimeoutTask(deadline, tstate);
+			}
+
 			final int itr = iteration;
 			final InboundHandler handler = new InboundHandler();
 			handler.command = this;
@@ -331,13 +348,58 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 	}
 
+	private final void setTimeoutTask(long deadline, int tstate) {
+		if (deadline <= 0) {
+			return;
+		}
+
+		switch(tstate) {
+		case TimeoutState.REGISTERED:
+		case TimeoutState.BATCH_RETRY:
+		case TimeoutState.TIMEOUT:
+			eventLoop.timer.addTimeout(timeoutTask, deadline);
+			break;
+
+		case TimeoutState.DELAY_QUEUE:
+		case TimeoutState.RETRY:
+			// Only set timeoutTask when not active.
+			if (! timeoutTask.active()) {
+				eventLoop.timer.addTimeout(timeoutTask, deadline);
+			}
+			break;
+
+		default:
+			break;
+		}
+	}
+
 	private void channelActive() {
 		if (cluster.getUser() != null) {
 			writeAuth();
 		}
 		else {
+			if (timeoutState != null) {
+				restoreTimeout();
+			}
 			writeCommand();
 		}
+	}
+
+	private final void restoreTimeout() {
+		// Switch from connectTimeout back to previous timeout.
+		timeoutTask.cancel();
+
+		long elapsed = System.nanoTime() - timeoutState.start;
+
+		if (timeoutState.deadline > 0) {
+			timeoutState.deadline += elapsed;
+		}
+
+		if (totalDeadline > 0) {
+			totalDeadline += elapsed;
+		}
+		setTimeoutTask(timeoutState.deadline, timeoutState.state);
+		timeoutState = null;
 	}
 
 	private void writeAuth() {
@@ -478,6 +540,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// a long time and thousands of simultaneous logins could
 			// overwhelm server.
 			throw new AerospikeException(resultCode);
+		}
+
+		if (timeoutState != null) {
+			restoreTimeout();
 		}
 		writeCommand();
 	}
@@ -646,7 +712,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 						deadline = totalDeadline;
 						usingSocketTimeout = false;
 					}
-					eventLoop.timer.restoreTimeout(timeoutTask, deadline);
+					eventLoop.timer.addTimeout(timeoutTask, deadline);
 					return;
 				}
 			}
@@ -658,7 +724,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				eventReceived = false;
 
 				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
-				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+				eventLoop.timer.addTimeout(timeoutTask, socketDeadline);
 				return;
 			}
 		}
@@ -694,14 +760,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// Batch may be retried in separate commands.
 			if (command.retryBatch(this, deadline)) {
 				// Batch retried in separate commands.  Complete this command.
-				timeoutTask = null;
 				close();
 				return;
 			}
 		}
 
-		eventLoop.timer.restoreTimeout(timeoutTask, deadline);
-		executeCommand();
+		executeCommand(deadline, TimeoutState.TIMEOUT);
 	}
 
 	private final void totalTimeout() {
@@ -718,7 +782,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 		recoverConnection();
 
 		// Perform timeout.
-		timeoutTask = null;
 		close();
 		notifyFailure(ae);
 		eventLoop.tryDelayQueue();
@@ -876,10 +939,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 		}
 
-		if (usingSocketTimeout) {
-			eventLoop.timer.restoreTimeout(timeoutTask, deadline);
-		}
-		executeCommand();
+		executeCommand(deadline, TimeoutState.RETRY);
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {
@@ -951,9 +1011,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private final void close() {
-		if (timeoutTask != null) {
-			timeoutTask.cancel();
-		}
+		timeoutTask.cancel();
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
 		eventState.pending--;

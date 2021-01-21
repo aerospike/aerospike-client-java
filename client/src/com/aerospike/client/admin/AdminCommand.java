@@ -102,7 +102,7 @@ public class AdminCommand {
 				login(cluster, conn);
 			}
 			finally {
-				conn.setTimeout(cluster.connectionTimeout);
+				conn.setTimeout(cluster.connectTimeout);
 			}
 		}
 

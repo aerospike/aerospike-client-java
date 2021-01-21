@@ -90,7 +90,7 @@ public abstract class SyncCommand extends Command {
 
 			try {
 				node.validateErrorCount();
-				Connection conn = node.getConnection(socketTimeout, policy.timeoutDelay);
+				Connection conn = node.getConnection(policy.connectTimeout, socketTimeout, policy.timeoutDelay);
 
 				try {
 					// Set command buffer.

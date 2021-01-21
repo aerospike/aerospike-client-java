@@ -85,6 +85,8 @@ public class AerospikeException extends RuntimeException {
 
 		if (policy != null) {
 			sb.append(',');
+			sb.append(policy.connectTimeout);
+			sb.append(',');
 			sb.append(policy.socketTimeout);
 			sb.append(',');
 			sb.append(policy.totalTimeout);
@@ -193,6 +195,11 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		/**
+		 * Socket initial connect timeout in milliseconds.
+		 */
+		public int connectTimeout;
+
+		/**
 		 * Socket idle timeout in milliseconds.
 		 */
 		public int socketTimeout;
@@ -209,6 +216,7 @@ public class AerospikeException extends RuntimeException {
 
 		public Timeout(int totalTimeout, boolean inDoubt) {
 			super(ResultCode.TIMEOUT, inDoubt);
+			this.connectTimeout = 0;
 			this.socketTimeout = 0;
 			this.timeout = totalTimeout;
 			this.client = true;
@@ -216,6 +224,7 @@ public class AerospikeException extends RuntimeException {
 
 		public Timeout(Policy policy, boolean client) {
 			super(ResultCode.TIMEOUT);
+			this.connectTimeout = policy.connectTimeout;
 			this.socketTimeout = policy.socketTimeout;
 			this.timeout = policy.totalTimeout;
 			this.client = client;
@@ -225,16 +234,18 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.TIMEOUT);
 			super.node = node;
 			super.iteration = iteration;
+			this.connectTimeout = policy.connectTimeout;
 			this.socketTimeout = policy.socketTimeout;
 			this.timeout = policy.totalTimeout;
 			this.client = true;
 		}
 
-		public Timeout(Node node, int totalTimeout) {
+		public Timeout(Node node, int connectTimeout, int socketTimeout, int totalTimeout) {
 			super(ResultCode.TIMEOUT);
 			super.node = node;
 			super.iteration = 1;
-			this.socketTimeout = 0;
+			this.connectTimeout = connectTimeout;
+			this.socketTimeout = socketTimeout;
 			this.timeout = totalTimeout;
 			this.client = true;
 		}
@@ -256,6 +267,8 @@ public class AerospikeException extends RuntimeException {
 			sb.append(" timeout:");
 			sb.append(" iteration=");
 			sb.append(iteration);
+			sb.append(" connect=");
+			sb.append(connectTimeout);
 			sb.append(" socket=");
 			sb.append(socketTimeout);
 			sb.append(" total=");

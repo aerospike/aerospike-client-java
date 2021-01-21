@@ -37,10 +37,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	final Cluster cluster;
 	final AsyncCommand command;
 	final EventState eventState;
+	final HashedWheelTimeout timeoutTask;
+	TimeoutState timeoutState;
 	Node node;
 	NioConnection conn;
 	ByteBuffer byteBuffer;
-	HashedWheelTimeout timeoutTask;
 	long totalDeadline;
 	int state;
 	int iteration;
@@ -52,8 +53,9 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	public NioCommand(NioEventLoop eventLoop, Cluster cluster, AsyncCommand command) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
-		this.eventState = cluster.eventState[eventLoop.index];
 		this.command = command;
+		this.eventState = cluster.eventState[eventLoop.index];
+		this.timeoutTask = new HashedWheelTimeout(this);
 		command.bufferQueue = eventLoop.bufferQueue;
 		hasTotalTimeout = command.totalTimeout > 0;
 
@@ -77,6 +79,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.cluster = other.cluster;
 		this.command = command;
 		this.eventState = other.eventState;
+		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
 		this.iteration = other.iteration;
 		this.commandSentCounter = other.commandSentCounter;
@@ -94,10 +97,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			return;
 		}
 
-		if (deadline > 0) {
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-		}
-
 		if (eventLoop.maxCommandsInProcess > 0) {
 			// Delay queue takes precedence over new commands.
 			eventLoop.executeFromDelayQueue();
@@ -110,12 +109,16 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 					return;
 				}
 				eventLoop.delayQueue.addLast(this);
+
+				if (deadline > 0) {
+					eventLoop.timer.addTimeout(timeoutTask, deadline);
+				}
 				state = AsyncCommand.DELAY_QUEUE;
 				return;
 			}
 		}
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.BATCH_RETRY);
 	}
 
 	@Override
@@ -160,21 +163,22 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				eventLoop.delayQueue.addLast(this);
 
 				if (hasTotalTimeout) {
-					timeoutTask = eventLoop.timer.addTimeout(this, totalDeadline);
+					eventLoop.timer.addTimeout(timeoutTask, totalDeadline);
 				}
 				state = AsyncCommand.DELAY_QUEUE;
 				return;
 			}
 		}
 
+		long deadline = totalDeadline;
+
 		if (hasTotalTimeout) {
-			long deadline;
-
 			if (command.socketTimeout > 0) {
-				deadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
+				long socketDeadline = currentTime + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
-				if (deadline < totalDeadline) {
+				if (socketDeadline < totalDeadline) {
 					usingSocketTimeout = true;
+					deadline = socketDeadline;
 				}
 				else {
 					deadline = totalDeadline;
@@ -183,15 +187,14 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			else {
 				deadline = totalDeadline;
 			}
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
 		}
 		else if (command.socketTimeout > 0) {
 			usingSocketTimeout = true;
- 			timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout));
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 		}
 
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.REGISTERED);
 	}
 
 	private final void queueError(AerospikeException ae) {
@@ -202,6 +205,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	final void executeCommandFromDelayQueue() {
+		long deadline = totalDeadline;
+
 		if (command.socketTimeout > 0) {
 			long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 
@@ -210,19 +215,19 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 					// Transition from total timer to socket timer.
 					timeoutTask.cancel();
 					usingSocketTimeout = true;
-					eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+					deadline = socketDeadline;
 				}
 			}
 			else {
 				usingSocketTimeout = true;
-				timeoutTask = eventLoop.timer.addTimeout(this, socketDeadline);
+				deadline = socketDeadline;
 			}
 		}
 		eventLoop.pending++;
-		executeCommand();
+		executeCommand(deadline, TimeoutState.DELAY_QUEUE);
 	}
 
-	protected final void executeCommand() {
+	protected final void executeCommand(long deadline, int tstate) {
 		state = AsyncCommand.CONNECT;
 		iteration++;
 
@@ -233,12 +238,22 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			conn = (NioConnection)node.getAsyncConnection(eventLoop.index, byteBuffer);
 
 			if (conn != null) {
+				setTimeoutTask(deadline, tstate);
 				conn.attach(this);
 				writeCommand();
 				return;
 			}
 
 			try {
+				if (command.policy.connectTimeout > 0) {
+					timeoutState = new TimeoutState(deadline, tstate);
+					deadline = timeoutState.start + TimeUnit.MILLISECONDS.toNanos(command.policy.connectTimeout);
+					timeoutTask.cancel();
+					eventLoop.timer.addTimeout(timeoutTask, deadline);
+				}
+				else {
+					setTimeoutTask(deadline, tstate);
+				}
 				conn = new NioConnection(node.getAddress());
 				node.connectionOpened(eventLoop.index);
 			}
@@ -276,6 +291,31 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			fail();
 			notifyFailure(new AerospikeException(e));
 			eventLoop.tryDelayQueue();
+		}
+	}
+
+	private final void setTimeoutTask(long deadline, int tstate) {
+		if (deadline <= 0) {
+			return;
+		}
+
+		switch(tstate) {
+		case TimeoutState.REGISTERED:
+		case TimeoutState.BATCH_RETRY:
+		case TimeoutState.TIMEOUT:
+			eventLoop.timer.addTimeout(timeoutTask, deadline);
+			break;
+
+		case TimeoutState.DELAY_QUEUE:
+		case TimeoutState.RETRY:
+			// Only set timeoutTask when not active.
+			if (! timeoutTask.active()) {
+				eventLoop.timer.addTimeout(timeoutTask, deadline);
+			}
+			break;
+
+		default:
+			break;
 		}
 	}
 
@@ -323,8 +363,28 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			writeAuth();
 		}
 		else {
+			if (timeoutState != null) {
+				restoreTimeout();
+			}
 			writeCommand();
 		}
+	}
+
+	private final void restoreTimeout() {
+		// Switch from connectTimeout back to previous timeout.
+		timeoutTask.cancel();
+
+		long elapsed = System.nanoTime() - timeoutState.start;
+
+		if (timeoutState.deadline > 0) {
+			timeoutState.deadline += elapsed;
+		}
+
+		if (totalDeadline > 0) {
+			totalDeadline += elapsed;
+		}
+		setTimeoutTask(timeoutState.deadline, timeoutState.state);
+		timeoutState = null;
 	}
 
 	private final void writeAuth() throws IOException {
@@ -415,6 +475,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 		case AsyncCommand.AUTH_READ_BODY:
 			readAuthBody();
+
+			if (timeoutState != null) {
+				restoreTimeout();
+			}
 			writeCommand();
 			break;
 
@@ -634,7 +698,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 						deadline = totalDeadline;
 						usingSocketTimeout = false;
 					}
-					eventLoop.timer.restoreTimeout(timeoutTask, deadline);
+					eventLoop.timer.addTimeout(timeoutTask, deadline);
 					return;
 				}
 			}
@@ -646,7 +710,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				eventReceived = false;
 
 				long socketDeadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
-				eventLoop.timer.restoreTimeout(timeoutTask, socketDeadline);
+				eventLoop.timer.addTimeout(timeoutTask, socketDeadline);
 				return;
 			}
 		}
@@ -682,14 +746,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			// Batch may be retried in separate commands.
 			if (command.retryBatch(this, deadline)) {
 				// Batch retried in separate commands.  Complete this command.
-				timeoutTask = null;
 				close();
 				return;
 			}
 		}
 
-		eventLoop.timer.restoreTimeout(timeoutTask, deadline);
-		executeCommand();
+		executeCommand(deadline, TimeoutState.TIMEOUT);
 	}
 
 	private final void totalTimeout() {
@@ -706,7 +768,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		recoverConnection();
 
 		// Perform timeout.
-		timeoutTask = null;
 		close();
 		notifyFailure(ae);
 		eventLoop.tryDelayQueue();
@@ -842,10 +903,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			}
 		}
 
-		if (usingSocketTimeout) {
-			eventLoop.timer.restoreTimeout(timeoutTask, deadline);
-		}
-		executeCommand();
+		executeCommand(deadline, TimeoutState.RETRY);
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {
@@ -907,9 +965,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	private final void close() {
-		if (timeoutTask != null) {
-			timeoutTask.cancel();
-		}
+		timeoutTask.cancel();
 
 		if (byteBuffer != null) {
 			eventLoop.putByteBuffer(byteBuffer);

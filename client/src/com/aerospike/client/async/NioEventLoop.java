@@ -166,6 +166,16 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 
 	@Override
 	public void run() {
+		try {
+			super.timer.start();
+		}
+		catch (Exception e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Event loop timer start error: " + Util.getErrorMessage(e));
+			}
+			return;
+		}
+
 		while (true) {
 			try {
 				runCommands();

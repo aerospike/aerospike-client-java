@@ -111,7 +111,8 @@ public final class NioRecover implements INioCommand, TimerTask {
 		eventState.pending++;
 		eventLoop.pending++;
 		conn.attach(this);
-		timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
+		timeoutTask = new HashedWheelTimeout(this);
+		eventLoop.timer.addTimeout(timeoutTask, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
 	}
 
 	@Override

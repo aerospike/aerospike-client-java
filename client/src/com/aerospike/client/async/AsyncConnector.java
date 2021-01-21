@@ -36,8 +36,8 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	final Cluster cluster;
 	final Node node;
 	final AsyncConnector.Listener listener;
+	final HashedWheelTimeout timeoutTask;
 	int state;
-	HashedWheelTimeout timeoutTask;
 
 	AsyncConnector(EventLoopBase eventLoop, Cluster cluster, Node node, AsyncConnector.Listener listener) {
 		this.eventLoop = eventLoop;
@@ -45,6 +45,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 		this.cluster = cluster;
 		this.node = node;
 		this.listener = listener;
+		this.timeoutTask = new HashedWheelTimeout(this);
 	}
 
 	public final void execute() {
@@ -59,14 +60,9 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 
 	@Override
 	public void run() {
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.connectionTimeout);
+		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.connectTimeout);
 
-		if (timeoutTask == null || ! eventLoop.timer.isRunning()) {
-			timeoutTask = eventLoop.timer.addTimeout(this, deadline);
-		}
-		else {
-			eventLoop.timer.restoreTimeout(timeoutTask, deadline);
-		}
+		eventLoop.timer.addTimeout(timeoutTask, deadline);
 		state = AsyncCommand.CONNECT;
 
 		try {
@@ -85,8 +81,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 
 	@Override
 	public final void timeout() {
-		timeoutTask = null;
-		fail(new AerospikeException.Timeout(node, cluster.connectionTimeout));
+		fail(new AerospikeException.Timeout(node, cluster.connectTimeout, cluster.connectTimeout, cluster.connectTimeout));
 	}
 
 	final void success() {
@@ -122,9 +117,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	}
 
 	private final void close() {
-		if (timeoutTask != null) {
-			timeoutTask.cancel();
-		}
+		timeoutTask.cancel();
 		state = AsyncCommand.COMPLETE;
 	}
 

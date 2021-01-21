@@ -59,7 +59,6 @@ public final class HashedWheelTimer implements Runnable {
 	private long startTime;
 	private long tick;
 	private final int mask;
-	private boolean scheduled;
 
 	public HashedWheelTimer(EventLoop eventLoop, long tickDuration, TimeUnit unit, int ticksPerWheel) {
 		this.eventLoop = eventLoop;
@@ -88,45 +87,9 @@ public final class HashedWheelTimer implements Runnable {
 		schedule = new ScheduleTask(this);
 	}
 
-	public boolean isRunning() {
-		return scheduled;
-	}
-
-	public HashedWheelTimeout addTimeout(TimerTask task, long deadline) {
-		if (! scheduled) {
-			scheduled = true;
-			startTime = System.nanoTime();
-			HashedWheelTimeout timeout = addTimeout(task, deadline);  // recursive call
-			eventLoop.schedule(schedule, tickDuration, TimeUnit.NANOSECONDS);
-			return timeout;
-		}
-
-		HashedWheelTimeout timeout = new HashedWheelTimeout(task, deadline - startTime);
-
-		long calculated = timeout.deadline / tickDuration;
-		timeout.remainingRounds = (calculated - tick) / wheel.length;
-
-		final long ticks = Math.max(calculated, tick);
-		int stopIndex = (int) (ticks & mask);
-
-		HashedWheelBucket bucket = wheel[stopIndex];
-		bucket.addTimeout(timeout);
-		return timeout;
-	}
-
-	public void restoreTimeout(HashedWheelTimeout timeout, long deadline) {
-		timeout.deadline = deadline - startTime;
-		timeout.next = null;
-		timeout.prev = null;
-
-		long calculated = timeout.deadline / tickDuration;
-		timeout.remainingRounds = (calculated - tick) / wheel.length;
-
-		final long ticks = Math.max(calculated, tick);
-		int stopIndex = (int) (ticks & mask);
-
-		HashedWheelBucket bucket = wheel[stopIndex];
-		bucket.addTimeout(timeout);
+	public void start() {
+		startTime = System.nanoTime();
+		eventLoop.schedule(schedule, tickDuration, TimeUnit.NANOSECONDS);
 	}
 
 	public void run() {
@@ -142,6 +105,21 @@ public final class HashedWheelTimer implements Runnable {
 		eventLoop.schedule(schedule, expectTime - currentTime, TimeUnit.NANOSECONDS);
 	}
 
+	public void addTimeout(HashedWheelTimeout timeout, long deadline) {
+		timeout.deadline = deadline - startTime;
+		timeout.next = null;
+		timeout.prev = null;
+
+		long calculated = timeout.deadline / tickDuration;
+		timeout.remainingRounds = (calculated - tick) / wheel.length;
+
+		final long ticks = Math.max(calculated, tick);
+		int stopIndex = (int) (ticks & mask);
+
+		HashedWheelBucket bucket = wheel[stopIndex];
+		bucket.addTimeout(timeout);
+	}
+
     public static final class HashedWheelTimeout {
 		private final TimerTask task;
 		private long deadline;
@@ -150,9 +128,12 @@ public final class HashedWheelTimer implements Runnable {
 		private HashedWheelTimeout prev;
 		private HashedWheelBucket bucket;
 
-		private HashedWheelTimeout(TimerTask task, long deadline) {
+		HashedWheelTimeout(TimerTask task) {
 			this.task = task;
-			this.deadline = deadline;
+		}
+
+		public boolean active() {
+			return bucket != null;
 		}
 
 		public void cancel() {

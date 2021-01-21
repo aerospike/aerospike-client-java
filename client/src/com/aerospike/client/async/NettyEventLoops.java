@@ -16,15 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.handler.ssl.CipherSuiteFilter;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.JdkSslContext;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.util.concurrent.EventExecutor;
-
 import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.util.ArrayList;
@@ -40,6 +31,15 @@ import javax.net.ssl.KeyManagerFactory;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
+
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.handler.ssl.CipherSuiteFilter;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.JdkSslContext;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.util.concurrent.EventExecutor;
 
 /**
  * Aerospike wrapper around netty event loops.
@@ -86,6 +86,15 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
 		for (NettyEventLoop eventLoop : eventLoopArray) {
 			eventLoopMap.put(eventLoop.eventLoop, eventLoop);
+		}
+
+		// Start timer in each event loop thread.
+		for (NettyEventLoop eventLoop : eventLoopArray) {
+			eventLoop.execute(new Runnable() {
+				public void run() {
+					eventLoop.timer.start();
+				}
+			});
 		}
 	}
 

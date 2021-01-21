@@ -2524,7 +2524,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	private String sendInfoCommand(Policy policy, String command) {
 		Node node = cluster.getRandomNode();
-		Connection conn = node.getConnection(policy.socketTimeout);
+		Connection conn = node.getConnection(policy.connectTimeout, policy.socketTimeout);
 		Info info;
 
 		try {

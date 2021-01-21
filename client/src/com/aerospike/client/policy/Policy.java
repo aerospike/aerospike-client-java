@@ -88,6 +88,19 @@ public class Policy {
 	public Expression filterExp;
 
 	/**
+	 * Socket connect timeout in milliseconds. If connectTimeout greater than zero, it will
+	 * applied to creating a connection plus optional user authentication. Otherwise,
+	 * socketTimeout or totalTimeout will be used depending on their values.
+	 * <p>
+	 * connectTimeout is useful when new connection creation is expensive (ie TLS connections)
+	 * and it's acceptable to allow extra time to create a new connection compared to using an
+	 * existing connection from the pool.
+	 * <p>
+	 * Default: 0
+	 */
+	public int connectTimeout;
+
+	/**
 	 * Socket idle timeout in milliseconds when processing a database command.
 	 * <p>
 	 * If socketTimeout is zero and totalTimeout is non-zero, then socketTimeout will be set
@@ -243,6 +256,7 @@ public class Policy {
 		this.replica = other.replica;
 		this.predExp = other.predExp;
 		this.filterExp = other.filterExp;
+		this.connectTimeout = other.connectTimeout;
 		this.socketTimeout = other.socketTimeout;
 		this.totalTimeout = other.totalTimeout;
 		this.timeoutDelay = other.timeoutDelay;
@@ -312,6 +326,7 @@ public class Policy {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + (compress ? 1231 : 1237);
+		result = prime * result + connectTimeout;
 		result = prime * result + (failOnFilteredOut ? 1231 : 1237);
 		result = prime * result + ((filterExp == null) ? 0 : filterExp.hashCode());
 		result = prime * result + maxRetries;
@@ -337,6 +352,8 @@ public class Policy {
 			return false;
 		Policy other = (Policy) obj;
 		if (compress != other.compress)
+			return false;
+		if (connectTimeout != other.connectTimeout)
 			return false;
 		if (failOnFilteredOut != other.failOnFilteredOut)
 			return false;

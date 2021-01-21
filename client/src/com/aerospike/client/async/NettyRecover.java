@@ -97,7 +97,8 @@ public final class NettyRecover implements TimerTask {
 		}
 		p.addLast(new InboundHandler(this));
 
-		timeoutTask = eventLoop.timer.addTimeout(this, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
+		timeoutTask = new HashedWheelTimeout(this);
+		eventLoop.timer.addTimeout(timeoutTask, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
 	}
 
 	@Override

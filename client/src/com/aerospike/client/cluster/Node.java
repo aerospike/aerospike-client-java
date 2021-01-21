@@ -204,8 +204,8 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, this, null) :
-					new Connection(address, cluster.connectionTimeout, this, null);
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, null) :
+					new Connection(address, cluster.connectTimeout, this, null);
 
 				connsOpened.getAndIncrement();
 
@@ -523,8 +523,8 @@ public class Node implements Closeable {
 	private Connection createConnection(Pool pool) {
 		// Create sync connection.
 		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectionTimeout, this, pool) :
-				new Connection(address, cluster.connectionTimeout, this, pool);
+				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, pool) :
+				new Connection(address, cluster.connectTimeout, this, pool);
 
 		connsOpened.getAndIncrement();
 
@@ -550,19 +550,31 @@ public class Node implements Closeable {
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
-	public final Connection getConnection(int timeoutMillis) throws AerospikeException {
+	public final Connection getConnection(int timeoutMillis) {
 		try {
-			return getConnection(timeoutMillis, 0);
+			return getConnection(timeoutMillis, timeoutMillis, 0);
 		}
 		catch (Connection.ReadTimeout crt) {
-			throw new AerospikeException.Timeout(this, timeoutMillis);
+			throw new AerospikeException.Timeout(this, timeoutMillis, timeoutMillis, timeoutMillis);
 		}
 	}
 
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
-	public final Connection getConnection(int timeoutMillis, int timeoutDelay) {
+	public final Connection getConnection(int connectTimeout, int socketTimeout) {
+		try {
+			return getConnection(connectTimeout, socketTimeout, 0);
+		}
+		catch (Connection.ReadTimeout crt) {
+			throw new AerospikeException.Timeout(this, connectTimeout, socketTimeout, socketTimeout);
+		}
+	}
+
+	/**
+	 * Get a socket connection from connection pool to the server node.
+	 */
+	public final Connection getConnection(int connectTimeout, int socketTimeout, int timeoutDelay) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -592,7 +604,7 @@ public class Node implements Closeable {
 				// Verify that socket is active.
 				if (cluster.isConnCurrentTran(conn.getLastUsed())) {
 					try {
-						conn.setTimeout(timeoutMillis);
+						conn.setTimeout(socketTimeout);
 						return conn;
 					}
 					catch (Exception e) {
@@ -607,10 +619,12 @@ public class Node implements Closeable {
 			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
 				// Create new connection.
+				int timeout = (connectTimeout > 0)? connectTimeout : socketTimeout;
+
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeoutMillis, this, pool) :
-						new Connection(address, timeoutMillis, this, pool);
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
+						new Connection(address, timeout, this, pool);
 
 					connsOpened.getAndIncrement();
 				}
@@ -657,6 +671,17 @@ public class Node implements Closeable {
 					catch (IOException ioe) {
 						closeConnection(conn);
 						throw new AerospikeException.Connection(ioe);
+					}
+				}
+
+				if (timeout != socketTimeout) {
+					// Reset timeout to socketTimeout.
+					try {
+						conn.setTimeout(socketTimeout);
+					}
+					catch (Exception e) {
+						closeConnection(conn);
+						throw new AerospikeException.Connection(e);
 					}
 				}
 				return conn;

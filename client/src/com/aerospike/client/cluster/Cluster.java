@@ -135,7 +135,7 @@ public class Cluster implements Runnable, Closeable {
 	int errorRateWindow;
 
 	// Initial connection timeout.
-	public final int connectionTimeout;
+	public final int connectTimeout;
 
 	// Login timeout.
 	public final int loginTimeout;
@@ -245,7 +245,7 @@ public class Cluster implements Runnable, Closeable {
 		connPoolsPerNode = policy.connPoolsPerNode;
 		maxErrorRate = policy.maxErrorRate;
 		errorRateWindow = policy.errorRateWindow;
-		connectionTimeout = policy.timeout;
+		connectTimeout = policy.timeout;
 		loginTimeout = policy.loginTimeout;
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
