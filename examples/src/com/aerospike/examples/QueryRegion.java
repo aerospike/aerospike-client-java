@@ -142,7 +142,7 @@ public class QueryRegion extends Example {
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				String result = record.getGeoJSON(binName);
+				String result = record.getGeoJSONString(binName);
 
 				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
 					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
@@ -186,7 +186,7 @@ public class QueryRegion extends Example {
 			while (rs.next()) {
 				Key key = rs.getKey();
 				Record record = rs.getRecord();
-				String result = record.getGeoJSON(binName);
+				String result = record.getGeoJSONString(binName);
 
 				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
 					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
