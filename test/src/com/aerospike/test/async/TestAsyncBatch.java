@@ -18,7 +18,6 @@ package com.aerospike.test.async;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -52,7 +51,23 @@ public class TestAsyncBatch extends TestAsync {
 		}
 
 		AsyncMonitor monitor = new AsyncMonitor();
-		WriteHandler handler = new WriteHandler(monitor, size);
+
+		WriteListener listener = new WriteListener() {
+			private int count = 0;
+
+			public void onSuccess(final Key key) {
+				// Use non-atomic increment because all writes are performed
+				// in the same event loop thread.
+				if (++count == size) {
+					monitor.notifyComplete();
+				}
+			}
+
+			public void onFailure(AerospikeException e) {
+				monitor.setError(e);
+				monitor.notifyComplete();
+			}
+		};
 
 		WritePolicy policy = new WritePolicy();
 		policy.expiration = 2592000;
@@ -60,33 +75,10 @@ public class TestAsyncBatch extends TestAsync {
 		for (int i = 1; i <= size; i++) {
 			Key key = sendKeys[i-1];
 			Bin bin = new Bin(binName, valuePrefix + i);
-			client.put(eventLoop, handler, policy, key, bin);
+
+			client.put(eventLoop, listener, policy, key, bin);
 		}
 		monitor.waitTillComplete();
-	}
-
-	private static class WriteHandler implements WriteListener {
-		private AsyncMonitor monitor;
-		private final int max;
-		private AtomicInteger count = new AtomicInteger();
-
-		public WriteHandler(AsyncMonitor monitor, int max) {
-			this.monitor = monitor;
-			this.max = max;
-		}
-
-		public void onSuccess(Key key) {
-			int rows = count.incrementAndGet();
-
-			if (rows == max) {
-				monitor.notifyComplete();
-			}
-		}
-
-		public void onFailure(AerospikeException e) {
-			monitor.setError(e);
-			monitor.notifyComplete();
-		}
 	}
 
 	@Test

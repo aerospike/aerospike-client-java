@@ -64,24 +64,28 @@ public class TestAsyncQuery extends TestAsync {
 
 	@Test
 	public void asyncQuery() {
-		final AtomicInteger count = new AtomicInteger();
+		WriteListener listener = new WriteListener() {
+			private int count = 0;
+
+			public void onSuccess(final Key key) {
+				// Use non-atomic increment because all writes are performed
+				// in the same event loop thread.
+				if (++count == size) {
+					runQuery();
+				}
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		};
 
 		for (int i = 1; i <= size; i++) {
 			final Key key = new Key(args.namespace, args.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
 
-			client.put(eventLoop, new WriteListener() {
-				public void onSuccess(final Key key) {
-					if (count.incrementAndGet() == size) {
-						runQuery();
-					}
-				}
-
-				public void onFailure(AerospikeException e) {
-					setError(e);
-					notifyComplete();
-				}
-			}, null, key, bin);
+			client.put(eventLoop, listener, null, key, bin);
 		}
 
 		waitTillComplete();

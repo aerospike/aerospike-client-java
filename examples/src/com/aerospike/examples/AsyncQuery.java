@@ -90,24 +90,28 @@ public class AsyncQuery extends AsyncExample {
 	) {
 		console.info("Write " + size + " records.");
 
-		final AtomicInteger count = new AtomicInteger();
+		WriteListener listener = new WriteListener() {
+			private int count = 0;
+
+			public void onSuccess(final Key key) {
+				// Use non-atomic increment because all writes are performed
+				// in the same event loop thread.
+				if (++count == size) {
+					runQuery(client, eventLoop, binName);
+				}
+			}
+
+			public void onFailure(AerospikeException e) {
+				console.error("Failed to put: " + e.getMessage());
+				notifyComplete();
+			}
+		};
 
 		for (int i = 1; i <= size; i++) {
-			final Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Key key = new Key(params.namespace, params.set, keyPrefix + i);
 			Bin bin = new Bin(binName, i);
 
-			client.put(eventLoop, new WriteListener() {
-				public void onSuccess(final Key key) {
-					if (count.incrementAndGet() == size) {
-						runQuery(client, eventLoop, binName);
-					}
-				}
-
-				public void onFailure(AerospikeException e) {
-					console.error("Failed to put: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
-					notifyComplete();
-				}
-			}, writePolicy, key, bin);
+			client.put(eventLoop, listener, writePolicy, key, bin);
 		}
 	}
 

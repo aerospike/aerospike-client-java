@@ -18,7 +18,6 @@ package com.aerospike.examples;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -87,14 +86,16 @@ public class AsyncBatch extends AsyncExample {
 
 	private class WriteHandler implements WriteListener {
 		private final int max;
-		private AtomicInteger count = new AtomicInteger();
+		private int count;
 
 		public WriteHandler(int max) {
 			this.max = max;
 		}
 
 		public void onSuccess(Key key) {
-			int rows = count.incrementAndGet();
+			// Use non-atomic increment because all writes are performed
+			// in the same event loop thread.
+			int rows = ++count;
 
 			if (rows == max) {
 				try {
