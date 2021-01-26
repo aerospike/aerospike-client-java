@@ -85,6 +85,16 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Close all client connections to database server nodes.
+	 * <p>
+	 * If event loops are defined, the client will send a cluster close signal
+	 * to these event loops.  The client instance does not initiate shutdown
+	 * until the pending async commands complete.  The close() method, however,
+	 * will return before shutdown completes if close() is called from an
+	 * event loop thread.  This is done in order to prevent deadlock.
+	 * <p>
+	 * This close() method will wait for shutdown if the current thread is not
+	 * an event loop thread.  It's recommended to call close() from a non event
+	 * loop thread for this reason.
 	 */
 	public void close();
 
@@ -98,24 +108,20 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Return array of active server nodes in the cluster.
-	 *
-	 * @return	array of active nodes
 	 */
 	public Node[] getNodes();
 
 	/**
 	 * Return list of active server node names in the cluster.
-	 *
-	 * @return	list of active node names
 	 */
 	public List<String> getNodeNames();
 
 	/**
 	 * Return node given its name.
-	 *
 	 * @throws AerospikeException.InvalidNode	if node does not exist.
 	 */
-	public Node getNode(String nodeName) throws AerospikeException.InvalidNode;
+	public Node getNode(String nodeName)
+		throws AerospikeException.InvalidNode;
 
 	/**
 	 * Return operating cluster statistics.
@@ -141,7 +147,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if write fails
 	 */
-	public void put(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void put(WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously write record bin(s).
@@ -151,14 +158,16 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy specifies the transaction timeout, record expiration and how the transaction is
 	 * handled when the record already exists.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void put(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void put(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// String Operations
@@ -175,7 +184,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if append fails
 	 */
-	public void append(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void append(WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously append bin string values to existing record bin values.
@@ -186,14 +196,16 @@ public interface IAerospikeClient extends Closeable {
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	/**
 	 * Prepend bin string values to existing record bin values.
@@ -206,7 +218,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if prepend fails
 	 */
-	public void prepend(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void prepend(WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously prepend bin string values to existing record bin values.
@@ -217,14 +230,16 @@ public interface IAerospikeClient extends Closeable {
 	 * handled when the record already exists.
 	 * This call only works for string values.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Arithmetic Operations
@@ -241,7 +256,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if add fails
 	 */
-	public void add(WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void add(WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously add integer bin values to existing record bin values.
@@ -252,14 +268,16 @@ public interface IAerospikeClient extends Closeable {
 	 * handled when the record already exists.
 	 * This call only works for integer values.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param bins					array of bin name/value pairs
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) throws AerospikeException;
+	public void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Delete Operations
@@ -274,7 +292,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						whether record existed on server before deletion
 	 * @throws AerospikeException	if delete fails
 	 */
-	public boolean delete(WritePolicy policy, Key key) throws AerospikeException;
+	public boolean delete(WritePolicy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously delete record for specified key.
@@ -283,13 +302,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The policy specifies the transaction timeout.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key) throws AerospikeException;
+	public void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude
@@ -309,7 +330,8 @@ public interface IAerospikeClient extends Closeable {
 	 * 								Pass in null to delete all records in namespace/set.
 	 * @throws AerospikeException	if truncate fails
 	 */
-	public void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) throws AerospikeException;
+	public void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Touch Operations
@@ -323,7 +345,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if touch fails
 	 */
-	public void touch(WritePolicy policy, Key key) throws AerospikeException;
+	public void touch(WritePolicy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously reset record's time to expiration using the policy's expiration.
@@ -332,13 +355,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Fail if the record does not exist.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key) throws AerospikeException;
+	public void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Existence-Check Operations
@@ -353,7 +378,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						whether record exists or not
 	 * @throws AerospikeException	if command fails
 	 */
-	public boolean exists(Policy policy, Key key) throws AerospikeException;
+	public boolean exists(Policy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously determine if a record key exists.
@@ -362,13 +388,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key) throws AerospikeException;
+	public void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Check if multiple record keys exist in one batch call.
@@ -382,7 +410,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						array key/existence status pairs
 	 * @throws AerospikeException	if command fails
 	 */
-	public boolean[] exists(BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public boolean[] exists(BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously check if multiple record keys exist in one batch call.
@@ -393,13 +422,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously check if multiple record keys exist in one batch call.
@@ -411,13 +442,15 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, responses from other nodes will continue to
 	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Read Record Operations
@@ -432,7 +465,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record get(Policy policy, Key key) throws AerospikeException;
+	public Record get(Policy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read entire record for specified key.
@@ -441,13 +475,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Read record header and bins for specified key.
@@ -459,7 +495,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record get(Policy policy, Key key, String... binNames) throws AerospikeException;
+	public Record get(Policy policy, Key key, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read record header and bins for specified key.
@@ -468,14 +505,16 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param binNames				bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Read record generation and expiration only for specified key.  Bins are not read.
@@ -486,7 +525,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						if found, return record instance.  If not found, return null.
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record getHeader(Policy policy, Key key) throws AerospikeException;
+	public Record getHeader(Policy policy, Key key)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read record generation and expiration only for specified key.  Bins are not read.
@@ -495,13 +535,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The policy can be used to specify timeouts.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) throws AerospikeException;
+	public void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Batch Read Operations
@@ -521,7 +563,8 @@ public interface IAerospikeClient extends Closeable {
 	 *                              The returned records are located in the same list.
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, List<BatchRead> records) throws AerospikeException;
+	public void get(BatchPolicy policy, List<BatchRead> records)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
@@ -535,14 +578,16 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 *                              The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records) throws AerospikeException;
+	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified batch keys in one batch call.
@@ -557,14 +602,16 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, responses from other nodes will continue to
 	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
 	 *                              The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) throws AerospikeException;
+	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records)
+		throws AerospikeException;
 
 	/**
 	 * Read multiple records for specified keys in one batch call.
@@ -579,7 +626,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record[] get(BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public Record[] get(BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified keys in one batch call.
@@ -592,13 +640,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple records for specified keys in one batch call.
@@ -612,13 +662,15 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, responses from other nodes will continue to
 	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Read multiple record headers and bins for specified keys in one batch call.
@@ -634,7 +686,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException;
+	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
@@ -647,14 +700,16 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record headers and bins for specified keys in one batch call.
@@ -668,14 +723,16 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, responses from other nodes will continue to
 	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @param binNames				array of bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames) throws AerospikeException;
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames)
+		throws AerospikeException;
 
 	/**
 	 * Read multiple record header data for specified keys in one batch call.
@@ -690,7 +747,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						array of records
 	 * @throws AerospikeException	if read fails
 	 */
-	public Record[] getHeader(BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public Record[] getHeader(BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record header data for specified keys in one batch call.
@@ -703,13 +761,15 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously read multiple record header data for specified keys in one batch call.
@@ -723,13 +783,15 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, responses from other nodes will continue to
 	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) throws AerospikeException;
+	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Generic Database Operations
@@ -750,7 +812,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						record if there is a read in the operations list
 	 * @throws AerospikeException	if command fails
 	 */
-	public Record operate(WritePolicy policy, Key key, Operation... operations) throws AerospikeException;
+	public Record operate(WritePolicy policy, Key key, Operation... operations)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously perform multiple read/write operations on a single key in one batch call.
@@ -764,14 +827,16 @@ public interface IAerospikeClient extends Closeable {
 	 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
 	 * MapOperation) can be performed in same call.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) throws AerospikeException;
+	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations)
+		throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Scan Operations
@@ -803,7 +868,8 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -872,7 +938,8 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param partitionFilter		filter on a subset of data partitions
@@ -959,7 +1026,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param serverPath			location of UDF on server nodes.  Example: mylua.lua
 	 * @throws AerospikeException	if remove fails
 	 */
-	public void removeUdf(InfoPolicy policy, String serverPath) throws AerospikeException;
+	public void removeUdf(InfoPolicy policy, String serverPath)
+		throws AerospikeException;
 
 	/**
 	 * Execute user defined function on server and return results.
@@ -989,7 +1057,8 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1069,7 +1138,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public RecordSet query(QueryPolicy policy, Statement statement) throws AerospikeException;
+	public RecordSet query(QueryPolicy policy, Statement statement)
+		throws AerospikeException;
 
 	/**
 	 * Asynchronously execute query on all server nodes.
@@ -1078,7 +1148,8 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
@@ -1100,7 +1171,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
-	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException;
+	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node)
+		throws AerospikeException;
 
 	/**
 	 * Execute query for specified partitions and return record iterator.  The query executor puts
@@ -1123,7 +1195,8 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
@@ -1177,7 +1250,8 @@ public interface IAerospikeClient extends Closeable {
 	 * 								reuse since it's modified in this method.
 	 * @throws AerospikeException	if query fails
 	 */
-	public ResultSet queryAggregate(QueryPolicy policy, Statement statement) throws AerospikeException;
+	public ResultSet queryAggregate(QueryPolicy policy, Statement statement)
+		throws AerospikeException;
 
 	/**
 	 * Execute query on a single server node, apply statement's aggregation function, and return
@@ -1196,7 +1270,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param node					server node to execute query
 	 * @throws AerospikeException	if query fails
 	 */
-	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) throws AerospikeException;
+	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node)
+		throws AerospikeException;
 
 	//--------------------------------------------------------
 	// Secondary Index functions
@@ -1255,7 +1330,8 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1302,7 +1378,8 @@ public interface IAerospikeClient extends Closeable {
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1333,7 +1410,8 @@ public interface IAerospikeClient extends Closeable {
 	 * The list of supported info commands can be found at:
 	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
 	 *
-	 * @param eventLoop				event loop that will process the command
+	 * @param eventLoop				event loop that will process the command. If NULL, the event
+	 * 								loop will be choosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param node					server node to execute command, pass in null for random node
@@ -1384,7 +1462,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param roles					variable arguments array of role names.  Valid roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
-	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException;
+	public void createUser(AdminPolicy policy, String user, String password, List<String> roles)
+		throws AerospikeException;
 
 	/**
 	 * Remove user from cluster.
@@ -1393,7 +1472,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param user					user name
 	 * @throws AerospikeException	if command fails
 	 */
-	public void dropUser(AdminPolicy policy, String user) throws AerospikeException;
+	public void dropUser(AdminPolicy policy, String user)
+		throws AerospikeException;
 
 	/**
 	 * Change user's password.
@@ -1403,7 +1483,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param password				user password in clear-text format
 	 * @throws AerospikeException	if command fails
 	 */
-	public void changePassword(AdminPolicy policy, String user, String password) throws AerospikeException;
+	public void changePassword(AdminPolicy policy, String user, String password)
+		throws AerospikeException;
 
 	/**
 	 * Add roles to user's list of roles.
@@ -1413,7 +1494,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param roles					role names.  Valid roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
-	public void grantRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
+	public void grantRoles(AdminPolicy policy, String user, List<String> roles)
+		throws AerospikeException;
 
 	/**
 	 * Remove roles from user's list of roles.
@@ -1423,7 +1505,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param roles					role names.  Valid roles are listed in {@link com.aerospike.client.admin.Role}
 	 * @throws AerospikeException	if command fails
 	 */
-	public void revokeRoles(AdminPolicy policy, String user, List<String> roles) throws AerospikeException;
+	public void revokeRoles(AdminPolicy policy, String user, List<String> roles)
+		throws AerospikeException;
 
 	/**
 	 * Create user defined role.
@@ -1433,7 +1516,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param privileges			privileges assigned to the role.
 	 * @throws AerospikeException	if command fails
 	 */
-	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
+	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges)
+		throws AerospikeException;
 
 	/**
 	 * Drop user defined role.
@@ -1442,7 +1526,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param roleName				role name
 	 * @throws AerospikeException	if command fails
 	 */
-	public void dropRole(AdminPolicy policy, String roleName) throws AerospikeException;
+	public void dropRole(AdminPolicy policy, String roleName)
+		throws AerospikeException;
 
 	/**
 	 * Grant privileges to an user defined role.
@@ -1452,7 +1537,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param privileges			privileges assigned to the role.
 	 * @throws AerospikeException	if command fails
 	 */
-	public void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
+	public void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges)
+		throws AerospikeException;
 
 	/**
 	 * Revoke privileges from an user defined role.
@@ -1462,7 +1548,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param privileges			privileges assigned to the role.
 	 * @throws AerospikeException	if command fails
 	 */
-	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException;
+	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges)
+		throws AerospikeException;
 
 	/**
 	 * Retrieve roles for a given user.
@@ -1471,7 +1558,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param user					user name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public User queryUser(AdminPolicy policy, String user) throws AerospikeException;
+	public User queryUser(AdminPolicy policy, String user)
+		throws AerospikeException;
 
 	/**
 	 * Retrieve all users and their roles.
@@ -1479,7 +1567,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public List<User> queryUsers(AdminPolicy policy) throws AerospikeException;
+	public List<User> queryUsers(AdminPolicy policy)
+		throws AerospikeException;
 
 	/**
 	 * Retrieve role definition.
@@ -1488,7 +1577,8 @@ public interface IAerospikeClient extends Closeable {
 	 * @param roleName				role name filter
 	 * @throws AerospikeException	if command fails
 	 */
-	public Role queryRole(AdminPolicy policy, String roleName) throws AerospikeException;
+	public Role queryRole(AdminPolicy policy, String roleName)
+		throws AerospikeException;
 
 	/**
 	 * Retrieve all roles.
@@ -1496,5 +1586,6 @@ public interface IAerospikeClient extends Closeable {
 	 * @param policy				admin configuration parameters, pass in null for defaults
 	 * @throws AerospikeException	if command fails
 	 */
-	public List<Role> queryRoles(AdminPolicy policy) throws AerospikeException;
+	public List<Role> queryRoles(AdminPolicy policy)
+		throws AerospikeException;
 }
