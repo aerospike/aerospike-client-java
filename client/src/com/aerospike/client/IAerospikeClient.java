@@ -1354,7 +1354,8 @@ public interface IAerospikeClient extends Closeable {
 
 	/**
 	 * Set XDR filter for given datacenter name and namespace. The expression filter indicates
-	 * which records XDR should ship to the datacenter.
+	 * which records XDR should ship to the datacenter. If the expression filter is null, the
+	 * XDR filter will be removed.
 	 *
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param datacenter			XDR datacenter name

@@ -2426,7 +2426,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Set XDR filter for given datacenter name and namespace. The expression filter indicates
-	 * which records XDR should ship to the datacenter.
+	 * which records XDR should ship to the datacenter. If the expression filter is null, the
+	 * XDR filter will be removed.
 	 *
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param datacenter			XDR datacenter name
@@ -2445,7 +2446,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		// Send XDR command to one node. That node will distribute the XDR command to other nodes.
-		String command = "xdr-set-filter:dc=" + datacenter + ";namespace=" + namespace + ";exp=" + filter.getBase64();
+		String filterString = (filter != null)? filter.getBase64() : "null";
+		String command = "xdr-set-filter:dc=" + datacenter + ";namespace=" + namespace + ";exp=" + filterString;
 		Node node = cluster.getRandomNode();
 		String response = Info.request(policy, node, command);
 
