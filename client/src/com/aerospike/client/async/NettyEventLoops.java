@@ -34,6 +34,7 @@ import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.JdkSslContext;
@@ -54,6 +55,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	SslContext sslContext;
 	private int eventIter;
 	final boolean isEpoll;
+	final boolean isKqueue;
 
 	/**
 	 * Create Aerospike event loop wrappers from given netty event loops.
@@ -71,6 +73,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		}
 		this.group = group;
 		this.isEpoll = (group instanceof EpollEventLoopGroup);
+		this.isKqueue = (group instanceof KQueueEventLoopGroup);
 
 		ArrayList<NettyEventLoop> list = new ArrayList<NettyEventLoop>();
 		Iterator<EventExecutor> iter = group.iterator();
