@@ -31,6 +31,14 @@
 
     <dependency>
       <groupId>io.netty</groupId>
+      <artifactId>netty-transport-native-kqueue</artifactId>
+      <classifier>osx-x86_64</classifier>
+      <scope>provided</scope>
+      <optional>true</optional>
+    </dependency>
+
+    <dependency>
+      <groupId>io.netty</groupId>
       <artifactId>netty-handler</artifactId>
       <scope>provided</scope>
       <optional>true</optional>
@@ -42,17 +50,17 @@
       <version>2.0.1</version>
     </dependency>
 
-    <dependency> 
+    <dependency>
       <groupId>org.luaj</groupId>
       <artifactId>luaj-jse</artifactId>
     </dependency>
 
-    <dependency> 
+    <dependency>
       <groupId>org.mindrot</groupId>
       <artifactId>jbcrypt</artifactId>
     </dependency>
   </dependencies>
-    
+
   <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
     <resources>
@@ -147,7 +155,7 @@
           </sourceFileIncludes>
         </configuration>
       </plugin>
-    </plugins>      
+    </plugins>
 
   </build>
 

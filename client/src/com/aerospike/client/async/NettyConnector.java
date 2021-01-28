@@ -42,6 +42,7 @@ import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
 import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
@@ -75,6 +76,8 @@ public final class NettyConnector extends AsyncConnector {
 
 		if (eventLoop.parent.isEpoll) {
 			b.channel(EpollSocketChannel.class);
+		} else if(eventLoop.parent.isKqueue) {
+			b.channel(KQueueSocketChannel.class);
 		}
 		else {
 			b.channel(NioSocketChannel.class);
