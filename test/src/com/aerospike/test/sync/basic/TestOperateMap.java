@@ -42,7 +42,6 @@ import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.cdt.MapWriteFlags;
-import com.aerospike.client.cdt.MapWriteMode;
 import com.aerospike.test.sync.TestSync;
 
 public class TestOperateMap extends TestSync {
@@ -58,9 +57,9 @@ public class TestOperateMap extends TestSync {
 		client.delete(null, key);
 
 		MapPolicy putMode = MapPolicy.Default;
-		MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.CREATE_ONLY);
-		MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteMode.UPDATE_ONLY);
-		MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+		MapPolicy addMode = new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.CREATE_ONLY);
+		MapPolicy updateMode = new MapPolicy(MapOrder.UNORDERED, MapWriteFlags.UPDATE_ONLY);
+		MapPolicy orderedUpdateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.UPDATE_ONLY);
 
 		// Calling put() multiple times performs poorly because the server makes
 		// a copy of the map for each call, but we still need to test it.
@@ -129,8 +128,8 @@ public class TestOperateMap extends TestSync {
 		replaceMap.put(Value.get(-8734), Value.get("changed"));
 
 		MapPolicy putMode = MapPolicy.Default;
-		MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.CREATE_ONLY);
-		MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE_ONLY);
+		MapPolicy addMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.CREATE_ONLY);
+		MapPolicy updateMode = new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.UPDATE_ONLY);
 
 		Record record = client.operate(null, key,
 			MapOperation.putItems(addMode, binName, addMap),
@@ -183,7 +182,7 @@ public class TestOperateMap extends TestSync {
 		itemMap.put(Value.get(7), Value.get(1));
 
 		Record record = client.operate(null, key,
-				MapOperation.putItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE), binName, itemMap),
+				MapOperation.putItems(new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteFlags.DEFAULT), binName, itemMap),
 				Operation.put(new Bin("otherbin", "hello"))
 				);
 
@@ -240,7 +239,7 @@ public class TestOperateMap extends TestSync {
 		assertEquals(4, list.size());
 
 		record = client.operate(null, key,
-				MapOperation.setMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteMode.UPDATE), binName),
+				MapOperation.setMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), binName),
 				MapOperation.getByKeyRange(binName, Value.get(3), Value.get(5), MapReturnType.COUNT),
 				MapOperation.getByKeyRange(binName, Value.get(-5), Value.get(2), MapReturnType.KEY_VALUE),
 				MapOperation.getByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE)
@@ -507,7 +506,7 @@ public class TestOperateMap extends TestSync {
 		Key key = new Key(args.namespace, args.set, "opmkey10");
 		client.delete(null, key);
 
-		MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteMode.UPDATE);
+		MapPolicy mapPolicy = new MapPolicy(MapOrder.KEY_VALUE_ORDERED, MapWriteFlags.DEFAULT);
 
 		Map<Value,Value> inputMap = new HashMap<Value,Value>();
 		inputMap.put(Value.get("weiling"), Value.get(0));

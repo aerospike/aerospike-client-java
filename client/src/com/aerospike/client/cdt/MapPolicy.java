@@ -36,7 +36,7 @@ public final class MapPolicy {
 	 * Use normal update mode when writing map items.
 	 */
 	public MapPolicy() {
-		this(MapOrder.UNORDERED, MapWriteMode.UPDATE);
+		this(MapOrder.UNORDERED, MapWriteFlags.DEFAULT);
 	}
 
 	/**
