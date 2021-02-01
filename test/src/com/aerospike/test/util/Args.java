@@ -125,8 +125,8 @@ public class Args {
 				set = "";
 			}
 
-	        if (cl.hasOption("tls")) {
-	        	tlsPolicy = new TlsPolicy();
+			if (cl.hasOption("tls")) {
+				tlsPolicy = new TlsPolicy();
 
 				if (cl.hasOption("tp")) {
 					String s = cl.getOptionValue("tp", "");
@@ -146,7 +146,7 @@ public class Args {
 				if (cl.hasOption("tlsLoginOnly")) {
 					tlsPolicy.forLoginOnly = true;
 				}
-	        }
+			}
 
 			if (cl.hasOption("auth")) {
 				authMode = AuthMode.valueOf(cl.getOptionValue("auth", "").toUpperCase());
@@ -160,7 +160,7 @@ public class Args {
 				eventLoopType = EventLoopType.NETTY_EPOLL;
 			}
 
-	        user = cl.getOptionValue("U");
+			user = cl.getOptionValue("U");
 			password = cl.getOptionValue("P");
 
 			if (user != null && password == null) {

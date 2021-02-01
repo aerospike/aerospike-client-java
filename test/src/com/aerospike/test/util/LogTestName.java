@@ -22,8 +22,8 @@ import org.junit.runner.Description;
 public class LogTestName extends TestWatcher {
 	public static final LogTestName Instance = new LogTestName();
 
-    @Override
-    protected void starting(Description description) {
-        System.out.println("Test " + description.getMethodName());
-    }
+	@Override
+	protected void starting(Description description) {
+		System.out.println("Test " + description.getMethodName());
+	}
 }

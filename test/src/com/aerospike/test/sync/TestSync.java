@@ -52,7 +52,7 @@ public class TestSync extends TestBase {
 		if (record == null) {
 			fail("Failed to get: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey);
 		}
- 	}
+	}
 
 	public void assertBinEqual(Key key, Record record, Bin bin) {
 		assertRecordFound(key, record);
