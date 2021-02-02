@@ -19,6 +19,7 @@ package com.aerospike.test.sync.basic;
 import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,15 +27,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapOperation;
@@ -45,10 +46,6 @@ import com.aerospike.client.cdt.MapWriteFlags;
 import com.aerospike.test.sync.TestSync;
 
 public class TestOperateMap extends TestSync {
-
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
-
 	private static final String binName = "opmapbin";
 
 	@Test
@@ -693,16 +690,14 @@ public class TestOperateMap extends TestSync {
 	public void operateMapRemoveByKeyListForNonExistingKey() throws Exception {
 		Key key = new Key(args.namespace, args.set, "opmkey13");
 
-		expectedException.expect(AerospikeException.class);
+		AerospikeException ae = assertThrows(AerospikeException.class, new ThrowingRunnable() {
+			public void run() {
+				client.operate(null, key,
+					MapOperation.removeByKeyList(binName, singletonList(Value.get("key-1")), MapReturnType.VALUE));
+			}
+		});
 
-		// Server versions &lt; 3.16.0.1 receive a bin type error.
-		//expectedException.expectMessage("Error Code 12: Bin type error");
-
-		// Server versions &gt;= 3.16.0.1 receive a key not found error.
-		expectedException.expectMessage("Key not found");
-
-		client.operate(null, key,
-				MapOperation.removeByKeyList(binName, singletonList(Value.get("key-1")), MapReturnType.VALUE));
+		assertEquals(ae.getResultCode(), ResultCode.KEY_NOT_FOUND_ERROR);
 	}
 
 	@Test

@@ -37,6 +37,7 @@ import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -113,17 +114,8 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		this.tlsPolicy = policy;
 
 		if (policy.context != null) {
-			// Netty does not allow protocols to be filtered further when using existing SSLContext.
-			// All Protocol types (NONE, NPN, ALPN) in ApplicationProtocolConfig constructor will fail!
-			// I assume the real protocol used is defined by SSLContext.getProtocol().
-			if (policy.ciphers == null) {
-				sslContext = new JdkSslContext(policy.context, true, ClientAuth.NONE);
-			}
-			else {
-				// Ciphers are filtered in filterCipherSuites().
-				// Use null for ApplicationProtocolConfig argument.
-				sslContext = new JdkSslContext(policy.context, true, null, this, null, ClientAuth.NONE);
-			}
+			CipherSuiteFilter csf = (policy.ciphers != null)? this : IdentityCipherSuiteFilter.INSTANCE;
+			sslContext = new JdkSslContext(policy.context, true, null, csf, null, ClientAuth.NONE, null, false);
 			return;
 		}
 

@@ -22,9 +22,7 @@ import static org.junit.Assert.assertEquals;
 import java.util.Arrays;
 import java.util.List;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.ExpectedException;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -39,9 +37,6 @@ import com.aerospike.client.operation.BitWriteFlags;
 import com.aerospike.test.sync.TestSync;
 
 public class TestOperateBit extends TestSync {
-	@Rule
-	public ExpectedException expectedException = ExpectedException.none();
-
 	private static final String binName = "opbbin";
 	private static final Key key = new Key(args.namespace, args.set, "opbkey1");
 
