@@ -83,7 +83,7 @@ public class TestAsyncPutGet extends TestAsync {
 		private final WritePolicy policy;
 		private final Key key;
 		private final Bin bin;
-    	private int failCount = 0;
+		private int failCount = 0;
 
 		public WriteHandler(AerospikeClient client, WritePolicy policy, Key key, Bin bin) {
 			this.client = client;
@@ -106,21 +106,21 @@ public class TestAsyncPutGet extends TestAsync {
 
 		// Error callback.
 		public void onFailure(AerospikeException e) {
-		   // Retry up to 2 more times.
-           if (++failCount <= 2) {
-            	Throwable t = e.getCause();
+			// Retry up to 2 more times.
+			if (++failCount <= 2) {
+				Throwable t = e.getCause();
 
-            	// Check for common socket errors.
-            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
-                    try {
-                    	client.put(eventLoop, this, policy, key, bin);
-                        return;
-                    }
-                    catch (Exception ex) {
-                    	// Fall through to error case.
-                    }
-            	}
-        	}
+				// Check for common socket errors.
+				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+					try {
+						client.put(eventLoop, this, policy, key, bin);
+						return;
+					}
+					catch (Exception ex) {
+						// Fall through to error case.
+					}
+				}
+			}
 			setError(e);
 			notifyComplete();
 		}
@@ -131,7 +131,7 @@ public class TestAsyncPutGet extends TestAsync {
 		private final Policy policy;
 		private final Key key;
 		private final Bin bin;
-    	private int failCount = 0;
+		private int failCount = 0;
 
 		public ReadHandler(AerospikeClient client, Policy policy, Key key, Bin bin) {
 			this.client = client;
@@ -151,19 +151,19 @@ public class TestAsyncPutGet extends TestAsync {
 		public void onFailure(AerospikeException e) {
 			// Retry up to 2 more times.
 			if (++failCount <= 2) {
-            	Throwable t = e.getCause();
+				Throwable t = e.getCause();
 
-            	// Check for common socket errors.
-            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
-                    try {
-                    	client.get(eventLoop, this, policy, key);
-                        return;
-                    }
-                    catch (Exception ex) {
-                    	// Fall through to error case.
-                    }
-            	}
-        	}
+				// Check for common socket errors.
+				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+					try {
+						client.get(eventLoop, this, policy, key);
+						return;
+					}
+					catch (Exception ex) {
+						// Fall through to error case.
+					}
+				}
+			}
 			setError(e);
 			notifyComplete();
 		}

@@ -56,5 +56,5 @@ public class TestAsyncScan extends TestAsync {
 		}, policy, args.namespace, args.set);
 
 		waitTillComplete();
-   }
+	}
 }

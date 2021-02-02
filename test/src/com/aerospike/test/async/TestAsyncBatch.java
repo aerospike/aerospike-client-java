@@ -89,7 +89,7 @@ public class TestAsyncBatch extends TestAsync {
 					if (! assertEquals(true, existsArray[i])) {
 						break;
 					}
-		        }
+				}
 				notifyComplete();
 			}
 
@@ -100,7 +100,7 @@ public class TestAsyncBatch extends TestAsync {
 		}, null, sendKeys);
 
 		waitTillComplete();
-   }
+	}
 
 	@Test
 	public void asyncBatchExistsSequence() throws Exception {
@@ -120,7 +120,7 @@ public class TestAsyncBatch extends TestAsync {
 		}, null, sendKeys);
 
 		waitTillComplete();
-   }
+	}
 
 	@Test
 	public void asyncBatchGetArray() throws Exception {
@@ -131,7 +131,7 @@ public class TestAsyncBatch extends TestAsync {
 						if (! assertBinEqual(keys[i], records[i], binName, valuePrefix + (i + 1))) {
 							break;
 						}
-			        }
+					}
 				}
 				notifyComplete();
 			}
@@ -143,7 +143,7 @@ public class TestAsyncBatch extends TestAsync {
 		}, null, sendKeys);
 
 		waitTillComplete();
-   }
+	}
 
 	@Test
 	public void asyncBatchGetSequence() throws Exception {
@@ -166,7 +166,7 @@ public class TestAsyncBatch extends TestAsync {
 		}, null, sendKeys);
 
 		waitTillComplete();
-   }
+	}
 
 	@Test
 	public void asyncBatchGetHeaders() throws Exception {
@@ -187,7 +187,7 @@ public class TestAsyncBatch extends TestAsync {
 						if (! assertGreaterThanZero(record.expiration)) {
 							break;
 						}
-			        }
+					}
 				}
 				notifyComplete();
 			}
@@ -199,7 +199,7 @@ public class TestAsyncBatch extends TestAsync {
 		}, null, sendKeys);
 
 		waitTillComplete();
-   }
+	}
 
 	@Test
 	public void asyncBatchReadComplex() throws Exception {
