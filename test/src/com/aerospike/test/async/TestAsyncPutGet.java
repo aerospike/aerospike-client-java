@@ -15,7 +15,7 @@
  * the License.
  */
 package com.aerospike.test.async;
-q
+
 import java.io.IOException;
 import java.net.ConnectException;
 
