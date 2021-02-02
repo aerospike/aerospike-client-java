@@ -232,7 +232,6 @@ public class AerospikeException extends RuntimeException {
 
 		public Timeout(Policy policy, int iteration) {
 			super(ResultCode.TIMEOUT);
-			super.node = node;
 			super.iteration = iteration;
 			this.connectTimeout = policy.connectTimeout;
 			this.socketTimeout = policy.socketTimeout;
