@@ -31,7 +31,7 @@ public abstract class AsyncMultiExecutor {
 	private int maxConcurrent;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
 	private final boolean stopOnFailure;
-    boolean done;
+	boolean done;
 
 	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
 		this.eventLoop = eventLoop;

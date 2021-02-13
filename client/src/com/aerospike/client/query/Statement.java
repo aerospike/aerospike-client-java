@@ -135,31 +135,31 @@ public final class Statement {
 	 * Example:
 	 * <pre>
 	 * // (c &gt;= 11 and c &lt;= 20) or (d &gt; 3 and (d &lt; 5)
-     * stmt.setPredExp(
-     *   PredExp.integerBin("c"),
-     *   PredExp.integerValue(11),
-     *   PredExp.integerGreaterEq(),
-     *   PredExp.integerBin("c"),
-     *   PredExp.integerValue(20),
-     *   PredExp.integerLessEq(),
-     *   PredExp.and(2),
-     *   PredExp.integerBin("d"),
-     *   PredExp.integerValue(3),
-     *   PredExp.integerGreater(),
-     *   PredExp.integerBin("d"),
-     *   PredExp.integerValue(5),
-     *   PredExp.integerLess(),
-     *   PredExp.and(2),
-     *   PredExp.or(2)
-     * );
-     *
+	 * stmt.setPredExp(
+	 *   PredExp.integerBin("c"),
+	 *   PredExp.integerValue(11),
+	 *   PredExp.integerGreaterEq(),
+	 *   PredExp.integerBin("c"),
+	 *   PredExp.integerValue(20),
+	 *   PredExp.integerLessEq(),
+	 *   PredExp.and(2),
+	 *   PredExp.integerBin("d"),
+	 *   PredExp.integerValue(3),
+	 *   PredExp.integerGreater(),
+	 *   PredExp.integerBin("d"),
+	 *   PredExp.integerValue(5),
+	 *   PredExp.integerLess(),
+	 *   PredExp.and(2),
+	 *   PredExp.or(2)
+	 * );
+	 *
 	 * // Record last update time &gt; 2017-01-15
 	 * stmt.setPredExp(
 	 *   PredExp.recLastUpdate(),
 	 *   PredExp.integerValue(new GregorianCalendar(2017, 0, 15)),
 	 *   PredExp.integerGreater()
 	 * );
-     * </pre>
+	 * </pre>
 	 */
 	@Deprecated
 	public void setPredExp(PredExp... predExp) {
@@ -223,7 +223,7 @@ public final class Statement {
 	 * This function will be called on both the server and client for each selected item.
 	 *
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
-	 * @param resourcePath          class path where Lua resource is located
+	 * @param resourcePath			class path where Lua resource is located
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any

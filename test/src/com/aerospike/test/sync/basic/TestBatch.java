@@ -66,8 +66,8 @@ public class TestBatch extends TestSync {
 			if (! existsArray[i]) {
 				fail("Some batch records not found.");
 			}
-        }
-    }
+		}
+	}
 
 	@Test
 	public void batchReads () {
@@ -84,8 +84,8 @@ public class TestBatch extends TestSync {
 			Record record = records[i];
 
 			assertBinEqual(key, record, binName, valuePrefix + (i + 1));
-        }
-    }
+		}
+	}
 
 	@Test
 	public void batchReadHeaders () {
@@ -104,8 +104,8 @@ public class TestBatch extends TestSync {
 			assertRecordFound(key, record);
 			assertNotEquals(0, record.generation);
 			assertNotEquals(0, record.expiration);
-        }
-    }
+		}
+	}
 
 	@Test
 	public void batchReadComplex () {
@@ -148,7 +148,7 @@ public class TestBatch extends TestSync {
 		if (batch.record != null) {
 			fail("Unexpected batch record received");
 		}
-    }
+	}
 
 	private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {
 		BatchRead batch = list.get(i);

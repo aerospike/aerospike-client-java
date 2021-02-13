@@ -380,12 +380,12 @@ public final class NettyRecover implements TimerTask {
 		}
 
 		@Override
-	    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-	    	command.drain((ByteBuf)msg);
-	    }
+		public void channelRead(ChannelHandlerContext ctx, Object msg) {
+			command.drain((ByteBuf)msg);
+		}
 
-	    @Override
-	    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+		@Override
+		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 			if (! (evt instanceof SslHandshakeCompletionEvent)) {
 				return;
 			}
@@ -407,7 +407,7 @@ public final class NettyRecover implements TimerTask {
 			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
 				command.channelActive();
 			}
-	    }
+		}
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {

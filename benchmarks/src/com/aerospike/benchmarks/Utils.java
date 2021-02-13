@@ -33,27 +33,26 @@ public class Utils {
 		return contentsFromFile;
 	}
 
-    private static List<String> readAllLines(String filepath) throws IOException {
-    	List<String> fileContent = new ArrayList<String>();
-        File file = new File(filepath);
+	private static List<String> readAllLines(String filepath) throws IOException {
+		List<String> fileContent = new ArrayList<String>();
+		File file = new File(filepath);
 
-        BufferedReader input =  new BufferedReader(new FileReader(file));
-        try {
-        	String line = null;
-        	while (( line = input.readLine()) != null) {
-            	  fileContent.add(line);
-            }
-        }
-        finally {
-        	if (input != null)
-        		input.close();
-        }
+		BufferedReader input =  new BufferedReader(new FileReader(file));
+		try {
+			String line = null;
+			while (( line = input.readLine()) != null) {
+				fileContent.add(line);
+			}
+		}
+		finally {
+			if (input != null)
+				input.close();
+		}
 
-        return fileContent;
-    }
-
-    public static boolean isNumeric(String str) {
-	  return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
+		return fileContent;
 	}
 
+	public static boolean isNumeric(String str) {
+		return str.matches("-?\\d+(\\.\\d+)?");  //match a number with optional '-' and decimal.
+	}
 }

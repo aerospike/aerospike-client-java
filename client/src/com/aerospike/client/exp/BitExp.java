@@ -358,7 +358,7 @@ public final class BitExp {
 	 * }</pre>
 	 *
 	 * @param bitOffset		offset int expression
-	 * @param bitSize       size int expression
+	 * @param bitSize		size int expression
 	 * @param value			boolean expression
 	 * @param bin			bin or blob value expression
 	 */
@@ -384,7 +384,7 @@ public final class BitExp {
 	 * }</pre>
 	 *
 	 * @param bitOffset		offset int expression
-	 * @param bitSize       size int expression
+	 * @param bitSize		size int expression
 	 * @param value			boolean expression
 	 * @param bin			bin or blob value expression
 	 */

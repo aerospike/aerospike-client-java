@@ -23,7 +23,6 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.RandomShift;
 
-
 public class Arguments {
 	public String namespace;
 	public String[] batchNamespaces;
@@ -62,7 +61,7 @@ public class Arguments {
 
 	public Bin[] getBins(RandomShift random, boolean multiBin, long keySeed) {
 		if (fixedBins != null) {
-		    return (multiBin)? fixedBins : fixedBin;
+			return (multiBin)? fixedBins : fixedBin;
 		}
 
 		int binCount = (multiBin)? nBins : 1;
@@ -95,10 +94,10 @@ public class Arguments {
 
 		case 'S':
 			StringBuilder sb = new StringBuilder(spec.size);
-            for (int i = 0; i < spec.size; i++) {
-            	// Append ascii value between ordinal 33 and 127.
-                sb.append((char)(random.nextInt(94) + 33));
-            }
+			for (int i = 0; i < spec.size; i++) {
+				// Append ascii value between ordinal 33 and 127.
+				sb.append((char)(random.nextInt(94) + 33));
+			}
 			return Value.get(sb.toString());
 
 		case 'R':

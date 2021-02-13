@@ -153,7 +153,7 @@ public abstract class RWTask {
 		long key = random.nextLong(keyCount);
 
 		if (args.keyType == KeyType.STRING) {
-		    doReadString(key, true);
+			doReadString(key, true);
 		}
 		else if (args.keyType == KeyType.INTEGER) {
 			doReadLong(key, true);

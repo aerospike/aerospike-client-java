@@ -104,10 +104,10 @@ public final class Connection implements Closeable {
 		this.pool = pool;
 
 		try {
-            SSLSocketFactory sslsocketfactory = (policy.context != null) ?
-            		policy.context.getSocketFactory() :
-            		(SSLSocketFactory)SSLSocketFactory.getDefault();
-            SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket();
+			SSLSocketFactory sslsocketfactory = (policy.context != null) ?
+					policy.context.getSocketFactory() :
+					(SSLSocketFactory)SSLSocketFactory.getDefault();
+			SSLSocket sslSocket = (SSLSocket)sslsocketfactory.createSocket();
 			socket = sslSocket;
 
 			try {

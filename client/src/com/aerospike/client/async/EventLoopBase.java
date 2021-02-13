@@ -33,11 +33,11 @@ public abstract class EventLoopBase implements EventLoop {
 	final int maxCommandsInProcess;
 	final int maxCommandsInQueue;
 	int pending;
-    boolean usingDelayQueue;
+	boolean usingDelayQueue;
 
-    /**
-     * Common event loop constructor.
-     */
+	/**
+	 * Common event loop constructor.
+	 */
 	public EventLoopBase(EventPolicy policy, int index) {
 		if (policy.maxCommandsInProcess > 0 && policy.maxCommandsInProcess < 5) {
 			throw new AerospikeException("maxCommandsInProcess " + policy.maxCommandsInProcess + " must be 0 or >= 5");
@@ -79,8 +79,8 @@ public abstract class EventLoopBase implements EventLoop {
 	}
 
 	/**
-     * For internal use only.
-     */
+	 * For internal use only.
+	 */
 	@Override
 	public EventState createState() {
 		return new EventState(this, index);

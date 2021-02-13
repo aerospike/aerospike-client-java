@@ -205,48 +205,48 @@ public abstract class Value {
 		}
 
 		if (value instanceof byte[]) {
-        	return new BytesValue((byte[])value);
+			return new BytesValue((byte[])value);
 		}
 
 		if (value instanceof String) {
-        	return new StringValue((String)value);
+			return new StringValue((String)value);
 		}
 
 		if (value instanceof Integer) {
-        	return new IntegerValue((Integer)value);
+			return new IntegerValue((Integer)value);
 		}
 
 		if (value instanceof Long) {
-        	return new LongValue((Long)value);
+			return new LongValue((Long)value);
 		}
 
 		if (value instanceof Double) {
-        	return new DoubleValue((Double)value);
+			return new DoubleValue((Double)value);
 		}
 
 		if (value instanceof Float) {
-        	return new FloatValue((Float)value);
+			return new FloatValue((Float)value);
 		}
 
 		if (value instanceof Boolean) {
-        	return new BooleanValue((Boolean)value);
+			return new BooleanValue((Boolean)value);
 		}
 
 		if (value instanceof Byte) {
-        	return new ByteValue((byte)value);
+			return new ByteValue((byte)value);
 		}
 
 		if (value instanceof List<?>) {
-        	return new ListValue((List<?>)value);
+			return new ListValue((List<?>)value);
 		}
 
 		if (value instanceof Map<?,?>) {
-        	return new MapValue((Map<?,?>)value);
+			return new MapValue((Map<?,?>)value);
 		}
 
 		if (value instanceof ByteBuffer) {
 			ByteBuffer bb = (ByteBuffer)value;
-        	return new BytesValue(bb.array());
+			return new BytesValue(bb.array());
 		}
 
 		return new BlobValue(value);
@@ -512,11 +512,11 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        int result = 1;
-	        for (int i = 0; i < length; i++) {
-	            result = 31 * result + bytes[offset+i];
-	        }
-	        return result;
+			int result = 1;
+			for (int i = 0; i < length; i++) {
+				result = 31 * result + bytes[offset+i];
+			}
+			return result;
 		}
 
 		public byte[] getBytes() {
@@ -588,7 +588,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return value;
+			return value;
 		}
 
 		@Override
@@ -656,7 +656,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return value.hashCode();
+			return value.hashCode();
 		}
 	}
 
@@ -715,7 +715,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return value;
+			return value;
 		}
 
 		@Override
@@ -784,7 +784,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return (int)(value ^ (value >>> 32));
+			return (int)(value ^ (value >>> 32));
 		}
 
 		@Override
@@ -853,8 +853,8 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        long bits = Double.doubleToLongBits(value);
-	        return (int)(bits ^ (bits >>> 32));
+			long bits = Double.doubleToLongBits(value);
+			return (int)(bits ^ (bits >>> 32));
 		}
 
 		@Override
@@ -923,7 +923,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return Float.floatToIntBits(value);
+			return Float.floatToIntBits(value);
 		}
 
 		@Override
@@ -993,7 +993,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return value ? 1231 : 1237;
+			return value ? 1231 : 1237;
 		}
 
 		@Override
@@ -1078,7 +1078,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return object.hashCode();
+			return object.hashCode();
 		}
 	}
 
@@ -1144,7 +1144,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return value.hashCode();
+			return value.hashCode();
 		}
 	}
 
@@ -1344,7 +1344,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return list.hashCode();
+			return list.hashCode();
 		}
 	}
 
@@ -1410,7 +1410,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return map.hashCode();
+			return map.hashCode();
 		}
 	}
 
@@ -1480,7 +1480,7 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-	        return list.hashCode();
+			return list.hashCode();
 		}
 	}
 

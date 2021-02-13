@@ -68,7 +68,7 @@ public final class AsyncExecute extends AsyncRead {
 
 	@Override
 	protected void handleNotFound(int resultCode) {
-    	throw new AerospikeException(resultCode);
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override

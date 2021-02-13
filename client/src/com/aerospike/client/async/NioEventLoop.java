@@ -47,9 +47,9 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 	final Thread thread;
 	final long selectorTimeout;
 
-    /**
-     * Construct Aerospike event loop wrapper from NIO Selector.
-     */
+	/**
+	 * Construct Aerospike event loop wrapper from NIO Selector.
+	 */
 	public NioEventLoop(EventPolicy policy, SelectorProvider provider, int index, boolean daemon, String poolName) throws IOException {
 		super(policy, index);
 
@@ -198,7 +198,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 		registerCommands();
 		runScheduled();
 		awakened.set(false);
-	    selector.select(selectorTimeout);
+		selector.select(selectorTimeout);
 
 		if (awakened.get()) {
 			selector.wakeup();
@@ -228,7 +228,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 		}
 	}
 
-    private void registerCommands() {
+	private void registerCommands() {
 		Runnable last = commandQueue.peekLast();
 		Runnable command;
 

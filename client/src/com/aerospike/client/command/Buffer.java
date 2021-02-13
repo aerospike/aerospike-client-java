@@ -155,7 +155,7 @@ public final class Buffer {
 				count++;
 			}
 			else if (ch < 0x800) {
-			    count += 2;
+				count += 2;
 			}
 			else if (Character.isHighSurrogate(ch)) {
 				count += 4;
@@ -167,7 +167,7 @@ public final class Buffer {
 		return count;
 	}
 
-    public static byte[] stringToUtf8(String s) {
+	public static byte[] stringToUtf8(String s) {
 		if (s == null || s.length() == 0) {
 			return new byte[0];
 		}
@@ -175,165 +175,165 @@ public final class Buffer {
 		byte[] bytes = new byte[size];
 		stringToUtf8(s, bytes, 0);
 		return bytes;
-    }
+	}
 
 	/**
 	 * Convert input string to UTF-8, copies into buffer (at given offset).
 	 * Returns number of bytes in the string.
 	 *
-     * Java's internal UTF8 conversion is very, very slow.
-     * This is, rather amazingly, 8x faster than the to-string method.
+	 * Java's internal UTF8 conversion is very, very slow.
+	 * This is, rather amazingly, 8x faster than the to-string method.
 	 * Returns the number of bytes this translated into.
-     */
-    public static int stringToUtf8(String s, byte[] buf, int offset) {
-        if (s == null) {
-        	return 0;
-        }
-    	int length = s.length();
-        int startOffset = offset;
+	 */
+	public static int stringToUtf8(String s, byte[] buf, int offset) {
+		if (s == null) {
+			return 0;
+		}
+		int length = s.length();
+		int startOffset = offset;
 
-        for (int i = 0; i < length; i++) {
-            int c = s.charAt(i);
-            if (c < 0x80) {
-                buf[offset++] = (byte) c;
-            }
-            else if (c < 0x800) {
-            	buf[offset++] = (byte)(0xc0 | ((c >> 6)));
-            	buf[offset++] = (byte)(0x80 | (c & 0x3f));
-            }
-            else {
-		    	// Encountered a different encoding other than 2-byte UTF8. Let java handle it.
-            	try {
-		    		byte[] value = s.getBytes("UTF8");
+		for (int i = 0; i < length; i++) {
+			int c = s.charAt(i);
+			if (c < 0x80) {
+				buf[offset++] = (byte) c;
+			}
+			else if (c < 0x800) {
+				buf[offset++] = (byte)(0xc0 | ((c >> 6)));
+				buf[offset++] = (byte)(0x80 | (c & 0x3f));
+			}
+			else {
+				// Encountered a different encoding other than 2-byte UTF8. Let java handle it.
+				try {
+					byte[] value = s.getBytes("UTF8");
 					System.arraycopy(value, 0, buf, startOffset, value.length);
 					return value.length;
-            	}
-            	catch (UnsupportedEncodingException uee) {
-            		throw new RuntimeException("UTF8 encoding is not supported.");
-            	}
-            }
-        }
-        return offset - startOffset;
-    }
+				}
+				catch (UnsupportedEncodingException uee) {
+					throw new RuntimeException("UTF8 encoding is not supported.");
+				}
+			}
+		}
+		return offset - startOffset;
+	}
 
-    public static String utf8ToString(byte[] buf, int offset, int length) {
-    	// A Thread local implementation does not help here, so
-    	// allocate character buffer each time.
-    	if (length == 0) {
-    		return "";
-    	}
+	public static String utf8ToString(byte[] buf, int offset, int length) {
+		// A Thread local implementation does not help here, so
+		// allocate character buffer each time.
+		if (length == 0) {
+			return "";
+		}
 
 		char[] charBuffer = new char[length];
-    	int charCount = 0;
-        int limit = offset + length;
-    	int origoffset = offset;
+		int charCount = 0;
+		int limit = offset + length;
+		int origoffset = offset;
 
-        while (offset < limit ) {
-        	int b1 = buf[offset];
+		while (offset < limit ) {
+			int b1 = buf[offset];
 
-        	if (b1 >= 0) {
-                charBuffer[charCount++] = (char)b1;
-                offset++;
-        	}
-        	else if ((b1 >> 5) == -2) {
-        		int b2 = buf[offset + 1];
-        		charBuffer[charCount++] = (char) (((b1 << 6) ^ b2) ^ 0x0f80);
-                offset += 2;
-        	}
-		    else {
-		    	// Encountered an UTF encoding which uses more than 2 bytes.
-		    	// Use a native function to do the conversion.
-		    	try {
-		    		return new String(buf, origoffset, length, "UTF8");
-		    	}
-		    	catch (UnsupportedEncodingException uee) {
-            		throw new RuntimeException("UTF8 decoding is not supported.");
-		    	}
-		    }
-        }
-        return new String(charBuffer, 0, charCount);
-    }
+			if (b1 >= 0) {
+				charBuffer[charCount++] = (char)b1;
+				offset++;
+			}
+			else if ((b1 >> 5) == -2) {
+				int b2 = buf[offset + 1];
+				charBuffer[charCount++] = (char) (((b1 << 6) ^ b2) ^ 0x0f80);
+				offset += 2;
+			}
+			else {
+				// Encountered an UTF encoding which uses more than 2 bytes.
+				// Use a native function to do the conversion.
+				try {
+					return new String(buf, origoffset, length, "UTF8");
+				}
+				catch (UnsupportedEncodingException uee) {
+					throw new RuntimeException("UTF8 decoding is not supported.");
+				}
+			}
+		}
+		return new String(charBuffer, 0, charCount);
+	}
 
-    public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) {
-    	if (length == 0) {
-    		return "";
-    	}
+	public static String utf8ToString(byte[] buf, int offset, int length, StringBuilder sb) {
+		if (length == 0) {
+			return "";
+		}
 
-    	// This method is designed to accommodate multiple string conversions on the same
-    	// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
-    	// created on the stack and passed in each method invocation.
-    	sb.setLength(0);
-        int limit = offset + length;
-    	int origoffset = offset;
+		// This method is designed to accommodate multiple string conversions on the same
+		// thread, but without the ThreadLocal overhead.  The StringBuilder instance is
+		// created on the stack and passed in each method invocation.
+		sb.setLength(0);
+		int limit = offset + length;
+		int origoffset = offset;
 
-        while (offset < limit ) {
-            if ((buf[offset] & 0x80) == 0) { // 1 byte
-                char c = (char) buf[offset];
-                sb.append(c);
-                offset++;
-            }
-            else if ((buf[offset] & 0xE0) == 0xC0) { // 2 bytes
-                char c =  (char) (((buf[offset] & 0x1f) << 6) | (buf[offset+1] & 0x3f));
-                sb.append(c);
-                offset += 2;
-            }
-		    else {
-		    	// Encountered an UTF encoding which uses more than 2 bytes.
-		    	// Use a native function to do the conversion.
-		    	try {
-		    		return new String(buf, origoffset, length, "UTF8");
-		    	}
-		    	catch (UnsupportedEncodingException uee) {
-            		throw new RuntimeException("UTF8 decoding is not supported.");
-		    	}
-		    }
-        }
-        return sb.toString();
-    }
+		while (offset < limit ) {
+			if ((buf[offset] & 0x80) == 0) { // 1 byte
+				char c = (char) buf[offset];
+				sb.append(c);
+				offset++;
+			}
+			else if ((buf[offset] & 0xE0) == 0xC0) { // 2 bytes
+				char c =  (char) (((buf[offset] & 0x1f) << 6) | (buf[offset+1] & 0x3f));
+				sb.append(c);
+				offset += 2;
+			}
+			else {
+				// Encountered an UTF encoding which uses more than 2 bytes.
+				// Use a native function to do the conversion.
+				try {
+					return new String(buf, origoffset, length, "UTF8");
+				}
+				catch (UnsupportedEncodingException uee) {
+					throw new RuntimeException("UTF8 decoding is not supported.");
+				}
+			}
+		}
+		return sb.toString();
+	}
 
-    /**
-     * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
-     *
-     * Input format: 1234
-     */
-    public static int utf8DigitsToInt(byte[] buf, int begin, int end) {
-    	int val = 0;
-    	int mult = 1;
+	/**
+	 * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
+	 *
+	 * Input format: 1234
+	 */
+	public static int utf8DigitsToInt(byte[] buf, int begin, int end) {
+		int val = 0;
+		int mult = 1;
 
-    	for (int i = end - 1; i >= begin; i--) {
-    		val += ((int)buf[i] - 48) * mult;
-    		mult *= 10;
-    	}
-    	return val;
-    }
+		for (int i = end - 1; i >= begin; i--) {
+			val += ((int)buf[i] - 48) * mult;
+			mult *= 10;
+		}
+		return val;
+	}
 
-    public static String bytesToHexString(byte[] buf) {
-    	if (buf == null || buf.length == 0) {
-    		return "";
-    	}
+	public static String bytesToHexString(byte[] buf) {
+		if (buf == null || buf.length == 0) {
+			return "";
+		}
 		StringBuilder sb = new StringBuilder(buf.length * 2);
 
 		for (int i = 0; i < buf.length; i++) {
-    		sb.append(String.format("%02x", buf[i]));
+			sb.append(String.format("%02x", buf[i]));
 		}
 		return sb.toString();
-    }
+	}
 
-    public static String bytesToHexString(byte[] buf, int offset, int length) {
+	public static String bytesToHexString(byte[] buf, int offset, int length) {
 		StringBuilder sb = new StringBuilder(length * 2);
 
 		for (int i = offset; i < length; i++) {
-    		sb.append(String.format("%02x", buf[i]));
+			sb.append(String.format("%02x", buf[i]));
 		}
 		return sb.toString();
-    }
+	}
 
-    public static Object bytesToObject(byte[] buf, int offset, int length)
+	public static Object bytesToObject(byte[] buf, int offset, int length)
 		throws AerospikeException.Serialize {
 
-    	if (length <= 0) {
-    		return null;
-    	}
+		if (length <= 0) {
+			return null;
+		}
 
 		try {
 			ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length);
@@ -341,7 +341,7 @@ public final class Buffer {
 			return oistream.readObject();
 		}
 		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
+			throw new AerospikeException.Serialize(e);
 		}
 	}
 
@@ -431,10 +431,10 @@ public final class Buffer {
 	// 64 bit number conversions.
 	//-------------------------------------------------------
 
-    /**
-     * Convert long to big endian signed or unsigned 64 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
+	/**
+	 * Convert long to big endian signed or unsigned 64 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
 	public static void longToBytes(long v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 56);
 		buf[offset++] = (byte)(v >>> 48);
@@ -446,10 +446,10 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>>  0);
 	}
 
-    /**
-     * Convert long to little endian signed or unsigned 64 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
+	/**
+	 * Convert long to little endian signed or unsigned 64 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
 	public static void longToLittleBytes(long v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 0);
 		buf[offset++] = (byte)(v >>> 8);
@@ -461,27 +461,27 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>> 56);
 	}
 
-    /**
-     * Convert big endian signed 64 bits to long.
-     */
+	/**
+	 * Convert big endian signed 64 bits to long.
+	 */
 	public static long bytesToLong(byte[] buf, int offset) {
-       return (
-    		((long)(buf[offset]   & 0xFF) << 56) |
-   			((long)(buf[offset+1] & 0xFF) << 48) |
-   			((long)(buf[offset+2] & 0xFF) << 40) |
-   			((long)(buf[offset+3] & 0xFF) << 32) |
-   			((long)(buf[offset+4] & 0xFF) << 24) |
-   			((long)(buf[offset+5] & 0xFF) << 16) |
-   			((long)(buf[offset+6] & 0xFF) << 8) |
-   			((long)(buf[offset+7] & 0xFF) << 0)
-   			);
-    }
+		return (
+			((long)(buf[offset]   & 0xFF) << 56) |
+			((long)(buf[offset+1] & 0xFF) << 48) |
+			((long)(buf[offset+2] & 0xFF) << 40) |
+			((long)(buf[offset+3] & 0xFF) << 32) |
+			((long)(buf[offset+4] & 0xFF) << 24) |
+			((long)(buf[offset+5] & 0xFF) << 16) |
+			((long)(buf[offset+6] & 0xFF) << 8) |
+			((long)(buf[offset+7] & 0xFF) << 0)
+			);
+	}
 
-    /**
-     * Convert little endian signed 64 bits to long.
-     */
-    public static long littleBytesToLong(byte[] buf, int offset) {
-        return (
+	/**
+	 * Convert little endian signed 64 bits to long.
+	 */
+	public static long littleBytesToLong(byte[] buf, int offset) {
+		return (
 			((long)(buf[offset]   & 0xFF) << 0) |
 			((long)(buf[offset+1] & 0xFF) << 8) |
 			((long)(buf[offset+2] & 0xFF) << 16) |
@@ -491,16 +491,16 @@ public final class Buffer {
 			((long)(buf[offset+6] & 0xFF) << 48) |
 			((long)(buf[offset+7] & 0xFF) << 56)
 			);
-    }
+	}
 
 	//-------------------------------------------------------
 	// 32 bit number conversions.
 	//-------------------------------------------------------
 
-    /**
-     * Convert int to big endian signed or unsigned 32 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
+	/**
+	 * Convert int to big endian signed or unsigned 32 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
 	public static void intToBytes(int v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 24);
 		buf[offset++] = (byte)(v >>> 16);
@@ -508,10 +508,10 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>> 0);
 	}
 
-    /**
-     * Convert int to little endian signed or unsigned 32 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
+	/**
+	 * Convert int to little endian signed or unsigned 32 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
 	public static void intToLittleBytes(int v, byte[] buf, int offset) {
 		buf[offset++] = (byte)(v >>> 0);
 		buf[offset++] = (byte)(v >>> 8);
@@ -519,9 +519,9 @@ public final class Buffer {
 		buf[offset]   = (byte)(v >>> 24);
 	}
 
-    /**
-     * Convert big endian signed 32 bits to int.
-     */
+	/**
+	 * Convert big endian signed 32 bits to int.
+	 */
 	public static int bytesToInt(byte[] buf, int offset) {
 		return (
 			((buf[offset]   & 0xFF) << 24) |
@@ -531,9 +531,9 @@ public final class Buffer {
 			);
 	}
 
-    /**
-     * Convert little endian signed 32 bits to int.
-     */
+	/**
+	 * Convert little endian signed 32 bits to int.
+	 */
 	public static int littleBytesToInt(byte[] buf, int offset) {
 		return (
 			((buf[offset]   & 0xFF) << 0) |
@@ -543,9 +543,9 @@ public final class Buffer {
 			);
 	}
 
-    /**
-     * Convert big endian unsigned 32 bits to long.
-     */
+	/**
+	 * Convert big endian unsigned 32 bits to long.
+	 */
 	public static long bigUnsigned32ToLong(byte[] buf, int offset) {
 		return (
 			((long)(buf[offset]   & 0xFF) << 24) |
@@ -559,84 +559,84 @@ public final class Buffer {
 	// 16 bit number conversions.
 	//-------------------------------------------------------
 
-    /**
-     * Convert int to big endian signed or unsigned 16 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
-    public static void shortToBytes(int v, byte[] buf, int offset) {
-        buf[offset++] = (byte)(v >>> 8);
-        buf[offset]   = (byte)(v >>> 0);
-    }
+	/**
+	 * Convert int to big endian signed or unsigned 16 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
+	public static void shortToBytes(int v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset]   = (byte)(v >>> 0);
+	}
 
-    /**
-     * Convert int to little endian signed or unsigned 16 bits.
-     * The bit pattern will be the same regardless of sign.
-     */
-    public static void shortToLittleBytes(int v, byte[] buf, int offset) {
-        buf[offset++] = (byte)(v >>> 0);
-        buf[offset]   = (byte)(v >>> 8);
-    }
+	/**
+	 * Convert int to little endian signed or unsigned 16 bits.
+	 * The bit pattern will be the same regardless of sign.
+	 */
+	public static void shortToLittleBytes(int v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 0);
+		buf[offset]   = (byte)(v >>> 8);
+	}
 
-    /**
-     * Convert big endian unsigned 16 bits to int.
-     */
-    public static int bytesToShort(byte[] buf, int offset) {
-        return (
+	/**
+	 * Convert big endian unsigned 16 bits to int.
+	 */
+	public static int bytesToShort(byte[] buf, int offset) {
+		return (
 			((buf[offset]   & 0xFF) << 8) |
 			((buf[offset+1] & 0xFF) << 0)
-        	);
-    }
+			);
+	}
 
-    /**
-     * Convert little endian unsigned 16 bits to int.
-     */
-    public static int littleBytesToShort(byte[] buf, int offset) {
-        return (
+	/**
+	 * Convert little endian unsigned 16 bits to int.
+	 */
+	public static int littleBytesToShort(byte[] buf, int offset) {
+		return (
 			((buf[offset]   & 0xFF) << 0) |
 			((buf[offset+1] & 0xFF) << 8)
 			);
-    }
+	}
 
-    /**
-     * Convert big endian signed 16 bits to short.
-     */
-    public static short bigSigned16ToShort(byte[] buf, int offset) {
-        return (short)(
+	/**
+	 * Convert big endian signed 16 bits to short.
+	 */
+	public static short bigSigned16ToShort(byte[] buf, int offset) {
+		return (short)(
 			((buf[offset]   & 0xFF) << 8) |
 			((buf[offset+1] & 0xFF) << 0)
-        	);
-    }
+			);
+	}
 
-    //-------------------------------------------------------
+	//-------------------------------------------------------
 	// Variable byte number conversions.
 	//-------------------------------------------------------
 
-    /**
-     *	Encode an integer in variable 7-bit format.
-     *	The high bit indicates if more bytes are used.
-     *  Return byte size of integer.
-     */
-    public static int intToVarBytes(int v, byte[] buf, int offset) {
-    	int i = offset;
+	/**
+	 *	Encode an integer in variable 7-bit format.
+	 *	The high bit indicates if more bytes are used.
+	 *  Return byte size of integer.
+	 */
+	public static int intToVarBytes(int v, byte[] buf, int offset) {
+		int i = offset;
 
-    	while (i < buf.length && v >= 0x80) {
-    		buf[i++] = (byte)(v | 0x80);
-    		v >>>= 7;
-    	}
+		while (i < buf.length && v >= 0x80) {
+			buf[i++] = (byte)(v | 0x80);
+			v >>>= 7;
+		}
 
-    	if (i < buf.length) {
-    		buf[i++] = (byte)v;
-    		return i - offset;
-    	}
-    	return 0;
-    }
+		if (i < buf.length) {
+			buf[i++] = (byte)v;
+			return i - offset;
+		}
+		return 0;
+	}
 
-    /**
-     *	Decode an integer in variable 7-bit format.
-     *	The high bit indicates if more bytes are used.
-     *  Return value and byte size in array.
-     */
-    public static int[] varBytesToInt(byte[] buf, int offset) {
+	/**
+	 *	Decode an integer in variable 7-bit format.
+	 *	The high bit indicates if more bytes are used.
+	 *  Return value and byte size in array.
+	 */
+	public static int[] varBytesToInt(byte[] buf, int offset) {
 		int i = offset;
 		int val = 0;
 		int shift = 0;
@@ -649,5 +649,5 @@ public final class Buffer {
 		} while ((b & 0x80) != 0);
 
 		return new int[] {val, i - offset};
-    }
+	}
 }

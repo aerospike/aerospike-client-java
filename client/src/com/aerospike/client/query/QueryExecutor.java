@@ -35,7 +35,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	protected final ExecutorService threadPool;
 	private final QueryThread[] threads;
 	private final AtomicInteger completedCount;
-    private final AtomicBoolean done;
+	private final AtomicBoolean done;
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
 
@@ -98,7 +98,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	public final void stopThreads(Exception cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
-	    	exception = cause;
+			exception = cause;
 
 			// Send stop signal to threads.
 			for (QueryThread thread : threads) {
@@ -106,7 +106,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 			}
 			sendCancel();
 		}
-    }
+	}
 
 	@Override
 	public final void checkForException() {

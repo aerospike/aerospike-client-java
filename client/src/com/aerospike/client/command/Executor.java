@@ -89,7 +89,7 @@ public final class Executor {
 	private void stopThreads(Exception cause) {
 		// Ensure executor succeeds or fails exactly once.
 		if (done.compareAndSet(false, true)) {
-	    	exception = cause;
+			exception = cause;
 
 			// Send stop signal to threads.
 			for (ExecutorThread thread : threads) {
@@ -97,7 +97,7 @@ public final class Executor {
 			}
 			notifyCompleted();
 		}
-    }
+	}
 
 	final boolean isDone() {
 		return done.get();
@@ -118,7 +118,7 @@ public final class Executor {
 		super.notify();
 	}
 
-    private final class ExecutorThread implements Runnable {
+	private final class ExecutorThread implements Runnable {
 		private final MultiCommand command;
 
 		public ExecutorThread(MultiCommand command) {

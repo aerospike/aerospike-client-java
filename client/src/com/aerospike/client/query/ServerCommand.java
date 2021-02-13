@@ -53,7 +53,7 @@ public final class ServerCommand extends MultiCommand {
 			byte nameSize = dataBuffer[dataOffset++];
 			int particleBytesSize = (int) (opSize - (4 + nameSize));
 			dataOffset += nameSize + particleBytesSize;
-	    }
+		}
 
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();

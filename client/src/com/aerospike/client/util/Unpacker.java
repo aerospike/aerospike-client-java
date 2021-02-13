@@ -77,7 +77,7 @@ public abstract class Unpacker<T> {
 			return unpackList(count);
 		}
 		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
+			throw new AerospikeException.Serialize(e);
 		}
 	}
 
@@ -139,7 +139,7 @@ public abstract class Unpacker<T> {
 			return unpackMap(count);
 		}
 		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
+			throw new AerospikeException.Serialize(e);
 		}
 	}
 
@@ -429,11 +429,11 @@ public abstract class Unpacker<T> {
 				}
 
 				if (type < 0x80) { // 8 bit combined unsigned integer
-		        	return getLong(type);
+					return getLong(type);
 				}
 
 				if (type >= 0xe0) { // 8 bit combined signed integer
-		        	return getLong(type - 0xe0 - 32);
+					return getLong(type - 0xe0 - 32);
 				}
 				throw new IOException("Unknown unpack type: " + type);
 			}
@@ -469,7 +469,7 @@ public abstract class Unpacker<T> {
 			return unpacker.unpackObject();
 		}
 		catch (Exception e) {
-    		throw new AerospikeException.Serialize(e);
+			throw new AerospikeException.Serialize(e);
 		}
 	}
 

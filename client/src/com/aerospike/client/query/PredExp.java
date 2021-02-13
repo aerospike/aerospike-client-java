@@ -157,7 +157,7 @@ public abstract class PredExp implements Serializable {
 	 * PredExp.recLastUpdate()
 	 * PredExp.integerValue(new GregorianCalendar(2017, 0, 15))
 	 * PredExp.integerGreaterEq()
-     * </pre>
+	 * </pre>
 	 */
 	public static PredExp recLastUpdate() {
 		return new Op(LAST_UPDATE);
@@ -175,7 +175,7 @@ public abstract class PredExp implements Serializable {
 	 * PredExp.integerValue(new GregorianCalendar(2020, 0, 2))
 	 * PredExp.integerLess()
 	 * PredExp.and(2)
-     * </pre>
+	 * </pre>
 	 */
 	public static PredExp recVoidTime() {
 		return new Op(VOID_TIME);

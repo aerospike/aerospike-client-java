@@ -132,7 +132,7 @@ public class Main implements Log.Callback {
 		options.addOption("ct", "connectTimeout", true,
 			"Set initial host connection timeout on node startup in milliseconds. Default: 1000"
 			);
-        options.addOption("k", "keys", true,
+		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
 			"If using an 'insert' workload (detailed below), the client will write this " +
 			"number of keys, starting from value = startkey. Otherwise, the client " +
@@ -321,15 +321,15 @@ public class Main implements Log.Callback {
 			throw new Exception("Unexpected arguments: " + Arrays.toString(extra));
 		}
 
-        if (line.hasOption("async")) {
-        	this.asyncEnabled = true;
-        }
+		if (line.hasOption("async")) {
+			this.asyncEnabled = true;
+		}
 
-    	args.readPolicy = clientPolicy.readPolicyDefault;
-    	args.writePolicy = clientPolicy.writePolicyDefault;
-    	args.batchPolicy = clientPolicy.batchPolicyDefault;
+		args.readPolicy = clientPolicy.readPolicyDefault;
+		args.writePolicy = clientPolicy.writePolicyDefault;
+		args.batchPolicy = clientPolicy.batchPolicyDefault;
 
-    	if (line.hasOption("e")) {
+		if (line.hasOption("e")) {
 			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
 				throw new Exception("Invalid expiration: "+ args.writePolicy.expiration + " It should be >= -1");
@@ -343,7 +343,7 @@ public class Main implements Log.Callback {
 			this.port = 3000;
 		}
 
-        if (line.hasOption("hosts")) {
+		if (line.hasOption("hosts")) {
 			this.hosts = Host.parseHosts(line.getOptionValue("hosts"), this.port);
 		}
 		else {
@@ -359,8 +359,8 @@ public class Main implements Log.Callback {
 			clientPolicy.timeout = Integer.parseInt(line.getOptionValue("connectTimeout"));
 		}
 
-        if (line.hasOption("tls")) {
-        	clientPolicy.tlsPolicy = new TlsPolicy();
+		if (line.hasOption("tls")) {
+			clientPolicy.tlsPolicy = new TlsPolicy();
 
 			if (line.hasOption("tp")) {
 				String s = line.getOptionValue("tp", "");
@@ -380,7 +380,7 @@ public class Main implements Log.Callback {
 			if (line.hasOption("tlsLoginOnly")) {
 				clientPolicy.tlsPolicy.forLoginOnly = true;
 			}
-        }
+		}
 
 		if (line.hasOption("auth")) {
 			clientPolicy.authMode = AuthMode.valueOf(line.getOptionValue("auth", "").toUpperCase());
@@ -746,24 +746,24 @@ public class Main implements Log.Callback {
 			args.debug = true;
 		}
 
-        if (line.hasOption("batchSize")) {
-        	args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
-        }
+		if (line.hasOption("batchSize")) {
+			args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
+		}
 
 		if (line.hasOption("batchThreads")) {
 			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
 		}
 
 		if (line.hasOption("asyncMaxCommands")) {
-        	this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
-        }
+			this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
+		}
 
-        if (line.hasOption("eventLoops")) {
-        	this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
-        }
+		if (line.hasOption("eventLoops")) {
+			this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
+		}
 
-        if (line.hasOption("latency")) {
-        	String latencyString = line.getOptionValue("latency");
+		if (line.hasOption("latency")) {
+			String latencyString = line.getOptionValue("latency");
 			String[] latencyOpts = latencyString.split(",");
 
 			if (latencyOpts.length < 1) {
@@ -825,7 +825,7 @@ public class Main implements Log.Callback {
 					}
 				}
 			}
-        }
+		}
 
 		if (! line.hasOption("random")) {
 			args.setFixedBins();

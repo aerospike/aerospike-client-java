@@ -24,7 +24,7 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 public final class Throttle {
 	private final ReentrantLock lock;
-    private final Condition avail;
+	private final Condition avail;
 	private int available;
 
 	/**
@@ -44,18 +44,18 @@ public final class Throttle {
 	 */
 	public boolean waitForSlot(int count) {
 		try {
-	        final ReentrantLock lock = this.lock;
-	        lock.lockInterruptibly();
-	        try {
-	            while (available < count) {
-	            	avail.await();
-	            }
-	            available -= count;
+			final ReentrantLock lock = this.lock;
+			lock.lockInterruptibly();
+			try {
+				while (available < count) {
+					avail.await();
+				}
+				available -= count;
 				return true;
-	        }
-	        finally {
-	            lock.unlock();
-	        }
+			}
+			finally {
+				lock.unlock();
+			}
 		}
 		catch (InterruptedException ie) {
 			return false;

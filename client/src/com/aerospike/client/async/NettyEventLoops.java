@@ -178,17 +178,17 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		return eventLoopMap.get(eventExecutor);
 	}
 
-   /**
-     * Return array of Aerospike event loops.
-     */
+	/**
+	 * Return array of Aerospike event loops.
+	 */
 	@Override
 	public NettyEventLoop[] getArray() {
 		return eventLoopArray;
 	}
 
-    /**
-     * Return number of event loops in this group.
-     */
+	/**
+	 * Return number of event loops in this group.
+	 */
 	@Override
 	public int getSize() {
 		return eventLoopArray.length;
@@ -213,7 +213,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		if (iter < 0) {
 			iter += eventLoopArray.length;
 		}
-        return eventLoopArray[iter];
+		return eventLoopArray[iter];
 	}
 
 	@Override

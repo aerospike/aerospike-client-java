@@ -126,22 +126,22 @@ public class LatencyManagerAlternate implements LatencyManager {
 		// Print cumulative results.
 		stream.print("  ");
 		stream.print(prefix);
-	    int spaces = 5 - prefix.length();
+		int spaces = 5 - prefix.length();
 
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
+		for (int j = 0; j < spaces; j++) {
+			stream.print(' ');
+		}
 
-	    double sumDouble = (double)sum;
-	    int limit = 1;
+		double sumDouble = (double)sum;
+		int limit = 1;
 
-	    printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
-	    printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
+		printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
+		printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
 
-	    for (int i = 2; i < array.length; i++) {
-	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
-	    }
+		for (int i = 2; i < array.length; i++) {
+			limit <<= bitShift;
+			printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
+		}
 		stream.print(" total(");
 		stream.print(sum);
 		stream.print(')');
@@ -170,22 +170,22 @@ public class LatencyManagerAlternate implements LatencyManager {
 		// Print cumulative results.
 		stream.print("  ");
 		stream.print(prefix);
-	    int spaces = 5 - prefix.length();
+		int spaces = 5 - prefix.length();
 
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
+		for (int j = 0; j < spaces; j++) {
+			stream.print(' ');
+		}
 
-	    double sumDouble = (double)sum;
-	    int limit = 1;
+		double sumDouble = (double)sum;
+		int limit = 1;
 
-	    printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
-	    printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
+		printColumn(stream, limit, sumDouble, buckets[0].header, array[0]);
+		printColumn(stream, limit, sumDouble, buckets[1].header, array[1]);
 
-	    for (int i = 2; i < array.length; i++) {
-	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
-	    }
+		for (int i = 2; i < array.length; i++) {
+			limit <<= bitShift;
+			printColumn(stream, limit, sumDouble, buckets[i].header, array[i]);
+		}
 		stream.print(" total(");
 		stream.print(sum);
 		stream.print(')');
@@ -199,10 +199,10 @@ public class LatencyManagerAlternate implements LatencyManager {
 		stream.print(count);
 		stream.print(':');
 
-	    double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
+		double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
 
-	    stream.print(format.format(percent));
-	    stream.print('%');
+		stream.print(format.format(percent));
+		stream.print('%');
 		stream.print(')');
 	}
 

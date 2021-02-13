@@ -52,10 +52,10 @@ public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 		}
 	}
 
-    public void onSuccess(AsyncConnector ac) {
-    	countConnections++;
+	public void onSuccess(AsyncConnector ac) {
+		countConnections++;
 
-    	if (countConnections < maxConnections) {
+		if (countConnections < maxConnections) {
 			int next = countConnections + maxConcurrent - 1;
 
 			// Determine if a new command needs to be started.
@@ -63,40 +63,40 @@ public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 				// Start new command.
 				ac.execute();
 			}
-    	}
-    	else {
-    		complete();
-    	}
-    }
+		}
+		else {
+			complete();
+		}
+	}
 
-    public void onFailure(AerospikeException e)
-    {
-    	// Connection failed.  Highly unlikely other connections will succeed.
-    	// Abort the process.
-    	if (Log.debugEnabled()) {
-    		Log.debug("Async min connections failed: " + e.getMessage());
-    	}
+	public void onFailure(AerospikeException e)
+	{
+		// Connection failed.  Highly unlikely other connections will succeed.
+		// Abort the process.
+		if (Log.debugEnabled()) {
+			Log.debug("Async min connections failed: " + e.getMessage());
+		}
 		complete();
-    }
+	}
 
-    private void complete() {
+	private void complete() {
 		// Ensure executor succeeds or fails exactly once.
-    	if (done) {
-    		return;
-    	}
+		if (done) {
+			return;
+		}
 		done = true;
 
 		if (monitor != null) {
 			eventLoopComplete(monitor, eventLoopCount);
 		}
-    }
+	}
 
-    public static void eventLoopComplete(Monitor monitor, AtomicInteger eventLoopCount) {
+	public static void eventLoopComplete(Monitor monitor, AtomicInteger eventLoopCount) {
 		// Check if all event loops are done.
 		int count = eventLoopCount.decrementAndGet();
 
-    	if (count == 0) {
+		if (count == 0) {
 			monitor.notifyComplete();
-    	}
-    }
+		}
+	}
 }

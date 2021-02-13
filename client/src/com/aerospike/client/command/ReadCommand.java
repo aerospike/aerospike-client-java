@@ -149,12 +149,12 @@ public class ReadCommand extends SyncCommand {
 		dataOffset += 2;
 
 		if (resultCode == 0) {
-		    if (opCount == 0) {
-		    	// Bin data was not returned.
-		    	record = new Record(null, generation, expiration);
-		    	return;
-		    }
-		    record = parseRecord(opCount, fieldCount, generation, expiration);
+			if (opCount == 0) {
+				// Bin data was not returned.
+				record = new Record(null, generation, expiration);
+				return;
+			}
+			record = parseRecord(opCount, fieldCount, generation, expiration);
 			return;
 		}
 
@@ -193,7 +193,7 @@ public class ReadCommand extends SyncCommand {
 		String ret = (String)record.bins.get("FAILURE");
 
 		if (ret == null) {
-	    	throw new AerospikeException(resultCode);
+			throw new AerospikeException(resultCode);
 		}
 
 		String message;
@@ -206,7 +206,7 @@ public class ReadCommand extends SyncCommand {
 		}
 		catch (Exception e) {
 			// Use generic exception if parse error occurs.
-        	throw new AerospikeException(resultCode, ret);
+			throw new AerospikeException(resultCode, ret);
 		}
 
 		throw new AerospikeException(code, message);
@@ -238,22 +238,22 @@ public class ReadCommand extends SyncCommand {
 			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-	        dataOffset += particleBytesSize;
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 			addBin(bins, name, value);
-	    }
-	    return new Record(bins, generation, expiration);
+		}
+		return new Record(bins, generation, expiration);
 	}
 
-    /*
-     * The function represents mutability on the Record.
-     * The function is overridden in other commands to change
-     * the behaviour of adding/modifying key to the map
-     * @see com.aerospike.client.command.OperateCommand
-     */
-    protected void addBin(Map<String, Object> bins, String name, Object value) {
-        bins.put(name, value);
-    }
+	/*
+	 * The function represents mutability on the Record.
+	 * The function is overridden in other commands to change
+	 * the behaviour of adding/modifying key to the map
+	 * @see com.aerospike.client.command.OperateCommand
+	 */
+	protected void addBin(Map<String, Object> bins, String name, Object value) {
+		bins.put(name, value);
+	}
 
 	public Record getRecord() {
 		return record;

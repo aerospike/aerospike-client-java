@@ -419,7 +419,7 @@ public final class ListExp {
 	 *
 	 * @param returnType	metadata attributes to return. See {@link ListReturnType}
 	 * @param valueType		expected type of return value
-	 * @param rank          rank expression
+	 * @param rank 			rank expression
 	 * @param bin			list bin or list value expression
 	 * @param ctx			optional context path for nested CDT
 	 */

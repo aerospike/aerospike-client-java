@@ -66,8 +66,8 @@ public abstract class Command {
 	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
 	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
 	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
-	public static final int INFO3_SC_READ_TYPE	    = (1 << 6); // See below.
-	public static final int INFO3_SC_READ_RELAX	    = (1 << 7); // See below.
+	public static final int INFO3_SC_READ_TYPE		= (1 << 6); // See below.
+	public static final int INFO3_SC_READ_RELAX		= (1 << 7); // See below.
 
 	// Interpret SC_READ bits in info3.
 	//
@@ -349,7 +349,7 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-	    for (int i = 0; i < max; i++) {
+		for (int i = 0; i < max; i++) {
 			final BatchRead record = records.get(offsets[i]);
 			final Key key = record.key;
 			final String[] binNames = record.binNames;
@@ -363,10 +363,10 @@ public abstract class Command {
 			if (prev != null && prev.key.namespace == key.namespace &&
 				(! policy.sendSetName || prev.key.setName == key.setName) &&
 				prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
-		    	// Can set repeat previous namespace/bin names to save space.
-			    dataOffset++;
-		    }
-		    else {
+				// Can set repeat previous namespace/bin names to save space.
+				dataOffset++;
+			}
+			else {
 				// Estimate full header, namespace and bin names.
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE + 6;
 
@@ -380,7 +380,7 @@ public abstract class Command {
 					}
 				}
 				prev = record;
-		    }
+			}
 		}
 		sizeBuffer();
 
@@ -400,9 +400,9 @@ public abstract class Command {
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
-	    dataOffset += 4;
-	    dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
-	    prev = null;
+		dataOffset += 4;
+		dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
+		prev = null;
 
 		for (int i = 0; i < max; i++) {
 			final int index = offsets[i];
@@ -428,14 +428,14 @@ public abstract class Command {
 			}
 			else {
 				// Write full header, namespace and bin names.
-		    	dataBuffer[dataOffset++] = 0;  // do not repeat
+				dataBuffer[dataOffset++] = 0;  // do not repeat
 
 				if (binNames != null && binNames.length != 0) {
-			    	dataBuffer[dataOffset++] = (byte)readAttr;
+					dataBuffer[dataOffset++] = (byte)readAttr;
 					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-				    dataOffset += 2;
+					dataOffset += 2;
 					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
-				    dataOffset += 2;
+					dataOffset += 2;
 					writeField(key.namespace, FieldType.NAMESPACE);
 
 					if (policy.sendSetName) {
@@ -447,11 +447,11 @@ public abstract class Command {
 					}
 				}
 				else {
-			    	dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
+					dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
 					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-				    dataOffset += 2;
+					dataOffset += 2;
 					Buffer.shortToBytes(0, dataBuffer, dataOffset);
-				    dataOffset += 2;
+					dataOffset += 2;
 					writeField(key.namespace, FieldType.NAMESPACE);
 
 					if (policy.sendSetName) {
@@ -495,31 +495,31 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-	    dataOffset += FIELD_HEADER_SIZE + 5;
+		dataOffset += FIELD_HEADER_SIZE + 5;
 
-	    Key prev = null;
+		Key prev = null;
 
-	    for (int i = 0; i < max; i++) {
-		    Key key = keys[offsets[i]];
+		for (int i = 0; i < max; i++) {
+			Key key = keys[offsets[i]];
 
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-		    if (prev != null && prev.namespace == key.namespace &&
-		       (! policy.sendSetName || prev.setName == key.setName)) {
-		    	// Can set repeat previous namespace/bin names to save space.
-			    dataOffset++;
-		    }
-		    else {
-		    	// Must write full header and namespace/set/bin names.
+			if (prev != null && prev.namespace == key.namespace &&
+				(! policy.sendSetName || prev.setName == key.setName)) {
+				// Can set repeat previous namespace/bin names to save space.
+				dataOffset++;
+			}
+			else {
+				// Must write full header and namespace/set/bin names.
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE + 6;
 
 				if (policy.sendSetName) {
 					dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				}
-			    dataOffset += binNameSize;
+				dataOffset += binNameSize;
 				prev = key;
-		    }
+			}
 		}
 
 		sizeBuffer();
@@ -538,35 +538,35 @@ public abstract class Command {
 		writeFieldHeader(0, policy.sendSetName? FieldType.BATCH_INDEX_WITH_SET : FieldType.BATCH_INDEX);  // Need to update size at end
 
 		Buffer.intToBytes(max, dataBuffer, dataOffset);
-	    dataOffset += 4;
-	    dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
+		dataOffset += 4;
+		dataBuffer[dataOffset++] = (policy.allowInline)? (byte)1 : (byte)0;
 
-	    prev = null;
+		prev = null;
 
 		for (int i = 0; i < max; i++) {
 			int index = offsets[i];
 			Buffer.intToBytes(index, dataBuffer, dataOffset);
-		    dataOffset += 4;
+			dataOffset += 4;
 
-		    Key key = keys[index];
+			Key key = keys[index];
 			byte[] digest = key.digest;
-		    System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
-		    dataOffset += digest.length;
+			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			dataOffset += digest.length;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-		    if (prev != null && prev.namespace == key.namespace &&
-		       (! policy.sendSetName || prev.setName == key.setName)) {
-		    	// Can set repeat previous namespace/bin names to save space.
+			if (prev != null && prev.namespace == key.namespace &&
+				(! policy.sendSetName || prev.setName == key.setName)) {
+				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = 1;  // repeat
-		    }
-		    else {
+			}
+			else {
 				// Write full header, namespace and bin names.
-		    	dataBuffer[dataOffset++] = 0;  // do not repeat
-		    	dataBuffer[dataOffset++] = (byte)readAttr;
+				dataBuffer[dataOffset++] = 0;  // do not repeat
+				dataBuffer[dataOffset++] = (byte)readAttr;
 				Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-			    dataOffset += 2;
+				dataOffset += 2;
 				Buffer.shortToBytes(operationCount, dataBuffer, dataOffset);
-			    dataOffset += 2;
+				dataOffset += 2;
 				writeField(key.namespace, FieldType.NAMESPACE);
 
 				if (policy.sendSetName) {
@@ -574,12 +574,12 @@ public abstract class Command {
 				}
 
 				if (binNames != null) {
-			    	for (String binName : binNames) {
+					for (String binName : binNames) {
 						writeOperation(binName, Operation.Type.READ);
 					}
 				}
 				prev = key;
-		    }
+			}
 		}
 
 		// Write real field size.
@@ -915,17 +915,17 @@ public abstract class Command {
 
 			if (type != IndexCollectionType.DEFAULT) {
 				writeFieldHeader(1, FieldType.INDEX_TYPE);
-		        dataBuffer[dataOffset++] = (byte)type.ordinal();
+				dataBuffer[dataOffset++] = (byte)type.ordinal();
 			}
 
 			writeFieldHeader(filterSize, FieldType.INDEX_RANGE);
-	        dataBuffer[dataOffset++] = (byte)1;
+			dataBuffer[dataOffset++] = (byte)1;
 			dataOffset = filter.write(dataBuffer, dataOffset);
 
 			// Query bin names are specified as a field (Scan bin names are specified later as operations)
 			if (binNames != null && binNames.length > 0) {
 				writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-		        dataBuffer[dataOffset++] = (byte)binNames.length;
+				dataBuffer[dataOffset++] = (byte)binNames.length;
 
 				for (String binName : binNames) {
 					int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
@@ -1060,7 +1060,7 @@ public abstract class Command {
 	 * Header write for write commands.
 	 */
 	private final void writeHeaderWrite(WritePolicy policy, int writeAttr, int fieldCount, int operationCount) {
-        // Set flags.
+		// Set flags.
 		int generation = 0;
 		int readAttr = 0;
 		int infoAttr = 0;
@@ -1069,7 +1069,7 @@ public abstract class Command {
 		case UPDATE:
 			break;
 		case UPDATE_ONLY:
-    		infoAttr |= Command.INFO3_UPDATE_ONLY;
+			infoAttr |= Command.INFO3_UPDATE_ONLY;
 			break;
 		case REPLACE:
 			infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
@@ -1078,7 +1078,7 @@ public abstract class Command {
 			infoAttr |= Command.INFO3_REPLACE_ONLY;
 			break;
 		case CREATE_ONLY:
-    		writeAttr |= Command.INFO2_CREATE_ONLY;
+			writeAttr |= Command.INFO2_CREATE_ONLY;
 			break;
 		}
 
@@ -1086,17 +1086,17 @@ public abstract class Command {
 		case NONE:
 			break;
 		case EXPECT_GEN_EQUAL:
-    		generation = policy.generation;
-    		writeAttr |= Command.INFO2_GENERATION;
+			generation = policy.generation;
+			writeAttr |= Command.INFO2_GENERATION;
 			break;
 		case EXPECT_GEN_GT:
-    		generation = policy.generation;
-    		writeAttr |= Command.INFO2_GENERATION_GT;
+			generation = policy.generation;
+			writeAttr |= Command.INFO2_GENERATION_GT;
 			break;
 		}
 
 		if (policy.commitLevel == CommitLevel.COMMIT_MASTER) {
-    		infoAttr |= Command.INFO3_COMMIT_MASTER;
+			infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
 
 		if (policy.durableDelete) {
@@ -1107,7 +1107,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_XDR;
 		}
 
-    	// Write all header data except total size which must be written last.
+		// Write all header data except total size which must be written last.
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
@@ -1126,7 +1126,7 @@ public abstract class Command {
 	 * Header write for operate command.
 	 */
 	private final void writeHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
-        // Set flags.
+		// Set flags.
 		int generation = 0;
 		int infoAttr = 0;
 
@@ -1134,7 +1134,7 @@ public abstract class Command {
 		case UPDATE:
 			break;
 		case UPDATE_ONLY:
-    		infoAttr |= Command.INFO3_UPDATE_ONLY;
+			infoAttr |= Command.INFO3_UPDATE_ONLY;
 			break;
 		case REPLACE:
 			infoAttr |= Command.INFO3_CREATE_OR_REPLACE;
@@ -1143,7 +1143,7 @@ public abstract class Command {
 			infoAttr |= Command.INFO3_REPLACE_ONLY;
 			break;
 		case CREATE_ONLY:
-    		writeAttr |= Command.INFO2_CREATE_ONLY;
+			writeAttr |= Command.INFO2_CREATE_ONLY;
 			break;
 		}
 
@@ -1151,17 +1151,17 @@ public abstract class Command {
 		case NONE:
 			break;
 		case EXPECT_GEN_EQUAL:
-    		generation = policy.generation;
-    		writeAttr |= Command.INFO2_GENERATION;
+			generation = policy.generation;
+			writeAttr |= Command.INFO2_GENERATION;
 			break;
 		case EXPECT_GEN_GT:
-    		generation = policy.generation;
-    		writeAttr |= Command.INFO2_GENERATION_GT;
+			generation = policy.generation;
+			writeAttr |= Command.INFO2_GENERATION_GT;
 			break;
 		}
 
 		if (policy.commitLevel == CommitLevel.COMMIT_MASTER) {
-    		infoAttr |= Command.INFO3_COMMIT_MASTER;
+			infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
 
 		if (policy.durableDelete) {
@@ -1194,7 +1194,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_COMPRESS_RESPONSE;
 		}
 
-    	// Write all header data except total size which must be written last.
+		// Write all header data except total size which must be written last.
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
@@ -1309,56 +1309,56 @@ public abstract class Command {
 	}
 
 	private final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
-        int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-        int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+		int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+		int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
-        Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
+		Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
 		dataOffset += 4;
-        dataBuffer[dataOffset++] = (byte) operation.protocolType;
-        dataBuffer[dataOffset++] = (byte) bin.value.getType();
-        dataBuffer[dataOffset++] = (byte) 0;
-        dataBuffer[dataOffset++] = (byte) nameLength;
-        dataOffset += nameLength + valueLength;
+		dataBuffer[dataOffset++] = (byte) operation.protocolType;
+		dataBuffer[dataOffset++] = (byte) bin.value.getType();
+		dataBuffer[dataOffset++] = (byte) 0;
+		dataBuffer[dataOffset++] = (byte) nameLength;
+		dataOffset += nameLength + valueLength;
 	}
 
 	private final void writeOperation(Operation operation) throws AerospikeException {
-        int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
-        int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
+		int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+		int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
-        Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
+		Buffer.intToBytes(nameLength + valueLength + 4, dataBuffer, dataOffset);
 		dataOffset += 4;
-        dataBuffer[dataOffset++] = (byte) operation.type.protocolType;
-        dataBuffer[dataOffset++] = (byte) operation.value.getType();
-        dataBuffer[dataOffset++] = (byte) 0;
-        dataBuffer[dataOffset++] = (byte) nameLength;
-        dataOffset += nameLength + valueLength;
+		dataBuffer[dataOffset++] = (byte) operation.type.protocolType;
+		dataBuffer[dataOffset++] = (byte) operation.value.getType();
+		dataBuffer[dataOffset++] = (byte) 0;
+		dataBuffer[dataOffset++] = (byte) nameLength;
+		dataOffset += nameLength + valueLength;
 	}
 
 	private final void writeOperation(String name, Operation.Type operation) {
-        int nameLength = Buffer.stringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
+		int nameLength = Buffer.stringToUtf8(name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 
-        Buffer.intToBytes(nameLength + 4, dataBuffer, dataOffset);
+		Buffer.intToBytes(nameLength + 4, dataBuffer, dataOffset);
 		dataOffset += 4;
-        dataBuffer[dataOffset++] = (byte) operation.protocolType;
-        dataBuffer[dataOffset++] = (byte) 0;
-        dataBuffer[dataOffset++] = (byte) 0;
-        dataBuffer[dataOffset++] = (byte) nameLength;
-        dataOffset += nameLength;
+		dataBuffer[dataOffset++] = (byte) operation.protocolType;
+		dataBuffer[dataOffset++] = (byte) 0;
+		dataBuffer[dataOffset++] = (byte) 0;
+		dataBuffer[dataOffset++] = (byte) nameLength;
+		dataOffset += nameLength;
 	}
 
 	private final void writeOperation(Operation.Type operation) {
-        Buffer.intToBytes(4, dataBuffer, dataOffset);
+		Buffer.intToBytes(4, dataBuffer, dataOffset);
 		dataOffset += 4;
-        dataBuffer[dataOffset++] = (byte) operation.protocolType;
-        dataBuffer[dataOffset++] = 0;
-        dataBuffer[dataOffset++] = 0;
-        dataBuffer[dataOffset++] = 0;
+		dataBuffer[dataOffset++] = (byte) operation.protocolType;
+		dataBuffer[dataOffset++] = 0;
+		dataBuffer[dataOffset++] = 0;
+		dataBuffer[dataOffset++] = 0;
 	}
 
 	private final void writeField(Value value, int type) throws AerospikeException {
 		int offset = dataOffset + FIELD_HEADER_SIZE;
 		dataBuffer[offset++] = (byte)value.getType();
-	    int len = value.write(dataBuffer, offset) + 1;
+		int len = value.write(dataBuffer, offset) + 1;
 		writeFieldHeader(len, type);
 		dataOffset += len;
 	}

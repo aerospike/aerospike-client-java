@@ -267,7 +267,7 @@ public abstract class MultiCommand extends SyncCommand {
 
 	protected final Record parseRecord() {
 		if (opCount <= 0) {
-		    return new Record(null, generation, expiration);
+			return new Record(null, generation, expiration);
 		}
 
 		Map<String,Object> bins = new LinkedHashMap<>();
@@ -280,11 +280,11 @@ public abstract class MultiCommand extends SyncCommand {
 			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-	        dataOffset += particleBytesSize;
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 			bins.put(name, value);
-	    }
-	    return new Record(bins, generation, expiration);
+		}
+		return new Record(bins, generation, expiration);
 	}
 
 	public void stop() {

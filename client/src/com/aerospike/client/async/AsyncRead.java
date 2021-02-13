@@ -76,17 +76,17 @@ public class AsyncRead extends AsyncCommand {
 		dataOffset += Command.MSG_REMAINING_HEADER_SIZE;
 
 		if (resultCode == 0) {
-	        if (opCount == 0) {
-	        	// Bin data was not returned.
-	        	record = new Record(null, generation, expiration);
-	        	return true;
-	        }
-	        record = parseRecord(opCount, fieldCount, generation, expiration);
+			if (opCount == 0) {
+				// Bin data was not returned.
+				record = new Record(null, generation, expiration);
+				return true;
+			}
+			record = parseRecord(opCount, fieldCount, generation, expiration);
 			return true;
 		}
 
 		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-    		handleNotFound(resultCode);
+			handleNotFound(resultCode);
 			return true;
 		}
 
@@ -97,13 +97,13 @@ public class AsyncRead extends AsyncCommand {
 			return true;
 		}
 
-    	if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
 			record = parseRecord(opCount, fieldCount, generation, expiration);
 			handleUdfError(resultCode);
 			return true;
-    	}
+		}
 
-    	throw new AerospikeException(resultCode);
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override
@@ -120,7 +120,7 @@ public class AsyncRead extends AsyncCommand {
 		String ret = (String)record.bins.get("FAILURE");
 
 		if (ret == null) {
-	    	throw new AerospikeException(resultCode);
+			throw new AerospikeException(resultCode);
 		}
 
 		String message;
@@ -133,7 +133,7 @@ public class AsyncRead extends AsyncCommand {
 		}
 		catch (Exception e) {
 			// Use generic exception if parse error occurs.
-        	throw new AerospikeException(resultCode, ret);
+			throw new AerospikeException(resultCode, ret);
 		}
 
 		throw new AerospikeException(code, message);
@@ -165,11 +165,11 @@ public class AsyncRead extends AsyncCommand {
 			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-	        dataOffset += particleBytesSize;
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
 			addBin(bins, name, value);
-	    }
-	    return new Record(bins, generation, expiration);
+		}
+		return new Record(bins, generation, expiration);
 	}
 
 	protected void addBin(Map<String,Object> bins, String name, Object value) {

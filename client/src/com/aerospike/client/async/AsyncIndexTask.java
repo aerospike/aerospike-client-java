@@ -62,11 +62,11 @@ public class AsyncIndexTask {
 			@Override
 			public void onSuccess(Map<String, String> map) {
 				try {
-				    int status = parseStatusResponse(command, map.values().iterator().next(), isCreate);
-				    listener.onSuccess(status);
+					int status = parseStatusResponse(command, map.values().iterator().next(), isCreate);
+					listener.onSuccess(status);
 				}
 				catch (AerospikeException ae) {
-				    listener.onFailure(ae);
+					listener.onFailure(ae);
 				}
 			}
 

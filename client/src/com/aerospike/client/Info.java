@@ -218,42 +218,42 @@ public final class Info {
 		}
 	}
 
-    /**
-     * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
-     * Input format: 1234
-     */
+	/**
+	 * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
+	 * Input format: 1234
+	 */
 	public int parseInt() {
 		int begin = offset;
 		int end = offset;
 		byte b;
 
-    	// Skip to end of integer.
-    	while (offset < length) {
+		// Skip to end of integer.
+		while (offset < length) {
 			b = buffer[offset];
 
 			if (b < 48 || b > 57) {
 				end = offset;
-    			break;
+				break;
 			}
-    		offset++;
-    	}
+			offset++;
+		}
 
-    	// Convert digits into an integer.
-    	return Buffer.utf8DigitsToInt(buffer, begin, end);
+		// Convert digits into an integer.
+		return Buffer.utf8DigitsToInt(buffer, begin, end);
 	}
 
 	public String parseString(char stop) {
 		int begin = offset;
 		byte b;
 
-    	while (offset < length) {
+		while (offset < length) {
 			b = buffer[offset];
 
-    		if (b == stop) {
-    			break;
-    		}
-    		offset++;
-    	}
+			if (b == stop) {
+				break;
+			}
+			offset++;
+		}
 		return Buffer.utf8ToString(buffer, begin, offset - begin);
 	}
 
@@ -261,14 +261,14 @@ public final class Info {
 		int begin = offset;
 		byte b;
 
-    	while (offset < length) {
+		while (offset < length) {
 			b = buffer[offset];
 
-    		if (b == stop1 || b == stop2 || b == stop3) {
-    			break;
-    		}
-    		offset++;
-    	}
+			if (b == stop1 || b == stop2 || b == stop3) {
+				break;
+			}
+			offset++;
+		}
 		return Buffer.utf8ToString(buffer, begin, offset - begin);
 	}
 

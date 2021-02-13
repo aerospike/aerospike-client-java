@@ -89,7 +89,7 @@ public final class RandomShift {
 			int n = Math.min(len - i, 8);
 
 			for (int j = 0; j < n; j++) {
-                bytes[i++] = (byte)r;
+				bytes[i++] = (byte)r;
 				r >>= 8;
 			}
 		}

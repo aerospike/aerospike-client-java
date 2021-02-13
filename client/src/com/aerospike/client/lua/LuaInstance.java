@@ -146,8 +146,8 @@ public final class LuaInstance {
 
 		switch (type) {
 		case ParticleType.STRING:
-	        byte[] copy = new byte[len];
-	        System.arraycopy(buf, offset, copy, 0, len);
+			byte[] copy = new byte[len];
+			System.arraycopy(buf, offset, copy, 0, len);
 			return LuaString.valueOf(copy, 0, len);
 
 		case ParticleType.INTEGER:
@@ -164,8 +164,8 @@ public final class LuaInstance {
 			return LuaDouble.valueOf(Buffer.bytesToDouble(buf, offset));
 
 		case ParticleType.BLOB:
-	        byte[] blob = new byte[len];
-	        System.arraycopy(buf, offset, blob, 0, len);
+			byte[] blob = new byte[len];
+			System.arraycopy(buf, offset, blob, 0, len);
 			return new LuaBytes(this, blob);
 
 		case ParticleType.JBLOB:
