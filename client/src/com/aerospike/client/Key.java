@@ -286,6 +286,12 @@ public final class Key {
 	 */
 	@Override
 	public boolean equals(Object obj) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null || getClass() != obj.getClass()) {
+			return false;
+		}
 		Key other = (Key) obj;
 
 		if (! Arrays.equals(digest, other.digest))

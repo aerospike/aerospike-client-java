@@ -73,11 +73,14 @@ public final class Host {
 
 	@Override
 	public boolean equals(Object obj) {
-		// Ignore tlsName in default equality comparison.
-		if (obj == null) {
+		if (this == obj) {
+			return true;
+		}
+		if (obj == null || getClass() != obj.getClass()) {
 			return false;
 		}
 		Host other = (Host) obj;
+		// Ignore tlsName in default equality comparison.
 		return this.name.equals(other.name) && this.port == other.port;
 	}
 
@@ -125,7 +128,7 @@ public final class Host {
 	private static class HostParser {
 		private final String str;
 		private int offset;
-		private int length;
+		private final int length;
 		private char c;
 
 		private HostParser(String str) {
