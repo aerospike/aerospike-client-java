@@ -180,12 +180,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 					usingSocketTimeout = true;
 					deadline = socketDeadline;
 				}
-				else {
-					deadline = totalDeadline;
-				}
-			}
-			else {
-				deadline = totalDeadline;
 			}
 		}
 		else if (command.socketTimeout > 0) {
