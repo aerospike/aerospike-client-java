@@ -25,7 +25,14 @@ import com.aerospike.client.cluster.Partition;
  * Partition filter used in scan/query.
  */
 public final class PartitionFilter implements Serializable {
-	private static final long serialVersionUID = 2L;
+	private static final long serialVersionUID = 3L;
+
+	/**
+	 * Read all partitions.
+	 */
+	public static PartitionFilter all() {
+		return new PartitionFilter(0, 4096);
+	}
 
 	/**
 	 * Filter by partition id.
@@ -59,6 +66,8 @@ public final class PartitionFilter implements Serializable {
 	final int begin;
 	final int count;
 	final byte[] digest;
+	PartitionStatus[] partitions; // Initialized in PartitionTracker.
+	boolean done;
 
 	private PartitionFilter(int begin, int count) {
 		this.begin = begin;
@@ -70,5 +79,14 @@ public final class PartitionFilter implements Serializable {
 		this.begin = Partition.getPartitionId(digest);
 		this.count = 1;
 		this.digest = digest;
+	}
+
+	/**
+	 * If using {@link com.aerospike.client.policy.ScanPolicy#maxRecords} or
+	 * {@link com.aerospike.client.policy.QueryPolicy#maxRecords},
+	 * did previous paginated scans with this partition filter instance return all records?
+	 */
+	public boolean isDone() {
+		return done;
 	}
 }

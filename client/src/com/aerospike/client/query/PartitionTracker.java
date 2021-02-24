@@ -34,11 +34,12 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 
 public final class PartitionTracker {
-	private final PartitionStatus[] partitionsAll;
+	private final PartitionStatus[] partitions;
 	private final int partitionsCapacity;
 	private final int partitionBegin;
 	private final int nodeCapacity;
 	private final Node nodeFilter;
+	private final PartitionFilter partitionFilter;
 	private List<NodePartitions> nodePartitionsList;
 	private long maxRecords;
 	private int sleepBetweenRetries;
@@ -61,12 +62,14 @@ public final class PartitionTracker {
 		this.partitionBegin = 0;
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
+		this.partitionFilter = null;
 
 		// Create initial partition capacity for each node as average + 25%.
 		int ppn = Node.PARTITIONS / nodes.length;
 		ppn += ppn >>> 2;
 		this.partitionsCapacity = ppn;
-		this.partitionsAll = init(policy, Node.PARTITIONS, null);
+		this.partitions = initPartitions(Node.PARTITIONS, null);
+		initTimeout(policy);
 	}
 
 	public PartitionTracker(ScanPolicy policy, Node nodeFilter) {
@@ -83,8 +86,10 @@ public final class PartitionTracker {
 		this.partitionBegin = 0;
 		this.nodeCapacity = 1;
 		this.nodeFilter = nodeFilter;
+		this.partitionFilter = null;
 		this.partitionsCapacity = Node.PARTITIONS;
-		this.partitionsAll = init(policy, Node.PARTITIONS, null);
+		this.partitions = initPartitions(Node.PARTITIONS, null);
+		initTimeout(policy);
 	}
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter) {
@@ -119,10 +124,21 @@ public final class PartitionTracker {
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
 		this.partitionsCapacity = filter.count;
-		this.partitionsAll = init(policy, filter.count, filter.digest);
+
+		if (filter.partitions == null) {
+			filter.partitions = initPartitions(filter.count, filter.digest);
+		}
+		else {
+			for (PartitionStatus part : filter.partitions) {
+				part.done = false;
+			}
+		}
+		this.partitions = filter.partitions;
+		this.partitionFilter = filter;
+		initTimeout(policy);
 	}
 
-	private PartitionStatus[] init(Policy policy, int partitionCount, byte[] digest) {
+	private PartitionStatus[] initPartitions(int partitionCount, byte[] digest) {
 		PartitionStatus[] partsAll = new PartitionStatus[partitionCount];
 
 		for (int i = 0; i < partitionCount; i++) {
@@ -132,7 +148,10 @@ public final class PartitionTracker {
 		if (digest != null) {
 			partsAll[0].digest = digest;
 		}
+		return partsAll;
+	}
 
+	private void initTimeout(Policy policy) {
 		sleepBetweenRetries = policy.sleepBetweenRetries;
 		socketTimeout = policy.socketTimeout;
 		totalTimeout = policy.totalTimeout;
@@ -144,7 +163,6 @@ public final class PartitionTracker {
 				socketTimeout = totalTimeout;
 			}
 		}
-		return partsAll;
 	}
 
 	public void setSleepBetweenRetries(int sleepBetweenRetries) {
@@ -156,15 +174,15 @@ public final class PartitionTracker {
 		List<NodePartitions> list = new ArrayList<NodePartitions>(nodeCapacity);
 
 		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(namespace);
+		Partitions parts = map.get(namespace);
 
-		if (partitions == null) {
+		if (parts == null) {
 			throw new AerospikeException.InvalidNamespace(namespace, map.size());
 		}
 
-		AtomicReferenceArray<Node> master = partitions.replicas[0];
+		AtomicReferenceArray<Node> master = parts.replicas[0];
 
-		for (PartitionStatus part : partitionsAll) {
+		for (PartitionStatus part : partitions) {
 			if (! part.done) {
 				Node node = master.get(part.id);
 
@@ -225,13 +243,13 @@ public final class PartitionTracker {
 	}
 
 	public void partitionDone(NodePartitions nodePartitions, int partitionId) {
-		partitionsAll[partitionId - partitionBegin].done = true;
+		partitions[partitionId - partitionBegin].done = true;
 		nodePartitions.partsReceived++;
 	}
 
 	public void setDigest(NodePartitions nodePartitions, Key key) {
 		int partitionId = Partition.getPartitionId(key.digest);
-		partitionsAll[partitionId - partitionBegin].digest = key.digest;
+		partitions[partitionId - partitionBegin].digest = key.digest;
 		nodePartitions.recordCount++;
 	}
 
@@ -248,7 +266,14 @@ public final class PartitionTracker {
 			//	" partsReceived=" + np.partsReceived + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 		}
 
-		if (partsReceived >= partsRequested || (maxRecords > 0 && recordCount >= maxRecords)) {
+		if (partsReceived >= partsRequested) {
+			if (partitionFilter != null && recordCount == 0) {
+				partitionFilter.done = true;
+			}
+			return true;
+		}
+
+		if (maxRecords > 0 && recordCount >= maxRecords) {
 			return true;
 		}
 
@@ -323,16 +348,6 @@ public final class PartitionTracker {
 				partsPartial.add(part);
 			}
 			partsRequested++;
-		}
-	}
-
-	public static final class PartitionStatus {
-		public byte[] digest;
-		public final int id;
-		public boolean done;
-
-		public PartitionStatus(int id) {
-			this.id = id;
 		}
 	}
 }

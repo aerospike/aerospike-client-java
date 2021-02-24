@@ -55,7 +55,10 @@ public class Main extends JPanel {
 		"DeleteBin",
 		"ListMap",
 		"Operate",
+		"OperateBit",
 		"OperateList",
+		"OperateMap",
+		"ScanPage",
 		"ScanParallel",
 		"ScanSeries",
 		"UserDefinedFunction",
@@ -74,6 +77,7 @@ public class Main extends JPanel {
 		"AsyncBatch",
 		"AsyncQuery",
 		"AsyncScan",
+		"AsyncScanPage",
 		"AsyncUserDefinedFunction"
 	};
 	public static String[] getAllExampleNames() { return ExampleNames; }
