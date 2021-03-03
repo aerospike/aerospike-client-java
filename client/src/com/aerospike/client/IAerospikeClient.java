@@ -159,7 +159,7 @@ public interface IAerospikeClient extends Closeable {
 	 * handled when the record already exists.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -197,7 +197,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This call only works for string values.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -231,7 +231,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This call only works for string values.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -269,7 +269,7 @@ public interface IAerospikeClient extends Closeable {
 	 * This call only works for integer values.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -303,7 +303,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy specifies the transaction timeout.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -356,7 +356,7 @@ public interface IAerospikeClient extends Closeable {
 	 * Fail if the record does not exist.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -389,7 +389,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy can be used to specify timeouts.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -423,7 +423,7 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					unique record identifiers
@@ -443,7 +443,7 @@ public interface IAerospikeClient extends Closeable {
 	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					unique record identifiers
@@ -476,7 +476,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy can be used to specify timeouts.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -506,7 +506,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy can be used to specify timeouts.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -536,7 +536,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The policy can be used to specify timeouts.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -579,7 +579,7 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
@@ -603,7 +603,7 @@ public interface IAerospikeClient extends Closeable {
 	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
@@ -641,7 +641,7 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -663,7 +663,7 @@ public interface IAerospikeClient extends Closeable {
 	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -701,7 +701,7 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -724,7 +724,7 @@ public interface IAerospikeClient extends Closeable {
 	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -762,7 +762,7 @@ public interface IAerospikeClient extends Closeable {
 	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -784,7 +784,7 @@ public interface IAerospikeClient extends Closeable {
 	 * be processed.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param keys					array of unique record identifiers
@@ -828,7 +828,7 @@ public interface IAerospikeClient extends Closeable {
 	 * MapOperation) can be performed in same call.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -869,7 +869,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -939,7 +939,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				scan configuration parameters, pass in null for defaults
 	 * @param partitionFilter		filter on a subset of data partitions
@@ -1058,7 +1058,7 @@ public interface IAerospikeClient extends Closeable {
 	 * {@code udf file = <server udf dir>/<package name>.lua}
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results, pass in null for fire and forget
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -1149,7 +1149,7 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
@@ -1196,7 +1196,7 @@ public interface IAerospikeClient extends Closeable {
 	 * Each record result is returned in separate onRecord() calls.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query filter. Statement instance is not suitable for
@@ -1331,7 +1331,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1379,7 +1379,7 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param namespace				namespace - equivalent to database name
@@ -1411,7 +1411,7 @@ public interface IAerospikeClient extends Closeable {
 	 * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be choosen by round-robin.
+	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				info configuration parameters, pass in null for defaults
 	 * @param node					server node to execute command, pass in null for random node
