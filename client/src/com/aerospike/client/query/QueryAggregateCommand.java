@@ -73,12 +73,12 @@ public final class QueryAggregateCommand extends MultiCommand {
 		String name = Buffer.utf8ToString(dataBuffer, dataOffset, nameSize);
 		dataOffset += nameSize;
 
-		int particleBytesSize = (int) (opSize - (4 + nameSize));
+		int particleBytesSize = opSize - (4 + nameSize);
 
 		if (! name.equals("SUCCESS")) {
 			if (name.equals("FAILURE")) {
 				Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-				throw new AerospikeException(ResultCode.QUERY_GENERIC, value.toString());
+				throw new AerospikeException(ResultCode.QUERY_GENERIC, value != null ? value.toString() : null);
 			}
 			else {
 				throw new AerospikeException(ResultCode.PARSE_ERROR, "Query aggregate expected bin name SUCCESS.  Received " + name);
