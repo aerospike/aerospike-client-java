@@ -16,6 +16,8 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import org.junit.Test;
@@ -59,5 +61,26 @@ public class TestPutGet extends TestSync {
 		if (record.generation == 0) {
 			fail("Invalid record header: generation=" + record.generation + " expiration=" + record.expiration);
 		}
+	}
+
+	@Test
+	public void putGetBool() {
+		Key key = new Key(args.namespace, args.set, "pgb");
+		Bin bin1 = new Bin("bin1", false);
+		Bin bin2 = new Bin("bin2", true);
+		Bin bin3 = new Bin("bin3", 0);
+		Bin bin4 = new Bin("bin4", 1);
+
+		client.put(null, key, bin1, bin2, bin3, bin4);
+
+		Record record = client.get(null, key);
+		boolean b = record.getBoolean(bin1.name);
+		assertFalse(b);
+		b = record.getBoolean(bin2.name);
+		assertTrue(b);
+		b = record.getBoolean(bin3.name);
+		assertFalse(b);
+		b = record.getBoolean(bin4.name);
+		assertTrue(b);
 	}
 }
