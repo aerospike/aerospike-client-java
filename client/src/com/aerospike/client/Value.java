@@ -247,6 +247,10 @@ public abstract class Value {
         	return new StringValue(((Enum<?>)value).toString());
 		}
 
+		if (value instanceof Enum<?>) {
+		return new StringValue(value.toString());
+		}
+
 		if (value instanceof List<?>) {
 			return new ListValue((List<?>)value);
 		}
