@@ -24,14 +24,14 @@ import com.aerospike.client.policy.TlsPolicy;
  * Aerospike event loops interface.
  */
 public interface EventLoops extends Closeable {
-    /**
-     * Return array of Aerospike event loops.
-     */
+	/**
+	 * Return array of Aerospike event loops.
+	 */
 	public EventLoop[] getArray();
 
-    /**
-     * Return number of event loops in this group.
-     */
+	/**
+	 * Return number of event loops in this group.
+	 */
 	public int getSize();
 
 	/**

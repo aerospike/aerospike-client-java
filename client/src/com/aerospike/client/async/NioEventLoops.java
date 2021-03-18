@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 public final class NioEventLoops implements EventLoops {
 
 	final NioEventLoop[] eventLoops;
-    private int eventIter;
+	private int eventIter;
 
 	/**
 	 * Create direct NIO event loops, one per CPU core.
@@ -87,9 +87,9 @@ public final class NioEventLoops implements EventLoops {
 				eventLoops[i] = new NioEventLoop(policy, provider, i, daemon, poolName);
 			}
 			catch (IOException ioe) {
-                for (int j = 0; j < i; j++) {
-                	eventLoops[j].close();
-                }
+				for (int j = 0; j < i; j++) {
+					eventLoops[j].close();
+				}
 				throw new AerospikeException("Failed to construct event loop: " + Util.getErrorMessage(ioe));
 			}
 		}
@@ -107,16 +107,16 @@ public final class NioEventLoops implements EventLoops {
 	}
 
 	/**
-     * Return array of event loops.
-     */
+	 * Return array of event loops.
+	 */
 	@Override
 	public NioEventLoop[] getArray() {
 		return eventLoops;
 	}
 
-    /**
-     * Return number of event loops in this group.
-     */
+	/**
+	 * Return number of event loops in this group.
+	 */
 	@Override
 	public int getSize() {
 		return eventLoops.length;
@@ -141,7 +141,7 @@ public final class NioEventLoops implements EventLoops {
 		if (iter < 0) {
 			iter += eventLoops.length;
 		}
-        return eventLoops[iter];
+		return eventLoops[iter];
 	}
 
 	/**

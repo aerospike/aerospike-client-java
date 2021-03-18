@@ -91,10 +91,10 @@ public class Batch extends Example {
 		for (int i = 0; i < existsArray.length; i++) {
 			Key key = keys[i];
 			boolean exists = existsArray[i];
-            console.info("Record: ns=%s set=%s key=%s exists=%s",
-            	key.namespace, key.setName, key.userKey, exists);
-        }
-    }
+			console.info("Record: ns=%s set=%s key=%s exists=%s",
+				key.namespace, key.setName, key.userKey, exists);
+		}
+	}
 
 	/**
 	 * Read records in one batch.
@@ -124,14 +124,14 @@ public class Batch extends Example {
 				level = Level.INFO;
 				value = record.getValue(binName);
 			}
-	        console.write(level, "Record: ns=%s set=%s key=%s bin=%s value=%s",
-	            key.namespace, key.setName, key.userKey, binName, value);
-        }
+			console.write(level, "Record: ns=%s set=%s key=%s bin=%s value=%s",
+				key.namespace, key.setName, key.userKey, binName, value);
+		}
 
 		if (records.length != size) {
-        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
+			console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 		}
-    }
+	}
 
 	/**
 	 * Read record header data in one batch.
@@ -162,14 +162,14 @@ public class Batch extends Example {
 				generation = record.generation;
 				expiration = record.expiration;
 			}
-	        console.write(level, "Record: ns=%s set=%s key=%s generation=%d expiration=%d",
-	            key.namespace, key.setName, key.userKey, generation, expiration);
-        }
+			console.write(level, "Record: ns=%s set=%s key=%s generation=%d expiration=%d",
+				key.namespace, key.setName, key.userKey, generation, expiration);
+		}
 
 		if (records.length != size) {
-        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
+			console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 		}
-    }
+	}
 
 	/**
 	 * Read records with varying namespaces, bin names and read types in one batch.
@@ -222,5 +222,5 @@ public class Batch extends Example {
 		if (found != 8) {
 			console.error("Records found mismatch. Expected %d. Received %d.", 8, found);
 		}
-    }
+	}
 }

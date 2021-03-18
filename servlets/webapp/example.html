@@ -112,52 +112,52 @@ function getCoreParams()
 	retObj["namespace"]  = paramForm.elements["namespace"].value;
 	retObj["set"]        = paramForm.elements["set"].value;
 	retObj["key"]        = paramForm.elements["key"].value;
-  
+
 	if ( !(/\S/.test(retObj["namespace"])) || !(/\S/.test(retObj["set"])) || !(/\S/.test(retObj["key"]))) {
-  		alert("namespace, set, key, and value must all be filled in!");
-  		return null;
-	} 
+		alert("namespace, set, key, and value must all be filled in!");
+		return null;
+	}
 	return retObj;
 }
 
 function doDatabaseCall(isSet)
 {
-    var xhr; 
-    try {  xhr = new ActiveXObject('Msxml2.XMLHTTP');  }
-    catch (e) 
-    {
-        try {   xhr = new ActiveXObject('Microsoft.XMLHTTP');  }
-        catch (e2) 
-        {
-          try {  xhr = new XMLHttpRequest();  }
-          catch (e3) {  xhr = false;  }
-        }
-     }
-  
-    xhr.onreadystatechange  = function()
-    { 
-         if (xhr.readyState  == 4)
-         {
-         	if (xhr.status  == 200) {
-            	document.getElementById("result").innerHTML=" OK "  + xhr.responseText; 
-            	if (/\S/.test(xhr.responseText)) {
-					var jsonObj;
-                	jsonObj = eval('(' + xhr.responseText + ')');
-             	}
-            } else if(xhr.status == 0) {
-             	var dialogDiv = document.getElementById("serverDiv");
-             	dialogDiv.style.visibility = "visible";
-             	dialogDiv.style.display = "block";
-             	// make div visible
-            } else {
-                document.getElementById("result").innerHTML="Error code: " + xhr.status + "\n" + "Content: " + xhr.responseText;
-            }
+	var xhr;
+	try {  xhr = new ActiveXObject('Msxml2.XMLHTTP');  }
+	catch (e)
+	{
+		try {   xhr = new ActiveXObject('Microsoft.XMLHTTP');  }
+		catch (e2)
+		{
+			try {  xhr = new XMLHttpRequest();  }
+			catch (e3) {  xhr = false;  }
 		}
-    };
+	 }
+
+	xhr.onreadystatechange  = function()
+	{
+		if (xhr.readyState  == 4)
+		{
+		if (xhr.status  == 200) {
+				document.getElementById("result").innerHTML=" OK "  + xhr.responseText;
+				if (/\S/.test(xhr.responseText)) {
+					var jsonObj;
+					jsonObj = eval('(' + xhr.responseText + ')');
+				}
+			} else if(xhr.status == 0) {
+				var dialogDiv = document.getElementById("serverDiv");
+				dialogDiv.style.visibility = "visible";
+				dialogDiv.style.display = "block";
+				// make div visible
+			} else {
+				document.getElementById("result").innerHTML="Error code: " + xhr.status + "\n" + "Content: " + xhr.responseText;
+			}
+		}
+	};
 
 	var coreParams = getCoreParams();
 	if (coreParams == null) 
-  		return;
+		return;
 
 	var paramForm  = document.getElementById("parameterForm");
 	var hostStr     = paramForm.elements["host"].value;
@@ -169,21 +169,21 @@ function doDatabaseCall(isSet)
 	var setOption  = paramForm.elements["options"];
 	var binArray   = binStr   != null ? binStr.split(',')   : null;
 	var valueArray = valueStr != null ? valueStr.split(',') : null;
-  
+
 	if (isSet) {
 		if (valueStr == null) {
-    		alert("You must give a value!");
-    		return;
-  		}
-  
-    	if (binArray==null || valueArray.length != binArray.length) {
+			alert("You must give a value!");
+			return;
+		}
+
+		if (binArray==null || valueArray.length != binArray.length) {
 			alert("You must have the same number of bins and values!");
 			return;
 		}
 	}
-  
+
 	var params = "host=" + hostStr + "&port=" + portStr + "&";
-  
+
 	if (isSet) {
 		for (var i=0; i<valueArray.length; i++) {
 			params += "value=" + valueArray[i] + "&";
@@ -192,7 +192,7 @@ function doDatabaseCall(isSet)
 		if (/\S/.test(generation)) {
 			params += "generation=" + generation + "&";
 		}
-    
+
 		for (var i=0; i<setOption.length; i++) {
 			if (setOption[i].checked) {
 				if (setOption[i].value != "std") {
@@ -202,7 +202,7 @@ function doDatabaseCall(isSet)
 			}
 		}
 	}
-  
+
 	if (binArray != null) {
 		for (var i=0; i<binArray.length; i++) {
 			if (binArray[i] != null && (/\S/.test(binArray[i]))) {
@@ -210,27 +210,27 @@ function doDatabaseCall(isSet)
 			}
 		}
 	}
-  
+
 	if (/\S/.test(expiration)) {
 		params += "expiration=" + expiration;
 	}
-  
+
 	var url = "http://" + hostnport + "/" + servletName + "/" + coreParams.namespace + "/" + coreParams.set + "/" + coreParams.key;
 	if (!isSet) {
 		url += "?" + params;
 		xhr.open("GET", url, true); 
 		xhr.setRequestHeader("Content-type", "text/plain");
 		xhr.send();
-	} else { 
+	} else {
 		xhr.open("POST", url, true); 
 		xhr.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
 		xhr.setRequestHeader("Content-length", params.length);
 		xhr.setRequestHeader("Connection", "close");
 		xhr.send(params);
-	} 
+	}
 }
 
 resetServletPath();
-	
+
 </script>
 </html>

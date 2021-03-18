@@ -1033,13 +1033,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 		}
 
-	    @Override
-	    public void channelRead(ChannelHandlerContext ctx, Object msg) {
-	    	command.read((ByteBuf)msg);
-	    }
+		@Override
+		public void channelRead(ChannelHandlerContext ctx, Object msg) {
+			command.read((ByteBuf)msg);
+		}
 
-	    @Override
-	    public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+		@Override
+		public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
 			if (! (evt instanceof SslHandshakeCompletionEvent)) {
 				return;
 			}
@@ -1061,7 +1061,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
 				command.channelActive();
 			}
-	    }
+		}
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
@@ -1071,26 +1071,26 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 
 			if (cause instanceof AerospikeException.Connection) {
-	        	command.onNetworkError((AerospikeException.Connection)cause);
+				command.onNetworkError((AerospikeException.Connection)cause);
 			}
 			else if (cause instanceof AerospikeException) {
 				AerospikeException ae = (AerospikeException)cause;
 
-	        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
-	        		command.onServerTimeout();
-	        	}
-	        	else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
-	        		command.onDeviceOverload(ae);
-	        	}
-	        	else {
-		        	command.onApplicationError(ae);
-	        	}
+				if (ae.getResultCode() == ResultCode.TIMEOUT) {
+					command.onServerTimeout();
+				}
+				else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
+					command.onDeviceOverload(ae);
+				}
+				else {
+					command.onApplicationError(ae);
+				}
 			}
 			else if (cause instanceof IOException) {
-	        	command.onNetworkError(new AerospikeException(cause));
+				command.onNetworkError(new AerospikeException(cause));
 			}
 			else {
-	        	command.onApplicationError(new AerospikeException(cause));
+				command.onApplicationError(new AerospikeException(cause));
 			}
 		}
 	}

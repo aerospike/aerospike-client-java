@@ -71,13 +71,13 @@ public class Cluster implements Runnable, Closeable {
 	// IP translations.
 	protected final Map<String,String> ipMap;
 
-    // TLS connection policy.
+	// TLS connection policy.
 	protected final TlsPolicy tlsPolicy;
 
-    // Authentication mode.
+	// Authentication mode.
 	public final AuthMode authMode;
 
-    // User name in UTF-8 encoded bytes.
+	// User name in UTF-8 encoded bytes.
 	protected final byte[] user;
 
 	// Password in UTF-8 encoded bytes.
@@ -416,7 +416,7 @@ public class Cluster implements Runnable, Closeable {
 	 * be contacted.  If peer nodes are still unreachable, an
 	 * exception is thrown.
 	 */
-    private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
+	private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
 		int count = -1;
 
 		for (int i = 0; i < 3; i++) {
@@ -440,7 +440,7 @@ public class Cluster implements Runnable, Closeable {
 		else {
 			Log.warn(message);
 		}
-    }
+	}
 
 	public final void run() {
 		while (tendValid) {
@@ -458,9 +458,9 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-    /**
-     * Check health of all nodes in the cluster.
-     */
+	/**
+	 * Check health of all nodes in the cluster.
+	 */
 	private final void tend(boolean failIfNotConnected) throws AerospikeException {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.

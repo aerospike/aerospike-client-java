@@ -32,9 +32,9 @@ public final class NettyEventLoop extends EventLoopBase {
 	final io.netty.channel.EventLoop eventLoop;
 	final NettyEventLoops parent;
 
-    /**
-     * Construct Aerospike event loop wrapper from netty event loop.
-     */
+	/**
+	 * Construct Aerospike event loop wrapper from netty event loop.
+	 */
 	public NettyEventLoop(EventPolicy policy, io.netty.channel.EventLoop eventLoop, NettyEventLoops parent, int index) {
 		super(policy, index);
 

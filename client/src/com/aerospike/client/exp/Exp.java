@@ -199,7 +199,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Bin "a" exists in record
 	 * Exp.binExists("a")
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp binExists(String name) {
 		return Exp.ne(Exp.binType(name), Exp.val(0));
@@ -212,7 +212,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Bin "a" particle type is a list
 	 * Exp.eq(Exp.binType("a"), Exp.val(ParticleType.LIST))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp binType(String name) {
 		return new CmdStr(BIN_TYPE, name);
@@ -225,7 +225,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record set name == "myset"
 	 * Exp.eq(Exp.setName(), Exp.val("myset"))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp setName() {
 		return new Cmd(SET_NAME);
@@ -239,7 +239,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record device size >= 100 KB
 	 * Exp.ge(Exp.deviceSize(), Exp.val(100 * 1024))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp deviceSize() {
 		return new Cmd(DEVICE_SIZE);
@@ -255,7 +255,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record memory size >= 100 KB
 	 * Exp.ge(Exp.memorySize(), Exp.val(100 * 1024))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp memorySize() {
 		return new Cmd(MEMORY_SIZE);
@@ -269,7 +269,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record last update time >= 2020-01-15
 	 * Exp.ge(Exp.lastUpdate(), Exp.val(new GregorianCalendar(2020, 0, 15)))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp lastUpdate() {
 		return new Cmd(LAST_UPDATE);
@@ -282,7 +282,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record last updated more than 2 hours ago
 	 * Exp.gt(Exp.sinceUpdate(), Exp.val(2 * 60 * 60 * 1000))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp sinceUpdate() {
 		return new Cmd(SINCE_UPDATE);
@@ -298,7 +298,7 @@ public abstract class Exp {
 	 * Exp.and(
 	 *   Exp.ge(Exp.voidTime(), Exp.val(new GregorianCalendar(2021, 0, 1))),
 	 *   Exp.lt(Exp.voidTime(), Exp.val(new GregorianCalendar(2021, 0, 2))))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp voidTime() {
 		return new Cmd(VOID_TIME);
@@ -311,7 +311,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Record expires in less than 1 hour
 	 * Exp.lt(Exp.ttl(), Exp.val(60 * 60))
-     * }</pre>
+	 * }</pre>
 	 */
 	public static Exp ttl() {
 		return new Cmd(TTL);

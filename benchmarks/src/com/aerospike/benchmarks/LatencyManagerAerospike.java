@@ -121,22 +121,22 @@ public class LatencyManagerAerospike implements LatencyManager {
 		stream.print(prefix);
 	//		stream.print(' ' );
 	//		stream.print(sum);
-	    int spaces = 6 - prefix.length();
+		int spaces = 6 - prefix.length();
 
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
+		for (int j = 0; j < spaces; j++) {
+			stream.print(' ');
+		}
 
-	    double sumDouble = (double)sum;
-	    int limit = 1;
+		double sumDouble = (double)sum;
+		int limit = 1;
 
-	    printColumn(stream, limit, sumDouble, array[0]);
-	    printColumn(stream, limit, sumDouble, array[1]);
+		printColumn(stream, limit, sumDouble, array[0]);
+		printColumn(stream, limit, sumDouble, array[1]);
 
-	    for (int i = 2; i < array.length; i++) {
-	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, array[i]);
-	    }
+		for (int i = 2; i < array.length; i++) {
+			limit <<= bitShift;
+			printColumn(stream, limit, sumDouble, array[i]);
+		}
 		stream.println();
 	}
 
@@ -162,38 +162,38 @@ public class LatencyManagerAerospike implements LatencyManager {
 
 		// Print cumulative results.
 		stream.print(prefix);
-	    int spaces = 6 - prefix.length();
+		int spaces = 6 - prefix.length();
 
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
+		for (int j = 0; j < spaces; j++) {
+			stream.print(' ');
+		}
 
-	    double sumDouble = (double)sum;
-	    int limit = 1;
+		double sumDouble = (double)sum;
+		int limit = 1;
 
-	    printColumn(stream, limit, sumDouble, array[0]);
-	    printColumn(stream, limit, sumDouble, array[1]);
+		printColumn(stream, limit, sumDouble, array[0]);
+		printColumn(stream, limit, sumDouble, array[1]);
 
-	    for (int i = 2; i < array.length; i++) {
-	        limit <<= bitShift;
-	        printColumn(stream, limit, sumDouble, array[i]);
-	    }
+		for (int i = 2; i < array.length; i++) {
+			limit <<= bitShift;
+			printColumn(stream, limit, sumDouble, array[i]);
+		}
 		stream.println();
 	}
 
 	private void printColumn(PrintStream stream, int limit, double sum, int value) {
-	    long percent = 0;
+		long percent = 0;
 
-	    if (value > 0) {
-	        percent = Math.round((double)value * 100.0 / sum);
-	    }
-	    String percentString = Long.toString(percent) + "%";
-	    int spaces = Integer.toString(limit).length() + 4 - percentString.length();
+		if (value > 0) {
+			percent = Math.round((double)value * 100.0 / sum);
+		}
+		String percentString = Long.toString(percent) + "%";
+		int spaces = Integer.toString(limit).length() + 4 - percentString.length();
 
-	    for (int j = 0; j < spaces; j++) {
-	    	stream.print(' ');
-	    }
-	    stream.print(percentString);
+		for (int j = 0; j < spaces; j++) {
+			stream.print(' ');
+		}
+		stream.print(percentString);
 	}
 
 	private static final class Bucket {

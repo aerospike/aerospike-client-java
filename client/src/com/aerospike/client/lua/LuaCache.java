@@ -98,7 +98,7 @@ public final class LuaCache {
 			BufferedInputStream bis = new BufferedInputStream(is);
 
 			try {
-		        return LuaC.instance.compile(bis, packageName);
+				return LuaC.instance.compile(bis, packageName);
 			}
 			finally {
 				is.close();

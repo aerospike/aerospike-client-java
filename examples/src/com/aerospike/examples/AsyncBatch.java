@@ -127,16 +127,16 @@ public class AsyncBatch extends AsyncExample {
 				for (int i = 0; i < existsArray.length; i++) {
 					Key key = keys[i];
 					boolean exists = existsArray[i];
-		            console.info("Record: ns=%s set=%s key=%s exists=%s",
-		            	key.namespace, key.setName, key.userKey, exists);
-		        }
+					console.info("Record: ns=%s set=%s key=%s exists=%s",
+						key.namespace, key.setName, key.userKey, exists);
+				}
 			}
 
 			public void onFailure(AerospikeException e) {
 				console.error("Batch exists array failed: " + Util.getErrorMessage(e));
 			}
 		}, null, sendKeys);
-    }
+	}
 
 	/**
 	 * Check existence of records in one batch, receive one record at a time.
@@ -144,8 +144,8 @@ public class AsyncBatch extends AsyncExample {
 	private void batchExistsSequence() throws Exception {
 		client.exists(eventLoop, new ExistsSequenceListener() {
 			public void onExists(Key key, boolean exists) {
-		        console.info("Record: ns=%s set=%s digest=%s exists=%s",
-		            	key.namespace, key.setName, Buffer.bytesToHexString(key.digest), exists);
+				console.info("Record: ns=%s set=%s digest=%s exists=%s",
+						key.namespace, key.setName, Buffer.bytesToHexString(key.digest), exists);
 			}
 
 			public void onSuccess() {
@@ -155,7 +155,7 @@ public class AsyncBatch extends AsyncExample {
 				console.error("Batch exists sequence failed: " + Util.getErrorMessage(e));
 			}
 		}, null, sendKeys);
-    }
+	}
 
 	/**
 	 * Read records in one batch, receive in array.
@@ -173,12 +173,12 @@ public class AsyncBatch extends AsyncExample {
 						level = Level.INFO;
 						value = record.getValue(binName);
 					}
-			        console.write(level, "Record: ns=%s set=%s key=%s bin=%s value=%s",
-			            key.namespace, key.setName, key.userKey, binName, value);
-		        }
+					console.write(level, "Record: ns=%s set=%s key=%s bin=%s value=%s",
+						key.namespace, key.setName, key.userKey, binName, value);
+				}
 
 				if (records.length != size) {
-		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
+					console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
 			}
 
@@ -186,7 +186,7 @@ public class AsyncBatch extends AsyncExample {
 				console.error("Batch get array failed: " + Util.getErrorMessage(e));
 			}
 		}, null, sendKeys);
-    }
+	}
 
 	/**
 	 * Read records in one batch call, receive one record at a time.
@@ -201,8 +201,8 @@ public class AsyncBatch extends AsyncExample {
 					level = Level.INFO;
 					value = record.getValue(binName);
 				}
-		        console.write(level, "Record: ns=%s set=%s digest=%s bin=%s value=%s",
-		            key.namespace, key.setName, Buffer.bytesToHexString(key.digest), binName, value);
+				console.write(level, "Record: ns=%s set=%s digest=%s bin=%s value=%s",
+					key.namespace, key.setName, Buffer.bytesToHexString(key.digest), binName, value);
 			}
 
 			public void onSuccess() {
@@ -212,7 +212,7 @@ public class AsyncBatch extends AsyncExample {
 				console.error("Batch get sequence failed: " + Util.getErrorMessage(e));
 			}
 		}, null, sendKeys);
-    }
+	}
 
 	/**
 	 * Read record headers in one batch, receive in an array.
@@ -232,12 +232,12 @@ public class AsyncBatch extends AsyncExample {
 						generation = record.generation;
 						expiration = record.expiration;
 					}
-			        console.write(level, "Record: ns=%s set=%s key=%s generation=%d expiration=%d",
-			            key.namespace, key.setName, key.userKey, generation, expiration);
-		        }
+					console.write(level, "Record: ns=%s set=%s key=%s generation=%d expiration=%d",
+						key.namespace, key.setName, key.userKey, generation, expiration);
+				}
 
 				if (records.length != size) {
-		        	console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
+					console.error("Record size mismatch. Expected %d. Received %d.", size, records.length);
 				}
 			}
 
@@ -245,7 +245,7 @@ public class AsyncBatch extends AsyncExample {
 				console.error("Batch get headers failed: " + Util.getErrorMessage(e));
 			}
 		}, null, sendKeys);
-    }
+	}
 
 	/**
 	 * Read records with varying namespaces, bin names and read types in one batch.

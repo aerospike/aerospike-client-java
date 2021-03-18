@@ -140,7 +140,7 @@ public final class PeerParser {
 			}
 		}
 
-    	String response = parser.getTruncatedResponse();
+		String response = parser.getTruncatedResponse();
 		throw new AerospikeException.Parse("Unterminated host in response: " + response);
 	}
 }

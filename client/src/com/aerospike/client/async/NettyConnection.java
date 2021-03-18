@@ -28,9 +28,9 @@ public final class NettyConnection extends AsyncConnection {
 
 	final SocketChannel channel;
 
-    /**
-     * Construct Aerospike channel wrapper from netty channel.
-     */
+	/**
+	 * Construct Aerospike channel wrapper from netty channel.
+	 */
 	public NettyConnection(SocketChannel channel) {
 		this.channel = channel;
 	}

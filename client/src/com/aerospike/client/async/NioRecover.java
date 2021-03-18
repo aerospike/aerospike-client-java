@@ -131,37 +131,37 @@ public final class NioRecover implements INioCommand, TimerTask {
 	@Override
 	public final void processEvent(SelectionKey key) {
 		try {
-        	int ops = key.readyOps();
+			int ops = key.readyOps();
 
-        	if ((ops & SelectionKey.OP_READ) != 0) {
-        		switch (state) {
-        		case AsyncCommand.COMMAND_READ_HEADER:
-        			if (isSingle) {
-        				drainSingleHeader();
-        			}
-        			else {
-        				if (drainMultiHeader()) {
-        					drainMultiBody();
-        				}
-        			}
-        			break;
+			if ((ops & SelectionKey.OP_READ) != 0) {
+				switch (state) {
+				case AsyncCommand.COMMAND_READ_HEADER:
+					if (isSingle) {
+						drainSingleHeader();
+					}
+					else {
+						if (drainMultiHeader()) {
+							drainMultiBody();
+						}
+					}
+					break;
 
-        		case AsyncCommand.COMMAND_READ_BODY:
-        			if (isSingle) {
-        				drainSingleBody();
-        			}
-        			else {
-        				drainMultiBody();
-        			}
-        			break;
-        		}
-        	}
-        }
-        catch (Exception e) {
+				case AsyncCommand.COMMAND_READ_BODY:
+					if (isSingle) {
+						drainSingleBody();
+					}
+					else {
+						drainMultiBody();
+					}
+					break;
+				}
+			}
+		}
+		catch (Exception e) {
 			//System.out.println("" + tranId + " socket error:");
 			//e.printStackTrace();
 			abort(true);
-        }
+		}
 	}
 
 	private final void drainSingleHeader() throws IOException {

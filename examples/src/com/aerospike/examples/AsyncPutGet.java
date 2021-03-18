@@ -84,7 +84,7 @@ public class AsyncPutGet extends AsyncExample {
 		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
-    	private int failCount = 0;
+		private int failCount = 0;
 
 		public WriteHandler(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
 			this.client = client;
@@ -107,22 +107,22 @@ public class AsyncPutGet extends AsyncExample {
 
 		// Error callback.
 		public void onFailure(AerospikeException e) {
-		   // Retry up to 2 more times.
-           if (++failCount <= 2) {
-            	Throwable t = e.getCause();
+			// Retry up to 2 more times.
+			if (++failCount <= 2) {
+				Throwable t = e.getCause();
 
-            	// Check for common socket errors.
-            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
-                    console.info("Retrying put: " + key.userKey);
-                    try {
-                    	client.put(eventLoop, this, writePolicy, key, bin);
-                        return;
-                    }
-                    catch (Exception ex) {
-                    	// Fall through to error case.
-                    }
-            	}
-        	}
+				// Check for common socket errors.
+				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+					console.info("Retrying put: " + key.userKey);
+					try {
+						client.put(eventLoop, this, writePolicy, key, bin);
+						return;
+					}
+					catch (Exception ex) {
+						// Fall through to error case.
+					}
+				}
+			}
 			console.error("Put failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 		}
 	}
@@ -132,7 +132,7 @@ public class AsyncPutGet extends AsyncExample {
 		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
-    	private int failCount = 0;
+		private int failCount = 0;
 
 		public ReadHandler(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
 			this.client = client;
@@ -151,20 +151,20 @@ public class AsyncPutGet extends AsyncExample {
 		public void onFailure(AerospikeException e) {
 			// Retry up to 2 more times.
 			if (++failCount <= 2) {
-            	Throwable t = e.getCause();
+				Throwable t = e.getCause();
 
-            	// Check for common socket errors.
-            	if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
-                    console.info("Retrying get: " + key.userKey);
-                    try {
-                    	client.get(eventLoop, this, policy, key);
-                        return;
-                    }
-                    catch (Exception ex) {
-                    	// Fall through to error case.
-                    }
-            	}
-        	}
+				// Check for common socket errors.
+				if (t != null && (t instanceof ConnectException || t instanceof IOException)) {
+					console.info("Retrying get: " + key.userKey);
+					try {
+						client.get(eventLoop, this, policy, key);
+						return;
+					}
+					catch (Exception ex) {
+						// Fall through to error case.
+					}
+				}
+			}
 			console.error("Get failed: namespace=%s set=%s key=%s exception=%s", key.namespace, key.setName, key.userKey, e.getMessage());
 		}
 	}

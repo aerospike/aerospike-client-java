@@ -40,7 +40,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private final ExecutorService threadPool;
 	private final List<QueryThread> threads;
 	private final AtomicInteger completedCount;
-    private final AtomicBoolean done;
+	private final AtomicBoolean done;
 	private volatile Exception exception;
 	private int maxConcurrentThreads;
 	private boolean threadsComplete;
@@ -173,12 +173,12 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	public final void stopThreads(Exception cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
-	    	exception = cause;
+			exception = cause;
 
 			// Send stop signal to threads.
-	    	// Must synchronize here because this method can be called from the main
-	    	// RecordSet thread (user calls close() before retrieving all records)
-	    	// which may conflict with the parallel QueryPartitionExecutor thread.
+			// Must synchronize here because this method can be called from the main
+			// RecordSet thread (user calls close() before retrieving all records)
+			// which may conflict with the parallel QueryPartitionExecutor thread.
 			synchronized(threads) {
 				for (QueryThread thread : threads) {
 					thread.stop();
@@ -187,7 +187,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			recordSet.abort();
 			notifyCompleted();
 		}
-    }
+	}
 
 	@Override
 	public final void checkForException() {

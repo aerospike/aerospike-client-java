@@ -109,7 +109,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 
 			if (len < 0) {
 				// Server has shutdown socket.
-		    	throw new EOFException();
+				throw new EOFException();
 			}
 		}
 		return true;

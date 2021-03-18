@@ -314,41 +314,41 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	@Override
-    public void processEvent(SelectionKey key) {
+	public void processEvent(SelectionKey key) {
 		try {
-        	int ops = key.readyOps();
+			int ops = key.readyOps();
 
-        	if ((ops & SelectionKey.OP_READ) != 0) {
-        		read();
-        	}
-        	else if ((ops & SelectionKey.OP_WRITE) != 0) {
-        		write();
-        	}
-        	else if ((ops & SelectionKey.OP_CONNECT) != 0) {
-        		finishConnect();
-        	}
-        }
-        catch (AerospikeException.Connection ac) {
-        	onNetworkError(ac, false);
-        }
-        catch (AerospikeException ae) {
-        	if (ae.getResultCode() == ResultCode.TIMEOUT) {
-        		onServerTimeout();
-        	}
-        	else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
-        		onDeviceOverload(ae);
+			if ((ops & SelectionKey.OP_READ) != 0) {
+				read();
 			}
-        	else {
-        		onApplicationError(ae);
-        	}
-        }
-        catch (IOException ioe) {
-        	onNetworkError(new AerospikeException.Connection(ioe), false);
-        }
-        catch (Exception e) {
+			else if ((ops & SelectionKey.OP_WRITE) != 0) {
+				write();
+			}
+			else if ((ops & SelectionKey.OP_CONNECT) != 0) {
+				finishConnect();
+			}
+		}
+		catch (AerospikeException.Connection ac) {
+			onNetworkError(ac, false);
+		}
+		catch (AerospikeException ae) {
+			if (ae.getResultCode() == ResultCode.TIMEOUT) {
+				onServerTimeout();
+			}
+			else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
+				onDeviceOverload(ae);
+			}
+			else {
+				onApplicationError(ae);
+			}
+		}
+		catch (IOException ioe) {
+			onNetworkError(new AerospikeException.Connection(ioe), false);
+		}
+		catch (Exception e) {
 			onApplicationError(new AerospikeException(e));
-        }
-    }
+		}
+	}
 
 	protected final void finishConnect() throws IOException {
 		conn.finishConnect();

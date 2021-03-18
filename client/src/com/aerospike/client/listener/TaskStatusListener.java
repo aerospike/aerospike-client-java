@@ -22,17 +22,17 @@ import com.aerospike.client.AerospikeException;
  * Asynchronous result notifications for index status command.
  */
 public interface TaskStatusListener {
-    /**
-     * This method is called when an asynchronous command completes successfully.
-     *
-     * @param status		task status (see {@link com.aerospike.client.task.Task})
-     */
-    void onSuccess(int status);
+	/**
+	 * This method is called when an asynchronous command completes successfully.
+	 *
+	 * @param status		task status (see {@link com.aerospike.client.task.Task})
+	 */
+	void onSuccess(int status);
 
-    /**
-     * This method is called when an asynchronous command fails.
-     *
-     * @param exception		error that occurred
-     */
-    public void onFailure(AerospikeException exception);
+	/**
+	 * This method is called when an asynchronous command fails.
+	 *
+	 * @param exception		error that occurred
+	 */
+	public void onFailure(AerospikeException exception);
 }

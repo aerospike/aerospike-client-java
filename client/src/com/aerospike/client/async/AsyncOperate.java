@@ -54,7 +54,7 @@ public final class AsyncOperate extends AsyncRead {
 		// Only throw not found exception for command with write operations.
 		// Read-only command operations return a null record.
 		if (args.hasWrite) {
-	    	throw new AerospikeException(resultCode);
+			throw new AerospikeException(resultCode);
 		}
 	}
 

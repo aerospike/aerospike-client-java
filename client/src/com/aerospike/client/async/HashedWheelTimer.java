@@ -64,13 +64,13 @@ public final class HashedWheelTimer implements Runnable {
 		this.eventLoop = eventLoop;
 		this.tickDuration = unit.toNanos(tickDuration);
 
-        int normalizedTicksPerWheel = 1;
+		int normalizedTicksPerWheel = 1;
 
 		while (normalizedTicksPerWheel < ticksPerWheel) {
 			normalizedTicksPerWheel <<= 1;
 		}
 
-        wheel = new HashedWheelBucket[normalizedTicksPerWheel];
+		wheel = new HashedWheelBucket[normalizedTicksPerWheel];
 
 		for (int i = 0; i < wheel.length; i++) {
 			wheel[i] = new HashedWheelBucket();
@@ -120,7 +120,7 @@ public final class HashedWheelTimer implements Runnable {
 		bucket.addTimeout(timeout);
 	}
 
-    public static final class HashedWheelTimeout {
+	public static final class HashedWheelTimeout {
 		private final TimerTask task;
 		private long deadline;
 		private long remainingRounds;
@@ -144,16 +144,16 @@ public final class HashedWheelTimer implements Runnable {
 
 		private void expire() {
 			try {
-			    task.timeout();
+				task.timeout();
 			} catch (Throwable t) {
 				if (Log.warnEnabled()) {
 					Log.warn("task.timeout() failed: " + Util.getErrorMessage(t));
 				}
 			}
 		}
-    }
+	}
 
-    private static final class HashedWheelBucket {
+	private static final class HashedWheelBucket {
 		private HashedWheelTimeout head;
 		private HashedWheelTimeout tail;
 
@@ -222,17 +222,17 @@ public final class HashedWheelTimer implements Runnable {
 		}
 	}
 
-    /*
-    public void printRemaining() {
+	/*
+	public void printRemaining() {
 		System.out.println("Search remaining buckets");
 
-    	for (int i = 0; i < wheel.length; i++) {
-    		HashedWheelBucket bucket = wheel[i];
+		for (int i = 0; i < wheel.length; i++) {
+			HashedWheelBucket bucket = wheel[i];
 
-    		if (bucket.head != null || bucket.tail != null) {
-    			System.out.println("Bucket " + i + " exists");
-    		}
-    	}
-    }
-    */
+			if (bucket.head != null || bucket.tail != null) {
+				System.out.println("Bucket " + i + " exists");
+			}
+		}
+	}
+	*/
 }

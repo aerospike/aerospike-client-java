@@ -416,7 +416,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void put(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -470,7 +470,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -520,7 +520,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -572,7 +572,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -622,7 +622,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -723,7 +723,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -773,7 +773,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -829,7 +829,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -863,7 +863,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -912,7 +912,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -960,7 +960,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1006,7 +1006,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1031,7 +1031,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *                              The returned records are located in the same list.
+	 *							  The returned records are located in the same list.
 	 * @throws AerospikeException	if read fails
 	 */
 	public final void get(BatchPolicy policy, List<BatchRead> records)
@@ -1088,7 +1088,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *                              The returned records are located in the same list.
+	 *							  The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records)
@@ -1099,7 +1099,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1126,7 +1126,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *                              The returned records are located in the same list.
+	 *							  The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records)
@@ -1137,7 +1137,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1195,7 +1195,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1231,7 +1231,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1291,7 +1291,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1328,7 +1328,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1386,7 +1386,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1422,7 +1422,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1481,7 +1481,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
@@ -1539,7 +1539,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1640,7 +1640,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void scanPartitions(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, String... binNames)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1686,7 +1686,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *
 	 * @param policy				generic configuration parameters, pass in null for defaults
 	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
-	 * @param resourcePath          class path where Lua resource is located
+	 * @param resourcePath		  class path where Lua resource is located
 	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
 	 * @param language				language of user defined functions
 	 * @throws AerospikeException	if register fails
@@ -1711,7 +1711,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 *   "\n" +
 	 *   "function sum_single_bin(stream,name)\n" +
 	 *   "  local function mapper(rec)\n" +
-	 *   "    return rec[name]\n" +
+	 *   "	return rec[name]\n" +
 	 *   "  end\n" +
 	 *   "  return stream : map(mapper) : reduce(reducer)\n" +
 	 *   "end\n";
@@ -1847,7 +1847,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		Value... functionArgs
 	) throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -1992,7 +1992,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -2091,7 +2091,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
 		throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -2295,7 +2295,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		IndexCollectionType indexCollectionType
 	) throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -2364,7 +2364,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String indexName
 	) throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
@@ -2405,7 +2405,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String... commands
 	) throws AerospikeException {
 		if (eventLoop == null) {
-		    eventLoop = cluster.eventLoops.next();
+			eventLoop = cluster.eventLoops.next();
 		}
 
 		if (policy == null) {
