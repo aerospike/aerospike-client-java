@@ -135,6 +135,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get enum value string instance.
+	 */
+	public static Value get(Enum<?> value) {
+		return new StringValue(value.toString());
+	}
+
+	/**
 	 * Get list or null value instance.
 	 */
 	public static Value get(List<?> value) {
@@ -234,6 +241,10 @@ public abstract class Value {
 
 		if (value instanceof Byte) {
         	return new ByteValue((byte)value);
+		}
+
+		if (value instanceof Enum) {
+        	return new StringValue(((Enum<?>)value).toString());
 		}
 
 		if (value instanceof List<?>) {
