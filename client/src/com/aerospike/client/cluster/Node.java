@@ -71,9 +71,9 @@ public class Node implements Closeable {
 	final AtomicInteger connsClosed;
 	private final AtomicInteger errorCount;
 	protected int connectionIter;
-	protected int peersGeneration;
-	protected int partitionGeneration;
-	protected int rebalanceGeneration;
+	private int peersGeneration;
+	int partitionGeneration;
+	private int rebalanceGeneration;
 	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
@@ -964,6 +964,27 @@ public class Node implements Closeable {
 	 */
 	public final byte[] getSessionToken() {
 		return sessionToken;
+	}
+
+	/**
+	 * Return current generation of cluster peers.
+	 */
+	public final int getPeersGeneration() {
+		return peersGeneration;
+	}
+
+	/**
+	 * Return current generation of partition maps.
+	 */
+	public final int getPartitionGeneration() {
+		return partitionGeneration;
+	}
+
+	/**
+	 * Return current generation of racks.
+	 */
+	public final int getRebalanceGeneration() {
+		return rebalanceGeneration;
 	}
 
 	/**
