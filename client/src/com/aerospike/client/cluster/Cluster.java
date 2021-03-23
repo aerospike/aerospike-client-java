@@ -205,10 +205,7 @@ public class Cluster implements Runnable, Closeable {
 				pass = "";
 			}
 
-			if (! (pass.length() == 60 && pass.startsWith("$2a$")))
-			{
-				pass = AdminCommand.hashPassword(pass);
-			}
+			pass = AdminCommand.hashPassword(pass);
 			this.passwordHash = Buffer.stringToUtf8(pass);
 		}
 		else {
