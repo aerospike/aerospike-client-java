@@ -125,18 +125,6 @@ public class AdminCommand {
 			int result = dataBuffer[RESULT_CODE] & 0xFF;
 
 			if (result != 0) {
-				if (result == ResultCode.INVALID_COMMAND) {
-					// New login not supported.  Try old authentication.
-					authenticateOld(cluster, conn);
-					return;
-				}
-
-				if (result == ResultCode.SECURITY_NOT_ENABLED) {
-					// Server does not require login.
-					return;
-				}
-
-				// login failed.
 				throw new AerospikeException(result, "Login failed");
 			}
 
@@ -196,35 +184,9 @@ public class AdminCommand {
 	public int setAuthenticate(Cluster cluster, byte[] sessionToken) {
 		writeHeader(AUTHENTICATE, 2);
 		writeField(USER, cluster.getUser());
-
-		if (sessionToken != null) {
-			// New authentication.
-			writeField(SESSION_TOKEN, sessionToken);
-		}
-		else {
-			// Old authentication.
-			writeField(CREDENTIAL, cluster.getPasswordHash());
-		}
+		writeField(SESSION_TOKEN, sessionToken);
 		writeSize();
 		return dataOffset;
-	}
-
-	public void authenticateOld(Cluster cluster, Connection conn)
-		throws AerospikeException, IOException {
-
-		dataOffset = 8;
-		writeHeader(AUTHENTICATE, 2);
-		writeField(USER, cluster.getUser());
-		writeField(CREDENTIAL, cluster.getPasswordHash());
-		writeSize();
-
-		conn.write(dataBuffer, dataOffset);
-		conn.readFully(dataBuffer, HEADER_SIZE);
-
-		int result = dataBuffer[RESULT_CODE] & 0xFF;
-		if (result != 0) {
-			throw new AerospikeException(result, "Authentication failed");
-		}
 	}
 
 	public void createUser(Cluster cluster, AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
