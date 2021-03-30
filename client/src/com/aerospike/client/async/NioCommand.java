@@ -256,7 +256,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				throw e;
 			}
 
-			state = (cluster.getUser() != null) ? AsyncCommand.AUTH_WRITE : AsyncCommand.COMMAND_WRITE;
 			conn.registerConnect(eventLoop, this);
 			eventState.errors = 0;
 		}
@@ -353,8 +352,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	protected final void finishConnect() throws IOException {
 		conn.finishConnect();
 
-		if (state == AsyncCommand.AUTH_WRITE) {
-			writeAuth();
+		byte[] token = node.getSessionToken();
+
+		if (token != null) {
+			writeAuth(token);
 		}
 		else {
 			if (timeoutState != null) {
@@ -381,11 +382,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		timeoutState = null;
 	}
 
-	private final void writeAuth() throws IOException {
+	private final void writeAuth(byte[] token) throws IOException {
+		state = AsyncCommand.AUTH_WRITE;
 		command.initBuffer();
 
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster, node.getSessionToken());
+		command.dataOffset = admin.setAuthenticate(cluster, token);
 		byteBuffer.clear();
 		byteBuffer.put(command.dataBuffer, 0, command.dataOffset);
 		byteBuffer.flip();
@@ -404,12 +406,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			conn.registerRead();
 		}
 		else {
-			state = AsyncCommand.AUTH_WRITE;
 			conn.registerWrite();
 		}
 	}
 
 	private final void writeCommand() throws IOException {
+		state = AsyncCommand.COMMAND_WRITE;
 		command.writeBuffer();
 
 		if (command.dataOffset > byteBuffer.capacity()) {
@@ -430,7 +432,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			conn.registerRead();
 		}
 		else {
-			state = AsyncCommand.COMMAND_WRITE;
 			conn.registerWrite();
 		}
 	}

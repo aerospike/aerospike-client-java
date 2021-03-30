@@ -115,20 +115,22 @@ public final class NettyRecover implements TimerTask {
 	}
 
 	private void channelActive() {
-		if (cluster.getUser() != null) {
-			writeAuth();
+		byte[] token = node.getSessionToken();
+
+		if (token != null) {
+			writeAuth(token);
 		}
 		else {
 			recover();
 		}
 	}
 
-	private void writeAuth() {
+	private void writeAuth(byte[] token) {
 		state = AsyncCommand.AUTH_WRITE;
 		dataBuffer = new byte[512];
 
 		AdminCommand admin = new AdminCommand(dataBuffer);
-		int len = admin.setAuthenticate(cluster, node.getSessionToken());
+		int len = admin.setAuthenticate(cluster, token);
 
 		ByteBuf byteBuffer = PooledByteBufAllocator.DEFAULT.directBuffer(len);
 		byteBuffer.clear();

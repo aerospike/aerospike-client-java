@@ -74,20 +74,22 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 	protected final void finishConnect() throws IOException {
 		conn.finishConnect();
 
-		if (cluster.getUser() != null) {
-			writeAuth();
+		byte[] token = node.getSessionToken();
+
+		if (token != null) {
+			writeAuth(token);
 		}
 		else {
 			finish();
 		}
 	}
 
-	private final void writeAuth() throws IOException {
+	private final void writeAuth(byte[] token) throws IOException {
 		state = AsyncCommand.AUTH_WRITE;
 
 		byte[] dataBuffer = new byte[256];
 		AdminCommand admin = new AdminCommand(dataBuffer);
-		int dataOffset = admin.setAuthenticate(cluster, node.getSessionToken());
+		int dataOffset = admin.setAuthenticate(cluster, token);
 
 		byteBuffer = eventLoop.getByteBuffer();
 		byteBuffer.clear();

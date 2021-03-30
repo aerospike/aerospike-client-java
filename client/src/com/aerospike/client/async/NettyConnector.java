@@ -112,19 +112,21 @@ public final class NettyConnector extends AsyncConnector {
 	}
 
 	private void channelActive() {
-		if (cluster.getUser() != null) {
-			writeAuth();
+		byte[] token = node.getSessionToken();
+
+		if (token != null) {
+			writeAuth(token);
 		}
 		else {
 			finish();
 		}
 	}
 
-	private void writeAuth() {
+	private void writeAuth(byte[] token) {
 		state = AsyncCommand.AUTH_WRITE;
 
 		AdminCommand admin = new AdminCommand(dataBuffer);
-		dataOffset = admin.setAuthenticate(cluster, node.getSessionToken());
+		dataOffset = admin.setAuthenticate(cluster, token);
 
 		ByteBuf byteBuffer = PooledByteBufAllocator.DEFAULT.directBuffer(dataOffset);
 		byteBuffer.clear();

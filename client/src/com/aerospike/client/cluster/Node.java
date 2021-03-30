@@ -212,13 +212,15 @@ public class Node implements Closeable {
 				if (cluster.user != null) {
 					try {
 						if (! ensureLogin()) {
-							AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-							if (! command.authenticate(cluster, tendConnection, sessionToken)) {
-								// Authentication failed.  Session token probably expired.
-								// Must login again to get new session token.
-								LoginCommand login = new LoginCommand(cluster, tendConnection);
-								sessionToken = login.sessionToken;
-								sessionExpiration = login.sessionExpiration;
+							if (sessionToken != null) {
+								AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+								if (! command.authenticate(cluster, tendConnection, sessionToken)) {
+									// Authentication failed.  Session token probably expired.
+									// Must login again to get new session token.
+									LoginCommand login = new LoginCommand(cluster, tendConnection);
+									sessionToken = login.sessionToken;
+									sessionExpiration = login.sessionExpiration;
+								}
 							}
 						}
 					}
@@ -528,7 +530,7 @@ public class Node implements Closeable {
 
 		connsOpened.getAndIncrement();
 
-		if (cluster.user != null) {
+		if (sessionToken != null) {
 			try {
 				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
 				if (! command.authenticate(cluster, conn, sessionToken)) {
@@ -633,10 +635,12 @@ public class Node implements Closeable {
 					throw re;
 				}
 
-				if (cluster.user != null) {
+				byte[] token = this.sessionToken;
+
+				if (token != null) {
 					try {
 						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						if (! command.authenticate(cluster, conn, sessionToken)) {
+						if (! command.authenticate(cluster, conn, token)) {
 							signalLogin();
 							throw new AerospikeException("Authentication failed");
 						}

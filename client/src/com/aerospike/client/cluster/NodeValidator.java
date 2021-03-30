@@ -388,7 +388,7 @@ public final class NodeValidator {
 							new Connection(socketAddress, cluster.connectTimeout);
 
 						try {
-							if (cluster.user != null) {
+							if (this.sessionToken != null) {
 								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
 								if (! admin.authenticate(cluster, conn, this.sessionToken)) {
 									throw new AerospikeException("Authentication failed");
@@ -466,9 +466,11 @@ public final class NodeValidator {
 							clearConn = new Connection(clearSocketAddress, cluster.connectTimeout);
 
 							try {
-								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
-								if (! admin.authenticate(cluster, clearConn, sessionToken)) {
-									throw new AerospikeException("Authentication failed");
+								if (sessionToken != null) {
+									AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
+									if (! admin.authenticate(cluster, clearConn, sessionToken)) {
+										throw new AerospikeException("Authentication failed");
+									}
 								}
 								return;  // Authenticated clear connection.
 							}

@@ -377,8 +377,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void channelActive() {
-		if (cluster.getUser() != null) {
-			writeAuth();
+		byte[] token = node.getSessionToken();
+
+		if (token != null) {
+			writeAuth(token);
 		}
 		else {
 			if (timeoutState != null) {
@@ -405,12 +407,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 		timeoutState = null;
 	}
 
-	private void writeAuth() {
+	private void writeAuth(byte[] token) {
 		state = AsyncCommand.AUTH_WRITE;
 		command.initBuffer();
 
 		AdminCommand admin = new AdminCommand(command.dataBuffer);
-		command.dataOffset = admin.setAuthenticate(cluster, node.getSessionToken());
+		command.dataOffset = admin.setAuthenticate(cluster, token);
 		writeByteBuffer();
 	}
 
