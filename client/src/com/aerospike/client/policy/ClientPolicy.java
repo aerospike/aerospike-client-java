@@ -182,7 +182,7 @@ public class ClientPolicy {
 	/**
 	 * The number of cluster tend iterations that defines the window for {@link #maxErrorRate}.
 	 * One tend iteration is defined as {@link #tendInterval} plus the time to tend all nodes.
-	 * At the end of tend iteration, the error count is reset to zero and backoff state is removed
+	 * At the end of the window, the error count is reset to zero and backoff state is removed
 	 * on all nodes.
 	 * <p>
 	 * Default: 1
