@@ -172,6 +172,10 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void durableDelete() {
+		if (! args.enterprise) {
+			return;
+		}
+
 		predAEq1WPolicy.durableDelete = true;
 
 		client.delete(predAEq1WPolicy, keyA);
@@ -187,6 +191,10 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void durableDeleteExcept() {
+		if (! args.enterprise) {
+			return;
+		}
+
 		predAEq1WPolicy.failOnFilteredOut = true;
 		predAEq1WPolicy.durableDelete = true;
 

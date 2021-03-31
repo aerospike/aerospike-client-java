@@ -19,6 +19,7 @@ package com.aerospike.test.util;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.Arrays;
+import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -49,6 +50,7 @@ public class Args {
 	public String set;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
+	public boolean enterprise;
 	public boolean singleBin;
 
 	public Args() {
@@ -198,8 +200,22 @@ public class Args {
 	 */
 	public void setServerSpecific(AerospikeClient client) {
 		Node node = client.getNodes()[0];
+		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;
-		String namespaceTokens = Info.request(null, node, namespaceFilter);
+		Map<String,String> map = Info.request(null, node, editionFilter, namespaceFilter);
+
+		String editionToken = map.get(editionFilter);
+
+		if (editionToken == null) {
+			throw new AerospikeException(String.format(
+				"Failed to get edition: host=%s port=%d", host, port));
+		}
+
+		if (editionToken.equals("Aerospike Enterprise Edition")) {
+			enterprise = true;
+		}
+
+		String namespaceTokens = map.get(namespaceFilter);
 
 		if (namespaceTokens == null) {
 			throw new AerospikeException(String.format(

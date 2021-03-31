@@ -168,6 +168,10 @@ public class TestPredExp extends TestSync {
 
 	@Test
 	public void deleteExcept() {
+		if (! args.enterprise) {
+			return;
+		}
+
 		predAEq1WPolicy.failOnFilteredOut = true;
 
 		client.delete(predAEq1WPolicy, keyA);
@@ -182,6 +186,10 @@ public class TestPredExp extends TestSync {
 
 	@Test
 	public void durableDelete() {
+		if (! args.enterprise) {
+			return;
+		}
+
 		predAEq1WPolicy.durableDelete = true;
 
 		client.delete(predAEq1WPolicy, keyA);
@@ -197,6 +205,10 @@ public class TestPredExp extends TestSync {
 
 	@Test
 	public void durableDeleteExcept() {
+		if (! args.enterprise) {
+			return;
+		}
+
 		predAEq1WPolicy.failOnFilteredOut = true;
 		predAEq1WPolicy.durableDelete = true;
 
