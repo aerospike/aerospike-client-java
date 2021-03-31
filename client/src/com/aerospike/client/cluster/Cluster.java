@@ -535,11 +535,18 @@ public class Cluster implements Runnable, Closeable {
 
 					eventLoop.execute(new Runnable() {
 						public void run() {
-							final Node[] nodeArray = nodes;
+							try {
+								final Node[] nodeArray = nodes;
 
-							for (Node node : nodeArray) {
-								if (node.errorCountWithinLimit()) {
-									node.balanceAsyncConnections(eventLoop);
+								for (Node node : nodeArray) {
+									if (node.errorCountWithinLimit()) {
+										node.balanceAsyncConnections(eventLoop);
+									}
+								}
+							}
+							catch (Exception e) {
+								if (Log.warnEnabled()) {
+									Log.warn("balanceAsyncConnections failed: " + Util.getErrorMessage(e));
 								}
 							}
 						}

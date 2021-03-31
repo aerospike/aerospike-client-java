@@ -37,6 +37,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	final Node node;
 	final AsyncConnector.Listener listener;
 	final HashedWheelTimeout timeoutTask;
+	final int index;
 	int state;
 
 	AsyncConnector(EventLoopBase eventLoop, Cluster cluster, Node node, AsyncConnector.Listener listener) {
@@ -46,9 +47,14 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 		this.node = node;
 		this.listener = listener;
 		this.timeoutTask = new HashedWheelTimeout(this);
+		this.index = eventLoop.getIndex();
 	}
 
-	public final void execute() {
+	public final boolean execute() {
+		if (! node.reserveAsyncConnectionSlot(index)) {
+			return false;
+		}
+
 		if (eventState.errors < 5) {
 			run();
 		}
@@ -56,6 +62,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 			// Avoid recursive error stack overflow by placing request at end of queue.
 			eventLoop.execute(this);
 		}
+		return true;
 	}
 
 	@Override

@@ -179,9 +179,16 @@ public class Node implements Closeable {
 
 				eventLoop.execute(new Runnable() {
 					public void run() {
-						new AsyncConnectorExecutor(
-							eventLoop, cluster, node, minSize, maxConcurrent, monitor, eventLoopCount
-						);
+						try {
+							new AsyncConnectorExecutor(
+								eventLoop, cluster, node, minSize, maxConcurrent, monitor, eventLoopCount
+							);
+						}
+						catch (Exception e) {
+							if (Log.warnEnabled()) {
+								Log.warn("AsyncConnectorExecutor failed: " + Util.getErrorMessage(e));
+							}
+						}
 					}
 				});
 			}
@@ -811,6 +818,16 @@ public class Node implements Closeable {
 		return null;
 	}
 
+	public final boolean reserveAsyncConnectionSlot(int index) {
+		AsyncPool pool = asyncConnectionPools[index];
+
+		if (pool.total >= pool.maxSize) {
+			return false;
+		}
+		pool.total++;
+		return true;
+	}
+
 	public final void connectionOpened(int index) {
 		asyncConnectionPools[index].opened++;
 	}
@@ -836,17 +853,6 @@ public class Node implements Closeable {
 		conn.close();
 	}
 
-	// Only call from AsyncConnector logic.
-	public final void addAsyncConnector(AsyncConnection conn, int index) {
-		asyncConnectionPools[index].add(conn);
-	}
-
-	// Only call from AsyncConnector logic.
-	public final void closeAsyncConnector(AsyncConnection conn, int index) {
-		incrErrorCount();
-		asyncConnectionPools[index].close(conn);
-	}
-
 	public final void decrAsyncConnection(int index) {
 		incrErrorCount();
 		asyncConnectionPools[index].total--;
@@ -864,9 +870,9 @@ public class Node implements Closeable {
 			closeIdleAsyncConnections(pool, excess);
 		}
 		else if (excess < 0) {
-			// Allow only 5 concurrent connection requests because they will be done in the
+			// Create connection requests sequentially because they will be done in the
 			// background and there is no immediate need for them to complete.
-			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 5, null, null);
+			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 1, null, null);
 		}
 	}
 
@@ -1124,18 +1130,6 @@ public class Node implements Closeable {
 
 		private int excess() {
 			return total - minSize;
-		}
-
-		// Only call from AsyncConnector logic.
-		private void add(AsyncConnection conn) {
-			queue.addFirst(conn);
-			total++;
-		}
-
-		// Only call from AsyncConnector logic.
-		private void close(AsyncConnection conn) {
-			conn.close();
-			closed++;
 		}
 
 		private void connectionClosed() {

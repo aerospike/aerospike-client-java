@@ -235,14 +235,14 @@ public final class NettyConnector extends AsyncConnector {
 
 	@Override
 	final void addConnection() {
-		node.addAsyncConnector(conn, eventLoop.index);
+		node.putAsyncConnection(conn, eventLoop.index);
 		conn = null;
 	}
 
 	@Override
 	final void closeConnection() {
 		if (conn != null) {
-			node.closeAsyncConnector(conn, eventLoop.index);
+			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}
 	}

@@ -46,9 +46,19 @@ public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 		this.maxConnections = maxConnections;
 		this.maxConcurrent = (maxConnections >= maxConcurrent)? maxConcurrent : maxConnections;
 
-		for (int i = 0; i < this.maxConcurrent; i++) {
-			AsyncConnector ac = eventLoop.createConnector(cluster, node, this);
-			ac.execute();
+		try {
+			for (int i = 0; i < this.maxConcurrent; i++) {
+				AsyncConnector ac = eventLoop.createConnector(cluster, node, this);
+
+				if (! ac.execute()) {
+					complete();
+					break;
+				}
+			}
+		}
+		catch (Exception e) {
+			complete();
+			throw e;
 		}
 	}
 
@@ -61,7 +71,9 @@ public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 			// Determine if a new command needs to be started.
 			if (next < maxConnections && ! done) {
 				// Start new command.
-				ac.execute();
+				if (! ac.execute()) {
+					complete();
+				}
 			}
 		}
 		else {
