@@ -33,7 +33,7 @@ public final class NodeStats {
 	/**
 	 * Connection statistics for async commands.
 	 */
-	public final ConnectionStats async;
+	public ConnectionStats async;
 
 	/**
 	 * Node statistics constructor.
@@ -41,7 +41,6 @@ public final class NodeStats {
 	public NodeStats(Node node) {
 		this.node = node;
 		this.sync = node.getConnectionStats();
-		this.async = node.getAsyncConnectionStats();
 	}
 
 	/**

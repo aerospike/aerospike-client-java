@@ -852,6 +852,10 @@ public class Node implements Closeable {
 		asyncConnectionPools[index].total--;
 	}
 
+	public final AsyncPool getAsyncPool(EventLoop eventLoop) {
+		return asyncConnectionPools[eventLoop.getIndex()];
+	}
+
 	public final void balanceAsyncConnections(EventLoop eventLoop) {
 		AsyncPool pool = asyncConnectionPools[eventLoop.getIndex()];
 		int excess = pool.excess();
@@ -1104,7 +1108,7 @@ public class Node implements Closeable {
 		}
 	}
 
-	private static final class AsyncPool {
+	public static final class AsyncPool {
 		public final ArrayDeque<AsyncConnection> queue;
 		public final int minSize;
 		public final int maxSize;
