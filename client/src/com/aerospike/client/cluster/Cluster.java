@@ -524,9 +524,7 @@ public class Cluster implements Runnable, Closeable {
 		// Balance connections every 30 tend iterations.
 		if (tendCount % 30 == 0) {
 			for (Node node : nodes) {
-				if (node.errorCountWithinLimit()) {
-					node.balanceConnections();
-				}
+				node.balanceConnections();
 			}
 
 			if (eventState != null) {
@@ -539,9 +537,7 @@ public class Cluster implements Runnable, Closeable {
 								final Node[] nodeArray = nodes;
 
 								for (Node node : nodeArray) {
-									if (node.errorCountWithinLimit()) {
-										node.balanceAsyncConnections(eventLoop);
-									}
+									node.balanceAsyncConnections(eventLoop);
 								}
 							}
 							catch (Exception e) {

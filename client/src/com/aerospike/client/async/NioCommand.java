@@ -800,11 +800,17 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
 		closeConnection();
 		retry(ae, queueCommand);
 	}
 
 	protected final void onServerTimeout() {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 
@@ -813,6 +819,9 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	protected final void onDeviceOverload(AerospikeException ae) {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 		node.incrErrorCount();
@@ -902,6 +911,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	protected final void onApplicationError(AerospikeException ae) {
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+
 		if (ae.keepConnection()) {
 			// Put connection back in pool.
 			complete();

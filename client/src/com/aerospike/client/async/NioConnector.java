@@ -43,6 +43,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 
 	@Override
 	public void createConnection() {
+		state = AsyncCommand.CONNECT;
 		conn = new NioConnection(node.getAddress());
 		node.connectionOpened(eventLoop.index);
 		conn.registerConnect(eventLoop, this);
@@ -183,9 +184,10 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 	}
 
 	@Override
-	final void addConnection() {
-		node.putAsyncConnection(conn, eventLoop.index);
+	final boolean addConnection() {
+		boolean ret = node.putAsyncConnection(conn, eventLoop.index);
 		conn = null;
+		return ret;
 	}
 
 	@Override
@@ -195,6 +197,9 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		if (conn != null) {
 			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
+		}
+		else {
+			node.decrAsyncConnection(eventLoop.index);
 		}
 	}
 }

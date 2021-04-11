@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.util.Util;
 
 public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 	private final Monitor monitor;
@@ -85,9 +86,14 @@ public final class AsyncConnectorExecutor implements AsyncConnector.Listener {
 	{
 		// Connection failed.  Highly unlikely other connections will succeed.
 		// Abort the process.
-		if (Log.debugEnabled()) {
-			Log.debug("Async min connections failed: " + e.getMessage());
+		if (Log.warnEnabled()) {
+			Log.warn("Async min connections failed: " + Util.getErrorMessage(e));
 		}
+		complete();
+	}
+
+	public void onFailure()
+	{
 		complete();
 	}
 

@@ -68,6 +68,8 @@ public final class NettyConnector extends AsyncConnector {
 
 	@Override
 	public void createConnection() {
+		state = AsyncCommand.CHANNEL_INIT;
+
 		final InboundHandler handler = new InboundHandler();
 		handler.command = this;
 
@@ -88,13 +90,17 @@ public final class NettyConnector extends AsyncConnector {
 		b.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
 			public void initChannel(SocketChannel ch) {
-				if (state != AsyncCommand.CONNECT) {
-					// State mismatch. Timeout probably occurred.
-					// Close channel.
-					ch.close();
+				if (state != AsyncCommand.CHANNEL_INIT) {
+					// Timeout occurred. Close channel.
+					try {
+						ch.close();
+					}
+					catch (Throwable e) {
+					}
 					return;
 				}
 
+				state = AsyncCommand.CONNECT;
 				conn = new NettyConnection(ch);
 				node.connectionOpened(eventLoop.index);
 				ChannelPipeline p = ch.pipeline();
@@ -136,9 +142,11 @@ public final class NettyConnector extends AsyncConnector {
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
-				state = AsyncCommand.AUTH_READ_HEADER;
-				dataOffset = 0;
-				conn.channel.config().setAutoRead(true);
+				if (state == AsyncCommand.AUTH_WRITE) {
+					state = AsyncCommand.AUTH_READ_HEADER;
+					dataOffset = 0;
+					conn.channel.config().setAutoRead(true);
+				}
 			}
 		});
 	}
@@ -152,6 +160,10 @@ public final class NettyConnector extends AsyncConnector {
 
 			case AsyncCommand.AUTH_READ_BODY:
 				readAuthBody(byteBuffer);
+				break;
+
+			default:
+				// Timeout occurred. Cancel.
 				break;
 			}
 		}
@@ -234,9 +246,10 @@ public final class NettyConnector extends AsyncConnector {
 	}
 
 	@Override
-	final void addConnection() {
-		node.putAsyncConnection(conn, eventLoop.index);
+	final boolean addConnection() {
+		boolean ret = node.putAsyncConnection(conn, eventLoop.index);
 		conn = null;
+		return ret;
 	}
 
 	@Override
@@ -244,6 +257,9 @@ public final class NettyConnector extends AsyncConnector {
 		if (conn != null) {
 			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
+		}
+		else {
+			node.decrAsyncConnection(eventLoop.index);
 		}
 	}
 

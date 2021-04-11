@@ -18,6 +18,9 @@ package com.aerospike.client.async;
 
 import java.nio.ByteBuffer;
 
+import com.aerospike.client.Log;
+import com.aerospike.client.util.Util;
+
 import io.netty.channel.socket.SocketChannel;
 
 /**
@@ -48,6 +51,13 @@ public final class NettyConnection extends AsyncConnection {
 	 */
 	@Override
 	public void close() {
-		channel.close();
+		try {
+			channel.close();
+		}
+		catch (Throwable e) {
+			if (Log.debugEnabled()) {
+				Log.debug("Error closing socket: " + Util.getErrorMessage(e));
+			}
+		}
 	}
 }

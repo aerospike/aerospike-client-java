@@ -279,7 +279,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 				setTimeoutTask(deadline, tstate);
 			}
 
-			final int itr = iteration;
 			final InboundHandler handler = new InboundHandler();
 			handler.command = this;
 
@@ -300,11 +299,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 			b.handler(new ChannelInitializer<SocketChannel>() {
 				@Override
 				public void initChannel(SocketChannel ch) {
-					if (! (state == AsyncCommand.CHANNEL_INIT && itr == iteration)) {
-						// State mismatch. Timeout probably occurred.
-						// Connection count has already been decremented.
-						// Just close channel.
-						ch.close();
+					if (state != AsyncCommand.CHANNEL_INIT) {
+						// Timeout occurred. Close channel.
+						try {
+							ch.close();
+						}
+						catch (Throwable e) {
+						}
 						connectInProgress = false;
 						return;
 					}
@@ -342,7 +343,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			notifyFailure(ae);
 			eventLoop.tryDelayQueue();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Fail without retry on unknown errors.
 			eventState.errors++;
 			fail();
@@ -431,13 +432,21 @@ public final class NettyCommand implements Runnable, TimerTask {
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
-				if (state == AsyncCommand.COMMAND_WRITE) {
+				switch (state) {
+				case AsyncCommand.COMMAND_WRITE:
 					state = AsyncCommand.COMMAND_READ_HEADER;
 					commandSentCounter++;
-				}
-				else {
+					break;
+
+				case AsyncCommand.AUTH_WRITE:
 					state = AsyncCommand.AUTH_READ_HEADER;
+					break;
+
+				default:
+					// Timeout occurred. Cancel.
+					return;
 				}
+
 				command.dataOffset = 0;
 				// Socket timeout applies only to read events.
 				// Reset event received because we are switching from a write to a read state.
@@ -479,6 +488,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 				else {
 					readMultiBody(byteBuffer);
 				}
+				break;
+
+			default:
+				// Timeout occurred. Cancel.
 				break;
 			}
 		}
@@ -808,7 +821,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					command.dataBuffer = null;
 					return;
 				}
-				catch (Exception e) {
+				catch (Throwable e) {
 					Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
 				}
 				break;
@@ -828,7 +841,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		try {
 			command.onSuccess();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
 		}
 
@@ -976,7 +989,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			}
 			command.onFailure(ae);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			Log.error("onFailure() error: " + Util.getErrorMessage(e));
 		}
 	}

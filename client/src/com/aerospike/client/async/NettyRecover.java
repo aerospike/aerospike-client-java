@@ -140,8 +140,10 @@ public final class NettyRecover implements TimerTask {
 		cf.addListener(new ChannelFutureListener() {
 			@Override
 			public void operationComplete(ChannelFuture future) {
-				state = AsyncCommand.AUTH_READ_HEADER;
-				conn.channel.config().setAutoRead(true);
+				if (state == AsyncCommand.AUTH_WRITE) {
+					state = AsyncCommand.AUTH_READ_HEADER;
+					conn.channel.config().setAutoRead(true);
+				}
 			}
 		});
 	}

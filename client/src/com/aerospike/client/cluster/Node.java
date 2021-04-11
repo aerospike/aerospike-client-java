@@ -767,7 +767,7 @@ public class Node implements Closeable {
 			if (excess > 0) {
 				pool.closeIdle(this, excess);
 			}
-			else if (excess < 0) {
+			else if (excess < 0 && errorCountWithinLimit()) {
 				createConnections(pool, -excess);
 			}
 		}
@@ -809,31 +809,50 @@ public class Node implements Closeable {
 			return conn;
 		}
 
-		if (pool.total >= pool.maxSize) {
-			throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
-					"Node " + this + " event loop " + index + " of " + cluster.eventLoops.getSize() +
-					" max connections " + pool.maxSize + " would be exceeded.");
+		if (pool.reserve()) {
+			return null;
 		}
-		pool.total++;
-		return null;
+
+		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+			"Max async conns reached: " + this + ',' + index + ',' + pool.total +
+			',' + pool.queue.size() + ',' + pool.maxSize);
 	}
 
 	public final boolean reserveAsyncConnectionSlot(int index) {
-		AsyncPool pool = asyncConnectionPools[index];
-
-		if (pool.total >= pool.maxSize) {
-			return false;
-		}
-		pool.total++;
-		return true;
+		return asyncConnectionPools[index].reserve();
 	}
 
 	public final void connectionOpened(int index) {
 		asyncConnectionPools[index].opened++;
 	}
 
-	public final void putAsyncConnection(AsyncConnection conn, int index) {
-		asyncConnectionPools[index].queue.addFirst(conn);
+	public final boolean putAsyncConnection(AsyncConnection conn, int index) {
+		if (conn == null) {
+			if (Log.warnEnabled()) {
+				Log.warn("Async conn is null: " + this + ',' + index);
+			}
+			return false;
+		}
+
+		AsyncPool pool = asyncConnectionPools[index];
+
+		if (! pool.addFirst(conn)) {
+			// This should not happen since connection slots are reserved in advance
+			// and total connections should never exceed maxSize. If it does happen,
+			// it's highly likely that total count was decremented twice for the same
+			// transaction, causing the connection balancer to create more connections
+			// than necessary. Attempt to correct situation by not decrementing total
+			// when this excess connection is closed.
+			conn.close();
+			//connectionClosed();
+
+			if (Log.warnEnabled()) {
+				Log.warn("Async conn pool is full: " + this + ',' + index + ',' + pool.total +
+						 ',' + pool.queue.size() + ',' + pool.maxSize);
+			}
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -869,7 +888,7 @@ public class Node implements Closeable {
 		if (excess > 0) {
 			closeIdleAsyncConnections(pool, excess);
 		}
-		else if (excess < 0) {
+		else if (excess < 0 && errorCountWithinLimit()) {
 			// Create connection requests sequentially because they will be done in the
 			// background and there is no immediate need for them to complete.
 			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 1, null, null);
@@ -1126,6 +1145,22 @@ public class Node implements Closeable {
 			this.minSize = minSize;
 			this.maxSize = maxSize;
 			this.queue = new ArrayDeque<AsyncConnection>(maxSize);
+		}
+
+		private boolean reserve() {
+			if (total >= maxSize || queue.size() >= maxSize) {
+				return false;
+			}
+			total++;
+			return true;
+		}
+
+		private boolean addFirst(AsyncConnection conn) {
+			if (queue.size() < maxSize) {
+				queue.addFirst(conn);
+				return true;
+			}
+			return false;
 		}
 
 		private int excess() {

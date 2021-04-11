@@ -55,24 +55,29 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 			return false;
 		}
 
-		if (eventState.errors < 5) {
-			run();
+		try {
+			if (eventState.errors < 5) {
+				run();
+			}
+			else {
+				// Avoid recursive error stack overflow by placing request at end of queue.
+				eventLoop.execute(this);
+			}
+			return true;
 		}
-		else {
-			// Avoid recursive error stack overflow by placing request at end of queue.
-			eventLoop.execute(this);
+		catch (Exception e) {
+			Log.warn("Failed to create conn: " + Util.getErrorMessage(e));
+			node.decrAsyncConnection(index);
+			return false;
 		}
-		return true;
 	}
 
 	@Override
 	public void run() {
-		long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.connectTimeout);
-
-		eventLoop.timer.addTimeout(timeoutTask, deadline);
-		state = AsyncCommand.CONNECT;
-
 		try {
+			long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.connectTimeout);
+			eventLoop.timer.addTimeout(timeoutTask, deadline);
+
 			createConnection();
 			eventState.errors = 0;
 		}
@@ -96,14 +101,23 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 			return;
 		}
 
-		addConnection();
 		close();
 
-		try {
-			listener.onSuccess(this);
+		if (addConnection()) {
+			try {
+				listener.onSuccess(this);
+			}
+			catch (Exception e) {
+				Log.error("onSuccess() error: " + Util.getErrorMessage(e));
+			}
 		}
-		catch (Exception e) {
-			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
+		else {
+			try {
+				listener.onFailure();
+			}
+			catch (Exception e) {
+				Log.error("onFailure() error: " + Util.getErrorMessage(e));
+			}
 		}
 	}
 
@@ -112,8 +126,8 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 			return;
 		}
 
-		closeConnection();
 		close();
+		closeConnection();
 
 		try {
 			listener.onFailure(ae);
@@ -129,11 +143,12 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	}
 
 	abstract void createConnection();
-	abstract void addConnection();
+	abstract boolean addConnection();
 	abstract void closeConnection();
 
 	interface Listener {
 		void onSuccess(AsyncConnector ac);
 		void onFailure(AerospikeException ae);
+		void onFailure();
 	}
 }
