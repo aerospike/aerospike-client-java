@@ -258,6 +258,16 @@ public class Node implements Closeable {
 				verifyRebalanceGeneration(infoMap);
 			}
 			peers.refreshCount++;
+
+			// Reload peers, partitions and racks if there were failures on previous tend.
+			if (failures > 0) {
+				peers.genChanged = true;
+				partitionChanged = true;
+
+				if (cluster.rackAware) {
+					rebalanceChanged = true;
+				}
+			}
 			failures = 0;
 		}
 		catch (Exception e) {
@@ -314,6 +324,50 @@ public class Node implements Closeable {
 
 		if (peersGeneration != gen) {
 			peers.genChanged = true;
+
+			if (peersGeneration > gen) {
+				if (Log.infoEnabled()) {
+					Log.info("Quick node restart detected: node=" + this + " oldgen=" + peersGeneration + " newgen=" + gen);
+				}
+				restart();
+			}
+		}
+	}
+
+	private final void restart() {
+		try {
+			// Reset error rate.
+			if (cluster.maxErrorRate > 0) {
+				resetErrorCount();
+			}
+
+			// Balance sync connections.
+			balanceConnections();
+
+			// Balance async connections.
+			if (cluster.eventState != null) {
+				for (EventState es : cluster.eventState) {
+					final EventLoop eventLoop = es.eventLoop;
+
+					eventLoop.execute(new Runnable() {
+						public void run() {
+							try {
+								balanceAsyncConnections(eventLoop);
+							}
+							catch (Throwable e) {
+								if (Log.warnEnabled()) {
+									Log.warn("balanceAsyncConnections failed: " + this + ' ' + Util.getErrorMessage(e));
+								}
+							}
+						}
+					});
+				}
+			}
+		}
+		catch (Throwable e) {
+			if (Log.warnEnabled()) {
+				Log.warn("Node restart failed: " + this + ' ' + Util.getErrorMessage(e));
+			}
 		}
 	}
 
@@ -483,12 +537,6 @@ public class Node implements Closeable {
 	}
 
 	private final void refreshFailed(Exception e) {
-		peersGeneration = -1;
-		partitionGeneration = -1;
-
-		if (cluster.rackAware) {
-			rebalanceGeneration = -1;
-		}
 		failures++;
 
 		if (! tendConnection.isClosed()) {
