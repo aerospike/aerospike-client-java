@@ -209,7 +209,7 @@ public class Policy {
 	 * Immediate write retries on node failure have been shown to consistently
 	 * result in errors.  If maxRetries is greater than zero on a write, then
 	 * sleepBetweenRetries should be set high enough to allow the cluster to
-	 * reform (&gt;= 500ms).
+	 * reform (&gt;= 3000ms).
 	 * <p>
 	 * Default: 0 (do not sleep between retries)
 	 */
