@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 
 import org.luaj.vm2.LuaBoolean;
 import org.luaj.vm2.LuaDouble;
@@ -142,6 +143,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get UUID value string instance.
+	 */
+	public static Value get(UUID value) {
+		return new StringValue(value.toString());
+	}
+
+	/**
 	 * Get list or null value instance.
 	 */
 	public static Value get(List<?> value) {
@@ -244,7 +252,11 @@ public abstract class Value {
 		}
 
 		if (value instanceof Enum) {
-        	return new StringValue(((Enum<?>)value).toString());
+        	return new StringValue(value.toString());
+		}
+
+		if (value instanceof UUID) {
+			return new StringValue(value.toString());
 		}
 
 		if (value instanceof List<?>) {
