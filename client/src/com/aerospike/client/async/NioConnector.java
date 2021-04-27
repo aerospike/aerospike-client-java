@@ -45,7 +45,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 	public void createConnection() {
 		state = AsyncCommand.CONNECT;
 		conn = new NioConnection(node.getAddress());
-		node.connectionOpened(eventLoop.index);
+		pool.connectionOpened();
 		conn.registerConnect(eventLoop, this);
 	}
 
@@ -185,7 +185,7 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 
 	@Override
 	final boolean addConnection() {
-		boolean ret = node.putAsyncConnection(conn, eventLoop.index);
+		boolean ret = pool.putConnection(conn);
 		conn = null;
 		return ret;
 	}
@@ -195,11 +195,11 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		putByteBuffer();
 
 		if (conn != null) {
-			node.closeAsyncConnection(conn, eventLoop.index);
+			pool.closeConnection(node, conn);
 			conn = null;
 		}
 		else {
-			node.decrAsyncConnection(eventLoop.index);
+			pool.release(node);
 		}
 	}
 }

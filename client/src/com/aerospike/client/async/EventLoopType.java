@@ -31,7 +31,12 @@ public enum EventLoopType {
 	NETTY_NIO,
 
 	/**
-	 * Netty epoll.  Only available on Linux.
+	 * Netty epoll. Available on Linux.
 	 */
-	NETTY_EPOLL
+	NETTY_EPOLL,
+
+	/**
+	 * Netty kqueue. Available on MacOS, FreeBSD.
+	 */
+	NETTY_KQUEUE
 }

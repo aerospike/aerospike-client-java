@@ -23,6 +23,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
+import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 
@@ -32,6 +33,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 	private final NioEventLoop eventLoop;
 	private final Node node;
 	private final EventState eventState;
+	private final AsyncPool pool;
 	private final NioConnection conn;
 	private final HashedWheelTimeout timeoutTask;
 	private final ByteBuffer byteBuffer;
@@ -48,6 +50,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 		this.eventLoop = cmd.eventLoop;
 		this.node = cmd.node;
 		this.eventState = cmd.eventState;
+		this.pool = cmd.pool;
 		this.conn = cmd.conn;
 		this.byteBuffer = cmd.byteBuffer;
 
@@ -302,12 +305,12 @@ public final class NioRecover implements INioCommand, TimerTask {
 		//System.out.println("" + tranId + " connection drained");
 		conn.unregister();
 		conn.updateLastUsed();
-		node.putAsyncConnection(conn, eventLoop.index);
+		pool.putConnection(conn);
 		close(true);
 	}
 
 	private final void abort(boolean cancelTimeout) {
-		node.closeAsyncConnection(conn, eventLoop.index);
+		pool.closeConnection(node, conn);
 		close(cancelTimeout);
 	}
 

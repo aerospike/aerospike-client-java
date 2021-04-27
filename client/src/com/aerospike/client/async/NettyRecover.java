@@ -24,6 +24,7 @@ import javax.net.ssl.SSLSession;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
+import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -48,6 +49,7 @@ public final class NettyRecover implements TimerTask {
 	private final NettyEventLoop eventLoop;
 	private final Node node;
 	private final EventState eventState;
+	private final AsyncPool pool;
 	private final NettyConnection conn;
 	private final HashedWheelTimeout timeoutTask;
 	private byte[] dataBuffer;
@@ -64,6 +66,7 @@ public final class NettyRecover implements TimerTask {
 		this.eventLoop = cmd.eventLoop;
 		this.node = cmd.node;
 		this.eventState = cmd.eventState;
+		this.pool = cmd.pool;
 		this.conn = cmd.conn;
 		this.state = cmd.state;
 
@@ -337,19 +340,19 @@ public final class NettyRecover implements TimerTask {
 		// Assign normal InboundHandler to connection.
 		ChannelPipeline p = conn.channel.pipeline();
 		p.removeLast();
-		p.addLast(new NettyCommand.InboundHandler());
+		p.addLast(new NettyCommand.InboundHandler(pool));
 
 		// Put connection into pool.
 		conn.channel.config().setAutoRead(false);
 		conn.updateLastUsed();
-		node.putAsyncConnection(conn, eventLoop.index);
+		pool.putConnection(conn);
 
 		// Close recovery command.
 		close(true);
 	}
 
 	private final void abort(boolean cancelTimeout) {
-		node.closeAsyncConnection(conn, eventLoop.index);
+		pool.closeConnection(node, conn);
 		close(cancelTimeout);
 	}
 
@@ -367,7 +370,7 @@ public final class NettyRecover implements TimerTask {
 		eventLoop.tryDelayQueue();
 	}
 
-	private static class InboundHandler extends ChannelInboundHandlerAdapter {
+	private static final class InboundHandler extends ChannelInboundHandlerAdapter {
 		private final NettyRecover command;
 
 		public InboundHandler(NettyRecover command) {

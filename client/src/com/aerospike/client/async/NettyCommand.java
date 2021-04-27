@@ -27,6 +27,7 @@ import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
+import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -38,6 +39,7 @@ import com.aerospike.client.util.Util;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
@@ -45,6 +47,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.epoll.EpollChannelOption;
 import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.socket.SocketChannel;
@@ -64,6 +67,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	final HashedWheelTimeout timeoutTask;
 	TimeoutState timeoutState;
 	Node node;
+	AsyncPool pool;
 	NettyConnection conn;
 	long totalDeadline;
 	int state;
@@ -257,12 +261,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 		try {
 			node = command.getNode(cluster);
 			node.validateErrorCount();
-			conn = (NettyConnection)node.getAsyncConnection(eventState.index, null);
+			pool = node.getAsyncPool(eventState.index);
+			conn = (NettyConnection)pool.getConnection(node, null);
 
 			if (conn != null) {
 				setTimeoutTask(deadline, tstate);
 				InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
-				handler.command = this;
+				handler.setCommand(this);
 				writeCommand();
 				return;
 			}
@@ -279,22 +284,10 @@ public final class NettyCommand implements Runnable, TimerTask {
 				setTimeoutTask(deadline, tstate);
 			}
 
-			final InboundHandler handler = new InboundHandler();
-			handler.command = this;
+			final InboundHandler handler = new InboundHandler(this);
 
 			Bootstrap b = new Bootstrap();
-			b.group(eventLoop.eventLoop);
-
-			if (eventLoop.parent.isEpoll) {
-				b.channel(EpollSocketChannel.class);
-			} else if(eventLoop.parent.isKqueue) {
-				b.channel(KQueueSocketChannel.class);
-			}
-			else {
-				b.channel(NioSocketChannel.class);
-			}
-			b.option(ChannelOption.TCP_NODELAY, true);
-			b.option(ChannelOption.AUTO_READ, false);
+			initBootstrap(b, eventLoop);
 
 			b.handler(new ChannelInitializer<SocketChannel>() {
 				@Override
@@ -312,7 +305,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 					state = AsyncCommand.CONNECT;
 					conn = new NettyConnection(ch);
-					node.connectionOpened(eventLoop.index);
+					pool.connectionOpened();
 					connectInProgress = false;
 					ChannelPipeline p = ch.pipeline();
 
@@ -350,6 +343,32 @@ public final class NettyCommand implements Runnable, TimerTask {
 			notifyFailure(new AerospikeException(e));
 			eventLoop.tryDelayQueue();
 		}
+	}
+
+	static final void initBootstrap(Bootstrap b, NettyEventLoop eventLoop) {
+		b.group(eventLoop.eventLoop);
+
+		switch (eventLoop.parent.eventLoopType) {
+		default:
+		case NETTY_NIO:
+			b.channel(NioSocketChannel.class);
+			break;
+
+		case NETTY_EPOLL:
+			b.channel(EpollSocketChannel.class);
+			b.option(ChannelOption.SO_KEEPALIVE, true);
+			b.option(EpollChannelOption.TCP_KEEPIDLE, 60);
+			b.option(EpollChannelOption.TCP_KEEPINTVL, 10);
+			b.option(EpollChannelOption.TCP_KEEPCNT, 2);
+			break;
+
+		case NETTY_KQUEUE:
+			b.channel(KQueueSocketChannel.class);
+			break;
+		}
+
+		b.option(ChannelOption.TCP_NODELAY, true);
+		b.option(ChannelOption.AUTO_READ, false);
 	}
 
 	private final void setTimeoutTask(long deadline, int tstate) {
@@ -1002,8 +1021,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private final void putConnection() {
 		conn.channel.config().setAutoRead(false);
 		InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
-		handler.command = null;
-		node.putAsyncConnection(conn, eventState.index);
+		handler.setPool(pool);
+		pool.putConnection(conn);
 	}
 
 	private final void fail() {
@@ -1013,11 +1032,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
-			node.closeAsyncConnection(conn, eventState.index);
+			pool.closeConnection(node, conn);
 			conn = null;
 		}
 		else if (connectInProgress) {
-			node.decrAsyncConnection(eventState.index);
+			pool.release(node);
 			connectInProgress = false;
 		}
 	}
@@ -1036,8 +1055,27 @@ public final class NettyCommand implements Runnable, TimerTask {
 		eventLoop.pending--;
 	}
 
-	static class InboundHandler extends ChannelInboundHandlerAdapter {
-		NettyCommand command;
+	static final class InboundHandler extends ChannelInboundHandlerAdapter {
+		private NettyCommand command;
+		private AsyncPool pool;
+
+		public InboundHandler(NettyCommand command) {
+			this.command = command;
+		}
+
+		public InboundHandler(AsyncPool pool) {
+			this.pool = pool;
+		}
+
+		public void setCommand(NettyCommand command) {
+			this.command = command;
+			this.pool = null;
+		}
+
+		public void setPool(AsyncPool pool) {
+			this.pool = pool;
+			this.command = null;
+		}
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
@@ -1081,7 +1119,19 @@ public final class NettyCommand implements Runnable, TimerTask {
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
 			if (command == null) {
-				Log.error("Connection exception: " + Util.getErrorMessage(cause));
+				// Connection failed while in pool.
+				// TCP keep-alive likely invalidated connection.
+				// Close connection and attempt to remove it from the pool.
+				try {
+					Channel ch = ctx.channel();
+					ch.close();
+					pool.removeClosedTail();
+				}
+				catch (Throwable e) {
+					if (Log.warnEnabled()) {
+						Log.warn("Netty pool connect error: " + Util.getErrorMessage(e));
+					}
+				}
 				return;
 			}
 
