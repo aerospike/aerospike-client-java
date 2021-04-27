@@ -161,7 +161,7 @@ public final class LuaInstance {
 			throw new AerospikeException("Lua BigInteger not implemented.");
 
 		case ParticleType.BOOL:
-			return LuaInteger.valueOf(Buffer.boolBytesToLong(buf, offset, len));
+			return LuaBoolean.valueOf(Buffer.bytesToBool(buf, offset, len));
 
 		case ParticleType.DOUBLE:
 			return LuaDouble.valueOf(Buffer.bytesToDouble(buf, offset));

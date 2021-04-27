@@ -60,7 +60,7 @@ public final class Buffer {
 			return Buffer.bytesToNumber(buf, offset, len);
 
 		case ParticleType.BOOL:
-			return Buffer.boolBytesToLong(buf, offset, len);
+			return Buffer.bytesToBool(buf, offset, len);
 
 		case ParticleType.DOUBLE:
 			return Buffer.bytesToDouble(buf, offset);
@@ -418,11 +418,11 @@ public final class Buffer {
 		return big;
 	}
 
-	public static long boolBytesToLong(byte[] buf, int offset, int len) {
+	public static boolean bytesToBool(byte[] buf, int offset, int len) {
 		if (len <= 0) {
-			return 0L;
+			return false;
 		}
-		return (long)(buf[offset] & 0xFF);
+		return (buf[offset] == 0)? false : true;
 	}
 
 	//-------------------------------------------------------

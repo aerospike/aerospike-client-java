@@ -125,8 +125,18 @@ public final class Record {
 	 * Get bin value as boolean.
 	 */
 	public boolean getBoolean(String name) {
-		// The server always returns booleans as longs, so get long and convert.
-		return getLong(name) != 0;
+		// The server may return boolean as boolean or long (created by older clients).
+		Object result = getValue(name);
+
+		if (result instanceof Boolean) {
+			return (Boolean)result;
+		}
+
+		if (result != null) {
+			long v = (Long)result;
+			return (v == 0)? false : true;
+		}
+		return false;
 	}
 
 	/**

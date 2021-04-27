@@ -44,6 +44,14 @@ import com.aerospike.client.util.Packer;
  */
 public abstract class Value {
 	/**
+	 * Should client send boolean particle type for a boolean bin.  If false,
+	 * an integer particle type (1 or 0) is sent instead. Must be false for server
+	 * versions less than 5.6 which do not support boolean bins. Can set to true for
+	 * server 5.6+.
+	 */
+	public static boolean UseBoolBin = false;
+
+	/**
 	 * Null value.
 	 */
 	public static final Value NULL = NullValue.INSTANCE;
@@ -132,7 +140,12 @@ public abstract class Value {
 	 * Get boolean value instance.
 	 */
 	public static Value get(boolean value) {
-		return new BooleanValue(value);
+		if (UseBoolBin) {
+			return new BooleanValue(value);
+		}
+		else {
+			return new BoolIntValue(value);
+		}
 	}
 
 	/**
@@ -244,7 +257,12 @@ public abstract class Value {
 		}
 
 		if (value instanceof Boolean) {
-			return new BooleanValue((Boolean)value);
+			if (UseBoolBin) {
+				return new BooleanValue((Boolean)value);
+			}
+			else {
+				return new BoolIntValue((Boolean)value);
+			}
 		}
 
 		if (value instanceof Byte) {
@@ -967,6 +985,82 @@ public abstract class Value {
 		private final boolean value;
 
 		public BooleanValue(boolean value) {
+			this.value = value;
+		}
+
+		@Override
+		public int estimateSize() {
+			return 1;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {
+			buffer[offset] = value? (byte)1 : (byte)0;
+			return 1;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packBoolean(value);
+		}
+
+		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: boolean");
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.BOOL;
+		}
+
+		@Override
+		public Object getObject() {
+			return value;
+		}
+
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaBoolean.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Boolean.toString(value);
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((BooleanValue)other).value);
+		}
+
+		@Override
+		public int hashCode() {
+			return value ? 1231 : 1237;
+		}
+
+		@Override
+		public int toInteger() {
+			return value? 1 : 0;
+		}
+
+		@Override
+		public long toLong() {
+			return value? 1L : 0L;
+		}
+	}
+
+	/**
+	 * Boolean value that converts to integer when sending a bin to the server.
+	 * This class will be deleted once full conversion to boolean particle type
+	 * is complete.
+	 */
+	public static final class BoolIntValue extends Value {
+		private final boolean value;
+
+		public BoolIntValue(boolean value) {
 			this.value = value;
 		}
 

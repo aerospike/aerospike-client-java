@@ -154,6 +154,8 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and boolean value.
 	 * For servers configured as "single-bin", enter a null or empty name.
+	 * Either a boolean or integer bin is sent to the server, depending
+	 * on configuration {@link com.aerospike.client.Value#UseBoolBin}.
 	 *
 	 * @param name		bin name, current limit is 14 characters
 	 * @param value		bin value
