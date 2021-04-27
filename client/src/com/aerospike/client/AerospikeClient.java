@@ -2581,8 +2581,34 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist)
 		throws AerospikeException {
 		AdminCommand command = new AdminCommand();
-		command.createRole(cluster, policy, roleName, privileges, whitelist);
+		command.createRole(cluster, policy, roleName, privileges, whitelist, 0, 0);
 	}
+
+	/**
+	 * Create user defined role with optional privileges, whitelist and read/write quotas.
+	 * Quotas require server security configuration "enable-quotas" to be set to true.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			optional list of privileges assigned to role.
+	 * @param whitelist				optional list of allowable IP addresses assigned to role.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @param readQuota				optional maximum reads per second limit, pass in zero for no limit.
+	 * @param writeQuota			optional maximum writes per second limit, pass in zero for no limit.
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void createRole(
+		AdminPolicy policy,
+		String roleName,
+		List<Privilege> privileges,
+		List<String> whitelist,
+		int readQuota,
+		int writeQuota
+	) throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.createRole(cluster, policy, roleName, privileges, whitelist, readQuota, writeQuota);
+	}
+
 	/**
 	 * Drop user defined role.
 	 *
@@ -2637,6 +2663,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		AdminCommand command = new AdminCommand();
 		command.setWhitelist(cluster, policy, roleName, whitelist);
+	}
+
+	/**
+	 * Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
+	 * Quotas require server security configuration "enable-quotas" to be set to true.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param readQuota				maximum reads per second limit, pass in zero for no limit.
+	 * @param writeQuota			maximum writes per second limit, pass in zero for no limit.
+	 * @throws AerospikeException	if command fails
+	 */
+	public final void setQuotas(AdminPolicy policy, String roleName, int readQuota, int writeQuota)
+		throws AerospikeException {
+		AdminCommand command = new AdminCommand();
+		command.setQuotas(cluster, policy, roleName, readQuota, writeQuota);
 	}
 
 	/**

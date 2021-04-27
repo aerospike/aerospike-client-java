@@ -51,6 +51,7 @@ public class AdminCommand {
 	private static final byte GRANT_PRIVILEGES = 12;
 	private static final byte REVOKE_PRIVILEGES = 13;
 	private static final byte SET_WHITELIST = 14;
+	private static final byte SET_QUOTAS = 15;
 	private static final byte QUERY_ROLES = 16;
 	private static final byte LOGIN = 20;
 
@@ -66,6 +67,11 @@ public class AdminCommand {
 	private static final byte ROLE = 11;
 	private static final byte PRIVILEGES = 12;
 	private static final byte WHITELIST = 13;
+	private static final byte READ_QUOTA = 14;
+	private static final byte WRITE_QUOTA = 15;
+	private static final byte READ_INFO = 16;
+	private static final byte WRITE_INFO = 17;
+	private static final byte CONNECTIONS = 18;
 
 	// Misc
 	private static final long MSG_VERSION = 2L;
@@ -175,7 +181,7 @@ public class AdminCommand {
 	}
 
 	public boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
-		throws AerospikeException, IOException {
+		throws IOException {
 
 		dataOffset = 8;
 		setAuthenticate(cluster, sessionToken);
@@ -194,7 +200,7 @@ public class AdminCommand {
 		return dataOffset;
 	}
 
-	public void createUser(Cluster cluster, AdminPolicy policy, String user, String password, List<String> roles) throws AerospikeException {
+	public void createUser(Cluster cluster, AdminPolicy policy, String user, String password, List<String> roles) {
 		writeHeader(CREATE_USER, 3);
 		writeField(USER, user);
 		writeField(PASSWORD, password);
@@ -202,20 +208,20 @@ public class AdminCommand {
 		executeCommand(cluster, policy);
 	}
 
-	public void dropUser(Cluster cluster, AdminPolicy policy, String user) throws AerospikeException {
+	public void dropUser(Cluster cluster, AdminPolicy policy, String user) {
 		writeHeader(DROP_USER, 1);
 		writeField(USER, user);
 		executeCommand(cluster, policy);
 	}
 
-	public void setPassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) throws AerospikeException {
+	public void setPassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) {
 		writeHeader(SET_PASSWORD, 2);
 		writeField(USER, user);
 		writeField(PASSWORD, password);
 		executeCommand(cluster, policy);
 	}
 
-	public void changePassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) throws AerospikeException {
+	public void changePassword(Cluster cluster, AdminPolicy policy, byte[] user, String password) {
 		writeHeader(CHANGE_PASSWORD, 3);
 		writeField(USER, user);
 		writeField(OLD_PASSWORD, cluster.getPasswordHash());
@@ -223,28 +229,36 @@ public class AdminCommand {
 		executeCommand(cluster, policy);
 	}
 
-	public void grantRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public void grantRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) {
 		writeHeader(GRANT_ROLES, 2);
 		writeField(USER, user);
 		writeRoles(roles);
 		executeCommand(cluster, policy);
 	}
 
-	public void revokeRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) throws AerospikeException {
+	public void revokeRoles(Cluster cluster, AdminPolicy policy, String user, List<String> roles) {
 		writeHeader(REVOKE_ROLES, 2);
 		writeField(USER, user);
 		writeRoles(roles);
 		executeCommand(cluster, policy);
 	}
 
-	public void createRole(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+	public void createRole(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) {
 		writeHeader(CREATE_ROLE, 2);
 		writeField(ROLE, roleName);
 		writePrivileges(privileges);
 		executeCommand(cluster, policy);
 	}
 
-	public void createRole(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist) throws AerospikeException {
+	public void createRole(
+		Cluster cluster,
+		AdminPolicy policy,
+		String roleName,
+		List<Privilege> privileges,
+		List<String> whitelist,
+		int readQuota,
+		int writeQuota
+	) {
 		int fieldCount = 1;
 
 		if (privileges != null && privileges.size() > 0) {
@@ -252,6 +266,14 @@ public class AdminCommand {
 		}
 
 		if (whitelist != null && whitelist.size() > 0) {
+			fieldCount++;
+		}
+
+		if (readQuota > 0) {
+			fieldCount++;
+		}
+
+		if (writeQuota > 0) {
 			fieldCount++;
 		}
 
@@ -265,30 +287,38 @@ public class AdminCommand {
 		if (whitelist != null && whitelist.size() > 0) {
 			writeWhitelist(whitelist);
 		}
+
+		if (readQuota > 0) {
+			writeField(READ_QUOTA, readQuota);
+		}
+
+		if (writeQuota > 0) {
+			writeField(WRITE_QUOTA, writeQuota);
+		}
 		executeCommand(cluster, policy);
 	}
 
-	public void dropRole(Cluster cluster, AdminPolicy policy, String roleName) throws AerospikeException {
+	public void dropRole(Cluster cluster, AdminPolicy policy, String roleName) {
 		writeHeader(DROP_ROLE, 1);
 		writeField(ROLE, roleName);
 		executeCommand(cluster, policy);
 	}
 
-	public void grantPrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+	public void grantPrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) {
 		writeHeader(GRANT_PRIVILEGES, 2);
 		writeField(ROLE, roleName);
 		writePrivileges(privileges);
 		executeCommand(cluster, policy);
 	}
 
-	public void revokePrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) throws AerospikeException {
+	public void revokePrivileges(Cluster cluster, AdminPolicy policy, String roleName, List<Privilege> privileges) {
 		writeHeader(REVOKE_PRIVILEGES, 2);
 		writeField(ROLE, roleName);
 		writePrivileges(privileges);
 		executeCommand(cluster, policy);
 	}
 
-	public void setWhitelist(Cluster cluster, AdminPolicy policy, String roleName, List<String> whitelist) throws AerospikeException {
+	public void setWhitelist(Cluster cluster, AdminPolicy policy, String roleName, List<String> whitelist) {
 		int fieldCount = (whitelist != null && whitelist.size() > 0) ? 2 : 1;
 
 		writeHeader(SET_WHITELIST, fieldCount);
@@ -298,6 +328,14 @@ public class AdminCommand {
 			writeWhitelist(whitelist);
 		}
 
+		executeCommand(cluster, policy);
+	}
+
+	public void setQuotas(Cluster cluster, AdminPolicy policy, String roleName, int readQuota, int writeQuota) {
+		writeHeader(SET_QUOTAS, 3);
+		writeField(ROLE, roleName);
+		writeField(READ_QUOTA, readQuota);
+		writeField(WRITE_QUOTA, writeQuota);
 		executeCommand(cluster, policy);
 	}
 
@@ -398,13 +436,19 @@ public class AdminCommand {
 		dataOffset += bytes.length;
 	}
 
+	private void writeField(byte id, int val) {
+		writeFieldHeader(id, 4);
+		Buffer.intToBytes(val, dataBuffer, dataOffset);
+		dataOffset += 4;
+	}
+
 	private void writeFieldHeader(byte id, int size) {
 		Buffer.intToBytes(size + 1, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = id;
 	}
 
-	private void executeCommand(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+	private void executeCommand(Cluster cluster, AdminPolicy policy) {
 		writeSize();
 		Node node = cluster.getRandomNode();
 		int timeout = (policy == null) ? 1000 : policy.timeout;
@@ -431,7 +475,7 @@ public class AdminCommand {
 		}
 	}
 
-	private void executeQuery(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+	private void executeQuery(Cluster cluster, AdminPolicy policy) {
 		writeSize();
 		Node node = cluster.getRandomNode();
 		int timeout = (policy == null) ? 1000 : policy.timeout;
@@ -489,14 +533,14 @@ public class AdminCommand {
 			list = new ArrayList<User>(capacity);
 		}
 
-		public User queryUser(Cluster cluster, AdminPolicy policy, String user) throws AerospikeException {
+		public User queryUser(Cluster cluster, AdminPolicy policy, String user) {
 			super.writeHeader(QUERY_USERS, 1);
 			super.writeField(USER, user);
 			super.executeQuery(cluster, policy);
 			return (list.size() > 0) ? list.get(0) : null;
 		}
 
-		public List<User> queryUsers(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+		public List<User> queryUsers(Cluster cluster, AdminPolicy policy) {
 			super.writeHeader(QUERY_USERS, 0);
 			super.executeQuery(cluster, policy);
 			return list;
@@ -524,15 +568,32 @@ public class AdminCommand {
 					int id = super.dataBuffer[super.dataOffset++] & 0xFF;
 					len--;
 
-					if (id == USER) {
+					switch (id) {
+					case USER:
 						user.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
 						super.dataOffset += len;
-					}
-					else if (id == ROLES) {
+						break;
+
+					case ROLES:
 						parseRoles(user);
-					}
-					else {
+						break;
+
+					case READ_INFO:
+						user.readInfo = parseInfo();
+						break;
+
+					case WRITE_INFO:
+						user.writeInfo = parseInfo();
+						break;
+
+					case CONNECTIONS:
+						user.connsInUse = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
 						super.dataOffset += len;
+						break;
+
+					default:
+						super.dataOffset += len;
+						break;
 					}
 				}
 
@@ -559,6 +620,18 @@ public class AdminCommand {
 				user.roles.add(role);
 			}
 		}
+
+		private List<Integer> parseInfo() {
+			int size = super.dataBuffer[super.dataOffset++] & 0xFF;
+			ArrayList<Integer> list = new ArrayList<Integer>(size);
+
+			for (int i = 0; i < size; i++) {
+				int val = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+				super.dataOffset += 4;
+				list.add(val);
+			}
+			return list;
+		}
 	}
 
 	public static final class RoleCommand extends AdminCommand {
@@ -568,22 +641,21 @@ public class AdminCommand {
 			list = new ArrayList<Role>(capacity);
 		}
 
-		public Role queryRole(Cluster cluster, AdminPolicy policy, String roleName) throws AerospikeException {
+		public Role queryRole(Cluster cluster, AdminPolicy policy, String roleName) {
 			super.writeHeader(QUERY_ROLES, 1);
 			super.writeField(ROLE, roleName);
 			super.executeQuery(cluster, policy);
 			return (list.size() > 0) ? list.get(0) : null;
 		}
 
-		public List<Role> queryRoles(Cluster cluster, AdminPolicy policy) throws AerospikeException {
+		public List<Role> queryRoles(Cluster cluster, AdminPolicy policy) {
 			super.writeHeader(QUERY_ROLES, 0);
 			super.executeQuery(cluster, policy);
 			return list;
 		}
 
 		@Override
-		int parseBlock(int receiveSize)
-		{
+		int parseBlock(int receiveSize) {
 			super.dataOffset = 0;
 
 			while (super.dataOffset < receiveSize) {
@@ -603,18 +675,33 @@ public class AdminCommand {
 					int id = super.dataBuffer[super.dataOffset++] & 0xFF;
 					len--;
 
-					if (id == ROLE) {
+					switch (id) {
+					case ROLE:
 						role.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
 						super.dataOffset += len;
-					}
-					else if (id == PRIVILEGES) {
+						break;
+
+					case PRIVILEGES:
 						parsePrivileges(role);
-					}
-					else if (id == WHITELIST) {
+						break;
+
+					case WHITELIST:
 						role.whitelist = parseWhitelist(len);
-					}
-					else {
+						break;
+
+					case READ_QUOTA:
+						role.readQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
 						super.dataOffset += len;
+						break;
+
+					case WRITE_QUOTA:
+						role.writeQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+						super.dataOffset += len;
+						break;
+
+					default:
+						super.dataOffset += len;
+						break;
 					}
 				}
 

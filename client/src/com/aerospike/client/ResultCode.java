@@ -320,6 +320,16 @@ public final class ResultCode {
 	public static final int INVALID_WHITELIST = 73;
 
 	/**
+	 * Quotas not enabled on server.
+	 */
+	public static final int QUOTAS_NOT_ENABLED = 74;
+
+	/**
+	 * Invalid quota value.
+	 */
+	public static final int INVALID_QUOTA = 75;
+
+	/**
 	 * User must be authentication before performing database operations.
 	 */
 	public static final int NOT_AUTHENTICATED = 80;
@@ -333,6 +343,11 @@ public final class ResultCode {
 	 * Command not allowed because sender IP address not whitelisted.
 	 */
 	public static final int NOT_WHITELISTED = 82;
+
+	/**
+	 * Quota exceeded.
+	 */
+	public static final int QUOTA_EXCEEDED = 83;
 
 	/**
 	 * A user defined function returned an error code.
@@ -614,6 +629,12 @@ public final class ResultCode {
 		case INVALID_WHITELIST:
 			return "Invalid whitelist";
 
+		case QUOTAS_NOT_ENABLED:
+			return "Quotas not enabled";
+
+		case INVALID_QUOTA:
+			return "Invalid quota";
+
 		case NOT_AUTHENTICATED:
 			return "Not authenticated";
 
@@ -622,6 +643,9 @@ public final class ResultCode {
 
 		case NOT_WHITELISTED:
 			return "Command not whitelisted";
+
+		case QUOTA_EXCEEDED:
+			return "Quota exceeded";
 
 		case UDF_BAD_RESPONSE:
 			return "UDF returned error";

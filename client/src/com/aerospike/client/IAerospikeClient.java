@@ -1520,6 +1520,41 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException;
 
 	/**
+	 * Create user defined role with optional privileges and whitelist.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			optional list of privileges assigned to role.
+	 * @param whitelist				optional list of allowable IP addresses assigned to role.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @throws AerospikeException	if command fails
+	 */
+	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist)
+		throws AerospikeException;
+
+	/**
+	 * Create user defined role with optional privileges, whitelist and read/write quotas.
+	 * Quotas require server security configuration "enable-quotas" to be set to true.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param privileges			optional list of privileges assigned to role.
+	 * @param whitelist				optional list of allowable IP addresses assigned to role.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @param readQuota				optional maximum reads per second limit, pass in zero for no limit.
+	 * @param writeQuota			optional maximum writes per second limit, pass in zero for no limit.
+	 * @throws AerospikeException	if command fails
+	 */
+	public void createRole(
+		AdminPolicy policy,
+		String roleName,
+		List<Privilege> privileges,
+		List<String> whitelist,
+		int readQuota,
+		int writeQuota
+	) throws AerospikeException;
+
+	/**
 	 * Drop user defined role.
 	 *
 	 * @param policy				admin configuration parameters, pass in null for defaults
@@ -1549,6 +1584,31 @@ public interface IAerospikeClient extends Closeable {
 	 * @throws AerospikeException	if command fails
 	 */
 	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges)
+		throws AerospikeException;
+
+	/**
+	 * Set IP address whitelist for a role.  If whitelist is null or empty, remove existing whitelist from role.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param whitelist				list of allowable IP addresses or null.
+	 * 								IP addresses can contain wildcards (ie. 10.1.2.0/24).
+	 * @throws AerospikeException	if command fails
+	 */
+	public void setWhitelist(AdminPolicy policy, String roleName, List<String> whitelist)
+		throws AerospikeException;
+
+	/**
+	 * Set maximum reads/writes per second limits for a role.  If a quota is zero, the limit is removed.
+	 * Quotas require server security configuration "enable-quotas" to be set to true.
+	 *
+	 * @param policy				admin configuration parameters, pass in null for defaults
+	 * @param roleName				role name
+	 * @param readQuota				maximum reads per second limit, pass in zero for no limit.
+	 * @param writeQuota			maximum writes per second limit, pass in zero for no limit.
+	 * @throws AerospikeException	if command fails
+	 */
+	public void setQuotas(AdminPolicy policy, String roleName, int readQuota, int writeQuota)
 		throws AerospikeException;
 
 	/**
