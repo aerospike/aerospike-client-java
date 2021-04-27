@@ -31,6 +31,10 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpWriteFlags;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
@@ -173,6 +177,55 @@ public class TestQueryExecute extends TestSync {
 
 				if (! value.equals(expected)) {
 					fail("Data mismatch. Expected " + expected + ". Received " + value);
+				}
+				count++;
+			}
+			assertEquals(end - begin + 1, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
+	public void queryExecuteOperateExp() {
+		String binName = "foo";
+		Expression exp = Exp.build(Exp.val("bar"));
+
+		int begin = 3;
+		int end = 9;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setFilter(Filter.range(binName1, begin, end));
+
+		ExecuteTask task = client.execute(null, stmt,
+			ExpOperation.write(binName, exp, ExpWriteFlags.DEFAULT)
+			);
+
+		task.waitTillComplete(3000, 3000);
+
+		stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(args.set);
+		stmt.setFilter(Filter.range(binName1, begin, end));
+
+		RecordSet rs = client.query(null, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				Record record = rs.getRecord();
+				String value = record.getString(binName);
+
+				if (value == null) {
+					fail("Bin " + binName + " not found");
+				}
+
+				if (! value.equals("bar")) {
+					fail("Data mismatch. Expected bar. Received " + value);
 				}
 				count++;
 			}

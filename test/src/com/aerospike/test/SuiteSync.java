@@ -29,6 +29,7 @@ import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
 import com.aerospike.test.sync.basic.TestBitExp;
 import com.aerospike.test.sync.basic.TestDeleteBin;
+import com.aerospike.test.sync.basic.TestExpOperation;
 import com.aerospike.test.sync.basic.TestExpire;
 import com.aerospike.test.sync.basic.TestFilterExp;
 import com.aerospike.test.sync.basic.TestGeneration;
@@ -37,6 +38,7 @@ import com.aerospike.test.sync.basic.TestListExp;
 import com.aerospike.test.sync.basic.TestListMap;
 import com.aerospike.test.sync.basic.TestOperate;
 import com.aerospike.test.sync.basic.TestOperateBit;
+import com.aerospike.test.sync.basic.TestOperateHll;
 import com.aerospike.test.sync.basic.TestOperateList;
 import com.aerospike.test.sync.basic.TestOperateMap;
 import com.aerospike.test.sync.basic.TestPredExp;
@@ -58,6 +60,7 @@ import com.aerospike.test.sync.query.TestQueryGeo;
 import com.aerospike.test.sync.query.TestQueryInteger;
 import com.aerospike.test.sync.query.TestQueryKey;
 import com.aerospike.test.sync.query.TestQueryPredExp;
+import com.aerospike.test.sync.query.TestQueryRPS;
 import com.aerospike.test.sync.query.TestQueryString;
 import com.aerospike.test.sync.query.TestQuerySum;
 import com.aerospike.test.util.Args;
@@ -69,6 +72,7 @@ import com.aerospike.test.util.Args;
 	TestBatch.class,
 	TestBitExp.class,
 	TestDeleteBin.class,
+	TestExpOperation.class,
 	TestExpire.class,
 	TestFilterExp.class,
 	TestGeneration.class,
@@ -77,6 +81,7 @@ import com.aerospike.test.util.Args;
 	TestListMap.class,
 	TestOperate.class,
 	TestOperateBit.class,
+	TestOperateHll.class,
 	TestOperateList.class,
 	TestOperateMap.class,
 	TestPredExp.class,
@@ -92,12 +97,13 @@ import com.aerospike.test.util.Args;
 	TestQueryCollection.class,
 	TestQueryExecute.class,
 	TestQueryFilter.class,
+	TestQueryFilterExp.class,
+	TestQueryFilterSet.class,
 	TestQueryGeo.class,
 	TestQueryInteger.class,
 	TestQueryKey.class,
-	TestQueryFilterExp.class,
-	TestQueryFilterSet.class,
 	TestQueryPredExp.class,
+	TestQueryRPS.class,
 	TestQueryString.class,
 	TestQuerySum.class
 })

@@ -92,6 +92,8 @@ public final class Operation {
 		MAP_READ(3),
 		MAP_MODIFY(4),
 		ADD(5),
+		EXP_READ(7),
+		EXP_MODIFY(8),
 		APPEND(9),
 		PREPEND(10),
 		TOUCH(11),

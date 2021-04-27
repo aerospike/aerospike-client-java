@@ -29,6 +29,7 @@ import com.aerospike.client.util.Pack;
  */
 public final class HLLExp {
 	private static final int MODULE = 2;
+	private static final int INIT = 0;
 	private static final int ADD = 1;
 	private static final int COUNT = 50;
 	private static final int UNION = 51;
@@ -37,6 +38,30 @@ public final class HLLExp {
 	private static final int SIMILARITY = 54;
 	private static final int DESCRIBE = 55;
 	private static final int MAY_CONTAIN = 56;
+
+	/**
+	 * Create expression that creates a new HLL or resets an existing HLL.
+	 *
+	 * @param policy			write policy, use {@link HLLPolicy#Default} for default
+	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
+	 * @param bin				HLL bin or value expression
+	 */
+	public static Exp init(HLLPolicy policy, Exp indexBitCount, Exp bin) {
+		return init(policy, indexBitCount, Exp.val(-1), bin);
+	}
+
+	/**
+	 * Create expression that creates a new HLL or resets an existing HLL with minhash bits.
+	 *
+	 * @param policy			write policy, use {@link HLLPolicy#Default} for default
+	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
+	 * @param minHashBitCount	number of min hash bits. Must be between 4 and 51 inclusive.
+	 * @param bin				HLL bin or value expression
+	 */
+	public static Exp init(HLLPolicy policy, Exp indexBitCount, Exp minHashBitCount, Exp bin) {
+		byte[] bytes = Pack.pack(INIT, indexBitCount, minHashBitCount, policy.flags);
+		return addWrite(bin, bytes);
+	}
 
 	/**
 	 * Create expression that adds list values to a HLL set and returns HLL set.

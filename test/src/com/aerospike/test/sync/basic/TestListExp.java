@@ -34,6 +34,10 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
+import com.aerospike.client.exp.ExpWriteFlags;
+import com.aerospike.client.exp.Expression;
 import com.aerospike.client.exp.ListExp;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.test.sync.TestSync;
@@ -117,5 +121,33 @@ public class TestListExp extends TestSync {
 
 		result = record.getList(binA);
 		assertEquals(5, result.size());
+	}
+
+	@Test
+	public void expReturnsList() {
+		List<Value> list = new ArrayList<Value>();
+		list.add(Value.get("a"));
+		list.add(Value.get("b"));
+		list.add(Value.get("c"));
+		list.add(Value.get("d"));
+
+		Expression exp = Exp.build(Exp.val(list));
+
+		Record record = client.operate(null, keyA,
+			ExpOperation.write(binC, exp, ExpWriteFlags.DEFAULT),
+			Operation.get(binC),
+			ExpOperation.read("var", exp, ExpReadFlags.DEFAULT)
+			);
+
+		//System.out.println(record);
+
+		List<?> results = record.getList(binC);
+		assertEquals(2, results.size());
+
+		List<?> rlist = (List<?>)results.get(1);
+		assertEquals(4, rlist.size());
+
+		List<?> results2 = record.getList("var");
+		assertEquals(4, results2.size());
 	}
 }

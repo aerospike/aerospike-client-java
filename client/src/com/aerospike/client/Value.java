@@ -1081,6 +1081,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public void validateKeyType() {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: BoolIntValue");
+		}
+
+		@Override
 		public int getType() {
 			// The server does not natively handle boolean, so store as long (8 byte integer).
 			return ParticleType.INTEGER;
