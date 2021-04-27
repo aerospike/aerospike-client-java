@@ -25,16 +25,6 @@ import com.aerospike.client.query.PredExp;
 @SuppressWarnings("deprecation")
 public class Policy {
 	/**
-	 * Priority of request relative to other transactions.
-	 * Only used for scans where scanPercent is defined.
-	 * <p>
-	 * Priority is obsolete and will eventually be removed.
-	 * Use {@link ScanPolicy#recordsPerSecond} instead of priority.
-	 */
-	@Deprecated
-	public Priority priority = Priority.DEFAULT;
-
-	/**
 	 * Read policy for AP (availability) namespaces.
 	 * <p>
 	 * Default: {@link ReadModeAP#ONE}
@@ -250,7 +240,6 @@ public class Policy {
 	 * Copy policy from another policy.
 	 */
 	public Policy(Policy other) {
-		this.priority = other.priority;
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
@@ -330,7 +319,6 @@ public class Policy {
 		result = prime * result + (failOnFilteredOut ? 1231 : 1237);
 		result = prime * result + ((filterExp == null) ? 0 : filterExp.hashCode());
 		result = prime * result + maxRetries;
-		result = prime * result + ((priority == null) ? 0 : priority.hashCode());
 		result = prime * result + ((readModeAP == null) ? 0 : readModeAP.hashCode());
 		result = prime * result + ((readModeSC == null) ? 0 : readModeSC.hashCode());
 		result = prime * result + ((replica == null) ? 0 : replica.hashCode());
@@ -363,8 +351,6 @@ public class Policy {
 		} else if (!filterExp.equals(other.filterExp))
 			return false;
 		if (maxRetries != other.maxRetries)
-			return false;
-		if (priority != other.priority)
 			return false;
 		if (readModeAP != other.readModeAP)
 			return false;

@@ -22,7 +22,6 @@ public final class FieldType {
 	public static final int KEY = 2;
 	public static final int DIGEST_RIPE = 4;
 	public final static int TRAN_ID = 7;	// user supplied transaction id, which is simply passed back
-	public final static int SCAN_OPTIONS = 8;
 	public final static int SCAN_TIMEOUT = 9;
 	public final static int RECORDS_PER_SECOND = 10;
 	public final static int PID_ARRAY = 11;

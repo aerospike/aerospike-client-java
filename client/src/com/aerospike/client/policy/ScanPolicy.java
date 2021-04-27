@@ -34,16 +34,6 @@ public final class ScanPolicy extends Policy {
 	public long maxRecords;
 
 	/**
-	 * Percent of data to scan.  Valid integer range is 1 to 100.
-	 * <p>
-	 * Servers might allow scanPercent, but not in conjunction with {@link ScanPolicy#maxRecords}.
-	 * scanPercent is eventually slated for removal.
-	 * <p>
-	 * Default: 100
-	 */
-	public int scanPercent = 100;
-
-	/**
 	 * Limit returned records per second (rps) rate for each server.
 	 * Do not apply rps limit if recordsPerSecond is zero.
 	 * <p>
@@ -79,23 +69,15 @@ public final class ScanPolicy extends Policy {
 	public boolean includeBinData = true;
 
 	/**
-	 * This field is no longer used and will eventually be removed.
-	 */
-	@Deprecated
-	public boolean failOnClusterChange;
-
-	/**
 	 * Copy scan policy from another scan policy.
 	 */
 	public ScanPolicy(ScanPolicy other) {
 		super(other);
 		this.maxRecords = other.maxRecords;
-		this.scanPercent = other.scanPercent;
 		this.recordsPerSecond = other.recordsPerSecond;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.concurrentNodes = other.concurrentNodes;
 		this.includeBinData = other.includeBinData;
-		this.failOnClusterChange = other.failOnClusterChange;
 	}
 
 	/**
@@ -127,17 +109,8 @@ public final class ScanPolicy extends Policy {
 	 * Verify policies fields are within range.
 	 */
 	public void validate() {
-		if (scanPercent <= 0 || scanPercent > 100) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid scanPercent: " + scanPercent);
-		}
-
 		if (maxRecords < 0) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
-		}
-
-		if (scanPercent != 100 && maxRecords != 0) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scanPercent(" + scanPercent +
-					") and maxRecords(" + maxRecords + ") are mutually exclusive");
 		}
 	}
 }

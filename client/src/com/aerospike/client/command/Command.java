@@ -645,13 +645,6 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-		// Only set scan options for server versions &lt; 4.9 or if scanPercent was modified.
-		if (nodePartitions == null || policy.scanPercent < 100) {
-			// Estimate scan options size.
-			dataOffset += 2 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
-
 		// Estimate scan timeout size.
 		dataOffset += 4 + FIELD_HEADER_SIZE;
 		fieldCount++;
@@ -712,20 +705,6 @@ public abstract class Command {
 
 		if (exp != null) {
 			dataOffset = exp.write(this);
-		}
-
-		// Only set scan options for server versions &lt; 4.9 or if scanPercent was modified.
-		if (nodePartitions == null || policy.scanPercent < 100) {
-			writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-
-			byte priority = (byte)policy.priority.ordinal();
-			priority <<= 4;
-
-			if (policy.failOnClusterChange) {
-				priority |= 0x08;
-			}
-			dataBuffer[dataOffset++] = priority;
-			dataBuffer[dataOffset++] = (byte)policy.scanPercent;
 		}
 
 		// Write scan socket idle timeout.
@@ -823,13 +802,6 @@ public abstract class Command {
 			// Estimate max records size;
 			if (maxRecords > 0) {
 				dataOffset += 8 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			// Only set scan options for server versions &lt; 4.9.
-			if (nodePartitions == null) {
-				// Estimate scan options size.
-				dataOffset += 2 + FIELD_HEADER_SIZE;
 				fieldCount++;
 			}
 
@@ -956,20 +928,6 @@ public abstract class Command {
 
 			if (maxRecords > 0) {
 				writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
-			}
-
-			// Only set scan options for server versions &lt; 4.9.
-			if (nodePartitions == null) {
-				writeFieldHeader(2, FieldType.SCAN_OPTIONS);
-
-				byte priority = (byte)policy.priority.ordinal();
-				priority <<= 4;
-
-				if (! write && ((QueryPolicy)policy).failOnClusterChange) {
-					priority |= 0x08;
-				}
-				dataBuffer[dataOffset++] = priority;
-				dataBuffer[dataOffset++] = (byte)100;
 			}
 
 			// Write scan socket idle timeout.
