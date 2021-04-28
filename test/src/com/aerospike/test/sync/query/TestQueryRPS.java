@@ -42,11 +42,11 @@ import com.aerospike.client.task.RegisterTask;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryRPS extends TestSync {
-	private static final String indexName = "qeindex1";
-	private static final String keyPrefix = "qekey";
-	private static final String binName1 = args.getBinName("qebin1");
-	private static final String binName2 = args.getBinName("qebin2");
-	private static final String binName3 = args.getBinName("qebin3");
+	private static final String indexName = "rpsindex";
+	private static final String keyPrefix = "rpskey";
+	private static final String binName1 = args.getBinName("rpsbin1");
+	private static final String binName2 = args.getBinName("rpsbin2");
+	private static final String binName3 = args.getBinName("rpsbin3");
 	private static final int records_per_node = 1000;
 	private static final int rps = 1000;
 	private static final int expected_duration = 1000 * records_per_node / rps;

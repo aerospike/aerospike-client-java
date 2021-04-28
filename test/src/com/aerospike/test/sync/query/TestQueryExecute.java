@@ -46,10 +46,10 @@ import com.aerospike.client.task.RegisterTask;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryExecute extends TestSync {
-	private static final String indexName = "qeindex1";
-	private static final String keyPrefix = "qekey";
-	private static final String binName1 = args.getBinName("qebin1");
-	private static final String binName2 = args.getBinName("qebin2");
+	private static final String indexName = "tqeindex";
+	private static final String keyPrefix = "tqekey";
+	private static final String binName1 = args.getBinName("tqebin1");
+	private static final String binName2 = args.getBinName("tqebin2");
 	private static final int size = 10;
 
 	@BeforeClass
