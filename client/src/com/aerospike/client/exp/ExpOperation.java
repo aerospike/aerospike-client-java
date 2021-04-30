@@ -31,7 +31,6 @@ public final class ExpOperation {
 	 * @param binName	name of bin to store expression result
 	 * @param exp		expression to evaluate
 	 * @param flags		expression write flags.  See {@link com.aerospike.client.exp.ExpWriteFlags}
-	 * @return
 	 */
 	public static Operation write(String binName, Expression exp, int flags) {
 		return createOperation(Operation.Type.EXP_MODIFY, binName, exp, flags);
