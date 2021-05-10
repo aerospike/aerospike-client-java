@@ -1110,7 +1110,7 @@ public abstract class Value {
 		public boolean equals(Object other) {
 			return (other != null &&
 				this.getClass().equals(other.getClass()) &&
-				this.value == ((BooleanValue)other).value);
+				this.value == ((BoolIntValue)other).value);
 		}
 
 		@Override
