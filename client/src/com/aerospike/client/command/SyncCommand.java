@@ -124,6 +124,7 @@ public abstract class SyncCommand extends Command {
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
+						node.incrErrorCount();
 					}
 					else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
 						// Add to circuit breaker error count and retry.

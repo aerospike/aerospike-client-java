@@ -1128,7 +1128,7 @@ public class Cluster implements Runnable, Closeable {
 
 				state.eventLoop.execute(new Runnable() {
 					public void run() {
-						if (state.pending < 0) {
+						if (state.closed) {
 							// Cluster's event loop connections are already closed.
 							return;
 						}
@@ -1160,7 +1160,7 @@ public class Cluster implements Runnable, Closeable {
 	 */
 	private final void closeEventLoop(AtomicInteger eventLoopCount, EventState state) {
 		// Prevent future cluster commands on this event loop.
-		state.pending = -1;
+		state.closed = true;
 
 		// Close asynchronous node connections for single event loop.
 		Node[] nodeArray = nodes;

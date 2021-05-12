@@ -21,6 +21,7 @@ public final class EventState {
 	public final int index;
 	public int pending;
 	public int errors;
+	public boolean closed;
 
 	public EventState(EventLoop eventLoop, int index) {
 		this.eventLoop = eventLoop;

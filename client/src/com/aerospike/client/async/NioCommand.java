@@ -91,11 +91,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		command.bufferQueue = eventLoop.bufferQueue;
 
 		// We are already in event loop thread, so start processing now.
-		if (eventState.pending++ == -1) {
-			eventState.pending = -1;
-			eventState.errors++;
-			state = AsyncCommand.COMPLETE;
-			notifyFailure(new AerospikeException("Cluster has been closed"));
+		if (eventState.closed) {
+			queueError(new AerospikeException("Cluster has been closed"));
 			return;
 		}
 
@@ -119,17 +116,15 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				return;
 			}
 		}
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.BATCH_RETRY);
 	}
 
 	@Override
 	public void run() {
-		if (eventState.pending++ == -1) {
-			eventState.pending = -1;
-			eventState.errors++;
-			state = AsyncCommand.COMPLETE;
-			notifyFailure(new AerospikeException("Cluster has been closed"));
+		if (eventState.closed) {
+			queueError(new AerospikeException("Cluster has been closed"));
 			return;
 		}
 
@@ -189,12 +184,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 		}
 
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.REGISTERED);
 	}
 
 	private final void queueError(AerospikeException ae) {
-		eventState.pending--;
 		eventState.errors++;
 		state = AsyncCommand.COMPLETE;
 		notifyFailure(ae);
@@ -219,6 +214,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				deadline = socketDeadline;
 			}
 		}
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.DELAY_QUEUE);
 	}
@@ -972,7 +968,6 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
-		eventState.pending--;
 	}
 
 	private final void close() {

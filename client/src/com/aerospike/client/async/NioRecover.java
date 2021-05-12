@@ -22,10 +22,12 @@ import java.nio.channels.SelectionKey;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
 import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.util.Util;
 
 public final class NioRecover implements INioCommand, TimerTask {
 	//private static final AtomicInteger Counter = new AtomicInteger();
@@ -110,9 +112,6 @@ public final class NioRecover implements INioCommand, TimerTask {
 		//tranId = Counter.getAndIncrement();
 		//System.out.println("" + tranId + " timeout:" + a.isSingle + ',' + cmd.state + ',' + offset + ',' + length);
 
-		// Do not check pending limit because connection may already have events.
-		eventState.pending++;
-		eventLoop.pending++;
 		conn.attach(this);
 		timeoutTask = new HashedWheelTimeout(this);
 		eventLoop.timer.addTimeout(timeoutTask, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(a.policy.timeoutDelay));
@@ -120,9 +119,6 @@ public final class NioRecover implements INioCommand, TimerTask {
 
 	@Override
 	public final void timeout() {
-		if (state == AsyncCommand.COMPLETE) {
-			return;
-		}
 		//System.out.println("" + tranId + " timeout expired. close connection");
 
 		// Transaction has been delayed long enough.
@@ -303,15 +299,39 @@ public final class NioRecover implements INioCommand, TimerTask {
 
 	private final void recover() {
 		//System.out.println("" + tranId + " connection drained");
-		conn.unregister();
-		conn.updateLastUsed();
-		pool.putConnection(conn);
-		close(true);
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+		state = AsyncCommand.COMPLETE;
+
+		try {
+			conn.unregister();
+			conn.updateLastUsed();
+			pool.putConnection(conn);
+			close(true);
+		}
+		catch (Throwable e) {
+			if (! eventState.closed) {
+				Log.error("NioRecover recover failed: " + Util.getStackTrace(e));
+			}
+		}
 	}
 
 	private final void abort(boolean cancelTimeout) {
-		pool.closeConnection(node, conn);
-		close(cancelTimeout);
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+		state = AsyncCommand.COMPLETE;
+
+		try {
+			pool.closeConnection(node, conn);
+			close(cancelTimeout);
+		}
+		catch (Throwable e) {
+			if (! eventState.closed) {
+				Log.error("NioRecover abort failed: " + Util.getStackTrace(e));
+			}
+		}
 	}
 
 	private final void close(boolean cancelTimeout) {
@@ -322,9 +342,5 @@ public final class NioRecover implements INioCommand, TimerTask {
 		if (byteBuffer != null) {
 			eventLoop.putByteBuffer(byteBuffer);
 		}
-		state = AsyncCommand.COMPLETE;
-		eventState.pending--;
-		eventLoop.pending--;
-		eventLoop.tryDelayQueue();
 	}
 }

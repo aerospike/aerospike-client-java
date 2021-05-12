@@ -55,6 +55,10 @@ public final class Util {
 		}
 
 		// Unexpected exceptions need a stacktrace.
+		return getStackTrace(e);
+	}
+
+	public static String getStackTrace(Throwable e) {
 		StringWriter sw = new StringWriter(1000);
 		PrintWriter pw = new PrintWriter(sw);
 		e.printStackTrace(pw);

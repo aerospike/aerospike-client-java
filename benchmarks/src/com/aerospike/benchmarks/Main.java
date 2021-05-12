@@ -1166,14 +1166,19 @@ public class Main implements Log.Callback {
 			maxConcurrentCommands = (int)this.nKeys;
 		}
 
+		// Create seed commands distributed among event loops.
 		RWTask[] tasks = new RWTask[maxConcurrentCommands];
 
 		for (int i = 0; i < maxConcurrentCommands; i++) {
-			// Start seed commands on random event loops.
 			EventLoop eventLoop = this.clientPolicy.eventLoops.next();
-			RWTaskAsync task = new RWTaskAsync(client, eventLoop, args, counters, this.startKey, this.nKeys);
+			tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, this.startKey, this.nKeys);
+		}
+
+		// Start seed commands.
+		for (RWTask task : tasks) {
 			task.runNextCommand();
 		}
+
 		Thread.sleep(900);
 		collectRWStats(tasks);
 	}

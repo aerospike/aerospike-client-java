@@ -116,11 +116,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		command.bufferQueue = eventLoop.bufferQueue;
 
 		// We are already in event loop thread, so start processing now.
-		if (eventState.pending++ == -1) {
-			eventState.pending = -1;
-			eventState.errors++;
-			state = AsyncCommand.COMPLETE;
-			notifyFailure(new AerospikeException("Cluster has been closed"));
+		if (eventState.closed) {
+			queueError(new AerospikeException("Cluster has been closed"));
 			return;
 		}
 
@@ -144,17 +141,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 				return;
 			}
 		}
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.BATCH_RETRY);
 	}
 
 	@Override
 	public void run() {
-		if (eventState.pending++ == -1) {
-			eventState.pending = -1;
-			eventState.errors++;
-			state = AsyncCommand.COMPLETE;
-			notifyFailure(new AerospikeException("Cluster has been closed"));
+		if (eventState.closed) {
+			queueError(new AerospikeException("Cluster has been closed"));
 			return;
 		}
 
@@ -220,12 +215,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(command.socketTimeout);
 		}
 
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.REGISTERED);
 	}
 
-	private final void queueError(AerospikeException ae) {
-		eventState.pending--;
+	private void queueError(AerospikeException ae) {
 		eventState.errors++;
 		state = AsyncCommand.COMPLETE;
 		notifyFailure(ae);
@@ -250,6 +245,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				deadline = socketDeadline;
 			}
 		}
+		eventState.pending++;
 		eventLoop.pending++;
 		executeCommand(deadline, TimeoutState.DELAY_QUEUE);
 	}
@@ -327,21 +323,17 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 		catch (AerospikeException.Backoff ab) {
 			eventState.errors++;
-			retry(ab, true);
+			onBackoffError(ab);
 		}
 		catch (AerospikeException ae) {
 			// Fail without retry on non-connection errors.
 			eventState.errors++;
-			fail();
-			notifyFailure(ae);
-			eventLoop.tryDelayQueue();
+			onFatalError(ae);
 		}
 		catch (Throwable e) {
 			// Fail without retry on unknown errors.
 			eventState.errors++;
-			fail();
-			notifyFailure(new AerospikeException(e));
-			eventLoop.tryDelayQueue();
+			onFatalError(new AerospikeException(e));
 		}
 	}
 
@@ -371,7 +363,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		b.option(ChannelOption.AUTO_READ, false);
 	}
 
-	private final void setTimeoutTask(long deadline, int tstate) {
+	private void setTimeoutTask(long deadline, int tstate) {
 		if (deadline <= 0) {
 			return;
 		}
@@ -410,7 +402,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 	}
 
-	private final void restoreTimeout() {
+	private void restoreTimeout() {
 		// Switch from connectTimeout back to previous timeout.
 		timeoutTask.cancel();
 
@@ -632,7 +624,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		finish();
 	}
 
-	private final void readMultiHeader(ByteBuf byteBuffer) {
+	private void readMultiHeader(ByteBuf byteBuffer) {
 		if (! command.valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
@@ -690,7 +682,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		} while (true);
 	}
 
-	private final void readMultiBody(ByteBuf byteBuffer) {
+	private void readMultiBody(ByteBuf byteBuffer) {
 		if (! command.valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
@@ -805,7 +797,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		executeCommand(deadline, TimeoutState.TIMEOUT);
 	}
 
-	private final void totalTimeout() {
+	private void totalTimeout() {
 		AerospikeException ae = new AerospikeException.Timeout(command.policy, true);
 
 		if (state == AsyncCommand.DELAY_QUEUE) {
@@ -824,7 +816,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		eventLoop.tryDelayQueue();
 	}
 
-	private final void recoverConnection() {
+	private void recoverConnection() {
 		if (command.policy.timeoutDelay > 0) {
 			switch (state) {
 			case AsyncCommand.CONNECT:
@@ -854,50 +846,62 @@ public final class NettyCommand implements Runnable, TimerTask {
 		closeConnection();
 	}
 
-	protected final void finish() {
-		complete();
+	private void finish() {
+		closeKeepConnection();
 
 		try {
 			command.onSuccess();
 		}
 		catch (Throwable e) {
-			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
+			logError("onSuccess() error", e);
 		}
 
 		eventLoop.tryDelayQueue();
 	}
 
-	protected final void onNetworkError(AerospikeException ae) {
+	private void onNetworkError(AerospikeException ae) {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
 
-		closeConnection();
-		retry(ae, true);
+		try {
+			closeConnection();
+			retry(ae, true);
+		}
+		catch (Throwable e) {
+			logError(e);
+		}
 	}
 
-	protected final void onServerTimeout() {
+	private void onBackoffError(AerospikeException.Backoff ab) {
+		try {
+			retry(ab, true);
+		}
+		catch (Throwable e) {
+			logError(e);
+		}
+	}
+
+	private void onServerTimeout() {
+		retryServerError(new AerospikeException.Timeout(command.policy, false));
+	}
+
+	private void retryServerError(AerospikeException ae) {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
 
-		putConnection();
-
-		AerospikeException ae = new AerospikeException.Timeout(command.policy, false);
-		retry(ae, false);
-	}
-
-	protected final void onDeviceOverload(AerospikeException ae) {
-		if (state == AsyncCommand.COMPLETE) {
-			return;
+		try {
+			putConnection();
+			node.incrErrorCount();
+			retry(ae, false);
 		}
-
-		putConnection();
-		node.incrErrorCount();
-		retry(ae, false);
+		catch (Throwable e) {
+			logError(e);
+		}
 	}
 
-	private final void retry(final AerospikeException ae, boolean queueCommand) {
+	private void retry(final AerospikeException ae, boolean queueCommand) {
 		// Check maxRetries.
 		if (iteration > command.maxRetries) {
 			// Fail command.
@@ -956,7 +960,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 					if (state == AsyncCommand.COMPLETE) {
 						return;
 					}
-					retry(ae, d);
+
+					try {
+						retry(ae, d);
+					}
+					catch (Throwable e) {
+						logError(e);
+					}
 				}
 			});
 		}
@@ -966,7 +976,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 	}
 
-	private final void retry(AerospikeException ae, long deadline) {
+	private void retry(AerospikeException ae, long deadline) {
 		if (! command.prepareRetry(ae.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 			// Batch may be retried in separate commands.
 			if (command.retryBatch(this, deadline)) {
@@ -979,24 +989,35 @@ public final class NettyCommand implements Runnable, TimerTask {
 		executeCommand(deadline, TimeoutState.RETRY);
 	}
 
-	protected final void onApplicationError(AerospikeException ae) {
+	private void onApplicationError(AerospikeException ae) {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
 
 		if (ae.keepConnection()) {
-			complete();
+			closeKeepConnection();
 		}
 		else {
 			// Close socket to flush out possible garbage.
-			fail();
+			closeDropConnection();
 		}
 
 		notifyFailure(ae);
 		eventLoop.tryDelayQueue();
 	}
 
-	private final void notifyFailure(AerospikeException ae) {
+	private void onFatalError(AerospikeException ae) {
+		try {
+			closeDropConnection();
+			notifyFailure(ae);
+			eventLoop.tryDelayQueue();
+		}
+		catch (Throwable e) {
+			logError(e);
+		}
+	}
+
+	private void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setNode(node);
 			ae.setPolicy(command.policy);
@@ -1009,28 +1030,33 @@ public final class NettyCommand implements Runnable, TimerTask {
 			command.onFailure(ae);
 		}
 		catch (Throwable e) {
-			Log.error("onFailure() error: " + Util.getErrorMessage(e));
+			logError("onFailure() error", e);
 		}
 	}
 
-	private final void complete() {
+	private void closeKeepConnection() {
+		close();
 		putConnection();
+	}
+
+	private void putConnection() {
+		try {
+			conn.channel.config().setAutoRead(false);
+			InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
+			handler.setPool(pool);
+			pool.putConnection(conn);
+		}
+		catch (Throwable e) {
+			logError(e);
+		}
+	}
+
+	private void closeDropConnection() {
 		close();
-	}
-
-	private final void putConnection() {
-		conn.channel.config().setAutoRead(false);
-		InboundHandler handler = (InboundHandler)conn.channel.pipeline().last();
-		handler.setPool(pool);
-		pool.putConnection(conn);
-	}
-
-	private final void fail() {
 		closeConnection();
-		close();
 	}
 
-	private final void closeConnection() {
+	private void closeConnection() {
 		if (conn != null) {
 			pool.closeConnection(node, conn);
 			conn = null;
@@ -1041,18 +1067,25 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 	}
 
-	private final void closeFromDelayQueue() {
+	private void closeFromDelayQueue() {
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
-		eventState.pending--;
 	}
 
-	private final void close() {
+	private void close() {
 		timeoutTask.cancel();
 		command.putBuffer();
 		state = AsyncCommand.COMPLETE;
 		eventState.pending--;
 		eventLoop.pending--;
+	}
+
+	private void logError(Throwable e) {
+		Log.error("NettyCommand fatal error: " + Util.getStackTrace(e));
+	}
+
+	private void logError(String msg, Throwable e) {
+		Log.error(msg + ": " + Util.getStackTrace(e));
 	}
 
 	static final class InboundHandler extends ChannelInboundHandlerAdapter {
@@ -1145,7 +1178,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 					command.onServerTimeout();
 				}
 				else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
-					command.onDeviceOverload(ae);
+					command.retryServerError(ae);
 				}
 				else {
 					command.onApplicationError(ae);

@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLSession;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
 import com.aerospike.client.cluster.AsyncPool;
@@ -31,6 +32,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.util.Util;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.PooledByteBufAllocator;
@@ -88,10 +90,6 @@ public final class NettyRecover implements TimerTask {
 			return;
 		}
 
-		// Do not check pending limit because connection may already have events.
-		eventState.pending++;
-		eventLoop.pending++;
-
 		// Replace channel handler.
 		ChannelPipeline p = conn.channel.pipeline();
 
@@ -106,9 +104,6 @@ public final class NettyRecover implements TimerTask {
 
 	@Override
 	public final void timeout() {
-		if (state == AsyncCommand.COMPLETE) {
-			return;
-		}
 		//System.out.println("" + tranId + " timeout expired. close connection");
 
 		// Transaction has been delayed long enough.
@@ -336,24 +331,48 @@ public final class NettyRecover implements TimerTask {
 
 	private final void recover() {
 		//System.out.println("" + tranId + " connection drained");
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+		state = AsyncCommand.COMPLETE;
 
-		// Assign normal InboundHandler to connection.
-		ChannelPipeline p = conn.channel.pipeline();
-		p.removeLast();
-		p.addLast(new NettyCommand.InboundHandler(pool));
+		try {
+			// Assign normal InboundHandler to connection.
+			ChannelPipeline p = conn.channel.pipeline();
+			p.removeLast();
+			p.addLast(new NettyCommand.InboundHandler(pool));
 
-		// Put connection into pool.
-		conn.channel.config().setAutoRead(false);
-		conn.updateLastUsed();
-		pool.putConnection(conn);
+			// Put connection into pool.
+			conn.channel.config().setAutoRead(false);
+			conn.updateLastUsed();
+			pool.putConnection(conn);
 
-		// Close recovery command.
-		close(true);
+			// Close recovery command.
+			close(true);
+		}
+		catch (Throwable e) {
+			if (! eventState.closed) {
+				Log.error("NettyRecover recover failed: " + Util.getStackTrace(e));
+			}
+		}
 	}
 
 	private final void abort(boolean cancelTimeout) {
-		pool.closeConnection(node, conn);
-		close(cancelTimeout);
+		//System.out.println("" + tranId + " connection aborted");
+		if (state == AsyncCommand.COMPLETE) {
+			return;
+		}
+		state = AsyncCommand.COMPLETE;
+
+		try {
+			pool.closeConnection(node, conn);
+			close(cancelTimeout);
+		}
+		catch (Throwable e) {
+			if (! eventState.closed) {
+				Log.error("NettyRecover abort failed: " + Util.getStackTrace(e));
+			}
+		}
 	}
 
 	private final void close(boolean cancelTimeout) {
@@ -364,10 +383,6 @@ public final class NettyRecover implements TimerTask {
 		if (saveBuffer) {
 			eventLoop.bufferQueue.addLast(dataBuffer);
 		}
-		state = AsyncCommand.COMPLETE;
-		eventState.pending--;
-		eventLoop.pending--;
-		eventLoop.tryDelayQueue();
 	}
 
 	private static final class InboundHandler extends ChannelInboundHandlerAdapter {
