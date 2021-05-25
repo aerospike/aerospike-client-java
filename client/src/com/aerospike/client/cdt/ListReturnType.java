@@ -55,7 +55,7 @@ public final class ListReturnType {
 	public static final int RANK = 3;
 
 	/**
-	 * Return reserve value order.
+	 * Return reverse value order.
 	 * <ul>
 	 * <li>0 = largest value</li>
 	 * <li>N = Nth largest value</li>
