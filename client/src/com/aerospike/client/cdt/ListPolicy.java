@@ -39,7 +39,7 @@ public final class ListPolicy {
 
 	/**
 	 * Create list with specified order when list does not exist.
-	 * Use specified write flags when writing list items.
+	 * Use specified write flags {@link ListWriteFlags} when writing list items.
 	 */
 	public ListPolicy(ListOrder order, int flags) {
 		this.attributes = order.attributes;
