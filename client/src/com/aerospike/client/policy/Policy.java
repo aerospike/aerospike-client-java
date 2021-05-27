@@ -79,7 +79,7 @@ public class Policy {
 
 	/**
 	 * Socket connect timeout in milliseconds. If connectTimeout greater than zero, it will
-	 * applied to creating a connection plus optional user authentication. Otherwise,
+	 * be applied to creating a connection plus optional user authentication. Otherwise,
 	 * socketTimeout or totalTimeout will be used depending on their values.
 	 * <p>
 	 * connectTimeout is useful when new connection creation is expensive (ie TLS connections)
