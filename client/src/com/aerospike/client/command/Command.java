@@ -1368,20 +1368,24 @@ public abstract class Command {
 	private final void compress(Policy policy) {
 		if (policy.compress && dataOffset > COMPRESS_THRESHOLD) {
 			Deflater def = new Deflater();
-			def.setLevel(Deflater.BEST_SPEED);
-			def.setInput(dataBuffer, 0, dataOffset);
-			def.finish();
+			try {
+				def.setLevel(Deflater.BEST_SPEED);
+				def.setInput(dataBuffer, 0, dataOffset);
+				def.finish();
 
-			byte[] cbuf = new byte[dataOffset];
-			int csize = def.deflate(cbuf, 16, dataOffset - 16);
+				byte[] cbuf = new byte[dataOffset];
+				int csize = def.deflate(cbuf, 16, dataOffset - 16);
 
-			// Use compressed buffer if compression completed within original buffer size.
-			if (def.finished()) {
-				long proto = (csize + 8) | (CL_MSG_VERSION << 56) | (MSG_TYPE_COMPRESSED << 48);
-				Buffer.longToBytes(proto, cbuf, 0);
-				Buffer.longToBytes(dataOffset, cbuf, 8);
-				dataBuffer = cbuf;
-				dataOffset = csize + 16;
+				// Use compressed buffer if compression completed within original buffer size.
+				if (def.finished()) {
+					long proto = (csize + 8) | (CL_MSG_VERSION << 56) | (MSG_TYPE_COMPRESSED << 48);
+					Buffer.longToBytes(proto, cbuf, 0);
+					Buffer.longToBytes(dataOffset, cbuf, 8);
+					dataBuffer = cbuf;
+					dataOffset = csize + 16;
+				}
+			} finally {
+				def.end();
 			}
 		}
 	}

@@ -195,22 +195,26 @@ public abstract class MultiCommand extends SyncCommand {
 				}
 
 				Inflater inf = new Inflater();
-				inf.setInput(buf, 8, size - 8);
-				int rsize;
-
 				try {
-					rsize = inf.inflate(ubuf);
-				}
-				catch (DataFormatException dfe) {
-					throw new AerospikeException.Serialize(dfe);
-				}
+					inf.setInput(buf, 8, size - 8);
+					int rsize;
 
-				if (rsize != usize) {
-					throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+					try {
+						rsize = inf.inflate(ubuf);
+					}
+					catch (DataFormatException dfe) {
+						throw new AerospikeException.Serialize(dfe);
+					}
+
+					if (rsize != usize) {
+						throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+					}
+					dataBuffer = ubuf;
+					dataOffset = 8;
+					receiveSize = usize - 8;
+				} finally {
+					inf.end();
 				}
-				dataBuffer = ubuf;
-				dataOffset = 8;
-				receiveSize = usize - 8;
 			}
 			else {
 				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);

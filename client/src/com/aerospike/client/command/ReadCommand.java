@@ -116,22 +116,26 @@ public class ReadCommand extends SyncCommand {
 			byte[] buf = new byte[usize];
 
 			Inflater inf = new Inflater();
-			inf.setInput(dataBuffer, 8, receiveSize - 8);
-			int rsize;
-
 			try {
-				rsize = inf.inflate(buf);
-			}
-			catch (DataFormatException dfe) {
-				throw new AerospikeException.Serialize(dfe);
-			}
+				inf.setInput(dataBuffer, 8, receiveSize - 8);
+				int rsize;
 
-			if (rsize != usize) {
-				throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
-			}
+				try {
+					rsize = inf.inflate(buf);
+				}
+				catch (DataFormatException dfe) {
+					throw new AerospikeException.Serialize(dfe);
+				}
 
-			dataBuffer = buf;
-			dataOffset = 13;
+				if (rsize != usize) {
+					throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
+				}
+
+				dataBuffer = buf;
+				dataOffset = 13;
+			} finally {
+				inf.end();
+			}
 		}
 		else {
 			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
