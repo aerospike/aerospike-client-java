@@ -143,6 +143,18 @@ public abstract class Exp {
 	}
 
 	/**
+	 * Create boolean bin expression.
+	 *
+	 * <pre>{@code
+	 * // Boolean bin "a" == true
+	 * Exp.eq(Exp.boolBin("a"), Exp.val(true))
+	 * }</pre>
+	 */
+	public static Exp boolBin(String name) {
+		return new Bin(name, Type.BOOL);
+	}
+
+	/**
 	 * Create byte[] bin expression.
 	 *
 	 * <pre>{@code
