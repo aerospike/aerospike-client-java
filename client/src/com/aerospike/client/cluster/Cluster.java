@@ -324,7 +324,7 @@ public class Cluster implements Runnable, Closeable {
 		addNode(node);
 
 		// Initialize partitionMaps.
-		Peers peers = new Peers(nodes.length + 16, 16);
+		Peers peers = new Peers(nodes.length + 16);
 		node.refreshPartitions(peers);
 
 		// Set partition maps for all namespaces to point to same node.
@@ -445,7 +445,7 @@ public class Cluster implements Runnable, Closeable {
 	private final void tend(boolean failIfNotConnected) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
-		Peers peers = new Peers(nodes.length + 16, 16);
+		Peers peers = new Peers(nodes.length + 16);
 
 		// Clear node reference counts.
 		for (Node node : nodes) {

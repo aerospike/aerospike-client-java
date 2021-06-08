@@ -29,10 +29,10 @@ public final class Peers {
 	public int refreshCount;
 	public boolean genChanged;
 
-	public Peers(int peerCapacity, int addCapacity) {
+	public Peers(int peerCapacity) {
 		peers = new ArrayList<Peer>(peerCapacity);
-		nodes = new HashMap<String,Node>(addCapacity);
-		invalidHosts = new HashSet<Host>(addCapacity);
+		nodes = new HashMap<String,Node>(16);
+		invalidHosts = new HashSet<Host>(8);
 	}
 
 	public boolean hasFailed(Host host) {

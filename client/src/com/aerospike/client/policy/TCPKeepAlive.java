@@ -23,24 +23,36 @@ public final class TCPKeepAlive {
 	/**
 	 * Idle time in seconds before TCP sends keep-alive packet.
 	 * <p>
-	 * Default: 60
+	 * Default: 59
 	 */
-	public int idle = 60;
+	public final int idle;
 
 	/**
-	 * If keep-alive packet not acknowledged, wait intvl time in seconds
-	 * before sending new keep-alive packet.
+	 * Wait time in seconds before retrying unacknowledged packet.
 	 * <p>
-	 * Default: 60
+	 * Default: 59
 	 */
-	public int intvl = 60;
+	public final int intvl;
 
 	/**
 	 * Maximum keep-alive packet attempts before invalidating the socket.
 	 * <p>
 	 * Default: 2
 	 */
-	public int probes = 2;
+	public final int probes;
+
+	/**
+	 * Enable TCP keep-alive when using native Netty epoll library.
+	 *
+	 * @param idle 		idle time in seconds before TCP sends keep-alive packet
+	 * @param intvl		wait time in seconds before retrying unacknowledged packet
+	 * @param probes	maximum keep-alive packet attempts before invalidating the socket
+	 */
+	public TCPKeepAlive(int idle, int intvl, int probes) {
+		this.idle = idle;
+		this.intvl = intvl;
+		this.probes = probes;
+	}
 
 	/**
 	 * Copy TCP keep-alive policy from another keep-alive policy.
@@ -55,5 +67,8 @@ public final class TCPKeepAlive {
 	 * Default constructor.
 	 */
 	public TCPKeepAlive() {
+		this.idle = 59;  // Test socket 1 second before server.
+		this.intvl = 59; // Retry socket 1 second before server.
+		this.probes = 2;
 	}
 }
