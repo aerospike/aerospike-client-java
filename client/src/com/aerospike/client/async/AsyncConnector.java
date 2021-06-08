@@ -70,7 +70,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 		}
 		catch (Exception e) {
 			Log.warn("Failed to create conn: " + Util.getErrorMessage(e));
-			pool.release(node);
+			pool.release();
 			return false;
 		}
 	}

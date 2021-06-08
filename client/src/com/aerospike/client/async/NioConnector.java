@@ -195,11 +195,11 @@ public final class NioConnector extends AsyncConnector implements INioCommand {
 		putByteBuffer();
 
 		if (conn != null) {
-			pool.closeConnection(node, conn);
+			pool.closeConnection(conn);
 			conn = null;
 		}
 		else {
-			pool.release(node);
+			pool.release();
 		}
 	}
 }

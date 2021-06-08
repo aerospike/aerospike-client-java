@@ -33,6 +33,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -258,7 +259,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			node = command.getNode(cluster);
 			node.validateErrorCount();
 			pool = node.getAsyncPool(eventState.index);
-			conn = (NettyConnection)pool.getConnection(node, null);
+			conn = (NettyConnection)pool.getConnection(null);
 
 			if (conn != null) {
 				setTimeoutTask(deadline, tstate);
@@ -348,10 +349,15 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		case NETTY_EPOLL:
 			b.channel(EpollSocketChannel.class);
-			b.option(ChannelOption.SO_KEEPALIVE, true);
-			b.option(EpollChannelOption.TCP_KEEPIDLE, 60);
-			b.option(EpollChannelOption.TCP_KEEPINTVL, 10);
-			b.option(EpollChannelOption.TCP_KEEPCNT, 2);
+
+			TCPKeepAlive keepAlive = eventLoop.parent.keepAlive;
+
+			if (keepAlive != null) {
+				b.option(ChannelOption.SO_KEEPALIVE, true);
+				b.option(EpollChannelOption.TCP_KEEPIDLE, keepAlive.idle);
+				b.option(EpollChannelOption.TCP_KEEPINTVL, keepAlive.intvl);
+				b.option(EpollChannelOption.TCP_KEEPCNT, keepAlive.probes);
+			}
 			break;
 
 		case NETTY_KQUEUE:
@@ -1058,11 +1064,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 	private void closeConnection() {
 		if (conn != null) {
-			pool.closeConnection(node, conn);
+			pool.closeConnection(conn);
 			conn = null;
 		}
 		else if (connectInProgress) {
-			pool.release(node);
+			pool.release();
 			connectInProgress = false;
 		}
 	}

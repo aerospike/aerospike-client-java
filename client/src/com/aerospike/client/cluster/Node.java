@@ -110,6 +110,8 @@ public class Node implements Closeable {
 		peersGeneration = -1;
 		partitionGeneration = -1;
 		rebalanceGeneration = -1;
+		partitionChanged = true;
+		rebalanceChanged = true;
 		active = true;
 
 		// Create sync connection pools.
@@ -144,7 +146,7 @@ public class Node implements Closeable {
 		for (int i = 0; i <  eventState.length; i++) {
 			int minSize = i < remMin ? min + 1 : min;
 			int maxSize = i < remMax ? max + 1 : max;
-			asyncConnectionPools[i] = new AsyncPool(minSize, maxSize, i);
+			asyncConnectionPools[i] = new AsyncPool(this, minSize, maxSize, i);
 		}
 	}
 
@@ -346,12 +348,11 @@ public class Node implements Closeable {
 				for (EventState es : cluster.eventState) {
 					final EventLoop eventLoop = es.eventLoop;
 					final AsyncPool pool = getAsyncPool(es.index);
-					final Node node = this;
 
 					eventLoop.execute(new Runnable() {
 						public void run() {
 							try {
-								pool.balance(eventLoop, node);
+								pool.balance(eventLoop);
 							}
 							catch (Throwable e) {
 								if (Log.warnEnabled()) {
@@ -423,6 +424,11 @@ public class Node implements Closeable {
 
 				// Find first host that connects.
 				for (Host host : peer.hosts) {
+					// Do not attempt to add a peer if it has already failed in this cluster tend iteration.
+					if (peers.hasFailed(host)) {
+						continue;
+					}
+
 					try {
 						// Attempt connection to host.
 						NodeValidator nv = new NodeValidator();
@@ -449,6 +455,8 @@ public class Node implements Closeable {
 						break;
 					}
 					catch (Exception e) {
+						peers.fail(host);
+
 						if (Log.warnEnabled()) {
 							Log.warn("Add node " + host + " failed: " + Util.getErrorMessage(e));
 						}

@@ -242,6 +242,14 @@ public class ClientPolicy {
 	public TlsPolicy tlsPolicy;
 
 	/**
+	 * TCP keep-alive configuration. If assigned, enable TCP keep-alive when using
+	 * the native Netty epoll library.
+	 * <p>
+	 * Default: null (Do not enable TCP keep-alive)
+	 */
+	public TCPKeepAlive keepAlive;
+
+	/**
 	 * A IP translation table is used in cases where different clients use different server
 	 * IP addresses.  This may be necessary when using clients from both inside and outside
 	 * a local area network.  Default is no translation.
@@ -356,6 +364,7 @@ public class ClientPolicy {
 		this.batchPolicyDefault = new BatchPolicy(other.batchPolicyDefault);
 		this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
+		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
 		this.threadPool = other.threadPool;
 		this.sharedThreadPool = (other.threadPool != null);

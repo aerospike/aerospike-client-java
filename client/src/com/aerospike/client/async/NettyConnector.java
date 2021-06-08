@@ -66,8 +66,7 @@ public final class NettyConnector extends AsyncConnector {
 	public void createConnection() {
 		state = AsyncCommand.CHANNEL_INIT;
 
-		final InboundHandler handler = new InboundHandler();
-		handler.command = this;
+		final InboundHandler handler = new InboundHandler(this);
 
 		Bootstrap b = new Bootstrap();
 		NettyCommand.initBootstrap(b, eventLoop);
@@ -220,14 +219,20 @@ public final class NettyConnector extends AsyncConnector {
 	}
 
 	private final void finish() {
-		// Assign normal InboundHandler to connection.
-		ChannelPipeline p = conn.channel.pipeline();
-		p.removeLast();
-		p.addLast(new NettyCommand.InboundHandler(pool));
+		try {
+			conn.channel.config().setAutoRead(false);
 
-		conn.channel.config().setAutoRead(false);
-		conn.updateLastUsed();
-		success();
+			// Assign normal InboundHandler to connection.
+			ChannelPipeline p = conn.channel.pipeline();
+			p.removeLast();
+			p.addLast(new NettyCommand.InboundHandler(pool));
+			conn.updateLastUsed();
+			success();
+		}
+		catch (Throwable e) {
+			Log.error("NettyConnector fatal error: " + Util.getStackTrace(e));
+			throw e;
+		}
 	}
 
 	@Override
@@ -240,29 +245,33 @@ public final class NettyConnector extends AsyncConnector {
 	@Override
 	final void closeConnection() {
 		if (conn != null) {
-			pool.closeConnection(node, conn);
+			pool.closeConnection(conn);
 			conn = null;
 		}
 		else {
-			pool.release(node);
+			pool.release();
 		}
 	}
 
 	static final class InboundHandler extends ChannelInboundHandlerAdapter {
-		NettyConnector command;
+		private final NettyConnector connector;
+
+		public InboundHandler(NettyConnector connector) {
+			this.connector = connector;
+		}
 
 		@Override
 		public void channelActive(ChannelHandlerContext ctx) {
 			// Mark connection ready in regular (non TLS) mode.
 			// Otherwise, wait for TLS handshake to complete.
-			if (command.state == AsyncCommand.CONNECT) {
-				command.channelActive();
+			if (connector.state == AsyncCommand.CONNECT) {
+				connector.channelActive();
 			}
 		}
 
 		@Override
 		public void channelRead(ChannelHandlerContext ctx, Object msg) {
-			command.read((ByteBuf)msg);
+			connector.read((ByteBuf)msg);
 		}
 
 		@Override
@@ -277,26 +286,26 @@ public final class NettyConnector extends AsyncConnector {
 				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
 			}
 
-			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
+			TlsPolicy tlsPolicy = connector.eventLoop.parent.tlsPolicy;
 
-			String tlsName = command.node.getHost().tlsName;
+			String tlsName = connector.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];
 
 			Connection.validateServerCertificate(tlsPolicy, tlsName, cert);
 
-			if (command.state == AsyncCommand.TLS_HANDSHAKE) {
-				command.channelActive();
+			if (connector.state == AsyncCommand.TLS_HANDSHAKE) {
+				connector.channelActive();
 			}
 		}
 
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
-			if (command == null) {
-				Log.error("Connection exception: " + Util.getErrorMessage(cause));
+			if (connector == null) {
+				Log.error("NettyConnector exception: " + Util.getStackTrace(cause));
 				return;
 			}
-			command.fail(new AerospikeException(cause));
+			connector.fail(new AerospikeException(cause));
 		}
 	}
 }

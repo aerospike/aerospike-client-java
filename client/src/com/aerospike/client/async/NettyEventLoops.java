@@ -29,6 +29,8 @@ import java.util.Set;
 import javax.net.ssl.KeyManagerFactory;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -54,6 +56,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	private final NettyEventLoop[] eventLoopArray;
 	private final EventLoopGroup group;
 	TlsPolicy tlsPolicy;
+	TCPKeepAlive keepAlive;
 	SslContext sslContext;
 	final EventLoopType eventLoopType;
 	private int eventIter;
@@ -111,6 +114,17 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 				}
 			});
 		}
+	}
+
+	/**
+	 * Initialize event loops with client policy. For internal use only.
+	 */
+	@Override
+	public void init(ClientPolicy policy) {
+		if (policy.tlsPolicy != null) {
+			initTlsContext(policy.tlsPolicy);
+		}
+		this.keepAlive = policy.keepAlive;
 	}
 
 	/**

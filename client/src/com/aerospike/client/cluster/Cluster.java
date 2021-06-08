@@ -144,6 +144,9 @@ public class Cluster implements Runnable, Closeable {
 	// Rack id.
 	public final int rackId;
 
+	// Count of add node failures in the most recent cluster tend iteration.
+	private volatile int invalidNodeCount;
+
 	// Interval in milliseconds between cluster tends.
 	private final int tendInterval;
 
@@ -165,7 +168,7 @@ public class Cluster implements Runnable, Closeable {
 
 	private boolean asyncComplete;
 
-	public Cluster(ClientPolicy policy, Host[] hosts) throws AerospikeException {
+	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
@@ -278,9 +281,7 @@ public class Cluster implements Runnable, Closeable {
 				eventState[i] = loops[i].createState();
 			}
 
-			if (policy.tlsPolicy != null) {
-				eventLoops.initTlsContext(policy.tlsPolicy);
-			}
+			eventLoops.init(policy);
 		}
 		else {
 			eventState = null;
@@ -338,7 +339,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	public void initTendThread(boolean failIfNotConnected) throws AerospikeException {
+	public void initTendThread(boolean failIfNotConnected) {
 		// Tend cluster until all nodes identified.
 		waitTillStabilized(failIfNotConnected);
 
@@ -404,39 +405,21 @@ public class Cluster implements Runnable, Closeable {
 	 * Tend the cluster until it has stabilized and return control.
 	 * This helps avoid initial database request timeout issues when
 	 * a large number of threads are initiated at client startup.
-	 *
-	 * At least two cluster tends are necessary. The first cluster
-	 * tend finds a seed node and obtains the seed's partition maps
-	 * and peer nodes.  The second cluster tend requests partition
-	 * maps from the peer nodes.
-	 *
-	 * A third cluster tend is allowed if some peers nodes can't
-	 * be contacted.  If peer nodes are still unreachable, an
-	 * exception is thrown.
 	 */
-	private final void waitTillStabilized(boolean failIfNotConnected) throws AerospikeException {
-		int count = -1;
+	private final void waitTillStabilized(boolean failIfNotConnected) {
+		// Tend now requests partition maps in same iteration as the nodes
+		// are added, so there is no need to call tend twice anymore.
+		tend(failIfNotConnected);
 
-		for (int i = 0; i < 3; i++) {
-			tend(failIfNotConnected);
+		if (nodes.length == 0) {
+			String message = "Cluster seed(s) failed";
 
-			// Check to see if cluster has changed since the last Tend().
-			// If not, assume cluster has stabilized and return.
-			if (count == nodes.length) {
-				return;
+			if (failIfNotConnected) {
+				throw new AerospikeException(message);
 			}
-
-			Util.sleep(1);
-			count = nodes.length;
-		}
-
-		String message = "Cluster not stabilized after multiple tend attempts";
-
-		if (failIfNotConnected) {
-			throw new AerospikeException(message);
-		}
-		else {
-			Log.warn(message);
+			else {
+				Log.warn(message);
+			}
 		}
 	}
 
@@ -459,7 +442,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Check health of all nodes in the cluster.
 	 */
-	private final void tend(boolean failIfNotConnected) throws AerospikeException {
+	private final void tend(boolean failIfNotConnected) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
 		Peers peers = new Peers(nodes.length + 16, 16);
@@ -492,16 +475,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		// Refresh partition map when necessary.
-		for (Node node : nodes) {
-			if (node.partitionChanged) {
-				node.refreshPartitions(peers);
-			}
-
-			if (node.rebalanceChanged) {
-				node.refreshRacks();
-			}
-		}
+		invalidNodeCount = peers.getInvalidCount();
 
 		if (peers.genChanged) {
 			// Handle nodes changes determined from refreshes.
@@ -516,6 +490,17 @@ public class Cluster implements Runnable, Closeable {
 		// Add nodes in a batch.
 		if (peers.nodes.size() > 0) {
 			addNodes(peers.nodes);
+		}
+
+		// Refresh partition map when necessary.
+		for (Node node : nodes) {
+			if (node.partitionChanged) {
+				node.refreshPartitions(peers);
+			}
+
+			if (node.rebalanceChanged) {
+				node.refreshRacks();
+			}
 		}
 
 		tendCount++;
@@ -538,7 +523,7 @@ public class Cluster implements Runnable, Closeable {
 
 								for (Node node : nodeArray) {
 									AsyncPool pool = node.getAsyncPool(index);
-									pool.balance(eventLoop, node);
+									pool.balance(eventLoop);
 								}
 							}
 							catch (Exception e) {
@@ -580,6 +565,8 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 			catch (Exception e) {
+				peers.fail(seed);
+
 				if (seed.tlsName != null && tlsPolicy == null) {
 					// Fail immediately for known configuration errors like this.
 					throw new AerospikeException.Connection("Seed host tlsName '" + seed.tlsName +
@@ -1018,7 +1005,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
 			}
 		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get());
+		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
 	}
 
 	public final void interruptTendSleep() {
@@ -1098,15 +1085,22 @@ public class Cluster implements Runnable, Closeable {
 		return tendValid;
 	}
 
+	/**
+	 * Return count of add node failures in the most recent cluster tend iteration.
+	 */
+	public final int getInvalidNodeCount() {
+		return invalidNodeCount;
+	}
+
 	public void close() {
+		// Stop cluster tend thread.
+		tendValid = false;
+		tendThread.interrupt();
+
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.
 			threadPool.shutdown();
 		}
-
-		// Stop cluster tend thread.
-		tendValid = false;
-		tendThread.interrupt();
 
 		if (eventLoops == null) {
 			// Close synchronous node connections.

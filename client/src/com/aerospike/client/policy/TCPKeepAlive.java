@@ -14,43 +14,46 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
-
-import java.io.Closeable;
-
-import com.aerospike.client.policy.ClientPolicy;
+package com.aerospike.client.policy;
 
 /**
- * Aerospike event loops interface.
+ * TCP keep-alive policy. This configuration only referenced when using native Netty epoll library.
  */
-public interface EventLoops extends Closeable {
+public final class TCPKeepAlive {
 	/**
-	 * Return array of Aerospike event loops.
+	 * Idle time in seconds before TCP sends keep-alive packet.
+	 * <p>
+	 * Default: 60
 	 */
-	public EventLoop[] getArray();
+	public int idle = 60;
 
 	/**
-	 * Return number of event loops in this group.
+	 * If keep-alive packet not acknowledged, wait intvl time in seconds
+	 * before sending new keep-alive packet.
+	 * <p>
+	 * Default: 60
 	 */
-	public int getSize();
+	public int intvl = 60;
 
 	/**
-	 * Return Aerospike event loop given array index..
+	 * Maximum keep-alive packet attempts before invalidating the socket.
+	 * <p>
+	 * Default: 2
 	 */
-	public EventLoop get(int index);
+	public int probes = 2;
 
 	/**
-	 * Return next Aerospike event loop in round-robin fashion.
+	 * Copy TCP keep-alive policy from another keep-alive policy.
 	 */
-	public EventLoop next();
+	public TCPKeepAlive(TCPKeepAlive other) {
+		this.idle = other.idle;
+		this.intvl = other.intvl;
+		this.probes = other.probes;
+	}
 
 	/**
-	 * Close event loops.
+	 * Default constructor.
 	 */
-	public void close();
-
-	/**
-	 * Initialize event loops with client policy. For internal use only.
-	 */
-	public void init(ClientPolicy policy);
+	public TCPKeepAlive() {
+	}
 }

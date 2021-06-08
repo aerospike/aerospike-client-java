@@ -44,13 +44,25 @@ public final class ClusterStats {
 	public final int recoverQueueSize;
 
 	/**
+	 * Count of add node failures in the most recent cluster tend iteration.
+	 */
+	public final int invalidNodeCount;
+
+	/**
 	 * Cluster statistics constructor.
 	 */
-	public ClusterStats(NodeStats[] nodes, EventLoopStats[] eventLoops, int threadsInUse, int recoverQueueSize) {
+	public ClusterStats(
+		NodeStats[] nodes,
+		EventLoopStats[] eventLoops,
+		int threadsInUse,
+		int recoverQueueSize,
+		int invalidNodeCount
+	) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
 		this.threadsInUse = threadsInUse;
 		this.recoverQueueSize = recoverQueueSize;
+		this.invalidNodeCount = invalidNodeCount;
 	}
 
 	/**
@@ -86,6 +98,8 @@ public final class ClusterStats {
 		sb.append("threadsInUse: " + threadsInUse);
 		sb.append(System.lineSeparator());
 		sb.append("recoverQueueSize: " + recoverQueueSize);
+		sb.append(System.lineSeparator());
+		sb.append("invalidNodeCount: " + invalidNodeCount);
 		return sb.toString();
 	}
 }

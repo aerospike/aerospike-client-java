@@ -365,7 +365,7 @@ public final class NettyRecover implements TimerTask {
 		state = AsyncCommand.COMPLETE;
 
 		try {
-			pool.closeConnection(node, conn);
+			pool.closeConnection(conn);
 			close(cancelTimeout);
 		}
 		catch (Throwable e) {

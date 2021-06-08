@@ -24,14 +24,26 @@ import com.aerospike.client.Host;
 
 public final class Peers {
 	public final ArrayList<Peer> peers;
-	public final HashSet<Host> hosts;
 	public final HashMap<String,Node> nodes;
+	private final HashSet<Host> invalidHosts;
 	public int refreshCount;
 	public boolean genChanged;
 
 	public Peers(int peerCapacity, int addCapacity) {
 		peers = new ArrayList<Peer>(peerCapacity);
-		hosts = new HashSet<Host>(addCapacity);
 		nodes = new HashMap<String,Node>(addCapacity);
+		invalidHosts = new HashSet<Host>(addCapacity);
+	}
+
+	public boolean hasFailed(Host host) {
+		return invalidHosts.contains(host);
+	}
+
+	public void fail(Host host) {
+		invalidHosts.add(host);
+	}
+
+	public int getInvalidCount() {
+		return invalidHosts.size();
 	}
 }

@@ -33,6 +33,7 @@ import com.aerospike.client.async.NettyConnection;
  */
 public final class AsyncPool {
 	private final ArrayDeque<AsyncConnection> queue;
+	private final Node node;
 	private final int minSize;
 	private final int maxSize;
 	private final int index;
@@ -41,14 +42,15 @@ public final class AsyncPool {
 	private int closed;
 	private int removeClosed;
 
-	public AsyncPool(int minSize, int maxSize, int eventLoopIndex) {
+	public AsyncPool(Node node, int minSize, int maxSize, int eventLoopIndex) {
 		this.queue = new ArrayDeque<AsyncConnection>(maxSize);
+		this.node = node;
 		this.minSize = minSize;
 		this.maxSize = maxSize;
 		this.index = eventLoopIndex;
 	}
 
-	public AsyncConnection getConnection(Node node, ByteBuffer byteBuffer) {
+	public AsyncConnection getConnection(ByteBuffer byteBuffer) {
 		Cluster cluster = node.cluster;
 		AsyncConnection conn;
 
@@ -59,7 +61,7 @@ public final class AsyncPool {
 			}
 
 			if (! conn.isValid(byteBuffer)) {
-				closeConnection(node, conn);
+				closeConnection(conn);
 				continue;
 			}
 			return conn;
@@ -70,14 +72,14 @@ public final class AsyncPool {
 		}
 
 		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
-			"Max async conns reached: " + this + ',' + index + ',' + total +
+			"Max async conns reached: " + node + ',' + index + ',' + total +
 			',' + queue.size() + ',' + maxSize);
 	}
 
 	public boolean putConnection(AsyncConnection conn) {
 		if (conn == null) {
 			if (Log.warnEnabled()) {
-				Log.warn("Async conn is null: " + this + ',' + index);
+				Log.warn("Async conn is null: " + node + ',' + index);
 			}
 			return false;
 		}
@@ -97,13 +99,13 @@ public final class AsyncPool {
 		//connectionClosed();
 
 		if (Log.warnEnabled()) {
-			Log.warn("Async conn pool is full: " + this + ',' + index + ',' + total +
+			Log.warn("Async conn pool is full: " + node + ',' + index + ',' + total +
 					 ',' + queue.size() + ',' + maxSize);
 		}
 		return false;
 	}
 
-	public void balance(EventLoop eventLoop, Node node) {
+	public void balance(EventLoop eventLoop) {
 		if (removeClosed > 0) {
 			removeClosed = 0;
 			removeClosedAll();
@@ -112,7 +114,7 @@ public final class AsyncPool {
 		int excess = total - minSize;
 
 		if (excess > 0) {
-			closeIdleConnections(node, excess);
+			closeIdleConnections(excess);
 		}
 		else if (excess < 0 && node.errorCountWithinLimit()) {
 			// Create connection requests sequentially because they will be done in the
@@ -161,7 +163,7 @@ public final class AsyncPool {
 		}
 	}
 
-	private void closeIdleConnections(Node node, int count) {
+	private void closeIdleConnections(int count) {
 		// Oldest connection is at end of queue.
 		Cluster cluster = node.cluster;
 
@@ -193,7 +195,7 @@ public final class AsyncPool {
 		}
 	}
 
-	public void closeConnection(Node node, AsyncConnection conn) {
+	public void closeConnection(AsyncConnection conn) {
 		connectionClosed();
 		conn.close();
 		node.incrErrorCount();
@@ -207,7 +209,7 @@ public final class AsyncPool {
 		return true;
 	}
 
-	public void release(Node node) {
+	public void release() {
 		total--;
 		node.incrErrorCount();
 	}

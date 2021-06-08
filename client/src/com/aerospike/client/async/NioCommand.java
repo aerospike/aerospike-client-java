@@ -228,7 +228,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			node.validateErrorCount();
 			byteBuffer = eventLoop.getByteBuffer();
 			pool = node.getAsyncPool(eventLoop.index);
-			conn = (NioConnection)pool.getConnection(node, byteBuffer);
+			conn = (NioConnection)pool.getConnection(byteBuffer);
 
 			if (conn != null) {
 				setTimeoutTask(deadline, tstate);
@@ -251,7 +251,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				pool.connectionOpened();
 			}
 			catch (Exception e) {
-				pool.release(node);
+				pool.release();
 				throw e;
 			}
 
@@ -957,7 +957,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 	private final void closeConnection() {
 		if (conn != null) {
-			pool.closeConnection(node, conn);
+			pool.closeConnection(conn);
 			conn = null;
 		}
 	}
