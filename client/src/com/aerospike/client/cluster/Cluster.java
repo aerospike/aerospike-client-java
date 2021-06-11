@@ -41,6 +41,7 @@ import com.aerospike.client.async.EventLoopStats;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
+import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
@@ -529,7 +530,6 @@ public class Cluster implements Runnable, Closeable {
 			if (eventState != null) {
 				for (EventState es : eventState) {
 					final EventLoop eventLoop = es.eventLoop;
-					final int index = es.index;
 
 					eventLoop.execute(new Runnable() {
 						public void run() {
@@ -537,8 +537,7 @@ public class Cluster implements Runnable, Closeable {
 								final Node[] nodeArray = nodes;
 
 								for (Node node : nodeArray) {
-									AsyncPool pool = node.getAsyncPool(index);
-									pool.balance(eventLoop, node);
+									node.balanceAsyncConnections(eventLoop);
 								}
 							}
 							catch (Exception e) {
@@ -989,8 +988,9 @@ public class Cluster implements Runnable, Closeable {
 						loopStats[index] = new EventLoopStats(eventLoop);
 
 						for (int i = 0; i < nodeArray.length; i++) {
-							AsyncPool pool = nodeArray[i].getAsyncPool(index);
-							connStats[i][index] = pool.getConnectionStats();
+							AsyncPool pool = nodeArray[i].getAsyncPool(eventLoop);
+							int inPool = pool.queue.size();
+							connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
 						}
 
 						if (eventLoopCount.decrementAndGet() == 0) {
@@ -1165,8 +1165,7 @@ public class Cluster implements Runnable, Closeable {
 		// Close asynchronous node connections for single event loop.
 		Node[] nodeArray = nodes;
 		for (Node node : nodeArray) {
-			AsyncPool pool = node.getAsyncPool(state.index);
-			pool.closeConnections();
+			node.closeAsyncConnections(state.index);
 		}
 
 		if (eventLoopCount.decrementAndGet() == 0) {

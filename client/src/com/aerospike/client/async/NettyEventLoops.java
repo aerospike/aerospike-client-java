@@ -35,7 +35,6 @@ import com.aerospike.client.util.Util;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;
@@ -55,8 +54,9 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	private final EventLoopGroup group;
 	TlsPolicy tlsPolicy;
 	SslContext sslContext;
-	final EventLoopType eventLoopType;
 	private int eventIter;
+	final boolean isEpoll;
+	final boolean isKqueue;
 
 	/**
 	 * Create Aerospike event loop wrappers from given netty event loops.
@@ -73,19 +73,8 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
 		}
 		this.group = group;
-
-		if (group instanceof NioEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_NIO;
-		}
-		else if (group instanceof EpollEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_EPOLL;
-		}
-		else if (group instanceof KQueueEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_KQUEUE;
-		}
-		else {
-			throw new AerospikeException("Unexpected EventLoopGroup");
-		}
+		this.isEpoll = (group instanceof EpollEventLoopGroup);
+		this.isKqueue = (group instanceof KQueueEventLoopGroup);
 
 		ArrayList<NettyEventLoop> list = new ArrayList<NettyEventLoop>();
 		Iterator<EventExecutor> iter = group.iterator();

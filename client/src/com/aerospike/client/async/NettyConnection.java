@@ -47,13 +47,6 @@ public final class NettyConnection extends AsyncConnection {
 	}
 
 	/**
-	 * Is connection open.
-	 */
-	public boolean isOpen() {
-		return channel.isOpen();
-	}
-
-	/**
 	 * Close connection.
 	 */
 	@Override

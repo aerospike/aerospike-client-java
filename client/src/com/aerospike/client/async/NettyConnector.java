@@ -39,8 +39,12 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
+import io.netty.channel.ChannelOption;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 
@@ -70,7 +74,18 @@ public final class NettyConnector extends AsyncConnector {
 		handler.command = this;
 
 		Bootstrap b = new Bootstrap();
-		NettyCommand.initBootstrap(b, eventLoop);
+		b.group(eventLoop.eventLoop);
+
+		if (eventLoop.parent.isEpoll) {
+			b.channel(EpollSocketChannel.class);
+		} else if(eventLoop.parent.isKqueue) {
+			b.channel(KQueueSocketChannel.class);
+		}
+		else {
+			b.channel(NioSocketChannel.class);
+		}
+		b.option(ChannelOption.TCP_NODELAY, true);
+		b.option(ChannelOption.AUTO_READ, false);
 
 		b.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
@@ -87,7 +102,7 @@ public final class NettyConnector extends AsyncConnector {
 
 				state = AsyncCommand.CONNECT;
 				conn = new NettyConnection(ch);
-				pool.connectionOpened();
+				node.connectionOpened(eventLoop.index);
 				ChannelPipeline p = ch.pipeline();
 
 				if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
@@ -223,7 +238,7 @@ public final class NettyConnector extends AsyncConnector {
 		// Assign normal InboundHandler to connection.
 		ChannelPipeline p = conn.channel.pipeline();
 		p.removeLast();
-		p.addLast(new NettyCommand.InboundHandler(pool));
+		p.addLast(new NettyCommand.InboundHandler());
 
 		conn.channel.config().setAutoRead(false);
 		conn.updateLastUsed();
@@ -232,7 +247,7 @@ public final class NettyConnector extends AsyncConnector {
 
 	@Override
 	final boolean addConnection() {
-		boolean ret = pool.putConnection(conn);
+		boolean ret = node.putAsyncConnection(conn, eventLoop.index);
 		conn = null;
 		return ret;
 	}
@@ -240,15 +255,15 @@ public final class NettyConnector extends AsyncConnector {
 	@Override
 	final void closeConnection() {
 		if (conn != null) {
-			pool.closeConnection(node, conn);
+			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}
 		else {
-			pool.release(node);
+			node.decrAsyncConnection(eventLoop.index);
 		}
 	}
 
-	static final class InboundHandler extends ChannelInboundHandlerAdapter {
+	static class InboundHandler extends ChannelInboundHandlerAdapter {
 		NettyConnector command;
 
 		@Override

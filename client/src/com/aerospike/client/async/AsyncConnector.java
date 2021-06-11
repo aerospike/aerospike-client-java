@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
-import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
@@ -36,7 +35,6 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	final EventState eventState;
 	final Cluster cluster;
 	final Node node;
-	final AsyncPool pool;
 	final AsyncConnector.Listener listener;
 	final HashedWheelTimeout timeoutTask;
 	final int index;
@@ -50,11 +48,10 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 		this.listener = listener;
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.index = eventLoop.getIndex();
-		this.pool = node.getAsyncPool(this.index);
 	}
 
 	public final boolean execute() {
-		if (! pool.reserve()) {
+		if (! node.reserveAsyncConnectionSlot(index)) {
 			return false;
 		}
 
@@ -70,7 +67,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 		}
 		catch (Exception e) {
 			Log.warn("Failed to create conn: " + Util.getErrorMessage(e));
-			pool.release(node);
+			node.decrAsyncConnection(index);
 			return false;
 		}
 	}
