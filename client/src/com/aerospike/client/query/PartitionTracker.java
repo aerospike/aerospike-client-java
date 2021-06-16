@@ -41,6 +41,7 @@ public final class PartitionTracker {
 	private final Node nodeFilter;
 	private final PartitionFilter partitionFilter;
 	private List<NodePartitions> nodePartitionsList;
+	private List<AerospikeException> exceptions;
 	private long maxRecords;
 	private int sleepBetweenRetries;
 	public int socketTimeout;
@@ -279,7 +280,22 @@ public final class PartitionTracker {
 
 		// Check if limits have been reached.
 		if (iteration > policy.maxRetries) {
-			AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, "Max retries exceeded: " + policy.maxRetries);
+			StringBuilder sb = new StringBuilder(2048);
+			sb.append("Max retries exceeded: ");
+			sb.append(policy.maxRetries);
+			sb.append(System.lineSeparator());
+
+			if (exceptions != null) {
+				sb.append("sub-exceptions:");
+				sb.append(System.lineSeparator());
+
+				for (AerospikeException ae : exceptions) {
+					sb.append(ae.getMessage());
+					sb.append(System.lineSeparator());
+				}
+			}
+
+			AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, sb.toString());
 			ae.setPolicy(policy);
 			ae.setIteration(iteration);
 			throw ae;
@@ -318,6 +334,10 @@ public final class PartitionTracker {
 		case ResultCode.SERVER_NOT_AVAILABLE:
 		case ResultCode.PARTITION_UNAVAILABLE:
 		case ResultCode.TIMEOUT:
+			if (exceptions == null) {
+				exceptions = new ArrayList<AerospikeException>();
+			}
+			exceptions.add(ae);
 			return true;
 
 		default:
