@@ -45,6 +45,7 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 		this.statement = statement;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
+		deserializeKeys = true;
 	}
 
 	@Override

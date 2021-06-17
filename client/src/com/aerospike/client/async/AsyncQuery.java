@@ -38,6 +38,7 @@ public final class AsyncQuery extends AsyncMultiCommand {
 		super(parent, node, policy, policy.socketTimeout, policy.totalTimeout);
 		this.listener = listener;
 		this.statement = statement;
+		deserializeKeys = true;
 	}
 
 	@Override

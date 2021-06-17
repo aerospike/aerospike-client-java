@@ -53,6 +53,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 		this.taskId = taskId;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
+		deserializeKeys = true;
 	}
 
 	@Override

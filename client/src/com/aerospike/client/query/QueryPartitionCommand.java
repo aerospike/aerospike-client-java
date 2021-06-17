@@ -47,6 +47,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		this.recordSet = recordSet;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
+		deserializeKeys = true;
 	}
 
 	@Override

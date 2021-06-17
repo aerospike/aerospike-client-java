@@ -55,6 +55,7 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		this.taskId = taskId;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
+		deserializeKeys = true;
 	}
 
 	@Override

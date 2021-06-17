@@ -41,6 +41,7 @@ public final class QueryRecordCommand extends MultiCommand {
 		super(cluster, policy, node, statement.namespace, clusterKey, first);
 		this.statement = statement;
 		this.recordSet = recordSet;
+		deserializeKeys = true;
 	}
 
 	@Override
