@@ -103,17 +103,27 @@ public final class Partition {
 			sequence = sequenceSC;
 		}
 
-		Partition p = new Partition(partitions, key, replica, false);
+		Partition p = PARTITIONS.get();
+		p.partitions = partitions;
+		p.namespace = key.namespace;
+		p.replica = replica;
 		p.sequence = sequence;
+		p.linearize = false;
 		return p.getNodeRead(cluster);
 	}
 
-	private final Partitions partitions;
-	private final String namespace;
-	private final Replica replica;
-	private final int partitionId;
+	public static ThreadLocal<Partition> PARTITIONS = ThreadLocal.withInitial(() -> new Partition());
+
+	private Partitions partitions;
+	private String namespace;
+	private Replica replica;
+	private int partitionId;
 	private int sequence;
-	private final boolean linearize;
+	private boolean linearize;
+
+	private Partition() {
+
+	}
 
 	private Partition(Partitions partitions, Key key, Replica replica, boolean linearize) {
 		this.partitions = partitions;
