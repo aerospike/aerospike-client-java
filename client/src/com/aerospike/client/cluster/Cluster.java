@@ -41,9 +41,11 @@ import com.aerospike.client.async.EventLoopStats;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
+import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
@@ -101,6 +103,9 @@ public class Cluster implements Runnable, Closeable {
 
 	// Thread pool used in synchronous batch, scan and query commands.
 	private final ExecutorService threadPool;
+
+	// TCP keep-alive configuration. Only used in native netty epoll library.
+	public final TCPKeepAlive keepAlive;
 
 	// Optional event loops for async mode.
 	public final EventLoops eventLoops;
@@ -250,6 +255,7 @@ public class Cluster implements Runnable, Closeable {
 		loginTimeout = policy.loginTimeout;
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
+		keepAlive = policy.keepAlive;
 
 		if (policy.threadPool == null) {
 			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
@@ -514,7 +520,6 @@ public class Cluster implements Runnable, Closeable {
 			if (eventState != null) {
 				for (EventState es : eventState) {
 					final EventLoop eventLoop = es.eventLoop;
-					final int index = es.index;
 
 					eventLoop.execute(new Runnable() {
 						public void run() {
@@ -522,8 +527,7 @@ public class Cluster implements Runnable, Closeable {
 								final Node[] nodeArray = nodes;
 
 								for (Node node : nodeArray) {
-									AsyncPool pool = node.getAsyncPool(index);
-									pool.balance(eventLoop);
+									node.balanceAsyncConnections(eventLoop);
 								}
 							}
 							catch (Exception e) {
@@ -977,7 +981,8 @@ public class Cluster implements Runnable, Closeable {
 
 						for (int i = 0; i < nodeArray.length; i++) {
 							AsyncPool pool = nodeArray[i].getAsyncPool(index);
-							connStats[i][index] = pool.getConnectionStats();
+							int inPool = pool.queue.size();
+							connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
 						}
 
 						if (eventLoopCount.decrementAndGet() == 0) {
@@ -1159,8 +1164,7 @@ public class Cluster implements Runnable, Closeable {
 		// Close asynchronous node connections for single event loop.
 		Node[] nodeArray = nodes;
 		for (Node node : nodeArray) {
-			AsyncPool pool = node.getAsyncPool(state.index);
-			pool.closeConnections();
+			node.closeAsyncConnections(state.index);
 		}
 
 		if (eventLoopCount.decrementAndGet() == 0) {

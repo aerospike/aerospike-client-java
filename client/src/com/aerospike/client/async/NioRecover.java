@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
-import com.aerospike.client.cluster.AsyncPool;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.util.Util;
 
@@ -33,7 +33,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 
 	private final NioEventLoop eventLoop;
 	private final EventState eventState;
-	private final AsyncPool pool;
+	private final Node node;
 	private final NioConnection conn;
 	private final HashedWheelTimeout timeoutTask;
 	private final ByteBuffer byteBuffer;
@@ -49,7 +49,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 		AsyncCommand a = cmd.command;
 		this.eventLoop = cmd.eventLoop;
 		this.eventState = cmd.eventState;
-		this.pool = cmd.pool;
+		this.node = cmd.node;
 		this.conn = cmd.conn;
 		this.byteBuffer = cmd.byteBuffer;
 
@@ -304,7 +304,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 		try {
 			conn.unregister();
 			conn.updateLastUsed();
-			pool.putConnection(conn);
+			node.putAsyncConnection(conn, eventLoop.index);
 			close(true);
 		}
 		catch (Throwable e) {
@@ -321,7 +321,7 @@ public final class NioRecover implements INioCommand, TimerTask {
 		state = AsyncCommand.COMPLETE;
 
 		try {
-			pool.closeConnection(conn);
+			node.closeAsyncConnection(conn, eventLoop.index);
 			close(cancelTimeout);
 		}
 		catch (Throwable e) {

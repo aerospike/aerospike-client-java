@@ -27,6 +27,7 @@ import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
@@ -69,7 +70,7 @@ public final class NettyConnector extends AsyncConnector {
 		final InboundHandler handler = new InboundHandler(this);
 
 		Bootstrap b = new Bootstrap();
-		NettyCommand.initBootstrap(b, eventLoop);
+		NettyCommand.initBootstrap(b, cluster, eventLoop);
 
 		b.handler(new ChannelInitializer<SocketChannel>() {
 			@Override
@@ -86,7 +87,7 @@ public final class NettyConnector extends AsyncConnector {
 
 				state = AsyncCommand.CONNECT;
 				conn = new NettyConnection(ch);
-				pool.connectionOpened();
+				node.connectionOpened(eventLoop.index);
 				ChannelPipeline p = ch.pipeline();
 
 				if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
@@ -220,12 +221,21 @@ public final class NettyConnector extends AsyncConnector {
 
 	private final void finish() {
 		try {
-			conn.channel.config().setAutoRead(false);
-
 			// Assign normal InboundHandler to connection.
-			ChannelPipeline p = conn.channel.pipeline();
+			SocketChannel channel = conn.channel;
+			channel.config().setAutoRead(false);
+
+			ChannelPipeline p = channel.pipeline();
 			p.removeLast();
-			p.addLast(new NettyCommand.InboundHandler(pool));
+
+			if (cluster.keepAlive == null) {
+				p.addLast(new NettyCommand.InboundHandler());
+			}
+			else {
+				AsyncPool pool = node.getAsyncPool(eventState.index);
+				p.addLast(new NettyCommand.InboundHandler(pool));
+			}
+
 			conn.updateLastUsed();
 			success();
 		}
@@ -237,7 +247,7 @@ public final class NettyConnector extends AsyncConnector {
 
 	@Override
 	final boolean addConnection() {
-		boolean ret = pool.putConnection(conn);
+		boolean ret = node.putAsyncConnection(conn, eventLoop.index);
 		conn = null;
 		return ret;
 	}
@@ -245,15 +255,15 @@ public final class NettyConnector extends AsyncConnector {
 	@Override
 	final void closeConnection() {
 		if (conn != null) {
-			pool.closeConnection(conn);
+			node.closeAsyncConnection(conn, eventLoop.index);
 			conn = null;
 		}
 		else {
-			pool.release();
+			node.decrAsyncConnection(eventLoop.index);
 		}
 	}
 
-	static final class InboundHandler extends ChannelInboundHandlerAdapter {
+	private static final class InboundHandler extends ChannelInboundHandlerAdapter {
 		private final NettyConnector connector;
 
 		public InboundHandler(NettyConnector connector) {

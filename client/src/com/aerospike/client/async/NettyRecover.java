@@ -25,10 +25,10 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
-import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.TlsPolicy;
@@ -41,6 +41,7 @@ import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelPipeline;
+import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.SslHandler;
 import io.netty.handler.ssl.SslHandshakeCompletionEvent;
 
@@ -51,7 +52,6 @@ public final class NettyRecover implements TimerTask {
 	private final NettyEventLoop eventLoop;
 	private final Node node;
 	private final EventState eventState;
-	private final AsyncPool pool;
 	private final NettyConnection conn;
 	private final HashedWheelTimeout timeoutTask;
 	private byte[] dataBuffer;
@@ -68,7 +68,6 @@ public final class NettyRecover implements TimerTask {
 		this.eventLoop = cmd.eventLoop;
 		this.node = cmd.node;
 		this.eventState = cmd.eventState;
-		this.pool = cmd.pool;
 		this.conn = cmd.conn;
 		this.state = cmd.state;
 
@@ -338,14 +337,23 @@ public final class NettyRecover implements TimerTask {
 
 		try {
 			// Assign normal InboundHandler to connection.
-			ChannelPipeline p = conn.channel.pipeline();
+			SocketChannel channel = conn.channel;
+			channel.config().setAutoRead(false);
+
+			ChannelPipeline p = channel.pipeline();
 			p.removeLast();
-			p.addLast(new NettyCommand.InboundHandler(pool));
+
+			if (cluster.keepAlive == null) {
+				p.addLast(new NettyCommand.InboundHandler());
+			}
+			else {
+				AsyncPool pool = node.getAsyncPool(eventState.index);
+				p.addLast(new NettyCommand.InboundHandler(pool));
+			}
 
 			// Put connection into pool.
-			conn.channel.config().setAutoRead(false);
 			conn.updateLastUsed();
-			pool.putConnection(conn);
+			node.putAsyncConnection(conn, eventLoop.index);
 
 			// Close recovery command.
 			close(true);
@@ -365,7 +373,7 @@ public final class NettyRecover implements TimerTask {
 		state = AsyncCommand.COMPLETE;
 
 		try {
-			pool.closeConnection(conn);
+			node.closeAsyncConnection(conn, eventLoop.index);
 			close(cancelTimeout);
 		}
 		catch (Throwable e) {

@@ -21,7 +21,6 @@ import java.util.concurrent.TimeUnit;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
-import com.aerospike.client.cluster.AsyncPool;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
@@ -32,29 +31,25 @@ import com.aerospike.client.util.Util;
  */
 public abstract class AsyncConnector implements Runnable, TimerTask {
 
-	final EventLoopBase eventLoop;
+	final EventLoopBase eventLoopBase;
 	final EventState eventState;
 	final Cluster cluster;
 	final Node node;
-	final AsyncPool pool;
 	final AsyncConnector.Listener listener;
 	final HashedWheelTimeout timeoutTask;
-	final int index;
 	int state;
 
-	AsyncConnector(EventLoopBase eventLoop, Cluster cluster, Node node, AsyncConnector.Listener listener) {
-		this.eventLoop = eventLoop;
-		this.eventState = cluster.eventState[eventLoop.index];
+	AsyncConnector(EventLoopBase eventLoopBase, Cluster cluster, Node node, AsyncConnector.Listener listener) {
+		this.eventLoopBase = eventLoopBase;
+		this.eventState = cluster.eventState[eventLoopBase.index];
 		this.cluster = cluster;
 		this.node = node;
 		this.listener = listener;
 		this.timeoutTask = new HashedWheelTimeout(this);
-		this.index = eventLoop.getIndex();
-		this.pool = node.getAsyncPool(this.index);
 	}
 
 	public final boolean execute() {
-		if (! pool.reserve()) {
+		if (! node.reserveAsyncConnectionSlot(eventLoopBase.index)) {
 			return false;
 		}
 
@@ -64,13 +59,13 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 			}
 			else {
 				// Avoid recursive error stack overflow by placing request at end of queue.
-				eventLoop.execute(this);
+				eventLoopBase.execute(this);
 			}
 			return true;
 		}
 		catch (Exception e) {
 			Log.warn("Failed to create conn: " + Util.getErrorMessage(e));
-			pool.release();
+			node.decrAsyncConnection(eventLoopBase.index);
 			return false;
 		}
 	}
@@ -79,7 +74,7 @@ public abstract class AsyncConnector implements Runnable, TimerTask {
 	public void run() {
 		try {
 			long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cluster.connectTimeout);
-			eventLoop.timer.addTimeout(timeoutTask, deadline);
+			eventLoopBase.timer.addTimeout(timeoutTask, deadline);
 
 			createConnection();
 			eventState.errors = 0;

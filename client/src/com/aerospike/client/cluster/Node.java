@@ -20,6 +20,8 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.SocketTimeoutException;
+import java.nio.ByteBuffer;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,10 +34,12 @@ import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
+import com.aerospike.client.async.AsyncConnection;
 import com.aerospike.client.async.AsyncConnectorExecutor;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
+import com.aerospike.client.async.NettyConnection;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
@@ -146,7 +150,7 @@ public class Node implements Closeable {
 		for (int i = 0; i <  eventState.length; i++) {
 			int minSize = i < remMin ? min + 1 : min;
 			int maxSize = i < remMax ? max + 1 : max;
-			asyncConnectionPools[i] = new AsyncPool(this, minSize, maxSize, i);
+			asyncConnectionPools[i] = new AsyncPool(minSize, maxSize);
 		}
 	}
 
@@ -170,7 +174,7 @@ public class Node implements Closeable {
 		final int maxConcurrent = 50 / eventState.length + 1;
 
 		for (int i = 0; i < eventState.length; i++) {
-			final int minSize = asyncConnectionPools[i].getMinSize();
+			final int minSize = asyncConnectionPools[i].minSize;
 
 			if (minSize > 0) {
 				final EventLoop eventLoop = eventState[i].eventLoop;
@@ -347,12 +351,11 @@ public class Node implements Closeable {
 			if (cluster.eventState != null) {
 				for (EventState es : cluster.eventState) {
 					final EventLoop eventLoop = es.eventLoop;
-					final AsyncPool pool = getAsyncPool(es.index);
 
 					eventLoop.execute(new Runnable() {
 						public void run() {
 							try {
-								pool.balance(eventLoop);
+								balanceAsyncConnections(eventLoop);
 							}
 							catch (Throwable e) {
 								if (Log.warnEnabled()) {
@@ -846,11 +849,132 @@ public class Node implements Closeable {
 		return new ConnectionStats(inUse, inPool, connsOpened.get(), connsClosed.get());
 	}
 
+	public final AsyncConnection getAsyncConnection(int index, ByteBuffer byteBuffer) {
+		AsyncPool pool = asyncConnectionPools[index];
+		ArrayDeque<AsyncConnection> queue = pool.queue;
+		AsyncConnection conn;
+
+		while ((conn = queue.pollFirst()) != null) {
+			if (! cluster.isConnCurrentTran(conn.getLastUsed())) {
+				closeAsyncIdleConnection(conn, index);
+				continue;
+			}
+
+			if (! conn.isValid(byteBuffer)) {
+				closeAsyncConnection(conn, index);
+				continue;
+			}
+			return conn;
+		}
+
+		if (pool.reserve()) {
+			return null;
+		}
+
+		throw new AerospikeException.Connection(ResultCode.NO_MORE_CONNECTIONS,
+			"Max async conns reached: " + this + ',' + index + ',' + pool.total +
+			',' + pool.queue.size() + ',' + pool.maxSize);
+	}
+
+	public final boolean reserveAsyncConnectionSlot(int index) {
+		return asyncConnectionPools[index].reserve();
+	}
+
+	public final void connectionOpened(int index) {
+		asyncConnectionPools[index].opened++;
+	}
+
+	public final boolean putAsyncConnection(AsyncConnection conn, int index) {
+		if (conn == null) {
+			if (Log.warnEnabled()) {
+				Log.warn("Async conn is null: " + this + ',' + index);
+			}
+			return false;
+		}
+
+		AsyncPool pool = asyncConnectionPools[index];
+
+		if (! pool.addFirst(conn)) {
+			// This should not happen since connection slots are reserved in advance
+			// and total connections should never exceed maxSize. If it does happen,
+			// it's highly likely that total count was decremented twice for the same
+			// transaction, causing the connection balancer to create more connections
+			// than necessary. Attempt to correct situation by not decrementing total
+			// when this excess connection is closed.
+			conn.close();
+			//connectionClosed();
+
+			if (Log.warnEnabled()) {
+				Log.warn("Async conn pool is full: " + this + ',' + index + ',' + pool.total +
+						 ',' + pool.queue.size() + ',' + pool.maxSize);
+			}
+			return false;
+		}
+		return true;
+	}
+
+	/**
+	 * Close async connection on error.
+	 */
+	public final void closeAsyncConnection(AsyncConnection conn, int index) {
+		incrErrorCount();
+		asyncConnectionPools[index].connectionClosed();
+		conn.close();
+	}
+
+	/**
+	 * Close async connection without incrementing error count.
+	 */
+	public final void closeAsyncIdleConnection(AsyncConnection conn, int index) {
+		asyncConnectionPools[index].connectionClosed();
+		conn.close();
+	}
+
+	public final void decrAsyncConnection(int index) {
+		incrErrorCount();
+		asyncConnectionPools[index].total--;
+	}
+
 	public final AsyncPool getAsyncPool(int index) {
 		return asyncConnectionPools[index];
 	}
 
-	/* Non-thread safe connection stats implementation.
+	public final void balanceAsyncConnections(EventLoop eventLoop) {
+		AsyncPool pool = asyncConnectionPools[eventLoop.getIndex()];
+		pool.handleRemove();
+
+		int excess = pool.excess();
+
+		if (excess > 0) {
+			closeIdleAsyncConnections(pool, excess);
+		}
+		else if (excess < 0 && errorCountWithinLimit()) {
+			// Create connection requests sequentially because they will be done in the
+			// background and there is no immediate need for them to complete.
+			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 1, null, null);
+		}
+	}
+
+	private final void closeIdleAsyncConnections(AsyncPool pool, int count) {
+		ArrayDeque<AsyncConnection> queue = pool.queue;
+
+		// Oldest connection is at end of queue.
+		while (count > 0) {
+			AsyncConnection conn = queue.peekLast();
+
+			if (conn == null || cluster.isConnCurrentTrim(conn.getLastUsed())) {
+				break;
+			}
+
+			// Pop connection from queue.
+			queue.pollLast();
+			pool.connectionClosed();
+			conn.close();
+			count--;
+		}
+	}
+
+	/*
 	public final ConnectionStats getAsyncConnectionStats() {
 		int inUse = 0;
 		int inPool = 0;
@@ -1031,13 +1155,21 @@ public class Node implements Closeable {
 	 * Must be called from event loop thread.
 	 */
 	public final void closeConnections(AtomicInteger eventLoopCount, int index) {
-		AsyncPool pool = getAsyncPool(index);
-		pool.closeConnections();
+		closeAsyncConnections(index);
 
 		if (eventLoopCount.decrementAndGet() == 0) {
 			// All event loops have reported.
 			closeSyncConnections();
 		}
+	}
+
+	/**
+	 * Close asynchronous connections.
+	 * Must be called from event loop thread.
+	 */
+	public final void closeAsyncConnections(int index) {
+		AsyncPool pool = asyncConnectionPools[index];
+		pool.closeConnections();
 	}
 
 	/**
@@ -1054,6 +1186,87 @@ public class Node implements Closeable {
 		// Close synchronous connections.
 		for (Pool pool : connectionPools) {
 			while ((conn = pool.poll()) != null) {
+				conn.close();
+			}
+		}
+	}
+
+	public static final class AsyncPool {
+		public final ArrayDeque<AsyncConnection> queue;
+		public final int minSize;
+		public final int maxSize;
+		public int total;
+		public int opened;
+		public int closed;
+		private boolean shouldRemove;
+
+		private AsyncPool(int minSize, int maxSize) {
+			this.minSize = minSize;
+			this.maxSize = maxSize;
+			this.queue = new ArrayDeque<AsyncConnection>(maxSize);
+		}
+
+		private boolean reserve() {
+			if (total >= maxSize || queue.size() >= maxSize) {
+				return false;
+			}
+			total++;
+			return true;
+		}
+
+		private boolean addFirst(AsyncConnection conn) {
+			if (queue.size() < maxSize) {
+				queue.addFirst(conn);
+				return true;
+			}
+			return false;
+		}
+
+		private int excess() {
+			return total - minSize;
+		}
+
+		private void connectionClosed() {
+			total--;
+			closed++;
+		}
+
+		public void signalRemove() {
+			shouldRemove = true;
+		}
+
+		public void handleRemove() {
+			if (shouldRemove) {
+				shouldRemove = false;
+				removeClosed();
+			}
+		}
+
+		public void removeClosed() {
+			// Remove all closed netty connections in the queue.
+			NettyConnection first = (NettyConnection)queue.pollFirst();
+			NettyConnection conn = first;
+
+			do {
+				if (conn == null) {
+					break;
+				}
+
+				if (conn.isOpen()) {
+					queue.addLast(conn);
+				}
+				else {
+					connectionClosed();
+				}
+
+				conn = (NettyConnection)queue.pollFirst();
+			} while (conn != first);
+		}
+
+		public void closeConnections() {
+			AsyncConnection conn;
+
+			while ((conn = queue.pollFirst()) != null) {
 				conn.close();
 			}
 		}
