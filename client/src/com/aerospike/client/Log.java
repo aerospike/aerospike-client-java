@@ -158,7 +158,11 @@ public final class Log {
 	 */
 	public static void log(Level level, String message) {
 		if (gCallback != null && level.ordinal() <= gLevel.ordinal() ) {
-			gCallback.log(level, message);
+			try {
+				gCallback.log(level, message);
+			}
+			catch (Throwable e) {
+			}
 		}
 	}
 
