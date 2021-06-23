@@ -1023,8 +1023,8 @@ public class Main implements Log.Callback {
 			try {
 				clientPolicy.eventLoops = eventLoops;
 
-				if (clientPolicy.maxConnsPerNode < this.asyncMaxCommands) {
-					clientPolicy.maxConnsPerNode = this.asyncMaxCommands;
+				if (clientPolicy.asyncMaxConnsPerNode < this.asyncMaxCommands) {
+					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
 				AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
 

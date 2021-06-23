@@ -23,12 +23,10 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.command.FieldType;
 import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
@@ -43,7 +41,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	int batchIndex;
 	int fieldCount;
 	int opCount;
-	final boolean stopOnNotFound;
+	private final boolean isBatch;
 
 	/**
 	 * Batch constructor.
@@ -52,7 +50,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		super(policy, false);
 		this.parent = parent;
 		this.node = node;
-		this.stopOnNotFound = false;
+		this.isBatch = true;
 	}
 
 	/**
@@ -62,7 +60,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		super(policy, socketTimeout, totalTimeout);
 		this.parent = parent;
 		this.node = node;
-		this.stopOnNotFound = true;
+		this.isBatch = false;
 	}
 
 	@Override
@@ -85,7 +83,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
-					if (stopOnNotFound) {
+					if (! isBatch) {
 						return true;
 					}
 				}
@@ -110,51 +108,16 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
 
-			Key key = parseKey();
-			parseRow(key);
-		}
-		return false;
-	}
-
-	private final Key parseKey() {
-		byte[] digest = null;
-		String namespace = null;
-		String setName = null;
-		Value userKey = null;
-
-		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-
-			int fieldtype = dataBuffer[dataOffset++];
-			int size = fieldlen - 1;
-
-			switch (fieldtype) {
-			case FieldType.DIGEST_RIPE:
-				digest = new byte[size];
-				System.arraycopy(dataBuffer, dataOffset, digest, 0, size);
-				dataOffset += size;
-				break;
-
-			case FieldType.NAMESPACE:
-				namespace = Buffer.utf8ToString(dataBuffer, dataOffset, size);
-				dataOffset += size;
-				break;
-
-			case FieldType.TABLE:
-				setName = Buffer.utf8ToString(dataBuffer, dataOffset, size);
-				dataOffset += size;
-				break;
-
-			case FieldType.KEY:
-				int type = dataBuffer[dataOffset++];
-				size--;
-				userKey = Buffer.bytesToKeyValue(type, dataBuffer, dataOffset, size);
-				dataOffset += size;
-				break;
+			if (isBatch) {
+				skipKey(fieldCount);
+				parseRow(null);
+			}
+			else {
+				Key key = parseKey(fieldCount);
+				parseRow(key);
 			}
 		}
-		return new Key(namespace, digest, setName, userKey);
+		return false;
 	}
 
 	protected final Record parseRecord() {

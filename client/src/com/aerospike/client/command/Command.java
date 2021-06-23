@@ -1395,6 +1395,13 @@ public abstract class Command {
 				" sleepBetweenRetries=" + p.sleepBetweenRetries);
 	}
 
+	protected final void skipKey(int fieldCount) {
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4 + fieldlen;
+		}
+	}
+
 	protected final Key parseKey(int fieldCount) {
 		byte[] digest = null;
 		String namespace = null;

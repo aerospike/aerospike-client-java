@@ -46,17 +46,17 @@ public abstract class MultiCommand extends SyncCommand {
 	protected int batchIndex;
 	protected int fieldCount;
 	protected int opCount;
-	private final boolean stopOnNotFound;
+	private final boolean isBatch;
 	private final boolean first;
 	protected volatile boolean valid = true;
 
 	/**
 	 * Batch and server execute constructor.
 	 */
-	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean stopOnNotFound) {
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isBatch) {
 		super(cluster, policy);
 		this.node = node;
-		this.stopOnNotFound = stopOnNotFound;
+		this.isBatch = isBatch;
 		this.namespace = null;
 		this.clusterKey = 0;
 		this.first = false;
@@ -68,7 +68,7 @@ public abstract class MultiCommand extends SyncCommand {
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, int socketTimeout, int totalTimeout) {
 		super(cluster, policy, socketTimeout, totalTimeout);
 		this.node = node;
-		this.stopOnNotFound = true;
+		this.isBatch = false;
 		this.namespace = namespace;
 		this.clusterKey = 0;
 		this.first = false;
@@ -80,7 +80,7 @@ public abstract class MultiCommand extends SyncCommand {
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, long clusterKey, boolean first) {
 		super(cluster, policy, policy.socketTimeout, policy.totalTimeout);
 		this.node = node;
-		this.stopOnNotFound = true;
+		this.isBatch = false;
 		this.namespace = namespace;
 		this.clusterKey = clusterKey;
 		this.first = first;
@@ -238,7 +238,7 @@ public abstract class MultiCommand extends SyncCommand {
 
 			if (resultCode != 0) {
 				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
-					if (stopOnNotFound) {
+					if (! isBatch) {
 						return false;
 					}
 				}
@@ -263,8 +263,14 @@ public abstract class MultiCommand extends SyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
 
-			Key key = parseKey(fieldCount);
-			parseRow(key);
+			if (isBatch) {
+				skipKey(fieldCount);
+				parseRow(null);
+			}
+			else {
+				Key key = parseKey(fieldCount);
+				parseRow(key);
+			}
 		}
 		return true;
 	}

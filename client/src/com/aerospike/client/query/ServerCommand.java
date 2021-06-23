@@ -28,7 +28,7 @@ public final class ServerCommand extends MultiCommand {
 	private final Statement statement;
 
 	public ServerCommand(Cluster cluster, Node node, WritePolicy writePolicy, Statement statement) {
-		super(cluster, writePolicy, node, true);
+		super(cluster, writePolicy, node, false);
 		this.statement = statement;
 	}
 

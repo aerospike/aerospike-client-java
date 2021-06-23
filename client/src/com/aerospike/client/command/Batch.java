@@ -178,7 +178,7 @@ public final class Batch {
 		int sequenceSC;
 
 		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy) {
-			super(cluster, batchPolicy, batch.node, false);
+			super(cluster, batchPolicy, batch.node, true);
 			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
