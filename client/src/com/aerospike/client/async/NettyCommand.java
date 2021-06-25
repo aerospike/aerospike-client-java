@@ -832,7 +832,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 				try {
 					// Create new command to drain connection.
 					new NettyRecover(this);
-					// NettyRecover took ownership of dataBuffer.
+					// NettyRecover took ownership of connection and dataBuffer.
+					conn = null;
+					connectInProgress = false;
 					command.dataBuffer = null;
 					return;
 				}

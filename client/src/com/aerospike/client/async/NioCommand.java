@@ -770,6 +770,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			state == AsyncCommand.AUTH_READ_HEADER || state == AsyncCommand.AUTH_READ_BODY)) {
 			// Create new command to drain connection with existing byteBuffer.
 			new NioRecover(this);
+			// NioRecover took ownership of connection.
+			conn = null;
 		}
 		else {
 			closeConnection();
