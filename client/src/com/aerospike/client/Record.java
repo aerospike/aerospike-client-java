@@ -19,6 +19,7 @@ package com.aerospike.client;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import com.aerospike.client.Value.GeoJSONValue;
 import com.aerospike.client.Value.HLLValue;
@@ -134,7 +135,7 @@ public final class Record {
 
 		if (result != null) {
 			long v = (Long)result;
-			return (v == 0)? false : true;
+			return v != 0;
 		}
 		return false;
 	}
@@ -245,6 +246,11 @@ public final class Record {
 		}
 		sb.append(')');
 		return sb.toString();
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(bins, generation, expiration);
 	}
 
 	/**
