@@ -45,6 +45,16 @@ public abstract class AsyncMultiExecutor {
 		this.stopOnFailure = stopOnFailure;
 	}
 
+	public void setException(AerospikeException ae) {
+		this.exception = ae;
+	}
+
+	public void resetException(AerospikeException ae) {
+		if (ae != null && exception == null) {
+			exception = ae;
+		}
+	}
+
 	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {
 		this.commands = commands;
 		this.maxConcurrent = (maxConcurrent == 0 || maxConcurrent >= commands.length) ? commands.length : maxConcurrent;

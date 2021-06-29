@@ -38,7 +38,7 @@ public final class BatchExecutor {
 			return;
 		}
 
-		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, keys);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys);
 
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.

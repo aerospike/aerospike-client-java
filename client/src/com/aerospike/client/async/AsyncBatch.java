@@ -24,6 +24,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
@@ -56,7 +57,7 @@ public final class AsyncBatch {
 			this.records = records;
 
 			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
+			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records);
 			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
@@ -111,7 +112,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -132,8 +133,13 @@ public final class AsyncBatch {
 			super(eventLoop, cluster, false);
 			this.listener = listener;
 
+			// Assign keys to nodes.
+			BatchNodeList bnl = new BatchNodeList(cluster, policy, records, false);
+			bnl.validate();
+			super.setException(bnl.exception);
+
 			// Create commands.
-			List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
+			List<BatchNode> batchNodes = bnl.list;
 			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
@@ -193,7 +199,9 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
+			BatchNodeList bnl = new BatchNodeList(parent.cluster, batchPolicy, records, sequenceAP, sequenceSC, batch, false);
+			parent.resetException(bnl.exception);
+			return bnl.list;
 		}
 	}
 
@@ -201,8 +209,9 @@ public final class AsyncBatch {
 	// GetArray
 	//-------------------------------------------------------
 
-	public static final class GetArrayExecutor extends AsyncBatchExecutor {
+	public static final class GetArrayExecutor extends AsyncMultiExecutor {
 		private final RecordArrayListener listener;
+		private final Key[] keys;
 		private final Record[] recordArray;
 
 		public GetArrayExecutor(
@@ -214,12 +223,16 @@ public final class AsyncBatch {
 			String[] binNames,
 			int readAttr
 		) {
-			super(eventLoop, cluster, policy, keys, true);
-			this.recordArray = new Record[keys.length];
+			super(eventLoop, cluster, true);
 			this.listener = listener;
+			this.keys = keys;
+			this.recordArray = new Record[keys.length];
+
+			// Assign keys to nodes.
+			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys);
 
 			// Create commands.
-			AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
+			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
@@ -281,7 +294,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -289,7 +302,7 @@ public final class AsyncBatch {
 	// GetSequence
 	//-------------------------------------------------------
 
-	public static final class GetSequenceExecutor extends AsyncBatchExecutor {
+	public static final class GetSequenceExecutor extends AsyncMultiExecutor {
 		private final RecordSequenceListener listener;
 
 		public GetSequenceExecutor(
@@ -301,11 +314,17 @@ public final class AsyncBatch {
 			String[] binNames,
 			int readAttr
 		) {
-			super(eventLoop, cluster, policy, keys, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 
+			// Assign keys to nodes.
+			BatchNodeList bnl = new BatchNodeList(cluster, policy, keys, false);
+			bnl.validate();
+			super.setException(bnl.exception);
+
 			// Create commands.
-			AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
+			List<BatchNode> batchNodes = bnl.list;
+			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
@@ -375,7 +394,9 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			BatchNodeList bnl = new BatchNodeList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false);
+			parent.resetException(bnl.exception);
+			return bnl.list;
 		}
 	}
 
@@ -383,8 +404,9 @@ public final class AsyncBatch {
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public static final class ExistsArrayExecutor extends AsyncBatchExecutor {
+	public static final class ExistsArrayExecutor extends AsyncMultiExecutor {
 		private final ExistsArrayListener listener;
+		private final Key[] keys;
 		private final boolean[] existsArray;
 
 		public ExistsArrayExecutor(
@@ -394,12 +416,16 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsArrayListener listener
 		) {
-			super(eventLoop, cluster, policy, keys, true);
-			this.existsArray = new boolean[keys.length];
+			super(eventLoop, cluster, true);
 			this.listener = listener;
+			this.keys = keys;
+			this.existsArray = new boolean[keys.length];
+
+			// Assign keys to nodes.
+			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys);
 
 			// Create commands.
-			AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
+			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
@@ -457,7 +483,7 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
 		}
 	}
 
@@ -465,7 +491,7 @@ public final class AsyncBatch {
 	// ExistsSequence
 	//-------------------------------------------------------
 
-	public static final class ExistsSequenceExecutor extends AsyncBatchExecutor {
+	public static final class ExistsSequenceExecutor extends AsyncMultiExecutor {
 		private final ExistsSequenceListener listener;
 
 		public ExistsSequenceExecutor(
@@ -475,11 +501,17 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(eventLoop, cluster, policy, keys, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 
+			// Assign keys to nodes.
+			BatchNodeList bnl = new BatchNodeList(cluster, policy, keys, false);
+			bnl.validate();
+			super.setException(bnl.exception);
+
 			// Create commands.
-			AsyncMultiCommand[] tasks = new AsyncMultiCommand[super.taskSize];
+			List<BatchNode> batchNodes = bnl.list;
+			AsyncMultiCommand[] tasks = new AsyncMultiCommand[batchNodes.size()];
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
@@ -538,30 +570,9 @@ public final class AsyncBatch {
 		@Override
 		protected List<BatchNode> generateBatchNodes()
 		{
-			return BatchNode.generateList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
-		}
-	}
-
-	//-------------------------------------------------------
-	// Batch Base Executor
-	//-------------------------------------------------------
-
-	private static abstract class AsyncBatchExecutor extends AsyncMultiExecutor {
-		protected final Key[] keys;
-		protected final List<BatchNode> batchNodes;
-		protected final int taskSize;
-
-		public AsyncBatchExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			boolean stopOnFailure
-		) {
-			super(eventLoop, cluster, stopOnFailure);
-			this.keys = keys;
-			this.batchNodes = BatchNode.generateList(cluster, policy, keys);
-			this.taskSize = batchNodes.size();
+			BatchNodeList bnl = new BatchNodeList(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false);
+			parent.resetException(bnl.exception);
+			return bnl.list;
 		}
 	}
 
@@ -569,15 +580,13 @@ public final class AsyncBatch {
 	// Batch Base Command
 	//-------------------------------------------------------
 
-	private static abstract class AsyncBatchCommand extends AsyncMultiCommand
-	{
+	private static abstract class AsyncBatchCommand extends AsyncMultiCommand {
 		final BatchNode batch;
 		final BatchPolicy batchPolicy;
 		int sequenceAP;
 		int sequenceSC;
 
-		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy)
-		{
+		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy) {
 			super(parent, batch.node, batchPolicy);
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
@@ -603,8 +612,8 @@ public final class AsyncBatch {
 			// This can cause an exponential number of commands.
 			List<BatchNode> batchNodes = generateBatchNodes();
 
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
-				// Batch node is the same.  Go through normal retry.
+			if (batchNodes.size() == 0 || (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node)) {
+				// Go through normal retry.
 				return false;
 			}
 

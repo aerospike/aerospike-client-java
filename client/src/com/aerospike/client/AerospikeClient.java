@@ -50,6 +50,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Batch;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.DeleteCommand;
@@ -1044,7 +1045,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
-		List<BatchNode> batchNodes = BatchNode.generateList(cluster, policy, records);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records);
 
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.
@@ -1126,7 +1127,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param listener				where to send results
 	 * @param policy				batch configuration parameters, pass in null for defaults
 	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *							  The returned records are located in the same list.
+	 *								The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records)
