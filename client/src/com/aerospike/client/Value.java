@@ -152,14 +152,14 @@ public abstract class Value {
 	 * Get enum value string instance.
 	 */
 	public static Value get(Enum<?> value) {
-		return new StringValue(value.toString());
+		return (value == null)? NullValue.INSTANCE : new StringValue(value.toString());
 	}
 
 	/**
 	 * Get UUID value string instance.
 	 */
 	public static Value get(UUID value) {
-		return new StringValue(value.toString());
+		return (value == null)? NullValue.INSTANCE : new StringValue(value.toString());
 	}
 
 	/**
