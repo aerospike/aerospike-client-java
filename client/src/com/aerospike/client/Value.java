@@ -295,7 +295,10 @@ public abstract class Value {
 
 	/**
 	 * Get value from Record object. Useful when copying records from one cluster to another.
+	 * @deprecated
+	 * <p> Use {@link Value#get(Object)} instead.
 	 */
+	@Deprecated
 	public static Value getFromRecordObject(Object value) {
 		return Value.get(value);
 	}
