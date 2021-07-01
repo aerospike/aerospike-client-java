@@ -83,6 +83,13 @@ public class QueryPolicy extends Policy {
 	}
 
 	/**
+	 * Copy query policy from another policy.
+	 */
+	public QueryPolicy(Policy other) {
+		super(other);
+	}
+
+	/**
 	 * Default constructor.
 	 * <p>
 	 * Set maxRetries for non-aggregation queries with a null filter.
