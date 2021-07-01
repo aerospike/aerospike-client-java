@@ -19,6 +19,8 @@ package com.aerospike.client.query;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
+import java.util.Objects;
+
 /**
  * Container object for key identifier and record data.
  */
@@ -39,6 +41,31 @@ public final class KeyRecord {
 	public KeyRecord(Key key, Record record) {
 		this.key = key;
 		this.record = record;
+	}
+
+	/**
+	 * Hash lookup uses key and record.
+	 */
+	@Override
+	public int hashCode() {
+		return Objects.hash(key, record);
+	}
+
+	/**
+	 * Equality uses key and record.
+	 */
+	@Override
+	public boolean equals(Object obj)
+	{
+		if (this == obj) {
+			return true;
+		}
+		if (!(obj instanceof KeyRecord)) {
+			return false;
+		}
+		KeyRecord that = (KeyRecord) obj;
+		return Objects.equals(key, that.key) &&
+				Objects.equals(record, that.record);
 	}
 
 	/**
