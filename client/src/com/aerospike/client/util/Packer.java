@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
@@ -38,7 +39,7 @@ import com.aerospike.client.command.ParticleType;
  */
 public final class Packer {
 
-	public static byte[] pack(Value[] val) throws AerospikeException {
+	public static byte[] pack(Value[] val) {
 		try {
 			Packer packer = new Packer();
 			packer.packValueArray(val);
@@ -49,7 +50,7 @@ public final class Packer {
 		}
 	}
 
-	public static byte[] pack(List<?> val) throws AerospikeException {
+	public static byte[] pack(List<?> val) {
 		try {
 			Packer packer = new Packer();
 			packer.packList(val);
@@ -60,10 +61,10 @@ public final class Packer {
 		}
 	}
 
-	public static byte[] pack(Map<?,?> val) throws AerospikeException {
+	public static byte[] pack(Map<?,?> val, MapOrder order) {
 		try {
 			Packer packer = new Packer();
-			packer.packMap(val);
+			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
 		catch (Exception e) {
@@ -71,7 +72,7 @@ public final class Packer {
 		}
 	}
 
-	public static byte[] pack(List<? extends Entry<?,?>> val, MapOrder order) throws AerospikeException {
+	public static byte[] pack(List<? extends Entry<?,?>> val, MapOrder order) {
 		try {
 			Packer packer = new Packer();
 			packer.packMap(val, order);
@@ -124,7 +125,9 @@ public final class Packer {
 	}
 
 	public void packValueMap(Map<Value,Value> map) {
-		packMapBegin(map.size());
+		MapOrder order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+		packMapBegin(map.size(), order);
+
 		for (Entry<Value,Value> entry : map.entrySet()) {
 			entry.getKey().pack(this);
 			entry.getValue().pack(this);
@@ -132,7 +135,13 @@ public final class Packer {
 	}
 
 	public void packMap(Map<?,?> map) {
-		packMapBegin(map.size());
+		MapOrder order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+		packMap(map, order);
+	}
+
+	public void packMap(Map<?,?> map, MapOrder order) {
+		packMapBegin(map.size(), order);
+
 		for (Entry<?,?> entry : map.entrySet()) {
 			packObject(entry.getKey());
 			packObject(entry.getValue());
@@ -140,23 +149,25 @@ public final class Packer {
 	}
 
 	public void packMap(List<? extends Entry<?,?>> list, MapOrder order) {
-		int attr = order.attributes;
-
-		if (attr > 0) {
-			// Map is sorted.
-			packMapBegin(list.size() + 1);
-			packByte(0xc7);
-			packByte(0);
-			packByte(attr);
-			packByte(0xc0);
-		}
-		else {
-			packMapBegin(list.size());
-		}
+		packMapBegin(list.size(), order);
 
 		for (Entry<?,?> entry : list) {
 			packObject(entry.getKey());
 			packObject(entry.getValue());
+		}
+	}
+
+	public void packMapBegin(int size, MapOrder order) {
+		if (order == MapOrder.UNORDERED) {
+			packMapBegin(size);
+		}
+		else {
+			// Map is sorted.
+			packMapBegin(size + 1);
+			packByte(0xc7);
+			packByte(0);
+			packByte(order.attributes);
+			packByte(0xc0);
 		}
 	}
 
@@ -195,7 +206,7 @@ public final class Packer {
 		packByteArray(b, offset, length);
 	}
 
-	public void packBlob(Object val) throws AerospikeException {
+	public void packBlob(Object val) {
 		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
 
 		try {

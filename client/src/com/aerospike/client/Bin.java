@@ -197,6 +197,19 @@ public final class Bin {
 	}
 
 	/**
+	 * Create bin with a map value and order.  The map value will be serialized as a server map type.
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 *
+	 * @param name		bin name, current limit is 14 characters
+	 * @param value		bin value, pass in TreeMap instance if map order is sorted.
+	 * @param mapOrder	map sorted order.
+	 */
+	public Bin(String name, Map<?,?> value, MapOrder mapOrder) {
+		this.name = name;
+		this.value = Value.get(value, mapOrder);
+	}
+
+	/**
 	 * Create a map bin from a list of key/value entries.  The value will be serialized as a
 	 * server map type with specified mapOrder.  For servers configured as "single-bin", enter
 	 * a null or empty name.

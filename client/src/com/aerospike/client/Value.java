@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import java.util.UUID;
 
 import org.luaj.vm2.LuaBoolean;
@@ -174,6 +175,13 @@ public abstract class Value {
 	 */
 	public static Value get(Map<?,?> value) {
 		return (value == null)? NullValue.INSTANCE : new MapValue(value);
+	}
+
+	/**
+	 * Get map or null value instance.
+	 */
+	public static Value get(Map<?,?> value, MapOrder order) {
+		return (value == null)? NullValue.INSTANCE : new MapValue(value, order);
 	}
 
 	/**
@@ -1478,15 +1486,26 @@ public abstract class Value {
 	 */
 	public static final class MapValue extends Value {
 		private final Map<?,?> map;
+		private final MapOrder order;
 		private byte[] bytes;
 
 		public MapValue(Map<?,?> map)  {
 			this.map = map;
+			this.order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+		}
+
+		public MapValue(Map<?,?> map, MapOrder order)  {
+			this.map = map;
+			this.order = order;
+		}
+
+		public MapOrder getOrder() {
+			return order;
 		}
 
 		@Override
 		public int estimateSize() throws AerospikeException {
-			bytes = Packer.pack(map);
+			bytes = Packer.pack(map, order);
 			return bytes.length;
 		}
 
@@ -1498,7 +1517,7 @@ public abstract class Value {
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packMap(map);
+			packer.packMap(map, order);
 		}
 
 		@Override
