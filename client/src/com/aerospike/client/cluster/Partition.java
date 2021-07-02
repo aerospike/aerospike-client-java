@@ -111,6 +111,7 @@ public final class Partition {
 	private final Partitions partitions;
 	private final String namespace;
 	private final Replica replica;
+	private Node prevNode;
 	private final int partitionId;
 	private int sequence;
 	private final boolean linearize;
@@ -177,9 +178,10 @@ public final class Partition {
 
 	private Node getSequenceNode(Cluster cluster) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
+		int max = replicas.length;
 
-		for (int i = 0; i < replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
+		for (int i = 0; i < max; i++) {
+			int index = sequence % max;
 			Node node = replicas[index].get(partitionId);
 
 			if (node != null && node.isActive()) {
@@ -193,35 +195,37 @@ public final class Partition {
 
 	private Node getRackNode(Cluster cluster) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
-		Node fallback = null;
-		boolean retry = (sequence > 0);
+		int max = replicas.length;
 
-		for (int i = 1; i <= replicas.length; i++) {
-			int index = Math.abs(sequence % replicas.length);
+		for (int rackId : cluster.rackIds) {
+			int seq = sequence;
+
+			for (int i = 0; i < max; i++) {
+				int index = seq % max;
+				Node node = replicas[index].get(partitionId);
+
+				// If a fallback exists, do not retry on node where command failed
+				// even if node is the only one on the same rack.
+				if (node != null && node != prevNode && node.hasRack(namespace, rackId) && node.isActive()) {
+					prevNode = node;
+					sequence = seq;
+					return node;
+				}
+				seq++;
+			}
+		}
+
+		// Fallback to sequence mode and save previous node as well.
+		for (int i = 0; i < max; i++) {
+			int index = sequence % max;
 			Node node = replicas[index].get(partitionId);
 
 			if (node != null && node.isActive()) {
-				// If fallback exists, do not retry on node where command failed,
-				// even if fallback is not on the same rack.
-				if (retry && fallback != null && i == replicas.length) {
-					return fallback;
-				}
-
-				if (node.hasRack(namespace, cluster.rackId)) {
-					return node;
-				}
-
-				if (fallback == null) {
-					fallback = node;
-				}
+				prevNode = node;
+				return node;
 			}
 			sequence++;
 		}
-
-		if (fallback != null) {
-			return fallback;
-		}
-
 		Node[] nodeArray = cluster.getNodes();
 		throw new AerospikeException.InvalidNode(nodeArray.length, this);
 	}

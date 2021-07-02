@@ -147,7 +147,7 @@ public class Cluster implements Runnable, Closeable {
 	public final int loginTimeout;
 
 	// Rack id.
-	public final int rackId;
+	public final int[] rackIds;
 
 	// Count of add node failures in the most recent cluster tend iteration.
 	private volatile int invalidNodeCount;
@@ -266,7 +266,19 @@ public class Cluster implements Runnable, Closeable {
 		sharedThreadPool = policy.sharedThreadPool;
 		useServicesAlternate = policy.useServicesAlternate;
 		rackAware = policy.rackAware;
-		rackId = policy.rackId;
+
+		if (policy.rackIds != null && policy.rackIds.size() > 0) {
+			List<Integer> list = policy.rackIds;
+			int max = list.size();
+			rackIds = new int[max];
+
+			for (int i = 0; i < max; i++) {
+				rackIds[i] = list.get(i);
+			}
+		}
+		else {
+			rackIds = new int[] {policy.rackId};
+		}
 
 		aliases = new HashMap<Host,Node>();
 		nodesMap = new HashMap<String,Node>();

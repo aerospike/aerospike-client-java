@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.policy;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
 
@@ -319,15 +321,15 @@ public class ClientPolicy {
 	 * that contains the key and exists on the same rack as the client.  This serves to lower cloud
 	 * provider costs when nodes are distributed across different racks/data centers.
 	 * <p>
-	 * {@link ClientPolicy#rackId}, {@link Replica#PREFER_RACK} and server rack
-	 * configuration must also be set to enable this functionality.
+	 * {@link ClientPolicy#rackId} or {@link ClientPolicy#rackIds}, {@link Replica#PREFER_RACK}
+	 * and server rack configuration must also be set to enable this functionality.
 	 * <p>
 	 * Default: false
 	 */
 	public boolean rackAware;
 
 	/**
-	 * Rack where this client instance resides.
+	 * Rack where this client instance resides. If {@link ClientPolicy#rackIds} is set, rackId is ignored.
 	 * <p>
 	 * {@link ClientPolicy#rackAware}, {@link Replica#PREFER_RACK} and server rack
 	 * configuration must also be set to enable this functionality.
@@ -335,6 +337,18 @@ public class ClientPolicy {
 	 * Default: 0
 	 */
 	public int rackId;
+
+	/**
+	 * List of acceptable racks in order of preference. Nodes in rackIds[0] are chosen first.
+	 * If a node is not found in rackIds[0], then nodes in rackIds[1] are searched, and so on.
+	 * If rackIds is set, {@link ClientPolicy#rackId} is ignored.
+	 * <p>
+	 * {@link ClientPolicy#rackAware}, {@link Replica#PREFER_RACK} and server rack
+	 * configuration must also be set to enable this functionality.
+	 * <p>
+	 * Default: null
+	 */
+	public List<Integer> rackIds;
 
 	/**
 	 * Copy client policy from another client policy.
@@ -372,6 +386,7 @@ public class ClientPolicy {
 		this.forceSingleNode = other.forceSingleNode;
 		this.rackAware = other.rackAware;
 		this.rackId = other.rackId;
+		this.rackIds = (other.rackIds != null)? new ArrayList<Integer>(other.rackIds) : null;
 	}
 
 	/**
