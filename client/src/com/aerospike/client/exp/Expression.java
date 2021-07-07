@@ -47,6 +47,22 @@ public final class Expression implements CommandExp, Serializable {
 	}
 
 	/**
+	 * Expression constructor used by {@link Expression#fromBytes(byte[])}
+	 *
+	 * @param bytes the packed byte instructions of an {@link Expression}.
+	 */
+	Expression(byte[] bytes) {
+		this.bytes = bytes;
+	}
+
+	/**
+	 * Return a new deserialized {@link Expression}.
+	 */
+	public static Expression fromBytes(byte[] bytes) {
+		return new Expression(bytes);
+	}
+
+	/**
 	 * Return packed byte instructions.
 	 */
 	public byte[] getBytes() {
