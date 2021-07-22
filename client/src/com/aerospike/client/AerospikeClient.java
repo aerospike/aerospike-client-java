@@ -669,14 +669,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			sb.append(set);
 		}
 		else {
-			sb.append("truncate-namespace:namespace=");
-			sb.append(ns);
+			// Servers >= 4.5.1.0 support truncate-namespace.
+			if (node.hasTruncateNamespace()) {
+				sb.append("truncate-namespace:namespace=");
+				sb.append(ns);
+			}
+			else {
+				sb.append("truncate:namespace=");
+				sb.append(ns);
+			}
 		}
 
 		if (beforeLastUpdate != null) {
 			sb.append(";lut=");
 			// Convert to nanoseconds since unix epoch (1970-01-01)
 			sb.append(beforeLastUpdate.getTimeInMillis() * 1000000L);
+		}
+		else {
+			// Servers >= 4.3.1.4 and <= 4.5.0.1 require lut argument.
+			if (node.hasLutNow()) {
+				sb.append(";lut=now");
+			}
 		}
 
 		String response = Info.request(policy, node, sb.toString());
@@ -1511,6 +1524,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void scanAll(ScanPolicy policy, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scan not supported");
+		}
+
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
@@ -1539,6 +1556,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void scanAll(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, String namespace, String setName, String... binNames)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scan not supported");
+		}
+
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -1589,6 +1610,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void scanNode(ScanPolicy policy, Node node, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scan not supported");
+		}
+
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
@@ -1613,6 +1638,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void scanPartitions(ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, ScanCallback callback, String... binNames)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scan not supported");
+		}
+
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
@@ -1640,6 +1669,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void scanPartitions(EventLoop eventLoop, RecordSequenceListener listener, ScanPolicy policy, PartitionFilter partitionFilter, String namespace, String setName, String... binNames)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "scan not supported");
+		}
+
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -1956,6 +1989,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet query(QueryPolicy policy, Statement statement)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
@@ -1992,6 +2029,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -2026,6 +2067,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet queryNode(QueryPolicy policy, Statement statement, Node node)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
@@ -2056,6 +2101,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
@@ -2091,6 +2140,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -2138,6 +2191,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 		return queryAggregate(policy, statement);
 	}
@@ -2159,6 +2216,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final ResultSet queryAggregate(QueryPolicy policy, Statement statement)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
@@ -2188,6 +2249,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node)
 		throws AerospikeException {
+		if (! cluster.hasPartitionScan) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "query not supported");
+		}
+
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}

@@ -52,7 +52,11 @@ public class Node implements Closeable {
 	 */
 	public static final int PARTITIONS = 4096;
 
-	public static final int HAS_PARTITION_SCAN = (1 << 0);
+	public static final int HAS_TRUNCATE_NS = (1 << 1);
+	public static final int HAS_BIT_OP = (1 << 2);
+	public static final int HAS_INDEX_EXISTS = (1 << 3);
+	public static final int HAS_LUT_NOW = (1 << 7);
+	public static final int HAS_PARTITION_SCAN = (1 << 8);
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
@@ -78,7 +82,7 @@ public class Node implements Closeable {
 	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
-	//private final int features;
+	private final int features;
 	protected boolean partitionChanged;
 	protected boolean rebalanceChanged;
 	protected volatile boolean performLogin;
@@ -99,7 +103,7 @@ public class Node implements Closeable {
 		this.tendConnection = nv.primaryConn;
 		this.sessionToken = nv.sessionToken;
 		this.sessionExpiration = nv.sessionExpiration;
-		//this.features = nv.features;
+		this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
 		this.errorCount = new AtomicInteger(0);
@@ -1104,13 +1108,39 @@ public class Node implements Closeable {
 	}
 
 	/**
+	 * Does server support lut=now in truncate info command.
+	 */
+	public final boolean hasLutNow() {
+		return (features & HAS_LUT_NOW) != 0;
+	}
+
+	/**
+	 * Does server support truncate-namespace info command.
+	 */
+	public final boolean hasTruncateNamespace() {
+		return (features & HAS_TRUNCATE_NS) != 0;
+	}
+
+	/**
+	 * Does server support bit operations.
+	 */
+	public final boolean hasBitOperations() {
+		return (features & HAS_BIT_OP) != 0;
+	}
+
+	/**
+	 * Does server support sindex-exists info command.
+	 */
+	public final boolean hasIndexExists() {
+		return (features & HAS_INDEX_EXISTS) != 0;
+	}
+
+	/**
 	 * Does server support partition scans.
 	 */
-	/*
 	public final boolean hasPartitionScan() {
 		return (features & HAS_PARTITION_SCAN) != 0;
 	}
-	*/
 
 	@Override
 	public final String toString() {
