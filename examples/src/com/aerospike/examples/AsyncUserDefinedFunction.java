@@ -32,11 +32,6 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, EventLoop eventLoop) {
-		if (! params.hasUdf) {
-			console.info("Execute functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		register(client);
 		writeUsingUdfAsync(client, eventLoop);
 	}

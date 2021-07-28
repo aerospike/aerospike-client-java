@@ -45,10 +45,6 @@ public class Parameters {
 	int maxCommandsInProcess;
 	int maxCommandsInQueue;
 	boolean singleBin;
-	boolean hasGeo;
-	boolean hasUdf;
-	boolean hasCDTList;
-	boolean hasCDTMap;
 
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {
 		this.host = host;
@@ -70,6 +66,7 @@ public class Parameters {
 		String namespaceFilter = "namespace/" + namespace;
 		Map<String,String> tokens = Info.request(null, node, featuresFilter, namespaceFilter);
 
+		/* Client requires server 4.9+, so all these features are supported.
 		String features = tokens.get(featuresFilter);
 		hasGeo = false;
 		hasUdf = false;
@@ -94,6 +91,7 @@ public class Parameters {
 				}
 			}
 		}
+		*/
 
 		String namespaceTokens = tokens.get(namespaceFilter);
 

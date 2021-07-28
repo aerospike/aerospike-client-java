@@ -41,11 +41,6 @@ public class StoreKey extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Store user key functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "skindex";
 		String keyPrefix = "skkey";
 		String binName = params.getBinName("skbin");

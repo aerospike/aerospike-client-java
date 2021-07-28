@@ -44,11 +44,6 @@ public class QueryCollection extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "mapkey_index";
 		String keyPrefix = "qkey";
 		String mapKeyPrefix = "mkey";

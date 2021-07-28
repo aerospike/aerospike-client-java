@@ -46,11 +46,6 @@ public class QueryExp extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "predidx";
 		String binName = params.getBinName("idxbin");
 		int size = 50;

@@ -45,10 +45,6 @@ public class QueryFilter extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		String indexName = "profileindex";
 		String keyPrefix = "profilekey";
 		String binName = params.getBinName("name");

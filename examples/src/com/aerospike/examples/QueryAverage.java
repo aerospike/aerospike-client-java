@@ -43,10 +43,6 @@ public class QueryAverage extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
 		String binName = params.getBinName("l2");

@@ -41,11 +41,6 @@ public class QueryString extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "queryindex";
 		String keyPrefix = "querykey";
 		String valuePrefix = "queryvalue";

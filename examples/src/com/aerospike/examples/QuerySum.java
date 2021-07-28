@@ -42,10 +42,6 @@ public class QuerySum extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		String indexName = "aggindex";
 		String keyPrefix = "aggkey";
 		String binName = params.getBinName("aggbin");

@@ -42,10 +42,6 @@ public class UserDefinedFunction extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasUdf) {
-			console.info("User defined functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		register(client, params);
 		writeUsingUdf(client, params);
 		writeIfGenerationNotChanged(client, params);

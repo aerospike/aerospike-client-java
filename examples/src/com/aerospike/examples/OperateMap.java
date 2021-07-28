@@ -47,10 +47,6 @@ public class OperateMap extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) {
-		if (! params.hasCDTMap) {
-			console.info("CDT map functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		runSimpleExample(client, params);
 		runScoreExample(client, params);
 		runListRangeExample(client, params);

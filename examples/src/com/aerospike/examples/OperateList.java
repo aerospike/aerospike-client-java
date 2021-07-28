@@ -39,10 +39,6 @@ public class OperateList extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) {
-		if (! params.hasCDTList) {
-			console.info("CDT list functions are not supported by the connected Aerospike server.");
-			return;
-		}
 		runSimpleExample(client, params);
 		runNestedExample(client, params);
 	}

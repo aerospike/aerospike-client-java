@@ -42,11 +42,6 @@ public class QueryRegionFilter extends Example {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (! params.hasGeo) {
-			console.info("Geospatial functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
 		String binName1 = params.getBinName("filterloc");

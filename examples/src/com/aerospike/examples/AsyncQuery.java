@@ -41,11 +41,6 @@ public class AsyncQuery extends AsyncExample {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, EventLoop eventLoop) {
-		if (! params.hasUdf) {
-			console.info("Query functions are not supported by the connected Aerospike server.");
-			return;
-		}
-
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
 		String binName = params.getBinName("asqbin");
