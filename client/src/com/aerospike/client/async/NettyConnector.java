@@ -60,7 +60,7 @@ public final class NettyConnector extends AsyncConnector {
 	public NettyConnector(NettyEventLoop eventLoop, Cluster cluster, Node node, AsyncConnector.Listener listener) {
 		super(eventLoop, cluster, node, listener);
 		this.eventLoop = eventLoop;
-		this.dataBuffer = (cluster.getUser() != null) ? new byte[256] : null;
+		this.dataBuffer = (cluster.authEnabled) ? new byte[256] : null;
 	}
 
 	@Override

@@ -59,7 +59,7 @@ public class ClientPolicy {
 	public String clusterName;
 
 	/**
-	 * Authentication mode used when user/password is defined.
+	 * Authentication mode.
 	 * <p>
 	 * Default: AuthMode.INTERNAL
 	 */

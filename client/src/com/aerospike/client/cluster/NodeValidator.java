@@ -193,7 +193,7 @@ public final class NodeValidator {
 			new Connection(socketAddress, cluster.connectTimeout);
 
 		try {
-			if (cluster.user != null) {
+			if (cluster.authEnabled) {
 				// Login
 				LoginCommand admin = new LoginCommand(cluster, conn);
 				sessionToken = admin.sessionToken;

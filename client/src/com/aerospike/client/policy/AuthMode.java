@@ -17,27 +17,34 @@
 package com.aerospike.client.policy;
 
 /**
- * Authentication mode when user/password is defined.
+ * Authentication mode.
  */
 public enum AuthMode {
 	/**
-	 * Use internal authentication only.  Hashed password is stored on the server.
-	 * Do not send clear password. This is the default.
+	 * Use internal authentication when user/password defined. Hashed password is stored
+	 * on the server. Do not send clear password. This is the default.
 	 */
 	INTERNAL,
 
 	/**
-	 * Use external authentication (like LDAP).  Specific external authentication is
-	 * configured on server.  If TLS defined, send clear password on node login via TLS.
-	 * Throw exception if TLS is not defined.
+	 * Use external authentication (like LDAP) when user/password defined. Specific external
+	 * authentication is configured on server. If TLS defined, send clear password on node
+	 * login via TLS. Throw exception if TLS is not defined.
 	 */
 	EXTERNAL,
 
 	/**
-	 * Use external authentication (like LDAP).  Specific external authentication is
-	 * configured on server.  Send clear password on node login whether or not TLS is defined.
-	 * This mode should only be used for testing purposes because it is not secure
-	 * authentication.
+	 * Use external authentication (like LDAP) when user/password defined. Specific external
+	 * authentication is configured on server.  Send clear password on node login whether or
+	 * not TLS is defined. This mode should only be used for testing purposes because it is
+	 * not secure authentication.
 	 */
-	EXTERNAL_INSECURE
+	EXTERNAL_INSECURE,
+
+	/**
+	 * Authentication and authorization based on a certificate.  No user name or
+	 * password needs to be configured. Requires TLS and a client certificate.
+	 * Requires server version 5.7.0+
+	 */
+	PKI
 }

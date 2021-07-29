@@ -118,6 +118,9 @@ public class AdminCommand {
 				writeField(USER, cluster.getUser());
 				writeField(CREDENTIAL, cluster.getPasswordHash());
 			}
+			else if (cluster.authMode == AuthMode.PKI) {
+				writeHeader(LOGIN, 0);
+			}
 			else {
 				writeHeader(LOGIN, 3);
 				writeField(USER, cluster.getUser());
@@ -193,8 +196,13 @@ public class AdminCommand {
 	}
 
 	public int setAuthenticate(Cluster cluster, byte[] sessionToken) {
-		writeHeader(AUTHENTICATE, 2);
-		writeField(USER, cluster.getUser());
+		if (cluster.authMode != AuthMode.PKI) {
+			writeHeader(AUTHENTICATE, 2);
+			writeField(USER, cluster.getUser());
+		}
+		else {
+			writeHeader(AUTHENTICATE, 1);
+		}
 		writeField(SESSION_TOKEN, sessionToken);
 		writeSize();
 		return dataOffset;

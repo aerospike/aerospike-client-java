@@ -171,6 +171,9 @@ public class Cluster implements Runnable, Closeable {
 	// Request server rack ids.
 	final boolean rackAware;
 
+	// Is authentication enabled
+	public final boolean authEnabled;
+
 	private boolean asyncComplete;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
@@ -199,7 +202,12 @@ public class Cluster implements Runnable, Closeable {
 
 		this.seeds = hosts;
 
-		if (policy.user != null && policy.user.length() > 0) {
+		if (policy.authMode == AuthMode.PKI) {
+			this.authEnabled = true;
+			this.user = null;
+		}
+		else if (policy.user != null && policy.user.length() > 0) {
+			this.authEnabled = true;
 			this.user = Buffer.stringToUtf8(policy.user);
 
 			// Only store clear text password if external authentication is used.
@@ -218,6 +226,7 @@ public class Cluster implements Runnable, Closeable {
 			this.passwordHash = Buffer.stringToUtf8(pass);
 		}
 		else {
+			this.authEnabled = false;
 			this.user = null;
 		}
 

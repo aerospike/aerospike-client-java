@@ -219,7 +219,7 @@ public class Node implements Closeable {
 
 				connsOpened.getAndIncrement();
 
-				if (cluster.user != null) {
+				if (cluster.authEnabled) {
 					try {
 						if (! ensureLogin()) {
 							if (sessionToken != null) {
@@ -245,7 +245,7 @@ public class Node implements Closeable {
 				}
 			}
 			else {
-				if (cluster.user != null) {
+				if (cluster.authEnabled) {
 					ensureLogin();
 				}
 			}
