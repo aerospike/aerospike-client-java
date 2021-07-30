@@ -731,7 +731,7 @@ public class TestOperateBit extends TestSync {
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
 
-		for (int set_sz = 1; set_sz <= 80; set_sz++) {
+		for (int set_sz = 1; set_sz <= 4; set_sz++) {
 			byte[] set_data = new byte[(set_sz + 7) / 8];
 
 			for (int offset = 0; offset <= (bin_bit_sz - set_sz); offset++) {
@@ -763,7 +763,7 @@ public class TestOperateBit extends TestSync {
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
 
-		for (int set_sz = 1; set_sz <= 80; set_sz++) {
+		for (int set_sz = 1; set_sz <= 4; set_sz++) {
 			byte[] set_data = new byte[(set_sz + 7) / 8];
 
 			for (int offset = 0; offset <= (bin_bit_sz - set_sz); offset++) {
