@@ -309,6 +309,9 @@ public final class NodeValidator {
 				if (featuresString.regionMatches(begin, "pscans", 0, len)) {
 					this.features |= Node.HAS_PARTITION_SCAN;
 				}
+				else if (featuresString.regionMatches(begin, "query-show", 0, len)) {
+					this.features |= Node.HAS_QUERY_SHOW;
+				}
 				begin = end + 1;
 			}
 		}

@@ -53,6 +53,7 @@ public class Node implements Closeable {
 	public static final int PARTITIONS = 4096;
 
 	public static final int HAS_PARTITION_SCAN = (1 << 0);
+	public static final int HAS_QUERY_SHOW = (1 << 1);
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
@@ -78,7 +79,7 @@ public class Node implements Closeable {
 	protected int peersCount;
 	protected int referenceCount;
 	protected int failures;
-	//private final int features;
+	private final int features;
 	protected boolean partitionChanged;
 	protected boolean rebalanceChanged;
 	protected volatile boolean performLogin;
@@ -99,7 +100,7 @@ public class Node implements Closeable {
 		this.tendConnection = nv.primaryConn;
 		this.sessionToken = nv.sessionToken;
 		this.sessionExpiration = nv.sessionExpiration;
-		//this.features = nv.features;
+		this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
 		this.errorCount = new AtomicInteger(0);
@@ -1101,6 +1102,10 @@ public class Node implements Closeable {
 		}
 
 		return r == rackId;
+	}
+
+	public final boolean hasQueryShow() {
+		return (features & HAS_QUERY_SHOW) != 0;
 	}
 
 	/**

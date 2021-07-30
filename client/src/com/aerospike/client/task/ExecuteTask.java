@@ -55,9 +55,11 @@ public final class ExecuteTask extends Task {
 		Node[] nodes = cluster.validateNodes();
 
 		String module = (scan) ? "scan" : "query";
-		String command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+		String oldCommand = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+		String newCommand = module + "-show:trid=" + taskId;
 
 		for (Node node : nodes) {
+			String command = node.hasQueryShow() ? newCommand : oldCommand;
 			String response = Info.request(policy, node, command);
 
 			if (response.startsWith("ERROR:2")) {
