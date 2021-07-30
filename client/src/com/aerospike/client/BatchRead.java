@@ -28,9 +28,15 @@ public final class BatchRead {
 	public final Key key;
 
 	/**
-	 * Bins to retrieve for this key.
+	 * Bins to retrieve for this key. binNames are mutually exclusive with ops.
 	 */
 	public final String[] binNames;
+
+	/**
+	 * Read operations for this key. ops are mutually exclusive with binNames.
+	 * A binName can be emulated with {@link com.aerospike.client.Operation#get(String)}
+	 */
+	public final Operation[] ops;
 
 	/**
 	 * If true, ignore binNames and read all bins.
@@ -47,24 +53,39 @@ public final class BatchRead {
 	/**
 	 * Initialize batch key and bins to retrieve.
 	 *
-	 * @param key					record key
-	 * @param binNames				array of bins to retrieve.
+	 * @param key				record key
+	 * @param binNames			array of bins to retrieve.
 	 */
 	public BatchRead(Key key, String[] binNames) {
 		this.key = key;
 		this.binNames = binNames;
+		this.ops = null;
+		this.readAllBins = false;
+	}
+
+	/**
+	 * Initialize batch key and read operations.
+	 *
+	 * @param key			record key
+	 * @param ops			read operations to run.
+	 */
+	public BatchRead(Key key, Operation[] ops) {
+		this.key = key;
+		this.binNames = null;
+		this.ops = ops;
 		this.readAllBins = false;
 	}
 
 	/**
 	 * Initialize batch key and readAllBins indicator.
 	 *
-	 * @param key					record key
-	 * @param readAllBins			should all bins in record be retrieved.
+	 * @param key				record key
+	 * @param readAllBins		should all bins in record be retrieved.
 	 */
 	public BatchRead(Key key, boolean readAllBins) {
 		this.key = key;
 		this.binNames = null;
+		this.ops = null;
 		this.readAllBins = readAllBins;
 	}
 

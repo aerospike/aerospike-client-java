@@ -17,8 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -36,6 +34,7 @@ public class ReadCommand extends SyncCommand {
 	protected final Key key;
 	protected final Partition partition;
 	private final String[] binNames;
+	private final boolean isOperation;
 	private Record record;
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key) {
@@ -43,6 +42,7 @@ public class ReadCommand extends SyncCommand {
 		this.key = key;
 		this.binNames = null;
 		this.partition = Partition.read(cluster, policy, key);
+		this.isOperation = false;
 	}
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
@@ -50,13 +50,15 @@ public class ReadCommand extends SyncCommand {
 		this.key = key;
 		this.binNames = binNames;
 		this.partition = Partition.read(cluster, policy, key);
+		this.isOperation = false;
 	}
 
-	public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition) {
+	public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, boolean isOperation) {
 		super(cluster, policy);
 		this.key = key;
 		this.binNames = null;
 		this.partition = partition;
+		this.isOperation = isOperation;
 	}
 
 	@Override
@@ -158,7 +160,8 @@ public class ReadCommand extends SyncCommand {
 				record = new Record(null, generation, expiration);
 				return;
 			}
-			record = parseRecord(opCount, fieldCount, generation, expiration);
+			skipKey(fieldCount);
+			record = parseRecord(opCount, generation, expiration, isOperation);
 			return;
 		}
 
@@ -175,7 +178,8 @@ public class ReadCommand extends SyncCommand {
 		}
 
 		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			record = parseRecord(opCount, fieldCount, generation, expiration);
+			skipKey(fieldCount);
+			record = parseRecord(opCount, generation, expiration, isOperation);
 			handleUdfError(resultCode);
 			return;
 		}
@@ -214,49 +218,6 @@ public class ReadCommand extends SyncCommand {
 		}
 
 		throw new AerospikeException(code, message);
-	}
-
-	private final Record parseRecord(
-		int opCount,
-		int fieldCount,
-		int generation,
-		int expiration
-	)  {
-		// There can be fields in the response (setname etc).
-		// But for now, ignore them. Expose them to the API if needed in the future.
-		if (fieldCount > 0) {
-			// Just skip over all the fields
-			for (int i = 0; i < fieldCount; i++) {
-				int fieldSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldSize;
-			}
-		}
-
-		Map<String,Object> bins = new LinkedHashMap<>();
-
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			byte particleType = dataBuffer[dataOffset + 5];
-			byte nameSize = dataBuffer[dataOffset + 7];
-			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-			dataOffset += 4 + 4 + nameSize;
-
-			int particleBytesSize = opSize - (4 + nameSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-			dataOffset += particleBytesSize;
-			addBin(bins, name, value);
-		}
-		return new Record(bins, generation, expiration);
-	}
-
-	/*
-	 * The function represents mutability on the Record.
-	 * The function is overridden in other commands to change
-	 * the behaviour of adding/modifying key to the map
-	 * @see com.aerospike.client.command.OperateCommand
-	 */
-	protected void addBin(Map<String, Object> bins, String name, Object value) {
-		bins.put(name, value);
 	}
 
 	public Record getRecord() {

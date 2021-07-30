@@ -21,6 +21,7 @@ import java.util.List;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
@@ -42,7 +43,7 @@ public final class Batch {
 			BatchPolicy policy,
 			List<BatchRead> records
 		) {
-			super(cluster, parent, batch, policy);
+			super(cluster, parent, batch, policy, true);
 			this.records = records;
 		}
 
@@ -77,6 +78,7 @@ public final class Batch {
 	public static final class GetArrayCommand extends BatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
+		private final Operation[] ops;
 		private final Record[] records;
 		private final int readAttr;
 
@@ -87,19 +89,22 @@ public final class Batch {
 			BatchPolicy policy,
 			Key[] keys,
 			String[] binNames,
+			Operation[] ops,
 			Record[] records,
-			int readAttr
+			int readAttr,
+			boolean isOperation
 		) {
-			super(cluster, parent, batch, policy);
+			super(cluster, parent, batch, policy, isOperation);
 			this.keys = keys;
 			this.binNames = binNames;
+			this.ops = ops;
 			this.records = records;
 			this.readAttr = readAttr;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
 		@Override
@@ -111,7 +116,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new GetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
+			return new GetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
 		}
 
 		@Override
@@ -136,14 +141,14 @@ public final class Batch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(cluster, parent, batch, policy);
+			super(cluster, parent, batch, policy, false);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
@@ -177,8 +182,8 @@ public final class Batch {
 		int sequenceAP;
 		int sequenceSC;
 
-		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy) {
-			super(cluster, batchPolicy, batch.node, true);
+		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy, boolean isOperation) {
+			super(cluster, batchPolicy, batch.node, true, isOperation);
 			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;

@@ -83,30 +83,41 @@ public final class Operation {
 		return new Operation(Type.DELETE);
 	}
 
+	/**
+	 * Create array of operations from varargs. This method can be useful when
+	 * its important to save identical array pointer references. Using varargs
+	 * directly always generates new references.
+	 */
+	public static Operation[] array(Operation... ops) {
+		return ops;
+	}
+
 	public static enum Type {
-		READ(1),
-		READ_HEADER(1),
-		WRITE(2),
-		CDT_READ(3),
-		CDT_MODIFY(4),
-		MAP_READ(3),
-		MAP_MODIFY(4),
-		ADD(5),
-		EXP_READ(7),
-		EXP_MODIFY(8),
-		APPEND(9),
-		PREPEND(10),
-		TOUCH(11),
-		BIT_READ(12),
-		BIT_MODIFY(13),
-		DELETE(14),
-		HLL_READ(15),
-		HLL_MODIFY(16);
+		READ(1, false),
+		READ_HEADER(1, false),
+		WRITE(2, true),
+		CDT_READ(3, false),
+		CDT_MODIFY(4, true),
+		MAP_READ(3, false),
+		MAP_MODIFY(4, true),
+		ADD(5, true),
+		EXP_READ(7, false),
+		EXP_MODIFY(8, true),
+		APPEND(9, true),
+		PREPEND(10, true),
+		TOUCH(11, true),
+		BIT_READ(12, false),
+		BIT_MODIFY(13, true),
+		DELETE(14, true),
+		HLL_READ(15, false),
+		HLL_MODIFY(16, true);
 
 		public final int protocolType;
+		public final boolean isWrite;
 
-		private Type(int protocolType) {
+		private Type(int protocolType, boolean isWrite) {
 			this.protocolType = protocolType;
+			this.isWrite = isWrite;
 		}
 	}
 

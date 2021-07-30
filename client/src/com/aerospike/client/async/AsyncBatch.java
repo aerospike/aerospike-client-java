@@ -21,6 +21,7 @@ import java.util.List;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNode;
@@ -86,7 +87,7 @@ public final class AsyncBatch {
 			BatchPolicy batchPolicy,
 			List<BatchRead> records
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, true);
 			this.records = records;
 		}
 
@@ -170,7 +171,7 @@ public final class AsyncBatch {
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, true);
 			this.listener = listener;
 			this.records = records;
 		}
@@ -221,7 +222,9 @@ public final class AsyncBatch {
 			RecordArrayListener listener,
 			Key[] keys,
 			String[] binNames,
-			int readAttr
+			Operation[] ops,
+			int readAttr,
+			boolean isOperation
 		) {
 			super(eventLoop, cluster, true);
 			this.listener = listener;
@@ -236,7 +239,7 @@ public final class AsyncBatch {
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetArrayCommand(this, batchNode, policy, keys, binNames, recordArray, readAttr);
+				tasks[count++] = new GetArrayCommand(this, batchNode, policy, keys, binNames, ops, recordArray, readAttr, isOperation);
 			}
 			// Dispatch commands to nodes.
 			execute(tasks, 0);
@@ -254,6 +257,7 @@ public final class AsyncBatch {
 	private static final class GetArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
+		private final Operation[] ops;
 		private final Record[] records;
 		private final int readAttr;
 
@@ -263,19 +267,22 @@ public final class AsyncBatch {
 			BatchPolicy batchPolicy,
 			Key[] keys,
 			String[] binNames,
+			Operation[] ops,
 			Record[] records,
-			int readAttr
+			int readAttr,
+			boolean isOperation
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, isOperation);
 			this.keys = keys;
 			this.binNames = binNames;
+			this.ops = ops;
 			this.records = records;
 			this.readAttr = readAttr;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
 		@Override
@@ -288,7 +295,7 @@ public final class AsyncBatch {
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
-			return new GetArrayCommand(parent, batchNode, batchPolicy, keys, binNames, records, readAttr);
+			return new GetArrayCommand(parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
 		}
 
 		@Override
@@ -312,7 +319,9 @@ public final class AsyncBatch {
 			RecordSequenceListener listener,
 			Key[] keys,
 			String[] binNames,
-			int readAttr
+			Operation[] ops,
+			int readAttr,
+			boolean isOperation
 		) {
 			super(eventLoop, cluster, false);
 			this.listener = listener;
@@ -328,7 +337,7 @@ public final class AsyncBatch {
 			int count = 0;
 
 			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetSequenceCommand(this, batchNode, policy, keys, binNames, listener, readAttr);
+				tasks[count++] = new GetSequenceCommand(this, batchNode, policy, keys, binNames, ops, listener, readAttr, isOperation);
 			}
 			// Dispatch commands to nodes.
 			execute(tasks, 0);
@@ -348,6 +357,7 @@ public final class AsyncBatch {
 	private static final class GetSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
+		private final Operation[] ops;
 		private final RecordSequenceListener listener;
 		private final int readAttr;
 
@@ -357,19 +367,22 @@ public final class AsyncBatch {
 			BatchPolicy batchPolicy,
 			Key[] keys,
 			String[] binNames,
+			Operation[] ops,
 			RecordSequenceListener listener,
-			int readAttr
+			int readAttr,
+			boolean isOperation
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, isOperation);
 			this.keys = keys;
 			this.binNames = binNames;
+			this.ops = ops;
 			this.listener = listener;
 			this.readAttr = readAttr;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, binNames, readAttr);
+			setBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
 		}
 
 		@Override
@@ -388,7 +401,7 @@ public final class AsyncBatch {
 		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode)
 		{
-			return new GetSequenceCommand(parent, batchNode, batchPolicy, keys, binNames, listener, readAttr);
+			return new GetSequenceCommand(parent, batchNode, batchPolicy, keys, binNames, ops, listener, readAttr, isOperation);
 		}
 
 		@Override
@@ -455,14 +468,14 @@ public final class AsyncBatch {
 			Key[] keys,
 			boolean[] existsArray
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, false);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
@@ -541,14 +554,14 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(parent, batch, batchPolicy);
+			super(parent, batch, batchPolicy, false);
 			this.keys = keys;
 			this.listener = listener;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			setBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		}
 
 		@Override
@@ -586,8 +599,8 @@ public final class AsyncBatch {
 		int sequenceAP;
 		int sequenceSC;
 
-		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy) {
-			super(parent, batch.node, batchPolicy);
+		public AsyncBatchCommand(AsyncMultiExecutor parent, BatchNode batch, BatchPolicy batchPolicy, boolean isOperation) {
+			super(parent, batch.node, batchPolicy, isOperation);
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
 		}

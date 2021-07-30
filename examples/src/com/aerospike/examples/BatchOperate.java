@@ -1,0 +1,168 @@
+/*
+ * Copyright 2012-2021 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
+package com.aerospike.examples;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.BatchRead;
+import com.aerospike.client.Bin;
+import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
+import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
+import com.aerospike.client.exp.Expression;
+
+public class BatchOperate extends Example {
+
+	private static final String KeyPrefix = "bkey";
+	private static final String BinName1 = "bin1";
+	private static final String BinName2 = "bin2";
+	private static final String BinName3 = "bin3";
+	private static final String ResultName1 = "result1";
+	private static final String ResultName2 = "result2";
+	private static final int RecordCount = 8;
+
+	public BatchOperate(Console console) {
+		super(console);
+	}
+
+	@Override
+	public void runExample(AerospikeClient client, Parameters params) {
+		writeRecords(client, params);
+		batchReadOperate(client, params);
+		batchReadOperateComplex(client, params);
+		batchListOperate(client, params);
+	}
+
+	private void writeRecords(
+		AerospikeClient client,
+		Parameters params
+	) {
+		for (int i = 1; i <= RecordCount; i++) {
+			Key key = new Key(params.namespace, params.set, KeyPrefix + i);
+			Bin bin1 = new Bin(BinName1, i);
+			Bin bin2 = new Bin(BinName2, i + 10);
+
+			List<Integer> list = new ArrayList<Integer>();
+
+			for (int j = 0; j < i; j++) {
+				list.add(j * i);
+			}
+			Bin bin3 = new Bin(BinName3, list);
+
+			console.info("Put: ns=%s set=%s key=%s val1=%s val2=%s val3=%s",
+				key.namespace, key.setName, key.userKey, bin1.value, bin2.value, list.toString());
+
+			client.put(params.writePolicy, key, bin1, bin2, bin3);
+		}
+	}
+
+	/**
+	 * Perform read operation expressions in one batch.
+	 */
+	private void batchReadOperate(AerospikeClient client, Parameters params) {
+		console.info("batchReadOperate");
+		Key[] keys = new Key[RecordCount];
+		for (int i = 0; i < RecordCount; i++) {
+			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+		}
+
+		// bin1 * bin2
+		Expression exp = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+
+		Record[] records = client.get(null, keys, ExpOperation.read(ResultName1, exp, ExpReadFlags.DEFAULT));
+
+		for (int i = 0; i < records.length; i++) {
+			Record record = records[i];
+			console.info("Result[%d]: %d", i, record.getInt(ResultName1));
+		}
+	}
+
+	/**
+	 * Read results using varying read operations in one batch.
+	 */
+	private void batchReadOperateComplex(AerospikeClient client, Parameters params) {
+		console.info("batchReadOperateComplex");
+		Expression exp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+		Expression exp2 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+		Expression exp3 = Exp.build(Exp.sub(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+
+		// Batch uses pointer reference to quickly determine if operations are repeated and can therefore
+		// be optimized, but using varargs directly always creates a new reference. Therefore, save operation
+		// array so we have one pointer reference per operation array.
+		Operation[] ops1 = Operation.array(ExpOperation.read(ResultName1, exp1, ExpReadFlags.DEFAULT));
+		Operation[] ops2 = Operation.array(ExpOperation.read(ResultName1, exp2, ExpReadFlags.DEFAULT));
+		Operation[] ops3 = Operation.array(ExpOperation.read(ResultName1, exp3, ExpReadFlags.DEFAULT));
+		Operation[] ops4 = Operation.array(ExpOperation.read(ResultName1, exp2, ExpReadFlags.DEFAULT),
+										   ExpOperation.read(ResultName2, exp3, ExpReadFlags.DEFAULT));
+
+		List<BatchRead> records = new ArrayList<BatchRead>();
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 1), ops1));
+		// The following record is optimized (namespace,set,ops are only sent once) because
+		// namespace, set and ops all have the same pointer references as the previous entry.
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 2), ops1));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 3), ops2));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 4), ops3));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 5), ops4));
+
+		// Execute batch.
+		client.get(null, records);
+
+		// Show results.
+		int count = 0;
+		for (BatchRead record : records) {
+			Record rec = record.record;
+			Object v1 = rec.getValue(ResultName1);
+			Object v2 = rec.getValue(ResultName2);
+			console.info("Result[%d]: %s, %s", count++, v1, v2);
+		}
+	}
+
+	/**
+	 * Perform list operations in one batch.
+	 */
+	private void batchListOperate(AerospikeClient client, Parameters params) {
+		console.info("batchListOperate");
+		Key[] keys = new Key[RecordCount];
+		for (int i = 0; i < RecordCount; i++) {
+			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+		}
+
+		// Get size and last element of list bin for all records.
+		Record[] records = client.get(null, keys,
+			ListOperation.size(BinName3),
+			ListOperation.getByIndex(BinName3, -1, ListReturnType.VALUE)
+			);
+
+		for (int i = 0; i < records.length; i++) {
+			Record record = records[i];
+			//System.out.println(record);
+
+			List<?> results = record.getList(BinName3);
+			long size = (Long)results.get(0);
+			Object val = results.get(1);
+
+			console.info("Result[%d]: %d,%s", i, size, val);
+		}
+	}
+}

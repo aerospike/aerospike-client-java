@@ -16,7 +16,10 @@
  */
 package com.aerospike.client.command;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.zip.Deflater;
 
 import com.aerospike.client.AerospikeException;
@@ -25,6 +28,8 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.exp.CommandExp;
 import com.aerospike.client.policy.BatchPolicy;
@@ -118,7 +123,7 @@ public abstract class Command {
 		}
 	}
 
-	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) throws AerospikeException {
+	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 		CommandExp exp = getCommandExp(policy);
@@ -302,8 +307,7 @@ public abstract class Command {
 		compress(policy);
 	}
 
-	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args)
-		throws AerospikeException {
+	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 		CommandExp exp = getCommandExp(policy);
@@ -353,6 +357,7 @@ public abstract class Command {
 			final BatchRead record = records.get(offsets[i]);
 			final Key key = record.key;
 			final String[] binNames = record.binNames;
+			final Operation[] ops = record.ops;
 
 			dataOffset += key.digest.length + 4;
 
@@ -362,7 +367,8 @@ public abstract class Command {
 			// results in more space used. The batch will still be correct.
 			if (prev != null && prev.key.namespace == key.namespace &&
 				(! policy.sendSetName || prev.key.setName == key.setName) &&
-				prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
+				prev.binNames == binNames && prev.readAllBins == record.readAllBins &&
+				prev.ops == ops) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -377,6 +383,11 @@ public abstract class Command {
 				if (binNames != null) {
 					for (String binName : binNames) {
 						estimateOperationSize(binName);
+					}
+				}
+				else if (ops != null) {
+					for (Operation op : ops) {
+						estimateReadOperationSize(op);
 					}
 				}
 				prev = record;
@@ -412,6 +423,7 @@ public abstract class Command {
 			final BatchRead record = records.get(index);
 			final Key key = record.key;
 			final String[] binNames = record.binNames;
+			final Operation[] ops = record.ops;
 			final byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
@@ -422,7 +434,8 @@ public abstract class Command {
 			// results in more space used. The batch will still be correct.
 			if (prev != null && prev.key.namespace == key.namespace &&
 				(! policy.sendSetName || prev.key.setName == key.setName) &&
-				prev.binNames == binNames && prev.readAllBins == record.readAllBins) {
+				prev.binNames == binNames && prev.readAllBins == record.readAllBins &&
+				prev.ops == ops) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = 1;  // repeat
 			}
@@ -432,31 +445,20 @@ public abstract class Command {
 
 				if (binNames != null && binNames.length != 0) {
 					dataBuffer[dataOffset++] = (byte)readAttr;
-					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-					dataOffset += 2;
-					Buffer.shortToBytes(binNames.length, dataBuffer, dataOffset);
-					dataOffset += 2;
-					writeField(key.namespace, FieldType.NAMESPACE);
-
-					if (policy.sendSetName) {
-						writeField(key.setName, FieldType.TABLE);
-					}
+					writeBatchFields(policy, key, fieldCountRow, binNames.length);
 
 					for (String binName : binNames) {
 						writeOperation(binName, Operation.Type.READ);
 					}
 				}
+				else if (ops != null) {
+					int offset = dataOffset++;
+					writeBatchFields(policy, key, fieldCountRow, ops.length);
+					dataBuffer[offset] = (byte)writeOperations(ops, readAttr);
+				}
 				else {
 					dataBuffer[dataOffset++] = (byte)(readAttr | (record.readAllBins?  Command.INFO1_GET_ALL : Command.INFO1_NOBINDATA));
-					Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-					dataOffset += 2;
-					Buffer.shortToBytes(0, dataBuffer, dataOffset);
-					dataOffset += 2;
-					writeField(key.namespace, FieldType.NAMESPACE);
-
-					if (policy.sendSetName) {
-						writeField(key.setName, FieldType.TABLE);
-					}
+					writeBatchFields(policy, key, fieldCountRow, 0);
 				}
 				prev = record;
 			}
@@ -468,22 +470,11 @@ public abstract class Command {
 		compress(policy);
 	}
 
-	public final void setBatchRead(BatchPolicy policy, Key[] keys, BatchNode batch, String[] binNames, int readAttr) {
+	public final void setBatchRead(BatchPolicy policy, Key[] keys, BatchNode batch, String[] binNames, Operation[] ops, int readAttr) {
 		// Estimate full row size
 		final int[] offsets = batch.offsets;
 		final int max = batch.offsetsSize;
 		final int fieldCountRow = policy.sendSetName ? 2 : 1;
-
-		// Calculate size of bin names.
-		int binNameSize = 0;
-		int operationCount = 0;
-
-		if (binNames != null) {
-			for (String binName : binNames) {
-				binNameSize += Buffer.estimateSizeUtf8(binName) + OPERATION_HEADER_SIZE;
-			}
-			operationCount = binNames.length;
-		}
 
 		// Estimate buffer size.
 		begin();
@@ -517,7 +508,17 @@ public abstract class Command {
 				if (policy.sendSetName) {
 					dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				}
-				dataOffset += binNameSize;
+
+				if (binNames != null) {
+					for (String binName : binNames) {
+						estimateOperationSize(binName);
+					}
+				}
+				else if (ops != null) {
+					for (Operation op : ops) {
+						estimateReadOperationSize(op);
+					}
+				}
 				prev = key;
 			}
 		}
@@ -562,21 +563,23 @@ public abstract class Command {
 			else {
 				// Write full header, namespace and bin names.
 				dataBuffer[dataOffset++] = 0;  // do not repeat
-				dataBuffer[dataOffset++] = (byte)readAttr;
-				Buffer.shortToBytes(fieldCountRow, dataBuffer, dataOffset);
-				dataOffset += 2;
-				Buffer.shortToBytes(operationCount, dataBuffer, dataOffset);
-				dataOffset += 2;
-				writeField(key.namespace, FieldType.NAMESPACE);
 
-				if (policy.sendSetName) {
-					writeField(key.setName, FieldType.TABLE);
-				}
+				if (binNames != null && binNames.length != 0) {
+					dataBuffer[dataOffset++] = (byte)readAttr;
+					writeBatchFields(policy, key, fieldCountRow, binNames.length);
 
-				if (binNames != null) {
 					for (String binName : binNames) {
 						writeOperation(binName, Operation.Type.READ);
 					}
+				}
+				else if (ops != null) {
+					int offset = dataOffset++;
+					writeBatchFields(policy, key, fieldCountRow, ops.length);
+					dataBuffer[offset] = (byte)writeOperations(ops, readAttr);
+				}
+				else {
+					dataBuffer[dataOffset++] = (byte)readAttr;
+					writeBatchFields(policy, key, fieldCountRow, 0);
 				}
 				prev = key;
 			}
@@ -586,6 +589,18 @@ public abstract class Command {
 		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 		end();
 		compress(policy);
+	}
+
+	private void writeBatchFields(BatchPolicy policy, Key key, int fieldCount, int opCount) {
+		Buffer.shortToBytes(fieldCount, dataBuffer, dataOffset);
+		dataOffset += 2;
+		Buffer.shortToBytes(opCount, dataBuffer, dataOffset);
+		dataOffset += 2;
+		writeField(key.namespace, FieldType.NAMESPACE);
+
+		if (policy.sendSetName) {
+			writeField(key.setName, FieldType.TABLE);
+		}
 	}
 
 	public final void setScan(
@@ -996,12 +1011,20 @@ public abstract class Command {
 		return 3;
 	}
 
-	private final void estimateOperationSize(Bin bin) throws AerospikeException {
+	private final void estimateOperationSize(Bin bin) {
 		dataOffset += Buffer.estimateSizeUtf8(bin.name) + OPERATION_HEADER_SIZE;
 		dataOffset += bin.value.estimateSize();
 	}
 
-	private final void estimateOperationSize(Operation operation) throws AerospikeException {
+	private final void estimateOperationSize(Operation operation) {
+		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
+		dataOffset += operation.value.estimateSize();
+	}
+
+	private void estimateReadOperationSize(Operation operation) {
+		if (operation.type.isWrite) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
+		}
 		dataOffset += Buffer.estimateSizeUtf8(operation.binName) + OPERATION_HEADER_SIZE;
 		dataOffset += operation.value.estimateSize();
 	}
@@ -1266,7 +1289,37 @@ public abstract class Command {
 		}
 	}
 
-	private final void writeOperation(Bin bin, Operation.Type operation) throws AerospikeException {
+	private final int writeOperations(Operation[] ops, int readAttr) {
+		boolean readBin = false;
+		boolean readHeader = false;
+
+		for (Operation op : ops) {
+			switch (op.type) {
+			case READ:
+				// Read all bins if no bin is specified.
+				if (op.binName == null) {
+					readAttr |= Command.INFO1_GET_ALL;
+				}
+				readBin = true;
+				break;
+
+			case READ_HEADER:
+				readHeader = true;
+				break;
+
+			default:
+				break;
+			}
+			writeOperation(op);
+		}
+
+		if (readHeader && ! readBin) {
+			readAttr |= Command.INFO1_NOBINDATA;
+		}
+		return readAttr;
+	}
+
+	private final void writeOperation(Bin bin, Operation.Type operation) {
 		int nameLength = Buffer.stringToUtf8(bin.name, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = bin.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -1279,7 +1332,7 @@ public abstract class Command {
 		dataOffset += nameLength + valueLength;
 	}
 
-	private final void writeOperation(Operation operation) throws AerospikeException {
+	private final void writeOperation(Operation operation) {
 		int nameLength = Buffer.stringToUtf8(operation.binName, dataBuffer, dataOffset + OPERATION_HEADER_SIZE);
 		int valueLength = operation.value.write(dataBuffer, dataOffset + OPERATION_HEADER_SIZE + nameLength);
 
@@ -1313,7 +1366,7 @@ public abstract class Command {
 		dataBuffer[dataOffset++] = 0;
 	}
 
-	private final void writeField(Value value, int type) throws AerospikeException {
+	private final void writeField(Value value, int type) {
 		int offset = dataOffset + FIELD_HEADER_SIZE;
 		dataBuffer[offset++] = (byte)value.getType();
 		int len = value.write(dataBuffer, offset) + 1;
@@ -1396,6 +1449,8 @@ public abstract class Command {
 	}
 
 	protected final void skipKey(int fieldCount) {
+		// There can be fields in the response (setname etc).
+		// But for now, ignore them. Expose them to the API if needed in the future.
 		for (int i = 0; i < fieldCount; i++) {
 			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4 + fieldlen;
@@ -1440,6 +1495,54 @@ public abstract class Command {
 		return new Key(namespace, digest, setName, userKey);
 	}
 
+	protected final Record parseRecord(
+		int opCount,
+		int generation,
+		int expiration,
+		boolean isOperation
+	)  {
+		Map<String,Object> bins = new LinkedHashMap<>();
+
+		for (int i = 0 ; i < opCount; i++) {
+			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
+			byte particleType = dataBuffer[dataOffset + 5];
+			byte nameSize = dataBuffer[dataOffset + 7];
+			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
+			dataOffset += 4 + 4 + nameSize;
+
+			int particleBytesSize = opSize - (4 + nameSize);
+			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			dataOffset += particleBytesSize;
+
+			if (isOperation) {
+				if (bins.containsKey(name)) {
+					// Multiple values returned for the same bin.
+					Object prev = bins.get(name);
+
+					if (prev instanceof OpResults) {
+						// List already exists.  Add to it.
+						OpResults list = (OpResults)prev;
+						list.add(value);
+					}
+					else {
+						// Make a list to store all values.
+						OpResults list = new OpResults();
+						list.add(prev);
+						list.add(value);
+						bins.put(name, list);
+					}
+				}
+				else {
+					bins.put(name, value);
+				}
+			}
+			else {
+				bins.put(name, value);
+			}
+		}
+		return new Record(bins, generation, expiration);
+	}
+
 	protected abstract void sizeBuffer();
 
 	private static final CommandExp getCommandExp(Policy policy) {
@@ -1472,5 +1575,9 @@ public abstract class Command {
 			cmd.writeExpHeader(sz);
 			return PredExp.write(predExp, cmd.dataBuffer, cmd.dataOffset);
 		}
+	}
+
+	private static class OpResults extends ArrayList<Object> {
+		private static final long serialVersionUID = 1L;
 	}
 }

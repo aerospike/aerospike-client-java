@@ -16,9 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -35,6 +32,7 @@ public class AsyncRead extends AsyncCommand {
 	private final RecordListener listener;
 	protected final Key key;
 	private final String[] binNames;
+	private final boolean isOperation;
 	protected final Partition partition;
 	protected Record record;
 
@@ -43,14 +41,16 @@ public class AsyncRead extends AsyncCommand {
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
+		this.isOperation = false;
 		this.partition = Partition.read(cluster, policy, key);
 	}
 
-	public AsyncRead(RecordListener listener, Policy policy, Key key, Partition partition) {
+	public AsyncRead(RecordListener listener, Policy policy, Key key, Partition partition, boolean isOperation) {
 		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;
+		this.isOperation = isOperation;
 		this.partition = partition;
 	}
 
@@ -81,7 +81,8 @@ public class AsyncRead extends AsyncCommand {
 				record = new Record(null, generation, expiration);
 				return true;
 			}
-			record = parseRecord(opCount, fieldCount, generation, expiration);
+			skipKey(fieldCount);
+			record = parseRecord(opCount, generation, expiration, isOperation);
 			return true;
 		}
 
@@ -98,7 +99,8 @@ public class AsyncRead extends AsyncCommand {
 		}
 
 		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			record = parseRecord(opCount, fieldCount, generation, expiration);
+			skipKey(fieldCount);
+			record = parseRecord(opCount, generation, expiration, isOperation);
 			handleUdfError(resultCode);
 			return true;
 		}
@@ -137,43 +139,6 @@ public class AsyncRead extends AsyncCommand {
 		}
 
 		throw new AerospikeException(code, message);
-	}
-
-	private final Record parseRecord(
-		int opCount,
-		int fieldCount,
-		int generation,
-		int expiration
-	) {
-		// There can be fields in the response (setname etc).
-		// But for now, ignore them. Expose them to the API if needed in the future.
-		if (fieldCount > 0) {
-			// Just skip over all the fields
-			for (int i = 0; i < fieldCount; i++) {
-				int fieldSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-				dataOffset += 4 + fieldSize;
-			}
-		}
-
-		Map<String,Object> bins = new LinkedHashMap<>();
-
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			byte particleType = dataBuffer[dataOffset + 5];
-			byte nameSize = dataBuffer[dataOffset + 7];
-			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-			dataOffset += 4 + 4 + nameSize;
-
-			int particleBytesSize = opSize - (4 + nameSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-			dataOffset += particleBytesSize;
-			addBin(bins, name, value);
-		}
-		return new Record(bins, generation, expiration);
-	}
-
-	protected void addBin(Map<String,Object> bins, String name, Object value) {
-		bins.put(name, value);
 	}
 
 	@Override

@@ -16,9 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -42,15 +39,17 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	int fieldCount;
 	int opCount;
 	private final boolean isBatch;
+	protected final boolean isOperation;
 
 	/**
 	 * Batch constructor.
 	 */
-	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy) {
+	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean isOperation) {
 		super(policy, false);
 		this.parent = parent;
 		this.node = node;
 		this.isBatch = true;
+		this.isOperation = isOperation;
 	}
 
 	/**
@@ -61,6 +60,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		this.parent = parent;
 		this.node = node;
 		this.isBatch = false;
+		this.isOperation = false;
 	}
 
 	@Override
@@ -125,21 +125,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			return new Record(null, generation, expiration);
 		}
 
-		Map<String,Object> bins = new LinkedHashMap<>();
-
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			byte particleType = dataBuffer[dataOffset + 5];
-			byte nameSize = dataBuffer[dataOffset + 7];
-			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-			dataOffset += 4 + 4 + nameSize;
-
-			int particleBytesSize = opSize - (4 + nameSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-			dataOffset += particleBytesSize;
-			bins.put(name, value);
-		}
-		return new Record(bins, generation, expiration);
+		return parseRecord(opCount, generation, expiration, isOperation);
 	}
 
 	@Override

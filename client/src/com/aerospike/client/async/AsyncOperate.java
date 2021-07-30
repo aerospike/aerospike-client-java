@@ -16,9 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.ArrayList;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
@@ -30,7 +27,7 @@ public final class AsyncOperate extends AsyncRead {
 	private final OperateArgs args;
 
 	public AsyncOperate(RecordListener listener, Key key, OperateArgs args) {
-		super(listener, args.writePolicy, key, args.partition);
+		super(listener, args.writePolicy, key, args.partition, true);
 		this.args = args;
 	}
 
@@ -59,30 +56,6 @@ public final class AsyncOperate extends AsyncRead {
 	}
 
 	@Override
-	protected void addBin(Map<String,Object> bins, String name, Object value) {
-		if (bins.containsKey(name)) {
-			// Multiple values returned for the same bin.
-			Object prev = bins.get(name);
-
-			if (prev instanceof OpResults) {
-				// List already exists.  Add to it.
-				OpResults list = (OpResults)prev;
-				list.add(value);
-			}
-			else {
-				// Make a list to store all values.
-				OpResults list = new OpResults();
-				list.add(prev);
-				list.add(value);
-				bins.put(name, list);
-			}
-		}
-		else {
-			bins.put(name, value);
-		}
-	}
-
-	@Override
 	protected boolean prepareRetry(boolean timeout) {
 		if (args.hasWrite) {
 			partition.prepareRetryWrite(timeout);
@@ -91,9 +64,5 @@ public final class AsyncOperate extends AsyncRead {
 			partition.prepareRetryRead(timeout);
 		}
 		return true;
-	}
-
-	private static class OpResults extends ArrayList<Object> {
-		private static final long serialVersionUID = 1L;
 	}
 }

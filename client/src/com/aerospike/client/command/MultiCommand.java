@@ -17,8 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -47,16 +45,18 @@ public abstract class MultiCommand extends SyncCommand {
 	protected int fieldCount;
 	protected int opCount;
 	private final boolean isBatch;
+	protected final boolean isOperation;
 	private final boolean first;
 	protected volatile boolean valid = true;
 
 	/**
 	 * Batch and server execute constructor.
 	 */
-	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isBatch) {
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isBatch, boolean isOperation) {
 		super(cluster, policy);
 		this.node = node;
 		this.isBatch = isBatch;
+		this.isOperation = isOperation;
 		this.namespace = null;
 		this.clusterKey = 0;
 		this.first = false;
@@ -69,6 +69,7 @@ public abstract class MultiCommand extends SyncCommand {
 		super(cluster, policy, socketTimeout, totalTimeout);
 		this.node = node;
 		this.isBatch = false;
+		this.isOperation = false;
 		this.namespace = namespace;
 		this.clusterKey = 0;
 		this.first = false;
@@ -81,6 +82,7 @@ public abstract class MultiCommand extends SyncCommand {
 		super(cluster, policy, policy.socketTimeout, policy.totalTimeout);
 		this.node = node;
 		this.isBatch = false;
+		this.isOperation = false;
 		this.namespace = namespace;
 		this.clusterKey = clusterKey;
 		this.first = first;
@@ -280,21 +282,7 @@ public abstract class MultiCommand extends SyncCommand {
 			return new Record(null, generation, expiration);
 		}
 
-		Map<String,Object> bins = new LinkedHashMap<>();
-
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			byte particleType = dataBuffer[dataOffset + 5];
-			byte nameSize = dataBuffer[dataOffset + 7];
-			String name = Buffer.utf8ToString(dataBuffer, dataOffset + 8, nameSize);
-			dataOffset += 4 + 4 + nameSize;
-
-			int particleBytesSize = opSize - (4 + nameSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
-			dataOffset += particleBytesSize;
-			bins.put(name, value);
-		}
-		return new Record(bins, generation, expiration);
+		return parseRecord(opCount, generation, expiration, isOperation);
 	}
 
 	public void stop() {

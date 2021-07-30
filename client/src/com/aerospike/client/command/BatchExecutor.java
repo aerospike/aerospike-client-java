@@ -19,6 +19,7 @@ package com.aerospike.client.command;
 import java.util.List;
 
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
@@ -32,6 +33,7 @@ public final class BatchExecutor {
 		boolean[] existsArray,
 		Record[] records,
 		String[] binNames,
+		Operation[] ops,
 		int readAttr
 	) {
 		if (keys.length == 0) {
@@ -39,12 +41,13 @@ public final class BatchExecutor {
 		}
 
 		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys);
+		boolean isOperation = ops != null;
 
 		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(cluster, null, batchNode, policy, keys, binNames, records, readAttr);
+					MultiCommand command = new Batch.GetArrayCommand(cluster, null, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
 					command.execute();
 				}
 				else {
@@ -66,7 +69,7 @@ public final class BatchExecutor {
 			// Initialize threads.
 			for (BatchNode batchNode : batchNodes) {
 				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, records, readAttr);
+					MultiCommand command = new Batch.GetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
 					executor.addCommand(command);
 				}
 				else {
