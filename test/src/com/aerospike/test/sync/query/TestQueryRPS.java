@@ -94,26 +94,26 @@ public class TestQueryRPS extends TestSync {
 		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
 
-	void checkRuntime(Node n, Statement stmt) {
-		String trid = Long.toUnsignedString(stmt.getTaskId());
-		String job_info = Info.request(n, "jobs:");
+	private void checkRuntime(Node n, Statement stmt) {
+		String taskId = Long.toUnsignedString(stmt.getTaskId());
+		String module = (stmt.getFilter() == null) ? "scan" : "query";
+		String command;
+
+		if (n.hasQueryShow()) {
+			command = module + "-show:trid=" + taskId;
+		}
+		else {
+			command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
+		}
+
+		String job_info = Info.request(n, command);
 		String s = "run-time=";
-
-		assert job_info.contains(trid);
-
-		int start = job_info.indexOf(trid) + trid.length();
-		int runStart = job_info.indexOf(s, start) + s.length();
+		int runStart = job_info.indexOf(s) + s.length();
 
 		job_info = job_info.substring(runStart,
 				job_info.indexOf(':', runStart));
 
 		int duration = Integer.parseInt(job_info);
-
-//		System.out.println(n.getName() + " - " + String.valueOf(duration) +
-//				" - " + String.valueOf(expected_duration));
-//		System.out.println(trid);
-//		System.out.println(start);
-//		System.out.println(Info.request(n, "jobs:"));
 
 		assert (duration > expected_duration - 500 &&
 				duration < expected_duration + 500);
