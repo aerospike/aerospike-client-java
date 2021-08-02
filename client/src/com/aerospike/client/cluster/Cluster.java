@@ -347,8 +347,12 @@ public class Cluster implements Runnable, Closeable {
 			throw new AerospikeException("Seed " + seed + " failed: " + e.getMessage(), e);
 		}
 
+		node.createMinConnections();
+
 		// Add seed node to nodes.
-		addNode(node);
+		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(1);
+		nodesToAdd.put(node.getName(), node);
+		addNodes(nodesToAdd);
 
 		// Initialize partitionMaps.
 		Peers peers = new Peers(nodes.length + 16);
@@ -499,25 +503,28 @@ public class Cluster implements Runnable, Closeable {
 				for (Node node : nodes) {
 					node.refreshPeers(peers);
 				}
+
+				// Handle nodes changes determined from refreshes.
+				ArrayList<Node> removeList = findNodesToRemove(peers.refreshCount);
+
+				// Remove nodes in a batch.
+				if (removeList.size() > 0) {
+					removeNodes(removeList);
+				}
+			}
+
+			// Add nodes in a batch.
+			if (peers.nodes.size() > 0) {
+				addNodes(peers.nodes);
+
+				// Refresh peers of peers in order retrieve each peer's peers-generation.
+				for (Node node : peers.nodes.values()) {
+					node.refreshPeers(peers);
+				}
 			}
 		}
 
 		invalidNodeCount = peers.getInvalidCount();
-
-		if (peers.genChanged) {
-			// Handle nodes changes determined from refreshes.
-			ArrayList<Node> removeList = findNodesToRemove(peers.refreshCount);
-
-			// Remove nodes in a batch.
-			if (removeList.size() > 0) {
-				removeNodes(removeList);
-			}
-		}
-
-		// Add nodes in a batch.
-		if (peers.nodes.size() > 0) {
-			addNodes(peers.nodes);
-		}
 
 		// Refresh partition map when necessary.
 		for (Node node : nodes) {
@@ -585,7 +592,7 @@ public class Cluster implements Runnable, Closeable {
 				Node node = nv.seedNode(this, seed, peers);
 
 				if (node != null) {
-					addNode(node);
+					addSeedAndPeers(node, peers);
 					return true;
 				}
 			}
@@ -615,7 +622,10 @@ public class Cluster implements Runnable, Closeable {
 
 		// No seeds valid. Use fallback node if it exists.
 		if (nv.fallback != null) {
-			addNode(nv.fallback);
+			// When a fallback is used, peers refreshCount is reset to zero.
+			// refreshCount should always be one at this point.
+			peers.refreshCount = 1;
+			addSeedAndPeers(nv.fallback, peers);
 			return true;
 		}
 
@@ -701,15 +711,30 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 
-	/**
-	 * Add single node using copy on write semantics.
-	 */
-	private final void addNode(Node node) {
-		node.createMinConnections();
+	private final void addSeedAndPeers(Node seed, Peers peers) {
+		seed.createMinConnections();
+		nodesMap.clear();
 
-		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(1);
-		nodesToAdd.put(node.getName(), node);
-		addNodes(nodesToAdd);
+		Node[] nodeArray = new Node[peers.nodes.size() + 1];
+		int count = 0;
+
+		// Add seed.
+		nodeArray[count++] = seed;
+		addNode(seed);
+
+		// Add peers.
+		for (Node peer : peers.nodes.values()) {
+			nodeArray[count++] = peer;
+			addNode(peer);
+		}
+
+		// Replace nodes with copy.
+		nodes = nodeArray;
+
+		// Refresh peers of peers in order retrieve each peer's peers-generation.
+		for (Node node : peers.nodes.values()) {
+			node.refreshPeers(peers);
+		}
 	}
 
 	/**
@@ -728,22 +753,26 @@ public class Cluster implements Runnable, Closeable {
 
 		// Add new nodes.
 		for (Node node : nodesToAdd.values()) {
-			if (Log.infoEnabled()) {
-				Log.info("Add node " + node);
-			}
-
 			nodeArray[count++] = node;
-			nodesMap.put(node.getName(), node);
-
-			// Add node's aliases to global alias set.
-			// Aliases are only used in tend thread, so synchronization is not necessary.
-			for (Host alias : node.aliases) {
-				aliases.put(alias, node);
-			}
+			addNode(node);
 		}
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
+	}
+
+	private final void addNode(Node node) {
+		if (Log.infoEnabled()) {
+			Log.info("Add node " + node);
+		}
+
+		nodesMap.put(node.getName(), node);
+
+		// Add node's aliases to global alias set.
+		// Aliases are only used in tend thread, so synchronization is not necessary.
+		for (Host alias : node.aliases) {
+			aliases.put(alias, node);
+		}
 	}
 
 	private final void removeNodes(List<Node> nodesToRemove) {

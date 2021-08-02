@@ -105,12 +105,8 @@ public final class NodeValidator {
 		}
 
 		try {
-			node.refresh(peers);
-
-			if (peers.genChanged) {
-				peers.refreshCount = 0;
-				node.refreshPeers(peers);
-			}
+			peers.refreshCount = 0;
+			node.refreshPeers(peers);
 		}
 		catch (Exception e) {
 			node.close();
