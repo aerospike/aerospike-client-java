@@ -201,7 +201,7 @@ public final class Bin {
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 14 characters
-	 * @param value		bin value, pass in TreeMap instance if map order is sorted.
+	 * @param value		bin value, pass in a {@link java.util.SortedMap} instance if map order is sorted.
 	 * @param mapOrder	map sorted order.
 	 */
 	public Bin(String name, Map<?,?> value, MapOrder mapOrder) {
