@@ -23,7 +23,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
+import java.util.SortedMap;
 import java.util.UUID;
 
 import org.luaj.vm2.LuaBoolean;
@@ -1491,7 +1491,7 @@ public abstract class Value {
 
 		public MapValue(Map<?,?> map)  {
 			this.map = map;
-			this.order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+			this.order = getMapOrder(map);
 		}
 
 		public MapValue(Map<?,?> map, MapOrder order)  {
@@ -1555,6 +1555,10 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 			return map.hashCode();
+		}
+
+		public static MapOrder getMapOrder(Map<?,?> map) {
+			return (map instanceof SortedMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
 		}
 	}
 

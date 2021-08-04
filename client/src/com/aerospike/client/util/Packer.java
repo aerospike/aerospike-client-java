@@ -24,13 +24,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+
+import static com.aerospike.client.Value.MapValue.getMapOrder;
 
 /**
  * Serialize collection objects using MessagePack format specification:
@@ -125,7 +126,7 @@ public final class Packer {
 	}
 
 	public void packValueMap(Map<Value,Value> map) {
-		MapOrder order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+		MapOrder order = getMapOrder(map);
 		packMapBegin(map.size(), order);
 
 		for (Entry<Value,Value> entry : map.entrySet()) {
@@ -135,7 +136,7 @@ public final class Packer {
 	}
 
 	public void packMap(Map<?,?> map) {
-		MapOrder order = (map instanceof TreeMap<?,?>)? MapOrder.KEY_ORDERED : MapOrder.UNORDERED;
+		MapOrder order = getMapOrder(map);
 		packMap(map, order);
 	}
 
@@ -590,8 +591,8 @@ public final class Packer {
 	}
 
 	private static final class BufferItem {
-		private byte[] buffer;
-		private int length;
+		private final byte[] buffer;
+		private final int length;
 
 		private BufferItem(byte[] buffer, int length) {
 			this.buffer = buffer;
