@@ -32,7 +32,6 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
@@ -1029,10 +1028,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isWrite(), commandSentCounter);
-
-			if (Log.debugEnabled()) {
-				Command.LogPolicy(command.policy);
-			}
 			command.onFailure(ae);
 		}
 		catch (Throwable e) {

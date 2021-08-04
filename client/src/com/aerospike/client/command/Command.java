@@ -26,7 +26,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -1441,11 +1440,6 @@ public abstract class Command {
 				def.end();
 			}
 		}
-	}
-
-	public static void LogPolicy(Policy p) {
-		Log.debug("Policy: " + "socketTimeout=" + p.socketTimeout + " totalTimeout=" + p.totalTimeout + " maxRetries=" + p.maxRetries +
-				" sleepBetweenRetries=" + p.sleepBetweenRetries);
 	}
 
 	protected final void skipKey(int fieldCount) {

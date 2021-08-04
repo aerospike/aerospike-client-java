@@ -21,7 +21,6 @@ import java.net.SocketTimeoutException;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -188,10 +187,6 @@ public abstract class SyncCommand extends Command {
 				ae.setPolicy(policy);
 				ae.setIteration(iteration);
 				ae.setInDoubt(isWrite(), commandSentCounter);
-
-				if (Log.debugEnabled()) {
-					LogPolicy(policy);
-				}
 				throw ae;
 			}
 
@@ -247,10 +242,6 @@ public abstract class SyncCommand extends Command {
 		exception.setPolicy(policy);
 		exception.setIteration(iteration);
 		exception.setInDoubt(isWrite(), commandSentCounter);
-
-		if (Log.debugEnabled()) {
-			LogPolicy(policy);
-		}
 		throw exception;
 	}
 
