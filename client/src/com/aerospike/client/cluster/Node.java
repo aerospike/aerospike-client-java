@@ -104,20 +104,13 @@ public class Node implements Closeable {
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
 		this.errorCount = new AtomicInteger(0);
-
-		if (cluster.rackAware) {
-			this.racks = new HashMap<String,Integer>();
-		}
-		else {
-			this.racks = null;
-		}
-
-		peersGeneration = -1;
-		partitionGeneration = -1;
-		rebalanceGeneration = -1;
-		partitionChanged = true;
-		rebalanceChanged = true;
-		active = true;
+		this.peersGeneration = -1;
+		this.partitionGeneration = -1;
+		this.rebalanceGeneration = -1;
+		this.partitionChanged = true;
+		this.rebalanceChanged = cluster.rackAware;
+		this.racks = cluster.rackAware ? new HashMap<String,Integer>() : null;
+		this.active = true;
 
 		// Create sync connection pools.
 		connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -267,10 +260,7 @@ public class Node implements Closeable {
 			if (failures > 0) {
 				peers.genChanged = true;
 				partitionChanged = true;
-
-				if (cluster.rackAware) {
-					rebalanceChanged = true;
-				}
+				rebalanceChanged = cluster.rackAware;
 			}
 			failures = 0;
 		}

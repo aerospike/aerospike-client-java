@@ -513,14 +513,10 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 
-			// Add nodes in a batch.
+			// Add peer nodes to cluster.
 			if (peers.nodes.size() > 0) {
 				addNodes(peers.nodes);
-
-				// Refresh peers of peers in order retrieve each peer's peers-generation.
-				for (Node node : peers.nodes.values()) {
-					node.refreshPeers(peers);
-				}
+				refreshPeers(peers);
 			}
 		}
 
@@ -650,6 +646,48 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 
+	private void addSeedAndPeers(Node seed, Peers peers) {
+		seed.createMinConnections();
+		nodesMap.clear();
+
+		addNodes(seed, peers);
+
+		if (peers.nodes.size() > 0) {
+			refreshPeers(peers);
+		}
+	}
+
+	private void refreshPeers(Peers peers) {
+		// Iterate until peers have been refreshed and all new peers added.
+		while (true) {
+			// Copy peer node references to array.
+			Node[] nodeArray = new Node[peers.nodes.size()];
+			int count = 0;
+
+			for (Node node : peers.nodes.values()) {
+				nodeArray[count++] = node;
+			}
+
+			// Reset peer nodes.
+			peers.nodes.clear();
+
+			// Refresh peers of peers in order retrieve the node's peersCount
+			// which is used in RefreshPartitions(). This call might add even
+			// more peers.
+			for (Node node : nodeArray) {
+				node.refreshPeers(peers);
+			}
+
+			if (peers.nodes.size() > 0) {
+				// Add new peer nodes to cluster.
+				addNodes(peers.nodes);
+			}
+			else {
+				break;
+			}
+		}
+	}
+
 	protected Node createNode(NodeValidator nv) {
 		Node node = new Node(this, nv);
 		node.createMinConnections();
@@ -711,10 +749,9 @@ public class Cluster implements Runnable, Closeable {
 		return false;
 	}
 
-	private final void addSeedAndPeers(Node seed, Peers peers) {
-		seed.createMinConnections();
-		nodesMap.clear();
-
+	private void addNodes(Node seed, Peers peers) {
+		// Add all nodes at once to avoid copying entire array multiple times.
+		// Create temporary nodes array.
 		Node[] nodeArray = new Node[peers.nodes.size() + 1];
 		int count = 0;
 
@@ -730,11 +767,6 @@ public class Cluster implements Runnable, Closeable {
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
-
-		// Refresh peers of peers in order retrieve each peer's peers-generation.
-		for (Node node : peers.nodes.values()) {
-			node.refreshPeers(peers);
-		}
 	}
 
 	/**
