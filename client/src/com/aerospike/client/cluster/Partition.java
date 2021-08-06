@@ -36,7 +36,7 @@ public final class Partition {
 			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
 		}
 
-		return new Partition(partitions, key, policy.replica, false);
+		return new Partition(partitions, key, policy.replica, null, false);
 	}
 
 	public static Partition read(Cluster cluster, Policy policy, Key key) {
@@ -73,7 +73,7 @@ public final class Partition {
 			replica = policy.replica;
 			linearize = false;
 		}
-		return new Partition(partitions, key, replica, linearize);
+		return new Partition(partitions, key, replica, null, linearize);
 	}
 
 	public static Replica getReplicaSC(Policy policy) {
@@ -89,7 +89,15 @@ public final class Partition {
 		}
 	}
 
-	public static Node getNodeBatchRead(Cluster cluster, Key key, Replica replica, Replica replicaSC, int sequence, int sequenceSC) {
+	public static Node getNodeBatchRead(
+		Cluster cluster,
+		Key key,
+		Replica replica,
+		Replica replicaSC,
+		Node prevNode,
+		int sequence,
+		int sequenceSC
+	) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
 		Partitions partitions = map.get(key.namespace);
@@ -103,7 +111,7 @@ public final class Partition {
 			sequence = sequenceSC;
 		}
 
-		Partition p = new Partition(partitions, key, replica, false);
+		Partition p = new Partition(partitions, key, replica, prevNode, false);
 		p.sequence = sequence;
 		return p.getNodeRead(cluster);
 	}
@@ -116,10 +124,11 @@ public final class Partition {
 	private int sequence;
 	private final boolean linearize;
 
-	private Partition(Partitions partitions, Key key, Replica replica, boolean linearize) {
+	private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, boolean linearize) {
 		this.partitions = partitions;
 		this.namespace = key.namespace;
 		this.replica = replica;
+		this.prevNode = prevNode;
 		this.linearize = linearize;
 		this.partitionId = getPartitionId(key.digest);
 	}
@@ -196,6 +205,10 @@ public final class Partition {
 	private Node getRackNode(Cluster cluster) {
 		AtomicReferenceArray<Node>[] replicas = partitions.replicas;
 		int max = replicas.length;
+		int seq1 = 0;
+		int seq2 = 0;
+		Node fallback1 = null;
+		Node fallback2 = null;
 
 		for (int rackId : cluster.rackIds) {
 			int seq = sequence;
@@ -203,29 +216,53 @@ public final class Partition {
 			for (int i = 0; i < max; i++) {
 				int index = seq % max;
 				Node node = replicas[index].get(partitionId);
+				// Log.info("Try " + rackId + ',' + index + ',' + prevNode + ',' + node + ',' + node.hasRack(namespace, rackId));
 
-				// If a fallback exists, do not retry on node where command failed
-				// even if node is the only one on the same rack.
-				if (node != null && node != prevNode && node.hasRack(namespace, rackId) && node.isActive()) {
-					prevNode = node;
-					sequence = seq;
-					return node;
+				if (node != null) {
+					// Avoid retrying on node where command failed
+					// even if node is the only one on the same rack.
+					if (node != prevNode) {
+						if (node.hasRack(namespace, rackId)) {
+							if (node.isActive()) {
+								// Log.info("Found node on same rack: " + node);
+								prevNode = node;
+								sequence = seq;
+								return node;
+							}
+						}
+						else if (fallback1 == null && node.isActive()) {
+							// Meets all criteria except not on same rack.
+							fallback1 = node;
+							seq1 = seq;
+						}
+					}
+					else if (fallback2 == null && node.isActive()){
+						// Previous node is the least desirable fallback.
+						fallback2 = node;
+						seq2 = seq;
+					}
 				}
 				seq++;
 			}
 		}
 
-		// Fallback to sequence mode and save previous node as well.
-		for (int i = 0; i < max; i++) {
-			int index = sequence % max;
-			Node node = replicas[index].get(partitionId);
-
-			if (node != null && node.isActive()) {
-				prevNode = node;
-				return node;
-			}
-			sequence++;
+		// Return node on a different rack if it exists.
+		if (fallback1 != null) {
+			// Log.info("Found fallback node: " + fallback1);
+			prevNode = fallback1;
+			sequence = seq1;
+			return fallback1;
 		}
+
+		// Return previous node if it still exists.
+		if (fallback2 != null) {
+			// Log.info("Found previous node: " + fallback2);
+			prevNode = fallback2;
+			sequence = seq2;
+			return fallback2;
+		}
+
+		// Failed to find suitable node.
 		Node[] nodeArray = cluster.getNodes();
 		throw new AerospikeException.InvalidNode(nodeArray.length, this);
 	}

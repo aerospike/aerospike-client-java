@@ -101,7 +101,7 @@ public final class BatchNodeList {
 
 		for (int i = 0; i < keys.length; i++) {
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, keys[i], replica, replicaSC, 0, 0);
+				Node node = Partition.getNodeBatchRead(cluster, keys[i], replica, replicaSC, null, 0, 0);
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -156,7 +156,7 @@ public final class BatchNodeList {
 			int offset = batchSeed.offsets[i];
 
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, keys[offset], replica, replicaSC, sequenceAP, sequenceSC);
+				Node node = Partition.getNodeBatchRead(cluster, keys[offset], replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -207,7 +207,7 @@ public final class BatchNodeList {
 
 		for (int i = 0; i < max; i++) {
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, records.get(i).key, replica, replicaSC, 0, 0);
+				Node node = Partition.getNodeBatchRead(cluster, records.get(i).key, replica, replicaSC, null, 0, 0);
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -262,7 +262,7 @@ public final class BatchNodeList {
 			int offset = batchSeed.offsets[i];
 
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, records.get(offset).key, replica, replicaSC, sequenceAP, sequenceSC);
+				Node node = Partition.getNodeBatchRead(cluster, records.get(offset).key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
