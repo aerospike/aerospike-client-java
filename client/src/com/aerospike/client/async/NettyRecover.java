@@ -112,14 +112,16 @@ public final class NettyRecover implements TimerTask {
 	}
 
 	private void channelActive() {
-		byte[] token = node.getSessionToken();
+		if (cluster.authEnabled) {
+			byte[] token = node.getSessionToken();
 
-		if (token != null) {
-			writeAuth(token);
+			if (token != null) {
+				writeAuth(token);
+				return;
+			}
 		}
-		else {
-			recover();
-		}
+
+		recover();
 	}
 
 	private void writeAuth(byte[] token) {

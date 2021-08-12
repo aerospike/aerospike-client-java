@@ -348,17 +348,19 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	protected final void finishConnect() throws IOException {
 		conn.finishConnect();
 
-		byte[] token = node.getSessionToken();
+		if (cluster.authEnabled) {
+			byte[] token = node.getSessionToken();
 
-		if (token != null) {
-			writeAuth(token);
-		}
-		else {
-			if (timeoutState != null) {
-				restoreTimeout();
+			if (token != null) {
+				writeAuth(token);
+				return;
 			}
-			writeCommand();
 		}
+
+		if (timeoutState != null) {
+			restoreTimeout();
+		}
+		writeCommand();
 	}
 
 	private final void restoreTimeout() {

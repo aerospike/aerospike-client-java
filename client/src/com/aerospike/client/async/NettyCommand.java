@@ -392,17 +392,19 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void channelActive() {
-		byte[] token = node.getSessionToken();
+		if (cluster.authEnabled) {
+			byte[] token = node.getSessionToken();
 
-		if (token != null) {
-			writeAuth(token);
-		}
-		else {
-			if (timeoutState != null) {
-				restoreTimeout();
+			if (token != null) {
+				writeAuth(token);
+				return;
 			}
-			writeCommand();
 		}
+
+		if (timeoutState != null) {
+			restoreTimeout();
+		}
+		writeCommand();
 	}
 
 	private void restoreTimeout() {

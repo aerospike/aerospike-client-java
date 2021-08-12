@@ -29,7 +29,6 @@ import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.AdminCommand.LoginCommand;
-import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public final class NodeValidator {
@@ -388,8 +387,7 @@ public final class NodeValidator {
 
 						try {
 							if (this.sessionToken != null) {
-								AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
-								if (! admin.authenticate(cluster, conn, this.sessionToken)) {
+								if (! AdminCommand.authenticate(cluster,  conn, this.sessionToken)) {
 									throw new AerospikeException("Authentication failed");
 								}
 							}
@@ -466,8 +464,7 @@ public final class NodeValidator {
 
 							try {
 								if (sessionToken != null) {
-									AdminCommand admin = new AdminCommand(ThreadLocalData.getBuffer());
-									if (! admin.authenticate(cluster, clearConn, sessionToken)) {
+									if (! AdminCommand.authenticate(cluster, clearConn, sessionToken)) {
 										throw new AerospikeException("Authentication failed");
 									}
 								}

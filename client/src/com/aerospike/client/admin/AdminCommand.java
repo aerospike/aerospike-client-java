@@ -183,7 +183,13 @@ public class AdminCommand {
 		}
 	}
 
-	public boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
+	public static boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
+		throws IOException {
+		AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+		return command.authenticateSession(cluster, conn, sessionToken);
+	}
+
+	private boolean authenticateSession(Cluster cluster, Connection conn, byte[] sessionToken)
 		throws IOException {
 
 		dataOffset = 8;

@@ -40,7 +40,6 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
-import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 /**
@@ -214,33 +213,23 @@ public class Node implements Closeable {
 				connsOpened.getAndIncrement();
 
 				if (cluster.authEnabled) {
-					try {
-						if (! ensureLogin()) {
-							if (sessionToken != null) {
-								AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-								if (! command.authenticate(cluster, tendConnection, sessionToken)) {
-									// Authentication failed.  Session token probably expired.
-									// Must login again to get new session token.
-									LoginCommand login = new LoginCommand(cluster, tendConnection);
-									sessionToken = login.sessionToken;
-									sessionExpiration = login.sessionExpiration;
-								}
-							}
+					byte[] token = sessionToken;
+
+					if (token == null || shouldLogin()) {
+						login();
+					}
+					else {
+						if (! AdminCommand.authenticate(cluster, tendConnection, token)) {
+							// Authentication failed. Session token probably expired.
+							// Login again to get new session token.
+							login();
 						}
-					}
-					catch (AerospikeException ae) {
-						closeConnectionOnError(tendConnection);
-						throw ae;
-					}
-					catch (Exception e) {
-						closeConnectionOnError(tendConnection);
-						throw new AerospikeException(e);
 					}
 				}
 			}
 			else {
-				if (cluster.authEnabled) {
-					ensureLogin();
+				if (cluster.authEnabled && shouldLogin()) {
+					login();
 				}
 			}
 
@@ -270,15 +259,25 @@ public class Node implements Closeable {
 		}
 	}
 
-	private boolean ensureLogin() throws IOException {
-		if (performLogin || (sessionExpiration > 0 && System.nanoTime() >= sessionExpiration)) {
+	private boolean shouldLogin() {
+		return performLogin || (sessionExpiration > 0 && System.nanoTime() >= sessionExpiration);
+	}
+
+	private void login() throws IOException {
+		if (Log.infoEnabled()) {
+			Log.info("Login to " + this);
+		}
+
+		try {
 			LoginCommand login = new LoginCommand(cluster, tendConnection);
 			sessionToken = login.sessionToken;
 			sessionExpiration = login.sessionExpiration;
 			performLogin = false;
-			return true;
 		}
-		return false;
+		catch (Throwable e) {
+			performLogin = true;
+			throw e;
+		}
 	}
 
 	public final void signalLogin() {
@@ -333,6 +332,11 @@ public class Node implements Closeable {
 			// Reset error rate.
 			if (cluster.maxErrorRate > 0) {
 				resetErrorCount();
+			}
+
+			// Login when user authentication is enabled.
+			if (cluster.authEnabled) {
+				login();
 			}
 
 			// Balance sync connections.
@@ -586,20 +590,23 @@ public class Node implements Closeable {
 
 		connsOpened.getAndIncrement();
 
-		if (sessionToken != null) {
-			try {
-				AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-				if (! command.authenticate(cluster, conn, sessionToken)) {
-					throw new AerospikeException("Authentication failed");
+		if (cluster.authEnabled) {
+			byte[] token = sessionToken;
+
+			if (token != null) {
+				try {
+					if (! AdminCommand.authenticate(cluster, conn, token)) {
+						throw new AerospikeException("Authentication failed");
+					}
 				}
-			}
-			catch (AerospikeException ae) {
-				closeConnectionOnError(conn);
-				throw ae;
-			}
-			catch (Exception e) {
-				closeConnectionOnError(conn);
-				throw new AerospikeException(e);
+				catch (AerospikeException ae) {
+					closeConnectionOnError(conn);
+					throw ae;
+				}
+				catch (Exception e) {
+					closeConnectionOnError(conn);
+					throw new AerospikeException(e);
+				}
 			}
 		}
 		return conn;
@@ -691,46 +698,47 @@ public class Node implements Closeable {
 					throw re;
 				}
 
-				byte[] token = this.sessionToken;
+				if (cluster.authEnabled) {
+					byte[] token = this.sessionToken;
 
-				if (token != null) {
-					try {
-						AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
-						if (! command.authenticate(cluster, conn, token)) {
-							signalLogin();
-							throw new AerospikeException("Authentication failed");
+					if (token != null) {
+						try {
+							if (! AdminCommand.authenticate(cluster, conn, token)) {
+								signalLogin();
+								throw new AerospikeException("Authentication failed");
+							}
 						}
-					}
-					catch (AerospikeException ae) {
-						// Socket not authenticated.  Do not put back into pool.
-						closeConnection(conn);
-						throw ae;
-					}
-					catch (Connection.ReadTimeout crt) {
-						if (timeoutDelay > 0) {
-							// The connection state is always STATE_READ_AUTH_HEADER here which does not reference
-							// isSingle, so just pass in true for isSingle in ConnectionRecover.
-							cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
-						}
-						else {
+						catch (AerospikeException ae) {
+							// Socket not authenticated.  Do not put back into pool.
 							closeConnection(conn);
+							throw ae;
 						}
-						throw crt;
-					}
-					catch (RuntimeException re) {
-						closeConnection(conn);
-						throw re;
-					}
-					catch (SocketTimeoutException ste) {
-						closeConnection(conn);
-						// This is really a socket write timeout, but the calling
-						// method's catch handler just identifies error as a client
-						// timeout, which is what we need.
-						throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
-					}
-					catch (IOException ioe) {
-						closeConnection(conn);
-						throw new AerospikeException.Connection(ioe);
+						catch (Connection.ReadTimeout crt) {
+							if (timeoutDelay > 0) {
+								// The connection state is always STATE_READ_AUTH_HEADER here which does not reference
+								// isSingle, so just pass in true for isSingle in ConnectionRecover.
+								cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
+							}
+							else {
+								closeConnection(conn);
+							}
+							throw crt;
+						}
+						catch (RuntimeException re) {
+							closeConnection(conn);
+							throw re;
+						}
+						catch (SocketTimeoutException ste) {
+							closeConnection(conn);
+							// This is really a socket write timeout, but the calling
+							// method's catch handler just identifies error as a client
+							// timeout, which is what we need.
+							throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
+						}
+						catch (IOException ioe) {
+							closeConnection(conn);
+							throw new AerospikeException.Connection(ioe);
+						}
 					}
 				}
 
