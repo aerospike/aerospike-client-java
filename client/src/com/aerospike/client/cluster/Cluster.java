@@ -195,7 +195,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		else {
-			if (authMode == AuthMode.EXTERNAL) {
+			if (authMode == AuthMode.EXTERNAL || authMode == AuthMode.PKI) {
 				throw new AerospikeException("TLS is required for authentication mode: " + authMode);
 			}
 		}
