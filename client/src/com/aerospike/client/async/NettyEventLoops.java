@@ -43,6 +43,7 @@ import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import io.netty.util.concurrent.EventExecutor;
 
 /**
@@ -83,6 +84,9 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		}
 		else if (group instanceof KQueueEventLoopGroup) {
 			this.eventLoopType = EventLoopType.NETTY_KQUEUE;
+		}
+		else if (group instanceof IOUringEventLoopGroup) {
+			this.eventLoopType = EventLoopType.NETTY_IO_URING;
 		}
 		else {
 			throw new AerospikeException("Unexpected EventLoopGroup");
