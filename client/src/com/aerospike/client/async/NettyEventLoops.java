@@ -40,7 +40,6 @@ import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import io.netty.util.concurrent.EventExecutor;
 
 /**
@@ -85,7 +84,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 			break;
 		case "IOUringEventLoopGroup":
 			this.eventLoopType = EventLoopType.NETTY_IOURING;
-			break
+			break;
 		default:
 			throw new AerospikeException("Unexpected EventLoopGroup");
 		}
