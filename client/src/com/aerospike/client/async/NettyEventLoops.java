@@ -34,9 +34,6 @@ import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.kqueue.KQueueEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;
@@ -76,19 +73,20 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		}
 		this.group = group;
 
-		if (group instanceof NioEventLoopGroup) {
+		switch (group.getClass().getSimpleName()) {
+		case "NioEventLoopGroup":
 			this.eventLoopType = EventLoopType.NETTY_NIO;
-		}
-		else if (group instanceof EpollEventLoopGroup) {
+			break;
+		case "EpollEventLoopGroup":
 			this.eventLoopType = EventLoopType.NETTY_EPOLL;
-		}
-		else if (group instanceof KQueueEventLoopGroup) {
+			break;
+		case "KQueueEventLoopGroup":
 			this.eventLoopType = EventLoopType.NETTY_KQUEUE;
-		}
-		else if (group instanceof IOUringEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_IO_URING;
-		}
-		else {
+			break;
+		case "IOUringEventLoopGroup":
+			this.eventLoopType = EventLoopType.NETTY_IOURING;
+			break
+		default:
 			throw new AerospikeException("Unexpected EventLoopGroup");
 		}
 

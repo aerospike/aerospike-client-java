@@ -43,5 +43,5 @@ public enum EventLoopType {
 	/**
 	 * Netty io_uring. Available on Linux.
 	 */
-	NETTY_IO_URING
+	NETTY_IOURING
 }

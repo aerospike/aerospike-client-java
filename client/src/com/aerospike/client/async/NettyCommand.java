@@ -362,7 +362,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			b.channel(KQueueSocketChannel.class);
 			break;
 
-		case NETTY_IO_URING:
+		case NETTY_IOURING:
 			b.channel(IOUringSocketChannel.class);
 			break;
 		}
