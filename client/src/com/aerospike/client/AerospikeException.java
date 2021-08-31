@@ -291,7 +291,7 @@ public class AerospikeException extends RuntimeException {
 	public static final class Serialize extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
-		public Serialize(Exception e) {
+		public Serialize(Throwable e) {
 			super(ResultCode.SERIALIZE_ERROR, e);
 		}
 	}
@@ -317,11 +317,11 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.SERVER_NOT_AVAILABLE, message);
 		}
 
-		public Connection(Exception e) {
+		public Connection(Throwable e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, e);
 		}
 
-		public Connection(String message, Exception e) {
+		public Connection(String message, Throwable e) {
 			super(ResultCode.SERVER_NOT_AVAILABLE, message, e);
 		}
 
@@ -372,7 +372,7 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.SCAN_TERMINATED);
 		}
 
-		public ScanTerminated(Exception e) {
+		public ScanTerminated(Throwable e) {
 			super(ResultCode.SCAN_TERMINATED, e);
 		}
 	}
@@ -387,7 +387,7 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.QUERY_TERMINATED);
 		}
 
-		public QueryTerminated(Exception e) {
+		public QueryTerminated(Throwable e) {
 			super(ResultCode.QUERY_TERMINATED, e);
 		}
 	}

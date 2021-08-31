@@ -1159,7 +1159,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			Throwable cause = ((SslHandshakeCompletionEvent)evt).cause();
 
 			if (cause != null) {
-				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
+				throw new AerospikeException.Connection("TLS connect failed: " + cause.getMessage(), cause);
 			}
 
 			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
