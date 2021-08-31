@@ -164,7 +164,7 @@ public class Node implements Closeable {
 		// Create async connections.
 		final Monitor monitor = new Monitor();
 		final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
-		final int maxConcurrent = 50 / eventState.length + 1;
+		final int maxConcurrent = 20 / eventState.length + 1;
 
 		for (int i = 0; i < eventState.length; i++) {
 			final int minSize = asyncConnectionPools[i].minSize;
