@@ -38,5 +38,10 @@ public enum EventLoopType {
 	/**
 	 * Netty kqueue. Available on MacOS, FreeBSD.
 	 */
-	NETTY_KQUEUE
+	NETTY_KQUEUE,
+
+	/**
+	 * Netty io_uring. Available on Linux.
+	 */
+	NETTY_IOURING
 }

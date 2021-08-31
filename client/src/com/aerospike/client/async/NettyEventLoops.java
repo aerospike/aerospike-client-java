@@ -43,6 +43,7 @@ import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import io.netty.util.concurrent.EventExecutor;
 
 /**
@@ -68,25 +69,21 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 
 	/**
 	 * Create Aerospike event loop wrappers from given netty event loops.
+	 * The type of event loop is determined from the event loop group instance.
 	 */
 	public NettyEventLoops(EventPolicy policy, EventLoopGroup group) {
+		this(policy, group, getEventLoopType(group));
+	}
+
+	/**
+	 * Create Aerospike event loop wrappers from given netty event loops and specified event loop type.
+	 */
+	public NettyEventLoops(EventPolicy policy, EventLoopGroup group, EventLoopType type) {
 		if (policy.minTimeout < 5) {
 			throw new AerospikeException("Invalid minTimeout " + policy.minTimeout + ". Must be at least 5ms.");
 		}
 		this.group = group;
-
-		if (group instanceof NioEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_NIO;
-		}
-		else if (group instanceof EpollEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_EPOLL;
-		}
-		else if (group instanceof KQueueEventLoopGroup) {
-			this.eventLoopType = EventLoopType.NETTY_KQUEUE;
-		}
-		else {
-			throw new AerospikeException("Unexpected EventLoopGroup");
-		}
+		this.eventLoopType = type;
 
 		ArrayList<NettyEventLoop> list = new ArrayList<NettyEventLoop>();
 		Iterator<EventExecutor> iter = group.iterator();
@@ -112,6 +109,47 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 				}
 			});
 		}
+	}
+
+	private static EventLoopType getEventLoopType(EventLoopGroup group) {
+		// Wrap each instanceof comparison in a try/catch block because these classes reference
+		// libraries that are optional and might not be specified in the build file (pom.xml).
+		// This is preferable to using a "getClass().getSimpleName()" switch statement because
+		// that requires exact classname equality and does not handle custom classes that might
+		// inherit from these classes.
+		try {
+			if (group instanceof NioEventLoopGroup) {
+				return EventLoopType.NETTY_NIO;
+			}
+		}
+		catch (NoClassDefFoundError e) {
+		}
+
+		try {
+			if (group instanceof EpollEventLoopGroup) {
+				return EventLoopType.NETTY_EPOLL;
+			}
+		}
+		catch (NoClassDefFoundError e) {
+		}
+
+		try {
+			if (group instanceof KQueueEventLoopGroup) {
+				return EventLoopType.NETTY_KQUEUE;
+			}
+		}
+		catch (NoClassDefFoundError e) {
+		}
+
+		try {
+			if (group instanceof IOUringEventLoopGroup) {
+				return EventLoopType.NETTY_IOURING;
+			}
+		}
+		catch (NoClassDefFoundError e) {
+		}
+
+		throw new AerospikeException("Unexpected EventLoopGroup");
 	}
 
 	/**

@@ -16,10 +16,6 @@
  */
 package com.aerospike.examples;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-
 import java.lang.reflect.Constructor;
 import java.util.List;
 
@@ -33,6 +29,12 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 public abstract class AsyncExample {
 	/**
@@ -54,13 +56,25 @@ public abstract class AsyncExample {
 
 			case NETTY_NIO: {
 				EventLoopGroup group = new NioEventLoopGroup(1);
-				eventLoops = new NettyEventLoops(eventPolicy, group);
+				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
 				break;
 			}
 
 			case NETTY_EPOLL: {
 				EventLoopGroup group = new EpollEventLoopGroup(1);
-				eventLoops = new NettyEventLoops(eventPolicy, group);
+				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
+				break;
+			}
+
+			case NETTY_KQUEUE: {
+				EventLoopGroup group = new KQueueEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
+				break;
+			}
+
+			case NETTY_IOURING: {
+				EventLoopGroup group = new IOUringEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
 				break;
 			}
 		}

@@ -76,6 +76,13 @@
       </dependency>
 
       <dependency>
+        <groupId>io.netty.incubator</groupId>
+        <artifactId>netty-incubator-transport-native-io_uring</artifactId>
+        <classifier>linux-x86_64</classifier>
+        <version>0.0.8.Final</version>
+      </dependency>
+
+      <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-handler</artifactId>
         <version>${netty.version}</version>

@@ -16,10 +16,6 @@
  */
 package com.aerospike.test;
 
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -29,6 +25,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
@@ -39,6 +36,12 @@ import com.aerospike.test.async.TestAsyncQuery;
 import com.aerospike.test.async.TestAsyncScan;
 import com.aerospike.test.async.TestAsyncUDF;
 import com.aerospike.test.util.Args;
+
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
@@ -59,22 +62,36 @@ public class SuiteAsync {
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
 
+		EventPolicy eventPolicy = new EventPolicy();
+
 		switch (args.eventLoopType) {
 			default:
 			case DIRECT_NIO: {
-				eventLoops = new NioEventLoops(1);
+				eventLoops = new NioEventLoops(eventPolicy, 1);
 				break;
 			}
 
 			case NETTY_NIO: {
 				EventLoopGroup group = new NioEventLoopGroup(1);
-				eventLoops = new NettyEventLoops(group);
+				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}
 
 			case NETTY_EPOLL: {
 				EventLoopGroup group = new EpollEventLoopGroup(1);
-				eventLoops = new NettyEventLoops(group);
+				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
+				break;
+			}
+
+			case NETTY_KQUEUE: {
+				EventLoopGroup group = new KQueueEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
+				break;
+			}
+
+			case NETTY_IOURING: {
+				EventLoopGroup group = new IOUringEventLoopGroup(1);
+				eventLoops = new NettyEventLoops(eventPolicy, group, args.eventLoopType);
 				break;
 			}
 		}

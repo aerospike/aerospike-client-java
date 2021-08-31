@@ -104,8 +104,14 @@ public class Args {
 					);
 			options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 			options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
+
 			options.addOption("netty", false, "Use Netty NIO event loops for async tests");
 			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async tests (Linux only)");
+			options.addOption("elt", "eventLoopType", true,
+					"Use specified event loop type for async examples\n" +
+					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+					);
+
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -160,6 +166,10 @@ public class Args {
 
 			if (cl.hasOption("nettyEpoll")) {
 				eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
+
+			if (cl.hasOption("eventLoopType")) {
+				eventLoopType = EventLoopType.valueOf(cl.getOptionValue("eventLoopType", "").toUpperCase());
 			}
 
 			user = cl.getOptionValue("U");

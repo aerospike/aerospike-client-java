@@ -57,7 +57,9 @@ import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 public class Main implements Log.Callback {
 
@@ -294,8 +296,14 @@ public class Main implements Log.Callback {
 				);
 		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
+
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
+		options.addOption("elt", "eventLoopType", true,
+				"Use specified event loop type for async examples\n" +
+				"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+				);
+
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
@@ -839,6 +847,10 @@ public class Main implements Log.Callback {
 			this.eventLoopType = EventLoopType.NETTY_EPOLL;
 		}
 
+		if (line.hasOption("eventLoopType")) {
+			this.eventLoopType = EventLoopType.valueOf(line.getOptionValue("eventLoopType", "").toUpperCase());
+		}
+
 		if(line.hasOption("udfPackageName")){
 			args.udfPackageName = line.getOptionValue("udfPackageName");
 		}
@@ -1009,13 +1021,25 @@ public class Main implements Log.Callback {
 
 				case NETTY_NIO: {
 					EventLoopGroup group = new NioEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group);
+					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 				}
 
 				case NETTY_EPOLL: {
 					EventLoopGroup group = new EpollEventLoopGroup(this.eventLoopSize);
-					eventLoops = new NettyEventLoops(eventPolicy, group);
+					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+					break;
+				}
+
+				case NETTY_KQUEUE: {
+					EventLoopGroup group = new KQueueEventLoopGroup(this.eventLoopSize);
+					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
+					break;
+				}
+
+				case NETTY_IOURING: {
+					EventLoopGroup group = new IOUringEventLoopGroup(this.eventLoopSize);
+					eventLoops = new NettyEventLoops(eventPolicy, group, this.eventLoopType);
 					break;
 				}
 			}

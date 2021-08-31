@@ -124,8 +124,14 @@ public class Main extends JPanel {
 					);
 			options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 			options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
+
 			options.addOption("netty", false, "Use Netty NIO event loops for async examples");
 			options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async examples (Linux only)");
+			options.addOption("elt", "eventLoopType", true,
+					"Use specified event loop type for async examples\n" +
+					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+					);
+
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -159,6 +165,10 @@ public class Main extends JPanel {
 
 			if (cl.hasOption("nettyEpoll")) {
 				params.eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
+
+			if (cl.hasOption("eventLoopType")) {
+				params.eventLoopType = EventLoopType.valueOf(cl.getOptionValue("eventLoopType", "").toUpperCase());
 			}
 
 			if (cl.hasOption("d")) {
