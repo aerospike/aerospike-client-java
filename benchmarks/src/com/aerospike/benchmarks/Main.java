@@ -131,8 +131,32 @@ public class Main implements Log.Callback {
 			"Set expected loginTimeout in milliseconds. The timeout is used when user " +
 			"authentication is enabled and a node login is being performed. Default: 5000"
 			);
-		options.addOption("ct", "connectTimeout", true,
-			"Set initial host connection timeout on node startup in milliseconds. Default: 1000"
+		options.addOption("tt", "tendTimeout", true,
+			"Set cluster tend info call timeout in milliseconds. Default: 1000"
+			);
+		options.addOption("ti", "tendInterval", true,
+			"Interval between cluster tends in milliseconds. Default: 1000"
+			);
+		options.addOption("maxSocketIdle", true,
+			"Maximum socket idle in connection pool in seconds. Default: 55"
+			);
+		options.addOption("maxErrorRate", true,
+			"Maximum number of errors allowed per node per tend iteration. Default: 0"
+			);
+		options.addOption("errorRateWindow", true,
+			"Number of cluster tend iterations that defines the window for maxErrorRate. Default: 1"
+			);
+		options.addOption("minConnsPerNode", true,
+			"Minimum number of sync connections pre-allocated per server node. Default: 0"
+			);
+		options.addOption("maxConnsPerNode", true,
+			"Maximum number of sync connections allowed per server node. Default: 300"
+			);
+		options.addOption("asyncMinConnsPerNode", true,
+			"Minimum number of async connections pre-allocated per server node. Default: 0"
+			);
+		options.addOption("asyncMaxConnsPerNode", true,
+			"Maximum number of async connections allowed per server node. Default: 300"
 			);
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
@@ -192,6 +216,9 @@ public class Main implements Log.Callback {
 		options.addOption("t", "transactions", true,
 			"Number of transactions to perform in read/write mode before shutting down. " +
 			"The default is to run indefinitely."
+			);
+		options.addOption("ct", "connectTimeout", true,
+			"Set socket connection timeout in milliseconds. Default: 0"
 			);
 
 		options.addOption("T", "timeout", true, "Set read and write socketTimeout and totalTimeout to the same timeout in milliseconds.");
@@ -363,8 +390,12 @@ public class Main implements Log.Callback {
 			clientPolicy.loginTimeout = Integer.parseInt(line.getOptionValue("loginTimeout"));
 		}
 
-		if (line.hasOption("connectTimeout")) {
-			clientPolicy.timeout = Integer.parseInt(line.getOptionValue("connectTimeout"));
+		if (line.hasOption("tendTimeout")) {
+			clientPolicy.timeout = Integer.parseInt(line.getOptionValue("tendTimeout"));
+		}
+
+		if (line.hasOption("tendInterval")) {
+			clientPolicy.tendInterval = Integer.parseInt(line.getOptionValue("tendInterval"));
 		}
 
 		if (line.hasOption("tls")) {
@@ -433,6 +464,37 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("servicesAlternate")) {
 			clientPolicy.useServicesAlternate = true;
+		}
+
+		if (line.hasOption("maxSocketIdle")) {
+			clientPolicy.maxSocketIdle = Integer.parseInt(line.getOptionValue("maxSocketIdle"));
+		}
+
+		if (line.hasOption("maxErrorRate")) {
+			clientPolicy.maxErrorRate = Integer.parseInt(line.getOptionValue("maxErrorRate"));
+		}
+
+		if (line.hasOption("errorRateWindow")) {
+			clientPolicy.errorRateWindow = Integer.parseInt(line.getOptionValue("errorRateWindow"));
+		}
+
+		if (line.hasOption("minConnsPerNode")) {
+			clientPolicy.minConnsPerNode = Integer.parseInt(line.getOptionValue("minConnsPerNode"));
+		}
+
+		if (line.hasOption("maxConnsPerNode")) {
+			clientPolicy.maxConnsPerNode = Integer.parseInt(line.getOptionValue("maxConnsPerNode"));
+		}
+
+		if (line.hasOption("asyncMinConnsPerNode")) {
+			clientPolicy.asyncMinConnsPerNode = Integer.parseInt(line.getOptionValue("asyncMinConnsPerNode"));
+		}
+
+		if (line.hasOption("asyncMaxConnsPerNode")) {
+			clientPolicy.asyncMaxConnsPerNode = Integer.parseInt(line.getOptionValue("asyncMaxConnsPerNode"));
+		}
+		else {
+			clientPolicy.asyncMaxConnsPerNode = clientPolicy.maxConnsPerNode;
 		}
 
 		if (line.hasOption("keys")) {
@@ -600,6 +662,13 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("transactions")) {
 			args.transactionLimit = Long.parseLong(line.getOptionValue("transactions"));
+		}
+
+		if (line.hasOption("connectTimeout")) {
+			int timeout = Integer.parseInt(line.getOptionValue("connectTimeout"));
+			args.readPolicy.connectTimeout = timeout;
+			args.writePolicy.connectTimeout = timeout;
+			args.batchPolicy.connectTimeout = timeout;
 		}
 
 		if (line.hasOption("timeout")) {
@@ -906,10 +975,25 @@ public class Main implements Log.Callback {
 			+ ", random values: " + (args.fixedBins == null)
 			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps")));
 
+		System.out.println("client policy:");
+		System.out.println(
+			"    loginTimeout: " + clientPolicy.loginTimeout
+			+ ", tendTimeout: " + clientPolicy.timeout
+			+ ", tendInterval: " + clientPolicy.tendInterval
+			+ ", maxSocketIdle: " + clientPolicy.maxSocketIdle
+			+ ", maxErrorRate: " + clientPolicy.maxErrorRate);
+		System.out.println(
+			"    errorRateWindow: " + clientPolicy.errorRateWindow
+			+ ", minConnsPerNode: " + clientPolicy.minConnsPerNode
+			+ ", maxConnsPerNode: " + clientPolicy.maxConnsPerNode
+			+ ", asyncMinConnsPerNode: " + clientPolicy.asyncMinConnsPerNode
+			+ ", asyncMaxConnsPerNode: " + clientPolicy.asyncMaxConnsPerNode);
+
 		if (args.workload != Workload.INITIALIZE) {
 			System.out.println("read policy:");
 			System.out.println(
-					"    socketTimeout: " + args.readPolicy.socketTimeout
+					"    connectTimeout: " + args.readPolicy.connectTimeout
+					+ ", socketTimeout: " + args.readPolicy.socketTimeout
 					+ ", totalTimeout: " + args.readPolicy.totalTimeout
 					+ ", timeoutDelay: " + args.readPolicy.timeoutDelay
 					+ ", maxRetries: " + args.readPolicy.maxRetries
@@ -925,7 +1009,8 @@ public class Main implements Log.Callback {
 
 		System.out.println("write policy:");
 		System.out.println(
-			"    socketTimeout: " + args.writePolicy.socketTimeout
+			"    connectTimeout: " + args.writePolicy.connectTimeout
+			+ ", socketTimeout: " + args.writePolicy.socketTimeout
 			+ ", totalTimeout: " + args.writePolicy.totalTimeout
 			+ ", timeoutDelay: " + args.writePolicy.timeoutDelay
 			+ ", maxRetries: " + args.writePolicy.maxRetries

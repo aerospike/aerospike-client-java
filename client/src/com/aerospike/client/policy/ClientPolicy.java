@@ -66,8 +66,8 @@ public class ClientPolicy {
 	public AuthMode authMode = AuthMode.INTERNAL;
 
 	/**
-	 * Initial host connection timeout in milliseconds.  The timeout when opening a connection
-	 * to the server host for the first time.
+	 * Cluster tend info call timeout in milliseconds.  The timeout when opening a connection
+	 * to the server node for the first time and when polling each node for cluster status.
 	 * <p>
 	 * Default: 1000
 	 */
