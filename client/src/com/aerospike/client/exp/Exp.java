@@ -172,7 +172,7 @@ public abstract class Exp {
 	 * <pre>{@code
 	 * // Geo bin "a" == region
 	 * String region = "{ \"type\": \"AeroCircle\", \"coordinates\": [[-122.0, 37.5], 50000.0] }";
-	 * Exp.geoCompare(Exp.geoBin("loc"), Exp.val(region))
+	 * Exp.geoCompare(Exp.geoBin("loc"), Exp.geo(region))
 	 * }</pre>
 	 */
 	public static Exp geoBin(String name) {
