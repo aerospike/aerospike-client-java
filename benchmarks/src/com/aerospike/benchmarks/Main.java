@@ -96,6 +96,7 @@ public class Main implements Log.Callback {
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
 	private boolean initialize;
+	private boolean reportClusterStats = false;
 	private String filepath;
 
 	private EventLoops eventLoops;
@@ -254,6 +255,8 @@ public class Main implements Log.Callback {
 			"Latency columns are cumulative. If a transaction takes 9ms, it will be included in both the >1ms and >8ms columns."
 			);
 
+		options.addOption("reportClusterStats", false, "Report cluster stats.");
+
 		options.addOption("N", "reportNotFound", false, "Report not found errors. Data should be fully initialized before using this option.");
 		options.addOption("D", "debug", false, "Run benchmarks in debug mode.");
 		options.addOption("u", "usage", false, "Print usage.");
@@ -275,6 +278,7 @@ public class Main implements Log.Callback {
 
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
 		options.addOption("C", "asyncMaxCommands", true, "Maximum number of concurrent asynchronous database commands.");
+		options.addOption("conns", "asyncMaxConnections", true, "Maximum number of connections per node.");
 		options.addOption("W", "eventLoops", true, "Number of event loop threads when running in asynchronous mode.");
 		options.addOption("F", "keyFile", true, "File path to read the keys for read operation.");
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
@@ -760,6 +764,10 @@ public class Main implements Log.Callback {
 			this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
 		}
 
+		if (line.hasOption("asyncMaxConnections")) {
+			this.clientPolicy.asyncMaxConnsPerNode = Integer.parseInt(line.getOptionValue("asyncMaxConnections"));
+		}
+
 		if (line.hasOption("eventLoops")) {
 			this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
 		}
@@ -827,6 +835,10 @@ public class Main implements Log.Callback {
 					}
 				}
 			}
+		}
+		
+		if (line.hasOption("reportClusterStats")) {
+			this.reportClusterStats = true;
 		}
 
 		if (! line.hasOption("random")) {
@@ -1153,7 +1165,7 @@ public class Main implements Log.Callback {
 			es.execute(rt);
 		}
 		Thread.sleep(900);
-		collectRWStats(tasks);
+		collectRWStats(client, tasks);
 		es.shutdown();
 	}
 
@@ -1167,7 +1179,7 @@ public class Main implements Log.Callback {
 		t.start();
 
 		Thread.sleep(900);
-		collectRWStats(tasks);
+		collectRWStats(client, tasks);
 	}
 
 	class AsyncRWManager extends RWTask implements Runnable {
@@ -1215,7 +1227,7 @@ public class Main implements Log.Callback {
 			// Initialize quota:
 			// Number of events per cycle to meet throughput (rounded up).
 			int eventsPerCycle = (args.throughput + cyclesPerSecond - 1) / cyclesPerSecond;
-			long quota = this.counters.asyncQuota.addAndGet(eventsPerCycle);
+			this.counters.asyncQuota.addAndGet(eventsPerCycle);
 
 			long start = System.currentTimeMillis();
 
@@ -1235,7 +1247,7 @@ public class Main implements Log.Callback {
 
 				start = end;
 
-				quota = this.counters.asyncQuota.addAndGet(newEvents);
+				this.counters.asyncQuota.addAndGet(newEvents);
 			}
 		}
 
@@ -1304,7 +1316,7 @@ public class Main implements Log.Callback {
 
 	}
 
-	private void collectRWStats(RWTask[] tasks) throws Exception {
+	private void collectRWStats(AerospikeClient client, RWTask[] tasks) throws Exception {
 		long transactionTotal = 0;
 
 		while (true) {
@@ -1353,6 +1365,10 @@ public class Main implements Log.Callback {
 				if (this.counters.transaction != null && this.counters.transaction.latency != null) {
 					this.counters.transaction.latency.printResults(System.out, "txn");
 				}
+			}
+
+			if (this.reportClusterStats) {
+				System.out.println("cluster-stats: " + client.getCluster().getStats());
 			}
 
 			if (args.transactionLimit > 0 ) {
