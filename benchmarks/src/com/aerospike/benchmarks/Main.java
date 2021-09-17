@@ -34,7 +34,9 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.Bin;
 import com.aerospike.client.Host;
+import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Value;
@@ -1156,31 +1158,154 @@ public class Main implements Log.Callback {
 	}
 
 	private void doAsyncRWTest(AerospikeClient client) throws Exception {
-		// Generate asyncMaxCommand commands to seed the event loops.
-		// Then start a new command in each command callback.
-		// This effectively throttles new command generation, by only allowing
-		// asyncMaxCommands at any point in time.
-		int maxConcurrentCommands = this.asyncMaxCommands;
+		AsyncRWManager[] tasks = new AsyncRWManager[1];
 
-		if (maxConcurrentCommands > this.nKeys) {
-			maxConcurrentCommands = (int)this.nKeys;
-		}
+		tasks[0] = new AsyncRWManager(args, counters, this.startKey, this.nKeys, this.asyncMaxCommands, client,
+				this.clientPolicy);
 
-		// Create seed commands distributed among event loops.
-		RWTask[] tasks = new RWTask[maxConcurrentCommands];
-
-		for (int i = 0; i < maxConcurrentCommands; i++) {
-			EventLoop eventLoop = this.clientPolicy.eventLoops.next();
-			tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, this.startKey, this.nKeys);
-		}
-
-		// Start seed commands.
-		for (RWTask task : tasks) {
-			task.runNextCommand();
-		}
+		Thread t = new Thread(tasks[0]);
+		t.start();
 
 		Thread.sleep(900);
 		collectRWStats(tasks);
+	}
+
+	class AsyncRWManager extends RWTask implements Runnable {
+		private int maxCommands;
+		public RWTaskAsync[] tasks;
+
+		public AsyncRWManager(Arguments args, CounterStore counters, long keyStart, long keyCount, int maxCommands,
+				AerospikeClient client, ClientPolicy clientPolicy) {
+			super(args, counters, keyStart, keyCount);
+
+			// Generate asyncMaxCommand commands to seed the event loops.
+			// Then start a new command in each command callback.
+			// This effectively throttles new command generation, by only allowing
+			// asyncMaxCommands at any point in time.
+			this.maxCommands = maxCommands;
+
+			if (this.maxCommands > this.keyCount) {
+				this.maxCommands = (int) this.keyCount;
+			}
+
+			// Create seed commands distributed among event loops.
+			this.tasks = new RWTaskAsync[this.maxCommands];
+
+			for (int i = 0; i < this.maxCommands; i++) {
+				EventLoop eventLoop = clientPolicy.eventLoops.next();
+				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, this.keyStart, this.keyCount);
+			}
+		}
+
+		@Override
+		public void run() {
+			if (args.throughput == 0) {
+				// Unlimited.
+				this.counters.asyncQuota.set(Long.MAX_VALUE);
+				this.runNextCommand();
+
+				return;
+			}
+
+			int cyclesPerSecond = 100;
+			long wait = 1000 / cyclesPerSecond;
+
+			double perMilli = args.throughput / 1000.0;
+
+			// Initialize quota:
+			// Number of events per cycle to meet throughput (rounded up).
+			int eventsPerCycle = (args.throughput + cyclesPerSecond - 1) / cyclesPerSecond;
+			long quota = this.counters.asyncQuota.addAndGet(eventsPerCycle);
+
+			long start = System.currentTimeMillis();
+
+			while (valid) {
+				if (quota > args.throughput * 3) {
+					log(Level.WARN, "unable to keep up with throughput");
+				}
+
+				this.runNextCommand();
+
+				try {
+					Thread.sleep(wait);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+					return;
+				}
+
+				long end = System.currentTimeMillis();
+				long delta = end - start;
+				int newEvents = (int) Math.ceil(delta * perMilli);
+
+				start = end;
+
+				quota = this.counters.asyncQuota.addAndGet(newEvents);
+			}
+		}
+
+		@Override
+		protected void runNextCommand() {
+			for (RWTaskAsync task : this.tasks) {
+				if (!task.isRunning) {
+					task.runNextCommand();
+				}
+			}
+		}
+
+		@Override
+		public void stop() {
+			super.stop();
+
+			for (RWTask task : tasks) {
+				task.stop();
+			}
+		}
+
+		// Don't need the following, only needed the stop method from RWTask.
+		// Create 'stoppable' interface.
+
+		@Override
+		protected void put(WritePolicy policy, Key key, Bin[] bins) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void add(Key key, Bin[] bins) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void get(Key key, String binName) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void get(Key key) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void get(Key[] keys) {
+			// TODO Auto-generated method stub
+
+		}
+
+		@Override
+		protected void get(Key[] keys, String binName) {
+			// TODO Auto-generated method stub
+
+		}
+
 	}
 
 	private void collectRWStats(RWTask[] tasks) throws Exception {

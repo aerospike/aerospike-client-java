@@ -32,6 +32,8 @@ public class CounterStore {
 	AtomicInteger loadValuesFinishedTasks = new AtomicInteger();
 	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
 
+	AtomicLong asyncQuota = new AtomicLong();
+
 	public static class Current {
 		AtomicInteger count = new AtomicInteger();
 		AtomicInteger timeouts = new AtomicInteger();

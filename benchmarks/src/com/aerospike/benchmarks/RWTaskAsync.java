@@ -39,6 +39,7 @@ public final class RWTaskAsync extends RWTask {
 	private final RecordArrayListener recordArrayListener;
 	private long begin;
 	private final boolean useLatency;
+	public boolean isRunning;
 
 	public RWTaskAsync(
 		AerospikeClient client,
@@ -53,6 +54,7 @@ public final class RWTaskAsync extends RWTask {
 		this.eventLoop = eventLoop;
 		this.random = new RandomShift();
 		this.useLatency = counters.write.latency != null;
+		this.isRunning = false;
 
 		if (useLatency) {
 			writeListener = new LatencyWriteHandler();
@@ -69,8 +71,17 @@ public final class RWTaskAsync extends RWTask {
 	@Override
 	protected void runNextCommand() {
 		if (valid) {
-			runCommand(random);
+			if (this.counters.asyncQuota.getAndDecrement() <= 0) {
+				this.counters.asyncQuota.incrementAndGet();
+			}
+			else {
+				this.isRunning = true;
+				runCommand(random);
+				return;
+			}
 		}
+
+		this.isRunning = false;
 	}
 
 	@Override
