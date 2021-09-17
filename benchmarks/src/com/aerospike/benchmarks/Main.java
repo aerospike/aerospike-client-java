@@ -1220,10 +1220,6 @@ public class Main implements Log.Callback {
 			long start = System.currentTimeMillis();
 
 			while (valid) {
-				if (quota > args.throughput * 3) {
-					log(Level.WARN, "unable to keep up with throughput");
-				}
-
 				this.runNextCommand();
 
 				try {
