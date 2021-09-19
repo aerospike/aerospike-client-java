@@ -1219,10 +1219,11 @@ public class Main implements Log.Callback {
 				return;
 			}
 
-			int cyclesPerSecond = 100;
+			int cyclesPerSecond = 1000;
 			long wait = 1000 / cyclesPerSecond;
 
 			double perMilli = args.throughput / 1000.0;
+			double partial = 0.0;
 
 			// Initialize quota:
 			// Number of events per cycle to meet throughput (rounded up).
@@ -1243,8 +1244,10 @@ public class Main implements Log.Callback {
 
 				long end = System.currentTimeMillis();
 				long delta = end - start;
-				int newEvents = (int) Math.ceil(delta * perMilli);
+				double newEventsReal = delta * perMilli + partial;
+				int newEvents = (int) Math.floor(newEventsReal);
 
+				partial = newEventsReal - newEvents;
 				start = end;
 
 				this.counters.asyncQuota.addAndGet(newEvents);
