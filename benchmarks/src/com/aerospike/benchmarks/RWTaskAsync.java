@@ -41,15 +41,9 @@ public final class RWTaskAsync extends RWTask {
 	private final boolean useLatency;
 	public boolean isRunning;
 
-	public RWTaskAsync(
-		AerospikeClient client,
-		EventLoop eventLoop,
-		Arguments args,
-		CounterStore counters,
-		long keyStart,
-		long keyCount
-	) {
-		super(args, counters, keyStart, keyCount);
+	public RWTaskAsync(AerospikeClient client, EventLoop eventLoop, Arguments args, CounterStore counters, int readPct,
+			long keyStart, long keyCount) {
+		super(args, counters, readPct, keyStart, keyCount);
 		this.client = client;
 		this.eventLoop = eventLoop;
 		this.random = new RandomShift();

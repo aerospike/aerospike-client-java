@@ -1158,10 +1158,11 @@ public class Main implements Log.Callback {
 		RWTask[] tasks = new RWTask[this.nThreads];
 
 		for (int i = 0 ; i < this.nThreads; i++) {
-			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
+			RWTaskSync rt = new RWTaskSync(client, args, counters, args.readPct, this.startKey, this.nKeys);
 			tasks[i] = rt;
 			es.execute(rt);
 		}
+
 		Thread.sleep(900);
 		collectRWStats(client, tasks);
 		es.shutdown();
@@ -1181,7 +1182,7 @@ public class Main implements Log.Callback {
 	}
 
 	class AsyncRWManager implements Runnable, Stoppable {
-		private boolean valid;
+		private boolean valid = true;
 
 		private CounterStore counters;
 		private int maxCommands;
@@ -1190,8 +1191,6 @@ public class Main implements Log.Callback {
 
 		public AsyncRWManager(Arguments args, CounterStore counters, long keyStart, long keyCount, int maxCommands,
 				AerospikeClient client, ClientPolicy clientPolicy) {
-			this.valid = false;
-
 			this.counters = counters;
 
 			// Generate asyncMaxCommand commands to seed the event loops.
@@ -1209,7 +1208,7 @@ public class Main implements Log.Callback {
 
 			for (int i = 0; i < this.maxCommands; i++) {
 				EventLoop eventLoop = clientPolicy.eventLoops.next();
-				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, keyStart, keyCount);
+				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, args.readPct, keyStart, keyCount);
 			}
 		}
 
@@ -1286,7 +1285,7 @@ public class Main implements Log.Callback {
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 
-			int	numReads = this.counters.read.count.getAndSet(0);
+			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 

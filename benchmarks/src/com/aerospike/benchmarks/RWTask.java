@@ -36,13 +36,15 @@ public abstract class RWTask implements Stoppable {
 	final Arguments args;
 	final CounterStore counters;
 	final WritePolicy writePolicyGeneration;
+	private int readPct;
 	final long keyStart;
 	final long keyCount;
 	boolean valid;
 
-	public RWTask(Arguments args, CounterStore counters, long keyStart, long keyCount) {
+	public RWTask(Arguments args, CounterStore counters, int readPct, long keyStart, long keyCount) {
 		this.args = args;
 		this.counters = counters;
+		this.readPct = readPct;
 		this.keyStart = keyStart;
 		this.keyCount = keyCount;
 		this.valid = true;
@@ -103,7 +105,7 @@ public abstract class RWTask implements Stoppable {
 	}
 
 	private void readUpdate(RandomShift random) {
-		if (random.nextInt(100) < args.readPct) {
+		if (random.nextInt(100) < this.readPct) {
 			boolean isMultiBin = random.nextInt(100) < args.readMultiBinPct;
 
 			if (args.batchSize <= 1) {

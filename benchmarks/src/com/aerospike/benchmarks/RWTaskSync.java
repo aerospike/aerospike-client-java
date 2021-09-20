@@ -33,11 +33,13 @@ public class RWTaskSync extends RWTask implements Runnable {
 
 	private final AerospikeClient client;
 
-	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
-		super(args, counters, keyStart, keyCount);
+	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, int readPct, long keyStart,
+			long keyCount) {
+		super(args, counters, readPct, keyStart, keyCount);
 		this.client = client;
 	}
 
+	@Override
 	public void run() {
 		RandomShift random = RandomShift.instance();
 
