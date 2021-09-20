@@ -58,9 +58,9 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 			tracker.partitionDone(nodePartitions, generation);
 			return;
 		}
-		tracker.setDigest(nodePartitions, key);
 
 		Record record = parseRecord();
+		tracker.setDigest(nodePartitions, key);
 		listener.onRecord(key, record);
 	}
 

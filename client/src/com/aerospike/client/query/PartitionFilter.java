@@ -82,6 +82,50 @@ public final class PartitionFilter implements Serializable {
 	}
 
 	/**
+	 * Return first partition id.
+	 */
+	public int getBegin() {
+		return begin;
+	}
+
+	/**
+	 * Return count of partitions.
+	 */
+	public int getCount() {
+		return count;
+	}
+
+	/**
+	 * Return resume after digest.
+	 */
+	public byte[] getDigest() {
+		return digest;
+	}
+
+	/**
+	 * Return status of each partition after scan termination.
+	 * Useful for external retry of partially completed scans at a later time.
+	 * <p>
+	 * The partition status is accurate for sync/async scanPartitions and async queryPartitions.
+	 * <p>
+	 * The partition status is not accurate for
+	 * {@link com.aerospike.client.AerospikeClient#queryPartitions(com.aerospike.client.policy.QueryPolicy, Statement, PartitionFilter)}
+	 * because the last digest received is set during query parsing, but the user may not have retrieved
+	 * that digest from the RecordSet yet.
+	 */
+	public PartitionStatus[] getPartitions() {
+		return partitions;
+	}
+
+	/**
+	 * Set status of each partition after scan termination.
+	 * Useful for external retry of partially completed scans at a later time.
+	 */
+	public void setPartitions(PartitionStatus[] partitions) {
+		this.partitions = partitions;
+	}
+
+	/**
 	 * If using {@link com.aerospike.client.policy.ScanPolicy#maxRecords} or
 	 * {@link com.aerospike.client.policy.QueryPolicy#maxRecords},
 	 * did previous paginated scans with this partition filter instance return all records?

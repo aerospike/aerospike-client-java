@@ -22,7 +22,7 @@ import com.aerospike.client.cluster.Node;
 
 public abstract class AsyncMultiExecutor {
 
-	private final EventLoop eventLoop;
+	final EventLoop eventLoop;
 	final Cluster cluster;
 	private AsyncMultiCommand[] commands;
 	private String namespace;

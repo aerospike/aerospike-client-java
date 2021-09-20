@@ -78,7 +78,6 @@ public final class ScanPartitionCommand extends MultiCommand {
 			tracker.partitionDone(nodePartitions, generation);
 			return;
 		}
-		tracker.setDigest(nodePartitions, key);
 
 		Record record = parseRecord();
 
@@ -86,6 +85,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			throw new AerospikeException.ScanTerminated();
 		}
 
+		tracker.setDigest(nodePartitions, key);
 		callback.scanCallback(key, record);
 	}
 }

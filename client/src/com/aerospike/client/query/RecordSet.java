@@ -181,7 +181,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	/**
 	 * Support standard iteration interface for RecordSet.
 	 */
-	private class RecordSetIterator implements Iterator<KeyRecord>, Closeable {
+	private static class RecordSetIterator implements Iterator<KeyRecord>, Closeable {
 
 		private final RecordSet recordSet;
 		private boolean more;
@@ -201,10 +201,6 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			KeyRecord kr = recordSet.record;
 			more = recordSet.next();
 			return kr;
-		}
-
-		@Override
-		public void remove() {
 		}
 
 		@Override

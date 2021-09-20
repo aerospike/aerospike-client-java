@@ -72,13 +72,14 @@ public final class QueryPartitionCommand extends MultiCommand {
 			tracker.partitionDone(nodePartitions, generation);
 			return;
 		}
-		tracker.setDigest(nodePartitions, key);
 
 		Record record = parseRecord();
 
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
+
+		tracker.setDigest(nodePartitions, key);
 
 		if (! recordSet.put(new KeyRecord(key, record))) {
 			stop();

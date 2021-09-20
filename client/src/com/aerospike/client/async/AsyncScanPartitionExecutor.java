@@ -17,6 +17,7 @@
 package com.aerospike.client.async;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
@@ -78,8 +79,28 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 			}
 
 			// Prepare for retry.
-			reset();
-			scanPartitions();
+			if (policy.sleepBetweenRetries > 0) {
+				// Schedule retry at a future time.
+				eventLoop.schedule(new Runnable() {
+					@Override
+					public void run() {
+						try {
+							reset();
+							scanPartitions();
+						}
+						catch (AerospikeException ae) {
+							onFailure(ae);
+						}
+						catch (Exception e) {
+							onFailure(new AerospikeException(e));
+						}
+					}
+				}, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
+			}
+			else {
+				reset();
+				scanPartitions();
+			}
 		}
 		catch (AerospikeException ae) {
 			onFailure(ae);
