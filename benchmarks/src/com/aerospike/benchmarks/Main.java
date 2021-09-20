@@ -34,9 +34,7 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Host;
-import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Value;
@@ -1182,13 +1180,19 @@ public class Main implements Log.Callback {
 		collectRWStats(client, tasks);
 	}
 
-	class AsyncRWManager extends RWTask implements Runnable {
+	class AsyncRWManager implements Runnable, Stoppable {
+		private boolean valid;
+
+		private CounterStore counters;
 		private int maxCommands;
+
 		public RWTaskAsync[] tasks;
 
 		public AsyncRWManager(Arguments args, CounterStore counters, long keyStart, long keyCount, int maxCommands,
 				AerospikeClient client, ClientPolicy clientPolicy) {
-			super(args, counters, keyStart, keyCount);
+			this.valid = false;
+
+			this.counters = counters;
 
 			// Generate asyncMaxCommand commands to seed the event loops.
 			// Then start a new command in each command callback.
@@ -1196,8 +1200,8 @@ public class Main implements Log.Callback {
 			// asyncMaxCommands at any point in time.
 			this.maxCommands = maxCommands;
 
-			if (this.maxCommands > this.keyCount) {
-				this.maxCommands = (int) this.keyCount;
+			if (this.maxCommands > keyCount) {
+				this.maxCommands = (int) keyCount;
 			}
 
 			// Create seed commands distributed among event loops.
@@ -1205,7 +1209,7 @@ public class Main implements Log.Callback {
 
 			for (int i = 0; i < this.maxCommands; i++) {
 				EventLoop eventLoop = clientPolicy.eventLoops.next();
-				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, this.keyStart, this.keyCount);
+				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, keyStart, keyCount);
 			}
 		}
 
@@ -1254,7 +1258,6 @@ public class Main implements Log.Callback {
 			}
 		}
 
-		@Override
 		protected void runNextCommand() {
 			for (RWTaskAsync task : this.tasks) {
 				if (!task.isRunning) {
@@ -1265,61 +1268,15 @@ public class Main implements Log.Callback {
 
 		@Override
 		public void stop() {
-			super.stop();
+			this.valid = false;
 
 			for (RWTask task : tasks) {
 				task.stop();
 			}
 		}
-
-		// Don't need the following, only needed the stop method from RWTask.
-		// Create 'stoppable' interface.
-
-		@Override
-		protected void put(WritePolicy policy, Key key, Bin[] bins) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void add(Key key, Bin[] bins) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void get(Key key, String binName) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void get(Key key) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void get(Key key, String udfPackageName, String udfFunctionName, Value[] udfValues) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void get(Key[] keys) {
-			// TODO Auto-generated method stub
-
-		}
-
-		@Override
-		protected void get(Key[] keys, String binName) {
-			// TODO Auto-generated method stub
-
-		}
-
 	}
 
-	private void collectRWStats(AerospikeClient client, RWTask[] tasks) throws Exception {
+	private void collectRWStats(AerospikeClient client, Stoppable[] tasks) throws Exception {
 		long transactionTotal = 0;
 
 		while (true) {
@@ -1378,7 +1335,7 @@ public class Main implements Log.Callback {
 				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;
 
 				if (transactionTotal >= args.transactionLimit) {
-					for (RWTask task : tasks) {
+					for (Stoppable task : tasks) {
 						task.stop();
 					}
 

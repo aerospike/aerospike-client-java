@@ -31,7 +31,7 @@ import com.aerospike.client.util.RandomShift;
 /**
  * Random Read/Write workload task.
  */
-public abstract class RWTask {
+public abstract class RWTask implements Stoppable {
 
 	final Arguments args;
 	final CounterStore counters;
@@ -52,6 +52,7 @@ public abstract class RWTask {
 		writePolicyGeneration.generation = 0;
 	}
 
+	@Override
 	public void stop() {
 		valid = false;
 	}
