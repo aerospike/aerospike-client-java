@@ -16,6 +16,8 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -40,15 +42,17 @@ public final class RWTaskAsync extends RWTask {
 	private long begin;
 	private final boolean useLatency;
 	public boolean isRunning;
+	private AtomicLong quota;
 
 	public RWTaskAsync(AerospikeClient client, EventLoop eventLoop, Arguments args, CounterStore counters, int readPct,
-			long keyStart, long keyCount) {
+			long keyStart, long keyCount, AtomicLong quota) {
 		super(args, counters, readPct, keyStart, keyCount);
 		this.client = client;
 		this.eventLoop = eventLoop;
 		this.random = new RandomShift();
 		this.useLatency = counters.write.latency != null;
 		this.isRunning = false;
+		this.quota = quota;
 
 		if (useLatency) {
 			writeListener = new LatencyWriteHandler();
@@ -65,8 +69,8 @@ public final class RWTaskAsync extends RWTask {
 	@Override
 	protected void runNextCommand() {
 		if (valid) {
-			if (this.counters.asyncQuota.getAndDecrement() <= 0) {
-				this.counters.asyncQuota.incrementAndGet();
+			if (this.quota.getAndDecrement() <= 0) {
+				this.quota.incrementAndGet();
 			}
 			else {
 				this.isRunning = true;

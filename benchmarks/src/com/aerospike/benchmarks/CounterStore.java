@@ -33,6 +33,7 @@ public class CounterStore {
 	AtomicBoolean loadValuesFinished = new AtomicBoolean(false);
 
 	AtomicLong asyncQuota = new AtomicLong();
+	AtomicLong asyncWriteQuota = new AtomicLong(); // only used when splitAsyncWorkload
 
 	public static class Current {
 		AtomicInteger count = new AtomicInteger();

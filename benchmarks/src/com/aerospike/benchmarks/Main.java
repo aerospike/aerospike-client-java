@@ -93,6 +93,7 @@ public class Main implements Log.Callback {
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
+	private boolean splitAsyncCommands = false;
 	private boolean initialize;
 	private boolean reportClusterStats = false;
 	private String filepath;
@@ -185,9 +186,11 @@ public class Main implements Log.Callback {
 			" >0: Actual given expiration time"
 			);
 		options.addOption("g", "throughput", true,
-			"Set a target transactions per second for the client. The client should not exceed this " +
-			"average throughput."
+			"Set a target transactions per second for the client. The client should not exceed this average throughput."
 			);
+		options.addOption("splitAsyncCommands", false,
+				"If set, split the 'concurrentTasks' between reads and writes based on the percentage defined by the " +
+				"workload.");
 		options.addOption("t", "transactions", true,
 			"Number of transactions to perform in read/write mode before shutting down. " +
 			"The default is to run indefinitely."
@@ -592,6 +595,10 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("throughput")) {
 			args.throughput = Integer.parseInt(line.getOptionValue("throughput"));
+		}
+
+		if (line.hasOption("splitAsyncCommands")) {
+			this.splitAsyncCommands = true;
 		}
 
 		if (line.hasOption("transactions")) {
@@ -1169,110 +1176,16 @@ public class Main implements Log.Callback {
 	}
 
 	private void doAsyncRWTest(AerospikeClient client) throws Exception {
-		AsyncRWManager[] tasks = new AsyncRWManager[1];
+		RWAsyncManager[] tasks = new RWAsyncManager[1];
 
-		tasks[0] = new AsyncRWManager(args, counters, this.startKey, this.nKeys, this.asyncMaxCommands, client,
-				this.clientPolicy);
+		tasks[0] = new RWAsyncManager(args, counters, this.startKey, this.nKeys, this.asyncMaxCommands,
+				this.splitAsyncCommands, client, this.clientPolicy);
 
 		Thread t = new Thread(tasks[0]);
 		t.start();
 
 		Thread.sleep(900);
 		collectRWStats(client, tasks);
-	}
-
-	class AsyncRWManager implements Runnable, Stoppable {
-		private boolean valid = true;
-
-		private CounterStore counters;
-		private int maxCommands;
-
-		public RWTaskAsync[] tasks;
-
-		public AsyncRWManager(Arguments args, CounterStore counters, long keyStart, long keyCount, int maxCommands,
-				AerospikeClient client, ClientPolicy clientPolicy) {
-			this.counters = counters;
-
-			// Generate asyncMaxCommand commands to seed the event loops.
-			// Then start a new command in each command callback.
-			// This effectively throttles new command generation, by only allowing
-			// asyncMaxCommands at any point in time.
-			this.maxCommands = maxCommands;
-
-			if (this.maxCommands > keyCount) {
-				this.maxCommands = (int) keyCount;
-			}
-
-			// Create seed commands distributed among event loops.
-			this.tasks = new RWTaskAsync[this.maxCommands];
-
-			for (int i = 0; i < this.maxCommands; i++) {
-				EventLoop eventLoop = clientPolicy.eventLoops.next();
-				this.tasks[i] = new RWTaskAsync(client, eventLoop, args, counters, args.readPct, keyStart, keyCount);
-			}
-		}
-
-		@Override
-		public void run() {
-			if (args.throughput == 0) {
-				// Unlimited.
-				this.counters.asyncQuota.set(Long.MAX_VALUE);
-				this.runNextCommand();
-
-				return;
-			}
-
-			int cyclesPerSecond = 1000;
-			long wait = 1000 / cyclesPerSecond;
-
-			double perMilli = args.throughput / 1000.0;
-			double partial = 0.0;
-
-			// Initialize quota:
-			// Number of events per cycle to meet throughput (rounded up).
-			int eventsPerCycle = (args.throughput + cyclesPerSecond - 1) / cyclesPerSecond;
-			this.counters.asyncQuota.addAndGet(eventsPerCycle);
-
-			long start = System.currentTimeMillis();
-
-			while (valid) {
-				this.runNextCommand();
-
-				try {
-					Thread.sleep(wait);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
-					return;
-				}
-
-				long end = System.currentTimeMillis();
-				long delta = end - start;
-				double newEventsReal = delta * perMilli + partial;
-				int newEvents = (int) Math.floor(newEventsReal);
-
-				partial = newEventsReal - newEvents;
-				start = end;
-
-				this.counters.asyncQuota.addAndGet(newEvents);
-			}
-		}
-
-		protected void runNextCommand() {
-			for (RWTaskAsync task : this.tasks) {
-				if (!task.isRunning) {
-					task.runNextCommand();
-				}
-			}
-		}
-
-		@Override
-		public void stop() {
-			this.valid = false;
-
-			for (RWTask task : tasks) {
-				task.stop();
-			}
-		}
 	}
 
 	private void collectRWStats(AerospikeClient client, Stoppable[] tasks) throws Exception {
