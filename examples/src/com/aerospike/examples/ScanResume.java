@@ -16,9 +16,8 @@
  */
 package com.aerospike.examples;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -26,39 +25,51 @@ import com.aerospike.client.ScanCallback;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.query.PartitionFilter;
 
-public class ScanPage extends Example implements ScanCallback {
+public class ScanResume extends Example implements ScanCallback {
 
-	private AtomicInteger recordCount;
+	private int recordCount;
+	private int recordMax;
 
-	public ScanPage(Console console) {
+	public ScanResume(Console console) {
 		super(console);
 	}
 
 	/**
-	 * Scan in pages.
+	 * Terminate a scan and then resume scan later.
 	 */
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		String binName = "bin";
-		String setName = "page";
+		String setName = "resume";
 
-		writeRecords(client, params, setName, binName, 190);
+		writeRecords(client, params, setName, binName, 200);
 
-		recordCount = new AtomicInteger();
-
+		// Serialize node scans so scan callback atomics are not necessary.
 		ScanPolicy policy = new ScanPolicy();
-		policy.maxRecords = 100;
+		policy.concurrentNodes = false;
 
 		PartitionFilter filter = PartitionFilter.all();
+		recordCount = 0;
+		recordMax = 50;
 
-		// Scan 3 pages of records.
-		for (int i = 0; i < 3 && ! filter.isDone(); i++) {
-			recordCount.set(0);
+		console.info("Start scan terminate");
 
-			console.info("Scan page: " + i);
+		try {
 			client.scanPartitions(policy, filter, params.namespace, setName, this);
-			console.info("Records returned: " + recordCount.get());
 		}
+		catch (AerospikeException.ScanTerminated e) {
+			console.info("Scan terminated as expected");
+		}
+		console.info("Records returned: " + recordCount);
+
+		// PartitionFilter could be serialized at this point.
+		// Resume scan now.
+		recordCount = 0;
+		recordMax = 0;
+
+		console.info("Start scan resume");
+		client.scanPartitions(policy, filter, params.namespace, setName, this);
+		console.info("Records returned: " + recordCount);
 	}
 
 	private void writeRecords(
@@ -79,16 +90,12 @@ public class ScanPage extends Example implements ScanCallback {
 
 	@Override
 	public void scanCallback(Key key, Record record) {
-		// Scan callbacks must ensure thread safety when ScanAll() is used with
-		// ScanPolicy concurrentNodes set to true (default).  In this case, parallel
-		// node threads will be sending data to this callback.
-		recordCount.incrementAndGet();
-
-		/*
-		synchronized (this) {
-			int pid = Partition.getPartitionId(key.digest);
-			console.info("PartId=" + pid + " Record=" + record);
+		if (recordMax > 0 && recordCount >= recordMax) {
+			// Terminate scan. The scan last digest will not be set and the current record
+			// will be returned again if the scan resumes at a later time.
+			throw new AerospikeException.ScanTerminated();
 		}
-		*/
+
+		recordCount++;
 	}
 }

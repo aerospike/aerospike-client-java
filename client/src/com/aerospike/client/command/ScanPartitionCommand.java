@@ -85,7 +85,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			throw new AerospikeException.ScanTerminated();
 		}
 
-		tracker.setDigest(nodePartitions, key);
 		callback.scanCallback(key, record);
+		tracker.setDigest(nodePartitions, key);
 	}
 }

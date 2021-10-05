@@ -28,8 +28,9 @@ public interface ScanCallback {
 	 * to other nodes will also be terminated and the exception will be propagated back through the
 	 * initiating scan call.
 	 * <p>
-	 * Multiple threads will likely be calling scanCallback in parallel.  Therefore, your scanCallback
-	 * implementation should be thread safe.
+	 * If {@link com.aerospike.client.policy.ScanPolicy#concurrentNodes} is true and
+	 * {@link com.aerospike.client.policy.ScanPolicy#maxConcurrentNodes} is not equal one, then
+	 * your scanCallback implementation must be thread safe.
 	 *
 	 * @param key					unique record identifier
 	 * @param record				container for bins and record meta-data

@@ -79,11 +79,11 @@ public final class QueryPartitionCommand extends MultiCommand {
 			throw new AerospikeException.QueryTerminated();
 		}
 
-		tracker.setDigest(nodePartitions, key);
-
 		if (! recordSet.put(new KeyRecord(key, record))) {
 			stop();
 			throw new AerospikeException.QueryTerminated();
 		}
+
+		tracker.setDigest(nodePartitions, key);
 	}
 }

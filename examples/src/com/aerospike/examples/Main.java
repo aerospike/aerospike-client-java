@@ -60,6 +60,7 @@ public class Main extends JPanel {
 		"OperateMap",
 		"ScanPage",
 		"ScanParallel",
+		"ScanResume",
 		"ScanSeries",
 		"UserDefinedFunction",
 		"QueryInteger",
