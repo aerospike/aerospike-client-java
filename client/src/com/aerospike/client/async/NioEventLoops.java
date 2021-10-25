@@ -18,6 +18,7 @@ package com.aerospike.client.async;
 
 import java.io.IOException;
 import java.nio.channels.spi.SelectorProvider;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.ClientPolicy;
@@ -29,7 +30,7 @@ import com.aerospike.client.util.Util;
 public final class NioEventLoops implements EventLoops {
 
 	final NioEventLoop[] eventLoops;
-	private int eventIter;
+	private final AtomicLong eventIter;
 
 	/**
 	 * Create direct NIO event loops, one per CPU core.
@@ -79,6 +80,7 @@ public final class NioEventLoops implements EventLoops {
 			}
 		}
 		eventLoops = new NioEventLoop[size];
+		eventIter = new AtomicLong();
 
 		SelectorProvider provider = SelectorProvider.provider();
 
@@ -142,13 +144,7 @@ public final class NioEventLoops implements EventLoops {
 	 */
 	@Override
 	public NioEventLoop next() {
-		int iter = eventIter++; // Not atomic by design
-		iter = iter % eventLoops.length;
-
-		if (iter < 0) {
-			iter += eventLoops.length;
-		}
-		return eventLoops[iter];
+		return eventLoops[(int) Math.abs(eventIter.getAndIncrement() % eventLoops.length)];
 	}
 
 	/**

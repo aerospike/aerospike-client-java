@@ -58,7 +58,6 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	TlsPolicy tlsPolicy;
 	SslContext sslContext;
 	final EventLoopType eventLoopType;
-	private int eventIter;
 
 	/**
 	 * Create Aerospike event loop wrappers from given netty event loops.
@@ -255,7 +254,7 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	}
 
 	/**
-	 * Return Aerospike event loop given array index..
+	 * Return Aerospike event loop given array index.
 	 */
 	@Override
 	public NettyEventLoop get(int index) {
@@ -263,17 +262,11 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 	}
 
 	/**
-	 * Return next Aerospike event loop in round-robin fashion.
+	 * Return next Aerospike event loop as determined by {@link io.netty.channel.EventLoopGroup#next()}.
 	 */
 	@Override
 	public NettyEventLoop next() {
-		int iter = eventIter++; // Not atomic by design
-		iter = iter % eventLoopArray.length;
-
-		if (iter < 0) {
-			iter += eventLoopArray.length;
-		}
-		return eventLoopArray[iter];
+		return eventLoopMap.get(group.next());
 	}
 
 	@Override
