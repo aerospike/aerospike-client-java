@@ -41,6 +41,7 @@ public interface EventLoops extends Closeable {
 
 	/**
 	 * Return next Aerospike event loop in round-robin fashion.
+	 * Implementations may not be thread-safe.
 	 */
 	public EventLoop next();
 
