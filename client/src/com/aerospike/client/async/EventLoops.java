@@ -41,6 +41,9 @@ public interface EventLoops extends Closeable {
 
 	/**
 	 * Return next Aerospike event loop in round-robin fashion.
+	 * Implementations might not use an atomic sequence counter.
+	 * Non-atomic counters improve performance, but might result
+	 * in a slightly imperfect round-robin distribution.
 	 */
 	public EventLoop next();
 
