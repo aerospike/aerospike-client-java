@@ -1056,7 +1056,7 @@ public class Cluster implements Runnable, Closeable {
 			count = 0;
 
 			for (EventLoop eventLoop : eventLoopArray) {
-				eventLoop.execute(new Runnable() {
+				Runnable fetch = new Runnable() {
 					public void run() {
 						int index = eventLoop.getIndex();
 						loopStats[index] = new EventLoopStats(eventLoop);
@@ -1071,7 +1071,12 @@ public class Cluster implements Runnable, Closeable {
 							monitor.notifyComplete();
 						}
 					}
-				});
+				};
+				if (eventLoop.inEventLoop()) {
+					fetch.run();
+				} else {
+					eventLoop.execute(fetch);
+				}
 			}
 			monitor.waitTillComplete();
 			eventLoopStats = loopStats;
