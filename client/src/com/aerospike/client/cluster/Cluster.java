@@ -695,7 +695,7 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private final ArrayList<Node> findNodesToRemove(int refreshCount) {
-		ArrayList<Node> removeList = new ArrayList<Node>();
+		ArrayList<Node> removeList = new ArrayList<>();
 
 		for (Node node : nodes) {
 			if (! node.isActive()) {
@@ -999,36 +999,6 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	public final ClusterStats getStats() {
-/*
-		// Must copy array reference for copy on write semantics to work.
-		Node[] nodeArray = nodes;
-		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
-		int count = 0;
-
-		for (Node node : nodeArray) {
-			nodeStats[count++] = new NodeStats(node);
-		}
-
-		EventLoopStats[] eventLoopStats = null;
-
-		if (eventLoops != null) {
-			EventLoop[] eventLoopArray = eventLoops.getArray();
-			eventLoopStats = new EventLoopStats[eventLoopArray.length];
-			count = 0;
-
-			for (EventLoop eventLoop : eventLoopArray) {
-				eventLoopStats[count++] = new EventLoopStats(eventLoop);
-			}
-		}
-
-		int threadsInUse = 0;
-
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			threadsInUse = tpe.getActiveCount();
-		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get());
-*/
 		// Must copy array reference for copy on write semantics to work.
 		final Node[] nodeArray = nodes;
 		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
@@ -1053,7 +1023,6 @@ public class Cluster implements Runnable, Closeable {
 			final ConnectionStats[][] connStats = new ConnectionStats[nodeArray.length][eventLoopArray.length];
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventLoopArray.length);
 			final Monitor monitor = new Monitor();
-			count = 0;
 
 			for (EventLoop eventLoop : eventLoopArray) {
 				eventLoop.execute(new Runnable() {

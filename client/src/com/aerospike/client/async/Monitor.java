@@ -20,7 +20,7 @@ package com.aerospike.client.async;
  * Monitor that coordinates wait/notify between different threads.
  */
 public final class Monitor {
-	private boolean completed;
+	private volatile boolean completed;
 
 	/**
 	 * Wait in current thread for other thread to complete.
@@ -30,7 +30,7 @@ public final class Monitor {
 			try {
 				super.wait();
 			}
-			catch (InterruptedException ie) {
+			catch (InterruptedException ignore) {
 			}
 		}
 	}
