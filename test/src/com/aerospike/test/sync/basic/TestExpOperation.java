@@ -18,6 +18,7 @@ package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -439,5 +440,25 @@ public class TestExpOperation extends TestSync {
 
 		valExp = record.getHLLValue(expVar);
 		assertArrayEquals(resultString, valH.getBytes(), valExp.getBytes());
+	}
+
+	@Test
+	public void expMerge()
+	{
+		Expression e = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(0)));
+		Expression eand = Exp.build(Exp.and(Exp.expr(e), Exp.eq(Exp.intBin(binD), Exp.val(2))));
+		Expression eor = Exp.build(Exp.or(Exp.expr(e), Exp.eq(Exp.intBin(binD), Exp.val(2))));
+
+		Record record = client.operate(null, keyA,
+			ExpOperation.read("res1", eand, ExpReadFlags.DEFAULT),
+			ExpOperation.read("res2", eor, ExpReadFlags.DEFAULT));
+
+		assertRecordFound(keyA, record);
+
+		boolean res1 = record.getBoolean("res1");
+		assertFalse(res1);
+
+		boolean res2 = record.getBoolean("res2");
+		assertTrue(res2);
 	}
 }

@@ -1094,7 +1094,7 @@ public abstract class Exp {
 	}
 
 	//--------------------------------------------------
-	// Unknown
+	// Miscellaneous
 	//--------------------------------------------------
 
 	/**
@@ -1115,6 +1115,21 @@ public abstract class Exp {
 	 */
 	public static Exp unknown() {
 		return new Cmd(UNKNOWN);
+	}
+
+	/**
+	 * Merge precompiled expression into a new expression tree.
+	 * Useful for storing common precompiled expressions and then reusing
+	 * these expressions as part of a greater expression.
+	 *
+	 * <pre>{@code
+	 * // Merge precompiled expression into new expression.
+	 * Expression e = Exp.build(Exp.eq(Exp.intBin("a"), Exp.val(200)));
+	 * Expression merged = Exp.build(Exp.and(Exp.expr(e), Exp.eq(Exp.intBin("b"), Exp.val(100))));
+	 * }</pre>
+	 */
+	public static Exp expr(Expression e) {
+		return new ExpBytes(e);
 	}
 
 	//--------------------------------------------------
@@ -1465,6 +1480,21 @@ public abstract class Exp {
 		@Override
 		public void pack(Packer packer) {
 			packer.packNil();
+		}
+	}
+
+	private static final class ExpBytes extends Exp
+	{
+		private final byte[] bytes;
+
+		private ExpBytes(Expression e)
+		{
+			this.bytes = e.getBytes();
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packByteArray(bytes, 0, bytes.length);
 		}
 	}
 }
