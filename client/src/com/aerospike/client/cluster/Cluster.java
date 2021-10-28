@@ -43,6 +43,7 @@ import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
+import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TCPKeepAlive;
@@ -999,37 +1000,7 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	public final ClusterStats getStats() {
-/*
-		// Must copy array reference for copy on write semantics to work.
-		Node[] nodeArray = nodes;
-		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
-		int count = 0;
-
-		for (Node node : nodeArray) {
-			nodeStats[count++] = new NodeStats(node);
-		}
-
-		EventLoopStats[] eventLoopStats = null;
-
-		if (eventLoops != null) {
-			EventLoop[] eventLoopArray = eventLoops.getArray();
-			eventLoopStats = new EventLoopStats[eventLoopArray.length];
-			count = 0;
-
-			for (EventLoop eventLoop : eventLoopArray) {
-				eventLoopStats[count++] = new EventLoopStats(eventLoop);
-			}
-		}
-
-		int threadsInUse = 0;
-
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			threadsInUse = tpe.getActiveCount();
-		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get());
-*/
-		// Must copy array reference for copy on write semantics to work.
+		// Get sync statistics.
 		final Node[] nodeArray = nodes;
 		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
 		int count = 0;
@@ -1045,18 +1016,37 @@ public class Cluster implements Runnable, Closeable {
 			threadsInUse = tpe.getActiveCount();
 		}
 
+		// Get async statistics.
 		EventLoopStats[] eventLoopStats = null;
 
 		if (eventLoops != null) {
 			EventLoop[] eventLoopArray = eventLoops.getArray();
+
+			for (EventLoop eventLoop : eventLoopArray) {
+				if (eventLoop.inEventLoop()) {
+					// We can't block in an eventloop thread, so use non-blocking approximate statistics.
+					// The statistics might be less accurate because cross-thread references are made
+					// without a lock for the pool's queue size and other counters.
+					eventLoopStats = new EventLoopStats[eventLoopArray.length];
+
+					for (int i = 0; i < eventLoopArray.length; i++) {
+						eventLoopStats[i] = new EventLoopStats(eventLoopArray[i]);
+					}
+
+					for (int i = 0; i < nodeArray.length; i++) {
+						nodeStats[i].async = nodeArray[i].getAsyncConnectionStats();
+					}
+					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+				}
+			}
+
 			final EventLoopStats[] loopStats = new EventLoopStats[eventLoopArray.length];
 			final ConnectionStats[][] connStats = new ConnectionStats[nodeArray.length][eventLoopArray.length];
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventLoopArray.length);
 			final Monitor monitor = new Monitor();
-			count = 0;
 
 			for (EventLoop eventLoop : eventLoopArray) {
-				Runnable fetch = new Runnable() {
+				eventLoop.execute(new Runnable() {
 					public void run() {
 						int index = eventLoop.getIndex();
 						loopStats[index] = new EventLoopStats(eventLoop);
@@ -1071,13 +1061,9 @@ public class Cluster implements Runnable, Closeable {
 							monitor.notifyComplete();
 						}
 					}
-				};
-				if (eventLoop.inEventLoop()) {
-					fetch.run();
-				} else {
-					eventLoop.execute(fetch);
-				}
+				});
 			}
+			// Not running in eventloop thread, so it's ok to wait for results.
 			monitor.waitTillComplete();
 			eventLoopStats = loopStats;
 
@@ -1098,6 +1084,95 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+	}
+
+	public final void getStats(ClusterStatsListener listener) {
+		try {
+			// Get sync statistics.
+			final Node[] nodeArray = nodes;
+			NodeStats[] nodeStats = new NodeStats[nodeArray.length];
+			int count = 0;
+
+			for (Node node : nodeArray) {
+				nodeStats[count++] = new NodeStats(node);
+			}
+
+			int threadsInUse = 0;
+
+			if (threadPool instanceof ThreadPoolExecutor) {
+				ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
+				threadsInUse = tpe.getActiveCount();
+			}
+
+			if (eventLoops == null) {
+				try {
+					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount));
+				}
+				catch (Throwable e) {
+				}
+				return;
+			}
+
+			// Get async statistics.
+			EventLoop[] eventLoopArray = eventLoops.getArray();
+			final EventLoopStats[] loopStats = new EventLoopStats[eventLoopArray.length];
+			final ConnectionStats[][] connStats = new ConnectionStats[nodeArray.length][eventLoopArray.length];
+			final AtomicInteger eventLoopCount = new AtomicInteger(eventLoopArray.length);
+			final int threadCount = threadsInUse;
+
+			for (EventLoop eventLoop : eventLoopArray) {
+				Runnable fetch = new Runnable() {
+					public void run() {
+						int index = eventLoop.getIndex();
+						loopStats[index] = new EventLoopStats(eventLoop);
+
+						for (int i = 0; i < nodeArray.length; i++) {
+							AsyncPool pool = nodeArray[i].getAsyncPool(index);
+							int inPool = pool.queue.size();
+							connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
+						}
+
+						if (eventLoopCount.decrementAndGet() == 0) {
+							// All eventloops reported. Pass results to listener.
+							for (int i = 0; i < nodeArray.length; i++) {
+								int inUse = 0;
+								int inPool = 0;
+								int opened = 0;
+								int closed = 0;
+
+								for (EventLoop eventLoop : eventLoopArray) {
+									ConnectionStats cs = connStats[i][eventLoop.getIndex()];
+									inUse += cs.inUse;
+									inPool += cs.inPool;
+									opened += cs.opened;
+									closed += cs.closed;
+								}
+								nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
+							}
+
+							try {
+								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount));
+							}
+							catch (Throwable e) {
+							}
+						}
+					}
+				};
+
+				if (eventLoop.inEventLoop()) {
+					fetch.run();
+				}
+				else {
+					eventLoop.execute(fetch);
+				}
+			}
+		}
+		catch (AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+		catch (Throwable e) {
+			listener.onFailure(new AerospikeException(e));
+		}
 	}
 
 	public final void interruptTendSleep() {

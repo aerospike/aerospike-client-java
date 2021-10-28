@@ -69,6 +69,7 @@ import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -366,6 +367,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final ClusterStats getClusterStats() {
 		return cluster.getStats();
+	}
+
+	/**
+	 * Asynchronously return operating cluster statistics.
+	 */
+	public final void getClusterStats(ClusterStatsListener listener) {
+		cluster.getStats(listener);
 	}
 
 	/**

@@ -973,37 +973,33 @@ public class Node implements Closeable {
 		}
 	}
 
-	/*
 	public final ConnectionStats getAsyncConnectionStats() {
 		int inUse = 0;
 		int inPool = 0;
 		int opened = 0;
 		int closed = 0;
 
-		if (asyncConnectionPools != null) {
-			for (AsyncPool pool : asyncConnectionPools) {
-				// Warning: cross-thread references are made without a lock
-				// for pool's queue, opened and closed.
-				int tmp =  pool.queue.size();
+		for (AsyncPool pool : asyncConnectionPools) {
+			// Warning: cross-thread references are made without a lock
+			// for pool's queue, opened and closed.
+			int tmp =  pool.queue.size();
 
-				// Timing issues may cause values to go negative. Adjust.
-				if (tmp < 0) {
-					tmp = 0;
-				}
-				inPool += tmp;
-				tmp = pool.total - tmp;
-
-				if (tmp < 0) {
-					tmp = 0;
-				}
-				inUse += tmp;
-				opened += pool.opened;
-				closed += pool.closed;
+			// Timing issues may cause values to go negative. Adjust.
+			if (tmp < 0) {
+				tmp = 0;
 			}
+			inPool += tmp;
+			tmp = pool.total - tmp;
+
+			if (tmp < 0) {
+				tmp = 0;
+			}
+			inUse += tmp;
+			opened += pool.opened;
+			closed += pool.closed;
 		}
 		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
-	*/
 
 	public final void incrErrorCount() {
 		if (cluster.maxErrorRate > 0) {
