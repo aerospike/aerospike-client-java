@@ -7,6 +7,19 @@
   <name>aerospike-parent</name>
   <version>5.1.8</version>
   <packaging>pom</packaging>
+  <url>https://github.com/aerospike/aerospike-client-java</url>
+  
+  <organization>
+    <name>Aerospike Inc.</name>
+    <url>https://www.aerospike.com</url>
+  </organization>
+  
+  <licenses>
+    <license>
+      <name>The Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+    </license>
+  </licenses>
 
   <modules>
     <module>client</module>
