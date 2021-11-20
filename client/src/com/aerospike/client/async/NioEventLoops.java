@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.nio.channels.spi.SelectorProvider;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -96,20 +95,6 @@ public final class NioEventLoops implements EventLoops {
 
 		for (NioEventLoop eventLoop : eventLoops) {
 			eventLoop.thread.start();
-		}
-	}
-
-	/**
-	 * Initialize event loops with client policy. For internal use only.
-	 */
-	@Override
-	public void init(ClientPolicy policy) {
-		if (policy.tlsPolicy != null) {
-			throw new AerospikeException("TLS not supported in direct NIO event loops");
-		}
-
-		if (policy.keepAlive != null) {
-			throw new AerospikeException("TCP keep-alive not supported in direct NIO event loops");
 		}
 	}
 

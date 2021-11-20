@@ -90,11 +90,9 @@ public final class NettyConnector extends AsyncConnector {
 				node.connectionOpened(eventLoop.index);
 				ChannelPipeline p = ch.pipeline();
 
-				if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
+				if (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) {
 					state = AsyncCommand.TLS_HANDSHAKE;
-					//InetSocketAddress address = node.getAddress();
-					//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
-					p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
+					cluster.nettyTlsContext.addHandler(ch, p);
 				}
 				p.addLast(handler);
 			}
@@ -298,8 +296,7 @@ public final class NettyConnector extends AsyncConnector {
 				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
 			}
 
-			TlsPolicy tlsPolicy = connector.eventLoop.parent.tlsPolicy;
-
+			TlsPolicy tlsPolicy = connector.cluster.tlsPolicy;
 			String tlsName = connector.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];

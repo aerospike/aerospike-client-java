@@ -304,11 +304,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 					connectInProgress = false;
 					ChannelPipeline p = ch.pipeline();
 
-					if (eventLoop.parent.sslContext != null && !eventLoop.parent.tlsPolicy.forLoginOnly) {
+					if (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) {
 						state = AsyncCommand.TLS_HANDSHAKE;
-						//InetSocketAddress address = node.getAddress();
-						//p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc(), address.getHostString(), address.getPort()));
-						p.addLast(eventLoop.parent.sslContext.newHandler(ch.alloc()));
+						cluster.nettyTlsContext.addHandler(ch, p);
 					}
 					p.addLast(handler);
 				}
@@ -1162,8 +1160,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				throw new AerospikeException.Connection("TLS connect failed: " + cause.getMessage(), cause);
 			}
 
-			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
-
+			TlsPolicy tlsPolicy = command.cluster.tlsPolicy;
 			String tlsName = command.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];

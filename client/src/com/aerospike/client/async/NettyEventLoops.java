@@ -16,33 +16,17 @@
  */
 package com.aerospike.client.async;
 
-import java.io.FileInputStream;
-import java.security.KeyStore;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
-import javax.net.ssl.KeyManagerFactory;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.TlsPolicy;
-import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.handler.ssl.CipherSuiteFilter;
-import io.netty.handler.ssl.ClientAuth;
-import io.netty.handler.ssl.IdentityCipherSuiteFilter;
-import io.netty.handler.ssl.JdkSslContext;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 import io.netty.util.concurrent.EventExecutor;
 
@@ -50,13 +34,11 @@ import io.netty.util.concurrent.EventExecutor;
  * Aerospike wrapper around netty event loops.
  * Implements the Aerospike EventLoops interface.
  */
-public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
+public final class NettyEventLoops implements EventLoops {
 
 	private final Map<EventExecutor,NettyEventLoop> eventLoopMap;
 	private final NettyEventLoop[] eventLoopArray;
 	private final EventLoopGroup group;
-	TlsPolicy tlsPolicy;
-	SslContext sslContext;
 	final EventLoopType eventLoopType;
 	private int eventIter;
 
@@ -150,85 +132,6 @@ public final class NettyEventLoops implements EventLoops, CipherSuiteFilter {
 		}
 
 		throw new AerospikeException("Unexpected EventLoopGroup");
-	}
-
-	/**
-	 * Initialize event loops with client policy. For internal use only.
-	 */
-	@Override
-	public void init(ClientPolicy policy) {
-		if (policy.tlsPolicy != null) {
-			initTlsContext(policy.tlsPolicy);
-		}
-	}
-
-	/**
-	 * Initialize TLS context. For internal use only.
-	 */
-	public void initTlsContext(TlsPolicy policy) {
-		if (this.tlsPolicy != null) {
-			// Already initialized.
-			return;
-		}
-
-		this.tlsPolicy = policy;
-
-		if (policy.context != null) {
-			CipherSuiteFilter csf = (policy.ciphers != null)? this : IdentityCipherSuiteFilter.INSTANCE;
-			sslContext = new JdkSslContext(policy.context, true, null, csf, null, ClientAuth.NONE, null, false);
-			return;
-		}
-
-		try {
-			SslContextBuilder builder = SslContextBuilder.forClient();
-
-			if (policy.protocols != null) {
-				builder.protocols(policy.protocols);
-			}
-
-			if (policy.ciphers != null) {
-				builder.ciphers(Arrays.asList(policy.ciphers));
-			}
-
-			String keyStoreLocation = System.getProperty("javax.net.ssl.keyStore");
-
-			// Keystore is only required for mutual authentication.
-			if (keyStoreLocation != null) {
-				String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
-				char[] pass = (keyStorePassword != null) ? keyStorePassword.toCharArray() : null;
-
-				KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-				FileInputStream is = new FileInputStream(keyStoreLocation);
-
-				try {
-					ks.load(is, pass);
-				}
-				finally {
-					is.close();
-				}
-
-				KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-				kmf.init(ks, pass);
-
-				builder.keyManager(kmf);
-			}
-
-			sslContext = builder.build();
-		}
-		catch (Exception e) {
-			throw new AerospikeException("Failed to init netty TLS: " + Util.getErrorMessage(e));
-		}
-	}
-
-	/**
-	 * Filter cipher suites.  For internal use only.
-	 */
-	@Override
-	public String[] filterCipherSuites(Iterable<String> ciphers, List<String> defaultCiphers, Set<String> supportedCiphers) {
-		if (tlsPolicy.ciphers != null) {
-			return tlsPolicy.ciphers;
-		}
-		return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();
 	}
 
 	/**

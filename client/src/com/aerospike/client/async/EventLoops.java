@@ -18,8 +18,6 @@ package com.aerospike.client.async;
 
 import java.io.Closeable;
 
-import com.aerospike.client.policy.ClientPolicy;
-
 /**
  * Aerospike event loops interface.
  */
@@ -51,9 +49,4 @@ public interface EventLoops extends Closeable {
 	 * Close event loops.
 	 */
 	public void close();
-
-	/**
-	 * Initialize event loops with client policy. For internal use only.
-	 */
-	public void init(ClientPolicy policy);
 }

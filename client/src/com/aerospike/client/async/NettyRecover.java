@@ -428,8 +428,7 @@ public final class NettyRecover implements TimerTask {
 				throw new AerospikeException("TLS connect failed: " + cause.getMessage(), cause);
 			}
 
-			TlsPolicy tlsPolicy = command.eventLoop.parent.tlsPolicy;
-
+			TlsPolicy tlsPolicy = command.cluster.tlsPolicy;
 			String tlsName = command.node.getHost().tlsName;
 			SSLSession session = ((SslHandler)ctx.pipeline().first()).engine().getSession();
 			X509Certificate cert = (X509Certificate)session.getPeerCertificates()[0];

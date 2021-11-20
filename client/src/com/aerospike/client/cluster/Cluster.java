@@ -41,6 +41,8 @@ import com.aerospike.client.async.EventLoopStats;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
+import com.aerospike.client.async.NettyTlsContext;
+import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.ClusterStatsListener;
@@ -76,7 +78,10 @@ public class Cluster implements Runnable, Closeable {
 	protected final Map<String,String> ipMap;
 
 	// TLS connection policy.
-	protected final TlsPolicy tlsPolicy;
+	public final TlsPolicy tlsPolicy;
+
+	// Netty TLS context.
+	public final NettyTlsContext nettyTlsContext;
 
 	// Authentication mode.
 	public final AuthMode authMode;
@@ -309,10 +314,25 @@ public class Cluster implements Runnable, Closeable {
 				eventState[i] = loops[i].createState();
 			}
 
-			eventLoops.init(policy);
+			if (policy.tlsPolicy != null) {
+				if (eventLoops instanceof NioEventLoops) {
+					throw new AerospikeException("TLS not supported in direct NIO event loops");
+				}
+
+				if (policy.tlsPolicy.nettyContext != null) {
+					nettyTlsContext = policy.tlsPolicy.nettyContext;
+				}
+				else {
+					nettyTlsContext = new NettyTlsContext(policy.tlsPolicy);
+				}
+			}
+			else {
+				nettyTlsContext = null;
+			}
 		}
 		else {
 			eventState = null;
+			nettyTlsContext = null;
 		}
 
 		if (policy.forceSingleNode) {

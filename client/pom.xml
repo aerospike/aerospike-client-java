@@ -140,6 +140,7 @@
             <include>com/aerospike/client/async/Monitor.java</include>
             <include>com/aerospike/client/async/NettyEventLoop.java</include>
             <include>com/aerospike/client/async/NettyEventLoops.java</include>
+            <include>com/aerospike/client/async/NettyTlsContext.java</include>
             <include>com/aerospike/client/async/NioEventLoop.java</include>
             <include>com/aerospike/client/async/NioEventLoops.java</include>
             <include>com/aerospike/client/async/Throttle.java</include>

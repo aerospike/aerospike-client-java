@@ -20,6 +20,8 @@ import java.math.BigInteger;
 
 import javax.net.ssl.SSLContext;
 
+import com.aerospike.client.async.NettyTlsContext;
+
 /**
  * TLS connection policy.  Secure TLS connections are supported for
  * synchronous commands and netty backed asynchronous commands.
@@ -31,6 +33,29 @@ public final class TlsPolicy {
 	 * Default: null (use default SSLContext).
 	 */
 	public SSLContext context;
+
+	/**
+	 * Optional NettyTlsContext configuration. This field is used when the same NettyTlsContext
+	 * instance needs to be shared between multiple AerospikeClient instances. If this field
+	 * is null, the AerospikeClient constructor will create a new NettyTlsContext when netty
+	 * eventloops are used with TLS.
+	 *
+	 * <pre>{@code
+	 * // Share NettyTlsContext across AerospikeClient instances.
+	 * TlsPolicy tp = new TlsPolicy();
+	 * tp.protocols = new String[] {"TLSv1", "TLSv1.1", "TLSv1.2"};
+	 * tp.nettyContext = new NettyTlsContext(tp);
+	 *
+	 * ClientPolicy cp = new ClientPolicy();
+	 * cp.tlsPolicy = tp;
+	 *
+	 * AerospikeClient cluster1 = new AerospikeClient(cp, "host1", 3000);
+	 * AerospikeClient cluster2 = new AerospikeClient(cp, "host2", 3000);
+	 * }</pre>
+	 *
+	 * Default: null (create NettyTlsContext for each AerospikeClient instance when netty is used).
+	 */
+	public NettyTlsContext nettyContext;
 
 	/**
 	 * Allowable TLS protocols that the client can use for secure connections.
