@@ -50,6 +50,10 @@ public final class QueryRecordCommand extends MultiCommand {
 
 	@Override
 	protected void parseRow(Key key) {
+		if (resultCode != 0) {
+			throw new AerospikeException(resultCode);
+		}
+
 		Record record = parseRecord();
 
 		if (! valid) {

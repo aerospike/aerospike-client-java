@@ -69,8 +69,17 @@ public final class QueryPartitionCommand extends MultiCommand {
 	@Override
 	protected void parseRow(Key key) {
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
-			tracker.partitionDone(nodePartitions, generation);
+			// Only mark partition done when resultCode is OK.
+			// The server may return PARTITION_UNAVAILABLE which means the
+			// specified partition will need to be requested on the query retry.
+			if (resultCode == 0) {
+				tracker.partitionDone(nodePartitions, generation);
+			}
 			return;
+		}
+
+		if (resultCode != 0) {
+			throw new AerospikeException(resultCode);
 		}
 
 		Record record = parseRecord();

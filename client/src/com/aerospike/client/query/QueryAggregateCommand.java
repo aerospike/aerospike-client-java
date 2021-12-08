@@ -59,6 +59,16 @@ public final class QueryAggregateCommand extends MultiCommand {
 
 	@Override
 	protected void parseRow(Key key) {
+		if (resultCode != 0) {
+			// Aggregation scans (with null query filter) will return KEY_NOT_FOUND_ERROR
+			// when the set does not exist on the target node.
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				// Non-fatal error.
+				return;
+			}
+			throw new AerospikeException(resultCode);
+		}
+
 		if (opCount != 1) {
 			throw new AerospikeException("Query aggregate expected exactly one bin.  Received " + opCount);
 		}

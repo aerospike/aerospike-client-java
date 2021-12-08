@@ -19,7 +19,6 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
@@ -81,21 +80,15 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			dataOffset += 2;
 			resultCode = dataBuffer[dataOffset] & 0xFF;
 
-			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
-					if (! isBatch) {
-						return true;
-					}
-				}
-				else {
+			// If this is the end marker of the response, do not proceed further.
+			if ((info3 & Command.INFO3_LAST) != 0) {
+				if (resultCode != 0) {
+					// The server returned a fatal error.
 					throw new AerospikeException(resultCode);
 				}
-			}
-
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) != 0) {
 				return true;
 			}
+
 			dataOffset++;
 			generation = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;

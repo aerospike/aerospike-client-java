@@ -47,6 +47,10 @@ public final class AsyncQuery extends AsyncMultiCommand {
 
 	@Override
 	protected void parseRow(Key key) throws AerospikeException {
+		if (resultCode != 0) {
+			throw new AerospikeException(resultCode);
+		}
+
 		Record record = parseRecord();
 		listener.onRecord(key, record);
 	}
