@@ -18,9 +18,9 @@ package com.aerospike.client.query;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -38,22 +38,26 @@ public final class ServerCommand extends MultiCommand {
 	}
 
 	@Override
-	protected final void writeBuffer() {
+	protected void writeBuffer() {
 		setQuery(policy, statement, true, null);
 	}
 
 	@Override
 	protected void parseRow(Key key) {
 		// Server commands (Query/Execute UDF) should only send back a return code.
-		// Keep parsing logic to empty socket buffer just in case server does
-		// send records back.
-		for (int i = 0 ; i < opCount; i++) {
-			int opSize = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 7;
-			byte nameSize = dataBuffer[dataOffset++];
-			int particleBytesSize = (int) (opSize - (4 + nameSize));
-			dataOffset += nameSize + particleBytesSize;
-	    }
+		if (resultCode != 0) {
+			// Background scans (with null query filter) return KEY_NOT_FOUND_ERROR
+			// when the set does not exist on the target node.
+			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+				// Non-fatal error.
+				return;
+			}
+			throw new AerospikeException(resultCode);
+		}
+
+		if (opCount > 0) {
+			throw new AerospikeException.Parse("Unexpectedly received bins on background query!");
+		}
 
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();

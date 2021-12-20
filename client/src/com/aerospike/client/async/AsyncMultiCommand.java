@@ -16,13 +16,9 @@
  */
 package com.aerospike.client.async;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -30,6 +26,9 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.FieldType;
 import com.aerospike.client.policy.Policy;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
 
@@ -83,21 +82,15 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			dataOffset += 2;
 			resultCode = dataBuffer[dataOffset] & 0xFF;
 
-			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
-					if (stopOnNotFound) {
-						return true;
-					}
-				}
-				else {
+			// If this is the end marker of the response, do not proceed further.
+			if ((info3 & Command.INFO3_LAST) != 0) {
+				if (resultCode != 0) {
+					// The server returned a fatal error.
 					throw new AerospikeException(resultCode);
 				}
-			}
-
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) != 0) {
 				return true;
 			}
+
 			dataOffset++;
 			generation = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
@@ -116,7 +109,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		return false;
 	}
 
-	private final Key parseKey() {
+	private Key parseKey() {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;

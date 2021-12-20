@@ -16,22 +16,21 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Connection.ReadTimeout;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.QueryValidate;
+
+import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
 
 public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
@@ -225,28 +224,22 @@ public abstract class MultiCommand extends SyncCommand {
 	/**
 	 * Parse all records in the group.
 	 */
-	private final boolean parseGroup(int receiveSize) throws IOException {
+	private boolean parseGroup(int receiveSize) {
 		while (dataOffset < receiveSize) {
 			dataOffset += 3;
 			info3 = dataBuffer[dataOffset] & 0xFF;
 			dataOffset += 2;
 			resultCode = dataBuffer[dataOffset] & 0xFF;
 
-			if (resultCode != 0) {
-				if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR || resultCode == ResultCode.FILTERED_OUT) {
-					if (stopOnNotFound) {
-						return false;
-					}
-				}
-				else {
+			// If this is the end marker of the response, do not proceed further.
+			if ((info3 & Command.INFO3_LAST) != 0) {
+				if (resultCode != 0) {
+					// The server returned a fatal error.
 					throw new AerospikeException(resultCode);
 				}
-			}
-
-			// If this is the end marker of the response, do not proceed further
-			if ((info3 & Command.INFO3_LAST) != 0) {
 				return false;
 			}
+
 			dataOffset++;
 			generation = Buffer.bytesToInt(dataBuffer, dataOffset);
 			dataOffset += 4;
