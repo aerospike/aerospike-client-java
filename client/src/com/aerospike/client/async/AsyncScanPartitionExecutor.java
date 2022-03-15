@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -53,7 +53,6 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.binNames = binNames;
 		this.tracker = tracker;
 
-		policy.validate();
 		tracker.setSleepBetweenRetries(0);
 		scanPartitions();
 	}
@@ -73,7 +72,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 
 	protected void onSuccess() {
 		try {
-			if (tracker.isComplete(policy)) {
+			if (tracker.isComplete(cluster, policy)) {
 				listener.onSuccess();
 				return;
 			}

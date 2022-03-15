@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,6 @@
 package com.aerospike.client.query;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -26,10 +25,12 @@ import com.aerospike.client.policy.WritePolicy;
 
 public final class ServerCommand extends MultiCommand {
 	private final Statement statement;
+	private final long taskId;
 
-	public ServerCommand(Cluster cluster, Node node, WritePolicy writePolicy, Statement statement) {
-		super(cluster, writePolicy, node, false, false);
+	public ServerCommand(Cluster cluster, Node node, WritePolicy writePolicy, Statement statement, long taskId) {
+		super(cluster, writePolicy, node, false);
 		this.statement = statement;
+		this.taskId = taskId;
 	}
 
 	@Override
@@ -39,11 +40,13 @@ public final class ServerCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(policy, statement, true, null);
+		setQuery(cluster, policy, statement, taskId, true, null);
 	}
 
 	@Override
-	protected void parseRow(Key key) {
+	protected void parseRow() {
+		skipKey(fieldCount);
+
 		// Server commands (Query/Execute UDF) should only send back a return code.
 		if (resultCode != 0) {
 			// Background scans (with null query filter) return KEY_NOT_FOUND_ERROR

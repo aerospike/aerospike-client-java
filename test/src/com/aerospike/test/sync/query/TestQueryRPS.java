@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,6 +39,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.RandomShift;
 import com.aerospike.test.sync.TestSync;
 
 public class TestQueryRPS extends TestSync {
@@ -94,15 +95,21 @@ public class TestQueryRPS extends TestSync {
 		client.dropIndex(null, args.namespace, args.set, indexName);
 	}
 
-	private void checkRuntime(Node n, Statement stmt) {
-		String taskId = Long.toUnsignedString(stmt.getTaskId());
+	private void checkRuntime(Node n, Statement stmt, long id) {
+		String taskId = Long.toUnsignedString(id);
 		String module = (stmt.getFilter() == null) ? "scan" : "query";
 		String command;
 
-		if (n.hasQueryShow()) {
+		if (n.hasPartitionQuery()) {
+			// query-show works for both scan and query.
+			command = "query-show:trid=" + taskId;
+		}
+		else if (n.hasQueryShow()) {
+			// scan-show and query-show are separate.
 			command = module + "-show:trid=" + taskId;
 		}
 		else {
+			// old job monitor syntax.
 			command = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
 		}
 
@@ -131,17 +138,20 @@ public class TestQueryRPS extends TestSync {
 
 	@Test
 	public void scan() {
+		long taskId = RandomShift.instance().nextLong();
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setRecordsPerSecond(rps);
+		stmt.setTaskId(taskId);
 
 		RecordSet rs = client.query(null, stmt);
 
 		drainRecords(rs);
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, taskId);
 		}
 	}
 
@@ -157,7 +167,7 @@ public class TestQueryRPS extends TestSync {
 		task.waitTillComplete();
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, task.getTaskId());
 		}
 	}
 
@@ -174,12 +184,14 @@ public class TestQueryRPS extends TestSync {
 		task.waitTillComplete();
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, task.getTaskId());
 		}
 	}
 
 	@Test
 	public void scanAggregation() {
+		long taskId = RandomShift.instance().nextLong();
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
@@ -188,6 +200,7 @@ public class TestQueryRPS extends TestSync {
 				"udf/sum_example.lua", "sum_example", "sum_single_bin",
 				Value.get(binName1));
 		stmt.setRecordsPerSecond(rps);
+		stmt.setTaskId(taskId);
 
 		ResultSet rs = client.queryAggregate(null, stmt);
 
@@ -200,25 +213,28 @@ public class TestQueryRPS extends TestSync {
 		}
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, taskId);
 		}
 	}
 
 	@Ignore
 	@Test
 	public void query() {
+		long taskId = RandomShift.instance().nextLong();
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
 		stmt.setFilter(Filter.range(binName1, 0, n_records));
 		stmt.setRecordsPerSecond(rps);
+		stmt.setTaskId(taskId);
 
 		RecordSet rs = client.query(null, stmt);
 
 		drainRecords(rs);
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, taskId);
 		}
 	}
 
@@ -236,7 +252,7 @@ public class TestQueryRPS extends TestSync {
 		task.waitTillComplete();
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, task.getTaskId());
 		}
 	}
 
@@ -255,13 +271,15 @@ public class TestQueryRPS extends TestSync {
 		task.waitTillComplete();
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, task.getTaskId());
 		}
 	}
 
 	@Ignore
 	@Test
 	public void queryAggregation() {
+		long taskId = RandomShift.instance().nextLong();
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(args.set);
@@ -271,6 +289,7 @@ public class TestQueryRPS extends TestSync {
 				"udf/sum_example.lua", "sum_example", "sum_single_bin",
 				Value.get(binName1));
 		stmt.setRecordsPerSecond(rps);
+		stmt.setTaskId(taskId);
 
 		ResultSet rs = client.queryAggregate(null, stmt);
 
@@ -283,7 +302,7 @@ public class TestQueryRPS extends TestSync {
 		}
 
 		for (Node n : client.getNodes()) {
-			checkRuntime(n, stmt);
+			checkRuntime(n, stmt, taskId);
 		}
 	}
 }

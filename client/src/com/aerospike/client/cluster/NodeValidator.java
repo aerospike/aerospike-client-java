@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -306,6 +306,9 @@ public final class NodeValidator {
 				}
 				else if (featuresString.regionMatches(begin, "query-show", 0, len)) {
 					this.features |= Node.HAS_QUERY_SHOW;
+				}
+				else if (featuresString.regionMatches(begin, "pquery", 0, len)) {
+					this.features |= Node.HAS_PARTITION_QUERY;
 				}
 				begin = end + 1;
 			}

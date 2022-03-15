@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,6 +38,7 @@ public final class Statement {
 	Value[] functionArgs;
 	Operation[] operations;
 	long taskId;
+	long maxRecords;
 	int recordsPerSecond;
 	boolean returnData;
 
@@ -175,17 +176,34 @@ public final class Statement {
 	}
 
 	/**
-	 * Set optional query task id.
+	 * Set optional task id.
 	 */
 	public void setTaskId(long taskId) {
 		this.taskId = taskId;
 	}
 
 	/**
-	 * Return task ID.
+	 * Return optional task id.
 	 */
 	public long getTaskId() {
 		return taskId;
+	}
+
+	/**
+	 * Set maximum number of records returned (for foreground query) or processed
+	 * (for background execute query). This number is divided by the number of nodes
+	 * involved in the query. The actual number of records returned may be less than
+	 * maxRecords if node record counts are small and unbalanced across nodes.
+	 */
+	public void setMaxRecords(long maxRecords) {
+		this.maxRecords = maxRecords;
+	}
+
+	/**
+	 * Return maximum number of records.
+	 */
+	public long getMaxRecords() {
+		return maxRecords;
 	}
 
 	/**
@@ -286,28 +304,26 @@ public final class Statement {
 	}
 
 	/**
-	 * Set whether command returns data.
+	 * Not used anymore.
 	 */
+	@Deprecated
 	public void setReturnData(boolean returnData) {
 		this.returnData = returnData;
 	}
 
 	/**
-	 * Does command return data.
+	 * Not used anymore.
 	 */
+	@Deprecated
 	public boolean returnData() {
 		return returnData;
 	}
 
 	/**
-	 * Prepare statement just prior to execution.  For internal use.
+	 * Return taskId if set by user. Otherwise return a new taskId.
 	 */
-	public void prepare(boolean returnData) {
-		this.returnData = returnData;
-
-		if (taskId == 0) {
-			taskId = RandomShift.instance().nextLong();
-		}
+	public long prepareTaskId() {
+		return (taskId != 0)? taskId : RandomShift.instance().nextLong();
 	}
 
 	/**

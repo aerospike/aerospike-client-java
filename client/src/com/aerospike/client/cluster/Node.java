@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -53,6 +53,7 @@ public class Node implements Closeable {
 
 	public static final int HAS_PARTITION_SCAN = (1 << 0);
 	public static final int HAS_QUERY_SHOW = (1 << 1);
+	public static final int HAS_PARTITION_QUERY = (1 << 2);
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
@@ -1100,6 +1101,10 @@ public class Node implements Closeable {
 
 	public final boolean hasQueryShow() {
 		return (features & HAS_QUERY_SHOW) != 0;
+	}
+
+	public final boolean hasPartitionQuery() {
+		return (features & HAS_PARTITION_QUERY) != 0;
 	}
 
 	/**

@@ -14,57 +14,65 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
+package com.aerospike.client.query;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.query.PartitionTracker;
+import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 
-public final class AsyncScanPartition extends AsyncMultiCommand {
-	private final ScanPolicy scanPolicy;
-	private final RecordSequenceListener listener;
-	private final String namespace;
-	private final String setName;
-	private final String[] binNames;
+public final class QueryListenerCommand extends MultiCommand {
+
+	private final Statement statement;
 	private final long taskId;
+	private final QueryListener listener;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
 
-	public AsyncScanPartition(
-		AsyncMultiExecutor parent,
-		ScanPolicy scanPolicy,
-		RecordSequenceListener listener,
-		String namespace,
-		String setName,
-		String[] binNames,
+	public QueryListenerCommand(
+		Cluster cluster,
+		Node node,
+		Policy policy,
+		Statement statement,
 		long taskId,
+		QueryListener listener,
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
-		super(parent, nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout);
-		this.scanPolicy = scanPolicy;
-		this.listener = listener;
-		this.namespace = namespace;
-		this.setName = setName;
-		this.binNames = binNames;
+		super(cluster, policy, nodePartitions.node, statement.namespace, tracker.socketTimeout, tracker.totalTimeout);
+		this.statement = statement;
 		this.taskId = taskId;
+		this.listener = listener;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
 	}
 
 	@Override
-	protected void writeBuffer() {
-		setScan(parent.cluster, scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
+	public void execute() {
+		try {
+			executeCommand();
+		}
+		catch (AerospikeException ae) {
+			if (! tracker.shouldRetry(nodePartitions, ae)) {
+				throw ae;
+			}
+		}
+	}
+
+	@Override
+	protected final void writeBuffer() {
+		setQuery(cluster, policy, statement, taskId, false, nodePartitions);
 	}
 
 	@Override
 	protected void parseRow() {
-		Key key = parseKey(fieldCount, null);
+		BVal bval = new BVal();
+		Key key = parseKey(fieldCount, bval);
 
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
 			// When an error code is received, mark partition as unavailable
@@ -81,16 +89,12 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		}
 
 		Record record = parseRecord();
-		listener.onRecord(key, record);
-		tracker.setDigest(nodePartitions, key);
-	}
 
-	@Override
-	protected void onFailure(AerospikeException ae) {
-		if (tracker.shouldRetry(nodePartitions, ae)) {
-			parent.childSuccess(node);
-			return;
+		if (! valid) {
+			throw new AerospikeException.QueryTerminated();
 		}
-		parent.childFailure(ae);
+
+		listener.onRecord(key, record);
+		tracker.setLast(nodePartitions, key, bval.val);
 	}
 }

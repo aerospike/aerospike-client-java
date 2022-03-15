@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,10 +45,15 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private int maxConcurrentThreads;
 	private boolean threadsComplete;
 
-	public QueryPartitionExecutor(Cluster cluster, QueryPolicy policy, Statement statement, int nodeCapacity, PartitionTracker tracker) {
+	public QueryPartitionExecutor(
+		Cluster cluster,
+		QueryPolicy policy,
+		Statement statement,
+		int nodeCapacity,
+		PartitionTracker tracker
+	) {
 		this.cluster = cluster;
 		this.policy = policy;
-		statement.returnData = true;
 		this.statement = statement;
 		this.tracker = tracker;
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
@@ -69,9 +74,9 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	}
 
 	private void execute() {
-		while (true) {
-			statement.taskId = RandomShift.instance().nextLong();
+		long taskId = statement.prepareTaskId();
 
+		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
 
 			// Initialize maximum number of nodes to query in parallel.
@@ -89,7 +94,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 				if (parallel) {
 					for (NodePartitions nodePartitions : list) {
-						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
@@ -104,7 +109,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 			else {
 				for (NodePartitions nodePartitions : list) {
-					MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, recordSet, tracker, nodePartitions);
+					MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
 					command.execute();
 				}
 			}
@@ -113,7 +118,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				break;
 			}
 
-			if (tracker.isComplete(policy)) {
+			if (tracker.isComplete(cluster, policy)) {
 				// All partitions received.
 				recordSet.put(RecordSet.END);
 				break;
@@ -130,6 +135,9 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			completedCount.set(0);
 			threadsComplete = false;
 			exception = null;
+
+			// taskId must be reset on next pass to avoid server duplicate query detection.
+			taskId = RandomShift.instance().nextLong();
 		}
 	}
 

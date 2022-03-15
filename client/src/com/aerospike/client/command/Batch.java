@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -53,7 +53,9 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow(Key key) {
+		protected void parseRow() {
+			skipKey(fieldCount);
+
 			if (resultCode == 0) {
 				BatchRead record = records.get(batchIndex);
 				record.record = parseRecord();
@@ -108,7 +110,9 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow(Key key) {
+		protected void parseRow() {
+			skipKey(fieldCount);
+
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
 			}
@@ -152,7 +156,9 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow(Key key) {
+		protected void parseRow() {
+			skipKey(fieldCount);
+
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
@@ -183,7 +189,7 @@ public final class Batch {
 		int sequenceSC;
 
 		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy, boolean isOperation) {
-			super(cluster, batchPolicy, batch.node, true, isOperation);
+			super(cluster, batchPolicy, batch.node, isOperation);
 			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;

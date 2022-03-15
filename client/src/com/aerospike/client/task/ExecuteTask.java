@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,9 +33,9 @@ public final class ExecuteTask extends Task {
 	/**
 	 * Initialize task with fields needed to query server nodes.
 	 */
-	public ExecuteTask(Cluster cluster, Policy policy, Statement statement) {
+	public ExecuteTask(Cluster cluster, Policy policy, Statement statement, long taskId) {
 		super(cluster, policy);
-		this.taskId = statement.getTaskId();
+		this.taskId = taskId;
 		this.scan = statement.isScan();
 	}
 
@@ -54,12 +54,28 @@ public final class ExecuteTask extends Task {
 		// All nodes must respond with complete to be considered done.
 		Node[] nodes = cluster.validateNodes();
 
+		String tid = Long.toUnsignedString(taskId);
 		String module = (scan) ? "scan" : "query";
-		String oldCommand = "jobs:module=" + module + ";cmd=get-job;trid=" + taskId;
-		String newCommand = module + "-show:trid=" + taskId;
+		String cmd1 = "query-show:trid=" + tid;
+		String cmd2 = module + "-show:trid=" + tid;
+		String cmd3 = "jobs:module=" + module + ";cmd=get-job;trid=" + tid;
 
 		for (Node node : nodes) {
-			String command = node.hasQueryShow() ? newCommand : oldCommand;
+			String command;
+
+			if (node.hasPartitionQuery()) {
+				// query-show works for both scan and query.
+				command = cmd1;
+			}
+			else if (node.hasQueryShow()) {
+				// scan-show and query-show are separate.
+				command = cmd2;
+			}
+			else {
+				// old job monitor syntax.
+				command = cmd3;
+			}
+
 			String response = Info.request(policy, node, command);
 
 			if (response.startsWith("ERROR:2")) {

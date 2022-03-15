@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -111,7 +111,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 
 	@Override
 	protected MultiCommand createCommand(Node node, long clusterKey, boolean first) {
-		return new QueryAggregateCommand(cluster, node, policy, statement, lua, inputQueue, clusterKey, first);
+		return new QueryAggregateCommand(cluster, node, policy, statement, taskId, lua, inputQueue, clusterKey, first);
 	}
 
 	@Override

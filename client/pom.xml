@@ -157,6 +157,7 @@
             <include>com/aerospike/client/query/IndexType.java</include>
             <include>com/aerospike/client/query/PartitionFilter.java</include>
             <include>com/aerospike/client/query/PredExp.java</include>
+            <include>com/aerospike/client/query/QueryListener.java</include>
             <include>com/aerospike/client/query/RecordSet.java</include>
             <include>com/aerospike/client/query/RegexFlag.java</include>
             <include>com/aerospike/client/query/ResultSet.java</include>

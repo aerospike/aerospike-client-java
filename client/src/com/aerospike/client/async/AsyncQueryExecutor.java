@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,14 +36,14 @@ public final class AsyncQueryExecutor extends AsyncMultiExecutor {
 	) {
 		super(eventLoop, cluster);
 		this.listener = listener;
-		statement.prepare(true);
 
 		// Create commands.
+		long taskId = statement.prepareTaskId();
 		AsyncQuery[] tasks = new AsyncQuery[nodes.length];
 		int count = 0;
 
 		for (Node node : nodes) {
-			tasks[count++] = new AsyncQuery(this, node, policy, listener, statement);
+			tasks[count++] = new AsyncQuery(this, node, policy, listener, statement, taskId);
 		}
 
 		// Dispatch commands to nodes.

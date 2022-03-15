@@ -16,18 +16,6 @@
  */
 package com.aerospike.client.query;
 
-import java.io.Serializable;
-
-public final class PartitionStatus implements Serializable {
-	private static final long serialVersionUID = 3L;
-
-	public long bval;
-	public byte[] digest;
-	public final int id;
-	public boolean retry;
-
-	public PartitionStatus(int id) {
-		this.id = id;
-		this.retry = true;
-	}
+public final class BVal {
+	public long val;
 }

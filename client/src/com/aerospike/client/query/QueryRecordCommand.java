@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,28 +28,33 @@ public final class QueryRecordCommand extends MultiCommand {
 
 	private final Statement statement;
 	private final RecordSet recordSet;
+	private final long taskId;
 
 	public QueryRecordCommand(
 		Cluster cluster,
 		Node node,
 		QueryPolicy policy,
 		Statement statement,
+		long taskId,
 		RecordSet recordSet,
 		long clusterKey,
 		boolean first
 	) {
 		super(cluster, policy, node, statement.namespace, clusterKey, first);
 		this.statement = statement;
+		this.taskId = taskId;
 		this.recordSet = recordSet;
 	}
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(policy, statement, false, null);
+		setQuery(cluster, policy, statement, taskId, false, null);
 	}
 
 	@Override
-	protected void parseRow(Key key) {
+	protected void parseRow() {
+		Key key = parseKey(fieldCount, null);
+
 		if (resultCode != 0) {
 			throw new AerospikeException(resultCode);
 		}

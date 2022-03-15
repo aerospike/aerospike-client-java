@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -61,7 +61,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			executeCommand();
 		}
 		catch (AerospikeException ae) {
-			if (! tracker.shouldRetry(ae)) {
+			if (! tracker.shouldRetry(nodePartitions, ae)) {
 				throw ae;
 			}
 		}
@@ -69,17 +69,19 @@ public final class ScanPartitionCommand extends MultiCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setScan(scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
+		setScan(cluster, scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
 	}
 
 	@Override
-	protected void parseRow(Key key) {
+	protected void parseRow() {
+		Key key = parseKey(fieldCount, null);
+
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
-			// Only mark partition done when resultCode is OK.
-			// The server may return PARTITION_UNAVAILABLE which means the
-			// specified partition will need to be requested on the scan retry.
-			if (resultCode == 0) {
-				tracker.partitionDone(nodePartitions, generation);
+			// When an error code is received, mark partition as unavailable
+			// for the current round. Unavailable partitions will be retried
+			// in the next round. Generation is overloaded as partitionId.
+			if (resultCode != 0) {
+				tracker.partitionUnavailable(nodePartitions, generation);
 			}
 			return;
 		}

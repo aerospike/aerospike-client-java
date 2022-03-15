@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -94,6 +94,8 @@ import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
 import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.QueryAggregateExecutor;
+import com.aerospike.client.query.QueryListener;
+import com.aerospike.client.query.QueryListenerExecutor;
 import com.aerospike.client.query.QueryPartitionExecutor;
 import com.aerospike.client.query.QueryRecordExecutor;
 import com.aerospike.client.query.RecordSet;
@@ -1953,15 +1955,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//----------------------------------------------------------
 
 	/**
-	 * Apply user defined function on records that match the statement filter.
+	 * Apply user defined function on records that match the background query statement filter.
 	 * Records are not returned to the client.
 	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				background query definition
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			function name
 	 * @param functionArgs			to pass to function name, if any
@@ -1978,29 +1979,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
-		statement.prepare(false);
 
+		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
 		Executor executor = new Executor(cluster, nodes.length);
 
 		for (Node node : nodes) {
-			ServerCommand command = new ServerCommand(cluster, node, policy, statement);
+			ServerCommand command = new ServerCommand(cluster, node, policy, statement, taskId);
 			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
-		return new ExecuteTask(cluster, policy, statement);
+		return new ExecuteTask(cluster, policy, statement, taskId);
 	}
 
 	/**
-	 * Apply operations on records that match the statement filter.
+	 * Apply operations on records that match the background query statement filter.
 	 * Records are not returned to the client.
 	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				background query definition
 	 * @param operations			list of operations to be performed on selected records
 	 * @throws AerospikeException	if command fails
 	 */
@@ -2016,17 +2016,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (operations.length > 0) {
 			statement.setOperations(operations);
 		}
-		statement.prepare(false);
 
+		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
 		Executor executor = new Executor(cluster, nodes.length);
 
 		for (Node node : nodes) {
-			ServerCommand command = new ServerCommand(cluster, node, policy, statement);
+			ServerCommand command = new ServerCommand(cluster, node, policy, statement, taskId);
 			executor.addCommand(command);
 		}
 		executor.execute(nodes.length);
-		return new ExecuteTask(cluster, policy, statement);
+		return new ExecuteTask(cluster, policy, statement, taskId);
 	}
 
 	//--------------------------------------------------------
@@ -2039,8 +2039,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
@@ -2052,9 +2051,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		Node[] nodes = cluster.validateNodes();
 
-		// A scan will be performed if the secondary index filter is null.
-		if (statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
 			return executor.getRecordSet();
 		}
@@ -2076,8 +2074,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public final void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
@@ -2092,13 +2089,89 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		Node[] nodes = cluster.validateNodes();
 
-		// A scan will be performed if the secondary index filter is null.
-		if (statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes);
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
 			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
 		}
 		else {
 			new AsyncQueryExecutor(eventLoop, listener, cluster, policy, statement, nodes);
+		}
+	}
+
+	/**
+	 * Execute query on all server nodes and return records via the listener. This method will
+	 * block until the query is complete. Listener callbacks are made within the scope of this call.
+	 * <p>
+	 * If {@link com.aerospike.client.policy.QueryPolicy#maxConcurrentNodes} is not 1, the supplied
+	 * listener must handle shared data in a thread-safe manner, because the listener will be called
+	 * by multiple query threads (one thread per node) in parallel.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition
+	 * @param listener				where to send results
+	 * @throws AerospikeException	if query fails
+	 */
+	public final void query(
+		QueryPolicy policy,
+		Statement statement,
+		QueryListener listener
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
+			QueryListenerExecutor.execute(cluster, policy, statement, listener, tracker);
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Query by partition is not supported");
+		}
+	}
+
+	/**
+	 * Execute query for specified partitions and return records via the listener. This method will
+	 * block until the query is complete. Listener callbacks are made within the scope of this call.
+	 * <p>
+	 * If {@link com.aerospike.client.policy.QueryPolicy#maxConcurrentNodes} is not 1, the supplied
+	 * listener must handle shared data in a thread-safe manner, because the listener will be called
+	 * by multiple query threads (one thread per node) in parallel.
+	 * <p>
+	 * The completion status of all partitions is stored in the partitionFilter when the query terminates.
+	 * This partitionFilter can then be used to resume an incomplete query at a later time.
+	 * This is the preferred method for query terminate/resume functionality.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition
+	 * @param partitionFilter		data partition filter. Set to
+	 * 								{@link com.aerospike.client.query.PartitionFilter#all()} for all partitions.
+	 * @param listener				where to send results
+	 * @throws AerospikeException	if query fails
+	 */
+	public final void query(
+		QueryPolicy policy,
+		Statement statement,
+		PartitionFilter partitionFilter,
+		QueryListener listener
+	) throws AerospikeException {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		Node[] nodes = cluster.validateNodes();
+
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
+			QueryListenerExecutor.execute(cluster, policy, statement, listener, tracker);
+		}
+		else {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Query by partition is not supported");
 		}
 	}
 
@@ -2108,8 +2181,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param node					server node to execute query
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
@@ -2120,9 +2192,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
-		// A scan will be performed if the secondary index filter is null.
-		if (statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, node);
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, node);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, 1, tracker);
 			return executor.getRecordSet();
 		}
@@ -2137,24 +2208,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Execute query for specified partitions and return record iterator.  The query executor puts
 	 * records on a queue in separate threads.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
-	public final RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
-		throws AerospikeException {
+	public final RecordSet queryPartitions(
+		QueryPolicy policy,
+		Statement statement,
+		PartitionFilter partitionFilter
+	) throws AerospikeException {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
 
 		Node[] nodes = cluster.validateNodes();
 
-		// A scan will be performed if the secondary index filter is null.
-		if (statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
 			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
 			return executor.getRecordSet();
 		}
@@ -2169,18 +2243,24 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
-	public final void queryPartitions(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
-		throws AerospikeException {
+	public final void queryPartitions(
+		EventLoop eventLoop,
+		RecordSequenceListener listener,
+		QueryPolicy policy,
+		Statement statement,
+		PartitionFilter partitionFilter
+	) throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}
@@ -2191,9 +2271,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		Node[] nodes = cluster.validateNodes();
 
-		// A scan will be performed if the secondary index filter is null.
-		if (statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, nodes, partitionFilter);
+		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes, partitionFilter);
 			new AsyncQueryPartitionExecutor(eventLoop, listener, cluster, policy, statement, tracker);
 		}
 		else {
@@ -2213,8 +2292,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * {@code udf file = <udf dir>/<package name>.lua}
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
@@ -2243,8 +2321,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @throws AerospikeException	if query fails
 	 */
 	public final ResultSet queryAggregate(QueryPolicy policy, Statement statement)
@@ -2254,7 +2331,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Node[] nodes = cluster.validateNodes();
-		statement.prepare(true);
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, nodes);
 		return executor.getResultSet();
 	}
@@ -2271,8 +2347,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param node					server node to execute query
 	 * @throws AerospikeException	if query fails
 	 */
@@ -2281,7 +2356,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		statement.prepare(true);
 		QueryAggregateExecutor executor = new QueryAggregateExecutor(cluster, policy, statement, new Node[] {node});
 		return executor.getResultSet();
 	}

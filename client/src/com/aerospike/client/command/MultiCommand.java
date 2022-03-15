@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,6 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -43,7 +42,6 @@ public abstract class MultiCommand extends SyncCommand {
 	protected int batchIndex;
 	protected int fieldCount;
 	protected int opCount;
-	private final boolean isBatch;
 	protected final boolean isOperation;
 	private final boolean first;
 	protected volatile boolean valid = true;
@@ -51,10 +49,9 @@ public abstract class MultiCommand extends SyncCommand {
 	/**
 	 * Batch and server execute constructor.
 	 */
-	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isBatch, boolean isOperation) {
+	protected MultiCommand(Cluster cluster, Policy policy, Node node, boolean isOperation) {
 		super(cluster, policy);
 		this.node = node;
-		this.isBatch = isBatch;
 		this.isOperation = isOperation;
 		this.namespace = null;
 		this.clusterKey = 0;
@@ -67,7 +64,6 @@ public abstract class MultiCommand extends SyncCommand {
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, int socketTimeout, int totalTimeout) {
 		super(cluster, policy, socketTimeout, totalTimeout);
 		this.node = node;
-		this.isBatch = false;
 		this.isOperation = false;
 		this.namespace = namespace;
 		this.clusterKey = 0;
@@ -80,7 +76,6 @@ public abstract class MultiCommand extends SyncCommand {
 	protected MultiCommand(Cluster cluster, Policy policy, Node node, String namespace, long clusterKey, boolean first) {
 		super(cluster, policy, policy.socketTimeout, policy.totalTimeout);
 		this.node = node;
-		this.isBatch = false;
 		this.isOperation = false;
 		this.namespace = namespace;
 		this.clusterKey = clusterKey;
@@ -258,14 +253,7 @@ public abstract class MultiCommand extends SyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
 
-			if (isBatch) {
-				skipKey(fieldCount);
-				parseRow(null);
-			}
-			else {
-				Key key = parseKey(fieldCount);
-				parseRow(key);
-			}
+			parseRow();
 		}
 		return true;
 	}
@@ -286,5 +274,5 @@ public abstract class MultiCommand extends SyncCommand {
 		return valid;
 	}
 
-	protected abstract void parseRow(Key key);
+	protected abstract void parseRow();
 }

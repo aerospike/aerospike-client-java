@@ -14,40 +14,37 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
+package com.aerospike.client.query;
 
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ScanCallback;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.query.PartitionTracker;
+import com.aerospike.client.command.Executor;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
-public final class ScanExecutor {
-	public static void scanPartitions(
+public final class QueryListenerExecutor {
+	public static void execute(
 		Cluster cluster,
-		ScanPolicy policy,
-		String namespace,
-		String setName,
-		String[] binNames,
-		ScanCallback callback,
+		QueryPolicy policy,
+		Statement statement,
+		QueryListener listener,
 		PartitionTracker tracker
 	) {
+		long taskId = statement.prepareTaskId();
+
 		while (true) {
-			long taskId = RandomShift.instance().nextLong();
-
 			try {
-				List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, namespace);
+				List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
 
-				if (policy.concurrentNodes && list.size() > 1) {
+				if (policy.maxConcurrentNodes > 0 && list.size() > 1) {
 					Executor executor = new Executor(cluster, list.size());
 
 					for (NodePartitions nodePartitions : list) {
-						ScanPartitionCommand command = new ScanPartitionCommand(cluster, policy, namespace, setName, binNames, callback, taskId, tracker, nodePartitions);
+						QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
 						executor.addCommand(command);
 					}
 
@@ -55,7 +52,7 @@ public final class ScanExecutor {
 				}
 				else {
 					for (NodePartitions nodePartitions : list) {
-						ScanPartitionCommand command = new ScanPartitionCommand(cluster, policy, namespace, setName, binNames, callback, taskId, tracker, nodePartitions);
+						QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
 						command.execute();
 					}
 				}
@@ -66,7 +63,6 @@ public final class ScanExecutor {
 			}
 
 			if (tracker.isComplete(cluster, policy)) {
-				// Scan is complete.
 				return;
 			}
 
@@ -74,6 +70,9 @@ public final class ScanExecutor {
 				// Sleep before trying again.
 				Util.sleep(policy.sleepBetweenRetries);
 			}
+
+			// taskId must be reset on next pass to avoid server duplicate query detection.
+			taskId = RandomShift.instance().nextLong();
 		}
 	}
 }

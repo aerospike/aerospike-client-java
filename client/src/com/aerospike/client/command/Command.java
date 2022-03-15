@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,6 +30,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.exp.CommandExp;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
@@ -38,6 +39,7 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ReadModeAP;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.query.BVal;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PartitionStatus;
@@ -50,6 +52,7 @@ import com.aerospike.client.util.Packer;
 public abstract class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
+	public static final int INFO1_SHORT_QUERY		= (1 << 2); // Short query.
 	public static final int INFO1_BATCH				= (1 << 3); // Batch read or exists.
 	public static final int INFO1_XDR				= (1 << 4); // Operation is being performed by XDR.
 	public static final int INFO1_NOBINDATA			= (1 << 5); // Do not read the bins.
@@ -66,7 +69,9 @@ public abstract class Command {
 
 	public static final int INFO3_LAST				= (1 << 0); // This is the last of a multi-part message.
 	public static final int INFO3_COMMIT_MASTER		= (1 << 1); // Commit to master only before declaring success.
-	public static final int INFO3_PARTITION_DONE	= (1 << 2); // Partition is complete response in scan.
+	// On send: Do not return partition done in scan/query.
+	// On receive: Specified partition is done in scan/query.
+	public static final int INFO3_PARTITION_DONE	= (1 << 2);
 	public static final int INFO3_UPDATE_ONLY		= (1 << 3); // Update only. Merge bins.
 	public static final int INFO3_CREATE_OR_REPLACE	= (1 << 4); // Create or completely replace record.
 	public static final int INFO3_REPLACE_ONLY		= (1 << 5); // Completely replace existing record only.
@@ -219,7 +224,7 @@ public abstract class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, fieldCount, 0);
+		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (exp != null) {
@@ -243,7 +248,7 @@ public abstract class Command {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
-			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, fieldCount, binNames.length);
+			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
 
 			if (exp != null) {
@@ -400,7 +405,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
 		if (exp != null) {
 			dataOffset = exp.write(this);
@@ -528,7 +533,7 @@ public abstract class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
 		if (exp != null) {
 			dataOffset = exp.write(this);
@@ -603,6 +608,7 @@ public abstract class Command {
 	}
 
 	public final void setScan(
+		Cluster cluster,
 		ScanPolicy policy,
 		String namespace,
 		String setName,
@@ -612,15 +618,9 @@ public abstract class Command {
 	) {
 		begin();
 		int fieldCount = 0;
-		int partsFullSize = 0;
-		int partsPartialSize = 0;
-		long maxRecords = 0;
-
-		if (nodePartitions != null) {
-			partsFullSize = nodePartitions.partsFull.size() * 2;
-			partsPartialSize = nodePartitions.partsPartial.size() * 20;
-			maxRecords = nodePartitions.recordMax;
-		}
+		int partsFullSize = nodePartitions.partsFull.size() * 2;
+		int partsPartialSize = nodePartitions.partsPartial.size() * 20;
+		long maxRecords = nodePartitions.recordMax;
 
 		if (namespace != null) {
 			dataOffset += Buffer.estimateSizeUtf8(namespace) + FIELD_HEADER_SIZE;
@@ -674,14 +674,16 @@ public abstract class Command {
 		}
 
 		sizeBuffer();
-		byte readAttr = Command.INFO1_READ;
+		int readAttr = Command.INFO1_READ;
 
 		if (! policy.includeBinData) {
 			readAttr |= Command.INFO1_NOBINDATA;
 		}
 
+		// Clusters that support partition queries also support not sending partition done messages.
+		int infoAttr = cluster.hasPartitionQuery? Command.INFO3_PARTITION_DONE : 0;
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -710,7 +712,7 @@ public abstract class Command {
 		}
 
 		if (maxRecords > 0) {
-			writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
+			writeField(maxRecords, FieldType.MAX_RECORDS);
 		}
 
 		if (policy.recordsPerSecond > 0) {
@@ -722,7 +724,7 @@ public abstract class Command {
 		}
 
 		// Write scan socket idle timeout.
-		writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
+		writeField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
 
 		// Write taskId field
 		writeField(taskId, FieldType.TRAN_ID);
@@ -735,14 +737,19 @@ public abstract class Command {
 		end();
 	}
 
-	public final void setQuery(Policy policy, Statement statement, boolean write, NodePartitions nodePartitions) {
+	public final void setQuery(
+		Cluster cluster,
+		Policy policy,
+		Statement statement,
+		long taskId,
+		boolean background,
+		NodePartitions nodePartitions
+	) {
 		byte[] functionArgBuffer = null;
 		int fieldCount = 0;
 		int filterSize = 0;
 		int binNameSize = 0;
-		int partsFullSize = 0;
-		int partsPartialSize = 0;
-		long maxRecords = 0;
+		boolean isNew = cluster.hasPartitionQuery;
 
 		begin();
 
@@ -751,17 +758,24 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-		if (statement.getIndexName() != null) {
-			dataOffset += Buffer.estimateSizeUtf8(statement.getIndexName()) + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
-
 		if (statement.getSetName() != null) {
 			dataOffset += Buffer.estimateSizeUtf8(statement.getSetName()) + FIELD_HEADER_SIZE;
 			fieldCount++;
 		}
 
-		// Allocate space for TaskId field.
+		// Estimate recordsPerSecond field size. This field is used in new servers and not used
+		// (but harmless to add) in old servers.
+		if (statement.getRecordsPerSecond() > 0) {
+			dataOffset += 4 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		// Estimate socket timeout field size. This field is used in new servers and not used
+		// (but harmless to add) in old servers.
+		dataOffset += 4 + FIELD_HEADER_SIZE;
+		fieldCount++;
+
+		// Estimate taskId field.
 		dataOffset += 8 + FIELD_HEADER_SIZE;
 		fieldCount++;
 
@@ -771,11 +785,13 @@ public abstract class Command {
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
 
+			// Estimate INDEX_TYPE field.
 			if (type != IndexCollectionType.DEFAULT) {
 				dataOffset += FIELD_HEADER_SIZE + 1;
 				fieldCount++;
 			}
 
+			// Estimate INDEX_RANGE field.
 			dataOffset += FIELD_HEADER_SIZE;
 			filterSize++;  // num filters
 			filterSize += filter.estimateSize();
@@ -783,61 +799,23 @@ public abstract class Command {
 			dataOffset += filterSize;
 			fieldCount++;
 
-			// Query bin names are specified as a field (Scan bin names are specified later as operations)
-			if (binNames != null && binNames.length > 0) {
-				dataOffset += FIELD_HEADER_SIZE;
-				binNameSize++;  // num bin names
+			if (! isNew) {
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				// in old servers. Estimate size for selected bin names.
+				if (binNames != null && binNames.length > 0) {
+					dataOffset += FIELD_HEADER_SIZE;
+					binNameSize++;  // num bin names
 
-				for (String binName : binNames) {
-					binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
+					for (String binName : binNames) {
+						binNameSize += Buffer.estimateSizeUtf8(binName) + 1;
+					}
+					dataOffset += binNameSize;
+					fieldCount++;
 				}
-				dataOffset += binNameSize;
-				fieldCount++;
-			}
-		}
-		else {
-			// Calling query with no filters is more efficiently handled by a primary index scan.
-			if (nodePartitions != null) {
-				partsFullSize = nodePartitions.partsFull.size() * 2;
-				partsPartialSize = nodePartitions.partsPartial.size() * 20;
-				maxRecords = nodePartitions.recordMax;
-			}
-
-			if (partsFullSize > 0) {
-				dataOffset += partsFullSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			if (partsPartialSize > 0) {
-				dataOffset += partsPartialSize + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			// Estimate max records size;
-			if (maxRecords > 0) {
-				dataOffset += 8 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
-
-			// Estimate scan timeout size.
-			dataOffset += 4 + FIELD_HEADER_SIZE;
-			fieldCount++;
-
-			// Estimate records per second size.
-			if (statement.getRecordsPerSecond() > 0) {
-				dataOffset += 4 + FIELD_HEADER_SIZE;
-				fieldCount++;
 			}
 		}
 
-		PredExp[] predExp = statement.getPredExp();
-		CommandExp exp = (predExp != null)? new CommandPredExp(predExp) : getCommandExp(policy);
-
-		if (exp != null) {
-			dataOffset += exp.size();
-			fieldCount++;
-		}
-
+		// Estimate aggregation/background function size.
 		if (statement.getFunctionName() != null) {
 			dataOffset += FIELD_HEADER_SIZE + 1;  // udf type
 			dataOffset += Buffer.estimateSizeUtf8(statement.getPackageName()) + FIELD_HEADER_SIZE;
@@ -853,17 +831,64 @@ public abstract class Command {
 			fieldCount += 4;
 		}
 
+		PredExp[] predExp = statement.getPredExp();
+		CommandExp exp = (predExp != null)? new CommandPredExp(predExp) : getCommandExp(policy);
+
+		if (exp != null) {
+			dataOffset += exp.size();
+			fieldCount++;
+		}
+
+		long maxRecords = 0;
+		int partsFullSize = 0;
+		int partsPartialDigestSize = 0;
+		int partsPartialBValSize = 0;
+
+		if (nodePartitions != null) {
+			partsFullSize = nodePartitions.partsFull.size() * 2;
+			partsPartialDigestSize = nodePartitions.partsPartial.size() * 20;
+
+			if (filter != null) {
+				partsPartialBValSize = nodePartitions.partsPartial.size() * 8;
+			}
+			maxRecords = nodePartitions.recordMax;
+		}
+
+		if (partsFullSize > 0) {
+			dataOffset += partsFullSize + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		if (partsPartialDigestSize > 0) {
+			dataOffset += partsPartialDigestSize + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		if (partsPartialBValSize > 0) {
+			dataOffset += partsPartialBValSize + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
+		// Estimate max records field size. This field is used in new servers and not used
+		// (but harmless to add) in old servers.
+		if (maxRecords > 0) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		// Operations (used in query execute) and bin names (used in scan/query) are mutually exclusive.
 		Operation[] operations = statement.getOperations();
 		int operationCount = 0;
 
 		if (operations != null) {
+			// Estimate size for background operations.
 			for (Operation operation : operations) {
 				estimateOperationSize(operation);
 			}
 			operationCount = operations.length;
 		}
-		else if (binNames != null && filter == null) {
+		else if (binNames != null && (isNew || filter == null)) {
+			// Estimate size for selected bin names (query bin names already handled for old servers).
 			for (String binName : binNames) {
 				estimateOperationSize(binName);
 			}
@@ -872,29 +897,44 @@ public abstract class Command {
 
 		sizeBuffer();
 
-		if (write) {
+		if (background) {
 			writeHeaderWrite((WritePolicy)policy, Command.INFO2_WRITE, fieldCount, operationCount);
 		}
 		else {
 			QueryPolicy qp = (QueryPolicy)policy;
-			int readAttr = qp.includeBinData ? Command.INFO1_READ : Command.INFO1_READ | Command.INFO1_NOBINDATA;
-			writeHeaderRead(policy, totalTimeout, readAttr, fieldCount, operationCount);
+			int readAttr = Command.INFO1_READ;
+
+			if (!qp.includeBinData) {
+				readAttr |= Command.INFO1_NOBINDATA;
+			}
+
+			if (qp.shortQuery) {
+				readAttr |= Command.INFO1_SHORT_QUERY;
+			}
+
+			int infoAttr = isNew? Command.INFO3_PARTITION_DONE : 0;
+
+			writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
 			writeField(statement.getNamespace(), FieldType.NAMESPACE);
 		}
 
-		if (statement.getIndexName() != null) {
-			writeField(statement.getIndexName(), FieldType.INDEX_NAME);
-		}
-
 		if (statement.getSetName() != null) {
 			writeField(statement.getSetName(), FieldType.TABLE);
 		}
 
+		// Write records per second.
+		if (statement.getRecordsPerSecond() > 0) {
+			writeField(statement.getRecordsPerSecond(), FieldType.RECORDS_PER_SECOND);
+		}
+
+		// Write socket idle timeout.
+		writeField(policy.socketTimeout, FieldType.SOCKET_TIMEOUT);
+
 		// Write taskId field
-		writeField(statement.getTaskId(), FieldType.TRAN_ID);
+		writeField(taskId, FieldType.TRAN_ID);
 
 		if (filter != null) {
 			IndexCollectionType type = filter.getCollectionType();
@@ -908,61 +948,63 @@ public abstract class Command {
 			dataBuffer[dataOffset++] = (byte)1;
 			dataOffset = filter.write(dataBuffer, dataOffset);
 
-			// Query bin names are specified as a field (Scan bin names are specified later as operations)
-			if (binNames != null && binNames.length > 0) {
-				writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
-				dataBuffer[dataOffset++] = (byte)binNames.length;
+			if (!isNew) {
+				// Query bin names are specified as a field (Scan bin names are specified later as operations)
+				// in old servers.
+				if (binNames != null && binNames.length > 0) {
+					writeFieldHeader(binNameSize, FieldType.QUERY_BINLIST);
+					dataBuffer[dataOffset++] = (byte)binNames.length;
 
-				for (String binName : binNames) {
-					int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
-					dataBuffer[dataOffset] = (byte)len;
-					dataOffset += len + 1;
+					for (String binName : binNames) {
+						int len = Buffer.stringToUtf8(binName, dataBuffer, dataOffset + 1);
+						dataBuffer[dataOffset] = (byte)len;
+						dataOffset += len + 1;
+					}
 				}
 			}
 		}
-		else {
-			// Calling query with no filters is more efficiently handled by a primary index scan.
-			if (partsFullSize > 0) {
-				writeFieldHeader(partsFullSize, FieldType.PID_ARRAY);
 
-				for (PartitionStatus part : nodePartitions.partsFull) {
-					Buffer.shortToLittleBytes(part.id, dataBuffer, dataOffset);
-					dataOffset += 2;
-				}
-			}
-
-			if (partsPartialSize > 0) {
-				writeFieldHeader(partsPartialSize, FieldType.DIGEST_ARRAY);
-
-				for (PartitionStatus part : nodePartitions.partsPartial) {
-					System.arraycopy(part.digest, 0, dataBuffer, dataOffset, 20);
-					dataOffset += 20;
-				}
-			}
-
-			if (maxRecords > 0) {
-				writeField(maxRecords, FieldType.SCAN_MAX_RECORDS);
-			}
-
-			// Write scan socket idle timeout.
-			writeField(policy.socketTimeout, FieldType.SCAN_TIMEOUT);
-
-			// Write records per second.
-			if (statement.getRecordsPerSecond() > 0) {
-				writeField(statement.getRecordsPerSecond(), FieldType.RECORDS_PER_SECOND);
-			}
+		if (statement.getFunctionName() != null) {
+			writeFieldHeader(1, FieldType.UDF_OP);
+			dataBuffer[dataOffset++] = background? (byte)2 : (byte)1;
+			writeField(statement.getPackageName(), FieldType.UDF_PACKAGE_NAME);
+			writeField(statement.getFunctionName(), FieldType.UDF_FUNCTION);
+			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
 		}
 
 		if (exp != null) {
 			dataOffset = exp.write(this);
 		}
 
-		if (statement.getFunctionName() != null) {
-			writeFieldHeader(1, FieldType.UDF_OP);
-			dataBuffer[dataOffset++] = (statement.returnData())? (byte)1 : (byte)2;
-			writeField(statement.getPackageName(), FieldType.UDF_PACKAGE_NAME);
-			writeField(statement.getFunctionName(), FieldType.UDF_FUNCTION);
-			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
+		if (partsFullSize > 0) {
+			writeFieldHeader(partsFullSize, FieldType.PID_ARRAY);
+
+			for (PartitionStatus part : nodePartitions.partsFull) {
+				Buffer.shortToLittleBytes(part.id, dataBuffer, dataOffset);
+				dataOffset += 2;
+			}
+		}
+
+		if (partsPartialDigestSize > 0) {
+			writeFieldHeader(partsPartialDigestSize, FieldType.DIGEST_ARRAY);
+
+			for (PartitionStatus part : nodePartitions.partsPartial) {
+				System.arraycopy(part.digest, 0, dataBuffer, dataOffset, 20);
+				dataOffset += 20;
+			}
+		}
+
+		if (partsPartialBValSize > 0) {
+			writeFieldHeader(partsPartialBValSize, FieldType.BVAL_ARRAY);
+
+			for (PartitionStatus part : nodePartitions.partsPartial) {
+				Buffer.longToLittleBytes(part.bval, dataBuffer, dataOffset);
+				dataOffset += 8;
+			}
+		}
+
+		if (maxRecords > 0) {
+			writeField(maxRecords, FieldType.MAX_RECORDS);
 		}
 
 		if (operations != null) {
@@ -970,8 +1012,7 @@ public abstract class Command {
 				writeOperation(operation);
 			}
 		}
-		else if (binNames != null && filter == null) {
-			// Scan bin names are specified after all fields.
+		else if (binNames != null && (isNew || filter == null)) {
 			for (String binName : binNames) {
 				writeOperation(binName, Operation.Type.READ);
 			}
@@ -1105,7 +1146,13 @@ public abstract class Command {
 	/**
 	 * Header write for operate command.
 	 */
-	private final void writeHeaderReadWrite(WritePolicy policy, int readAttr, int writeAttr, int fieldCount, int operationCount) {
+	private final void writeHeaderReadWrite(
+		WritePolicy policy,
+		int readAttr,
+		int writeAttr,
+		int fieldCount,
+		int operationCount
+	) {
 		// Set flags.
 		int generation = 0;
 		int infoAttr = 0;
@@ -1192,9 +1239,14 @@ public abstract class Command {
 	/**
 	 * Header write for read commands.
 	 */
-	private final void writeHeaderRead(Policy policy, int timeout, int readAttr, int fieldCount, int operationCount) {
-		int infoAttr = 0;
-
+	private final void writeHeaderRead(
+		Policy policy,
+		int timeout,
+		int readAttr,
+		int infoAttr,
+		int fieldCount,
+		int operationCount
+	) {
 		switch (policy.readModeSC) {
 		case SESSION:
 			break;
@@ -1451,7 +1503,7 @@ public abstract class Command {
 		}
 	}
 
-	protected final Key parseKey(int fieldCount) {
+	protected final Key parseKey(int fieldCount, BVal bval) {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;
@@ -1482,6 +1534,10 @@ public abstract class Command {
 				int type = dataBuffer[dataOffset++];
 				size--;
 				userKey = Buffer.bytesToKeyValue(type, dataBuffer, dataOffset, size);
+				break;
+
+			case FieldType.BVAL_ARRAY:
+				bval.val = Buffer.littleBytesToLong(dataBuffer, dataOffset);
 				break;
 			}
 			dataOffset += size;

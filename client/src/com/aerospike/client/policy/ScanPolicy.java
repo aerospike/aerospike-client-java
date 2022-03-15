@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -15,9 +15,6 @@
  * the License.
  */
 package com.aerospike.client.policy;
-
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
 
 /**
  * Container object for optional parameters used in scan operations.
@@ -103,14 +100,5 @@ public final class ScanPolicy extends Policy {
 	 */
 	public ScanPolicy() {
 		super.maxRetries = 5;
-	}
-
-	/**
-	 * Verify policies fields are within range.
-	 */
-	public void validate() {
-		if (maxRecords < 0) {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
-		}
 	}
 }

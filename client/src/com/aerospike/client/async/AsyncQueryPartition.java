@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.query.BVal;
 import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
@@ -29,6 +30,7 @@ import com.aerospike.client.query.Statement;
 public final class AsyncQueryPartition extends AsyncMultiCommand {
 	private final RecordSequenceListener listener;
 	private final Statement statement;
+	private final long taskId;
 	private final PartitionTracker tracker;
 	private final NodePartitions nodePartitions;
 
@@ -37,29 +39,34 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 		QueryPolicy policy,
 		RecordSequenceListener listener,
 		Statement statement,
+		long taskId,
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
 		super(parent, nodePartitions.node, policy, tracker.socketTimeout, tracker.totalTimeout);
 		this.listener = listener;
 		this.statement = statement;
+		this.taskId = taskId;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setQuery(policy, statement, false, nodePartitions);
+		setQuery(parent.cluster, policy, statement, taskId, false, nodePartitions);
 	}
 
 	@Override
-	protected void parseRow(Key key) {
+	protected void parseRow() {
+		BVal bval = new BVal();
+		Key key = parseKey(fieldCount, bval);
+
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
-			// Only mark partition done when resultCode is OK.
-			// The server may return PARTITION_UNAVAILABLE which means the
-			// specified partition will need to be requested on the query retry.
-			if (resultCode == 0) {
-				tracker.partitionDone(nodePartitions, generation);
+			// When an error code is received, mark partition as unavailable
+			// for the current round. Unavailable partitions will be retried
+			// in the next round. Generation is overloaded as partitionId.
+			if (resultCode != 0) {
+				tracker.partitionUnavailable(nodePartitions, generation);
 			}
 			return;
 		}
@@ -70,12 +77,12 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 
 		Record record = parseRecord();
 		listener.onRecord(key, record);
-		tracker.setDigest(nodePartitions, key);
+		tracker.setLast(nodePartitions, key, bval.val);
 	}
 
 	@Override
 	protected void onFailure(AerospikeException ae) {
-		if (tracker.shouldRetry(ae)) {
+		if (tracker.shouldRetry(nodePartitions, ae)) {
 			parent.childSuccess(node);
 			return;
 		}

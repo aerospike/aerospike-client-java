@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,6 @@ import java.util.concurrent.BlockingQueue;
 import org.luaj.vm2.LuaValue;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -33,6 +32,7 @@ import com.aerospike.client.policy.QueryPolicy;
 public final class QueryAggregateCommand extends MultiCommand {
 
 	private final Statement statement;
+	private final long taskId;
 	private final LuaInstance instance;
 	private final BlockingQueue<LuaValue> inputQueue;
 
@@ -41,6 +41,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 		Node node,
 		QueryPolicy policy,
 		Statement statement,
+		long taskId,
 		LuaInstance instance,
 		BlockingQueue<LuaValue> inputQueue,
 		long clusterKey,
@@ -48,17 +49,20 @@ public final class QueryAggregateCommand extends MultiCommand {
 	) {
 		super(cluster, policy, node, statement.namespace, clusterKey, first);
 		this.statement = statement;
+		this.taskId = taskId;
 		this.instance = instance;
 		this.inputQueue = inputQueue;
 	}
 
 	@Override
 	protected final void writeBuffer() throws AerospikeException {
-		setQuery(policy, statement, false, null);
+		setQuery(cluster, policy, statement, taskId, false, null);
 	}
 
 	@Override
-	protected void parseRow(Key key) {
+	protected void parseRow() {
+		skipKey(fieldCount);
+
 		if (resultCode != 0) {
 			// Aggregation scans (with null query filter) will return KEY_NOT_FOUND_ERROR
 			// when the set does not exist on the target node.

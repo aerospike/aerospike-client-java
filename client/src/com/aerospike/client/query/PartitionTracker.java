@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,6 +33,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 
+@SuppressWarnings("deprecation")
 public final class PartitionTracker {
 	private final PartitionStatus[] partitions;
 	private final int partitionsCapacity;
@@ -51,15 +52,15 @@ public final class PartitionTracker {
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes) {
 		this((Policy)policy, nodes);
-		this.maxRecords = policy.maxRecords;
+		setMaxRecords(policy.maxRecords);
 	}
 
-	public PartitionTracker(QueryPolicy policy, Node[] nodes) {
+	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes) {
 		this((Policy)policy, nodes);
-		this.maxRecords = policy.maxRecords;
+		setMaxRecords(policy, stmt);
 	}
 
-	public PartitionTracker(Policy policy, Node[] nodes) {
+	private PartitionTracker(Policy policy, Node[] nodes) {
 		this.partitionBegin = 0;
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
@@ -75,15 +76,15 @@ public final class PartitionTracker {
 
 	public PartitionTracker(ScanPolicy policy, Node nodeFilter) {
 		this((Policy)policy, nodeFilter);
-		this.maxRecords = policy.maxRecords;
+		setMaxRecords(policy.maxRecords);
 	}
 
-	public PartitionTracker(QueryPolicy policy, Node nodeFilter) {
+	public PartitionTracker(QueryPolicy policy, Statement stmt, Node nodeFilter) {
 		this((Policy)policy, nodeFilter);
-		this.maxRecords = policy.maxRecords;
+		setMaxRecords(policy, stmt);
 	}
 
-	public PartitionTracker(Policy policy, Node nodeFilter) {
+	private PartitionTracker(Policy policy, Node nodeFilter) {
 		this.partitionBegin = 0;
 		this.nodeCapacity = 1;
 		this.nodeFilter = nodeFilter;
@@ -94,16 +95,14 @@ public final class PartitionTracker {
 	}
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter) {
-		this((Policy)policy, nodes, filter);
-		this.maxRecords = policy.maxRecords;
+		this((Policy)policy, nodes, filter, policy.maxRecords);
 	}
 
-	public PartitionTracker(QueryPolicy policy, Node[] nodes, PartitionFilter filter) {
-		this((Policy)policy, nodes, filter);
-		this.maxRecords = policy.maxRecords;
+	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter) {
+		this((Policy)policy, nodes, filter, (stmt.maxRecords > 0)? stmt.maxRecords : policy.maxRecords);
 	}
 
-	public PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter) {
+	private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter, long maxRecords) {
 		// Validate here instead of initial PartitionFilter constructor because total number of
 		// cluster partitions may change on the server and PartitionFilter will never have access
 		// to Cluster instance.  Use fixed number of partitions for now.
@@ -121,6 +120,7 @@ public final class PartitionTracker {
 				',' + filter.count + ')');
 		}
 
+		setMaxRecords(maxRecords);
 		this.partitionBegin = filter.begin;
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
@@ -130,13 +130,27 @@ public final class PartitionTracker {
 			filter.partitions = initPartitions(filter.count, filter.digest);
 		}
 		else {
-			for (PartitionStatus part : filter.partitions) {
-				part.done = false;
+			// Retry all partitions when maxRecords not specified.
+			if (maxRecords == 0) {
+				for (PartitionStatus ps : filter.partitions) {
+					ps.retry = true;
+				}
 			}
 		}
 		this.partitions = filter.partitions;
 		this.partitionFilter = filter;
 		initTimeout(policy);
+	}
+
+	private void setMaxRecords(QueryPolicy policy, Statement stmt) {
+		setMaxRecords((stmt.maxRecords > 0)? stmt.maxRecords : policy.maxRecords);
+	}
+
+	private void setMaxRecords(long maxRecords) {
+		if (maxRecords < 0) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid maxRecords: " + maxRecords);
+		}
+		this.maxRecords = maxRecords;
 	}
 
 	private PartitionStatus[] initPartitions(int partitionCount, byte[] digest) {
@@ -184,12 +198,14 @@ public final class PartitionTracker {
 		AtomicReferenceArray<Node> master = parts.replicas[0];
 
 		for (PartitionStatus part : partitions) {
-			if (! part.done) {
+			if (part.retry) {
 				Node node = master.get(part.id);
 
 				if (node == null) {
 					throw new AerospikeException.InvalidNode(part.id);
 				}
+
+				part.retry = false;
 
 				// Use node name to check for single node equality because
 				// partition map may be in transitional state between
@@ -243,9 +259,9 @@ public final class PartitionTracker {
 		return null;
 	}
 
-	public void partitionDone(NodePartitions nodePartitions, int partitionId) {
-		partitions[partitionId - partitionBegin].done = true;
-		nodePartitions.partsReceived++;
+	public void partitionUnavailable(NodePartitions nodePartitions, int partitionId) {
+		partitions[partitionId - partitionBegin].retry = true;
+		nodePartitions.partsUnavailable++;
 	}
 
 	public void setDigest(NodePartitions nodePartitions, Key key) {
@@ -254,22 +270,65 @@ public final class PartitionTracker {
 		nodePartitions.recordCount++;
 	}
 
-	public boolean isComplete(Policy policy) {
+	public void setLast(NodePartitions nodePartitions, Key key, long bval) {
+		int partitionId = Partition.getPartitionId(key.digest);
+		PartitionStatus ps = partitions[partitionId - partitionBegin];
+		ps.digest = key.digest;
+		ps.bval = bval;
+		nodePartitions.recordCount++;
+	}
+
+	public boolean isComplete(Cluster cluster, Policy policy) {
 		long recordCount = 0;
-		int partsRequested = 0;
-		int partsReceived = 0;
+		int partsUnavailable = 0;
 
 		for (NodePartitions np : nodePartitionsList) {
 			recordCount += np.recordCount;
-			partsRequested += np.partsRequested;
-			partsReceived += np.partsReceived;
-			//System.out.println("Node " + np.node + " partsFull=" + np.partsFull.size() + " partsPartial=" + np.partsPartial.size() +
-			//	" partsReceived=" + np.partsReceived + " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
+			partsUnavailable += np.partsUnavailable;
+
+			//System.out.println("Node " + np.node + " partsFull=" + np.partsFull.size() +
+			//  " partsPartial=" + np.partsPartial.size() + " partsUnavailable=" + np.partsUnavailable +
+			//  " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 		}
 
-		if (partsReceived >= partsRequested) {
-			if (partitionFilter != null && recordCount == 0) {
-				partitionFilter.done = true;
+		if (partsUnavailable == 0) {
+			if (maxRecords == 0) {
+				if (partitionFilter != null) {
+					partitionFilter.done = true;
+				}
+			}
+			else {
+				if (cluster.hasPartitionQuery) {
+					// Server version >= 6.0 will return all records for each node up to
+					// that node's max. If node's record count reached max, there still
+					// may be records available for that node.
+					boolean done = true;
+
+					for (NodePartitions np : nodePartitionsList) {
+						if (np.recordCount >= np.recordMax) {
+							markRetry(np);
+							done = false;
+						}
+					}
+
+					if (partitionFilter != null) {
+						partitionFilter.done = done;
+					}
+				}
+				else {
+					// Servers version < 6.0 can return less records than max and still
+					// have more records for each node, so the node is only done if no
+					// records were retrieved for that node.
+					for (NodePartitions np : nodePartitionsList) {
+						if (np.recordCount > 0) {
+							markRetry(np);
+						}
+					}
+
+					if (partitionFilter != null) {
+						partitionFilter.done = recordCount == 0;
+					}
+				}
 			}
 			return true;
 		}
@@ -329,19 +388,31 @@ public final class PartitionTracker {
 		return false;
 	}
 
-	public boolean shouldRetry(AerospikeException ae) {
+	public boolean shouldRetry(NodePartitions nodePartitions, AerospikeException ae) {
 		switch (ae.getResultCode()) {
 		case ResultCode.SERVER_NOT_AVAILABLE:
-		case ResultCode.PARTITION_UNAVAILABLE:
 		case ResultCode.TIMEOUT:
-			if (exceptions == null) {
+        case ResultCode.INDEX_NOTFOUND:
+        	if (exceptions == null) {
 				exceptions = new ArrayList<AerospikeException>();
 			}
 			exceptions.add(ae);
+			markRetry(nodePartitions);
+			nodePartitions.partsUnavailable = nodePartitions.partsFull.size() + nodePartitions.partsPartial.size();
 			return true;
 
 		default:
 			return false;
+		}
+	}
+
+	private void markRetry(NodePartitions nodePartitions) {
+		for (PartitionStatus ps : nodePartitions.partsFull) {
+			ps.retry = true;
+		}
+
+		for (PartitionStatus ps : nodePartitions.partsPartial) {
+			ps.retry = true;
 		}
 	}
 
@@ -351,8 +422,7 @@ public final class PartitionTracker {
 		public final List<PartitionStatus> partsPartial;
 		public long recordCount;
 		public long recordMax;
-		public int partsRequested;
-		public int partsReceived;
+		public int partsUnavailable;
 
 		public NodePartitions(Node node, int capacity) {
 			this.node = node;
@@ -367,7 +437,6 @@ public final class PartitionTracker {
 			else {
 				partsPartial.add(part);
 			}
-			partsRequested++;
 		}
 	}
 }

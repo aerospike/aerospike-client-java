@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -51,6 +51,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.QueryListener;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
 import com.aerospike.client.query.Statement;
@@ -1129,15 +1130,14 @@ public interface IAerospikeClient extends Closeable {
 	//----------------------------------------------------------
 
 	/**
-	 * Apply user defined function on records that match the statement filter.
+	 * Apply user defined function on records that match the background query statement filter.
 	 * Records are not returned to the client.
 	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				background query definition
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			function name
 	 * @param functionArgs			to pass to function name, if any
@@ -1152,15 +1152,14 @@ public interface IAerospikeClient extends Closeable {
 	) throws AerospikeException;
 
 	/**
-	 * Apply operations on records that match the statement filter.
+	 * Apply operations on records that match the background query statement filter.
 	 * Records are not returned to the client.
 	 * This asynchronous server call will return before the command is complete.
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				record filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				background query definition
 	 * @param operations			list of operations to be performed on selected records
 	 * @throws AerospikeException	if command fails
 	 */
@@ -1180,8 +1179,7 @@ public interface IAerospikeClient extends Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
 	 */
@@ -1199,12 +1197,60 @@ public interface IAerospikeClient extends Closeable {
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement)
 		throws AerospikeException;
+
+	/**
+	 * Execute query on all server nodes and return records via the listener. This method will
+	 * block until the query is complete. Listener callbacks are made within the scope of this call.
+	 * <p>
+	 * If {@link com.aerospike.client.policy.QueryPolicy#maxConcurrentNodes} is not 1, the supplied
+	 * listener must handle shared data in a thread-safe manner, because the listener will be called
+	 * by multiple query threads (one thread per node) in parallel.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition.
+	 * @param listener				where to send results
+	 * @throws AerospikeException	if query fails
+	 */
+	public void query(
+		QueryPolicy policy,
+		Statement statement,
+		QueryListener listener
+	) throws AerospikeException;
+
+	/**
+	 * Execute query for specified partitions and return records via the listener. This method will
+	 * block until the query is complete. Listener callbacks are made within the scope of this call.
+	 * <p>
+	 * If {@link com.aerospike.client.policy.QueryPolicy#maxConcurrentNodes} is not 1, the supplied
+	 * listener must handle shared data in a thread-safe manner, because the listener will be called
+	 * by multiple query threads (one thread per node) in parallel.
+	 * <p>
+	 * The completion status of all partitions is stored in the partitionFilter when the query terminates.
+	 * This partitionFilter can then be used to resume an incomplete query at a later time.
+	 * This is the preferred method for query terminate/resume functionality.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
+	 *
+	 * @param policy				query configuration parameters, pass in null for defaults
+	 * @param statement				query definition.
+	 * @param partitionFilter		data partition filter. Set to
+	 * 								{@link com.aerospike.client.query.PartitionFilter#all()} for all partitions.
+	 * @param listener				where to send results
+	 * @throws AerospikeException	if query fails
+	 */
+	public void query(
+		QueryPolicy policy,
+		Statement statement,
+		PartitionFilter partitionFilter,
+		QueryListener listener
+	) throws AerospikeException;
 
 	/**
 	 * Execute query on a single server node and return record iterator.  The query executor puts
@@ -1212,8 +1258,7 @@ public interface IAerospikeClient extends Closeable {
 	 * the queue through the record iterator.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param node					server node to execute query
 	 * @return						record iterator
 	 * @throws AerospikeException	if query fails
@@ -1225,10 +1270,11 @@ public interface IAerospikeClient extends Closeable {
 	 * Execute query for specified partitions and return record iterator.  The query executor puts
 	 * records on a queue in separate threads.  The calling thread concurrently pops records off
 	 * the queue through the record iterator.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
@@ -1241,13 +1287,14 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
+	 * <p>
+	 * Requires server version 6.0+ if using a secondary index query.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
 	 * @param listener				where to send results
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param partitionFilter		filter on a subset of data partitions
 	 * @throws AerospikeException	if query fails
 	 */
@@ -1266,8 +1313,7 @@ public interface IAerospikeClient extends Closeable {
 	 * {@code udf file = <udf dir>/<package name>.lua}
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param packageName			server package where user defined function resides
 	 * @param functionName			aggregation function name
 	 * @param functionArgs			arguments to pass to function name, if any
@@ -1293,8 +1339,7 @@ public interface IAerospikeClient extends Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @throws AerospikeException	if query fails
 	 */
 	public ResultSet queryAggregate(QueryPolicy policy, Statement statement)
@@ -1312,8 +1357,7 @@ public interface IAerospikeClient extends Closeable {
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query filter. Statement instance is not suitable for
-	 * 								reuse since it's modified in this method.
+	 * @param statement				query definition
 	 * @param node					server node to execute query
 	 * @throws AerospikeException	if query fails
 	 */

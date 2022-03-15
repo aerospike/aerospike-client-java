@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,6 @@
 package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -37,7 +36,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	int batchIndex;
 	int fieldCount;
 	int opCount;
-	private final boolean isBatch;
 	protected final boolean isOperation;
 
 	/**
@@ -47,7 +45,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		super(policy, false);
 		this.parent = parent;
 		this.node = node;
-		this.isBatch = true;
 		this.isOperation = isOperation;
 	}
 
@@ -58,7 +55,6 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		super(policy, socketTimeout, totalTimeout);
 		this.parent = parent;
 		this.node = node;
-		this.isBatch = false;
 		this.isOperation = false;
 	}
 
@@ -101,14 +97,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
 
-			if (isBatch) {
-				skipKey(fieldCount);
-				parseRow(null);
-			}
-			else {
-				Key key = parseKey(fieldCount);
-				parseRow(key);
-			}
+			parseRow();
 		}
 		return false;
 	}
@@ -131,5 +120,5 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		parent.childFailure(e);
 	}
 
-	protected abstract void parseRow(Key key);
+	protected abstract void parseRow();
 }

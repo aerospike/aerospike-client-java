@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,6 @@ public final class QueryRecordExecutor extends QueryExecutor {
 	public QueryRecordExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) {
 		super(cluster, policy, statement, nodes);
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		statement.prepare(true);
 		initializeThreads();
 	}
 
@@ -38,7 +37,7 @@ public final class QueryRecordExecutor extends QueryExecutor {
 
 	@Override
 	protected MultiCommand createCommand(Node node, long clusterKey, boolean first) {
-		return new QueryRecordCommand(cluster, node, policy, statement, recordSet, clusterKey, first);
+		return new QueryRecordCommand(cluster, node, policy, statement, taskId, recordSet, clusterKey, first);
 	}
 
 	@Override

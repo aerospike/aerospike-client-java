@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -179,6 +179,9 @@ public class Cluster implements Runnable, Closeable {
 
 	// Is authentication enabled
 	public final boolean authEnabled;
+
+	// Does cluster support query by partition.
+	public boolean hasPartitionQuery;
 
 	private boolean asyncComplete;
 
@@ -785,6 +788,7 @@ public class Cluster implements Runnable, Closeable {
 			nodeArray[count++] = peer;
 			addNode(peer);
 		}
+		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -809,6 +813,7 @@ public class Cluster implements Runnable, Closeable {
 			nodeArray[count++] = node;
 			addNode(node);
 		}
+		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -884,6 +889,7 @@ public class Cluster implements Runnable, Closeable {
 			System.arraycopy(nodeArray, 0, nodeArray2, 0, count);
 			nodeArray = nodeArray2;
 		}
+		hasPartitionQuery = Cluster.supportsPartitionQuery(nodeArray);
 
 		// Replace nodes with copy.
 		nodes = nodeArray;
@@ -1250,6 +1256,19 @@ public class Cluster implements Runnable, Closeable {
 	 */
 	public final void setErrorRateWindow(int window) {
 		this.errorRateWindow = window;
+	}
+
+	private static boolean supportsPartitionQuery(Node[] nodes) {
+		if (nodes.length == 0) {
+			return false;
+		}
+
+		for (Node node : nodes) {
+			if (! node.hasPartitionQuery()) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	public final ExecutorService getThreadPool() {

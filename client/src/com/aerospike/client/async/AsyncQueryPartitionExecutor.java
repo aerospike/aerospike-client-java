@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,6 +33,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 	private final RecordSequenceListener listener;
 	private final Statement statement;
 	private final PartitionTracker tracker;
+	private long taskId;
 
 	public AsyncQueryPartitionExecutor(
 		EventLoop eventLoop,
@@ -48,27 +49,26 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		this.statement = statement;
 		this.tracker = tracker;
 
-		statement.setReturnData(true);
+		taskId = statement.prepareTaskId();
 		tracker.setSleepBetweenRetries(0);
 		queryPartitions();
 	}
 
 	private void queryPartitions() {
-		statement.setTaskId(RandomShift.instance().nextLong());
 		List<NodePartitions> nodePartitionsList = tracker.assignPartitionsToNodes(cluster, statement.getNamespace());
 
 		AsyncQueryPartition[] tasks = new AsyncQueryPartition[nodePartitionsList.size()];
 		int count = 0;
 
 		for (NodePartitions nodePartitions : nodePartitionsList) {
-			tasks[count++] = new AsyncQueryPartition(this, policy, listener, statement, tracker, nodePartitions);
+			tasks[count++] = new AsyncQueryPartition(this, policy, listener, statement, taskId, tracker, nodePartitions);
 		}
 		execute(tasks, policy.maxConcurrentNodes);
 	}
 
 	protected void onSuccess() {
 		try {
-			if (tracker.isComplete(policy)) {
+			if (tracker.isComplete(cluster, policy)) {
 				listener.onSuccess();
 				return;
 			}
@@ -81,6 +81,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 					public void run() {
 						try {
 							reset();
+							taskId = RandomShift.instance().nextLong();
 							queryPartitions();
 						}
 						catch (AerospikeException ae) {
@@ -94,6 +95,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 			}
 			else {
 				reset();
+				taskId = RandomShift.instance().nextLong();
 				queryPartitions();
 			}
 		}
