@@ -28,6 +28,7 @@ import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 
 public final class AsyncQueryPartition extends AsyncMultiCommand {
+	private final AsyncMultiExecutor parent;
 	private final RecordSequenceListener listener;
 	private final Statement statement;
 	private final long taskId;
@@ -43,7 +44,8 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
-		super(parent, nodePartitions.node, policy, tracker.socketTimeout, tracker.totalTimeout);
+		super(nodePartitions.node, policy, tracker.socketTimeout, tracker.totalTimeout);
+		this.parent = parent;
 		this.listener = listener;
 		this.statement = statement;
 		this.taskId = taskId;
@@ -78,6 +80,12 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 		Record record = parseRecord();
 		listener.onRecord(key, record);
 		tracker.setLast(nodePartitions, key, bval.val);
+	}
+
+
+	@Override
+	protected void onSuccess() {
+		parent.childSuccess(node);
 	}
 
 	@Override

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,5 +24,5 @@ import com.aerospike.client.command.Command;
  */
 public interface CommandExp {
 	public int size();
-	public int write(Command cmd);
+	public void write(Command cmd);
 }

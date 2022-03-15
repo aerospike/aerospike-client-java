@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -87,6 +87,25 @@ public final class Partition {
 		default:
 			return policy.replica;
 		}
+	}
+
+	public static Node getNodeBatchWrite(
+		Cluster cluster,
+		Key key,
+		Replica replica,
+		Node prevNode,
+		int sequence
+	) {
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(key.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
+		}
+
+		Partition p = new Partition(partitions, key, replica, prevNode, false);
+		p.sequence = sequence;
+		return p.getNodeWrite(cluster);
 	}
 
 	public static Node getNodeBatchRead(

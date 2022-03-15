@@ -25,6 +25,7 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Statement;
 
 public final class AsyncQuery extends AsyncMultiCommand {
+	private final AsyncMultiExecutor parent;
 	private final RecordSequenceListener listener;
 	private final Statement statement;
 	private final long taskId;
@@ -37,7 +38,8 @@ public final class AsyncQuery extends AsyncMultiCommand {
 		Statement statement,
 		long taskId
 	) {
-		super(parent, node, policy, policy.socketTimeout, policy.totalTimeout);
+		super(node, policy, policy.socketTimeout, policy.totalTimeout);
+		this.parent = parent;
 		this.listener = listener;
 		this.statement = statement;
 		this.taskId = taskId;
@@ -58,5 +60,15 @@ public final class AsyncQuery extends AsyncMultiCommand {
 
 		Record record = parseRecord();
 		listener.onRecord(key, record);
+	}
+
+	@Override
+	protected void onSuccess() {
+		parent.childSuccess(node);
+	}
+
+	@Override
+	protected void onFailure(AerospikeException e) {
+		parent.childFailure(e);
 	}
 }

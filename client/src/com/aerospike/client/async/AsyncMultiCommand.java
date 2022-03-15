@@ -25,8 +25,6 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
-
-	final AsyncMultiExecutor parent;
 	final Node node;
 	int groups;
 	int info3;
@@ -41,9 +39,8 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	/**
 	 * Batch constructor.
 	 */
-	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, boolean isOperation) {
+	public AsyncMultiCommand(Node node, Policy policy, boolean isOperation) {
 		super(policy, false);
-		this.parent = parent;
 		this.node = node;
 		this.isOperation = isOperation;
 	}
@@ -51,9 +48,8 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	/**
 	 * Scan/Query constructor.
 	 */
-	public AsyncMultiCommand(AsyncMultiExecutor parent, Node node, Policy policy, int socketTimeout, int totalTimeout) {
+	public AsyncMultiCommand(Node node, Policy policy, int socketTimeout, int totalTimeout) {
 		super(policy, socketTimeout, totalTimeout);
-		this.parent = parent;
 		this.node = node;
 		this.isOperation = false;
 	}
@@ -69,7 +65,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	}
 
 	@Override
-	final boolean parseResult() {
+	protected boolean parseResult() {
 		while (dataOffset < receiveSize) {
 			dataOffset += 3;
 			info3 = dataBuffer[dataOffset] & 0xFF;
@@ -102,6 +98,8 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 		return false;
 	}
 
+	protected abstract void parseRow();
+
 	protected final Record parseRecord() {
 		if (opCount <= 0) {
 			return new Record(null, generation, expiration);
@@ -109,16 +107,4 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 
 		return parseRecord(opCount, generation, expiration, isOperation);
 	}
-
-	@Override
-	protected final void onSuccess() {
-		parent.childSuccess(node);
-	}
-
-	@Override
-	protected void onFailure(AerospikeException e) {
-		parent.childFailure(e);
-	}
-
-	protected abstract void parseRow();
 }

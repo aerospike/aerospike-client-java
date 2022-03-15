@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,7 @@ import com.aerospike.client.Record;
  */
 public interface RecordArrayListener {
 	/**
-	 * This method is called when an asynchronous batch get command completes successfully.
+	 * This method is called when the command completes successfully.
 	 * The returned record array is in positional order with the original key array order.
 	 *
 	 * @param keys			unique record identifiers
@@ -35,9 +35,9 @@ public interface RecordArrayListener {
 	public void onSuccess(Key[] keys, Record[] records);
 
 	/**
-	 * This method is called when an asynchronous batch get command fails.
-	 *
-	 * @param exception		error that occurred
+	 * This method is called when the command fails. The AerospikeException is likely to be
+	 * {@link com.aerospike.client.AerospikeException.BatchRecords} which contains results
+	 * for keys that did complete.
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

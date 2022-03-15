@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -152,6 +152,22 @@ public final class Record {
 	 */
 	public Map<?,?> getMap(String name) {
 		return (Map<?,?>)getValue(name);
+	}
+
+	/**
+	 * Get the value returned by a UDF execute in a batch.
+	 * The result may be null.
+	 */
+	public Object getUDFResult() {
+		return getValue("SUCCESS");
+	}
+
+	/**
+	 * Get the error string returned by a UDF execute in a batch.
+	 * Return null if an error did not occur.
+	 */
+	public String getUDFError() {
+		return getString("FAILURE");
 	}
 
 	/**

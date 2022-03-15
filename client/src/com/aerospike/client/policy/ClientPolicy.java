@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -226,9 +226,32 @@ public class ClientPolicy {
 	public QueryPolicy queryPolicyDefault = new QueryPolicy();
 
 	/**
-	 * Default batch policy that is used when batch command's policy is null.
+	 * Default parent policy used in batch read commands. Parent policy fields
+	 * include socketTimeout, totalTimeout, maxRetries, etc...
 	 */
-	public BatchPolicy batchPolicyDefault = new BatchPolicy();
+	public BatchPolicy batchPolicyDefault = BatchPolicy.ReadDefault();
+
+	/**
+	 * Default parent policy used in batch write commands. Parent policy fields
+	 * include socketTimeout, totalTimeout, maxRetries, etc...
+	 */
+	public BatchPolicy batchParentPolicyWriteDefault = BatchPolicy.WriteDefault();
+
+	/**
+	 * Default write policy used in batch operate commands.
+	 * Write policy fields include generation, expiration, durableDelete, etc...
+	 */
+	public BatchWritePolicy batchWritePolicyDefault = new BatchWritePolicy();
+
+	/**
+	 * Default delete policy used in batch delete commands.
+	 */
+	public BatchDeletePolicy batchDeletePolicyDefault = new BatchDeletePolicy();
+
+	/**
+	 * Default user defined function policy used in batch UDF excecute commands.
+	 */
+	public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
 
 	/**
 	 * Default info policy that is used when info command's policy is null.
@@ -376,6 +399,10 @@ public class ClientPolicy {
 		this.scanPolicyDefault = new ScanPolicy(other.scanPolicyDefault);
 		this.queryPolicyDefault = new QueryPolicy(other.queryPolicyDefault);
 		this.batchPolicyDefault = new BatchPolicy(other.batchPolicyDefault);
+		this.batchParentPolicyWriteDefault = new BatchPolicy(other.batchParentPolicyWriteDefault);
+		this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
+		this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
+		this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
 		this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;

@@ -16,33 +16,23 @@
  */
 package com.aerospike.client.listener;
 
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
 
 /**
- * Asynchronous result notifications for batch get commands with variable bins per key.
- * The results are sent one batch record at a time.
+ * Asynchronous result notifications for batch operate commands with variable operations.
  */
-public interface BatchSequenceListener {
-	/**
-	 * This method is called when an asynchronous batch record is received from the server.
-	 * The receive sequence is not ordered.
-	 * <p>
-	 * The user may throw {@link com.aerospike.client.AerospikeException} if the
-	 * command should be aborted. If any exception is thrown, parallel command threads
-	 * to other nodes will also be terminated and the exception will be propagated back
-	 * through the onFailure() call.
-	 *
-	 * @param record		record instance, {@link com.aerospike.client.BatchRecord#record}
-	 *						will be null if the key is not found
-	 * @throws AerospikeException	if error occurs or batch should be terminated.
-	 */
-	public void onRecord(BatchRead record);
-
+public interface BatchOperateListListener {
 	/**
 	 * This method is called when the command completes successfully.
+	 *
+	 * @param records		record instances, {@link com.aerospike.client.BatchRecord#record}
+	 *						will be null if an error occurred for that key.
+	 * @param status		true if all records returned success.
 	 */
-	public void onSuccess();
+	public void onSuccess(List<BatchRecord> records, boolean status);
 
 	/**
 	 * This method is called when the command fails.

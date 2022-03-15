@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,6 +48,7 @@ public abstract class AsyncCommand extends Command {
 	Policy policy;
 	ArrayDeque<byte[]> bufferQueue;
 	int receiveSize;
+	int commandSentCounter;
 	final boolean isSingle;
 	boolean compressed;
 	boolean valid = true;

@@ -20,9 +20,11 @@ import java.util.List;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
@@ -38,38 +40,59 @@ public final class Batch {
 
 		public ReadListCommand(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
-			List<BatchRead> records
+			List<BatchRead> records,
+			BatchStatus status
 		) {
-			super(cluster, parent, batch, policy, true);
+			super(cluster, batch, policy, status, true);
 			this.records = records;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, records, batch);
+			if (batch.node.hasBatchAny()) {
+				setBatchOperate(batchPolicy, records, batch);
+			}
+			else {
+				setBatchRead(batchPolicy, records, batch);
+			}
 		}
 
 		@Override
 		protected void parseRow() {
 			skipKey(fieldCount);
 
+			BatchRead record = records.get(batchIndex);
+
 			if (resultCode == 0) {
-				BatchRead record = records.get(batchIndex);
-				record.record = parseRecord();
+				record.setRecord(parseRecord());
+			}
+			else {
+				record.setError(resultCode, false);
+				status.setRowError();
+			}
+		}
+
+		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			for (int index : batch.offsets) {
+				BatchRecord record = records.get(index);
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.setError(resultCode, false);
+				}
 			}
 		}
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new ReadListCommand(cluster, parent, batchNode, batchPolicy, records);
+			return new ReadListCommand(cluster, batchNode, batchPolicy, records, status);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch, status);
 		}
 	}
 
@@ -86,7 +109,6 @@ public final class Batch {
 
 		public GetArrayCommand(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
@@ -94,9 +116,10 @@ public final class Batch {
 			Operation[] ops,
 			Record[] records,
 			int readAttr,
-			boolean isOperation
+			boolean isOperation,
+			BatchStatus status
 		) {
-			super(cluster, parent, batch, policy, isOperation);
+			super(cluster, batch, policy, status, isOperation);
 			this.keys = keys;
 			this.binNames = binNames;
 			this.ops = ops;
@@ -106,7 +129,13 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
+			if (batch.node.hasBatchAny()) {
+				BatchAttr attr = new BatchAttr(policy, readAttr);
+				setBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
+			}
+			else {
+				setBatchRead(batchPolicy, keys, batch, binNames, ops, readAttr);
+			}
 		}
 
 		@Override
@@ -119,13 +148,18 @@ public final class Batch {
 		}
 
 		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			// records does not store error/inDoubt.
+		}
+
+		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new GetArrayCommand(cluster, parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
+			return new GetArrayCommand(cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -139,20 +173,26 @@ public final class Batch {
 
 		public ExistsArrayCommand(
 			Cluster cluster,
-			Executor parent,
 			BatchNode batch,
 			BatchPolicy policy,
 			Key[] keys,
-			boolean[] existsArray
+			boolean[] existsArray,
+			BatchStatus status
 		) {
-			super(cluster, parent, batch, policy, false);
+			super(cluster, batch, policy, status, false);
 			this.keys = keys;
 			this.existsArray = existsArray;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			if (batch.node.hasBatchAny()) {
+				BatchAttr attr = new BatchAttr(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				setBatchOperate(batchPolicy, keys, batch, null, null, attr);
+			}
+			else {
+				setBatchRead(batchPolicy, keys, batch, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA);
+			}
 		}
 
 		@Override
@@ -167,13 +207,267 @@ public final class Batch {
 		}
 
 		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			// existsArray does not store error/inDoubt.
+		}
+
+		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new ExistsArrayCommand(cluster, parent, batchNode, batchPolicy, keys, existsArray);
+			return new ExistsArrayCommand(cluster, batchNode, batchPolicy, keys, existsArray, status);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// OperateList
+	//-------------------------------------------------------
+
+	public static final class OperateListCommand extends BatchCommand {
+		private final List<BatchRecord> records;
+
+		public OperateListCommand(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy policy,
+			List<BatchRecord> records,
+			BatchStatus status
+		) {
+			super(cluster, batch, policy, status, true);
+			this.records = records;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			// This method is only called to set inDoubt on node level errors.
+			// setError() will filter out reads when setting record level inDoubt.
+			return true;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchOperate(batchPolicy, records, batch);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records.get(batchIndex);
+
+			if (resultCode == 0) {
+				record.setRecord(parseRecord());
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parseRecord();
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = Command.batchInDoubt(record.hasWrite, commandSentCounter);
+					status.setRowError();
+					return;
+				}
+			}
+
+			record.setError(resultCode, Command.batchInDoubt(record.hasWrite, commandSentCounter));
+			status.setRowError();
+		}
+
+		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			for (int index : batch.offsets) {
+				BatchRecord record = records.get(index);
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.setError(resultCode, record.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new OperateListCommand(cluster, batchNode, batchPolicy, records, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, records, sequenceAP, sequenceSC, batch, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// OperateArray
+	//-------------------------------------------------------
+
+	public static final class OperateArrayCommand extends BatchCommand {
+		private final Key[] keys;
+		private final Operation[] ops;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public OperateArrayCommand(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Operation[] ops,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, ops != null);
+ 			this.keys = keys;
+			this.ops = ops;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return attr.hasWrite;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchOperate(batchPolicy, keys, batch, null, ops, attr);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.setRecord(parseRecord());
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				status.setRowError();
+			}
+		}
+
+		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			for (int index : batch.offsets) {
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.setError(resultCode, attr.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new OperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+
+	//-------------------------------------------------------
+	// UDF
+	//-------------------------------------------------------
+
+	public static final class UDFCommand extends BatchCommand {
+		private final Key[] keys;
+		private final String packageName;
+		private final String functionName;
+		private final byte[] argBytes;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public UDFCommand(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			byte[] argBytes,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, false);
+ 			this.keys = keys;
+ 			this.packageName = packageName;
+ 			this.functionName = functionName;
+ 			this.argBytes = argBytes;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return attr.hasWrite;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchUDF(batchPolicy, keys, batch, packageName, functionName, argBytes, attr);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.setRecord(parseRecord());
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parseRecord();
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = Command.batchInDoubt(attr.hasWrite, commandSentCounter);
+					status.setRowError();
+					return;
+				}
+			}
+
+			record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+			status.setRowError();
+		}
+
+		@Override
+		protected void setError(int resultCode, boolean inDoubt) {
+			for (int index : batch.offsets) {
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.setError(resultCode, attr.hasWrite && inDoubt);
+				}
+			}
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new UDFCommand(cluster, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
 		}
 	}
 
@@ -181,18 +475,52 @@ public final class Batch {
 	// Batch Base Command
 	//-------------------------------------------------------
 
-	private static abstract class BatchCommand extends MultiCommand {
-		final Executor parent;
+	public static abstract class BatchCommand extends MultiCommand implements Runnable {
 		final BatchNode batch;
 		final BatchPolicy batchPolicy;
+		final BatchStatus status;
+		BatchExecutor parent;
 		int sequenceAP;
 		int sequenceSC;
+		boolean splitRetry;
 
-		public BatchCommand(Cluster cluster, Executor parent, BatchNode batch, BatchPolicy batchPolicy, boolean isOperation) {
+		public BatchCommand(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			BatchStatus status,
+			boolean isOperation
+		) {
 			super(cluster, batchPolicy, batch.node, isOperation);
-			this.parent = parent;
 			this.batch = batch;
 			this.batchPolicy = batchPolicy;
+			this.status = status;
+		}
+
+		@Override
+		public void run() {
+			try {
+				execute();
+			}
+			catch (AerospikeException ae) {
+				// Set error/inDoubt for keys associated this batch command when
+				// the command was not retried and split. If a split retry occurred,
+				// those new subcommands have already set error/inDoubt on the affected
+				// subset of keys.
+				if (! splitRetry) {
+					setError(ae.getResultCode(), ae.getInDoubt());
+				}
+				status.setException(ae);
+			}
+			catch (RuntimeException re) {
+				if (! splitRetry) {
+					setError(ResultCode.CLIENT_ERROR, true);
+				}
+				status.setException(re);
+			}
+			finally {
+				parent.onComplete();
+			}
 		}
 
 		@Override
@@ -228,9 +556,12 @@ public final class Batch {
 				return false;
 			}
 
+			splitRetry = true;
+
 			// Run batch requests sequentially in same thread.
 			for (BatchNode batchNode : batchNodes) {
 				BatchCommand command = createCommand(batchNode);
+				command.parent = parent;
 				command.sequenceAP = sequenceAP;
 				command.sequenceSC = sequenceSC;
 				command.socketTimeout = socketTimeout;
@@ -238,11 +569,35 @@ public final class Batch {
 				command.iteration = iteration;
 				command.commandSentCounter = commandSentCounter;
 				command.deadline = deadline;
-				command.executeCommand();
+
+				try {
+					command.executeCommand();
+				}
+				catch (AerospikeException ae) {
+					if (! command.splitRetry) {
+						command.setError(ae.getResultCode(), ae.getInDoubt());
+					}
+					status.setException(ae);
+
+					if (!batchPolicy.respondAllKeys) {
+						throw ae;
+					}
+				}
+				catch (RuntimeException re) {
+					if (! command.splitRetry) {
+						command.setError(ResultCode.CLIENT_ERROR, true);
+					}
+					status.setException(re);
+
+					if (!batchPolicy.respondAllKeys) {
+						throw re;
+					}
+				}
 			}
 			return true;
 		}
 
+		abstract void setError(int resultCode, boolean inDoubt);
 		abstract BatchCommand createCommand(BatchNode batchNode);
 		abstract List<BatchNode> generateBatchNodes();
 	}

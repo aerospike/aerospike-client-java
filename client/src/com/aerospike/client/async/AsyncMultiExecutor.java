@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,6 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 
 public abstract class AsyncMultiExecutor {
-
 	final EventLoop eventLoop;
 	final Cluster cluster;
 	private AsyncMultiCommand[] commands;
@@ -30,29 +29,11 @@ public abstract class AsyncMultiExecutor {
 	private long clusterKey;
 	private int maxConcurrent;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
-	private final boolean stopOnFailure;
 	boolean done;
 
 	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
-		this.stopOnFailure = true;
-	}
-
-	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster, boolean stopOnFailure) {
-		this.eventLoop = eventLoop;
-		this.cluster = cluster;
-		this.stopOnFailure = stopOnFailure;
-	}
-
-	public void setException(AerospikeException ae) {
-		this.exception = ae;
-	}
-
-	public void resetException(AerospikeException ae) {
-		if (ae != null && exception == null) {
-			exception = ae;
-		}
 	}
 
 	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {
@@ -61,31 +42,6 @@ public abstract class AsyncMultiExecutor {
 
 		for (int i = 0; i < this.maxConcurrent; i++) {
 			eventLoop.execute(cluster, commands[i]);
-		}
-	}
-
-	public void executeBatchRetry(AsyncMultiCommand[] cmds, AsyncMultiCommand orig, Runnable other, long deadline) {
-		// Create new commands array.
-		AsyncMultiCommand[] target = new AsyncMultiCommand[commands.length + cmds.length - 1];
-		int count = 0;
-
-		for (AsyncMultiCommand cmd : commands) {
-			if (cmd != orig) {
-				target[count++] = cmd;
-			}
-		}
-
-		for (AsyncMultiCommand cmd : cmds) {
-			target[count++] = cmd;
-		}
-		commands = target;
-
-		// Batch executors always execute all commands at once.
-		// Execute all new commands.
-		maxConcurrent = commands.length;
-
-		for (AsyncMultiCommand cmd : cmds) {
-			eventLoop.executeBatchRetry(other, cmd, deadline);
 		}
 	}
 
@@ -180,24 +136,15 @@ public abstract class AsyncMultiExecutor {
 	}
 
 	final void childFailure(AerospikeException ae) {
-		if (stopOnFailure) {
-			// There is no need to stop commands if all commands have already completed.
-			if (! done) {
-				done = true;
+		// There is no need to stop commands if all commands have already completed.
+		if (! done) {
+			done = true;
 
-				// Send stop signal to all commands.
-				for (AsyncMultiCommand command : commands) {
-					command.stop();
-				}
-				onFailure(ae);
+			// Send stop signal to all commands.
+			for (AsyncMultiCommand command : commands) {
+				command.stop();
 			}
-		}
-		else {
-			// Batch sequence executors continue processing.
-			if (exception == null) {
-				exception = ae;
-			}
-			queryComplete();
+			onFailure(ae);
 		}
 	}
 

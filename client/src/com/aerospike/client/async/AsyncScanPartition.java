@@ -26,6 +26,7 @@ import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 
 public final class AsyncScanPartition extends AsyncMultiCommand {
+	private final AsyncMultiExecutor parent;
 	private final ScanPolicy scanPolicy;
 	private final RecordSequenceListener listener;
 	private final String namespace;
@@ -46,7 +47,8 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		PartitionTracker tracker,
 		NodePartitions nodePartitions
 	) {
-		super(parent, nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout);
+		super(nodePartitions.node, scanPolicy, tracker.socketTimeout, tracker.totalTimeout);
+		this.parent = parent;
 		this.scanPolicy = scanPolicy;
 		this.listener = listener;
 		this.namespace = namespace;
@@ -83,6 +85,11 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		Record record = parseRecord();
 		listener.onRecord(key, record);
 		tracker.setDigest(nodePartitions, key);
+	}
+
+	@Override
+	protected void onSuccess() {
+		parent.childSuccess(node);
 	}
 
 	@Override

@@ -307,6 +307,9 @@ public final class NodeValidator {
 				else if (featuresString.regionMatches(begin, "query-show", 0, len)) {
 					this.features |= Node.HAS_QUERY_SHOW;
 				}
+				else if (featuresString.regionMatches(begin, "batch-any", 0, len)) {
+					this.features |= Node.HAS_BATCH_ANY;
+				}
 				else if (featuresString.regionMatches(begin, "pquery", 0, len)) {
 					this.features |= Node.HAS_PARTITION_QUERY;
 				}

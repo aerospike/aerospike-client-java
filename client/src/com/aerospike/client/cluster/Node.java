@@ -53,7 +53,8 @@ public class Node implements Closeable {
 
 	public static final int HAS_PARTITION_SCAN = (1 << 0);
 	public static final int HAS_QUERY_SHOW = (1 << 1);
-	public static final int HAS_PARTITION_QUERY = (1 << 2);
+	public static final int HAS_BATCH_ANY = (1 << 2);
+	public static final int HAS_PARTITION_QUERY = (1 << 3);
 
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
@@ -1101,6 +1102,10 @@ public class Node implements Closeable {
 
 	public final boolean hasQueryShow() {
 		return (features & HAS_QUERY_SHOW) != 0;
+	}
+
+	public final boolean hasBatchAny() {
+		return (features & HAS_BATCH_ANY) != 0;
 	}
 
 	public final boolean hasPartitionQuery() {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -72,7 +72,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 	long totalDeadline;
 	int state;
 	int iteration;
-	int commandSentCounter;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
@@ -109,7 +108,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
 		this.iteration = other.iteration;
-		this.commandSentCounter = other.commandSentCounter;
 		this.hasTotalTimeout = other.hasTotalTimeout;
 		this.usingSocketTimeout = other.usingSocketTimeout;
 
@@ -454,7 +452,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				switch (state) {
 				case AsyncCommand.COMMAND_WRITE:
 					state = AsyncCommand.COMMAND_READ_HEADER;
-					commandSentCounter++;
+					command.commandSentCounter++;
 					break;
 
 				case AsyncCommand.AUTH_WRITE:
@@ -1032,7 +1030,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			ae.setNode(node);
 			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
-			ae.setInDoubt(command.isWrite(), commandSentCounter);
+			ae.setInDoubt(command.isWrite(), command.commandSentCounter);
 			command.onFailure(ae);
 		}
 		catch (Throwable e) {

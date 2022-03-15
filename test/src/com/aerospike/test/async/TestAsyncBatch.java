@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,18 +23,27 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchDelete;
 import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
 import com.aerospike.client.cdt.ListReturnType;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
+import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
+import com.aerospike.client.listener.BatchOperateListListener;
+import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
@@ -44,11 +53,16 @@ import com.aerospike.client.policy.WritePolicy;
 
 public class TestAsyncBatch extends TestAsync {
 	private static final String BinName = "batchbin";
+	private static final String BinName2 = "batchbin2";
+	private static final String BinName3 = "batchbin3";
 	private static final String ListBin = "listbin";
+	private static final String ListBin2 = "listbin2";
+	private static final String ListBin3 = "listbin3";
 	private static final String KeyPrefix = "batchkey";
 	private static final String ValuePrefix = "batchvalue";
 	private static final int Size = 8;
 	private static Key[] sendKeys;
+	private static Key[] deleteKeys;
 
 	@BeforeClass
 	public static void initialize() {
@@ -58,6 +72,10 @@ public class TestAsyncBatch extends TestAsync {
 			sendKeys[i] = new Key(args.namespace, args.set, KeyPrefix + (i + 1));
 		}
 
+		deleteKeys = new Key[2];
+		deleteKeys[0] = new Key(args.namespace, args.set, 10000);
+		deleteKeys[1] = new Key(args.namespace, args.set, 10001);
+
 		AsyncMonitor monitor = new AsyncMonitor();
 
 		WriteListener listener = new WriteListener() {
@@ -66,7 +84,7 @@ public class TestAsyncBatch extends TestAsync {
 			public void onSuccess(final Key key) {
 				// Use non-atomic increment because all writes are performed
 				// in the same event loop thread.
-				if (++count == Size) {
+				if (++count == Size + 3) {
 					monitor.notifyComplete();
 				}
 			}
@@ -90,15 +108,35 @@ public class TestAsyncBatch extends TestAsync {
 				list.add(j * i);
 			}
 
+			List<Integer> list2 = new ArrayList<Integer>();
+
+			for (int j = 0; j < 2; j++) {
+				list2.add(j);
+			}
+
+			List<Integer> list3 = new ArrayList<Integer>();
+
+			for (int j = 0; j < 2; j++) {
+				list3.add(j);
+			}
+
 			Bin listBin = new Bin(ListBin, list);
+			Bin listBin2 = new Bin(ListBin2, list2);
+			Bin listBin3 = new Bin(ListBin3, list3);
 
 			if (i != 6) {
-				client.put(eventLoop, listener, policy, key, bin, listBin);
+				client.put(eventLoop, listener, policy, key, bin, listBin, listBin2, listBin3);
 			}
 			else {
-				client.put(eventLoop, listener, policy, key, new Bin(BinName, i), listBin);
+				client.put(eventLoop, listener, policy, key, new Bin(BinName, i), listBin, listBin2, listBin3);
 			}
 		}
+
+		// Add records that will eventually be deleted.
+		client.put(eventLoop, listener, policy, deleteKeys[0], new Bin(BinName, 10000));
+		client.put(eventLoop, listener, policy, deleteKeys[1], new Bin(BinName, 10001));
+		client.put(eventLoop, listener, policy, new Key(args.namespace, args.set, 10002), new Bin(BinName, 10002));
+
 		monitor.waitTillComplete();
 	}
 
@@ -308,7 +346,7 @@ public class TestAsyncBatch extends TestAsync {
 	}
 
 	@Test
-	public void asyncBatchListOperate() throws Exception {
+	public void asyncBatchListReadOperate() throws Exception {
 		client.get(eventLoop, new RecordArrayListener() {
 			public void onSuccess(Key[] keys, Record[] records) {
 				if (assertEquals(Size, records.length)) {
@@ -333,6 +371,244 @@ public class TestAsyncBatch extends TestAsync {
 			ListOperation.size(ListBin),
 			ListOperation.getByIndex(ListBin, -1, ListReturnType.VALUE)
 		);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchListWriteOperate() {
+		client.operate(eventLoop, new BatchRecordArrayListener() {
+			public void onSuccess(BatchRecord[] records, boolean status) {
+				assertEquals(true, status);
+
+				if (assertEquals(Size, records.length)) {
+					for (int i = 0; i < records.length; i++) {
+						Record record = records[i].record;
+						List<?> results = record.getList(ListBin2);
+						long size = (Long)results.get(1);
+						long val = (Long)results.get(2);
+
+						assertEquals(3, size);
+						assertEquals(1, val);
+					}
+				}
+				notifyComplete();
+			}
+
+			public void onFailure(BatchRecord[] records, AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, null, sendKeys,
+			ListOperation.insert(ListBin2, 0, Value.get(1000)),
+			ListOperation.size(ListBin2),
+			ListOperation.getByIndex(ListBin2, -1, ListReturnType.VALUE)
+		);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchSeqListWriteOperate() {
+		client.operate(eventLoop, new BatchRecordSequenceListener() {
+			int count = 0;
+
+			public void onRecord(BatchRecord record, int index) {
+				Record rec = record.record;
+				List<?> results = rec.getList(ListBin3);
+				long size = (Long)results.get(1);
+				long val = (Long)results.get(2);
+
+				assertEquals(3, size);
+				assertEquals(1, val);
+				count++;
+			}
+
+			public void onSuccess() {
+				assertEquals(Size, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, null, sendKeys,
+			ListOperation.insert(ListBin3, 0, Value.get(1000)),
+			ListOperation.size(ListBin3),
+			ListOperation.getByIndex(ListBin3, -1, ListReturnType.VALUE)
+		);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchWriteComplex() {
+		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName), Exp.val(1000)));
+
+		Operation[] ops1 = Operation.array(
+			Operation.put(new Bin(BinName2, 100)),
+			Operation.get(BinName2));
+
+		Operation[] ops2 = Operation.array(
+			ExpOperation.write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
+			Operation.get(BinName3));
+
+		List<BatchRecord> records = new ArrayList<BatchRecord>();
+		records.add(new BatchWrite(new Key(args.namespace, args.set, KeyPrefix + 1), ops1));
+		records.add(new BatchWrite(new Key(args.namespace, args.set, KeyPrefix + 6), ops2));
+
+		client.operate(eventLoop, new BatchOperateListListener() {
+			public void onSuccess(List<BatchRecord> records, boolean status) {
+				try {
+					assertEquals(true, status);
+
+					BatchRecord r = records.get(0);
+					assertBatchBinEqual(r, BinName2, 100);
+
+					r = records.get(1);
+					assertBatchBinEqual(r, BinName3, 1006);
+				}
+				catch (Throwable e) {
+					setError(new AerospikeException(e));
+				}
+				finally {
+					notifyComplete();
+				}
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, records);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchSeqWriteComplex() {
+		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName), Exp.val(1000)));
+
+		Operation[] ops1 = Operation.array(
+			Operation.put(new Bin(BinName2, 100)),
+			Operation.get(BinName2));
+
+		Operation[] ops2 = Operation.array(
+			ExpOperation.write(BinName3, wexp1, ExpWriteFlags.DEFAULT),
+			Operation.get(BinName3));
+
+		List<BatchRecord> records = new ArrayList<BatchRecord>();
+		records.add(new BatchWrite(new Key(args.namespace, args.set, KeyPrefix + 1), ops1));
+		records.add(new BatchWrite(new Key(args.namespace, args.set, KeyPrefix + 6), ops2));
+		records.add(new BatchDelete(new Key(args.namespace, args.set, 10002)));
+
+		client.operate(eventLoop, new BatchRecordSequenceListener() {
+			int count = 0;
+
+			public void onRecord(BatchRecord r, int index) {
+				count++;
+
+				switch (index) {
+				case 0:
+					assertBatchBinEqual(r, BinName2, 100);
+					break;
+
+				case 1:
+					assertBatchBinEqual(r, BinName3, 1006);
+					break;
+
+				case 2:
+					assertEquals(ResultCode.OK, r.resultCode);
+					break;
+
+				default:
+					setError(new Exception("Unexpected batch index: " + index));
+				}
+			}
+
+			public void onSuccess() {
+				assertEquals(3, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, records);
+
+		waitTillComplete();
+	}
+
+	private boolean assertBatchBinEqual(BatchRecord r, String binName, int expected) {
+		try {
+			if (! assertRecordFound(r.key, r.record)) {
+				return false;
+			}
+
+			List<?> list = r.record.getList(binName);
+			Object obj = list.get(0);
+
+			if (obj != null) {
+				setError(new Exception("Data mismatch: Expected null. Received " + obj));
+				return false;
+			}
+
+			long val = (Long)list.get(1);
+
+			if (val != expected) {
+				setError(new Exception("Data mismatch: Expected " + expected + ". Received " + val));
+				return false;
+			}
+			return true;
+		}
+		catch (Throwable e) {
+			setError(new AerospikeException(e));
+			return false;
+		}
+	}
+
+	@Test
+	public void asyncBatchDelete() {
+		// Ensure keys exists
+		client.exists(eventLoop, new ExistsArrayListener() {
+			public void onSuccess(Key[] keys, boolean[] exists) {
+				assertEquals(true, exists[0]);
+				assertEquals(true, exists[1]);
+
+				// Delete keys
+				client.delete(eventLoop, new BatchRecordArrayListener() {
+					public void onSuccess(BatchRecord[] records, boolean status) {
+						assertEquals(true, status);
+
+						// Ensure keys do not exist
+						client.exists(eventLoop, new ExistsArrayListener() {
+							public void onSuccess(Key[] keys, boolean[] exists) {
+								assertEquals(false, exists[0]);
+								assertEquals(false, exists[1]);
+								notifyComplete();
+							}
+
+							public void onFailure(AerospikeException e) {
+								setError(e);
+								notifyComplete();
+							}
+						}, null, deleteKeys);
+					}
+
+					public void onFailure(BatchRecord[] records, AerospikeException e) {
+						setError(e);
+						notifyComplete();
+					}
+				}, null, null, keys);
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, deleteKeys);
 
 		waitTillComplete();
 	}

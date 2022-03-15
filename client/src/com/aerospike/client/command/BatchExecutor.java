@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,68 +16,131 @@
  */
 package com.aerospike.client.command;
 
-import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
-import com.aerospike.client.Record;
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.Batch.BatchCommand;
 import com.aerospike.client.policy.BatchPolicy;
 
 public final class BatchExecutor {
 
-	public static void execute(
-		Cluster cluster,
-		BatchPolicy policy,
-		Key[] keys,
-		boolean[] existsArray,
-		Record[] records,
-		String[] binNames,
-		Operation[] ops,
-		int readAttr
-	) {
-		if (keys.length == 0) {
+	public static void execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
+			// Run batch requests sequentially in same thread.
+			for (BatchCommand command : commands) {
+				try {
+					command.execute();
+				}
+				catch (AerospikeException ae) {
+					// Set error/inDoubt for keys associated this batch command when
+					// the command was not retried and split. If a split retry occurred,
+					// those new subcommands have already set error/inDoubt on the affected
+					// subset of keys.
+					if (! command.splitRetry) {
+						command.setError(ae.getResultCode(), ae.getInDoubt());
+					}
+					status.setException(ae);
+
+					if (!policy.respondAllKeys) {
+						throw ae;
+					}
+				}
+				catch (RuntimeException re) {
+					if (! command.splitRetry) {
+						command.setError(ResultCode.CLIENT_ERROR, true);
+					}
+					status.setException(re);
+
+					if (!policy.respondAllKeys) {
+						throw re;
+					}
+				}
+			}
+			status.checkException();
 			return;
 		}
 
-		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys);
-		boolean isOperation = ops != null;
+		// Run batch requests in parallel in separate threads.
+		BatchExecutor executor = new BatchExecutor(cluster, policy, commands, status);
+		executor.execute();
+	}
 
-		if (policy.maxConcurrentThreads == 1 || batchNodes.size() <= 1) {
-			// Run batch requests sequentially in same thread.
-			for (BatchNode batchNode : batchNodes) {
-				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(cluster, null, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
-					command.execute();
-				}
-				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(cluster, null, batchNode, policy, keys, existsArray);
-					command.execute();
-				}
+	private final BatchStatus status;
+	private final ExecutorService threadPool;
+	private final AtomicBoolean done;
+	private final AtomicInteger completedCount;
+	private final BatchCommand[] commands;
+	private final int maxConcurrentThreads;
+	private boolean completed;
+
+	private BatchExecutor(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+		this.commands = commands;
+		this.status = status;
+		this.threadPool = cluster.getThreadPool();
+		this.done = new AtomicBoolean();
+		this.completedCount = new AtomicInteger();
+		this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.length)?
+									commands.length : policy.maxConcurrentThreads;
+	}
+
+	void execute() {
+		// Start threads.
+		for (int i = 0; i < maxConcurrentThreads; i++) {
+			BatchCommand cmd = commands[i];
+			cmd.parent = this;
+			threadPool.execute(cmd);
+		}
+
+		// Multiple threads write to the batch record array/list, so one might think that memory barriers
+		// are needed. That should not be necessary because of this synchronized waitTillComplete().
+		waitTillComplete();
+
+		// Throw an exception if an error occurred.
+		status.checkException();
+	}
+
+	void onComplete() {
+		int finished = completedCount.incrementAndGet();
+
+		if (finished < commands.length) {
+			int nextThread = finished + maxConcurrentThreads - 1;
+
+			// Determine if a new thread needs to be started.
+			if (nextThread < commands.length && ! done.get()) {
+				// Start new thread.
+				BatchCommand cmd = commands[nextThread];
+				cmd.parent = this;
+				threadPool.execute(cmd);
 			}
 		}
 		else {
-			// Run batch requests in parallel in separate threads.
-			//
-			// Multiple threads write to the record/exists array, so one might think that
-			// volatile or memory barriers are needed on the write threads and this read thread.
-			// This should not be necessary here because it happens in Executor which does a
-			// volatile write (completedCount.incrementAndGet()) at the end of write threads
-			// and a synchronized waitTillComplete() in this thread.
-			Executor executor = new Executor(cluster, batchNodes.size() * 2);
-
-			// Initialize threads.
-			for (BatchNode batchNode : batchNodes) {
-				if (records != null) {
-					MultiCommand command = new Batch.GetArrayCommand(cluster, executor, batchNode, policy, keys, binNames, ops, records, readAttr, isOperation);
-					executor.addCommand(command);
-				}
-				else {
-					MultiCommand command = new Batch.ExistsArrayCommand(cluster, executor, batchNode, policy, keys, existsArray);
-					executor.addCommand(command);
-				}
+			// Ensure executor succeeds or fails exactly once.
+			if (done.compareAndSet(false, true)) {
+				notifyCompleted();
 			}
-			executor.execute(policy.maxConcurrentThreads);
 		}
+	}
+
+	boolean isDone() {
+		return done.get();
+	}
+
+	private synchronized void waitTillComplete() {
+		while (! completed) {
+			try {
+				super.wait();
+			}
+			catch (InterruptedException ie) {
+			}
+		}
+	}
+
+	private synchronized void notifyCompleted() {
+		completed = true;
+		super.notify();
 	}
 }

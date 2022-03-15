@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,7 @@
 package com.aerospike.client.policy;
 
 /**
- * Configuration variables for multi-record get and exist requests.
+ * Batch parent policy.
  */
 public final class BatchPolicy extends Policy {
 	/**
@@ -53,13 +53,11 @@ public final class BatchPolicy extends Policy {
 	public int maxConcurrentThreads = 1;
 
 	/**
-	 * Allow batch to be processed immediately in the server's receiving thread when the server
-	 * deems it to be appropriate.  If false, the batch will always be processed in separate
-	 * transaction threads.  This field is only relevant for the new batch index protocol.
+	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
+	 * namespaces. If false, the batch will always be processed in separate service threads.
 	 * <p>
-	 * For batch exists or batch reads of smaller sized records (&lt;= 1K per record), inline
-	 * processing will be significantly faster on "in memory" namespaces.  The server disables
-	 * inline processing on disk based namespaces regardless of this policy field.
+	 * For batch transactions with smaller sized records (&lt;= 1K per record), inline
+	 * processing will be significantly faster on in-memory namespaces.
 	 * <p>
 	 * Inline processing can introduce the possibility of unfairness because the server
 	 * can process the entire batch before moving onto the next command.
@@ -69,12 +67,51 @@ public final class BatchPolicy extends Policy {
 	public boolean allowInline = true;
 
 	/**
-	 * Send set name field to server for every key in the batch for batch index protocol.
-	 * This is only necessary when authentication is enabled and security roles are defined
-	 * on a per set basis.
+	 * Allow batch to be processed immediately in the server's receiving thread for SSD
+	 * namespaces. If false, the batch will always be processed in separate service threads.
+	 * Server versions &lt; 6.0 ignore this field.
+	 * <p>
+	 * Inline processing can introduce the possibility of unfairness because the server
+	 * can process the entire batch before moving onto the next command.
 	 * <p>
 	 * Default: false
 	 */
+	public boolean allowInlineSSD = false;
+
+	/**
+	 * Should all batch keys be attempted regardless of errors. This field is used on both
+	 * the client and server. The client handles node specific errors and the server handles
+	 * key specific errors.
+	 * <p>
+	 * If true, every batch key is attempted regardless of previous key specific errors.
+	 * Node specific errors such as timeouts stop keys to that node, but keys directed at
+	 * other nodes will continue to be processed.
+	 * <p>
+	 * If false, the server will stop the batch to its node on most key specific errors.
+	 * The exceptions are {@link com.aerospike.client.ResultCode#KEY_NOT_FOUND_ERROR} and
+	 * {@link com.aerospike.client.ResultCode#FILTERED_OUT} which never stop the batch.
+	 * The client will stop the entire batch on node specific errors for sync commands
+	 * that are run in sequence (maxConcurrentThreads == 1). The client will not stop
+	 * the entire batch for async commands or sync commands run in parallel.
+	 * <p>
+	 * Server versions &lt; 6.0 do not support this field and treat this value as false
+	 * for key specific errors.
+	 * <p>
+	 * Default: true
+	 */
+	public boolean respondAllKeys = true;
+
+	/**
+	 * This method is deprecated and will eventually be removed.
+	 * The set name is now always sent for every distinct namespace/set in the batch.
+	 * <p>
+	 * Send set name field to server for every key in the batch for batch index protocol.
+	 * This is necessary for batch writes and batch reads when authentication is enabled and
+	 * security roles are defined on a per set basis.
+	 * <p>
+	 * Default: false
+	 */
+	@Deprecated
 	public boolean sendSetName;
 
 	/**
@@ -84,6 +121,8 @@ public final class BatchPolicy extends Policy {
 		super(other);
 		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.allowInline = other.allowInline;
+		this.allowInlineSSD = other.allowInlineSSD;
+		this.respondAllKeys = other.respondAllKeys;
 		this.sendSetName = other.sendSetName;
 	}
 
@@ -98,5 +137,21 @@ public final class BatchPolicy extends Policy {
 	 * Default constructor.
 	 */
 	public BatchPolicy() {
+	}
+
+	/**
+	 * Default batch read policy.
+	 */
+	public static BatchPolicy ReadDefault() {
+		return new BatchPolicy();
+	}
+
+	/**
+	 * Default batch write policy.
+	 */
+	public static BatchPolicy WriteDefault() {
+		BatchPolicy policy = new BatchPolicy();
+		policy.maxRetries = 0;
+		return policy;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,7 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -30,56 +30,18 @@ import com.aerospike.client.policy.Replica;
 
 public final class BatchNodeList {
 
-	public static List<BatchNode> generate(
-		Cluster cluster,
-		BatchPolicy policy,
-		Key[] keys
-	) {
-		BatchNodeList bnl = new BatchNodeList(cluster, policy, keys, true);
-		return bnl.list;
+	public interface IBatchStatus {
+		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite);
+		public void setInvalidNode(AerospikeException ae);
 	}
 
 	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
 		Key[] keys,
-		int sequenceAP,
-		int sequenceSC,
-		BatchNode batchSeed
-	) {
-		BatchNodeList bnl = new BatchNodeList(cluster, policy, keys, sequenceAP, sequenceSC, batchSeed, true);
-		return bnl.list;
-	}
-
-	public static List<BatchNode> generate(
-		Cluster cluster,
-		BatchPolicy policy,
-		List<BatchRead> records
-	) {
-		BatchNodeList bnl = new BatchNodeList(cluster, policy, records, true);
-		return bnl.list;
-	}
-
-	public static List<BatchNode> generate(
-		Cluster cluster,
-		BatchPolicy policy,
-		List<BatchRead> records,
-		int sequenceAP,
-		int sequenceSC,
-		BatchNode batchSeed
-	) {
-		BatchNodeList bnl = new BatchNodeList(cluster, policy, records, sequenceAP, sequenceSC, batchSeed, true);
-		return bnl.list;
-	}
-
-	public final List<BatchNode> list;
-	public final AerospikeException exception;
-
-	public BatchNodeList(
-		Cluster cluster,
-		BatchPolicy policy,
-		Key[] keys,
-		boolean stopOnInvalidNode
+		BatchRecord[] records,
+		boolean hasWrite,
+		IBatchStatus status
 	) {
 		Node[] nodes = cluster.validateNodes();
 
@@ -100,8 +62,13 @@ public final class BatchNodeList {
 		AerospikeException except = null;
 
 		for (int i = 0; i < keys.length; i++) {
+			Key key = keys[i];
+
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, keys[i], replica, replicaSC, null, 0, 0);
+				Node node = hasWrite ?
+					Partition.getNodeBatchWrite(cluster, key, replica, null, 0) :
+					Partition.getNodeBatchRead(cluster, key, replica, replicaSC, null, 0, 0);
+
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -112,8 +79,12 @@ public final class BatchNodeList {
 				}
 			}
 			catch (AerospikeException.InvalidNode ain) {
-				if (stopOnInvalidNode) {
-					throw ain;
+				// This method only called on initialization, so inDoubt must be false.
+				if (records != null) {
+					records[i].setError(ain.getResultCode(), false);
+				}
+				else {
+					status.setInvalidNode(key, i, ain, false, hasWrite);
 				}
 
 				if (except == null) {
@@ -121,18 +92,29 @@ public final class BatchNodeList {
 				}
 			}
 		}
-		list = batchNodes;
-		exception = except;
+
+		if (except != null) {
+			// Fatal if no key requests were generated on initialization.
+			if (batchNodes.size() == 0) {
+				throw except;
+			}
+			else {
+				status.setInvalidNode(except);
+			}
+		}
+		return batchNodes;
 	}
 
-	public BatchNodeList(
+	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
 		Key[] keys,
+		BatchRecord[] records,
 		int sequenceAP,
 		int sequenceSC,
 		BatchNode batchSeed,
-		boolean stopOnInvalidNode
+		boolean hasWrite,
+		IBatchStatus status
 	) {
 		Node[] nodes = cluster.validateNodes();
 
@@ -154,9 +136,13 @@ public final class BatchNodeList {
 
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
+			Key key = keys[offset];
 
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, keys[offset], replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+				Node node = hasWrite ?
+					Partition.getNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+					Partition.getNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -167,8 +153,12 @@ public final class BatchNodeList {
 				}
 			}
 			catch (AerospikeException.InvalidNode ain) {
-				if (stopOnInvalidNode) {
-					throw ain;
+				if (records != null) {
+					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+					records[offset].setError(ain.getResultCode(), Command.batchInDoubt(hasWrite, 2));
+				}
+				else {
+					status.setInvalidNode(key, offset, ain, Command.batchInDoubt(hasWrite, 2), hasWrite);
 				}
 
 				if (except == null) {
@@ -176,15 +166,18 @@ public final class BatchNodeList {
 				}
 			}
 		}
-		list = batchNodes;
-		exception = except;
+
+		if (except != null) {
+			status.setInvalidNode(except);
+		}
+		return batchNodes;
 	}
 
-	public BatchNodeList(
+	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
-		List<BatchRead> records,
-		boolean stopOnInvalidNode
+		List<? extends BatchRecord> records,
+		IBatchStatus status
 	) {
 		Node[] nodes = cluster.validateNodes();
 
@@ -206,8 +199,15 @@ public final class BatchNodeList {
 		AerospikeException except = null;
 
 		for (int i = 0; i < max; i++) {
+			BatchRecord b = records.get(i);
+
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, records.get(i).key, replica, replicaSC, null, 0, 0);
+				b.prepare();
+
+				Node node = b.hasWrite ?
+					Partition.getNodeBatchWrite(cluster, b.key, replica, null, 0) :
+					Partition.getNodeBatchRead(cluster, b.key, replica, replicaSC, null, 0, 0);
+
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -218,27 +218,35 @@ public final class BatchNodeList {
 				}
 			}
 			catch (AerospikeException.InvalidNode ain) {
-				if (stopOnInvalidNode) {
-					throw ain;
-				}
+				// This method only called on initialization, so inDoubt must be false.
+				b.setError(ain.getResultCode(), false);
 
 				if (except == null) {
 					except = ain;
 				}
 			}
 		}
-		list = batchNodes;
-		exception = except;
+
+		if (except != null) {
+			// Fatal if no key requests were generated on initialization.
+			if (batchNodes.size() == 0) {
+				throw except;
+			}
+			else {
+				status.setInvalidNode(except);
+			}
+		}
+		return batchNodes;
 	}
 
-	public BatchNodeList(
+	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
-		List<BatchRead> records,
+		List<? extends BatchRecord> records,
 		int sequenceAP,
 		int sequenceSC,
 		BatchNode batchSeed,
-		boolean stopOnInvalidNode
+		IBatchStatus status
 	) {
 		Node[] nodes = cluster.validateNodes();
 
@@ -260,9 +268,13 @@ public final class BatchNodeList {
 
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
+			BatchRecord b = records.get(offset);
 
 			try {
-				Node node = Partition.getNodeBatchRead(cluster, records.get(offset).key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+				Node node = b.hasWrite ?
+					Partition.getNodeBatchWrite(cluster, b.key, replica, batchSeed.node, sequenceAP) :
+					Partition.getNodeBatchRead(cluster, b.key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
 				BatchNode batchNode = findBatchNode(batchNodes, node);
 
 				if (batchNode == null) {
@@ -273,23 +285,19 @@ public final class BatchNodeList {
 				}
 			}
 			catch (AerospikeException.InvalidNode ain) {
-				if (stopOnInvalidNode) {
-					throw ain;
-				}
+				// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+				b.setError(ain.getResultCode(), Command.batchInDoubt(b.hasWrite, 2));
 
 				if (except == null) {
 					except = ain;
 				}
 			}
 		}
-		list = batchNodes;
-		exception = except;
-	}
 
-	public void validate() {
-		if (exception != null && list.size() == 0) {
-			throw exception;
+		if (except != null) {
+			status.setInvalidNode(except);
 		}
+		return batchNodes;
 	}
 
 	private static BatchNode findBatchNode(List<BatchNode> nodes, Node node) {

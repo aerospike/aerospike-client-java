@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,16 +20,24 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.BatchDelete;
 import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchResults;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListReturnType;
 import com.aerospike.client.exp.Exp;
 import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
+import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
 
 public class BatchOperate extends Example {
@@ -38,6 +46,7 @@ public class BatchOperate extends Example {
 	private static final String BinName1 = "bin1";
 	private static final String BinName2 = "bin2";
 	private static final String BinName3 = "bin3";
+	private static final String BinName4 = "bin4";
 	private static final String ResultName1 = "result1";
 	private static final String ResultName2 = "result2";
 	private static final int RecordCount = 8;
@@ -51,7 +60,9 @@ public class BatchOperate extends Example {
 		writeRecords(client, params);
 		batchReadOperate(client, params);
 		batchReadOperateComplex(client, params);
-		batchListOperate(client, params);
+		batchListReadOperate(client, params);
+		batchListWriteOperate(client, params);
+		batchWriteOperateComplex(client, params);
 	}
 
 	private void writeRecords(
@@ -139,12 +150,16 @@ public class BatchOperate extends Example {
 	}
 
 	/**
-	 * Perform list operations in one batch.
+	 * Perform list read operations in one batch.
 	 */
-	private void batchListOperate(AerospikeClient client, Parameters params) {
-		console.info("batchListOperate");
+	private void batchListReadOperate(AerospikeClient client, Parameters params) {
+		console.info("batchListReadOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
+			if (i == 5) {
+				keys[i] = new Key(params.namespace, params.set, "not found");
+				continue;
+			}
 			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
 		}
 
@@ -158,11 +173,103 @@ public class BatchOperate extends Example {
 			Record record = records[i];
 			//System.out.println(record);
 
-			List<?> results = record.getList(BinName3);
-			long size = (Long)results.get(0);
-			Object val = results.get(1);
+			if (record != null) {
+				List<?> results = record.getList(BinName3);
+				long size = (Long)results.get(0);
+				Object val = results.get(1);
 
-			console.info("Result[%d]: %d,%s", i, size, val);
+				console.info("Result[%d]: %d,%s", i, size, val);
+			}
+			else {
+				console.info("Result[%d]: null", i);
+			}
+		}
+	}
+
+	/**
+	 * Perform list read/write operations in one batch.
+	 */
+	private void batchListWriteOperate(AerospikeClient client, Parameters params) {
+		console.info("batchListWriteOperate");
+		Key[] keys = new Key[RecordCount];
+		for (int i = 0; i < RecordCount; i++) {
+			keys[i] = new Key(params.namespace, params.set, KeyPrefix + (i + 1));
+		}
+
+		// Add integer to list and get size and last element of list bin for all records.
+		BatchResults bresults = client.operate(null, null, keys,
+			ListOperation.append(ListPolicy.Default, BinName3, Value.get(999)),
+			ListOperation.size(BinName3),
+			ListOperation.getByIndex(BinName3, -1, ListReturnType.VALUE)
+			);
+
+		for (int i = 0; i < bresults.records.length; i++) {
+			BatchRecord br = bresults.records[i];
+			Record rec = br.record;
+
+			if (rec != null) {
+				List<?> results = rec.getList(BinName3);
+				long size = (Long)results.get(1);
+				Object val = results.get(2);
+
+				console.info("Result[%d]: %d,%s", i, size, val);
+			}
+			else {
+				console.info("Result[%d]: error: %s", i, ResultCode.getResultString(br.resultCode));
+			}
+		}
+	}
+
+	/**
+	 * Read/Write records using varying operations in one batch.
+	 */
+	private void batchWriteOperateComplex(AerospikeClient client, Parameters params) {
+		console.info("batchWriteOperateComplex");
+		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2), Exp.val(1000)));
+		Expression rexp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+		Expression rexp2 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+		Expression rexp3 = Exp.build(Exp.sub(Exp.intBin(BinName1), Exp.intBin(BinName2)));
+
+		Operation[] ops1 = Operation.array(
+			Operation.put(new Bin(BinName4, 100)),
+			ExpOperation.read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
+
+		Operation[] ops2 = Operation.array(ExpOperation.read(ResultName1, rexp1, ExpReadFlags.DEFAULT));
+		Operation[] ops3 = Operation.array(ExpOperation.read(ResultName1, rexp2, ExpReadFlags.DEFAULT));
+
+		Operation[] ops4 = Operation.array(
+			ExpOperation.write(BinName1, wexp1, ExpWriteFlags.DEFAULT),
+			ExpOperation.read(ResultName1, rexp3, ExpReadFlags.DEFAULT));
+
+		Operation[] ops5 = Operation.array(
+			ExpOperation.read(ResultName1, rexp2, ExpReadFlags.DEFAULT),
+			ExpOperation.read(ResultName2, rexp3, ExpReadFlags.DEFAULT));
+
+		List<BatchRecord> records = new ArrayList<BatchRecord>();
+		records.add(new BatchWrite(new Key(params.namespace, params.set, KeyPrefix + 1), ops1));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 2), ops2));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 3), ops3));
+		records.add(new BatchWrite(new Key(params.namespace, params.set, KeyPrefix + 4), ops4));
+		records.add(new BatchRead(new Key(params.namespace, params.set, KeyPrefix + 5), ops5));
+		records.add(new BatchDelete(new Key(params.namespace, params.set, KeyPrefix + 6)));
+
+		// Execute batch.
+		client.operate(null, records);
+
+		// Show results.
+		int i = 0;
+		for (BatchRecord record : records) {
+			Record rec = record.record;
+
+			if (rec != null) {
+				Object v1 = rec.getValue(ResultName1);
+				Object v2 = rec.getValue(ResultName2);
+				console.info("Result[%d]: %s, %s", i, v1, v2);
+			}
+			else {
+				console.info("Result[%d]: error: %s", i, ResultCode.getResultString(record.resultCode));
+			}
+			i++;
 		}
 	}
 }

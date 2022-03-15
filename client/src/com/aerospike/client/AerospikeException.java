@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -359,6 +359,52 @@ public class AerospikeException extends RuntimeException {
 		public InvalidNamespace(String ns, int mapSize) {
 			super(ResultCode.INVALID_NAMESPACE,
 				(mapSize == 0) ? "Partition map empty" : "Namespace not found in partition map: " + ns);
+		}
+	}
+
+	/**
+	 * Exception thrown when a batch exists method fails.
+	 */
+	public static final class BatchExists extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public final boolean[] exists;
+
+		public BatchExists(boolean[] exists, Throwable e) {
+			super(ResultCode.BATCH_FAILED, e);
+			this.exists = exists;
+		}
+	}
+
+	/**
+	 * Exception thrown when a batch read method fails.
+	 * The records fields contains responses for key requests that succeeded and null
+	 * records for key requests that failed.
+	 */
+	public static final class BatchRecords extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public final Record[] records;
+
+		public BatchRecords(Record[] records, Throwable e) {
+			super(ResultCode.BATCH_FAILED, e);
+			this.records = records;
+		}
+	}
+
+	/**
+	 * Exception thrown when a batch write method fails.
+	 * The records fields contains responses for key requests that succeeded
+	 * and resultCodes for key requests that failed.
+	 */
+	public static final class BatchRecordArray extends AerospikeException {
+		private static final long serialVersionUID = 1L;
+
+		public final BatchRecord[] records;
+
+		public BatchRecordArray(BatchRecord[] records, Throwable e) {
+			super(ResultCode.BATCH_FAILED, e);
+			this.records = records;
 		}
 	}
 

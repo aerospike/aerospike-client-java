@@ -42,14 +42,14 @@ public enum PrivilegeCode {
 	/**
 	 * User can perform user defined function(UDF) administration actions.
 	 * Examples include create/drop UDF. Global scope only.
-	 * Requires server version 5.8+
+	 * Requires server version 6.0+
 	 */
 	UDF_ADMIN(3, Role.UDFAdmin),
 
 	/**
 	 * User can perform secondary index administration actions.
 	 * Examples include create/drop index. Global scope only.
-	 * Requires server version 5.8+
+	 * Requires server version 6.0+
 	 */
 	SINDEX_ADMIN(4, Role.SIndexAdmin),
 
@@ -75,7 +75,7 @@ public enum PrivilegeCode {
 
 	/**
 	 * User can truncate data only.
-	 * Requires server version 5.8+
+	 * Requires server version 6.0+
 	 */
 	TRUNCATE(14, Role.Truncate);
 

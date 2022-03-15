@@ -223,9 +223,9 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	/**
-	 * Parse all records in the group.
+	 * Parse all records in the group for scan/query.
 	 */
-	private final boolean parseGroup(int receiveSize) throws IOException {
+	protected boolean parseGroup(int receiveSize) {
 		while (dataOffset < receiveSize) {
 			dataOffset += 3;
 			info3 = dataBuffer[dataOffset] & 0xFF;
@@ -258,6 +258,8 @@ public abstract class MultiCommand extends SyncCommand {
 		return true;
 	}
 
+	protected abstract void parseRow();
+
 	protected final Record parseRecord() {
 		if (opCount <= 0) {
 			return new Record(null, generation, expiration);
@@ -273,6 +275,4 @@ public abstract class MultiCommand extends SyncCommand {
 	public boolean isValid() {
 		return valid;
 	}
-
-	protected abstract void parseRow();
 }

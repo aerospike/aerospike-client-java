@@ -392,8 +392,8 @@ public final class PartitionTracker {
 		switch (ae.getResultCode()) {
 		case ResultCode.SERVER_NOT_AVAILABLE:
 		case ResultCode.TIMEOUT:
-        case ResultCode.INDEX_NOTFOUND:
-        	if (exceptions == null) {
+		case ResultCode.INDEX_NOTFOUND:
+			if (exceptions == null) {
 				exceptions = new ArrayList<AerospikeException>();
 			}
 			exceptions.add(ae);

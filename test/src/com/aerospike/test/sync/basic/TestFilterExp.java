@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,7 +18,12 @@
 package com.aerospike.test.sync.basic;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -26,6 +31,9 @@ import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchDelete;
+import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
@@ -34,7 +42,9 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
@@ -1023,5 +1033,47 @@ public class TestFilterExp extends TestSync {
 
 		Record r = client.get(policy, keyA);
 		assertBinEqual(keyA, r, binA, 1);
+	}
+
+	@Test
+	public void batchKeyFilter() {
+		// Write/Delete records with filter.
+		BatchWritePolicy wp = new BatchWritePolicy();
+		wp.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(1)));
+
+		BatchDeletePolicy dp = new BatchDeletePolicy();
+		dp.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(0)));
+
+		Operation[] put = Operation.array(Operation.put(new Bin(binA, 3)));
+
+		List<BatchRecord> brecs = new ArrayList<BatchRecord>();
+		brecs.add(new BatchWrite(wp, keyA, put));
+		brecs.add(new BatchWrite(wp, keyB, put));
+		brecs.add(new BatchDelete(dp, keyC));
+
+		boolean status = client.operate(null, brecs);
+		assertFalse(status); // Filtered out result code causes status to be false.
+
+		BatchRecord br = brecs.get(0);
+		assertEquals(ResultCode.OK, br.resultCode);
+
+		br = brecs.get(1);
+		assertEquals(ResultCode.FILTERED_OUT, br.resultCode);
+
+		br = brecs.get(2);
+		assertEquals(ResultCode.OK, br.resultCode);
+
+		// Read records
+		Key[] keys = new Key[] {keyA, keyB, keyC};
+		Record[] recs = client.get(null, keys, binA);
+
+		Record r = recs[0];
+		assertBinEqual(keyA, r, binA, 3);
+
+		r = recs[1];
+		assertBinEqual(keyB, r, binA, 2);
+
+		r = recs[2];
+		assertNull(r);
 	}
 }

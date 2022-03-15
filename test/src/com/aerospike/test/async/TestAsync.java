@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -76,6 +76,7 @@ public class TestAsync extends TestBase {
 
 		if (received == null || ! received.equals(expected)) {
 			monitor.setError(new Exception("Data mismatch: Expected " + expected + ". Received " + received));
+			return false;
 		}
 		return true;
 	}
@@ -89,6 +90,7 @@ public class TestAsync extends TestBase {
 
 		if (received != expected) {
 			monitor.setError(new Exception("Data mismatch: Expected " + expected + ". Received " + received));
+			return false;
 		}
 		return true;
 	}
@@ -152,6 +154,14 @@ public class TestAsync extends TestBase {
 	public boolean assertNull(Object obj) {
 		if (obj != null) {
 			monitor.setError(new Exception("Object is not null"));
+			return false;
+		}
+		return true;
+	}
+
+	public boolean assertTrue(boolean b) {
+		if (! b) {
+			monitor.setError(new Exception("Value is false"));
 			return false;
 		}
 		return true;

@@ -29,6 +29,9 @@ import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
+import com.aerospike.client.listener.BatchOperateListListener;
+import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
@@ -42,7 +45,10 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.AdminPolicy;
+import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -69,15 +75,14 @@ public interface IAerospikeClient extends Closeable {
 	//-------------------------------------------------------
 
 	public Policy getReadPolicyDefault();
-
 	public WritePolicy getWritePolicyDefault();
-
 	public ScanPolicy getScanPolicyDefault();
-
 	public QueryPolicy getQueryPolicyDefault();
-
 	public BatchPolicy getBatchPolicyDefault();
-
+	public BatchPolicy getBatchParentPolicyWriteDefault();
+	public BatchWritePolicy getBatchWritePolicyDefault();
+	public BatchDeletePolicy getBatchDeletePolicyDefault();
+	public BatchUDFPolicy getBatchUDFPolicyDefault();
 	public InfoPolicy getInfoPolicyDefault();
 
 	//-------------------------------------------------------
@@ -314,6 +319,73 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException;
 
 	/**
+	 * Delete records for specified keys. If a key is not found, the corresponding result
+	 * {@link BatchRecord#resultCode} will be {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param deletePolicy	delete configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @throws AerospikeException.BatchRecordArray	which contains results for keys that did complete
+	 */
+	public BatchResults delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
+		throws AerospikeException;
+
+	/**
+	 * Asynchronously delete records for specified keys.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
+	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param deletePolicy	delete configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void delete(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchDeletePolicy deletePolicy,
+		Key[] keys
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously delete records for specified keys.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
+	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param deletePolicy	delete configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void delete(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchDeletePolicy deletePolicy,
+		Key[] keys
+	) throws AerospikeException;
+
+	/**
 	 * Remove records in specified namespace/set efficiently.  This method is many orders of magnitude
 	 * faster than deleting records one at a time.
 	 * <p>
@@ -402,14 +474,11 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Check if multiple record keys exist in one batch call.
 	 * The returned boolean array is in positional order with the original key array order.
-	 * The policy can be used to specify timeouts and maximum concurrent threads.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array key/existence status pairs
-	 * @throws AerospikeException	if command fails
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param keys		array of unique record identifiers
+	 * @return			array key/existence status pairs
+	 * @throws AerospikeException.BatchExists	which contains results for keys that did complete
 	 */
 	public boolean[] exists(BatchPolicy policy, Key[] keys)
 		throws AerospikeException;
@@ -420,14 +489,12 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * The returned boolean array is in positional order with the original key array order.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys)
@@ -439,15 +506,12 @@ public interface IAerospikeClient extends Closeable {
 	 * The event loop thread will process the command and send the results to the listener.
 	 * <p>
 	 * Each key's result is returned in separate onExists() calls.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys)
@@ -555,15 +619,14 @@ public interface IAerospikeClient extends Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *							  The returned records are located in the same list.
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param records	list of unique record identifiers and the bins to retrieve.
+	 *					The returned records are located in the same list.
+	 * @return			true if all batch key requests succeeded
 	 * @throws AerospikeException	if read fails
 	 */
-	public void get(BatchPolicy policy, List<BatchRead> records)
+	public boolean get(BatchPolicy policy, List<BatchRead> records)
 		throws AerospikeException;
 
 	/**
@@ -574,15 +637,13 @@ public interface IAerospikeClient extends Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * The returned records are located in the same list.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *							  The returned records are located in the same list.
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param records		list of unique record identifiers and the bins to retrieve.
+	 *						The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records)
@@ -596,16 +657,13 @@ public interface IAerospikeClient extends Closeable {
 	 * This method allows different namespaces/bins to be requested for each key in the batch.
 	 * Each record result is returned in separate onRecord() calls.
 	 * If the BatchRead key field is not found, the corresponding record field will be null.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param records				list of unique record identifiers and the bins to retrieve.
-	 *								The returned records are located in the same list.
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param records		list of unique record identifiers and the bins to retrieve.
+	 *						The returned records are located in the same list.
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records)
@@ -615,13 +673,11 @@ public interface IAerospikeClient extends Closeable {
 	 * Read multiple records for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param keys		array of unique record identifiers
+	 * @return			array of records
+	 * @throws AerospikeException.BatchRecords	which contains results for keys that did complete
 	 */
 	public Record[] get(BatchPolicy policy, Key[] keys)
 		throws AerospikeException;
@@ -633,14 +689,12 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
@@ -653,15 +707,12 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
@@ -671,14 +722,12 @@ public interface IAerospikeClient extends Closeable {
 	 * Read multiple record headers and bins for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param binNames				array of bins to retrieve
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param keys		array of unique record identifiers
+	 * @param binNames	array of bins to retrieve
+	 * @return			array of records
+	 * @throws AerospikeException.BatchRecords	which contains results for keys that did complete
 	 */
 	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames)
 		throws AerospikeException;
@@ -690,15 +739,13 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param binNames				array of bins to retrieve
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param binNames		array of bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames)
@@ -711,16 +758,13 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param binNames				array of bins to retrieve
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param binNames		array of bins to retrieve
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames)
@@ -730,16 +774,14 @@ public interface IAerospikeClient extends Closeable {
 	 * Read multiple records for specified keys using read operations in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param operations			array of read operations on record
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param keys		array of unique record identifiers
+	 * @param ops		array of read operations on record
+	 * @return			array of records
+	 * @throws AerospikeException.BatchRecords	which contains results for keys that did complete
 	 */
-	public Record[] get(BatchPolicy policy, Key[] keys, Operation... operations)
+	public Record[] get(BatchPolicy policy, Key[] keys, Operation... ops)
 		throws AerospikeException;
 
 	/**
@@ -749,18 +791,16 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param operations			array of read operations on record
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param ops			array of read operations on record
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation... operations)
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation... ops)
 		throws AerospikeException;
 
 	/**
@@ -770,32 +810,27 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @param operations			array of read operations on record
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param ops			array of read operations on record
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation... operations)
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation... ops)
 		throws AerospikeException;
 
 	/**
 	 * Read multiple record header data for specified keys in one batch call.
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
-	 * @return						array of records
-	 * @throws AerospikeException	if read fails
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param keys		array of unique record identifiers
+	 * @return			array of records
+	 * @throws AerospikeException.BatchRecords	which contains results for keys that did complete
 	 */
 	public Record[] getHeader(BatchPolicy policy, Key[] keys)
 		throws AerospikeException;
@@ -807,14 +842,12 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * The returned records are in positional order with the original key array order.
 	 * If a key is not found, the positional record will be null.
-	 * <p>
-	 * If a batch request to a node fails, the entire batch is cancelled.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys)
@@ -827,15 +860,12 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Each record result is returned in separate onRecord() calls.
 	 * If a key is not found, the record will be null.
-	 * <p>
-	 * If a batch request to a node fails, responses from other nodes will continue to
-	 * be processed.
 	 *
-	 * @param eventLoop				event loop that will process the command. If NULL, the event
-	 * 								loop will be chosen by round-robin.
-	 * @param listener				where to send results
-	 * @param policy				batch configuration parameters, pass in null for defaults
-	 * @param keys					array of unique record identifiers
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
 	 * @throws AerospikeException	if event loop registration fails
 	 */
 	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys)
@@ -885,6 +915,158 @@ public interface IAerospikeClient extends Closeable {
 	 */
 	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException;
+
+	//-------------------------------------------------------
+	// Batch Read/Write Operations
+	//-------------------------------------------------------
+
+	/**
+	 * Read/Write multiple records for specified batch keys in one batch call.
+	 * This method allows different namespaces/bins for each key in the batch.
+	 * The returned records are located in the same list.
+	 * <p>
+	 * {@link BatchRecord} can be {@link BatchRead}, {@link BatchWrite}, {@link BatchDelete} or
+	 * {@link BatchUDF}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param policy	batch configuration parameters, pass in null for defaults
+	 * @param records	list of unique record identifiers and read/write operations
+	 * @return			true if all batch sub-commands succeeded
+	 * @throws AerospikeException	if command fails
+	 */
+	public boolean operate(BatchPolicy policy, List<BatchRecord> records)
+		throws AerospikeException;
+
+	/**
+	 * Asynchronously read/write multiple records for specified batch keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
+	 * The returned records are located in the same list.
+	 * <p>
+	 * {@link BatchRecord} can be {@link BatchRead}, {@link BatchWrite}, {@link BatchDelete} or
+	 * {@link BatchUDF}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param records		list of unique record identifiers and read/write operations
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void operate(
+		EventLoop eventLoop,
+		BatchOperateListListener listener,
+		BatchPolicy policy,
+		List<BatchRecord> records
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously read/write multiple records for specified batch keys in one batch call.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * This method allows different namespaces/bins to be requested for each key in the batch.
+	 * Each record result is returned in separate onRecord() calls.
+	 * <p>
+	 * {@link BatchRecord} can be {@link BatchRead}, {@link BatchWrite}, {@link BatchDelete} or
+	 * {@link BatchUDF}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param policy		batch configuration parameters, pass in null for defaults
+	 * @param records		list of unique record identifiers and read/write operations
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy policy,
+		List<BatchRecord> records
+	) throws AerospikeException;
+
+	/**
+	 * Perform read/write operations on multiple keys. If a key is not found, the corresponding result
+	 * {@link BatchRecord#resultCode} will be {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param writePolicy	write configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param ops			database operations to perform
+	 * @throws AerospikeException.BatchRecordArray	which contains results for keys that did complete
+	 */
+	public BatchResults operate(
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously perform read/write operations on multiple keys.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
+	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param writePolicy	write configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param ops			array of read/write operations on record
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously perform read/write operations on multiple keys.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Each record result is returned in separate onRecord() calls.
+	 * If a key is not found, the corresponding result {@link BatchRecord#resultCode} will be
+	 * {@link ResultCode#KEY_NOT_FOUND_ERROR}.
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param writePolicy	write configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param ops			array of read operations on record
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) throws AerospikeException;
 
 	//-------------------------------------------------------
 	// Scan Operations
@@ -1120,6 +1302,98 @@ public interface IAerospikeClient extends Closeable {
 		ExecuteListener listener,
 		WritePolicy policy,
 		Key key,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException;
+
+	/**
+	 * Execute user defined function on server for each key and return results.
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * {@code udf file = <server udf dir>/<package name>.lua}
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param udfPolicy		udf configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param packageName	server package name where user defined function resides
+	 * @param functionName	user defined function
+	 * @param functionArgs	arguments passed in to user defined function
+	 * @throws AerospikeException.BatchRecordArray	which contains results for keys that did complete
+	 */
+	public BatchResults execute(
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously execute user defined function on server for each key and return results.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * {@code udf file = <server udf dir>/<package name>.lua}
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param udfPolicy		udf configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param packageName	server package name where user defined function resides
+	 * @param functionName	user defined function
+	 * @param functionArgs	arguments passed in to user defined function
+	 * @throws AerospikeException	if command fails
+	 */
+	public void execute(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) throws AerospikeException;
+
+	/**
+	 * Asynchronously execute user defined function on server for each key and return results.
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * Each record result is returned in separate onRecord() calls.
+	 * <p>
+	 * The package name is used to locate the udf file location:
+	 * <p>
+	 * {@code udf file = <server udf dir>/<package name>.lua}
+	 * <p>
+	 * Requires server version 6.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
+	 * @param udfPolicy		udf configuration parameters, pass in null for defaults
+	 * @param keys			array of unique record identifiers
+	 * @param packageName	server package name where user defined function resides
+	 * @param functionName	user defined function
+	 * @param functionArgs	arguments passed in to user defined function
+	 * @throws AerospikeException	if command fails
+	 */
+	public void execute(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
 		String packageName,
 		String functionName,
 		Value... functionArgs

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,6 +21,16 @@ package com.aerospike.client;
  * side file proto.h.
  */
 public final class ResultCode {
+	/**
+	 * One or more keys failed in a batch.
+	 */
+	public static final int BATCH_FAILED = -14;
+
+	/**
+	 * No response received from server.
+	 */
+	public static final int NO_RESPONSE = -13;
+
 	/**
 	 * Max errors limit reached.
 	 */
@@ -446,6 +456,12 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+
+		case BATCH_FAILED:
+			return "One or more keys failed in a batch";
+
+		case NO_RESPONSE:
+			return "No response received from server";
 
 		case MAX_ERROR_RATE:
 			return "Max error rate exceeded";

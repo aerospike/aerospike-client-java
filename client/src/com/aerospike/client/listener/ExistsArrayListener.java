@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,18 +25,18 @@ import com.aerospike.client.Key;
  */
 public interface ExistsArrayListener {
 	/**
-	 * This method is called when an asynchronous batch exists command completes successfully.
+	 * This method is called when the command completes successfully.
 	 * The returned boolean array is in positional order with the original key array order.
 	 *
-	 * @param keys				unique record identifiers
-	 * @param exists			whether keys exists on server
+	 * @param keys		unique record identifiers
+	 * @param exists	whether keys exists on server
 	 */
 	public void onSuccess(Key[] keys, boolean[] exists);
 
 	/**
-	 * This method is called when an asynchronous exists command fails.
-	 *
-	 * @param exception			error that occurred
+	 * This method is called when the command fails. The AerospikeException is likely to be
+	 * {@link com.aerospike.client.AerospikeException.BatchExists} which contains results
+	 * for keys that did complete.
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

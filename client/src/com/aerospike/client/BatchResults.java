@@ -14,28 +14,27 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.listener;
-
-import java.util.List;
-
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRead;
+package com.aerospike.client;
 
 /**
- * Asynchronous result notifications for batch get commands with variable bins per key.
- * The result is sent in a single list.
+ * Batch record results.
  */
-public interface BatchListListener {
+public final class BatchResults {
 	/**
-	 * This method is called when the command completes successfully.
-	 *
-	 * @param records		record instances, {@link com.aerospike.client.BatchRecord#record}
-	 *						will be null if the key is not found
+	 * Record results.
 	 */
-	public void onSuccess(List<BatchRead> records);
+	public final BatchRecord[] records;
 
 	/**
-	 * This method is called when the command fails.
+	 * Indicates if all records returned success.
 	 */
-	public void onFailure(AerospikeException ae);
+	public final boolean status;
+
+	/**
+	 * Constructor.
+	 */
+	public BatchResults(BatchRecord[] records, boolean status) {
+		this.records = records;
+		this.status = status;
+	}
 }

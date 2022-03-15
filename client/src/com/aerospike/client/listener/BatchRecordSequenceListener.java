@@ -17,15 +17,15 @@
 package com.aerospike.client.listener;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.BatchRead;
+import com.aerospike.client.BatchRecord;
 
 /**
- * Asynchronous result notifications for batch get commands with variable bins per key.
- * The results are sent one batch record at a time.
+ * Asynchronous result notifications for batch operate commands.
+ * The results are sent one record at a time.
  */
-public interface BatchSequenceListener {
+public interface BatchRecordSequenceListener {
 	/**
-	 * This method is called when an asynchronous batch record is received from the server.
+	 * This method is called when a record is received from the server.
 	 * The receive sequence is not ordered.
 	 * <p>
 	 * The user may throw {@link com.aerospike.client.AerospikeException} if the
@@ -33,11 +33,11 @@ public interface BatchSequenceListener {
 	 * to other nodes will also be terminated and the exception will be propagated back
 	 * through the onFailure() call.
 	 *
-	 * @param record		record instance, {@link com.aerospike.client.BatchRecord#record}
-	 *						will be null if the key is not found
-	 * @throws AerospikeException	if error occurs or batch should be terminated.
+	 * @param record	record instance
+	 * @param index 	index offset into the original BatchRecord array.
+	 * @throws AerospikeException	if error occurs or scan should be terminated.
 	 */
-	public void onRecord(BatchRead record);
+	public void onRecord(BatchRecord record, int index) throws AerospikeException;
 
 	/**
 	 * This method is called when the command completes successfully.
