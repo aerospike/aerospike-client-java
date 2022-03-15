@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -35,11 +35,23 @@ public enum PrivilegeCode {
 	SYS_ADMIN(1, Role.SysAdmin),
 
 	/**
-	 * User can perform data administration functions on a database that do not involve user
-	 * administration.  Examples include index and user defined function management.
-	 * Global scope only.
+	 * User can perform UDF and SINDEX administration actions. Global scope only.
 	 */
 	DATA_ADMIN(2, Role.DataAdmin),
+
+	/**
+	 * User can perform user defined function(UDF) administration actions.
+	 * Examples include create/drop UDF. Global scope only.
+	 * Requires server version 5.8+
+	 */
+	UDF_ADMIN(3, Role.UDFAdmin),
+
+	/**
+	 * User can perform secondary index administration actions.
+	 * Examples include create/drop index. Global scope only.
+	 * Requires server version 5.8+
+	 */
+	SINDEX_ADMIN(4, Role.SIndexAdmin),
 
 	/**
 	 * User can read data.
@@ -59,7 +71,13 @@ public enum PrivilegeCode {
 	/**
 	 * User can write data.
 	 */
-	WRITE(13, Role.Write);
+	WRITE(13, Role.Write),
+
+	/**
+	 * User can truncate data only.
+	 * Requires server version 5.8+
+	 */
+	TRUNCATE(14, Role.Truncate);
 
 	/**
 	 * Privilege code ID used in wire protocol.
@@ -93,6 +111,12 @@ public enum PrivilegeCode {
 		case 2:
 			return DATA_ADMIN;
 
+		case 3:
+			return UDF_ADMIN;
+
+		case 4:
+			return SINDEX_ADMIN;
+
 		case 10:
 			return READ;
 
@@ -104,6 +128,9 @@ public enum PrivilegeCode {
 
 		case 13:
 			return WRITE;
+
+		case 14:
+			return TRUNCATE;
 
 		default:
 			throw new AerospikeException("Invalid privilege code: " + id);

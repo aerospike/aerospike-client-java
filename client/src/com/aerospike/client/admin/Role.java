@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,9 +33,19 @@ public final class Role {
 	public static final String SysAdmin = "sys-admin";
 
 	/**
-	 * Manage indicies and user defined functions.
+	 * Manage user defined functions and indicies.
 	 */
 	public static final String DataAdmin = "data-admin";
+
+	/**
+	 * Manage user defined functions.
+	 */
+	public static final String UDFAdmin = "udf-admin";
+
+	/**
+	 * Manage indicies.
+	 */
+	public static final String SIndexAdmin = "sindex-admin";
 
 	/**
 	 * Allow read transactions.
@@ -56,6 +66,11 @@ public final class Role {
 	 * Allow write transactions.
 	 */
 	public static final String Write = "write";
+
+	/**
+	 * Allow truncate.
+	 */
+	public static final String Truncate = "truncate";
 
 	/**
 	 * Role name.
