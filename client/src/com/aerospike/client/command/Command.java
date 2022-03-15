@@ -35,7 +35,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.exp.CommandExp;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.CommitLevel;
@@ -49,11 +48,9 @@ import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
-import com.aerospike.client.query.PredExp;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 
-@SuppressWarnings("deprecation")
 public abstract class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
@@ -144,10 +141,9 @@ public abstract class Command {
 	public final void setWrite(WritePolicy policy, Operation.Type operation, Key key, Bin[] bins) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -158,8 +154,8 @@ public abstract class Command {
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		for (Bin bin : bins) {
@@ -172,18 +168,17 @@ public abstract class Command {
 	public void setDelete(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE | Command.INFO2_DELETE, fieldCount, 0);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 		end();
 	}
@@ -191,10 +186,9 @@ public abstract class Command {
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		estimateOperationSize();
@@ -202,8 +196,8 @@ public abstract class Command {
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 1);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 		writeOperation(Operation.Type.TOUCH);
 		end();
@@ -216,18 +210,17 @@ public abstract class Command {
 	public final void setExists(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 		end();
 	}
@@ -235,18 +228,17 @@ public abstract class Command {
 	private final void setRead(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 		end();
 	}
@@ -255,10 +247,9 @@ public abstract class Command {
 		if (binNames != null) {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
-			CommandExp exp = getCommandExp(policy);
 
-			if (exp != null) {
-				dataOffset += exp.size();
+			if (policy.filterExp != null) {
+				dataOffset += policy.filterExp.size();
 				fieldCount++;
 			}
 
@@ -269,8 +260,8 @@ public abstract class Command {
 			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
 
-			if (exp != null) {
-				exp.write(this);
+			if (policy.filterExp != null) {
+				policy.filterExp.write(this);
 			}
 
 			for (String binName : binNames) {
@@ -286,10 +277,9 @@ public abstract class Command {
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		estimateOperationSize((String)null);
@@ -297,8 +287,8 @@ public abstract class Command {
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 		end();
 	}
@@ -310,10 +300,9 @@ public abstract class Command {
 	public final void setOperate(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 		dataOffset += args.size;
@@ -322,8 +311,8 @@ public abstract class Command {
 		writeHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		for (Operation operation : args.operations) {
@@ -340,10 +329,9 @@ public abstract class Command {
 	public final void setUdf(WritePolicy policy, Key key, String packageName, String functionName, Value[] args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -354,8 +342,8 @@ public abstract class Command {
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, 0);
 		writeKey(policy, key);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
@@ -377,10 +365,9 @@ public abstract class Command {
 
 		begin();
 		int fieldCount = 1;
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -432,8 +419,8 @@ public abstract class Command {
 
 		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		final int fieldSizeOffset = dataOffset;
@@ -513,10 +500,9 @@ public abstract class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -561,8 +547,8 @@ public abstract class Command {
 
 		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		int fieldSizeOffset = dataOffset;
@@ -632,10 +618,9 @@ public abstract class Command {
 
 		begin();
 		int fieldCount = 1;
-		CommandExp exp = getCommandExp(policy);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -669,8 +654,8 @@ public abstract class Command {
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		final int fieldSizeOffset = dataOffset;
@@ -798,7 +783,7 @@ public abstract class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		CommandExp exp = getCommandExp(policy, attr);
+		Expression exp = getBatchExpression(policy, attr);
 
 		if (exp != null) {
 			dataOffset += exp.size();
@@ -923,7 +908,7 @@ public abstract class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		CommandExp exp = getCommandExp(policy, attr);
+		Expression exp = getBatchExpression(policy, attr);
 
 		if (exp != null) {
 			dataOffset += exp.size();
@@ -1004,6 +989,10 @@ public abstract class Command {
 		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
 		end();
 		compress(policy);
+	}
+
+	private static final Expression getBatchExpression(Policy policy, BatchAttr attr) {
+		return (attr.filterExp != null) ? attr.filterExp : policy.filterExp;
 	}
 
 	private static byte getBatchFlags(BatchPolicy policy) {
@@ -1160,10 +1149,8 @@ public abstract class Command {
 			fieldCount++;
 		}
 
-		CommandExp exp = getCommandExp(policy);
-
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -1227,8 +1214,8 @@ public abstract class Command {
 			writeField(policy.recordsPerSecond, FieldType.RECORDS_PER_SECOND);
 		}
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		// Write scan socket idle timeout.
@@ -1343,11 +1330,8 @@ public abstract class Command {
 			fieldCount += 4;
 		}
 
-		PredExp[] predExp = statement.getPredExp();
-		CommandExp exp = (predExp != null)? new CommandPredExp(predExp) : getCommandExp(policy);
-
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
 
@@ -1484,8 +1468,8 @@ public abstract class Command {
 			writeField(functionArgBuffer, FieldType.UDF_ARGLIST);
 		}
 
-		if (exp != null) {
-			exp.write(this);
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
 		}
 
 		if (partsFullSize > 0) {
@@ -2121,57 +2105,6 @@ public abstract class Command {
 
 	public static boolean batchInDoubt(boolean isWrite, int commandSentCounter) {
 		return isWrite && commandSentCounter > 1;
-	}
-
-	//--------------------------------------------------
-	// Expression Filters
-	//--------------------------------------------------
-
-	private static final CommandExp getCommandExp(Policy policy) {
-		if (policy.filterExp != null) {
-			return policy.filterExp;
-		}
-
-		if (policy.predExp != null) {
-			return new CommandPredExp(policy.predExp);
-		}
-		return null;
-	}
-
-	private static final CommandExp getCommandExp(Policy policy, BatchAttr attr) {
-		if (attr.filterExp != null) {
-			return attr.filterExp;
-		}
-
-		if (policy.filterExp != null) {
-			return policy.filterExp;
-		}
-
-		if (policy.predExp != null) {
-			return new CommandPredExp(policy.predExp);
-		}
-		return null;
-	}
-
-	private static class CommandPredExp implements CommandExp {
-		private final PredExp[] predExp;
-		private final int sz;
-
-		private CommandPredExp(PredExp[] predExp) {
-			this.predExp = predExp;
-			this.sz = PredExp.estimateSize(predExp);
-		}
-
-		@Override
-		public int size() {
-			return sz + FIELD_HEADER_SIZE;
-		}
-
-		@Override
-		public void write(Command cmd) {
-			cmd.writeExpHeader(sz);
-			cmd.dataOffset = PredExp.write(predExp, cmd.dataBuffer, cmd.dataOffset);
-		}
 	}
 
 	private static class OpResults extends ArrayList<Object> {

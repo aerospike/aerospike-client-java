@@ -26,7 +26,7 @@ import com.aerospike.client.util.Packer;
 /**
  * Packed expression byte instructions.
  */
-public final class Expression implements CommandExp, Serializable {
+public final class Expression implements Serializable {
 	private static final long serialVersionUID = 1L;
 
 	private final byte[] bytes;
