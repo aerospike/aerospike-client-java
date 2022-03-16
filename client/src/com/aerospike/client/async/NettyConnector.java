@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -92,7 +92,10 @@ public final class NettyConnector extends AsyncConnector {
 
 				if (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) {
 					state = AsyncCommand.TLS_HANDSHAKE;
-					cluster.nettyTlsContext.addHandler(ch, p);
+
+					SslHandler hdl = cluster.nettyTlsContext.createHandler(ch);
+					hdl.setHandshakeTimeoutMillis(cluster.connectTimeout);
+					p.addLast(hdl);
 				}
 				p.addLast(handler);
 			}

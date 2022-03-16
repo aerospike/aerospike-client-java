@@ -60,6 +60,7 @@ import io.netty.incubator.channel.uring.IOUringSocketChannel;
  * Asynchronous command handler using netty.
  */
 public final class NettyCommand implements Runnable, TimerTask {
+	private static final long MinHandshakeTimeout = TimeUnit.MILLISECONDS.toNanos(1);
 
 	final NettyEventLoop eventLoop;
 	final Cluster cluster;
@@ -277,6 +278,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 				setTimeoutTask(deadline, tstate);
 			}
 
+			final long handshakeDeadline = deadline;
 			final InboundHandler handler = new InboundHandler(this);
 
 			Bootstrap b = new Bootstrap();
@@ -304,7 +306,21 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 					if (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) {
 						state = AsyncCommand.TLS_HANDSHAKE;
-						cluster.nettyTlsContext.addHandler(ch, p);
+
+						SslHandler hdl = cluster.nettyTlsContext.createHandler(ch);
+
+						// If deadline defined, set equivalent handshake timeout.
+						// Otherwise, use default handshake timeout.
+						if (handshakeDeadline > 0) {
+							long timeoutNanos = handshakeDeadline - System.nanoTime();
+
+							// Enforce a minimum handshake timeout.
+							if (timeoutNanos < MinHandshakeTimeout) {
+								timeoutNanos = MinHandshakeTimeout;
+							}
+							hdl.setHandshakeTimeout(timeoutNanos, TimeUnit.NANOSECONDS);
+						}
+						p.addLast(hdl);
 					}
 					p.addLast(handler);
 				}

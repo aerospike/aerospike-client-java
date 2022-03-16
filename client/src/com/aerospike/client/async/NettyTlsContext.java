@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
-import io.netty.channel.ChannelPipeline;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.CipherSuiteFilter;
 import io.netty.handler.ssl.ClientAuth;
@@ -36,6 +35,7 @@ import io.netty.handler.ssl.IdentityCipherSuiteFilter;
 import io.netty.handler.ssl.JdkSslContext;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.SslHandler;
 
 /**
  * Netty SslContext container.
@@ -98,10 +98,10 @@ public final class NettyTlsContext implements CipherSuiteFilter {
 	}
 
 	/**
-	 * Add TLS hander for netty connection.
+	 * Create TLS handler.
 	 */
-	public void addHandler(SocketChannel ch, ChannelPipeline p) {
-		p.addLast(context.newHandler(ch.alloc()));
+	public SslHandler createHandler(SocketChannel ch) {
+		return context.newHandler(ch.alloc());
 	}
 
 	/**
