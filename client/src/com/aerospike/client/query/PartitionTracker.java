@@ -128,13 +128,12 @@ public final class PartitionTracker {
 
 		if (filter.partitions == null) {
 			filter.partitions = initPartitions(filter.count, filter.digest);
+			filter.retry = true;
 		}
 		else {
 			// Retry all partitions when maxRecords not specified.
 			if (maxRecords == 0) {
-				for (PartitionStatus ps : filter.partitions) {
-					ps.retry = true;
-				}
+				filter.retry = true;
 			}
 		}
 		this.partitions = filter.partitions;
@@ -196,9 +195,10 @@ public final class PartitionTracker {
 		}
 
 		AtomicReferenceArray<Node> master = parts.replicas[0];
+		boolean retry = (partitionFilter == null || partitionFilter.retry) && iteration == 1;
 
 		for (PartitionStatus part : partitions) {
-			if (part.retry) {
+			if (retry || part.retry) {
 				Node node = master.get(part.id);
 
 				if (node == null) {
@@ -227,10 +227,14 @@ public final class PartitionTracker {
 			}
 		}
 
+		int nodeSize = list.size();
+
+		if (nodeSize <= 0) {
+			throw new AerospikeException.InvalidNode("No nodes were assigned");
+		}
+
 		if (maxRecords > 0) {
 			// Distribute maxRecords across nodes.
-			int nodeSize = list.size();
-
 			if (maxRecords < nodeSize) {
 				// Only include nodes that have at least 1 record requested.
 				nodeSize = (int)maxRecords;
@@ -312,6 +316,9 @@ public final class PartitionTracker {
 					}
 
 					if (partitionFilter != null) {
+						// Set global retry to false because only specific node partitions
+						// should be retried.
+						partitionFilter.retry = false;
 						partitionFilter.done = done;
 					}
 				}
@@ -326,6 +333,9 @@ public final class PartitionTracker {
 					}
 
 					if (partitionFilter != null) {
+						// Set global retry to false because only specific node partitions
+						// should be retried.
+						partitionFilter.retry = false;
 						partitionFilter.done = recordCount == 0;
 					}
 				}

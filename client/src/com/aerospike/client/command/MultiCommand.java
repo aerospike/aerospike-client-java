@@ -222,10 +222,7 @@ public abstract class MultiCommand extends SyncCommand {
 		}
 	}
 
-	/**
-	 * Parse all records in the group for scan/query.
-	 */
-	protected boolean parseGroup(int receiveSize) {
+	private boolean parseGroup(int receiveSize) {
 		while (dataOffset < receiveSize) {
 			dataOffset += 3;
 			info3 = dataBuffer[dataOffset] & 0xFF;
