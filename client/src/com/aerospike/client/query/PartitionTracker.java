@@ -233,6 +233,14 @@ public final class PartitionTracker {
 			throw new AerospikeException.InvalidNode("No nodes were assigned");
 		}
 
+		// Set global retry to true because scan/query may terminate early and all partitions
+		// will need to be retried if the PartitionFilter instance is reused in a new scan/query.
+		// Global retry will be set to false if the scan/query completes normally and maxRecords
+		// is specified.
+		if (partitionFilter != null) {
+			partitionFilter.retry = true;
+		}
+
 		if (maxRecords > 0) {
 			// Distribute maxRecords across nodes.
 			if (maxRecords < nodeSize) {
