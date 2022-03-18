@@ -415,13 +415,16 @@ public class TestAsyncBatch extends TestAsync {
 
 			public void onRecord(BatchRecord record, int index) {
 				Record rec = record.record;
-				List<?> results = rec.getList(ListBin3);
-				long size = (Long)results.get(1);
-				long val = (Long)results.get(2);
 
-				assertEquals(3, size);
-				assertEquals(1, val);
-				count++;
+				if (assertNotNull(rec)) {
+					List<?> results = rec.getList(ListBin3);
+					long size = (Long)results.get(1);
+					long val = (Long)results.get(2);
+
+					assertEquals(3, size);
+					assertEquals(1, val);
+					count++;
+				}
 			}
 
 			public void onSuccess() {

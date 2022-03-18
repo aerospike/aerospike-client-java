@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -42,6 +43,7 @@ import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
+import com.aerospike.client.util.Util;
 
 public final class AsyncBatch {
 	//-------------------------------------------------------
@@ -862,7 +864,7 @@ public final class AsyncBatch {
 			else {
 				record.setError(resultCode, Command.batchInDoubt(record.hasWrite, commandSentCounter));
 			}
-			listener.onRecord(record, batchIndex);
+			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
 
 		@Override
@@ -871,8 +873,9 @@ public final class AsyncBatch {
 				BatchRecord record = records.get(index);
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					// Set error, but do not call onRecord() because user already has access to full
+					// BatchRecord list and can examine each record for errors when the exception occurs.
 					record.setError(resultCode, record.hasWrite && inDoubt);
-					listener.onRecord(record, index);
 				}
 			}
 		}
@@ -1040,7 +1043,7 @@ public final class AsyncBatch {
 		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
 			sent[index] = true;
-			listener.onRecord(record, index);
+			AsyncBatch.onRecord(listener, record, index);
 		}
 
 		@Override
@@ -1103,7 +1106,7 @@ public final class AsyncBatch {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 			sent[batchIndex] = true;
-			listener.onRecord(record, batchIndex);
+			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
 
 		@Override
@@ -1113,7 +1116,7 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					listener.onRecord(record, index);
+					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
 		}
@@ -1305,7 +1308,7 @@ public final class AsyncBatch {
 		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
 			sent[index] = true;
-			listener.onRecord(record, index);
+			AsyncBatch.onRecord(listener, record, index);
 		}
 
 		@Override
@@ -1386,7 +1389,7 @@ public final class AsyncBatch {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
 			sent[batchIndex] = true;
-			listener.onRecord(record, batchIndex);
+			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
 
 		@Override
@@ -1396,7 +1399,7 @@ public final class AsyncBatch {
 					Key key = keys[index];
 					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
-					listener.onRecord(record, index);
+					AsyncBatch.onRecord(listener, record, index);
 				}
 			}
 		}
@@ -1482,5 +1485,14 @@ public final class AsyncBatch {
 		abstract void setError(int resultCode, boolean inDoubt);
 		abstract AsyncBatchCommand createCommand(BatchNode batchNode);
 		abstract List<BatchNode> generateBatchNodes();
+	}
+
+	private static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
+		try {
+			listener.onRecord(record, index);
+		}
+		catch (Throwable e) {
+			Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
+		}
 	}
 }
