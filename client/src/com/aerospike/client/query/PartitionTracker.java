@@ -411,10 +411,14 @@ public final class PartitionTracker {
 		case ResultCode.SERVER_NOT_AVAILABLE:
 		case ResultCode.TIMEOUT:
 		case ResultCode.INDEX_NOTFOUND:
-			if (exceptions == null) {
-				exceptions = new ArrayList<AerospikeException>();
+			// Multiple scan/query threads may call this method, so exception
+			// list must be modified under lock.
+			synchronized(this) {
+				if (exceptions == null) {
+					exceptions = new ArrayList<AerospikeException>();
+				}
+				exceptions.add(ae);
 			}
-			exceptions.add(ae);
 			markRetry(nodePartitions);
 			nodePartitions.partsUnavailable = nodePartitions.partsFull.size() + nodePartitions.partsPartial.size();
 			return true;
