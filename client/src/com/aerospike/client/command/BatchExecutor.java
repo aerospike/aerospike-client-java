@@ -21,7 +21,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.Batch.BatchCommand;
 import com.aerospike.client.policy.BatchPolicy;
@@ -41,7 +40,7 @@ public final class BatchExecutor {
 					// those new subcommands have already set error/inDoubt on the affected
 					// subset of keys.
 					if (! command.splitRetry) {
-						command.setError(ae.getResultCode(), ae.getInDoubt());
+						command.setInDoubt(ae.getInDoubt());
 					}
 					status.setException(ae);
 
@@ -51,7 +50,7 @@ public final class BatchExecutor {
 				}
 				catch (RuntimeException re) {
 					if (! command.splitRetry) {
-						command.setError(ResultCode.CLIENT_ERROR, true);
+						command.setInDoubt(true);
 					}
 					status.setException(re);
 

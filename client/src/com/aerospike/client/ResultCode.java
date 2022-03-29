@@ -24,12 +24,12 @@ public final class ResultCode {
 	/**
 	 * One or more keys failed in a batch.
 	 */
-	public static final int BATCH_FAILED = -14;
+	public static final int BATCH_FAILED = -16;
 
 	/**
 	 * No response received from server.
 	 */
-	public static final int NO_RESPONSE = -13;
+	public static final int NO_RESPONSE = -15;
 
 	/**
 	 * Max errors limit reached.
