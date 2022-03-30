@@ -209,6 +209,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			else {
 				ae = new AerospikeException(exception);
 			}
+			tracker.partitionError();
 			ae.setIteration(tracker.iteration);
 			throw ae;
 		}

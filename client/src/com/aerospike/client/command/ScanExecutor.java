@@ -61,6 +61,7 @@ public final class ScanExecutor {
 				}
 			}
 			catch (AerospikeException ae) {
+				tracker.partitionError();
 				ae.setIteration(tracker.iteration);
 				throw ae;
 			}

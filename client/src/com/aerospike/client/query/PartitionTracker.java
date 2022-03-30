@@ -438,6 +438,13 @@ public final class PartitionTracker {
 		}
 	}
 
+	public void partitionError() {
+		// Mark all partitions for retry on fatal errors.
+		if (partitionFilter != null) {
+			partitionFilter.retry = true;
+		}
+	}
+
 	public static final class NodePartitions {
 		public final Node node;
 		public final List<PartitionStatus> partsFull;
