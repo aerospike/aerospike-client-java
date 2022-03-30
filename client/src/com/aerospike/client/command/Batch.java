@@ -143,7 +143,7 @@ public final class Batch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -197,7 +197,7 @@ public final class Batch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 

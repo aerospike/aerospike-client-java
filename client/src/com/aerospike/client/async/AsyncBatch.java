@@ -323,7 +323,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -430,7 +430,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -521,7 +521,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -609,7 +609,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -1098,7 +1098,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 
@@ -1386,7 +1386,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 
