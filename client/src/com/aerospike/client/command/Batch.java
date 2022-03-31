@@ -75,17 +75,6 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			for (int index : batch.offsets) {
-				BatchRecord record = records.get(index);
-
-				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, false);
-				}
-			}
-		}
-
-		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
 			return new ReadListCommand(cluster, batchNode, batchPolicy, records, status);
 		}
@@ -148,18 +137,13 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// records does not store error/inDoubt.
-		}
-
-		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
 			return new GetArrayCommand(cluster, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation, status);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -207,18 +191,13 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// existsArray does not store error/inDoubt.
-		}
-
-		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
 			return new ExistsArrayCommand(cluster, batchNode, batchPolicy, keys, existsArray, status);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, status);
+			return BatchNodeList.generate(cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, status);
 		}
 	}
 
@@ -282,12 +261,16 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records.get(index);
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, record.hasWrite && inDoubt);
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -356,12 +339,16 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt || !attr.hasWrite) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -450,12 +437,16 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt || !attr.hasWrite) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -508,13 +499,13 @@ public final class Batch {
 				// those new subcommands have already set error/inDoubt on the affected
 				// subset of keys.
 				if (! splitRetry) {
-					setError(ae.getResultCode(), ae.getInDoubt());
+					setInDoubt(ae.getInDoubt());
 				}
 				status.setException(ae);
 			}
 			catch (RuntimeException re) {
 				if (! splitRetry) {
-					setError(ResultCode.CLIENT_ERROR, true);
+					setInDoubt(true);
 				}
 				status.setException(re);
 			}
@@ -575,7 +566,7 @@ public final class Batch {
 				}
 				catch (AerospikeException ae) {
 					if (! command.splitRetry) {
-						command.setError(ae.getResultCode(), ae.getInDoubt());
+						command.setInDoubt(ae.getInDoubt());
 					}
 					status.setException(ae);
 
@@ -585,7 +576,7 @@ public final class Batch {
 				}
 				catch (RuntimeException re) {
 					if (! command.splitRetry) {
-						command.setError(ResultCode.CLIENT_ERROR, true);
+						command.setInDoubt(true);
 					}
 					status.setException(re);
 
@@ -597,7 +588,10 @@ public final class Batch {
 			return true;
 		}
 
-		abstract void setError(int resultCode, boolean inDoubt);
+		protected void setInDoubt(boolean inDoubt) {
+			// Do nothing by default. Batch writes will override this method.
+		}
+
 		abstract BatchCommand createCommand(BatchNode batchNode);
 		abstract List<BatchNode> generateBatchNodes();
 	}

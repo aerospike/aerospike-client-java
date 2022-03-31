@@ -110,6 +110,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 	}
 
 	protected void onFailure(AerospikeException ae) {
+		tracker.partitionError();
 		ae.setIteration(tracker.iteration);
 		listener.onFailure(ae);
 	}

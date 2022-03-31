@@ -124,17 +124,6 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			for (int index : batch.offsets) {
-				BatchRead record = records.get(index);
-
-				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, false);
-				}
-			}
-		}
-
-		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
 			return new ReadListCommand(parent, batchNode, batchPolicy, records);
 		}
@@ -222,18 +211,6 @@ public final class AsyncBatch {
 				record.setError(resultCode, false);
 			}
 			listener.onRecord(record);
-		}
-
-		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			for (int index : batch.offsets) {
-				BatchRead record = records.get(index);
-
-				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, false);
-					listener.onRecord(record);
-				}
-			}
 		}
 
 		@Override
@@ -340,18 +317,13 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// records does not store error/inDoubt.
-		}
-
-		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
 			return new GetArrayCommand(parent, batchNode, batchPolicy, keys, binNames, ops, records, readAttr, isOperation);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -452,18 +424,13 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// error/inDoubt not sent to listener.
-		}
-
-		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
 			return new GetSequenceCommand(parent, batchNode, batchPolicy, keys, binNames, ops, listener, readAttr, isOperation);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -548,18 +515,13 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// existsArray does not store error/inDoubt.
-		}
-
-		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
 			return new ExistsArrayCommand(parent, batchNode, batchPolicy, keys, existsArray);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -641,18 +603,13 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
-			// error/inDoubt not sent to listener.
-		}
-
-		@Override
 		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
 			return new ExistsSequenceCommand(parent, batchNode, batchPolicy, keys, listener);
 		}
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, false, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
 		}
 	}
 
@@ -751,12 +708,16 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records.get(index);
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, record.hasWrite && inDoubt);
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -868,14 +829,18 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records.get(index);
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					// Set error, but do not call onRecord() because user already has access to full
-					// BatchRecord list and can examine each record for errors when the exception occurs.
-					record.setError(resultCode, record.hasWrite && inDoubt);
+					// Set inDoubt, but do not call onRecord() because user already has access to full
+					// BatchRecord list and can examine each record for inDoubt when the exception occurs.
+					record.inDoubt = record.hasWrite;
 				}
 			}
 		}
@@ -985,12 +950,16 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt || !attr.hasWrite) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -1110,11 +1079,12 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			// Set inDoubt for all unsent records, so the listener receives a full set of records.
 			for (int index : batch.offsets) {
 				if (! sent[index]) {
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.onRecord(listener, record, index);
 				}
@@ -1128,7 +1098,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 
@@ -1248,12 +1218,16 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			if (!inDoubt || !attr.hasWrite) {
+				return;
+			}
+
 			for (int index : batch.offsets) {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.setError(resultCode, attr.hasWrite && inDoubt);
+					record.inDoubt = inDoubt;
 				}
 			}
 		}
@@ -1393,11 +1367,12 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		protected void setError(int resultCode, boolean inDoubt) {
+		protected void setInDoubt(boolean inDoubt) {
+			// Set inDoubt for all unsent records, so the listener receives a full set of records.
 			for (int index : batch.offsets) {
 				if (! sent[index]) {
 					Key key = keys[index];
-					BatchRecord record = new BatchRecord(key, null, resultCode, attr.hasWrite && inDoubt, attr.hasWrite);
+					BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, attr.hasWrite && inDoubt, attr.hasWrite);
 					sent[index] = true;
 					AsyncBatch.onRecord(listener, record, index);
 				}
@@ -1411,7 +1386,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected List<BatchNode> generateBatchNodes() {
-			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, null, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sent, sequenceAP, sequenceSC, batch, attr.hasWrite, parent);
 		}
 	}
 
@@ -1478,11 +1453,14 @@ public final class AsyncBatch {
 
 		@Override
 		protected void onFailure(AerospikeException e) {
-			setError(e.getResultCode(), e.getInDoubt());
+			setInDoubt(e.getInDoubt());
 			parent.childFailure(e);
 		}
 
-		abstract void setError(int resultCode, boolean inDoubt);
+		protected void setInDoubt(boolean inDoubt) {
+			// Do nothing by default. Batch writes will override this method.
+		}
+
 		abstract AsyncBatchCommand createCommand(BatchNode batchNode);
 		abstract List<BatchNode> generateBatchNodes();
 	}

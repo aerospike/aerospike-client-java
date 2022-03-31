@@ -22,6 +22,7 @@ import java.util.List;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
@@ -35,6 +36,9 @@ public final class BatchNodeList {
 		public void setInvalidNode(AerospikeException ae);
 	}
 
+	/**
+	 * Assign keys to nodes in initial batch attempt.
+	 */
 	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
@@ -105,6 +109,9 @@ public final class BatchNodeList {
 		return batchNodes;
 	}
 
+	/**
+	 * Assign keys to nodes in batch node retry.
+	 */
 	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
@@ -136,6 +143,12 @@ public final class BatchNodeList {
 
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
+
+			if (records[offset].resultCode != ResultCode.NO_RESPONSE) {
+				// Do not retry keys that already have a response.
+				continue;
+			}
+
 			Key key = keys[offset];
 
 			try {
@@ -153,13 +166,8 @@ public final class BatchNodeList {
 				}
 			}
 			catch (AerospikeException.InvalidNode ain) {
-				if (records != null) {
-					// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-					records[offset].setError(ain.getResultCode(), Command.batchInDoubt(hasWrite, 2));
-				}
-				else {
-					status.setInvalidNode(key, offset, ain, Command.batchInDoubt(hasWrite, 2), hasWrite);
-				}
+				// This method only called on retry, so commandSentCounter(2) will be greater than 1.
+				records[offset].setError(ain.getResultCode(), Command.batchInDoubt(hasWrite, 2));
 
 				if (except == null) {
 					except = ain;
@@ -173,6 +181,146 @@ public final class BatchNodeList {
 		return batchNodes;
 	}
 
+	/**
+	 * Assign keys to nodes in batch node retry for async sequence listeners.
+	 */
+	public static List<BatchNode> generate(
+		Cluster cluster,
+		BatchPolicy policy,
+		Key[] keys,
+		boolean[] sent,
+		int sequenceAP,
+		int sequenceSC,
+		BatchNode batchSeed,
+		boolean hasWrite,
+		IBatchStatus status
+	) {
+		Node[] nodes = cluster.validateNodes();
+
+		// Create initial key capacity for each node as average + 25%.
+		int keysPerNode = batchSeed.offsetsSize / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
+		}
+
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
+		// Split keys by server node.
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
+		AerospikeException except = null;
+
+		for (int i = 0; i < batchSeed.offsetsSize; i++) {
+			int offset = batchSeed.offsets[i];
+
+			if (sent[offset]) {
+				// Do not retry keys that already have a response.
+				continue;
+			}
+
+			Key key = keys[offset];
+
+			try {
+				Node node = hasWrite ?
+					Partition.getNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+					Partition.getNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
+				BatchNode batchNode = findBatchNode(batchNodes, node);
+
+				if (batchNode == null) {
+					batchNodes.add(new BatchNode(node, keysPerNode, offset));
+				}
+				else {
+					batchNode.addKey(offset);
+				}
+			}
+			catch (AerospikeException.InvalidNode ain) {
+				status.setInvalidNode(key, offset, ain, Command.batchInDoubt(hasWrite, 2), hasWrite);
+
+				if (except == null) {
+					except = ain;
+				}
+			}
+		}
+
+		if (except != null) {
+			status.setInvalidNode(except);
+		}
+		return batchNodes;
+	}
+
+	/**
+	 * Assign keys to nodes in batch node retry for batch reads.
+	 */
+	public static List<BatchNode> generate(
+		Cluster cluster,
+		BatchPolicy policy,
+		Key[] keys,
+		int sequenceAP,
+		int sequenceSC,
+		BatchNode batchSeed,
+		boolean hasWrite,
+		IBatchStatus status
+	) {
+		Node[] nodes = cluster.validateNodes();
+
+		// Create initial key capacity for each node as average + 25%.
+		int keysPerNode = batchSeed.offsetsSize / nodes.length;
+		keysPerNode += keysPerNode >>> 2;
+
+		// The minimum key capacity is 10.
+		if (keysPerNode < 10) {
+			keysPerNode = 10;
+		}
+
+		final Replica replica = policy.replica;
+		final Replica replicaSC = Partition.getReplicaSC(policy);
+
+		// Split keys by server node.
+		List<BatchNode> batchNodes = new ArrayList<BatchNode>(nodes.length);
+		AerospikeException except = null;
+
+		for (int i = 0; i < batchSeed.offsetsSize; i++) {
+			int offset = batchSeed.offsets[i];
+			Key key = keys[offset];
+
+			// This method is only used to retry batch reads and the resultCode is not stored, so
+			// retry all keys assigned to this node. Fortunately, it's rare to retry a node after
+			// already receiving records and it's harmless to read the same record twice.
+
+			try {
+				Node node = hasWrite ?
+					Partition.getNodeBatchWrite(cluster, key, replica, batchSeed.node, sequenceAP) :
+					Partition.getNodeBatchRead(cluster, key, replica, replicaSC, batchSeed.node, sequenceAP, sequenceSC);
+
+				BatchNode batchNode = findBatchNode(batchNodes, node);
+
+				if (batchNode == null) {
+					batchNodes.add(new BatchNode(node, keysPerNode, offset));
+				}
+				else {
+					batchNode.addKey(offset);
+				}
+			}
+			catch (AerospikeException.InvalidNode ain) {
+				if (except == null) {
+					except = ain;
+				}
+			}
+		}
+
+		if (except != null) {
+			status.setInvalidNode(except);
+		}
+		return batchNodes;
+	}
+
+	/**
+	 * Assign keys to nodes in initial batch attempt.
+	 */
 	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
@@ -239,6 +387,9 @@ public final class BatchNodeList {
 		return batchNodes;
 	}
 
+	/**
+	 * Assign keys to nodes in batch node retry.
+	 */
 	public static List<BatchNode> generate(
 		Cluster cluster,
 		BatchPolicy policy,
@@ -269,6 +420,11 @@ public final class BatchNodeList {
 		for (int i = 0; i < batchSeed.offsetsSize; i++) {
 			int offset = batchSeed.offsets[i];
 			BatchRecord b = records.get(offset);
+
+			if (b.resultCode != ResultCode.NO_RESPONSE) {
+				// Do not retry keys that already have a response.
+				continue;
+			}
 
 			try {
 				Node node = b.hasWrite ?

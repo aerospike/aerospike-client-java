@@ -58,6 +58,7 @@ public final class QueryListenerExecutor {
 				}
 			}
 			catch (AerospikeException ae) {
+				tracker.partitionError();
 				ae.setIteration(tracker.iteration);
 				throw ae;
 			}
