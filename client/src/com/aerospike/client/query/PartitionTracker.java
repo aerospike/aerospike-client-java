@@ -309,6 +309,16 @@ public final class PartitionTracker {
 					partitionFilter.done = true;
 				}
 			}
+			else if (iteration > 1) {
+				if (partitionFilter != null) {
+					// If errors occurred on a node, only that node's partitions are retried in the
+					// next iteration. If that node finally succeeds, the other original nodes still
+					// need to be retried if parts_all is reused in the next scan/query command.
+					// Force retry on all node partitions.
+					partitionFilter.retry = true;
+					partitionFilter.done = false;
+				}
+			}
 			else {
 				if (cluster.hasPartitionQuery) {
 					// Server version >= 6.0 will return all records for each node up to
