@@ -313,7 +313,7 @@ public final class PartitionTracker {
 				if (partitionFilter != null) {
 					// If errors occurred on a node, only that node's partitions are retried in the
 					// next iteration. If that node finally succeeds, the other original nodes still
-					// need to be retried if parts_all is reused in the next scan/query command.
+					// need to be retried if partition state is reused in the next scan/query command.
 					// Force retry on all node partitions.
 					partitionFilter.retry = true;
 					partitionFilter.done = false;
