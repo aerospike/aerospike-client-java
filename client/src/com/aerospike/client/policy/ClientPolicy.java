@@ -199,7 +199,14 @@ public class ClientPolicy {
 	public int tendInterval = 1000;
 
 	/**
-	 * Throw exception if all seed connections fail on cluster instantiation.
+	 * Should cluster instantiation fail if the client fails to connect to a seed or a
+	 * seed's peers.
+	 * <p>
+	 * If true, throw an exception if all seed connections fail or a seed is valid,
+	 * but a peer from that seed is not reachable.
+	 * <p>
+	 * If false, an partial cluster will be created and the client will automatically connect
+	 * to the remaining nodes when they become available.
 	 * <p>
 	 * Default: true
 	 */

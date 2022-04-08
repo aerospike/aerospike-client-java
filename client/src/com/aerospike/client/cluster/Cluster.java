@@ -464,7 +464,7 @@ public class Cluster implements Runnable, Closeable {
 	private final void waitTillStabilized(boolean failIfNotConnected) {
 		// Tend now requests partition maps in same iteration as the nodes
 		// are added, so there is no need to call tend twice anymore.
-		tend(failIfNotConnected);
+		tend(failIfNotConnected, true);
 
 		if (nodes.length == 0) {
 			String message = "Cluster seed(s) failed";
@@ -482,7 +482,7 @@ public class Cluster implements Runnable, Closeable {
 		while (tendValid) {
 			// Tend cluster.
 			try {
-				tend(false);
+				tend(false, false);
 			}
 			catch (Exception e) {
 				if (Log.warnEnabled()) {
@@ -497,7 +497,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Check health of all nodes in the cluster.
 	 */
-	private final void tend(boolean failIfNotConnected) {
+	private final void tend(boolean failIfNotConnected, boolean isInit) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
 		Peers peers = new Peers(nodes.length + 16);
@@ -512,6 +512,11 @@ public class Cluster implements Runnable, Closeable {
 		// If active nodes don't exist, seed cluster.
 		if (nodes.length == 0) {
 			seedNode(peers, failIfNotConnected);
+
+			// All peers must be reachable on cluster init if failIfNotConnected is true.
+			if (isInit && peers.getInvalidCount() > 0 && failIfNotConnected) {
+				peers.clusterInitError();
+			}
 		}
 		else {
 			// Refresh all known nodes.

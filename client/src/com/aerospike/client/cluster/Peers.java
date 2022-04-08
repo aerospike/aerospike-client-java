@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 
 public final class Peers {
@@ -45,5 +46,23 @@ public final class Peers {
 
 	public int getInvalidCount() {
 		return invalidHosts.size();
+	}
+
+	public void clusterInitError() {
+		StringBuilder sb = new StringBuilder();
+		sb.append("Peers not reachable: ");
+
+		boolean comma = false;
+
+		for (Host host : invalidHosts) {
+			if (comma) {
+				sb.append(", ");
+			}
+			else {
+				comma = true;
+			}
+			sb.append(host);
+		}
+		throw new AerospikeException(sb.toString());
 	}
 }
