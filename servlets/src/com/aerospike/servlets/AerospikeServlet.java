@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2018 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,6 +31,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.GenerationPolicy;
@@ -108,6 +109,8 @@ public class AerospikeServlet extends HttpServlet {
 		}
 
 		try {
+			Log.setCallback(null);
+
 			ClientPolicy policy = new ClientPolicy();
 			client = new AerospikeClient(policy, host, port);
 

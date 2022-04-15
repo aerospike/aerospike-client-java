@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -66,6 +66,7 @@ public final class Log {
 
 	private static volatile Level gLevel = Level.INFO;
 	private static volatile Callback gCallback = null;
+	private static volatile boolean gCallbackSet = false;
 
 	/**
 	 * Set log level filter.
@@ -77,13 +78,13 @@ public final class Log {
 	}
 
 	/**
-	 * Set optional log callback implementation. If the callback is not defined (or null),
-	 * log messages will not be displayed.
+	 * Set log callback. To silence the log, set callback to null.
 	 *
 	 * @param callback		{@link Callback} implementation
 	 */
 	public static void setCallback(Callback callback) {
 		gCallback = callback;
+		gCallbackSet = true;
 	}
 
 	/**
@@ -91,6 +92,13 @@ public final class Log {
 	 */
 	public static void setCallbackStandard() {
 		setCallback(new Log.Standard());
+	}
+
+	/**
+	 * Determine if log callback has been set by the user.
+	 */
+	public static boolean isSet() {
+		return gCallbackSet;
 	}
 
 	/**

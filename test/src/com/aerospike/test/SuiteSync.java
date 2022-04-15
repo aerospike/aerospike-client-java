@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,7 @@ import org.junit.runners.Suite;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -108,6 +109,8 @@ public class SuiteSync {
 
 	@BeforeClass
 	public static void init() {
+		Log.setCallback(null);
+
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
 

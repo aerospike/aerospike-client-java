@@ -857,7 +857,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 					return;
 				}
 				catch (Throwable e) {
-					Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
+					if (Log.warnEnabled()) {
+						Log.warn("NettyRecover failed: " + Util.getErrorMessage(e));
+					}
 				}
 				break;
 

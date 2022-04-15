@@ -171,7 +171,9 @@ public class AdminCommand {
 						sessionExpiration = System.nanoTime() + TimeUnit.SECONDS.toNanos(seconds);
 					}
 					else {
-						Log.warn("Invalid session TTL: " + seconds);
+						if (Log.warnEnabled()) {
+							Log.warn("Invalid session TTL: " + seconds);
+						}
 					}
 				}
 				dataOffset += len;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,7 @@ import org.junit.runners.Suite;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
@@ -59,6 +60,8 @@ public class SuiteAsync {
 
 	@BeforeClass
 	public static void init() {
+		Log.setCallback(null);
+
 		System.out.println("Begin AerospikeClient");
 		Args args = Args.Instance;
 

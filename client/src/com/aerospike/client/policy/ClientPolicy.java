@@ -205,7 +205,7 @@ public class ClientPolicy {
 	 * If true, throw an exception if all seed connections fail or a seed is valid,
 	 * but all peers from that seed are not reachable.
 	 * <p>
-	 * If false, an partial cluster will be created and the client will automatically connect
+	 * If false, a partial cluster will be created and the client will automatically connect
 	 * to the remaining nodes when they become available.
 	 * <p>
 	 * Default: true
