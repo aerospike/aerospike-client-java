@@ -6,7 +6,6 @@ Aerospike Java client.  This package contains full source code for these project
 * client:           Java client library.
 * examples:         Java client examples.
 * benchmarks:       Java client benchmarks.
-* servlets:         Java client web servlet example.
 * test:             Java client unit tests.
 
 Prerequisites:
