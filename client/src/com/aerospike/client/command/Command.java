@@ -996,7 +996,11 @@ public abstract class Command {
 	}
 
 	private static byte getBatchFlags(BatchPolicy policy) {
-		byte flags = (policy.allowInline)? (byte)1 : (byte)0;
+		byte flags = 0x8;
+
+		if (policy.allowInline) {
+			flags |= 0x1;
+		}
 
 		if (policy.allowInlineSSD) {
 			flags |= 0x2;
