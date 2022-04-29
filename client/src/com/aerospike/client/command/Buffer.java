@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -379,11 +379,11 @@ public final class Buffer {
 
 		// Handle other lengths just in case server changes.
 		if (len == 0) {
-			return new Long(0);
+			return 0;
 		}
 
 		if (len == 4) {
-			return new Long(bytesToInt(buf, offset));
+			return bytesToInt(buf, offset);
 		}
 
 		if (len > 8) {
@@ -397,7 +397,7 @@ public final class Buffer {
 			val <<= 8;
 			val |= buf[offset+i] & 0xFF;
 		}
-		return new Long(val);
+		return val;
 	}
 
 	public static Object bytesToBigInteger(byte[] buf, int offset, int len) {

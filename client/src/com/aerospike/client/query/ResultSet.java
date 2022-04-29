@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,7 +30,7 @@ import com.aerospike.client.Log;
  * The single user thread consumes these results from the queue.
  */
 public final class ResultSet implements Iterable<Object>, Closeable {
-	public static final Integer END = new Integer(-1);
+	public static final Object END = new Object();
 
 	private final QueryAggregateExecutor executor;
 	private final BlockingQueue<Object> queue;
