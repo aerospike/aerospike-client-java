@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -236,13 +236,14 @@ public final class Bin {
 	}
 
 	/**
-	 * Constructor, specifying bin name and object value.
-	 * This is the slowest of the Bin constructors because the type
-	 * must be determined using multiple "instanceof" checks.
+	 * Create bin with an object value. This is the slowest of the Bin constructors because the type
+	 * must be determined using multiple "instanceof" checks. If the object type is unrecognized,
+	 * the default java serializer is used.
 	 * <p>
-	 * For servers configured as "single-bin", enter a null or empty name.
+	 * To disable this constructor, set {@link com.aerospike.client.Value#DisableSerializer} to true.
 	 *
-	 * @param name		bin name, current limit is 14 characters
+	 * @param name		bin name, current limit is 14 characters.
+	 * 					For servers configured as "single-bin", enter a null or empty name.
 	 * @param value		bin value
 	 */
 	public Bin(String name, Object value) {
@@ -252,12 +253,13 @@ public final class Bin {
 
 	/**
 	 * Create bin with a blob value.  The value will be java serialized.
-	 * This method is faster than the bin Object constructor because the blob is converted
+	 * This method is faster than the bin object constructor because the blob is converted
 	 * directly instead of using multiple "instanceof" type checks with a blob default.
 	 * <p>
-	 * For servers configured as "single-bin", enter a null or empty name.
+	 * To disable this method, set {@link com.aerospike.client.Value#DisableSerializer} to true.
 	 *
-	 * @param name		bin name, current limit is 14 characters
+	 * @param name		bin name, current limit is 14 characters.
+	 * 					For servers configured as "single-bin", enter a null or empty name.
 	 * @param value		bin value
 	 */
 	public static Bin asBlob(String name, Object value) {

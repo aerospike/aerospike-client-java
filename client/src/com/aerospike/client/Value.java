@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -51,6 +51,15 @@ public abstract class Value {
 	 * server 5.6+.
 	 */
 	public static boolean UseBoolBin = false;
+
+	/**
+	 * Should default object serializer be disabled. If true, an exception will be thrown when
+	 * a default object serialization is attempted. Default object serialization is triggered
+	 * when a bin constructed by {@link com.aerospike.client.Bin#Bin(String, Object)} or
+	 * {@link com.aerospike.client.Bin#asBlob(String, Object)} is used in a write command
+	 * with an unrecognized object type.
+	 */
+	public static boolean DisableSerializer = false;
 
 	/**
 	 * Null value.
@@ -1153,13 +1162,21 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException.Serialize {
+			bytes = serialize(object);
+			return bytes.length;
+		}
+
+		public static byte[] serialize(Object val) {
+			if (DisableSerializer) {
+				throw new AerospikeException("Object serializer has been disabled");
+			}
+
 			try {
 				ByteArrayOutputStream bstream = new ByteArrayOutputStream();
 				ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-				ostream.writeObject(object);
+				ostream.writeObject(val);
 				ostream.close();
-				bytes = bstream.toByteArray();
-				return bytes.length;
+				return bstream.toByteArray();
 			}
 			catch (Exception e) {
 				throw new AerospikeException.Serialize(e);

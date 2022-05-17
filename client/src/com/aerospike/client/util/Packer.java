@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,8 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
+import static com.aerospike.client.Value.MapValue.getMapOrder;
+
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,11 +26,10 @@ import java.util.Map.Entry;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.Value.BlobValue;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
-
-import static com.aerospike.client.Value.MapValue.getMapOrder;
 
 /**
  * Serialize collection objects using MessagePack format specification:
@@ -208,18 +206,7 @@ public final class Packer {
 	}
 
 	public void packBlob(Object val) {
-		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-
-		try {
-			ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-			ostream.writeObject(val);
-			ostream.close();
-		}
-		catch (IOException ioe) {
-			throw new AerospikeException.Serialize(ioe);
-		}
-
-		byte[] bytes = bstream.toByteArray();
+		byte[] bytes = BlobValue.serialize(val);
 		packByteArrayBegin(bytes.length + 1);
 		packByte(ParticleType.JBLOB);
 		packByteArray(bytes, 0, bytes.length);
