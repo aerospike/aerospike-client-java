@@ -338,10 +338,10 @@ public final class Buffer {
 			return null;
 		}
 
-		try {
-			ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length);
-			ObjectInputStream oistream = new ObjectInputStream(bastream);
-			return oistream.readObject();
+		try (ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length)) {
+			try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
+				return oistream.readObject();
+			}
 		}
 		catch (Exception e) {
 			throw new AerospikeException.Serialize(e);

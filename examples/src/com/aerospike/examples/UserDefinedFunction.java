@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -226,11 +226,14 @@ public class UserDefinedFunction extends Example {
 		String binName = params.getBinName("udfbin6");
 
 		// Create packed blob using standard java tools.
-		ByteArrayOutputStream baos = new ByteArrayOutputStream();
-		DataOutputStream dos = new DataOutputStream(baos);
-		dos.writeInt(9845);
-		dos.writeUTF("Hello world.");
-		byte[] blob = baos.toByteArray();
+		byte[] blob;
+		try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+			try (DataOutputStream dos = new DataOutputStream(baos)) {
+				dos.writeInt(9845);
+				dos.writeUTF("Hello world.");
+			}
+			blob = baos.toByteArray();
+		}
 
 		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(blob));
 		byte[] received = (byte[])client.execute(params.writePolicy, key, "record_example", "readBin", Value.get(binName));
