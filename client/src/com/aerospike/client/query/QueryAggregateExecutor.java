@@ -73,22 +73,10 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 
 	public void run() {
 		try {
-			runThreads();
-		}
-		catch (Exception e) {
-			super.stopThreads(e);
-		}
-		finally {
-			LuaCache.putInstance(lua);
-		}
-	}
+			lua.loadPackage(statement);
 
-	public void runThreads() {
-		try {
 			// Start thread queries to each node.
 			startThreads();
-
-			lua.loadPackage(statement);
 
 			LuaValue[] args = new LuaValue[4 + statement.getFunctionArgs().length];
 			args[0] = lua.getFunction(statement.getFunctionName());
@@ -102,10 +90,14 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			}
 			lua.call("apply_stream", args);
 		}
+		catch (Exception e) {
+			super.stopThreads(e);
+		}
 		finally {
 			// Send end command to user's result set.
 			// If query was already cancelled, this put will be ignored.
 			resultSet.put(ResultSet.END);
+			LuaCache.putInstance(lua);
 		}
 	}
 
