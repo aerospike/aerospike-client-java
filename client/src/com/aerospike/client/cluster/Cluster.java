@@ -298,14 +298,14 @@ public class Cluster implements Runnable, Closeable {
 			rackIds = new int[] {policy.rackId};
 		}
 
-		aliases = new HashMap<Host,Node>();
-		nodesMap = new HashMap<String,Node>();
+		aliases = new HashMap<>();
+		nodesMap = new HashMap<>();
 		nodes = new Node[0];
-		partitionMap = new HashMap<String,Partitions>();
+		partitionMap = new HashMap<>();
 		nodeIndex = new AtomicInteger();
 		replicaIndex = new AtomicInteger();
 		recoverCount = new AtomicInteger();
-		recoverQueue = new ConcurrentLinkedDeque<ConnectionRecover>();
+		recoverQueue = new ConcurrentLinkedDeque<>();
 
 		eventLoops = policy.eventLoops;
 
@@ -362,7 +362,7 @@ public class Cluster implements Runnable, Closeable {
 		// Validate first seed.
 		Host seed = seeds[0];
 		NodeValidator nv = new NodeValidator();
-		Node node = null;
+		Node node;
 
 		try {
 			node = nv.seedNode(this, seed, null);
@@ -374,7 +374,7 @@ public class Cluster implements Runnable, Closeable {
 		node.createMinConnections();
 
 		// Add seed node to nodes.
-		HashMap<String,Node> nodesToAdd = new HashMap<String,Node>(1);
+		HashMap<String,Node> nodesToAdd = new HashMap<>(1);
 		nodesToAdd.put(node.getName(), node);
 		addNodes(nodesToAdd);
 
@@ -405,7 +405,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		// Add other nodes as seeds, if they don't already exist.
-		ArrayList<Host> seedsToAdd = new ArrayList<Host>(nodes.length);
+		ArrayList<Host> seedsToAdd = new ArrayList<>(nodes.length);
 		for (Node node : nodes) {
 			Host host = node.getHost();
 			if (! findSeed(host)) {
@@ -447,7 +447,7 @@ public class Cluster implements Runnable, Closeable {
 		seeds = seedArray;
 	}
 
-	private final boolean findSeed(Host search) {
+	private boolean findSeed(Host search) {
 		for (Host seed : seeds) {
 			if (seed.equals(search)) {
 				return true;
@@ -461,7 +461,7 @@ public class Cluster implements Runnable, Closeable {
 	 * This helps avoid initial database request timeout issues when
 	 * a large number of threads are initiated at client startup.
 	 */
-	private final void waitTillStabilized(boolean failIfNotConnected) {
+	private void waitTillStabilized(boolean failIfNotConnected) {
 		// Tend now requests partition maps in same iteration as the nodes
 		// are added, so there is no need to call tend twice anymore.
 		tend(failIfNotConnected, true);
@@ -497,7 +497,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Check health of all nodes in the cluster.
 	 */
-	private final void tend(boolean failIfNotConnected, boolean isInit) {
+	private void tend(boolean failIfNotConnected, boolean isInit) {
 		// All node additions/deletions are performed in tend thread.
 		// Initialize tend iteration node statistics.
 		Peers peers = new Peers(nodes.length + 16);
@@ -604,7 +604,7 @@ public class Cluster implements Runnable, Closeable {
 		processRecoverQueue();
 	}
 
-	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
+	private boolean seedNode(Peers peers, boolean failIfNotConnected) {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
 		Exception[] exceptions = null;
@@ -656,7 +656,7 @@ public class Cluster implements Runnable, Closeable {
 
 		if (failIfNotConnected) {
 			StringBuilder sb = new StringBuilder(500);
-			sb.append("Failed to connect to ["+ seedArray.length +"] host(s): ");
+			sb.append("Failed to connect to [").append(seedArray.length).append("] host(s): ");
 			sb.append(System.lineSeparator());
 
 			for (int i = 0; i < seedArray.length; i++) {
@@ -723,8 +723,8 @@ public class Cluster implements Runnable, Closeable {
 		return node;
 	}
 
-	private final ArrayList<Node> findNodesToRemove(int refreshCount) {
-		ArrayList<Node> removeList = new ArrayList<Node>();
+	private ArrayList<Node> findNodesToRemove(int refreshCount) {
+		ArrayList<Node> removeList = new ArrayList<>();
 
 		for (Node node : nodes) {
 			if (! node.isActive()) {
@@ -761,7 +761,7 @@ public class Cluster implements Runnable, Closeable {
 		return removeList;
 	}
 
-	private final boolean findNodeInPartitionMap(Node filter) {
+	private boolean findNodeInPartitionMap(Node filter) {
 		for (Partitions partitions : partitionMap.values()) {
 			for (AtomicReferenceArray<Node> nodeArray : partitions.replicas) {
 				int max = nodeArray.length();
@@ -802,7 +802,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Add nodes using copy on write semantics.
 	 */
-	private final void addNodes(HashMap<String,Node> nodesToAdd) {
+	private void addNodes(HashMap<String,Node> nodesToAdd) {
 		// Add all nodes at once to avoid copying entire array multiple times.
 		// Create temporary nodes array.
 		Node[] nodeArray = new Node[nodes.length + nodesToAdd.size()];
@@ -824,7 +824,7 @@ public class Cluster implements Runnable, Closeable {
 		nodes = nodeArray;
 	}
 
-	private final void addNode(Node node) {
+	private void addNode(Node node) {
 		if (Log.infoEnabled()) {
 			Log.info("Add node " + node);
 		}
@@ -838,7 +838,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	private final void removeNodes(List<Node> nodesToRemove) {
+	private void removeNodes(List<Node> nodesToRemove) {
 		// There is no need to delete nodes from partitionWriteMap because the nodes
 		// have already been set to inactive. Further connection requests will result
 		// in an exception and a different node will be tried.
@@ -864,7 +864,7 @@ public class Cluster implements Runnable, Closeable {
 	/**
 	 * Remove nodes using copy on write semantics.
 	 */
-	private final void removeNodesCopy(List<Node> nodesToRemove) {
+	private void removeNodesCopy(List<Node> nodesToRemove) {
 		// Create temporary nodes array.
 		// Since nodes are only marked for deletion using node references in the nodes array,
 		// and the tend thread is the only thread modifying nodes, we are guaranteed that nodes
@@ -900,7 +900,7 @@ public class Cluster implements Runnable, Closeable {
 		nodes = nodeArray;
 	}
 
-	private final static boolean findNode(Node search, List<Node> nodeList) {
+	private static boolean findNode(Node search, List<Node> nodeList) {
 		for (Node node : nodeList) {
 			if (node.equals(search)) {
 				return true;
@@ -931,13 +931,11 @@ public class Cluster implements Runnable, Closeable {
 		Node[] nodeArray = nodes;
 
 		int index = Math.abs(nodeIndex.getAndIncrement() % nodeArray.length);
-		for (int i = 0; i < nodeArray.length; i++) {
-			Node node = nodeArray[index];
-			if (node.isActive()) {
+		for (int i = index; i < index + nodeArray.length; i++) {
+			Node node = nodeArray[i%nodeArray.length];
+			if (node.active) {
 				return node;
 			}
-			index++;
-			index %= nodeArray.length;
 		}
 		throw new AerospikeException.InvalidNode("Cluster is empty");
 	}
@@ -971,12 +969,9 @@ public class Cluster implements Runnable, Closeable {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 
-		for (Node node : nodeArray) {
-			if (node.getName().equals(nodeName)) {
-				return node;
-			}
-		}
-		return null;
+		return Arrays.stream(nodeArray)
+			.filter(node -> node.getName().equals(nodeName))
+			.findFirst().orElse(null);
 	}
 
 	public final boolean isConnCurrentTran(long lastUsed) {
@@ -1076,14 +1071,7 @@ public class Cluster implements Runnable, Closeable {
 			for (EventLoop eventLoop : eventLoopArray) {
 				eventLoop.execute(new Runnable() {
 					public void run() {
-						int index = eventLoop.getIndex();
-						loopStats[index] = new EventLoopStats(eventLoop);
-
-						for (int i = 0; i < nodeArray.length; i++) {
-							AsyncPool pool = nodeArray[i].getAsyncPool(index);
-							int inPool = pool.queue.size();
-							connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
-						}
+						fillConnectionsStat(eventLoop, loopStats, nodeArray, connStats);
 
 						if (eventLoopCount.decrementAndGet() == 0) {
 							monitor.notifyComplete();
@@ -1095,23 +1083,38 @@ public class Cluster implements Runnable, Closeable {
 			monitor.waitTillComplete();
 			eventLoopStats = loopStats;
 
-			for (int i = 0; i < nodeArray.length; i++) {
-				int inUse = 0;
-				int inPool = 0;
-				int opened = 0;
-				int closed = 0;
-
-				for (EventLoop eventLoop : eventLoopArray) {
-					ConnectionStats cs = connStats[i][eventLoop.getIndex()];
-					inUse += cs.inUse;
-					inPool += cs.inPool;
-					opened += cs.opened;
-					closed += cs.closed;
-				}
-				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
-			}
+			fillNodeStatsAsync(nodeArray, nodeStats, eventLoopArray, connStats);
 		}
 		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+	}
+
+	private void fillNodeStatsAsync(Node[] nodeArray, NodeStats[] nodeStats, EventLoop[] eventLoopArray, ConnectionStats[][] connStats) {
+		for (int i = 0; i < nodeArray.length; i++) {
+			int inUse = 0;
+			int inPool = 0;
+			int opened = 0;
+			int closed = 0;
+
+			for (EventLoop eventLoop : eventLoopArray) {
+				ConnectionStats cs = connStats[i][eventLoop.getIndex()];
+				inUse += cs.inUse;
+				inPool += cs.inPool;
+				opened += cs.opened;
+				closed += cs.closed;
+			}
+			nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
+		}
+	}
+
+	private void fillConnectionsStat(EventLoop eventLoop, EventLoopStats[] loopStats, Node[] nodeArray, ConnectionStats[][] connStats) {
+		int index = eventLoop.getIndex();
+		loopStats[index] = new EventLoopStats(eventLoop);
+
+		for (int i = 0; i < nodeArray.length; i++) {
+			AsyncPool pool = nodeArray[i].getAsyncPool(index);
+			int inPool = pool.queue.size();
+			connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
+		}
 	}
 
 	public final void getStats(ClusterStatsListener listener) {
@@ -1151,32 +1154,11 @@ public class Cluster implements Runnable, Closeable {
 			for (EventLoop eventLoop : eventLoopArray) {
 				Runnable fetch = new Runnable() {
 					public void run() {
-						int index = eventLoop.getIndex();
-						loopStats[index] = new EventLoopStats(eventLoop);
-
-						for (int i = 0; i < nodeArray.length; i++) {
-							AsyncPool pool = nodeArray[i].getAsyncPool(index);
-							int inPool = pool.queue.size();
-							connStats[i][index] = new ConnectionStats(pool.total - inPool, inPool, pool.opened, pool.closed);
-						}
+						fillConnectionsStat(eventLoop, loopStats, nodeArray, connStats);
 
 						if (eventLoopCount.decrementAndGet() == 0) {
 							// All eventloops reported. Pass results to listener.
-							for (int i = 0; i < nodeArray.length; i++) {
-								int inUse = 0;
-								int inPool = 0;
-								int opened = 0;
-								int closed = 0;
-
-								for (EventLoop eventLoop : eventLoopArray) {
-									ConnectionStats cs = connStats[i][eventLoop.getIndex()];
-									inUse += cs.inUse;
-									inPool += cs.inPool;
-									opened += cs.opened;
-									closed += cs.closed;
-								}
-								nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
-							}
+							fillNodeStatsAsync(nodeArray, nodeStats, eventLoopArray, connStats);
 
 							try {
 								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount));
@@ -1360,7 +1342,7 @@ public class Cluster implements Runnable, Closeable {
 	 * Wait until all event loops have finished processing pending cluster commands.
 	 * Must be called from an event loop thread.
 	 */
-	private final void closeEventLoop(AtomicInteger eventLoopCount, EventState state) {
+	private void closeEventLoop(AtomicInteger eventLoopCount, EventState state) {
 		// Prevent future cluster commands on this event loop.
 		state.closed = true;
 
