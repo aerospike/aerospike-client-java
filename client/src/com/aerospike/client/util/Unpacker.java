@@ -235,9 +235,11 @@ public abstract class Unpacker<T> {
 			break;
 
 		case ParticleType.JBLOB:
-			ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count);
-			ObjectInputStream oistream = new ObjectInputStream(bastream);
-			val = getJavaBlob(oistream.readObject());
+			try (ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count)) {
+				try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
+					val = getJavaBlob(oistream.readObject());
+				}
+			}
 			break;
 
 		case ParticleType.GEOJSON:

@@ -68,9 +68,8 @@ public final class Util {
 	public static byte[] readFile(File file) {
 		try {
 			byte[] bytes = new byte[(int)file.length()];
-			FileInputStream in = new FileInputStream(file);
 
-			try {
+			try (FileInputStream in = new FileInputStream(file)) {
 				int pos = 0;
 				int len = 0;
 
@@ -79,9 +78,6 @@ public final class Util {
 					pos += len;
 				}
 				return bytes;
-			}
-			finally {
-				in.close();
 			}
 		}
 		catch (Exception e) {
@@ -97,20 +93,16 @@ public final class Util {
 				throw new IllegalArgumentException("Resource: " + resourcePath + " not found");
 			}
 
-			InputStream is = url.openStream();
+			try (InputStream is = url.openStream()) {
+				try (ByteArrayOutputStream bos = new ByteArrayOutputStream(8192)) {
+					byte[] bytes = new byte[8192];
+					int length;
 
-			try {
-				ByteArrayOutputStream bos = new ByteArrayOutputStream(8192);
-				byte[] bytes = new byte[8192];
-				int length;
-
-				while ((length = is.read(bytes)) > 0) {
-					bos.write(bytes, 0, length);
+					while ((length = is.read(bytes)) > 0) {
+						bos.write(bytes, 0, length);
+					}
+					return bos.toByteArray();
 				}
-				return bos.toByteArray();
-			}
-			finally {
-				is.close();
 			}
 		}
 		catch (Exception e) {

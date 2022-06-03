@@ -16,15 +16,15 @@
  */
 package com.aerospike.client.command;
 
+import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Value;
+import com.aerospike.client.util.Unpacker;
+
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.util.Arrays;
-
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Value;
-import com.aerospike.client.util.Unpacker;
 
 public final class Buffer {
 
@@ -338,12 +338,11 @@ public final class Buffer {
 			return null;
 		}
 
-		try {
-			ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length);
-			ObjectInputStream oistream = new ObjectInputStream(bastream);
-			return oistream.readObject();
-		}
-		catch (Exception e) {
+		try (ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length)) {
+			try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
+				return oistream.readObject();
+			}
+		} catch (Exception e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}

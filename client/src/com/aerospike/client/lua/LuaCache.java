@@ -16,17 +16,16 @@
  */
 package com.aerospike.client.lua;
 
-import java.io.BufferedInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
-
+import com.aerospike.client.AerospikeException;
 import org.luaj.vm2.Prototype;
 import org.luaj.vm2.compiler.LuaC;
 
-import com.aerospike.client.AerospikeException;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class LuaCache {
 	private static final ArrayBlockingQueue<LuaInstance> InstanceQueue = new ArrayBlockingQueue<LuaInstance>(LuaConfig.InstancePoolSize);
@@ -58,8 +57,7 @@ public final class LuaCache {
 		if (prototype == null) {
 			File source = new File(LuaConfig.SourceDirectory, packageName + ".lua");
 
-			try {
-				InputStream is = new FileInputStream(source);
+			try (InputStream is = Files.newInputStream(source.toPath())) {
 				prototype = compile(packageName, is);
 				Packages.put(packageName, prototype);
 			}
@@ -77,8 +75,7 @@ public final class LuaCache {
 		Prototype prototype = Packages.get(packageName);
 
 		if (prototype == null) {
-			try {
-				InputStream is = resourceLoader.getResourceAsStream(resourcePath);
+			try (InputStream is = resourceLoader.getResourceAsStream(resourcePath)) {
 
 				if (is == null) {
 					throw new Exception();
@@ -97,12 +94,7 @@ public final class LuaCache {
 		try {
 			BufferedInputStream bis = new BufferedInputStream(is);
 
-			try {
-				return LuaC.instance.compile(bis, packageName);
-			}
-			finally {
-				is.close();
-			}
+			return LuaC.instance.compile(bis, packageName);
 		}
 		catch (Exception e) {
 			throw new AerospikeException("Failed to compile: " + packageName);

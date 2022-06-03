@@ -75,13 +75,9 @@ public final class NettyTlsContext implements CipherSuiteFilter {
 				char[] pass = (keyStorePassword != null) ? keyStorePassword.toCharArray() : null;
 
 				KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-				FileInputStream is = new FileInputStream(keyStoreLocation);
 
-				try {
+				try (FileInputStream is = new FileInputStream(keyStoreLocation)) {
 					ks.load(is, pass);
-				}
-				finally {
-					is.close();
 				}
 
 				KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());

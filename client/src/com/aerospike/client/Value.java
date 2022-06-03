@@ -16,6 +16,19 @@
  */
 package com.aerospike.client;
 
+import com.aerospike.client.cdt.MapOrder;
+import com.aerospike.client.command.Buffer;
+import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.lua.LuaBytes;
+import com.aerospike.client.lua.LuaInstance;
+import com.aerospike.client.util.Packer;
+import org.luaj.vm2.LuaBoolean;
+import org.luaj.vm2.LuaDouble;
+import org.luaj.vm2.LuaInteger;
+import org.luaj.vm2.LuaNil;
+import org.luaj.vm2.LuaString;
+import org.luaj.vm2.LuaValue;
+
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
@@ -25,20 +38,6 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.SortedMap;
 import java.util.UUID;
-
-import org.luaj.vm2.LuaBoolean;
-import org.luaj.vm2.LuaDouble;
-import org.luaj.vm2.LuaInteger;
-import org.luaj.vm2.LuaNil;
-import org.luaj.vm2.LuaString;
-import org.luaj.vm2.LuaValue;
-
-import com.aerospike.client.cdt.MapOrder;
-import com.aerospike.client.command.Buffer;
-import com.aerospike.client.command.ParticleType;
-import com.aerospike.client.lua.LuaBytes;
-import com.aerospike.client.lua.LuaInstance;
-import com.aerospike.client.util.Packer;
 
 /**
  * Polymorphic value classes used to efficiently serialize objects into the wire protocol.
@@ -1171,14 +1170,12 @@ public abstract class Value {
 				throw new AerospikeException("Object serializer has been disabled");
 			}
 
-			try {
-				ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-				ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-				ostream.writeObject(val);
-				ostream.close();
+			try (ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
+				try (ObjectOutputStream ostream = new ObjectOutputStream(bstream)) {
+					ostream.writeObject(val);
+				}
 				return bstream.toByteArray();
-			}
-			catch (Exception e) {
+			} catch (Exception e) {
 				throw new AerospikeException.Serialize(e);
 			}
 		}
