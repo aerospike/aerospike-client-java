@@ -79,11 +79,19 @@ public final class ExecuteTask extends Task {
 			String response = Info.request(policy, node, command);
 
 			if (response.startsWith("ERROR:2")) {
+				// Query not found.
+				if (node.hasPartitionQuery()) {
+					// Server >= 6.0:  Query has completed.
+					// Continue checking other nodes.
+					continue;
+				}
+
+				// Server < 6.0: Query could be complete or has not started yet.
+				// Return NOT_FOUND and let the calling methods handle it.
 				return Task.NOT_FOUND;
 			}
 
 			if (response.startsWith("ERROR:")) {
-				// Throw exception immediately.
 				throw new AerospikeException(command + " failed: " + response);
 			}
 
@@ -91,7 +99,6 @@ public final class ExecuteTask extends Task {
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				// Store exception and keep waiting.
 				throw new AerospikeException(command + " failed: " + response);
 			}
 
@@ -103,11 +110,6 @@ public final class ExecuteTask extends Task {
 			if (! (status.startsWith("done") || status.startsWith("DONE"))) {
 				return Task.IN_PROGRESS;
 			}
-
-			// Newer servers use "active(ok)" while older servers use "IN_PROGRESS"
-			//if (status.startsWith("active") || status.startsWith("IN_PROGRESS")) {
-			//	return false;
-			//}
 		}
 		return Task.COMPLETE;
 	}
