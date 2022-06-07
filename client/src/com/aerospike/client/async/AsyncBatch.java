@@ -299,7 +299,7 @@ public final class AsyncBatch {
 		@Override
 		protected void writeBuffer() {
 			if (batch.node.hasBatchAny()) {
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr);
+				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 				setBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else {
@@ -400,7 +400,7 @@ public final class AsyncBatch {
 		@Override
 		protected void writeBuffer() {
 			if (batch.node.hasBatchAny()) {
-				BatchAttr attr = new BatchAttr(batchPolicy, readAttr);
+				BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 				setBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else {

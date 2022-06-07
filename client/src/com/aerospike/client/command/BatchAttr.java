@@ -45,6 +45,15 @@ public final class BatchAttr {
 		this.readAttr |= rattr;
 	}
 
+	public BatchAttr(Policy policy, int rattr, Operation[] ops) {
+		setRead(policy);
+		this.readAttr |= rattr;
+
+		if (ops != null) {
+			adjustRead(ops);
+		}
+	}
+
 	public BatchAttr(BatchPolicy rp, BatchWritePolicy wp, Operation[] ops) {
 		boolean readAllBins = false;
 		boolean readHeader = false;

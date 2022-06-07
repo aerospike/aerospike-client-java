@@ -119,7 +119,7 @@ public final class Batch {
 		@Override
 		protected void writeBuffer() {
 			if (batch.node.hasBatchAny()) {
-				BatchAttr attr = new BatchAttr(policy, readAttr);
+				BatchAttr attr = new BatchAttr(policy, readAttr, ops);
 				setBatchOperate(batchPolicy, keys, batch, binNames, ops, attr);
 			}
 			else {
