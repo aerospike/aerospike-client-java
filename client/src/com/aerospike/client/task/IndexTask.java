@@ -23,7 +23,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
 /**
- * Task used to poll for long running create index completion.
+ * Task used to poll for long-running index operation completion.
  */
 public final class IndexTask extends Task {
 	private final String namespace;

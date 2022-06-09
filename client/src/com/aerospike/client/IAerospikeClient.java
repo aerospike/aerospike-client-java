@@ -998,11 +998,14 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
-	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-	 * @param writePolicy	write configuration parameters, pass in null for defaults
-	 * @param keys			array of unique record identifiers
-	 * @param ops			database operations to perform
-	 * @throws AerospikeException.BatchRecordArray	which contains results for keys that did complete
+	 * @param batchPolicy batch configuration parameters, pass in null for defaults
+	 * @param writePolicy write configuration parameters, pass in null for defaults
+	 * @param keys        array of unique record identifiers
+	 * @param ops         read/write operations to perform. {@link Operation#get()} is not allowed because it returns a
+	 *                    variable number of bins and makes it difficult (sometimes impossible) to lineup operations
+	 *                    with results. Instead, use {@link Operation#get(String)} for each bin name.
+	 * @throws AerospikeException.BatchRecordArray which contains results for keys that did complete
+	 * @return batch record results
 	 */
 	public BatchResults operate(
 		BatchPolicy batchPolicy,
@@ -1021,14 +1024,14 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
-	 * @param eventLoop		event loop that will process the command. If NULL, the event
-	 * 						loop will be chosen by round-robin.
-	 * @param listener		where to send results
-	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-	 * @param writePolicy	write configuration parameters, pass in null for defaults
-	 * @param keys			array of unique record identifiers
-	 * @param ops			array of read/write operations on record
-	 * @throws AerospikeException	if event loop registration fails
+	 * @param eventLoop   event loop that will process the command. If NULL, the event
+	 *                    loop will be chosen by round-robin.
+	 * @param listener    where to send results
+	 * @param batchPolicy batch configuration parameters, pass in null for defaults
+	 * @param writePolicy write configuration parameters, pass in null for defaults
+	 * @param keys        array of unique record identifiers
+	 * @param ops         array of read/write operations on record
+	 * @throws AerospikeException if event loop registration fails
 	 */
 	public void operate(
 		EventLoop eventLoop,
@@ -1050,14 +1053,14 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
-	 * @param eventLoop		event loop that will process the command. If NULL, the event
-	 * 						loop will be chosen by round-robin.
-	 * @param listener		where to send results
-	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-	 * @param writePolicy	write configuration parameters, pass in null for defaults
-	 * @param keys			array of unique record identifiers
-	 * @param ops			array of read operations on record
-	 * @throws AerospikeException	if event loop registration fails
+	 * @param eventLoop   event loop that will process the command. If NULL, the event
+	 *                    loop will be chosen by round-robin.
+	 * @param listener    where to send results
+	 * @param batchPolicy batch configuration parameters, pass in null for defaults
+	 * @param writePolicy write configuration parameters, pass in null for defaults
+	 * @param keys        array of unique record identifiers
+	 * @param ops         array of read/write operations on record
+	 * @throws AerospikeException if event loop registration fails
 	 */
 	public void operate(
 		EventLoop eventLoop,
@@ -1191,11 +1194,12 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param clientPath			path of client file containing user defined functions, relative to current directory
-	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
-	 * @param language				language of user defined functions
-	 * @throws AerospikeException	if register fails
+	 * @param policy     generic configuration parameters, pass in null for defaults
+	 * @param clientPath path of client file containing user defined functions, relative to current directory
+	 * @param serverPath path to store user defined functions on the server, relative to configured script directory.
+	 * @param language   language of user defined functions
+	 * @return task used to poll for UDF registration completion
+	 * @throws AerospikeException if register fails
 	 */
 	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language)
 		throws AerospikeException;
@@ -1206,12 +1210,14 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param resourceLoader		class loader where resource is located.  Example: MyClass.class.getClassLoader() or Thread.currentThread().getContextClassLoader() for webapps
-	 * @param resourcePath          class path where Lua resource is located
-	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
-	 * @param language				language of user defined functions
-	 * @throws AerospikeException	if register fails
+	 * @param policy         generic configuration parameters, pass in null for defaults
+	 * @param resourceLoader class loader where resource is located.  Example: MyClass.class.getClassLoader() or
+	 *                       Thread.currentThread().getContextClassLoader() for webapps
+	 * @param resourcePath   class path where Lua resource is located
+	 * @param serverPath     path to store user defined functions on the server, relative to configured script directory.
+	 * @param language       language of user defined functions
+	 * @return task used to poll for UDF registration completion
+	 * @throws AerospikeException if register fails
 	 */
 	public RegisterTask register(Policy policy, ClassLoader resourceLoader, String resourcePath, String serverPath, Language language)
 		throws AerospikeException;
@@ -1240,11 +1246,12 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * RegisterTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param code					code string containing user defined functions.
-	 * @param serverPath			path to store user defined functions on the server, relative to configured script directory.
-	 * @param language				language of user defined functions
-	 * @throws AerospikeException	if register fails
+	 * @param policy     generic configuration parameters, pass in null for defaults
+	 * @param code       code string containing user defined functions.
+	 * @param serverPath path to store user defined functions on the server, relative to configured script directory.
+	 * @param language   language of user defined functions
+	 * @return task used to poll for UDF registration completion
+	 * @throws AerospikeException if register fails
 	 */
 	public RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language)
 		throws AerospikeException;
@@ -1315,13 +1322,14 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 6.0+
 	 *
-	 * @param batchPolicy	batch configuration parameters, pass in null for defaults
-	 * @param udfPolicy		udf configuration parameters, pass in null for defaults
-	 * @param keys			array of unique record identifiers
-	 * @param packageName	server package name where user defined function resides
-	 * @param functionName	user defined function
-	 * @param functionArgs	arguments passed in to user defined function
-	 * @throws AerospikeException.BatchRecordArray	which contains results for keys that did complete
+	 * @param batchPolicy  batch configuration parameters, pass in null for defaults
+	 * @param udfPolicy    udf configuration parameters, pass in null for defaults
+	 * @param keys         array of unique record identifiers
+	 * @param packageName  server package name where user defined function resides
+	 * @param functionName user defined function
+	 * @param functionArgs arguments passed in to user defined function
+	 * @return batch record results
+	 * @throws AerospikeException.BatchRecordArray which contains results for keys that did complete
 	 */
 	public BatchResults execute(
 		BatchPolicy batchPolicy,
@@ -1410,12 +1418,13 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				background query definition
-	 * @param packageName			server package where user defined function resides
-	 * @param functionName			function name
-	 * @param functionArgs			to pass to function name, if any
-	 * @throws AerospikeException	if command fails
+	 * @param policy       write configuration parameters, pass in null for defaults
+	 * @param statement    background query definition
+	 * @param packageName  server package where user defined function resides
+	 * @param functionName function name
+	 * @param functionArgs to pass to function name, if any
+	 * @return task used to poll for long-running server execute job completion
+	 * @throws AerospikeException if command fails
 	 */
 	public ExecuteTask execute(
 		WritePolicy policy,
@@ -1432,10 +1441,11 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * ExecuteTask instance.
 	 *
-	 * @param policy				write configuration parameters, pass in null for defaults
-	 * @param statement				background query definition
-	 * @param operations			list of operations to be performed on selected records
-	 * @throws AerospikeException	if command fails
+	 * @param policy     write configuration parameters, pass in null for defaults
+	 * @param statement  background query definition
+	 * @param operations list of operations to be performed on selected records
+	 * @return task used to poll for long-running server execute job completion
+	 * @throws AerospikeException if command fails
 	 */
 	public ExecuteTask execute(
 		WritePolicy policy,
@@ -1547,10 +1557,11 @@ public interface IAerospikeClient extends Closeable {
 	 * <p>
 	 * Requires server version 6.0+ if using a secondary index query.
 	 *
-	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query definition
-	 * @param partitionFilter		filter on a subset of data partitions
-	 * @throws AerospikeException	if query fails
+	 * @param policy          query configuration parameters, pass in null for defaults
+	 * @param statement       query definition
+	 * @param partitionFilter filter on a subset of data partitions
+	 * @throws AerospikeException if query fails
+	 * @return record iterator
 	 */
 	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter)
 		throws AerospikeException;
@@ -1612,9 +1623,10 @@ public interface IAerospikeClient extends Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query definition
-	 * @throws AerospikeException	if query fails
+	 * @param policy    query configuration parameters, pass in null for defaults
+	 * @param statement query definition
+	 * @throws AerospikeException if query fails
+	 * @return result iterator
 	 */
 	public ResultSet queryAggregate(QueryPolicy policy, Statement statement)
 		throws AerospikeException;
@@ -1630,10 +1642,11 @@ public interface IAerospikeClient extends Closeable {
 	 * The aggregation function is called on both server and client (final reduce).
 	 * Therefore, the Lua script file must also reside on both server and client.
 	 *
-	 * @param policy				query configuration parameters, pass in null for defaults
-	 * @param statement				query definition
-	 * @param node					server node to execute query
-	 * @throws AerospikeException	if query fails
+	 * @param policy    query configuration parameters, pass in null for defaults
+	 * @param statement query definition
+	 * @param node      server node to execute query
+	 * @throws AerospikeException if query fails
+	 * @return result iterator
 	 */
 	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node)
 		throws AerospikeException;
@@ -1648,13 +1661,14 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param namespace				namespace - equivalent to database name
-	 * @param setName				optional set name - equivalent to database table
-	 * @param indexName				name of secondary index
-	 * @param binName				bin name that data is indexed on
-	 * @param indexType				underlying data type of secondary index
-	 * @throws AerospikeException	if index create fails
+	 * @param policy    generic configuration parameters, pass in null for defaults
+	 * @param namespace namespace - equivalent to database name
+	 * @param setName   optional set name - equivalent to database table
+	 * @param indexName name of secondary index
+	 * @param binName   bin name that data is indexed on
+	 * @param indexType underlying data type of secondary index
+	 * @return task used to poll for long-running index operation completion
+	 * @throws AerospikeException if index create fails
 	 */
 	public IndexTask createIndex(
 		Policy policy,
@@ -1671,14 +1685,15 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param namespace				namespace - equivalent to database name
-	 * @param setName				optional set name - equivalent to database table
-	 * @param indexName				name of secondary index
-	 * @param binName				bin name that data is indexed on
-	 * @param indexType				underlying data type of secondary index
-	 * @param indexCollectionType	index collection type
-	 * @throws AerospikeException	if index create fails
+	 * @param policy              generic configuration parameters, pass in null for defaults
+	 * @param namespace           namespace - equivalent to database name
+	 * @param setName             optional set name - equivalent to database table
+	 * @param indexName           name of secondary index
+	 * @param binName             bin name that data is indexed on
+	 * @param indexType           underlying data type of secondary index
+	 * @param indexCollectionType index collection type
+	 * @return task used to poll for long-running index operation completion
+	 * @throws AerospikeException if index create fails
 	 */
 	public IndexTask createIndex(
 		Policy policy,
@@ -1725,11 +1740,12 @@ public interface IAerospikeClient extends Closeable {
 	 * The user can optionally wait for command completion by using the returned
 	 * IndexTask instance.
 	 *
-	 * @param policy				generic configuration parameters, pass in null for defaults
-	 * @param namespace				namespace - equivalent to database name
-	 * @param setName				optional set name - equivalent to database table
-	 * @param indexName				name of secondary index
-	 * @throws AerospikeException	if index drop fails
+	 * @param policy    generic configuration parameters, pass in null for defaults
+	 * @param namespace namespace - equivalent to database name
+	 * @param setName   optional set name - equivalent to database table
+	 * @param indexName name of secondary index
+	 * @return task used to poll for long-running index operation completion
+	 * @throws AerospikeException if index drop fails
 	 */
 	public IndexTask dropIndex(
 		Policy policy,
@@ -1979,9 +1995,10 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Retrieve roles for a given user.
 	 *
-	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @param user					user name filter
-	 * @throws AerospikeException	if command fails
+	 * @param policy admin configuration parameters, pass in null for defaults
+	 * @param user   user name filter
+	 * @return user with assigned roles
+	 * @throws AerospikeException if command fails
 	 */
 	public User queryUser(AdminPolicy policy, String user)
 		throws AerospikeException;
@@ -1989,8 +2006,9 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Retrieve all users and their roles.
 	 *
-	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @throws AerospikeException	if command fails
+	 * @param policy admin configuration parameters, pass in null for defaults
+	 * @return list of users
+	 * @throws AerospikeException if command fails
 	 */
 	public List<User> queryUsers(AdminPolicy policy)
 		throws AerospikeException;
@@ -1998,9 +2016,10 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Retrieve role definition.
 	 *
-	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @param roleName				role name filter
-	 * @throws AerospikeException	if command fails
+	 * @param policy   admin configuration parameters, pass in null for defaults
+	 * @param roleName role name filter
+	 * @return role definition
+	 * @throws AerospikeException if command fails
 	 */
 	public Role queryRole(AdminPolicy policy, String roleName)
 		throws AerospikeException;
@@ -2008,8 +2027,9 @@ public interface IAerospikeClient extends Closeable {
 	/**
 	 * Retrieve all roles.
 	 *
-	 * @param policy				admin configuration parameters, pass in null for defaults
-	 * @throws AerospikeException	if command fails
+	 * @param policy admin configuration parameters, pass in null for defaults
+	 * @return list of roles
+	 * @throws AerospikeException if command fails
 	 */
 	public List<Role> queryRoles(AdminPolicy policy)
 		throws AerospikeException;
