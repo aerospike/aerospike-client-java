@@ -61,28 +61,20 @@ public final class BatchAttr {
 		boolean hasWriteOp = false;
 
 		for (Operation op : ops) {
-			switch (op.type) {
-			case BIT_READ:
-			case EXP_READ:
-			case HLL_READ:
-			case MAP_READ:
-			case CDT_READ:
-			case READ:
-				// Read all bins if no bin is specified.
-				if (op.binName == null) {
-					readAllBins = true;
-				}
-				hasRead = true;
-				break;
-
-			case READ_HEADER:
-				readHeader = true;
-				hasRead = true;
-				break;
-
-			default:
+			if (op.type.isWrite) {
 				hasWriteOp = true;
-				break;
+			}
+			else {
+				hasRead = true;
+
+				if (op.type == Operation.Type.READ) {
+					if (op.binName == null) {
+						readAllBins = true;
+					}
+				}
+				else if (op.type == Operation.Type.READ_HEADER) {
+					readHeader = true;
+				}
 			}
 		}
 
@@ -94,6 +86,8 @@ public final class BatchAttr {
 
 				if (readAllBins) {
 					readAttr |= Command.INFO1_GET_ALL;
+					// When GET_ALL is specified, RESPOND_ALL_OPS must be disabled.
+					writeAttr &= ~Command.INFO2_RESPOND_ALL_OPS;
 				}
 				else if (readHeader) {
 					readAttr |= Command.INFO1_NOBINDATA;
@@ -175,37 +169,15 @@ public final class BatchAttr {
 	}
 
 	public void adjustRead(Operation[] ops) {
-		boolean readAllBins = false;
-		boolean readHeader = false;
-
 		for (Operation op : ops) {
-			switch (op.type) {
-			case BIT_READ:
-			case EXP_READ:
-			case HLL_READ:
-			case MAP_READ:
-			case CDT_READ:
-			case READ:
-				// Read all bins if no bin is specified.
+			if (op.type == Operation.Type.READ) {
 				if (op.binName == null) {
-					readAllBins = true;
+					readAttr |= Command.INFO1_GET_ALL;
 				}
-				break;
-
-			case READ_HEADER:
-				readHeader = true;
-				break;
-
-			default:
-				break;
 			}
-		}
-
-		if (readAllBins) {
-			readAttr |= Command.INFO1_GET_ALL;
-		}
-		else if (readHeader) {
-			readAttr |= Command.INFO1_NOBINDATA;
+			else if (op.type == Operation.Type.READ_HEADER) {
+				readAttr |= Command.INFO1_NOBINDATA;
+			}
 		}
 	}
 
@@ -280,43 +252,20 @@ public final class BatchAttr {
 	}
 
 	public void adjustWrite(Operation[] ops) {
-		boolean readAllBins = false;
-		boolean readHeader = false;
-		boolean hasRead = false;
-
 		for (Operation op : ops) {
-			switch (op.type) {
-			case BIT_READ:
-			case EXP_READ:
-			case HLL_READ:
-			case MAP_READ:
-			case CDT_READ:
-			case READ:
-				// Read all bins if no bin is specified.
-				if (op.binName == null) {
-					readAllBins = true;
+			if (! op.type.isWrite) {
+				readAttr |= Command.INFO1_READ;
+
+				if (op.type == Operation.Type.READ) {
+					if (op.binName == null) {
+						readAttr |= Command.INFO1_GET_ALL;
+						// When GET_ALL is specified, RESPOND_ALL_OPS must be disabled.
+						writeAttr &= ~Command.INFO2_RESPOND_ALL_OPS;
+					}
 				}
-				hasRead = true;
-				break;
-
-			case READ_HEADER:
-				readHeader = true;
-				hasRead = true;
-				break;
-
-			default:
-				break;
-			}
-		}
-
-		if (hasRead) {
-			readAttr |= Command.INFO1_READ;
-
-			if (readAllBins) {
-				readAttr |= Command.INFO1_GET_ALL;
-			}
-			else if (readHeader) {
-				readAttr |= Command.INFO1_NOBINDATA;
+				else if (op.type == Operation.Type.READ_HEADER) {
+					readAttr |= Command.INFO1_NOBINDATA;
+				}
 			}
 		}
 	}

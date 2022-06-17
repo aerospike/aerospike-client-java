@@ -19,6 +19,7 @@ package com.aerospike.test.sync.basic;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -259,6 +260,34 @@ public class TestBatch extends TestSync {
 
 			assertEquals(3, size);
 			assertEquals(1, val);
+		}
+	}
+
+	@Test
+	public void batchReadAllBins() {
+		Key[] keys = new Key[Size];
+		for (int i = 0; i < Size; i++) {
+			keys[i] = new Key(args.namespace, args.set, KeyPrefix + (i + 1));
+		}
+
+		Bin bin = new Bin("bin5", "NewValue");
+
+		BatchResults bresults = client.operate(null, null, keys,
+			Operation.put(bin),
+			Operation.get()
+			);
+
+		for (int i = 0; i < bresults.records.length; i++) {
+			BatchRecord br = bresults.records[i];
+			assertEquals(0, br.resultCode);
+
+			Record r = br.record;
+
+			String s = r.getString(bin.name);
+			assertEquals(s, "NewValue");
+
+			Object obj = r.getValue(BinName);
+			assertNotNull(obj);
 		}
 	}
 

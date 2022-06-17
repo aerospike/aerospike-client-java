@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -109,7 +109,8 @@ public final class OperateArgs {
 			writePolicy = policy;
 		}
 
-		if (respondAllOps || writePolicy.respondAllOps) {
+		// When GET_ALL is specified, RESPOND_ALL_OPS must be disabled.
+		if ((respondAllOps || writePolicy.respondAllOps) && (rattr & Command.INFO1_GET_ALL) == 0) {
 			wattr |= Command.INFO2_RESPOND_ALL_OPS;
 		}
 		writeAttr = wattr;
