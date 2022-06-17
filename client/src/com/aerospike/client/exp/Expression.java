@@ -47,19 +47,31 @@ public final class Expression implements Serializable {
 	}
 
 	/**
-	 * Expression constructor used by {@link Expression#fromBytes(byte[])}
-	 *
-	 * @param bytes the packed byte instructions of an {@link Expression}.
+	 * Expression constructor for packed expression instructions.
 	 */
 	Expression(byte[] bytes) {
 		this.bytes = bytes;
 	}
 
 	/**
-	 * Return a new deserialized {@link Expression}.
+	 * Return a new expression from packed expression instructions in bytes.
 	 */
 	public static Expression fromBytes(byte[] bytes) {
 		return new Expression(bytes);
+	}
+
+	/**
+	 * Return a new expression from packed expression instructions in base64 encoded bytes.
+	 */
+	public static Expression fromBase64(byte[] bytes) {
+		return Expression.fromBytes(Crypto.decodeBase64(bytes, 0, bytes.length));
+	}
+
+	/**
+	 * Return a new expression from packed expression instructions in base64 encoded string.
+	 */
+	public static Expression fromBase64(String s) {
+		return Expression.fromBase64(s.getBytes());
 	}
 
 	/**
