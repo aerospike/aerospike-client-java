@@ -417,6 +417,8 @@ public final class PartitionTracker {
 	}
 
 	public boolean shouldRetry(NodePartitions nodePartitions, AerospikeException ae) {
+		ae.setIteration(iteration);
+
 		switch (ae.getResultCode()) {
 		case ResultCode.SERVER_NOT_AVAILABLE:
 		case ResultCode.TIMEOUT:
