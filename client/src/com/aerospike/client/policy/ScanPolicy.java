@@ -85,20 +85,20 @@ public final class ScanPolicy extends Policy {
 	}
 
 	/**
-	 * Default constructor.
+	 * Default constructor. Disable totalTimeout and set maxRetries.
 	 * <p>
-	 * Set maxRetries for scans. The latest servers support retries on
-	 * individual data partitions. This feature is useful when a cluster
-	 * is migrating and partition(s) are missed or incomplete on the first
-	 * scan attempt.
+	 * The latest servers support retries on individual data partitions.
+	 * This feature is useful when a cluster is migrating and partition(s)
+	 * are missed or incomplete on the first scan attempt.
 	 * <p>
 	 * If the first scan attempt misses 2 of 4096 partitions, then only
 	 * those 2 partitions are retried in the next scan attempt from the
-	 * last key digest received for each respective partition.  A higher
+	 * last key digest received for each respective partition. A higher
 	 * default maxRetries is used because it's wasteful to invalidate
 	 * all scan results because a single partition was missed.
 	 */
 	public ScanPolicy() {
+		super.totalTimeout = 0;
 		super.maxRetries = 5;
 	}
 }

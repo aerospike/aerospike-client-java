@@ -103,9 +103,9 @@ public class ClientPolicy {
 	 * plus sub-commands used for parallel multi-node commands (batch, scan, and query).
 	 * One connection will be used for each command.
 	 * <p>
-	 * Default: 300
+	 * Default: 100
 	 */
-	public int maxConnsPerNode = 300;
+	public int maxConnsPerNode = 100;
 
 	/**
 	 * Minimum number of asynchronous connections allowed per server node.  Preallocate min connections
@@ -164,9 +164,9 @@ public class ClientPolicy {
 	 * connections to min connections (minConnsPerNode and asyncMinConnsPerNode) using a
 	 * hard-coded 55 second limit in the cluster tend thread.
 	 * <p>
-	 * Default: 55
+	 * Default: 0
 	 */
-	public int maxSocketIdle = 55;
+	public int maxSocketIdle = 0;
 
 	/**
 	 * Maximum number of errors allowed per node per {@link #errorRateWindow} before backoff
@@ -177,9 +177,9 @@ public class ClientPolicy {
 	 * The counted error types are any error that causes the connection to close (socket errors
 	 * and client timeouts) and {@link com.aerospike.client.ResultCode#DEVICE_OVERLOAD}.
 	 * <p>
-	 * Default: 0
+	 * Default: 100
 	 */
-	public int maxErrorRate;
+	public int maxErrorRate = 100;
 
 	/**
 	 * The number of cluster tend iterations that defines the window for {@link #maxErrorRate}.

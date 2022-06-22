@@ -105,14 +105,11 @@ public class QueryPolicy extends Policy {
 	}
 
 	/**
-	 * Default constructor.
-	 * <p>
-	 * Set maxRetries for non-aggregation queries with a null filter.
-	 * All other queries are not retried.
+	 * Default constructor. Disable totalTimeout and set maxRetries.
 	 * <p>
 	 * The latest servers support retries on individual data partitions.
 	 * This feature is useful when a cluster is migrating and partition(s)
-	 * are missed or incomplete on the first query (with null filter) attempt.
+	 * are missed or incomplete on the first query attempt.
 	 * <p>
 	 * If the first query attempt misses 2 of 4096 partitions, then only
 	 * those 2 partitions are retried in the next query attempt from the
@@ -121,6 +118,7 @@ public class QueryPolicy extends Policy {
 	 * all query results because a single partition was missed.
 	 */
 	public QueryPolicy() {
+		super.totalTimeout = 0;
 		super.maxRetries = 5;
 	}
 }

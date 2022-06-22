@@ -102,9 +102,11 @@ public class Policy {
 	 * <p>
 	 * If totalTimeout is zero, there will be no total time limit.
 	 * <p>
-	 * Default: 0 (no time limit)
+	 * Default for scan/query: 0
+	 * <p>
+	 * Default for all other commands: 1000ms
 	 */
-	public int totalTimeout;
+	public int totalTimeout = 1000;
 
 	/**
 	 * Delay milliseconds after socket read timeout in an attempt to recover the socket
@@ -150,14 +152,11 @@ public class Policy {
 	 * It's important to use a distinct WritePolicy for non-idempotent
 	 * writes which sets maxRetries = 0;
 	 * <p>
-	 * Default for read: 2 (initial attempt + 2 retries = 3 attempts)
-	 * <p>
 	 * Default for write: 0 (no retries)
 	 * <p>
-	 * Default for partition scan or query with null filter: 5
-	 * (6 attempts. See {@link ScanPolicy#ScanPolicy()} comments.)
+	 * Default for read: 2 (initial attempt + 2 retries = 3 attempts)
 	 * <p>
-	 * No default for legacy scan/query. No retries are allowed for these commands.
+	 * Default for scan/query: 5 (6 attempts. See {@link ScanPolicy#ScanPolicy()} comments.)
 	 */
 	public int maxRetries = 2;
 
