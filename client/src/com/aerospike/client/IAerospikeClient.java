@@ -24,6 +24,7 @@ import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
@@ -1678,6 +1679,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param binName				bin name that data is indexed on
 	 * @param indexType				underlying data type of secondary index
 	 * @param indexCollectionType	index collection type
+	 * @param ctx					optional context to index on elements within a CDT
 	 * @throws AerospikeException	if index create fails
 	 */
 	public IndexTask createIndex(
@@ -1687,7 +1689,8 @@ public interface IAerospikeClient extends Closeable {
 		String indexName,
 		String binName,
 		IndexType indexType,
-		IndexCollectionType indexCollectionType
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
 	) throws AerospikeException;
 
 	/**
@@ -1705,6 +1708,7 @@ public interface IAerospikeClient extends Closeable {
 	 * @param binName				bin name that data is indexed on
 	 * @param indexType				underlying data type of secondary index
 	 * @param indexCollectionType	index collection type
+	 * @param ctx					optional context to index on elements within a CDT
 	 * @throws AerospikeException	if index create fails
 	 */
 	public void createIndex(
@@ -1716,7 +1720,8 @@ public interface IAerospikeClient extends Closeable {
 		String indexName,
 		String binName,
 		IndexType indexType,
-		IndexCollectionType indexCollectionType
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
 	) throws AerospikeException;
 
 	/**

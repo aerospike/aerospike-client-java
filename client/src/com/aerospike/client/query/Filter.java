@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,10 +16,11 @@
  */
 package com.aerospike.client.query;
 
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.util.Pack;
 
 /**
  * Query filter definition.
@@ -32,11 +33,12 @@ public final class Filter {
 	 *
 	 * @param name			bin name
 	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter equal(String name, long value) {
+	public static Filter equal(String name, long value, CTX... ctx) {
 		Value val = Value.get(value);
-		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val, ctx);
 	}
 
 	/**
@@ -44,11 +46,12 @@ public final class Filter {
 	 *
 	 * @param name			bin name
 	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter equal(String name, String value) {
+	public static Filter equal(String name, String value, CTX... ctx) {
 		Value val = Value.get(value);
-		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val, ctx);
 	}
 
 	/**
@@ -57,11 +60,12 @@ public final class Filter {
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter contains(String name, IndexCollectionType type, long value) {
+	public static Filter contains(String name, IndexCollectionType type, long value, CTX... ctx) {
 		Value val = Value.get(value);
-		return new Filter(name, type, val.getType(), val, val);
+		return new Filter(name, type, val.getType(), val, val, ctx);
 	}
 
 	/**
@@ -70,11 +74,12 @@ public final class Filter {
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter contains(String name, IndexCollectionType type, String value) {
+	public static Filter contains(String name, IndexCollectionType type, String value, CTX... ctx) {
 		Value val = Value.get(value);
-		return new Filter(name, type, val.getType(), val, val);
+		return new Filter(name, type, val.getType(), val, val, ctx);
 	}
 
 	/**
@@ -85,10 +90,11 @@ public final class Filter {
 	 * @param name			bin name
 	 * @param begin			filter begin value inclusive
 	 * @param end			filter end value inclusive
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter range(String name, long begin, long end) {
-		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.get(begin), Value.get(end));
+	public static Filter range(String name, long begin, long end, CTX... ctx) {
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.INTEGER, Value.get(begin), Value.get(end), ctx);
 	}
 
 	/**
@@ -100,10 +106,11 @@ public final class Filter {
 	 * @param type			index collection type
 	 * @param begin			filter begin value inclusive
 	 * @param end			filter end value inclusive
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter range(String name, IndexCollectionType type, long begin, long end) {
-		return new Filter(name, type, ParticleType.INTEGER, Value.get(begin), Value.get(end));
+	public static Filter range(String name, IndexCollectionType type, long begin, long end, CTX... ctx) {
+		return new Filter(name, type, ParticleType.INTEGER, Value.get(begin), Value.get(end), ctx);
 	}
 
 	/**
@@ -111,10 +118,11 @@ public final class Filter {
 	 *
 	 * @param name			bin name
 	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoWithinRegion(String name, String region) {
-		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	public static Filter geoWithinRegion(String name, String region, CTX... ctx) {
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(region), Value.get(region), ctx);
 	}
 
 	/**
@@ -123,10 +131,11 @@ public final class Filter {
 	 * @param name			bin name
 	 * @param type			index collection type
 	 * @param region		GeoJSON region
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoWithinRegion(String name, IndexCollectionType type, String region) {
-		return new Filter(name, type, ParticleType.GEOJSON, Value.get(region), Value.get(region));
+	public static Filter geoWithinRegion(String name, IndexCollectionType type, String region, CTX... ctx) {
+		return new Filter(name, type, ParticleType.GEOJSON, Value.get(region), Value.get(region), ctx);
 	}
 
 	/**
@@ -136,14 +145,15 @@ public final class Filter {
 	 * @param lng			longitude
 	 * @param lat			latitude
 	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoWithinRadius(String name, double lng, double lat, double radius) {
+	public static Filter geoWithinRadius(String name, double lng, double lat, double radius, CTX... ctx) {
 		String rgnstr =
 				String.format("{ \"type\": \"AeroCircle\", "
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
 							  lng, lat, radius);
-		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr), ctx);
 	}
 
 	/**
@@ -154,14 +164,15 @@ public final class Filter {
 	 * @param lng			longitude
 	 * @param lat			latitude
 	 * @param radius 		radius (meters)
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoWithinRadius(String name, IndexCollectionType type, double lng, double lat, double radius) {
+	public static Filter geoWithinRadius(String name, IndexCollectionType type, double lng, double lat, double radius, CTX... ctx) {
 		String rgnstr =
 				String.format("{ \"type\": \"AeroCircle\", "
 							  + "\"coordinates\": [[%.8f, %.8f], %f] }",
 							  lng, lat, radius);
-		return new Filter(name, type, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr));
+		return new Filter(name, type, ParticleType.GEOJSON, Value.get(rgnstr), Value.get(rgnstr), ctx);
 	}
 
 	/**
@@ -169,10 +180,11 @@ public final class Filter {
 	 *
 	 * @param name			bin name
 	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoContains(String name, String point) {
-		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	public static Filter geoContains(String name, String point, CTX... ctx) {
+		return new Filter(name, IndexCollectionType.DEFAULT, ParticleType.GEOJSON, Value.get(point), Value.get(point), ctx);
 	}
 
 	/**
@@ -180,32 +192,35 @@ public final class Filter {
 	 *
 	 * @param name			bin name
 	 * @param type			index collection type
-	 * @param point			GeoJSON point.
+	 * @param point			GeoJSON point
+	 * @param ctx			optional context for elements within a CDT
 	 * @return				filter instance
 	 */
-	public static Filter geoContains(String name, IndexCollectionType type, String point) {
-		return new Filter(name, type, ParticleType.GEOJSON, Value.get(point), Value.get(point));
+	public static Filter geoContains(String name, IndexCollectionType type, String point, CTX... ctx) {
+		return new Filter(name, type, ParticleType.GEOJSON, Value.get(point), Value.get(point), ctx);
 	}
 
 	private final String name;
 	private final IndexCollectionType colType;
+	private final byte[] packedCtx;
 	private final int valType;
 	private final Value begin;
 	private final Value end;
 
-	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end) {
+	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx) {
 		this.name = name;
-		this.valType = valType;
 		this.colType = colType;
+		this.valType = valType;
 		this.begin = begin;
 		this.end = end;
+		this.packedCtx = (ctx != null && ctx.length > 0)? Pack.pack(ctx) : null;
 	}
 
 	/**
 	 * Estimate filter's byte send when sending command to server.
 	 * For internal use only.
 	 */
-	public int estimateSize() throws AerospikeException {
+	public int estimateSize() {
 		// bin name size(1) + particle type size(1) + begin particle size(4) + end particle size(4) = 10
 		return Buffer.estimateSizeUtf8(name) + begin.estimateSize() + end.estimateSize() + 10;
 	}
@@ -214,7 +229,7 @@ public final class Filter {
 	 * Write filter to send command buffer.
 	 * For internal use only.
 	 */
-	public int write(byte[] buf, int offset) throws AerospikeException {
+	public int write(byte[] buf, int offset) {
 		// Write name.
 		int len = Buffer.stringToUtf8(name, buf, offset + 1);
 		buf[offset] = (byte)len;
@@ -242,6 +257,14 @@ public final class Filter {
 	 */
 	public IndexCollectionType getCollectionType() {
 		return colType;
+	}
+
+	/**
+	 * Retrieve packed Context.
+	 * For internal use only.
+	 */
+	public byte[] getPackedCtx() {
+		return packedCtx;
 	}
 
 	/**

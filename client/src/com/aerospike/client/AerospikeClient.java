@@ -43,6 +43,7 @@ import com.aerospike.client.async.AsyncScanPartitionExecutor;
 import com.aerospike.client.async.AsyncTouch;
 import com.aerospike.client.async.AsyncWrite;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Connection;
@@ -113,6 +114,8 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.Crypto;
+import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Util;
 
@@ -3125,6 +3128,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name that data is indexed on
 	 * @param indexType				underlying data type of secondary index
 	 * @param indexCollectionType	index collection type
+	 * @param ctx					optional context to index on elements within a CDT
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final IndexTask createIndex(
@@ -3134,13 +3138,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String indexName,
 		String binName,
 		IndexType indexType,
-		IndexCollectionType indexCollectionType
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
 	) throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
 
-		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType);
+		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType, ctx);
 
 		// Send index command to one node. That node will distribute the command to other nodes.
 		String response = sendInfoCommand(policy, command);
@@ -3169,6 +3174,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param binName				bin name that data is indexed on
 	 * @param indexType				underlying data type of secondary index
 	 * @param indexCollectionType	index collection type
+	 * @param ctx					optional context to index on elements within a CDT
 	 * @throws AerospikeException	if index create fails
 	 */
 	public final void createIndex(
@@ -3180,7 +3186,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String indexName,
 		String binName,
 		IndexType indexType,
-		IndexCollectionType indexCollectionType
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
 	) throws AerospikeException {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
@@ -3190,7 +3197,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
-		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType);
+		String command = buildCreateIndexInfoCommand(namespace, setName, indexName, binName, indexType, indexCollectionType, ctx);
 		sendIndexInfoCommand(eventLoop, listener, policy, namespace, indexName, command, true);
 	}
 
@@ -3629,9 +3636,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		String indexName,
 		String binName,
 		IndexType indexType,
-		IndexCollectionType indexCollectionType
+		IndexCollectionType indexCollectionType,
+		CTX[] ctx
 	) {
-		StringBuilder sb = new StringBuilder(500);
+		StringBuilder sb = new StringBuilder(1024);
 		sb.append("sindex-create:ns=");
 		sb.append(namespace);
 
@@ -3642,7 +3650,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		sb.append(";indexname=");
 		sb.append(indexName);
-		sb.append(";numbins=1");
+
+		if (ctx != null && ctx.length > 0) {
+			byte[] bytes = Pack.pack(ctx);
+			String base64 = Crypto.encodeBase64(bytes);
+
+			sb.append(";context=");
+			sb.append(base64);
+		}
 
 		if (indexCollectionType != IndexCollectionType.DEFAULT) {
 			sb.append(";indextype=");
@@ -3653,7 +3668,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		sb.append(binName);
 		sb.append(",");
 		sb.append(indexType);
-		sb.append(";priority=normal");
 		return sb.toString();
 	}
 

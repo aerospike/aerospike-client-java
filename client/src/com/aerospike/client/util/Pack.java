@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -365,5 +365,16 @@ public final class Pack {
 				c.value.pack(packer);
 			}
 		}
+	}
+
+	public static byte[] pack(CTX[] ctx) {
+		Packer packer = new Packer();
+		packer.packArrayBegin(ctx.length * 2);
+
+		for (CTX c : ctx) {
+			packer.packInt(c.id);
+			c.value.pack(packer);
+		}
+		return packer.toByteArray();
 	}
 }
