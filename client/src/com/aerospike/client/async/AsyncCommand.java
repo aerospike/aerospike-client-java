@@ -82,11 +82,11 @@ public abstract class AsyncCommand extends Command {
 	}
 
 	@Override
-	protected final void sizeBuffer() {
+	protected void sizeBuffer() {
 		sizeBuffer(dataOffset);
 	}
 
-	final void sizeBuffer(int size) {
+	void sizeBuffer(int size) {
 		if (dataBuffer == null) {
 			dataBuffer = getBuffer(size);
 		}
@@ -97,14 +97,14 @@ public abstract class AsyncCommand extends Command {
 		}
 	}
 
-	final void putBuffer() {
+	void putBuffer() {
 		if (dataBuffer != null) {
 			putBuffer(dataBuffer);
 			dataBuffer = null;
 		}
 	}
 
-	private final byte[] getBuffer(int size) {
+	protected byte[] getBuffer(int size) {
 		if (size > MAX_BUFFER_SIZE) {
 			// Allocate huge buffer, but do not put back in pool.
 			return new byte[size];
