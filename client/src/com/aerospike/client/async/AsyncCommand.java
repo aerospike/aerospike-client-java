@@ -130,7 +130,7 @@ public abstract class AsyncCommand extends Command {
 		return new byte[(size + 8191) & ~8191];
 	}
 
-	private final void putBuffer(byte[] buffer) {
+	protected void putBuffer(byte[] buffer) {
 		if (buffer.length <= MAX_BUFFER_SIZE) {
 			bufferQueue.addLast(buffer);
 		}
