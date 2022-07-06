@@ -246,7 +246,7 @@ public abstract class SyncCommand extends Command {
 	}
 
 	@Override
-	protected final void sizeBuffer() {
+	protected void sizeBuffer() {
 		dataBuffer = ThreadLocalData.getBuffer();
 
 		if (dataOffset > dataBuffer.length) {
@@ -254,7 +254,7 @@ public abstract class SyncCommand extends Command {
 		}
 	}
 
-	protected final void sizeBuffer(int size) {
+	protected void sizeBuffer(int size) {
 		if (size > dataBuffer.length) {
 			dataBuffer = ThreadLocalData.resizeBuffer(size);
 		}
