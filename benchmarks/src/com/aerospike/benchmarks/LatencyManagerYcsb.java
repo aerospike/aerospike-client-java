@@ -110,7 +110,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 		buffer.append(" Min:").append(min.get()).append("us");
 		buffer.append(" Max:").append(max.get()).append("us)");
 
-		int opcounter = 0;
+		long opcounter = 0;
 		boolean done95th = false;
 		for (int i = 0; i < _buckets.get(); i++) {
 			opcounter += histogram.get(i);
