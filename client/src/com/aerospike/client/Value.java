@@ -62,6 +62,15 @@ public abstract class Value {
 	public static boolean DisableSerializer = false;
 
 	/**
+	 * Should default object deserializer be disabled. If true, an exception will be thrown when
+	 * a default object deserialization is attempted. Default object serialization is triggered
+	 * when serialized data is read/parsed from the server. DisableDeserializer is separate from
+	 * DisableSerializer because there may be cases when no new serialization is allowed, but
+	 * existing serialized objects need to be supported.
+	 */
+	public static boolean DisableDeserializer = false;
+
+	/**
 	 * Null value.
 	 */
 	public static final Value NULL = NullValue.INSTANCE;

@@ -105,7 +105,7 @@ public class TestQueryContext extends TestSync {
 				//System.out.println(r);
 
 				List<?> list = r.getList(binName);
-				long received = (long)list.get(list.size() - 1);
+				long received = (Long)list.get(list.size() - 1);
 
 				if (received < begin || received > end) {
 					fail("Received not between: " + begin + " and " + end);

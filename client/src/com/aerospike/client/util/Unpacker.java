@@ -235,10 +235,17 @@ public abstract class Unpacker<T> {
 			break;
 
 		case ParticleType.JBLOB:
+			if (Value.DisableDeserializer) {
+				throw new AerospikeException.Serialize("Object deserializer has been disabled");
+			}
+
 			try (ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count)) {
 				try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
 					val = getJavaBlob(oistream.readObject());
 				}
+			}
+			catch (Exception e) {
+				throw new AerospikeException.Serialize(e);
 			}
 			break;
 

@@ -286,13 +286,17 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
-	 * Exception thrown when Java serialization error occurs.
+	 * Exception thrown when a Java serialization error occurs.
 	 */
 	public static final class Serialize extends AerospikeException {
 		private static final long serialVersionUID = 1L;
 
 		public Serialize(Throwable e) {
 			super(ResultCode.SERIALIZE_ERROR, e);
+		}
+
+		public Serialize(String message) {
+			super(ResultCode.SERIALIZE_ERROR, message);
 		}
 	}
 
