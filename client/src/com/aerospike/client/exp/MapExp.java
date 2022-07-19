@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -102,7 +102,21 @@ public final class MapExp {
 	private static final int GET_BY_VALUE_REL_RANK_RANGE = 110;
 
 	/**
-	 * Create expression that writes key/value item to map bin.
+	 * Create expression that writes key/value item to a map bin. The 'bin' expression should either
+	 * reference an existing map bin or be a expression that returns a map.
+	 *
+	 * <pre>{@code
+	 * // Add entry{11,22} to existing map bin.
+	 * Expression e = Exp.build(MapExp.put(MapPolicy.Default, Exp.val(11), Exp.val(22), Exp.mapBin(binName)));
+	 * client.operate(null, key, ExpOperation.write(binName, e, ExpWriteFlags.DEFAULT));
+	 *
+	 * // Combine entry{11,22} with source map's first index entry and write resulting map to target map bin.
+	 * Expression e = Exp.build(
+	 *   MapExp.put(MapPolicy.Default, Exp.val(11), Exp.val(22),
+	 *     MapExp.getByIndexRange(MapReturnType.KEY_VALUE, Exp.val(0), Exp.val(1), Exp.mapBin(sourceBinName)))
+	 *   );
+	 * client.operate(null, key, ExpOperation.write(targetBinName, e, ExpWriteFlags.DEFAULT));
+	 * }</pre>
 	 */
 	public static Exp put(MapPolicy policy, Exp key, Exp value, Exp bin, CTX... ctx) {
 		Packer packer = new Packer();
@@ -139,7 +153,7 @@ public final class MapExp {
 	}
 
 	/**
-	 * Create expression that writes each map item to map bin.
+	 * Create expression that writes each map item to a map bin.
 	 */
 	public static Exp putItems(MapPolicy policy, Exp map, Exp bin, CTX... ctx) {
 		Packer packer = new Packer();
