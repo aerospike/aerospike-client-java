@@ -103,6 +103,13 @@ public final class MapExp {
 
 	/**
 	 * Create expression that writes key/value item to map bin.
+	 * 
+	 * Helpful note, the 'bin' field should be instantiated using a map. The most obvious way to do this 
+	 * is using Exp.mapBin which sources an existing map from a bin
+	 * 
+	 * e.g. MapExp.put(new MapPolicy(), Exp.val(MAP_KEY), <some expression which is the required map value>, Exp.mapBin(BIN_NAME));
+	 * 
+	 * alternatively Exp.mapBin might be replaced by a literal Exp.val(Map<?,?> map)
 	 */
 	public static Exp put(MapPolicy policy, Exp key, Exp value, Exp bin, CTX... ctx) {
 		Packer packer = new Packer();
