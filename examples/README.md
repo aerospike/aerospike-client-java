@@ -50,10 +50,10 @@ The source code can be imported into your IDE and/or built using Maven.
 
 There are two scripts to run example code:
 
-Script | Description | Link
------- | ----------- | --- 
-run_examples_swing | Run examples with a graphical user interface. | [View screenshot](http://www.aerospike.com/docs/client/java/assets/java_example_screen.png)
-run_examples | Run examples on the command line. | See usage below.
+Script | Description
+------ | -----------
+run_examples_swing | Run examples with a graphical user interface.
+run_examples | Run examples on the command line.
 
 #### Usage
 
