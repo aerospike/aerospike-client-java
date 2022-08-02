@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -56,6 +56,7 @@ public final class HLLExp {
 	 * @param policy			write policy, use {@link HLLPolicy#Default} for default
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
 	 * @param minHashBitCount	number of min hash bits. Must be between 4 and 51 inclusive.
+	 * 							Also, indexBitCount + minHashBitCount must be <= 64.
 	 * @param bin				HLL bin or value expression
 	 */
 	public static Exp init(HLLPolicy policy, Exp indexBitCount, Exp minHashBitCount, Exp bin) {
@@ -120,6 +121,7 @@ public final class HLLExp {
 	 * @param list				list bin or value expression of values to be added
 	 * @param indexBitCount		number of index bits expression. Must be between 4 and 16 inclusive.
 	 * @param minHashBitCount   number of min hash bits expression. Must be between 4 and 51 inclusive.
+	 * 							Also, indexBitCount + minHashBitCount must be <= 64.
 	 * @param bin				HLL bin or value expression
 	 */
 	public static Exp add(HLLPolicy policy, Exp list, Exp indexBitCount, Exp minHashBitCount, Exp bin) {
