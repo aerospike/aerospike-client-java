@@ -23,8 +23,7 @@ public final class BatchPolicy extends Policy {
 	/**
 	 * Maximum number of concurrent synchronous batch request threads to server nodes at any point in time.
 	 * If there are 16 nodes requested and maxConcurrentThreads is 8, then batch requests will be
-	 * made for 8 nodes in parallel threads. When a request completes, a new request will be issued
-	 * until all 16 requests are complete.
+	 * made for 8 nodes in parallel threads. When maxConcurrentThreads is set to 8, but there are 4 nodes, we will only have 4 threads. For larger batch transactions that would benefit from multiple parallel threads, increase the number of CPU cores available on the client host. The ideal value would depend on a variety of attributes, including the size and nature of the batch transaction, as well as, the overall systems performance. 
 	 * <p>
 	 * Values:
 	 * <ul>
