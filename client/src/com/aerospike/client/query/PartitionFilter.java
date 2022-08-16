@@ -22,7 +22,13 @@ import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Partition;
 
 /**
- * Partition filter used in scan/query.
+ * Partition filter used in scan/query. This filter is also used as a cursor.
+ * <p>
+ * If a previous scan/query returned all records specified by a PartitionFilter instance, a
+ * future scan/query using the same PartitionFilter instance will only return new records added
+ * after the last record read (in digest order) in each partition in the previous scan/query.
+ * To reset the cursor of an existing PartitionFilter instance, call
+ * {@link #setPartitions(PartitionStatus[])} with a null argument.
  */
 public final class PartitionFilter implements Serializable {
 	private static final long serialVersionUID = 4L;
@@ -120,8 +126,14 @@ public final class PartitionFilter implements Serializable {
 	}
 
 	/**
-	 * Set status of each partition after scan termination.
-	 * Useful for external retry of partially completed scans at a later time.
+	 * Set cursor status of all partitions. The cursor contains the last record read for each
+	 * partition and is usually obtained from {@link #getPartitions()} after a previous scan/query.
+	 * <p>
+	 * If a previous scan/query returned all records specified by a PartitionFilter instance, a
+	 * future scan/query using the same PartitionFilter instance will only return new records added
+	 * after the last record read (in digest order) in each partition in the previous scan/query.
+	 * To reset the cursor of an existing PartitionFilter instance, call this method with a null
+	 * argument.
 	 */
 	public void setPartitions(PartitionStatus[] partitions) {
 		this.partitions = partitions;
