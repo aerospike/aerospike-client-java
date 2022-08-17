@@ -71,6 +71,12 @@ public abstract class Value {
 	public static boolean DisableDeserializer = false;
 
 	/**
+	 * Should the client return a map when {@link com.aerospike.client.cdt.MapReturnType#KEY_VALUE}
+	 * is specified in a map read operation and the server returns a list of key/value pairs.
+	 */
+	public static boolean ReturnMapForKeyValue = false;
+
+	/**
 	 * Null value.
 	 */
 	public static final Value NULL = NullValue.INSTANCE;

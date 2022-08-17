@@ -159,7 +159,7 @@ public abstract class Unpacker<T> {
 				int mapBits = buffer[offset + 2] & 0xff;
 
 				// Extension is a map type.  Determine which one.
-				if ((mapBits & 0x08) != 0) {
+				if ((mapBits & 0x08) != 0 && !Value.ReturnMapForKeyValue) {
 					// Index/rank range result where order needs to be preserved.
 					return unpackMapAsList(count);
 				}
