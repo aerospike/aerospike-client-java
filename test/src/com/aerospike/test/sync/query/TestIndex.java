@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,10 +16,14 @@
  */
 package com.aerospike.test.sync.query;
 
+import static org.junit.Assert.assertEquals;
+
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
+import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.task.IndexTask;
@@ -58,5 +62,37 @@ public class TestIndex extends TestSync {
 
 		task = client.dropIndex(policy, args.namespace, args.set, indexName);
 		task.waitTillComplete();
+	}
+
+	@Test
+	public void ctxRestore() {
+		CTX[] ctx1 = new CTX[] {
+			CTX.listIndex(-1),
+			CTX.mapKey(Value.get("key1")),
+			CTX.listValue(Value.get(937))
+		};
+
+		String base64 = CTX.toBase64(ctx1);
+		CTX[] ctx2 = CTX.fromBase64(base64);
+
+		assertEquals(ctx1.length, ctx2.length);
+
+		for (int i = 0; i < ctx1.length; i++) {
+			CTX item1 = ctx1[i];
+			CTX item2 = ctx2[i];
+
+			assertEquals(item1.id, item2.id);
+
+			Object obj1 = item1.value.getObject();
+			Object obj2 = item2.value.getObject();
+
+			if (obj1 instanceof Integer && obj2 instanceof Long) {
+				// fromBase64() converts integers to long, so consider these equivalent.
+				assertEquals((long)(Integer)obj1, (long)(Long)obj2);
+			}
+			else {
+				assertEquals(obj1, obj2);
+			}
+		}
 	}
 }

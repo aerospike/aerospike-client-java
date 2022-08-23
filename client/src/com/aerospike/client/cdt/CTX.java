@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,7 +16,13 @@
  */
 package com.aerospike.client.cdt;
 
+import java.util.List;
+
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.Crypto;
+import com.aerospike.client.util.Pack;
+import com.aerospike.client.util.Unpacker;
 
 /**
  * Nested CDT context.  Identifies the location of nested list/map to apply the operation.
@@ -117,6 +123,56 @@ public final class CTX {
 	 */
 	public static CTX mapValue(Value key) {
 		return new CTX(0x23, key);
+	}
+
+	/**
+	 * Serialize context array to bytes.
+	 */
+	public static byte[] toBytes(CTX[] ctx) {
+		return Pack.pack(ctx);
+	}
+
+	/**
+	 * Deserialize bytes to context array.
+	 */
+	public static CTX[] fromBytes(byte[] bytes) {
+		List<?> list = (List<?>)Unpacker.unpackObjectList(bytes, 0, bytes.length);
+		int max = list.size();
+		CTX[] ctx = new CTX[max / 2];
+		int i = 0;
+		int count = 0;
+
+		while (i < max) {
+			int id = (int)(long)(Long)list.get(i);
+
+			if (++i >= max) {
+				throw new AerospikeException.Parse("List count must be even");
+			}
+
+			Object obj = list.get(i);
+			Value val = Value.get(obj);
+
+			ctx[count++] = new CTX(id, val);
+			i++;
+		}
+		return ctx;
+	}
+
+	/**
+	 * Serialize context array to base64 encoded string.
+	 */
+	public static String toBase64(CTX[] ctx) {
+		byte[] bytes = Pack.pack(ctx);
+		return Crypto.encodeBase64(bytes);
+	}
+
+	/**
+	 * Deserialize base64 encoded string to context array.
+	 */
+	public static CTX[] fromBase64(String base64) {
+		byte[] b64 = base64.getBytes();
+		byte[] bytes = Crypto.decodeBase64(b64, 0, b64.length);
+		return fromBytes(bytes);
 	}
 
 	public final int id;
