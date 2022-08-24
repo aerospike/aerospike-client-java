@@ -930,14 +930,16 @@ public class Cluster implements Runnable, Closeable {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
 
-		int index = Math.abs(nodeIndex.getAndIncrement() % nodeArray.length);
-		for (int i = 0; i < nodeArray.length; i++) {
-			Node node = nodeArray[index];
-			if (node.isActive()) {
-				return node;
+		if(nodeArray.length > 0) {
+			int index = Math.abs(nodeIndex.getAndIncrement() % nodeArray.length);
+			for (int i = 0; i < nodeArray.length; i++) {
+				Node node = nodeArray[index];
+				if (node.isActive()) {
+					return node;
+				}
+				index++;
+				index %= nodeArray.length;
 			}
-			index++;
-			index %= nodeArray.length;
 		}
 		throw new AerospikeException.InvalidNode("Cluster is empty");
 	}
