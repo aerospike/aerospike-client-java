@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.query;
 
+import java.util.Arrays;
+
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.command.Buffer;
@@ -284,6 +286,8 @@ public final class Filter {
 				return false;
 		} else if (!begin.equals(other.begin))
 			return false;
+		if (colType != other.colType)
+			return false;
 		if (end == null) {
 			if (other.end != null)
 				return false;
@@ -294,7 +298,7 @@ public final class Filter {
 				return false;
 		} else if (!name.equals(other.name))
 			return false;
-		if (colType != other.colType)
+		if (!Arrays.equals(packedCtx, other.packedCtx))
 			return false;
 		if (valType != other.valType)
 			return false;
@@ -309,9 +313,10 @@ public final class Filter {
 		final int prime = 31;
 		int result = 1;
 		result = prime * result + ((begin == null) ? 0 : begin.hashCode());
+		result = prime * result + ((colType == null) ? 0 : colType.hashCode());
 		result = prime * result + ((end == null) ? 0 : end.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
-		result = prime * result + ((colType == null) ? 0 : colType.hashCode());
+		result = prime * result + Arrays.hashCode(packedCtx);
 		result = prime * result + valType;
 		return result;
 	}
