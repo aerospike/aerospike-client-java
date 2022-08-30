@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,6 +31,7 @@ import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.ResultSet;
@@ -112,4 +113,29 @@ public class TestQuerySum extends TestSync {
 			rs.close();
 		}
 	}
+
+	@Test
+	public void querySetNotFound() {
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName("notfound");
+		stmt.setBinNames(binName);
+		stmt.setFilter(Filter.range(binName, 4, 7));
+		stmt.setAggregateFunction(TestQuerySum.class.getClassLoader(), "udf/sum_example.lua", "sum_example", "sum_single_bin", Value.get(binName));
+
+		QueryPolicy qp = new QueryPolicy();
+		qp.socketTimeout = 5000;
+
+		ResultSet rs = client.queryAggregate(qp, stmt);
+
+		try {
+			while (rs.next()) {
+				fail("No rows should have been returned");
+			}
+		}
+		finally {
+			rs.close();
+		}
+	}
+
 }

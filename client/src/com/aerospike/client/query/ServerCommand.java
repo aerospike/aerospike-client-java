@@ -44,7 +44,7 @@ public final class ServerCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow() {
+	protected boolean parseRow() {
 		skipKey(fieldCount);
 
 		// Server commands (Query/Execute UDF) should only send back a return code.
@@ -53,7 +53,7 @@ public final class ServerCommand extends MultiCommand {
 			// when the set does not exist on the target node.
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 				// Non-fatal error.
-				return;
+				return false;
 			}
 			throw new AerospikeException(resultCode);
 		}
@@ -65,5 +65,6 @@ public final class ServerCommand extends MultiCommand {
 		if (! valid) {
 			throw new AerospikeException.QueryTerminated();
 		}
+		return true;
 	}
 }

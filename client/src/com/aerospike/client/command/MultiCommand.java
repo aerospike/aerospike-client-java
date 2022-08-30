@@ -250,12 +250,15 @@ public abstract class MultiCommand extends SyncCommand {
 			opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
 			dataOffset += 2;
 
-			parseRow();
+			// Note: parseRow() also handles sync error responses.
+			if (! parseRow()) {
+				return false;
+			}
 		}
 		return true;
 	}
 
-	protected abstract void parseRow();
+	protected abstract boolean parseRow();
 
 	protected final Record parseRecord() {
 		if (opCount <= 0) {

@@ -73,7 +73,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow() {
+	protected boolean parseRow() {
 		Key key = parseKey(fieldCount, null);
 
 		if ((info3 & Command.INFO3_PARTITION_DONE) != 0) {
@@ -83,7 +83,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			if (resultCode != 0) {
 				tracker.partitionUnavailable(nodePartitions, generation);
 			}
-			return;
+			return true;
 		}
 
 		if (resultCode != 0) {
@@ -98,5 +98,6 @@ public final class ScanPartitionCommand extends MultiCommand {
 
 		callback.scanCallback(key, record);
 		tracker.setDigest(nodePartitions, key);
+		return true;
 	}
 }

@@ -52,7 +52,7 @@ public final class QueryRecordCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow() {
+	protected boolean parseRow() {
 		Key key = parseKey(fieldCount, null);
 
 		if (resultCode != 0) {
@@ -69,5 +69,6 @@ public final class QueryRecordCommand extends MultiCommand {
 			stop();
 			throw new AerospikeException.QueryTerminated();
 		}
+		return true;
 	}
 }
