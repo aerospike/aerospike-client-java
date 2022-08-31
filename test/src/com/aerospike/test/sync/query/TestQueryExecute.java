@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -234,5 +234,17 @@ public class TestQueryExecute extends TestSync {
 		finally {
 			rs.close();
 		}
+	}
+
+	@Test
+	public void queryExecuteSetNotFound() {
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName("notfound");
+		stmt.setFilter(Filter.range(binName1, 1, 3));
+
+		// Previous client versions might timeout when set does not exist.
+		// Test to make sure regression has not resurfaced.
+		client.execute(null, stmt, Operation.touch());
 	}
 }

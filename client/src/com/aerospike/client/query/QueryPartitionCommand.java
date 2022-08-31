@@ -70,7 +70,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow() {
+	protected boolean parseRow() {
 		BVal bval = new BVal();
 		Key key = parseKey(fieldCount, bval);
 
@@ -81,7 +81,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 			if (resultCode != 0) {
 				tracker.partitionUnavailable(nodePartitions, generation);
 			}
-			return;
+			return true;
 		}
 
 		if (resultCode != 0) {
@@ -100,5 +100,6 @@ public final class QueryPartitionCommand extends MultiCommand {
 		}
 
 		tracker.setLast(nodePartitions, key, bval.val);
+		return true;
 	}
 }

@@ -60,7 +60,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			BatchRead record = records.get(batchIndex);
@@ -72,6 +72,7 @@ public final class Batch {
 				record.setError(resultCode, false);
 				status.setRowError();
 			}
+			return true;
 		}
 
 		@Override
@@ -128,12 +129,13 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
 			}
+			return true;
 		}
 
 		@Override
@@ -180,7 +182,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			if (opCount > 0) {
@@ -188,6 +190,7 @@ public final class Batch {
 			}
 
 			existsArray[batchIndex] = resultCode == 0;
+			return true;
 		}
 
 		@Override
@@ -232,14 +235,14 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			BatchRecord record = records.get(batchIndex);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
@@ -252,12 +255,13 @@ public final class Batch {
 					record.resultCode = resultCode;
 					record.inDoubt = Command.batchInDoubt(record.hasWrite, commandSentCounter);
 					status.setRowError();
-					return;
+					return true;
 				}
 			}
 
 			record.setError(resultCode, Command.batchInDoubt(record.hasWrite, commandSentCounter));
 			status.setRowError();
+			return true;
 		}
 
 		@Override
@@ -324,7 +328,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			BatchRecord record = records[batchIndex];
@@ -336,6 +340,7 @@ public final class Batch {
 				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
 				status.setRowError();
 			}
+			return true;
 		}
 
 		@Override
@@ -408,14 +413,14 @@ public final class Batch {
 		}
 
 		@Override
-		protected void parseRow() {
+		protected boolean parseRow() {
 			skipKey(fieldCount);
 
 			BatchRecord record = records[batchIndex];
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
-				return;
+				return true;
 			}
 
 			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
@@ -428,12 +433,13 @@ public final class Batch {
 					record.resultCode = resultCode;
 					record.inDoubt = Command.batchInDoubt(attr.hasWrite, commandSentCounter);
 					status.setRowError();
-					return;
+					return true;
 				}
 			}
 
 			record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
 			status.setRowError();
+			return true;
 		}
 
 		@Override

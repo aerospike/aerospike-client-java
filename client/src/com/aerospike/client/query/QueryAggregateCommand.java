@@ -60,7 +60,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 	}
 
 	@Override
-	protected void parseRow() {
+	protected boolean parseRow() {
 		skipKey(fieldCount);
 
 		if (resultCode != 0) {
@@ -68,7 +68,7 @@ public final class QueryAggregateCommand extends MultiCommand {
 			// when the set does not exist on the target node.
 			if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 				// Non-fatal error.
-				return;
+				return false;
 			}
 			throw new AerospikeException(resultCode);
 		}
@@ -113,5 +113,6 @@ public final class QueryAggregateCommand extends MultiCommand {
 			catch (InterruptedException ie) {
 			}
 		}
+		return true;
 	}
 }
