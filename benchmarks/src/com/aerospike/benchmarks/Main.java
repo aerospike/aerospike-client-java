@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -138,10 +138,10 @@ public class Main implements Log.Callback {
 			"Interval between cluster tends in milliseconds. Default: 1000"
 			);
 		options.addOption("maxSocketIdle", true,
-			"Maximum socket idle in connection pool in seconds. Default: 55"
+			"Maximum socket idle in connection pool in seconds. Default: 0"
 			);
 		options.addOption("maxErrorRate", true,
-			"Maximum number of errors allowed per node per tend iteration. Default: 0"
+			"Maximum number of errors allowed per node per tend iteration. Default: 100"
 			);
 		options.addOption("errorRateWindow", true,
 			"Number of cluster tend iterations that defines the window for maxErrorRate. Default: 1"
@@ -150,13 +150,13 @@ public class Main implements Log.Callback {
 			"Minimum number of sync connections pre-allocated per server node. Default: 0"
 			);
 		options.addOption("maxConnsPerNode", true,
-			"Maximum number of sync connections allowed per server node. Default: 300"
+			"Maximum number of sync connections allowed per server node. Default: 100"
 			);
 		options.addOption("asyncMinConnsPerNode", true,
 			"Minimum number of async connections pre-allocated per server node. Default: 0"
 			);
 		options.addOption("asyncMaxConnsPerNode", true,
-			"Maximum number of async connections allowed per server node. Default: 300"
+			"Maximum number of async connections allowed per server node. Default: 100"
 			);
 		options.addOption("k", "keys", true,
 			"Set the number of keys the client is dealing with. " +
