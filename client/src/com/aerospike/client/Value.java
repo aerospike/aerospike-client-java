@@ -301,6 +301,10 @@ public abstract class Value {
 			return new ByteValue((byte)value);
 		}
 
+		if (value instanceof Character) {
+			return Value.get(((Character)value).charValue());
+		}
+
 		if (value instanceof Enum) {
         	return new StringValue(value.toString());
 		}
