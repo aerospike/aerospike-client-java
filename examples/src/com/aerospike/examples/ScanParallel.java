@@ -38,17 +38,10 @@ public class ScanParallel extends Example implements ScanCallback {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		recordCount = new AtomicInteger();
-		setName = "test.large";
+		setName = params.set;
 		console.info("Scan parallel: namespace=" + params.namespace + " set=" + setName);
 		client.scanAll(null, params.namespace, setName, this);
 		int count = recordCount.get();
-		console.info("Total records returned: " + count);
-
-		recordCount.set(0);
-		setName = "test.small";
-		console.info("Scan parallel: namespace=" + params.namespace + " set=" + setName);
-		client.scanAll(null, params.namespace, setName, this);
-		count = recordCount.get();
 		console.info("Total records returned: " + count);
 	}
 
