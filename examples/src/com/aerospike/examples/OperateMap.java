@@ -35,6 +35,8 @@ import com.aerospike.client.cdt.MapOperation;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.policy.Policy;
 
 public class OperateMap extends Example {
 
@@ -48,11 +50,14 @@ public class OperateMap extends Example {
 	@Override
 	public void runExample(AerospikeClient client, Parameters params) {
 		runSimpleExample(client, params);
+
+		/*
 		runScoreExample(client, params);
 		runListRangeExample(client, params);
 		runNestedExample(client, params);
 		runNestedMapCreateExample(client, params);
 		runNestedListCreateExample(client, params);
+		*/
 	}
 
 	/**
@@ -76,6 +81,16 @@ public class OperateMap extends Example {
 
 		console.info("Record: " + record);
 
+		record = client.get(null, key);
+
+		console.info("Record: " + record);
+
+		Policy p = new Policy();
+		p.filterExp = Exp.build(Exp.eq(Exp.mapBin(binName), Exp.val(inputMap)));
+		record = client.get(p, key);
+
+		console.info("Record: " + record);
+		/*
 		// Pop value from map and also return new size of map.
 		record = client.operate(params.writePolicy, key,
 				MapOperation.removeByKey(binName, Value.get(1), MapReturnType.VALUE),
@@ -91,7 +106,7 @@ public class OperateMap extends Example {
 
 		for (Object value : list) {
 			console.info("Received: " + value);
-		}
+		}*/
 	}
 
 	/**
