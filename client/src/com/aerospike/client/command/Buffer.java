@@ -18,13 +18,14 @@ package com.aerospike.client.command;
 
 import java.io.ByteArrayInputStream;
 import java.io.ObjectInputStream;
-import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
 import com.aerospike.client.util.Unpacker;
+import com.aerospike.client.util.Utf8;
 
 public final class Buffer {
 
@@ -143,38 +144,18 @@ public final class Buffer {
 	/**
 	 * Estimate size of Utf8 encoded bytes without performing the actual encoding.
 	 */
-	public static int estimateSizeUtf8(String value) {
-		if (value == null) {
+	public static int estimateSizeUtf8(String s) {
+		if (s == null || s.length() == 0) {
 			return 0;
 		}
-
-		int max = value.length();
-		int count = 0;
-
-		for (int i = 0; i < max; i++) {
-			char ch = value.charAt(i);
-
-			if (ch < 0x80) {
-				count++;
-			}
-			else if (ch < 0x800) {
-				count += 2;
-			}
-			else if (Character.isHighSurrogate(ch)) {
-				count += 4;
-				++i;
-			} else {
-				count += 3;
-			}
-		}
-		return count;
+		return Utf8.encodedLength(s);
 	}
 
 	public static byte[] stringToUtf8(String s) {
 		if (s == null || s.length() == 0) {
 			return new byte[0];
 		}
-		int size = estimateSizeUtf8(s);
+		int size = Utf8.encodedLength(s);
 		byte[] bytes = new byte[size];
 		stringToUtf8(s, bytes, 0);
 		return bytes;
@@ -206,14 +187,9 @@ public final class Buffer {
 			}
 			else {
 				// Encountered a different encoding other than 2-byte UTF8. Let java handle it.
-				try {
-					byte[] value = s.getBytes("UTF8");
-					System.arraycopy(value, 0, buf, startOffset, value.length);
-					return value.length;
-				}
-				catch (UnsupportedEncodingException uee) {
-					throw new RuntimeException("UTF8 encoding is not supported.");
-				}
+				byte[] value = s.getBytes(StandardCharsets.UTF_8);
+				System.arraycopy(value, 0, buf, startOffset, value.length);
+				return value.length;
 			}
 		}
 		return offset - startOffset;
@@ -246,12 +222,7 @@ public final class Buffer {
 			else {
 				// Encountered an UTF encoding which uses more than 2 bytes.
 				// Use a native function to do the conversion.
-				try {
-					return new String(buf, origoffset, length, "UTF8");
-				}
-				catch (UnsupportedEncodingException uee) {
-					throw new RuntimeException("UTF8 decoding is not supported.");
-				}
+				return new String(buf, origoffset, length, StandardCharsets.UTF_8);
 			}
 		}
 		return new String(charBuffer, 0, charCount);
@@ -283,12 +254,7 @@ public final class Buffer {
 			else {
 				// Encountered an UTF encoding which uses more than 2 bytes.
 				// Use a native function to do the conversion.
-				try {
-					return new String(buf, origoffset, length, "UTF8");
-				}
-				catch (UnsupportedEncodingException uee) {
-					throw new RuntimeException("UTF8 decoding is not supported.");
-				}
+				return new String(buf, origoffset, length, StandardCharsets.UTF_8);
 			}
 		}
 		return sb.toString();

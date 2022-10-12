@@ -20,8 +20,9 @@ Aerospike Java Client License
 Third Party Libraries
 ---------------------
 
-The Aerospike Java client links with third-party libraries. These licenses are compatible
-with the Apache License, Version 2.0, creating a client library package which is 
+The Aerospike Java client links with third-party libraries or directly includes 
+source code from third-party libraries. These library licenses are compatible with
+the Apache License, Version 2.0, creating a client library package which is
 Apache License, Version 2.0 compatible.
 
 The licenses for these libraries are listed below:
@@ -119,6 +120,21 @@ jBCrypt
     WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
     ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
     OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+Google Guava
+------------
+
+    Copyright (C) 2013 The Guava Authors
+
+    Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
+    in compliance with the License. You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software distributed under the License
+    is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express
+    or implied. See the License for the specific language governing permissions and limitations under
+    the License.
 
 Netty
 -----
