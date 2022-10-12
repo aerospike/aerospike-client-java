@@ -311,6 +311,12 @@ public class Cluster implements Runnable, Closeable {
 
 		if (eventLoops != null) {
 			EventLoop[] loops = eventLoops.getArray();
+
+			if (asyncMaxConnsPerNode < loops.length) {
+				throw new AerospikeException("asyncMaxConnsPerNode " + asyncMaxConnsPerNode +
+					" must be >= event loop count " + loops.length);
+			}
+
 			eventState = new EventState[loops.length];
 
 			for (int i = 0; i < loops.length; i++) {
