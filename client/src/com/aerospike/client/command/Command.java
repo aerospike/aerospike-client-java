@@ -646,7 +646,7 @@ public abstract class Command {
 				dataOffset += 8;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
-				dataOffset += record.size();
+				dataOffset += record.size(policy);
 				prev = record;
 			}
 		}

@@ -19,6 +19,7 @@ package com.aerospike.client;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.Packer;
 
 /**
@@ -99,7 +100,7 @@ public final class BatchUDF extends BatchRecord {
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size() {
+	public int size(Policy parentPolicy) {
 		int size = 6; // gen(2) + exp(4) = 6
 
 		if (policy != null) {
@@ -107,10 +108,14 @@ public final class BatchUDF extends BatchRecord {
 				size += policy.filterExp.size();
 			}
 
-			if (policy.sendKey) {
+			if (policy.sendKey || parentPolicy.sendKey) {
 				size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
 		}
+		else if (parentPolicy.sendKey) {
+			size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
+		}
+
 		size += Buffer.estimateSizeUtf8(packageName) + Command.FIELD_HEADER_SIZE;
 		size += Buffer.estimateSizeUtf8(functionName) + Command.FIELD_HEADER_SIZE;
 		argBytes = Packer.pack(functionArgs);

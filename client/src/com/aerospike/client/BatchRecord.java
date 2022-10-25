@@ -16,6 +16,8 @@
  */
 package com.aerospike.client;
 
+import com.aerospike.client.policy.Policy;
+
 /**
  * Batch key and record result.
  */
@@ -131,7 +133,7 @@ public class BatchRecord {
 	/**
 	 * Return wire protocol size. For internal use only.
 	 */
-	public int size() {
+	public int size(Policy parentPolicy) {
 		return 0;
 	}
 

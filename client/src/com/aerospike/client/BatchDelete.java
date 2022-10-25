@@ -18,6 +18,7 @@ package com.aerospike.client;
 
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.BatchDeletePolicy;
+import com.aerospike.client.policy.Policy;
 
 /**
  * Batch delete operation.
@@ -69,7 +70,7 @@ public final class BatchDelete extends BatchRecord {
 	 * Return wire protocol size. For internal use only.
 	 */
 	@Override
-	public int size() {
+	public int size(Policy parentPolicy) {
 		int size = 6; // gen(2) + exp(4) = 6
 
 		if (policy != null) {
@@ -77,9 +78,12 @@ public final class BatchDelete extends BatchRecord {
 				size += policy.filterExp.size();
 			}
 
-			if (policy.sendKey) {
+			if (policy.sendKey || parentPolicy.sendKey) {
 				size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
 			}
+		}
+		else if (parentPolicy.sendKey) {
+			size += key.userKey.estimateSize() + Command.FIELD_HEADER_SIZE + 1;
 		}
 		return size;
 	}
