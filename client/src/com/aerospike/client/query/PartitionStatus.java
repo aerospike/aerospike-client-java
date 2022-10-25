@@ -18,12 +18,17 @@ package com.aerospike.client.query;
 
 import java.io.Serializable;
 
+import com.aerospike.client.cluster.Node;
+
 public final class PartitionStatus implements Serializable {
 	private static final long serialVersionUID = 3L;
 
 	public long bval;
 	public byte[] digest;
 	public final int id;
+	public transient Node node;
+	public transient int replicaIndex;
+	public transient boolean unavailable;
 	public boolean retry;
 
 	public PartitionStatus(int id) {

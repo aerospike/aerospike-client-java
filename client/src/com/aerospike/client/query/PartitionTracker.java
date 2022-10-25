@@ -205,6 +205,29 @@ public final class PartitionTracker {
 					throw new AerospikeException.InvalidNode(part.id);
 				}
 
+				if (iteration == 1) {
+					part.replicaIndex = 0;
+				}
+				else {
+					// If the partition was unavailable in the previous iteration, retry on
+					// a different replica.
+					if (part.unavailable && part.node == node) {
+						part.replicaIndex++;
+
+						if (part.replicaIndex >= parts.replicas.length) {
+							part.replicaIndex = 0;
+						}
+
+						Node replica = parts.replicas[part.replicaIndex].get(part.id);
+
+						if (replica != null) {
+							node = replica;
+						}
+					}
+				}
+
+				part.node = node;
+				part.unavailable = false;
 				part.retry = false;
 
 				// Use node name to check for single node equality because
@@ -272,7 +295,9 @@ public final class PartitionTracker {
 	}
 
 	public void partitionUnavailable(NodePartitions nodePartitions, int partitionId) {
-		partitions[partitionId - partitionBegin].retry = true;
+		PartitionStatus ps = partitions[partitionId - partitionBegin];
+		ps.unavailable = true;
+		ps.retry = true;
 		nodePartitions.partsUnavailable++;
 	}
 
