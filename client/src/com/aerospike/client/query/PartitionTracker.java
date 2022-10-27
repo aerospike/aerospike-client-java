@@ -199,34 +199,29 @@ public final class PartitionTracker {
 
 		for (PartitionStatus part : partitions) {
 			if (retry || part.retry) {
-				Node node = master.get(part.id);
+				Node masterNode = master.get(part.id);
+				Node node;
+
+				if (iteration == 1 || ! part.unavailable || part.masterNode != masterNode) {
+					node = part.masterNode = masterNode;
+					part.replicaIndex = 0;
+				}
+				else {
+					// Partition was unavailable in the previous iteration and the
+					// master node has not changed. Switch replica.
+					part.replicaIndex++;
+
+					if (part.replicaIndex >= parts.replicas.length) {
+						part.replicaIndex = 0;
+					}
+
+					node = parts.replicas[part.replicaIndex].get(part.id);
+				}
 
 				if (node == null) {
 					throw new AerospikeException.InvalidNode(part.id);
 				}
 
-				if (iteration == 1) {
-					part.replicaIndex = 0;
-				}
-				else {
-					// If the partition was unavailable in the previous iteration, retry on
-					// a different replica.
-					if (part.unavailable && part.node == node) {
-						part.replicaIndex++;
-
-						if (part.replicaIndex >= parts.replicas.length) {
-							part.replicaIndex = 0;
-						}
-
-						Node replica = parts.replicas[part.replicaIndex].get(part.id);
-
-						if (replica != null) {
-							node = replica;
-						}
-					}
-				}
-
-				part.node = node;
 				part.unavailable = false;
 				part.retry = false;
 

@@ -21,12 +21,12 @@ import java.io.Serializable;
 import com.aerospike.client.cluster.Node;
 
 public final class PartitionStatus implements Serializable {
-	private static final long serialVersionUID = 3L;
+	private static final long serialVersionUID = 4L;
 
 	public long bval;
 	public byte[] digest;
 	public final int id;
-	public transient Node node;
+	public transient Node masterNode;
 	public transient int replicaIndex;
 	public transient boolean unavailable;
 	public boolean retry;
