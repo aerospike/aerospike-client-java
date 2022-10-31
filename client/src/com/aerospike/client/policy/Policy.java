@@ -62,6 +62,9 @@ public class Policy {
 	 * be applied to creating a connection plus optional user authentication. Otherwise,
 	 * socketTimeout or totalTimeout will be used depending on their values.
 	 * <p>
+	 * If connect, socket and total timeouts are zero, the actual socket connect timeout
+	 * is hard-coded to 2000ms.
+	 * <p>
 	 * connectTimeout is useful when new connection creation is expensive (ie TLS connections)
 	 * and it's acceptable to allow extra time to create a new connection compared to using an
 	 * existing connection from the pool.
