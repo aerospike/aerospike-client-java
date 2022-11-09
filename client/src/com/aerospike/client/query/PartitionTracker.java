@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -32,6 +33,7 @@ import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.util.Util;
 
 @SuppressWarnings("deprecation")
 public final class PartitionTracker {
@@ -323,6 +325,10 @@ public final class PartitionTracker {
 			//  " recordsRequested=" + np.recordMax + " recordsReceived=" + np.recordCount);
 		}
 
+		if (recordCount == 0) {
+			Log.error("Query record count is 0 for all " + nodePartitionsList.size() + " nodes");
+		}
+
 		if (partsUnavailable == 0) {
 			if (maxRecords == 0) {
 				if (partitionFilter != null) {
@@ -437,6 +443,8 @@ public final class PartitionTracker {
 	}
 
 	public boolean shouldRetry(NodePartitions nodePartitions, AerospikeException ae) {
+		Log.error("Query node failed: " + nodePartitions.node + ' ' + iteration + ' ' + Util.getErrorMessage(ae));
+
 		ae.setIteration(iteration);
 
 		switch (ae.getResultCode()) {

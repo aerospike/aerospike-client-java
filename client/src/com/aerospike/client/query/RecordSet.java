@@ -23,6 +23,7 @@ import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 
 /**
@@ -67,12 +68,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
-
-			/*
-			if (Log.debugEnabled()) {
-				Log.debug("RecordSet " + executor.statement.taskId + " take interrupted");
-			}
-			*/
+			Log.error("RecordSet take interrupted");
 			return false;
 		}
 
@@ -141,11 +137,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			return true;
 		}
 		catch (InterruptedException ie) {
-			/*
-			if (Log.debugEnabled()) {
-				Log.debug("RecordSet " + executor.statement.taskId + " put interrupted");
-			}
-			*/
+			Log.error("RecordSet put interrupted");
 
 			// Valid may have changed.  Check again.
 			if (valid) {
@@ -168,11 +160,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			// Queue must be full. Remove one item to make room.
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.
-				/*
-				if (Log.debugEnabled()) {
-					Log.debug("RecordSet " + executor.statement.taskId + " both offer and poll failed on abort");
-				}
-				*/
+				Log.error("RecordSet both offer and poll failed on abort");
 				break;
 			}
 		}

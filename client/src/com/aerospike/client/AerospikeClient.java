@@ -294,6 +294,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
+		Log.info("AerospikeClient instrumented build");
 		cluster = new Cluster(policy, hosts);
 	}
 
@@ -2771,21 +2772,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final RecordSet query(QueryPolicy policy, Statement statement)
 		throws AerospikeException {
-		if (policy == null) {
-			policy = queryPolicyDefault;
-		}
+		try {
+			if (policy == null) {
+				policy = queryPolicyDefault;
+			}
 
-		Node[] nodes = cluster.validateNodes();
+			Node[] nodes = cluster.validateNodes();
 
-		if (cluster.hasPartitionQuery || statement.getFilter() == null) {
-			PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
-			QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
-			return executor.getRecordSet();
+			if (cluster.hasPartitionQuery || statement.getFilter() == null) {
+				PartitionTracker tracker = new PartitionTracker(policy, statement, nodes);
+				QueryPartitionExecutor executor = new QueryPartitionExecutor(cluster, policy, statement, nodes.length, tracker);
+				return executor.getRecordSet();
+			}
+			else {
+				QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
+				executor.execute();
+				return executor.getRecordSet();
+			}
 		}
-		else {
-			QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
-			executor.execute();
-			return executor.getRecordSet();
+		catch (Throwable e) {
+			Log.error("Query exception: " + Util.getErrorMessage(e));
+			throw e;
 		}
 	}
 

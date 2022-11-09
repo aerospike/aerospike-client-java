@@ -23,6 +23,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
@@ -69,7 +70,11 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			execute();
 		}
 		catch (Exception e) {
+			Log.error("QueryPartitionExecutor failed: " + Util.getErrorMessage(e));
 			stopThreads(e);
+		}
+		catch (Throwable t) {
+			Log.error("QueryPartitionExecutor failed with Throwable: " + Util.getErrorMessage(t));
 		}
 	}
 
@@ -137,7 +142,9 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			exception = null;
 
 			// taskId must be reset on next pass to avoid server duplicate query detection.
+			long tmp = taskId;
 			taskId = RandomShift.instance().nextLong();
+			Log.error("Prepare next query iteration: " + tmp + ',' + taskId + ',' + tracker.iteration);
 		}
 	}
 
@@ -235,7 +242,11 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 			catch (Exception e) {
 				// Terminate other query threads.
+				Log.error("Query terminated by: " + Util.getErrorMessage(e));
 				stopThreads(e);
+			}
+			catch (Throwable t) {
+				Log.error("QueryPartitionExecutor failed with Throwable: " + Util.getErrorMessage(t));
 			}
 		}
 
