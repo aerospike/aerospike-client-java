@@ -94,7 +94,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 
 				if (parallel) {
 					for (NodePartitions nodePartitions : list) {
-						MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
+						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
@@ -109,7 +109,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 			else {
 				for (NodePartitions nodePartitions : list) {
-					MultiCommand command = new QueryPartitionCommand(cluster, nodePartitions.node, policy, statement, taskId, recordSet, tracker, nodePartitions);
+					MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
 					command.execute();
 				}
 			}

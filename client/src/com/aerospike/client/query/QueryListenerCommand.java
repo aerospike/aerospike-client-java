@@ -20,7 +20,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.Policy;
@@ -36,7 +35,6 @@ public final class QueryListenerCommand extends MultiCommand {
 
 	public QueryListenerCommand(
 		Cluster cluster,
-		Node node,
 		Policy policy,
 		Statement statement,
 		long taskId,
