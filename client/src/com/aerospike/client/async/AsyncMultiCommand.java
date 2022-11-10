@@ -26,7 +26,6 @@ import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	final Node node;
-	int groups;
 	int info3;
 	int resultCode;
 	int generation;
@@ -39,7 +38,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	/**
 	 * Batch constructor.
 	 */
-	public AsyncMultiCommand(Node node, Policy policy, boolean isOperation) {
+	protected AsyncMultiCommand(Node node, Policy policy, boolean isOperation) {
 		super(policy, false);
 		this.node = node;
 		this.isOperation = isOperation;
@@ -48,7 +47,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	/**
 	 * Scan/Query constructor.
 	 */
-	public AsyncMultiCommand(Node node, Policy policy, int socketTimeout, int totalTimeout) {
+	protected AsyncMultiCommand(Node node, Policy policy, int socketTimeout, int totalTimeout) {
 		super(policy, socketTimeout, totalTimeout);
 		this.node = node;
 		this.isOperation = false;
