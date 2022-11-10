@@ -16,15 +16,15 @@
  */
 package com.aerospike.client.util;
 
-import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 
 public final class Version {
 
-	public static Version getServerVersion(AerospikeClient client, InfoPolicy policy) {
-		Node node = client.getNodes()[0];
+	public static Version getServerVersion(IAerospikeClient client, InfoPolicy policy) {
+		Node node = client.getCluster().getRandomNode();
 		String response = Info.request(policy, node, "build");
 		return new Version(response);
 	}
@@ -81,7 +81,7 @@ public final class Version {
 
 	@Override
 	public String toString() {
-		return Integer.toString(major) + "." + minor + "." + revision + extension;
+		return major + "." + minor + "." + revision + extension;
 	}
 
 	@Override
