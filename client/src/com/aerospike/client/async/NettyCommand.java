@@ -201,12 +201,6 @@ public final class NettyCommand implements Runnable, TimerTask {
 					usingSocketTimeout = true;
 					deadline = socketDeadline;
 				}
-				else {
-					deadline = totalDeadline;
-				}
-			}
-			else {
-				deadline = totalDeadline;
 			}
 		}
 		else if (command.socketTimeout > 0) {
