@@ -16,7 +16,9 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
@@ -82,5 +84,21 @@ public class TestPutGet extends TestSync {
 		assertFalse(b);
 		b = record.getBoolean(bin4.name);
 		assertTrue(b);
+	}
+
+	@Test
+	public void putGetNums() {
+		Key key = new Key(args.namespace, args.set, "pgi");
+		Bin bin1 = new Bin("bin1", 1);
+		Bin bin2 = new Bin("bin2", 2L);
+		Bin bin3 = new Bin("bin3", Long.MAX_VALUE);
+
+		client.put(null, key, bin1, bin2);
+
+		Record record = client.get(null, key);
+		assertEquals(1, record.getInt(bin1.name));
+		assertEquals(2, record.getInt(bin2.name));
+		assertEquals(2L, record.getLong(bin2.name));
+		assertThrows(ArithmeticException.class, () -> record.getInt(bin3.name));
 	}
 }

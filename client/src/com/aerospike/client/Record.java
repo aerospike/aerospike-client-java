@@ -95,7 +95,7 @@ public final class Record {
 		// The server always returns numbers as longs if bin found.
 		// If bin not found, the result will be null.  Convert null to zero.
 		Object result = getValue(name);
-		return (result != null)? (Long)result : 0;
+		return (result != null) ? (long) result : 0;
 	}
 
 	/**
@@ -103,7 +103,7 @@ public final class Record {
 	 */
 	public int getInt(String name) {
 		// The server always returns numbers as longs, so get long and cast.
-		return (int)getLong(name);
+		return Math.toIntExact(getLong(name));
 	}
 
 	/**
