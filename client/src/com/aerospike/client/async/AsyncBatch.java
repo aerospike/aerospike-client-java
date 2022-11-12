@@ -61,7 +61,7 @@ public final class AsyncBatch {
 			BatchListListener listener,
 			List<BatchRead> records
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.records = records;
 
@@ -148,7 +148,7 @@ public final class AsyncBatch {
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 
 			// Create commands.
@@ -244,7 +244,7 @@ public final class AsyncBatch {
 			int readAttr,
 			boolean isOperation
 		) {
-			super(eventLoop, cluster, policy, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 			this.keys = keys;
 			this.recordArray = new Record[keys.length];
@@ -345,7 +345,7 @@ public final class AsyncBatch {
 			int readAttr,
 			boolean isOperation
 		) {
-			super(eventLoop, cluster, policy, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 
 			// Create commands.
@@ -450,7 +450,7 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsArrayListener listener
 		) {
-			super(eventLoop, cluster, policy, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 			this.keys = keys;
 			this.existsArray = new boolean[keys.length];
@@ -539,7 +539,7 @@ public final class AsyncBatch {
 			Key[] keys,
 			ExistsSequenceListener listener
 		) {
-			super(eventLoop, cluster, policy, false);
+			super(eventLoop, cluster, false);
 			this.listener = listener;
 
 			// Create commands.
@@ -628,7 +628,7 @@ public final class AsyncBatch {
 			BatchOperateListListener listener,
 			List<BatchRecord> records
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.records = records;
 
@@ -747,7 +747,7 @@ public final class AsyncBatch {
 			BatchRecordSequenceListener listener,
 			List<BatchRecord> records
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 
 			// Create commands.
@@ -873,7 +873,7 @@ public final class AsyncBatch {
 			Operation[] ops,
 			BatchAttr attr
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.records = new BatchRecord[keys.length];
 
@@ -992,7 +992,7 @@ public final class AsyncBatch {
 			Operation[] ops,
 			BatchAttr attr
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.sent = new boolean[keys.length];
 
@@ -1121,7 +1121,7 @@ public final class AsyncBatch {
 			byte[] argBytes,
 			BatchAttr attr
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.recordArray = new BatchRecord[keys.length];
 
@@ -1262,7 +1262,7 @@ public final class AsyncBatch {
 			byte[] argBytes,
 			BatchAttr attr
 		) {
-			super(eventLoop, cluster, policy, true);
+			super(eventLoop, cluster, true);
 			this.listener = listener;
 			this.sent = new boolean[keys.length];
 

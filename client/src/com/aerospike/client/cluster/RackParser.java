@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,10 +33,10 @@ public final class RackParser {
 	private final StringBuilder sb;
 	private final byte[] buffer;
 	private final int generation;
-	private int length;
+	private final int length;
 	private int offset;
 
-	public RackParser(Connection conn, Node node) {
+	public RackParser(Connection conn) {
 		// Send format:  rebalance-generation\nrack-ids\n
 		this.racks = new HashMap<String,Integer>();
 
@@ -53,7 +53,7 @@ public final class RackParser {
 
 		generation = parseGeneration();
 
-		parseRacks(node);
+		parseRacks();
 	}
 
 	public int getGeneration() {
@@ -80,7 +80,7 @@ public final class RackParser {
 		throw new AerospikeException.Parse("Failed to find " + RebalanceGeneration);
 	}
 
-	private void parseRacks(Node node) {
+	private void parseRacks() {
 		// Use low-level info methods and parse byte array directly for maximum performance.
 		// Receive format: rack-ids\t<ns1>:<rack1>;<ns2>:<rack2>...\n
 		expectName(RackIds);

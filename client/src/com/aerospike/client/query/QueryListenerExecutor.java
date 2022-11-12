@@ -44,7 +44,7 @@ public final class QueryListenerExecutor {
 					Executor executor = new Executor(cluster, list.size());
 
 					for (NodePartitions nodePartitions : list) {
-						QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
+						QueryListenerCommand command = new QueryListenerCommand(cluster, policy, statement, taskId, listener, tracker, nodePartitions);
 						executor.addCommand(command);
 					}
 
@@ -52,7 +52,7 @@ public final class QueryListenerExecutor {
 				}
 				else {
 					for (NodePartitions nodePartitions : list) {
-						QueryListenerCommand command = new QueryListenerCommand(cluster, nodePartitions.node, policy, statement, taskId, listener, tracker, nodePartitions);
+						QueryListenerCommand command = new QueryListenerCommand(cluster, policy, statement, taskId, listener, tracker, nodePartitions);
 						command.execute();
 					}
 				}

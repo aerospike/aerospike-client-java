@@ -26,7 +26,6 @@ import com.aerospike.client.policy.Policy;
 
 public abstract class AsyncMultiCommand extends AsyncCommand {
 	final Node node;
-	int groups;
 	int info3;
 	int resultCode;
 	int generation;

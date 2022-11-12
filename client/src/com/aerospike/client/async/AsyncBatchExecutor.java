@@ -21,7 +21,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
-import com.aerospike.client.policy.BatchPolicy;
 
 public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	final EventLoop eventLoop;
@@ -33,7 +32,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	boolean done;
 	boolean error;
 
-	public AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, BatchPolicy policy, boolean hasResultCode) {
+	public AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, boolean hasResultCode) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 		this.hasResultCode = hasResultCode;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,15 +16,19 @@
  */
 package com.aerospike.client.util;
 
-import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.InfoPolicy;
 
 public final class Version {
 
-	public static Version getServerVersion(AerospikeClient client, InfoPolicy policy) {
-		Node node = client.getNodes()[0];
+	public static Version getServerVersion(IAerospikeClient client, InfoPolicy policy) {
+		Node node = client.getCluster().getRandomNode();
+		return getServerVersion(policy, node);
+	}
+
+	public static Version getServerVersion(InfoPolicy policy, Node node) {
 		String response = Info.request(policy, node, "build");
 		return new Version(response);
 	}

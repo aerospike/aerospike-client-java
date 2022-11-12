@@ -533,7 +533,7 @@ public class Node implements Closeable {
 			if (Log.debugEnabled()) {
 				Log.debug("Update racks for node " + this);
 			}
-			RackParser parser = new RackParser(tendConnection, this);
+			RackParser parser = new RackParser(tendConnection);
 
 			rebalanceGeneration = parser.getGeneration();
 			racks = parser.getRacks();
