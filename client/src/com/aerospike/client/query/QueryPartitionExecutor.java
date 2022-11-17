@@ -188,6 +188,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	public final void stopThreads(Exception cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
+			Log.error("Stop query threads: " + Util.getErrorMessage(cause));
 			exception = cause;
 
 			// Send stop signal to threads.

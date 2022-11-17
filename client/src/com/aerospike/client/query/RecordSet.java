@@ -59,6 +59,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 */
 	public final boolean next() throws AerospikeException {
 		if (! valid) {
+			Log.error("RecordSet invalid on next()");
 			executor.checkForException();
 			return false;
 		}
@@ -89,6 +90,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		// Check if more records are available.
 		if (record != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
+			Log.error("Recordset.close() still has records available");
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}
 	}
@@ -128,6 +130,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 */
 	protected final boolean put(KeyRecord record) {
 		if (! valid) {
+			Log.error("RecordSet put failed because query was aborted");
 			return false;
 		}
 
@@ -151,6 +154,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 * Abort retrieval with end token.
 	 */
 	protected final void abort() {
+		Log.error("Query aborted");
 		valid = false;
 		queue.clear();
 

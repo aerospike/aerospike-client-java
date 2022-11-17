@@ -18,6 +18,7 @@ package com.aerospike.client.query;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
@@ -91,6 +92,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 		Record record = parseRecord();
 
 		if (! valid) {
+			Log.error("Query terminated by a different thread");
 			throw new AerospikeException.QueryTerminated();
 		}
 

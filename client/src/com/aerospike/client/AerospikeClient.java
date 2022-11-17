@@ -294,7 +294,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
-		Log.info("AerospikeClient instrumented build");
+		Log.error("AerospikeClient instrumented build");
 		cluster = new Cluster(policy, hosts);
 	}
 
@@ -2785,6 +2785,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				return executor.getRecordSet();
 			}
 			else {
+				Log.error("Using old QueryRecordExecutor on server that SHOULD suppport partition queries.");
 				QueryRecordExecutor executor = new QueryRecordExecutor(cluster, policy, statement, nodes);
 				executor.execute();
 				return executor.getRecordSet();
