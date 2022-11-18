@@ -346,26 +346,19 @@ public final class Buffer {
 		}
 
 		// Handle other lengths just in case server changes.
-		if (len == 0) {
-			return 0;
+		if (len < 8) {
+			// Handle variable length long.
+			long val = 0;
+
+			for (int i = 0; i < len; i++) {
+				val <<= 8;
+				val |= buf[offset+i] & 0xFF;
+			}
+			return val;
 		}
 
-		if (len == 4) {
-			return bytesToInt(buf, offset);
-		}
-
-		if (len > 8) {
-			return bytesToBigInteger(buf, offset, len);
-		}
-
-		// Handle variable length integer.
-		long val = 0;
-
-		for (int i = 0; i < len; i++) {
-			val <<= 8;
-			val |= buf[offset+i] & 0xFF;
-		}
-		return val;
+		// Handle huge numbers.
+		return bytesToBigInteger(buf, offset, len);
 	}
 
 	public static Object bytesToBigInteger(byte[] buf, int offset, int len) {
