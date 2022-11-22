@@ -258,4 +258,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			command.stop();
 		}
 	}
+
+	public long getTaskId() {
+		return 0;
+	}
 }
