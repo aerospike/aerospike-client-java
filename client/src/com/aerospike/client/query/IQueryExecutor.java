@@ -19,4 +19,5 @@ package com.aerospike.client.query;
 public interface IQueryExecutor {
 	void stopThreads(Exception cause);
 	void checkForException();
+	long getTaskId();
 }

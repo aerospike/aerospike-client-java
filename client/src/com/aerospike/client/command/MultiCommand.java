@@ -32,9 +32,10 @@ import com.aerospike.client.query.QueryValidate;
 public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
-	private final Node node;
+	public final Node node;
 	protected final String namespace;
 	private final long clusterKey;
+	public long recordCount;
 	protected int info3;
 	protected int resultCode;
 	protected int generation;

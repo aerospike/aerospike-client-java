@@ -69,6 +69,8 @@ public final class QueryRecordCommand extends MultiCommand {
 			stop();
 			throw new AerospikeException.QueryTerminated();
 		}
+
+		recordCount++;
 		return true;
 	}
 }

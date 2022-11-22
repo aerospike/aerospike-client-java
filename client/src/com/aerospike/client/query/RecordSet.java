@@ -59,7 +59,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 */
 	public final boolean next() throws AerospikeException {
 		if (! valid) {
-			Log.error("RecordSet invalid on next()");
+			Log.error("Query " + executor.getTaskId() + ": RecordSet invalid on next()");
 			executor.checkForException();
 			return false;
 		}
@@ -69,7 +69,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		}
 		catch (InterruptedException ie) {
 			valid = false;
-			Log.error("RecordSet take interrupted");
+			Log.error("Query " + executor.getTaskId() + ": RecordSet take interrupted");
 			return false;
 		}
 
@@ -90,7 +90,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		// Check if more records are available.
 		if (record != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
-			Log.error("Recordset.close() still has records available");
+			Log.error("Query " + executor.getTaskId() + ": Recordset.close() still has records available");
 			executor.stopThreads(new AerospikeException.QueryTerminated());
 		}
 	}
@@ -130,7 +130,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 */
 	protected final boolean put(KeyRecord record) {
 		if (! valid) {
-			Log.error("RecordSet put failed because query was aborted");
+			Log.error("Query " + executor.getTaskId() + ": RecordSet put failed because query was aborted");
 			return false;
 		}
 
@@ -140,7 +140,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			return true;
 		}
 		catch (InterruptedException ie) {
-			Log.error("RecordSet put interrupted");
+			Log.error("Query " + executor.getTaskId() + ": RecordSet put interrupted");
 
 			// Valid may have changed.  Check again.
 			if (valid) {
@@ -154,7 +154,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 * Abort retrieval with end token.
 	 */
 	protected final void abort() {
-		Log.error("Query aborted");
+		Log.error("Query " + executor.getTaskId() + ": Query aborted");
 		valid = false;
 		queue.clear();
 
@@ -164,7 +164,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 			// Queue must be full. Remove one item to make room.
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.
-				Log.error("RecordSet both offer and poll failed on abort");
+				Log.error("Query " + executor.getTaskId() + ": RecordSet both offer and poll failed on abort");
 				break;
 			}
 		}

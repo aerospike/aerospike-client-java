@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.MultiCommand;
@@ -39,6 +40,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	private final AtomicBoolean done;
 	protected volatile Exception exception;
 	private final int maxConcurrentNodes;
+	private long totalRecordCount;
 
 	public QueryExecutor(Cluster cluster, QueryPolicy policy, Statement statement, Node[] nodes) {
 		this.cluster = cluster;
@@ -91,6 +93,9 @@ public abstract class QueryExecutor implements IQueryExecutor {
 			// All threads complete.  Tell RecordSet thread to return complete to user
 			// if an exception has not already occurred.
 			if (done.compareAndSet(false, true)) {
+				if (totalRecordCount == 0) {
+					Log.error("Query " + taskId + ": no records returned for entire query");
+				}
 				sendCompleted();
 			}
 		}
@@ -100,6 +105,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	public final void stopThreads(Exception cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
+			Log.error("Query " + taskId + ": stop query threads");
 			exception = cause;
 
 			// Send stop signal to threads.
@@ -134,12 +140,24 @@ public abstract class QueryExecutor implements IQueryExecutor {
 			try {
 				if (command.isValid()) {
 					command.executeAndValidate();
+
+					if (command.recordCount == 0) {
+						Log.error("Query " + taskId + ": no records returned for node " + command.node);
+					}
+					totalRecordCount += command.recordCount;
+				}
+				else {
+					Log.error("Query " + taskId + ": command not run because valid = false");
 				}
 				threadCompleted();
 			}
 			catch (Exception e) {
 				// Terminate other query threads.
+				Log.error("Query " + taskId + ": query failed");
 				stopThreads(e);
+			}
+			catch (Throwable t) {
+				Log.error("Query " + taskId + ": query failed with Throwable");
 			}
 		}
 
@@ -149,6 +167,10 @@ public abstract class QueryExecutor implements IQueryExecutor {
 		public void stop() {
 			command.stop();
 		}
+	}
+
+	public long getTaskId() {
+		return taskId;
 	}
 
 	protected abstract MultiCommand createCommand(Node node, long clusterKey, boolean first);
