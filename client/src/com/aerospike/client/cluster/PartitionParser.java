@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,42 +28,28 @@ import com.aerospike.client.util.Crypto;
 /**
  * Parse node's master (and optionally prole) partitions.
  */
-public final class PartitionParser {
+public final class PartitionParser extends Info {
 	static final String PartitionGeneration = "partition-generation";
 	static final String Replicas = "replicas";
 
 	private HashMap<String,Partitions> map;
-	private final StringBuilder sb;
-	private final byte[] buffer;
 	private final int partitionCount;
 	private final int generation;
-	private int length;
-	private int offset;
 	private boolean copied;
 	private boolean regimeError;
 
 	public PartitionParser(Connection conn, Node node, HashMap<String,Partitions> map, int partitionCount) {
 		// Send format 1:  partition-generation\nreplicas\n
-		// Send format 2:  partition-generation\nreplicas-all\n
-		// Send format 3:  partition-generation\nreplicas-master\n
+		super(conn, PartitionGeneration, Replicas);
 		this.partitionCount = partitionCount;
 		this.map = map;
-
-		String command = Replicas;
-		Info info = new Info(conn, PartitionGeneration, command);
-		this.length = info.length;
 
 		if (length == 0) {
 			throw new AerospikeException.Parse("Partition info is empty");
 		}
-		this.buffer = info.buffer;
 
-		// Create reusable StringBuilder for performance.
-		this.sb = new StringBuilder(32);  // Max namespace length
-
-		generation = parseGeneration();
-
-		parseReplicasAll(node, command);
+		this.generation = parseGeneration();
+		parseReplicasAll(node, Replicas);
 	}
 
 	public int getGeneration() {
@@ -79,19 +65,10 @@ public final class PartitionParser {
 	}
 
 	private int parseGeneration() {
-		expectName(PartitionGeneration);
-
-		int begin = offset;
-
-		while (offset < length) {
-			if (buffer[offset] == '\n') {
-				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
-				offset++;
-				return Integer.parseInt(s);
-			}
-			offset++;
-		}
-		throw new AerospikeException.Parse("Failed to find partition-generation value");
+		parseName(PartitionGeneration);
+		int gen = parseInt();
+		expect('\n');
+		return gen;
 	}
 
 	private void parseReplicasAll(Node node, String command) throws AerospikeException {
@@ -99,7 +76,7 @@ public final class PartitionParser {
 		// Receive format: replicas-all\t
 		//                 <ns1>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
 		//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
-		expectName(command);
+		parseName(command);
 
 		int begin = offset;
 		int regime = 0;
@@ -241,28 +218,5 @@ public final class PartitionParser {
 			map = new HashMap<String,Partitions>(map);
 			copied = true;
 		}
-	}
-
-	private void expectName(String name) throws AerospikeException {
-		int begin = offset;
-
-		while (offset < length) {
-			if (buffer[offset] == '\t') {
-				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
-
-				if (name.equals(s)) {
-					offset++;
-					return;
-				}
-				break;
-			}
-			offset++;
-		}
-		throw new AerospikeException.Parse("Failed to find " + name);
-	}
-
-	private String getTruncatedResponse() {
-		int max = (length > 200) ? 200 : length;
-		return Buffer.utf8ToString(buffer, 0, max);
 	}
 }

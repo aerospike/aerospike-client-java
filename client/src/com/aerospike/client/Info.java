@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2022 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -38,251 +38,12 @@ import com.aerospike.client.util.ThreadLocalData;
  * <p>
  * <a href="https://www.aerospike.com/docs/reference/info/index.html">https://www.aerospike.com/docs/reference/info/index.html</a>
  */
-public final class Info {
+public class Info {
 	//-------------------------------------------------------
 	// Static variables.
 	//-------------------------------------------------------
 
 	private static final int DEFAULT_TIMEOUT = 1000;
-
-	//-------------------------------------------------------
-	// Member variables.
-	//-------------------------------------------------------
-
-	public byte[] buffer;
-	public int length;
-	public int offset;
-
-	//-------------------------------------------------------
-	// Constructor
-	//-------------------------------------------------------
-
-	/**
-	 * Send single command to server and store results.
-	 * This constructor is used internally.
-	 * The static request methods should be used instead.
-	 *
-	 * @param conn			connection to server node
-	 * @param command		command sent to server
-	 */
-	public Info(Connection conn, String command) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if ((command.length() * 2 + 9) > buffer.length) {
-			offset = Buffer.estimateSizeUtf8(command) + 9;
-			resizeBuffer(offset);
-		}
-		offset = 8; // Skip size field.
-
-		// The command format is: <name1>\n<name2>\n...
-		offset += Buffer.stringToUtf8(command, buffer, offset);
-		buffer[offset++] = '\n';
-
-		sendCommand(conn);
-	}
-
-	/**
-	 * Send multiple commands to server and store results.
-	 * This constructor is used internally.
-	 * The static request methods should be used instead.
-	 *
-	 * @param conn			connection to server node
-	 * @param commands		commands sent to server
-	 */
-	public Info(Connection conn, String... commands) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-
-		// First, do quick conservative buffer size estimate.
-		offset = 8;
-
-		for (String command : commands) {
-			offset += command.length() * 2 + 1;
-		}
-
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if (offset > buffer.length) {
-			offset = 8;
-
-			for (String command : commands) {
-				offset += Buffer.estimateSizeUtf8(command) + 1;
-			}
-			resizeBuffer(offset);
-		}
-		offset = 8; // Skip size field.
-
-		// The command format is: <name1>\n<name2>\n...
-		for (String command : commands) {
-			offset += Buffer.stringToUtf8(command, buffer, offset);
-			buffer[offset++] = '\n';
-		}
-		sendCommand(conn);
-	}
-
-	/**
-	 * Send multiple commands to server and store results.
-	 * This constructor is used internally.
-	 * The static request methods should be used instead.
-	 *
-	 * @param conn			connection to server node
-	 * @param commands		commands sent to server
-	 */
-	public Info(Connection conn, List<String> commands) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-
-		// First, do quick conservative buffer size estimate.
-		offset = 8;
-
-		for (String command : commands) {
-			offset += command.length() * 2 + 1;
-		}
-
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if (offset > buffer.length) {
-			offset = 8;
-
-			for (String command : commands) {
-				offset += Buffer.estimateSizeUtf8(command) + 1;
-			}
-			resizeBuffer(offset);
-		}
-		offset = 8; // Skip size field.
-
-		// The command format is: <name1>\n<name2>\n...
-		for (String command : commands) {
-			offset += Buffer.stringToUtf8(command, buffer, offset);
-			buffer[offset++] = '\n';
-		}
-		sendCommand(conn);
-	}
-
-	/**
-	 * Send default empty command to server and store results.
-	 * This constructor is used internally.
-	 * The static request methods should be used instead.
-	 *
-	 * @param conn			connection to server node
-	 */
-	public Info(Connection conn) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-		offset = 8;  // Skip size field.
-		sendCommand(conn);
-	}
-
-	/**
-	 * Internal constructor.  Do not use.
-	 */
-	public Info(byte[] buffer, int length) {
-		this.buffer = buffer;
-		this.length = length;
-	}
-
-	/**
-	 * Parse response in name/value pair format:
-	 * <p>
-	 * {@code <command>\t<name1>=<value1>;<name2>=<value2>;...\n}
-	 *
-	 * @return				parser for name/value pairs
-	 */
-	public NameValueParser getNameValueParser() {
-		skipToValue();
-		return new NameValueParser();
-	}
-
-	/**
-	 * Return single value from response buffer.
-	 */
-	public String getValue() {
-		//Log.debug("Response=" + Buffer.utf8ToString(buffer, offset, length) + " length=" + length + " offset=" + offset);
-		skipToValue();
-		return Buffer.utf8ToString(buffer, offset, length - offset - 1);
-	}
-
-	public void skipToValue() {
-		// Skip past command.
-		while (offset < length) {
-			byte b = buffer[offset];
-
-			if (b == '\t') {
-				offset++;
-				break;
-			}
-
-			if (b == '\n') {
-				break;
-			}
-			offset++;
-		}
-	}
-
-	/**
-	 * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
-	 * Input format: 1234
-	 */
-	public int parseInt() {
-		int begin = offset;
-		int end = offset;
-		byte b;
-
-		// Skip to end of integer.
-		while (offset < length) {
-			b = buffer[offset];
-
-			if (b < 48 || b > 57) {
-				end = offset;
-				break;
-			}
-			offset++;
-		}
-
-		// Convert digits into an integer.
-		return Buffer.utf8DigitsToInt(buffer, begin, end);
-	}
-
-	public String parseString(char stop) {
-		int begin = offset;
-		byte b;
-
-		while (offset < length) {
-			b = buffer[offset];
-
-			if (b == stop) {
-				break;
-			}
-			offset++;
-		}
-		return Buffer.utf8ToString(buffer, begin, offset - begin);
-	}
-
-	public String parseString(char stop1, char stop2, char stop3) {
-		int begin = offset;
-		byte b;
-
-		while (offset < length) {
-			b = buffer[offset];
-
-			if (b == stop1 || b == stop2 || b == stop3) {
-				break;
-			}
-			offset++;
-		}
-		return Buffer.utf8ToString(buffer, begin, offset - begin);
-	}
-
-	public void expect(char expected) {
-		if (expected != buffer[offset]) {
-			throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)(buffer[offset] & 0xFF));
-		}
-		offset++;
-	}
-
-	public String getTruncatedResponse() {
-		int max = (length > 200) ? 200 : length;
-		return Buffer.utf8ToString(buffer, 0, max);
-	}
 
 	//-------------------------------------------------------
 	// Get Info via Node
@@ -546,14 +307,147 @@ public final class Info {
 	}
 
 	//-------------------------------------------------------
-	// Private methods.
+	// Member variables.
 	//-------------------------------------------------------
+
+	public byte[] buffer;
+	public int length;
+	public int offset;
+	public StringBuilder sb;
+
+	//-------------------------------------------------------
+	// Constructor
+	//-------------------------------------------------------
+
+	/**
+	 * Send single command to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param conn			connection to server node
+	 * @param command		command sent to server
+	 */
+	public Info(Connection conn, String command) throws AerospikeException {
+		buffer = ThreadLocalData.getBuffer();
+
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if ((command.length() * 2 + 9) > buffer.length) {
+			offset = Buffer.estimateSizeUtf8(command) + 9;
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		offset += Buffer.stringToUtf8(command, buffer, offset);
+		buffer[offset++] = '\n';
+
+		sendCommand(conn);
+	}
+
+	/**
+	 * Send multiple commands to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param conn			connection to server node
+	 * @param commands		commands sent to server
+	 */
+	public Info(Connection conn, String... commands) throws AerospikeException {
+		buffer = ThreadLocalData.getBuffer();
+
+		// First, do quick conservative buffer size estimate.
+		offset = 8;
+
+		for (String command : commands) {
+			offset += command.length() * 2 + 1;
+		}
+
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if (offset > buffer.length) {
+			offset = 8;
+
+			for (String command : commands) {
+				offset += Buffer.estimateSizeUtf8(command) + 1;
+			}
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		for (String command : commands) {
+			offset += Buffer.stringToUtf8(command, buffer, offset);
+			buffer[offset++] = '\n';
+		}
+		sendCommand(conn);
+	}
+
+	/**
+	 * Send multiple commands to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param conn			connection to server node
+	 * @param commands		commands sent to server
+	 */
+	public Info(Connection conn, List<String> commands) throws AerospikeException {
+		buffer = ThreadLocalData.getBuffer();
+
+		// First, do quick conservative buffer size estimate.
+		offset = 8;
+
+		for (String command : commands) {
+			offset += command.length() * 2 + 1;
+		}
+
+		// If conservative estimate may be exceeded, get exact estimate
+		// to preserve memory and resize buffer.
+		if (offset > buffer.length) {
+			offset = 8;
+
+			for (String command : commands) {
+				offset += Buffer.estimateSizeUtf8(command) + 1;
+			}
+			resizeBuffer(offset);
+		}
+		offset = 8; // Skip size field.
+
+		// The command format is: <name1>\n<name2>\n...
+		for (String command : commands) {
+			offset += Buffer.stringToUtf8(command, buffer, offset);
+			buffer[offset++] = '\n';
+		}
+		sendCommand(conn);
+	}
+
+	/**
+	 * Send default empty command to server and store results.
+	 * This constructor is used internally.
+	 * The static request methods should be used instead.
+	 *
+	 * @param conn			connection to server node
+	 */
+	public Info(Connection conn) throws AerospikeException {
+		buffer = ThreadLocalData.getBuffer();
+		offset = 8;  // Skip size field.
+		sendCommand(conn);
+	}
+
+	/**
+	 * Internal constructor.  Do not use.
+	 */
+	public Info(byte[] buffer, int length) {
+		this.buffer = buffer;
+		this.length = length;
+		this.sb = new StringBuilder(length);
+	}
 
 	/**
 	 * Issue request and set results buffer. This method is used internally.
 	 * The static request methods should be used instead.
 	 */
-	private void sendCommand(Connection conn) throws AerospikeException {
+	private void sendCommand(Connection conn) {
 		try {
 			// Write size field.
 			long size = ((long)offset - 8L) | (2L << 56) | (1L << 48);
@@ -568,6 +462,7 @@ public final class Info {
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
 			resizeBuffer(length);
+			sb = new StringBuilder(length);
 			conn.readFully(buffer, length);
 			conn.updateLastUsed();
 			offset = 0;
@@ -583,7 +478,7 @@ public final class Info {
 		}
 	}
 
-	private String parseSingleResponse(String name) throws AerospikeException {
+	private String parseSingleResponse(String name) {
 		// Convert the UTF8 byte array into a string.
 		String response = Buffer.utf8ToString(buffer, 0, length);
 
@@ -607,16 +502,14 @@ public final class Info {
 		int offset = 0;
 		int begin = 0;
 
-		// Create reusable StringBuilder for performance.
-		StringBuilder sb = new StringBuilder(length);
-
 		while (offset < length) {
 			byte b = buffer[offset];
 
 			if (b == '\t') {
 				String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
-				checkError(name);
-				begin = ++offset;
+				offset++;
+				checkError();
+				begin = offset;
 
 				// Parse field value.
 				while (offset < length) {
@@ -638,7 +531,6 @@ public final class Info {
 			else if (b == '\n') {
 				if (offset > begin) {
 					String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
-					checkError(name);
 					responses.put(name, null);
 				}
 				begin = ++offset;
@@ -650,52 +542,188 @@ public final class Info {
 
 		if (offset > begin) {
 			String name = Buffer.utf8ToString(buffer, begin, offset - begin, sb);
-			checkError(name);
 			responses.put(name, null);
 		}
 		return responses;
 	}
 
-	private void checkError(String str) {
-		if (str.startsWith("ERROR:")) {
-			// Parse format: ERROR:[<code>:][<message>][\n]
-			int len = str.length();
+	/**
+	 * Parse request name, verify the name is expected and check for error message.
+	 */
+	public void parseName(String name) {
+		int begin = offset;
 
-			if (str.charAt(len - 1) == '\n') {
-				len--;
-			}
+		while (offset < length) {
+			if (buffer[offset] == '\t') {
+				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
 
-			int begin = 6;
-			int end = str.indexOf(':', begin);
+				if (name.equals(s)) {
+					offset++;
 
-			if (end < 0) {
-				end = len;
-			}
-
-			int code = ResultCode.SERVER_ERROR;
-
-			if (end > begin) {
-				try {
-					code = Integer.parseInt(str.substring(begin, end));
-					begin = end + 1;
+					// Check for error message.
+					checkError();
+					return;
 				}
-				catch (Exception e) {
-					// Show full string after "ERROR:" if code is invalid.
-					// Do not change begin offset.
-				}
+				break;
 			}
-			else {
-				begin = end + 1;
-			}
-			end = len;
-
-			String message = "";
-
-			if (end > begin) {
-				message = str.substring(begin, end);
-			}
-			throw new AerospikeException(code, message);
+			offset++;
 		}
+		throw new AerospikeException.Parse("Failed to find " + name);
+	}
+
+	/**
+	 * Check if the info command returned an error.
+	 * If so, include the error code and string in the exception.
+	 */
+	private void checkError() {
+		// Error format: ERROR:[<code>:][<message>][\n]
+		if (offset + 4 >= length) {
+			return; // Error did not occur.
+		}
+
+		if (!(buffer[offset] == 'E' && buffer[offset + 1] == 'R' && buffer[offset + 2] == 'R' &&
+			  buffer[offset + 3] == 'O' && buffer[offset + 4] == 'R')) {
+			return; // Error did not occur.
+		}
+
+		// Parse error.
+		offset += 5;
+		skipDelimiter(':');
+
+		int begin = offset;
+		int code = parseInt();
+
+		if (code == 0) {
+			code = ResultCode.SERVER_ERROR;
+		}
+
+		if (offset > begin) {
+			skipDelimiter(':');
+		}
+		else if (buffer[offset] == ':') {
+			offset++;
+		}
+
+		String message = parseString('\n');
+
+		throw new AerospikeException(code, message);
+	}
+
+	/**
+	 * Return single value from response buffer.
+	 */
+	public String getValue() {
+		//Log.debug("Response=" + Buffer.utf8ToString(buffer, offset, length) + " length=" + length + " offset=" + offset);
+		skipToValue();
+		return Buffer.utf8ToString(buffer, offset, length - offset - 1);
+	}
+
+	/**
+	 * Parse response in name/value pair format:
+	 * <p>
+	 * {@code <command>\t<name1>=<value1>;<name2>=<value2>;...\n}
+	 *
+	 * @return				parser for name/value pairs
+	 */
+	public NameValueParser getNameValueParser() {
+		skipToValue();
+		return new NameValueParser();
+	}
+
+	public void skipToValue() {
+		// Skip past command.
+		while (offset < length) {
+			byte b = buffer[offset];
+
+			if (b == '\t') {
+				offset++;
+				break;
+			}
+
+			if (b == '\n') {
+				break;
+			}
+			offset++;
+		}
+	}
+
+	/**
+	 * Find next delimeter and skip over it.
+	 */
+	public void skipDelimiter(char stop) {
+		while (offset < length) {
+			byte b = buffer[offset++];
+
+			if (b == stop) {
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Convert UTF8 numeric digits to an integer.  Negative integers are not supported.
+	 * Input format: 1234
+	 */
+	public int parseInt() {
+		int begin = offset;
+		int end = offset;
+		byte b;
+
+		// Skip to end of integer.
+		while (offset < length) {
+			b = buffer[offset];
+
+			if (b < 48 || b > 57) {
+				end = offset;
+				break;
+			}
+			offset++;
+		}
+
+		// Convert digits into an integer.
+		return Buffer.utf8DigitsToInt(buffer, begin, end);
+	}
+
+	public String parseString(char stop) {
+		int begin = offset;
+		byte b;
+
+		while (offset < length) {
+			b = buffer[offset];
+
+			if (b == stop) {
+				break;
+			}
+			offset++;
+		}
+		return Buffer.utf8ToString(buffer, begin, offset - begin);
+	}
+
+	public String parseString(char stop1, char stop2, char stop3) {
+		int begin = offset;
+		byte b;
+
+		while (offset < length) {
+			b = buffer[offset];
+
+			if (b == stop1 || b == stop2 || b == stop3) {
+				break;
+			}
+			offset++;
+		}
+		return Buffer.utf8ToString(buffer, begin, offset - begin);
+	}
+
+	public void expect(char expected) {
+		if (expected != buffer[offset]) {
+			throw new AerospikeException.Parse("Expected " + expected + " Received: " + (char)(buffer[offset] & 0xFF));
+		}
+		offset++;
+	}
+
+	public String getTruncatedResponse() {
+		int max = (length > 200) ? 200 : length;
+		return Buffer.utf8ToString(buffer, 0, max);
 	}
 
 	/**

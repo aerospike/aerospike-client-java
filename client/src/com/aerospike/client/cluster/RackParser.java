@@ -25,34 +25,23 @@ import com.aerospike.client.command.Buffer;
 /**
  * Parse rack-ids info command.
  */
-public final class RackParser {
+public final class RackParser extends Info {
 	static final String RebalanceGeneration = "rebalance-generation";
 	static final String RackIds = "rack-ids";
 
 	private final HashMap<String,Integer> racks;
-	private final StringBuilder sb;
-	private final byte[] buffer;
 	private final int generation;
-	private final int length;
-	private int offset;
 
 	public RackParser(Connection conn) {
-		// Send format:  rebalance-generation\nrack-ids\n
-		this.racks = new HashMap<String,Integer>();
-
-		Info info = new Info(conn, RebalanceGeneration, RackIds);
-		this.length = info.length;
+		// Send format: rebalance-generation\nrack-ids\n
+		super(conn, RebalanceGeneration, RackIds);
 
 		if (length == 0) {
 			throw new AerospikeException.Parse("rack-ids response is empty");
 		}
-		this.buffer = info.buffer;
 
-		// Create reusable StringBuilder for performance.
-		this.sb = new StringBuilder(32);  // Max namespace length
-
-		generation = parseGeneration();
-
+		this.racks = new HashMap<String,Integer>();
+		this.generation = parseGeneration();
 		parseRacks();
 	}
 
@@ -65,25 +54,16 @@ public final class RackParser {
 	}
 
 	private int parseGeneration() {
-		expectName(RebalanceGeneration);
-
-		int begin = offset;
-
-		while (offset < length) {
-			if (buffer[offset] == '\n') {
-				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
-				offset++;
-				return Integer.parseInt(s);
-			}
-			offset++;
-		}
-		throw new AerospikeException.Parse("Failed to find " + RebalanceGeneration);
+		parseName(RebalanceGeneration);
+		int gen = parseInt();
+		expect('\n');
+		return gen;
 	}
 
 	private void parseRacks() {
 		// Use low-level info methods and parse byte array directly for maximum performance.
 		// Receive format: rack-ids\t<ns1>:<rack1>;<ns2>:<rack2>...\n
-		expectName(RackIds);
+		parseName(RackIds);
 
 		int begin = offset;
 
@@ -117,28 +97,5 @@ public final class RackParser {
 				offset++;
 			}
 		}
-	}
-
-	private void expectName(String name) throws AerospikeException {
-		int begin = offset;
-
-		while (offset < length) {
-			if (buffer[offset] == '\t') {
-				String s = Buffer.utf8ToString(buffer, begin, offset - begin, sb).trim();
-
-				if (name.equals(s)) {
-					offset++;
-					return;
-				}
-				break;
-			}
-			offset++;
-		}
-		throw new AerospikeException.Parse("Failed to find " + name);
-	}
-
-	private String getTruncatedResponse() {
-		int max = (length > 200) ? 200 : length;
-		return Buffer.utf8ToString(buffer, 0, max);
 	}
 }
