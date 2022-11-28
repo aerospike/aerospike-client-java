@@ -134,6 +134,13 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get short value instance.
+	 */
+	public static Value get(short value) {
+		return new ShortValue(value);
+	}
+
+	/**
 	 * Get integer value instance.
 	 */
 	public static Value get(int value) {
@@ -280,12 +287,24 @@ public abstract class Value {
 			return new LongValue((Long)value);
 		}
 
+		if (value instanceof List<?>) {
+			return new ListValue((List<?>)value);
+		}
+
+		if (value instanceof Map<?,?>) {
+			return new MapValue((Map<?,?>)value);
+		}
+
 		if (value instanceof Double) {
 			return new DoubleValue((Double)value);
 		}
 
 		if (value instanceof Float) {
 			return new FloatValue((Float)value);
+		}
+
+		if (value instanceof Short) {
+			return new ShortValue((Short)value);
 		}
 
 		if (value instanceof Boolean) {
@@ -311,14 +330,6 @@ public abstract class Value {
 
 		if (value instanceof UUID) {
 			return new StringValue(value.toString());
-		}
-
-		if (value instanceof List<?>) {
-			return new ListValue((List<?>)value);
-		}
-
-		if (value instanceof Map<?,?>) {
-			return new MapValue((Map<?,?>)value);
 		}
 
 		if (value instanceof ByteBuffer) {
@@ -737,6 +748,75 @@ public abstract class Value {
 		@Override
 		public int hashCode() {
 			return value.hashCode();
+		}
+	}
+
+	/**
+	 * Short value.
+	 */
+	public static final class ShortValue extends Value {
+		private final short value;
+
+		public ShortValue(short value) {
+			this.value = value;
+		}
+
+		@Override
+		public int estimateSize() {
+			return 8;
+		}
+
+		@Override
+		public int write(byte[] buffer, int offset) {
+			Buffer.longToBytes(value, buffer, offset);
+			return 8;
+		}
+
+		@Override
+		public void pack(Packer packer) {
+			packer.packInt(value);
+		}
+
+		@Override
+		public int getType() {
+			return ParticleType.INTEGER;
+		}
+
+		@Override
+		public Object getObject() {
+			return value;
+		}
+
+		@Override
+		public LuaValue getLuaValue(LuaInstance instance) {
+			return LuaInteger.valueOf(value);
+		}
+
+		@Override
+		public String toString() {
+			return Short.toString(value);
+		}
+
+		@Override
+		public boolean equals(Object other) {
+			return (other != null &&
+				this.getClass().equals(other.getClass()) &&
+				this.value == ((ShortValue)other).value);
+		}
+
+		@Override
+		public int hashCode() {
+			return value;
+		}
+
+		@Override
+		public int toInteger() {
+			return value;
+		}
+
+		@Override
+		public long toLong() {
+			return value;
 		}
 	}
 
