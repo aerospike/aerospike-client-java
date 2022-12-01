@@ -20,22 +20,21 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.util.Util;
 
 public class AsyncQuery extends AsyncExample {
+	private static final String BinName = "asqbin";
+
+	// TODO: Create multiple client instances.
+	AerospikeClient client;
+	final AtomicInteger queryComplete = new AtomicInteger();
+
 	/**
 	 * Asynchronous query example.
 	 */
@@ -43,17 +42,38 @@ public class AsyncQuery extends AsyncExample {
 	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
-		String binName = params.getBinName("asqbin");
-		int size = 50;
+		int size = 500000;
 
+		/*
 		createIndex(client, indexName, binName);
-		runQueryExample(client, eventLoop, keyPrefix, binName, size);
+		console.info("Write " + size + " records.");
 
-		// Wait until query finishes before dropping index.
+		for (int i = 1; i <= size; i++) {
+			if (i % 20000 == 0) {
+				console.info("Records=" + i);
+			}
+			Key key = new Key(params.namespace, params.set, keyPrefix + i);
+			Bin bin = new Bin(binName, i);
+			client.put(params.writePolicy, key, bin);
+		}
+		*/
+
+		this.client = client;
+
+		console.info("EventLoops=" + eventLoops.getSize());
+		console.info("Run queries");
+
+		for (int i = 0; i < 100; i++) {
+			runQuery();
+		}
 		waitTillComplete();
-		client.dropIndex(policy, params.namespace, params.set, indexName);
-	}
 
+		console.info("Close");
+		client.close();
+		console.info("Close done!");
+		//client.dropIndex(policy, params.namespace, params.set, indexName);
+	}
+/*
 	private void createIndex(
 		AerospikeClient client,
 		String indexName,
@@ -75,7 +95,8 @@ public class AsyncQuery extends AsyncExample {
 			}
 		}
 	}
-
+*/
+	/*
 	private void runQueryExample(
 		final AerospikeClient client,
 		final EventLoop eventLoop,
@@ -108,40 +129,31 @@ public class AsyncQuery extends AsyncExample {
 
 			client.put(eventLoop, listener, writePolicy, key, bin);
 		}
-	}
+	}*/
 
-	private void runQuery(AerospikeClient client, EventLoop eventLoop, final String binName) {
-		int begin = 26;
-		int end = 34;
-
-		console.info("Query for: ns=%s set=%s bin=%s >= %s <= %s",
-			params.namespace, params.set, binName, begin, end);
+	private void runQuery() {
+		int begin = 10;
+		int end = 499999;
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(params.namespace);
 		stmt.setSetName(params.set);
-		stmt.setBinNames(binName);
-		stmt.setFilter(Filter.range(binName, begin, end));
+		stmt.setBinNames(BinName);
+		stmt.setFilter(Filter.range(BinName, begin, end));
 
-		final AtomicInteger count = new AtomicInteger();
+		final EventLoop loop = eventLoops.next();
 
-		client.query(eventLoop, new RecordSequenceListener() {
-			public void onRecord(Key key, Record record) throws AerospikeException {
-				int result = record.getInt(binName);
-
-				console.info("Record found: ns=%s set=%s bin=%s digest=%s value=%s",
-					key.namespace, key.setName, binName, Buffer.bytesToHexString(key.digest), result);
-
-				count.incrementAndGet();
+		client.query(loop, new RecordSequenceListener() {
+			public void onRecord(Key key, Record record) {
 			}
 
 			public void onSuccess() {
-				int size = count.get();
+				int c = queryComplete.incrementAndGet();
+				console.info("Query Complete: " + c + ',' + loop.getIndex());
 
-				if (size != 9) {
-					console.error("Query count mismatch. Expected 9. Received " + size);
+				if (c == 10) {
+					notifyComplete();
 				}
-				notifyComplete();
 			}
 
 			public void onFailure(AerospikeException e) {

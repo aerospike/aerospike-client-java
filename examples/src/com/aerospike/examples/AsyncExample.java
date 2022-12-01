@@ -37,6 +37,8 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 public abstract class AsyncExample {
+	public static EventLoops eventLoops;
+
 	/**
 	 * Connect and run one or more asynchronous client examples.
 	 */
@@ -45,7 +47,7 @@ public abstract class AsyncExample {
 		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
 		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
 
-		EventLoops eventLoops;
+		//EventLoops eventLoops;
 
 		switch (params.eventLoopType) {
 			default:
@@ -55,7 +57,7 @@ public abstract class AsyncExample {
 			}
 
 			case NETTY_NIO: {
-				EventLoopGroup group = new NioEventLoopGroup(1);
+				EventLoopGroup group = new NioEventLoopGroup(4);
 				eventLoops = new NettyEventLoops(eventPolicy, group, params.eventLoopType);
 				break;
 			}
