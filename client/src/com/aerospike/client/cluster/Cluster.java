@@ -152,6 +152,9 @@ public class Cluster implements Runnable, Closeable {
 	// Login timeout.
 	public final int loginTimeout;
 
+	// Cluster close timeout.
+	public final int closeTimeout;
+
 	// Rack id.
 	public final int[] rackIds;
 
@@ -271,6 +274,7 @@ public class Cluster implements Runnable, Closeable {
 		errorRateWindow = policy.errorRateWindow;
 		connectTimeout = policy.timeout;
 		loginTimeout = policy.loginTimeout;
+		closeTimeout = policy.closeTimeout;
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		keepAlive = policy.keepAlive;
@@ -1329,6 +1333,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 		else {
 			// Send cluster close notification to async event loops.
+			final long deadline = (closeTimeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(closeTimeout) : 0L;
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
 			boolean inEventLoop = false;
 
@@ -1345,11 +1350,13 @@ public class Cluster implements Runnable, Closeable {
 							return;
 						}
 
-						if (state.pending > 0) {
+						if (state.pending > 0 && closeTimeout >= 0) {
 							// Cluster has pending commands.
-							// Check again in 200ms.
-							state.eventLoop.schedule(this, 200, TimeUnit.MILLISECONDS);
-							return;
+							if (closeTimeout == 0 || deadline - System.nanoTime() > 0) {
+								// Check again in 200ms.
+								state.eventLoop.schedule(this, 200, TimeUnit.MILLISECONDS);
+								return;
+							}
 						}
 
 						// Cluster's event loop connections can now be closed.
