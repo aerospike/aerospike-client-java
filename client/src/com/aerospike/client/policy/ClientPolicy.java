@@ -83,6 +83,20 @@ public class ClientPolicy {
 	public int loginTimeout = 5000;
 
 	/**
+	 * Cluster close timeout in milliseconds. Time to wait for pending async commands to complete
+	 * when {@link com.aerospike.client.AerospikeClient#close()} is called. If close() is called
+	 * from an event loop thread, the wait is not applied because that would cause deadlock.
+	 * The possible values are:
+	 * <ul>
+	 * <li>-1: Close cluster immediately</li>
+	 * <li>0: Wait indefinitely for pending async commands to complete before closing the cluster</li>
+	 * <li>> 0: Wait milliseconds for pending async commands to complete before closing the cluster</li>
+	 * </ul>
+	 * Default: 0
+	 */
+	public int closeTimeout;
+
+	/**
 	 * Minimum number of synchronous connections allowed per server node.  Preallocate min connections
 	 * on client node creation.  The client will periodically allocate new connections if count falls
 	 * below min connections.
@@ -392,6 +406,7 @@ public class ClientPolicy {
 		this.authMode = other.authMode;
 		this.timeout = other.timeout;
 		this.loginTimeout = other.loginTimeout;
+		this.closeTimeout = other.closeTimeout;
 		this.minConnsPerNode = other.minConnsPerNode;
 		this.maxConnsPerNode = other.maxConnsPerNode;
 		this.asyncMinConnsPerNode = other.asyncMinConnsPerNode;
