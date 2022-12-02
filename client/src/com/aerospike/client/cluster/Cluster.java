@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
@@ -1335,6 +1336,7 @@ public class Cluster implements Runnable, Closeable {
 			// Send cluster close notification to async event loops.
 			final long deadline = (closeTimeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(closeTimeout) : 0L;
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventState.length);
+			final AtomicBoolean closedWithPending = new AtomicBoolean();
 			boolean inEventLoop = false;
 
 			// Send close node notification to async event loops.
@@ -1357,7 +1359,7 @@ public class Cluster implements Runnable, Closeable {
 								state.eventLoop.schedule(this, 200, TimeUnit.MILLISECONDS);
 								return;
 							}
-							Log.warn("Cluster closed with pending async commands");
+							closedWithPending.set(true);
 						}
 
 						// Cluster's event loop connections can now be closed.
@@ -1370,6 +1372,10 @@ public class Cluster implements Runnable, Closeable {
 			// Only wait when not in event loop thread.
 			if (! inEventLoop) {
 				waitAsyncComplete();
+			}
+
+			if (closedWithPending.get()) {
+				Log.warn("Cluster closed with pending async commands");
 			}
 		}
 	}
