@@ -22,17 +22,19 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
+import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.util.Util;
 
 public class AsyncQuery extends AsyncExample {
 	private static final String BinName = "asqbin";
 
-	// TODO: Create multiple client instances.
-	AerospikeClient client;
 	final AtomicInteger queryComplete = new AtomicInteger();
 
 	/**
@@ -42,10 +44,10 @@ public class AsyncQuery extends AsyncExample {
 	public void runExample(AerospikeClient client, EventLoop eventLoop) {
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
-		int size = 500000;
+		int size = 300000;
 
-		/*
-		createIndex(client, indexName, binName);
+/*
+		createIndex(client, indexName, BinName);
 		console.info("Write " + size + " records.");
 
 		for (int i = 1; i <= size; i++) {
@@ -53,27 +55,23 @@ public class AsyncQuery extends AsyncExample {
 				console.info("Records=" + i);
 			}
 			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			Bin bin = new Bin(binName, i);
+			Bin bin = new Bin(BinName, i);
 			client.put(params.writePolicy, key, bin);
 		}
-		*/
-
-		this.client = client;
-
+*/
 		console.info("EventLoops=" + eventLoops.getSize());
 		console.info("Run queries");
 
-		for (int i = 0; i < 100; i++) {
-			runQuery();
+		for (int i = 0; i < 14; i++) {
+			for (int j = 0; j < clients.length; j++) {
+				runQuery(clients[j]);
+			}
 		}
 		waitTillComplete();
 
-		console.info("Close");
-		client.close();
-		console.info("Close done!");
 		//client.dropIndex(policy, params.namespace, params.set, indexName);
 	}
-/*
+
 	private void createIndex(
 		AerospikeClient client,
 		String indexName,
@@ -95,7 +93,7 @@ public class AsyncQuery extends AsyncExample {
 			}
 		}
 	}
-*/
+
 	/*
 	private void runQueryExample(
 		final AerospikeClient client,
@@ -131,7 +129,7 @@ public class AsyncQuery extends AsyncExample {
 		}
 	}*/
 
-	private void runQuery() {
+	private void runQuery(AerospikeClient client) {
 		int begin = 10;
 		int end = 499999;
 

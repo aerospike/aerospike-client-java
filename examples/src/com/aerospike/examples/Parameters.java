@@ -42,8 +42,8 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
-	int maxCommandsInProcess = 5;
-	int maxCommandsInQueue = 100000;
+	int maxCommandsInProcess = 20;
+	int maxCommandsInQueue = 0;
 	boolean singleBin;
 
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {

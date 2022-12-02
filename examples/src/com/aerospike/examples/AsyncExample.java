@@ -37,6 +37,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 public abstract class AsyncExample {
+	public static AerospikeClient[] clients;
 	public static EventLoops eventLoops;
 
 	/**
@@ -94,18 +95,26 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			AerospikeClient client = new AerospikeClient(policy, hosts);
+			clients = new AerospikeClient[3];
+
+			for (int i = 0; i < clients.length; i++) {
+				clients[i] = new AerospikeClient(policy, hosts);
+			}
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
-				params.setServerSpecific(client);
+				params.setServerSpecific(clients[0]);
 
 				for (String exampleName : examples) {
-					runExample(exampleName, client, eventLoop, params, console);
+					runExample(exampleName, clients[0], eventLoop, params, console);
 				}
 			}
 			finally {
-				client.close();
+				for (int i = 0; i < clients.length; i++) {
+					console.info("Close: " + i);
+					clients[i].close();
+					console.info("Close done: " + i);
+				}
 			}
 		}
 		finally {
