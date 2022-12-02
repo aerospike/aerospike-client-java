@@ -1350,13 +1350,14 @@ public class Cluster implements Runnable, Closeable {
 							return;
 						}
 
-						if (state.pending > 0 && closeTimeout >= 0) {
+						if (state.pending > 0) {
 							// Cluster has pending commands.
-							if (closeTimeout == 0 || deadline - System.nanoTime() > 0) {
+							if (closeTimeout >= 0 && (closeTimeout == 0 || deadline - System.nanoTime() > 0)) {
 								// Check again in 200ms.
 								state.eventLoop.schedule(this, 200, TimeUnit.MILLISECONDS);
 								return;
 							}
+							Log.warn("Cluster closed with pending async commands");
 						}
 
 						// Cluster's event loop connections can now be closed.

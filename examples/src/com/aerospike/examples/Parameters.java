@@ -42,7 +42,7 @@ public class Parameters {
 	WritePolicy writePolicy;
 	Policy policy;
 	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
-	int maxCommandsInProcess = 20;
+	int maxCommandsInProcess = 10;
 	int maxCommandsInQueue = 0;
 	boolean singleBin;
 

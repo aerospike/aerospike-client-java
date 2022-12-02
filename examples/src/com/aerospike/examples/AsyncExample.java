@@ -89,6 +89,7 @@ public abstract class AsyncExample {
 			policy.password = params.password;
 			policy.authMode = params.authMode;
 			policy.tlsPolicy = params.tlsPolicy;
+			policy.closeTimeout = 400;
 
 			params.policy = policy.readPolicyDefault;
 			params.writePolicy = policy.writePolicyDefault;
