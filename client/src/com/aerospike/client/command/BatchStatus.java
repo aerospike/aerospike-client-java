@@ -29,12 +29,12 @@ public final class BatchStatus implements BatchNodeList.IBatchStatus {
 	}
 
 	@Override
-	public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
+	public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 		// Only used in async commands with a sequence listener.
 	}
 
 	@Override
-	public void setInvalidNode(AerospikeException e) {
+	public void batchKeyError(AerospikeException e) {
 		error = true;
 
 		if (! hasResultCode) {

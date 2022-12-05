@@ -142,10 +142,15 @@ public class BatchOperate extends Example {
 		// Show results.
 		int count = 0;
 		for (BatchRead record : records) {
-			Record rec = record.record;
-			Object v1 = rec.getValue(ResultName1);
-			Object v2 = rec.getValue(ResultName2);
-			console.info("Result[%d]: %s, %s", count++, v1, v2);
+			if (record.resultCode == 0) {
+				Record rec = record.record;
+				Object v1 = rec.getValue(ResultName1);
+				Object v2 = rec.getValue(ResultName2);
+				console.info("Result[%d]: %s, %s", count++, v1, v2);
+			}
+			else {
+				console.info("Result[%d]: error: %s", count++, ResultCode.getResultString(record.resultCode));
+			}
 		}
 	}
 
@@ -205,9 +210,9 @@ public class BatchOperate extends Example {
 
 		for (int i = 0; i < bresults.records.length; i++) {
 			BatchRecord br = bresults.records[i];
-			Record rec = br.record;
 
-			if (rec != null) {
+			if (br.resultCode == 0) {
+				Record rec = br.record;
 				List<?> results = rec.getList(BinName3);
 				long size = (Long)results.get(1);
 				Object val = results.get(2);
@@ -259,9 +264,8 @@ public class BatchOperate extends Example {
 		// Show results.
 		int i = 0;
 		for (BatchRecord record : records) {
-			Record rec = record.record;
-
-			if (rec != null) {
+			if (record.resultCode == 0) {
+				Record rec = record.record;
 				Object v1 = rec.getValue(ResultName1);
 				Object v2 = rec.getValue(ResultName2);
 				console.info("Result[%d]: %s, %s", i, v1, v2);

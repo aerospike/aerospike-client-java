@@ -32,8 +32,8 @@ import com.aerospike.client.policy.Replica;
 public final class BatchNodeList {
 
 	public interface IBatchStatus {
-		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite);
-		public void setInvalidNode(AerospikeException ae);
+		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite);
+		public void batchKeyError(AerospikeException ae);
 	}
 
 	/**
@@ -82,17 +82,17 @@ public final class BatchNodeList {
 					batchNode.addKey(i);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
+			catch (AerospikeException ae) {
 				// This method only called on initialization, so inDoubt must be false.
 				if (records != null) {
-					records[i].setError(ain.getResultCode(), false);
+					records[i].setError(ae.getResultCode(), false);
 				}
 				else {
-					status.setInvalidNode(key, i, ain, false, hasWrite);
+					status.batchKeyError(key, i, ae, false, hasWrite);
 				}
 
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
@@ -103,7 +103,7 @@ public final class BatchNodeList {
 				throw except;
 			}
 			else {
-				status.setInvalidNode(except);
+				status.batchKeyError(except);
 			}
 		}
 		return batchNodes;
@@ -165,18 +165,18 @@ public final class BatchNodeList {
 					batchNode.addKey(offset);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
+			catch (AerospikeException ae) {
 				// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-				records[offset].setError(ain.getResultCode(), Command.batchInDoubt(hasWrite, 2));
+				records[offset].setError(ae.getResultCode(), Command.batchInDoubt(hasWrite, 2));
 
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
 
 		if (except != null) {
-			status.setInvalidNode(except);
+			status.batchKeyError(except);
 		}
 		return batchNodes;
 	}
@@ -237,17 +237,17 @@ public final class BatchNodeList {
 					batchNode.addKey(offset);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
-				status.setInvalidNode(key, offset, ain, Command.batchInDoubt(hasWrite, 2), hasWrite);
+			catch (AerospikeException ae) {
+				status.batchKeyError(key, offset, ae, Command.batchInDoubt(hasWrite, 2), hasWrite);
 
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
 
 		if (except != null) {
-			status.setInvalidNode(except);
+			status.batchKeyError(except);
 		}
 		return batchNodes;
 	}
@@ -305,15 +305,15 @@ public final class BatchNodeList {
 					batchNode.addKey(offset);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
+			catch (AerospikeException ae) {
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
 
 		if (except != null) {
-			status.setInvalidNode(except);
+			status.batchKeyError(except);
 		}
 		return batchNodes;
 	}
@@ -365,12 +365,12 @@ public final class BatchNodeList {
 					batchNode.addKey(i);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
+			catch (AerospikeException ae) {
 				// This method only called on initialization, so inDoubt must be false.
-				b.setError(ain.getResultCode(), false);
+				b.setError(ae.getResultCode(), false);
 
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
@@ -381,7 +381,7 @@ public final class BatchNodeList {
 				throw except;
 			}
 			else {
-				status.setInvalidNode(except);
+				status.batchKeyError(except);
 			}
 		}
 		return batchNodes;
@@ -440,18 +440,18 @@ public final class BatchNodeList {
 					batchNode.addKey(offset);
 				}
 			}
-			catch (AerospikeException.InvalidNode ain) {
+			catch (AerospikeException ae) {
 				// This method only called on retry, so commandSentCounter(2) will be greater than 1.
-				b.setError(ain.getResultCode(), Command.batchInDoubt(b.hasWrite, 2));
+				b.setError(ae.getResultCode(), Command.batchInDoubt(b.hasWrite, 2));
 
 				if (except == null) {
-					except = ain;
+					except = ae;
 				}
 			}
 		}
 
 		if (except != null) {
-			status.setInvalidNode(except);
+			status.batchKeyError(except);
 		}
 		return batchNodes;
 	}

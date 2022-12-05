@@ -91,13 +91,13 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	}
 
 	@Override
-	public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
+	public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 		// Only used in executors with sequence listeners.
 		// These executors will override this method.
 	}
 
 	@Override
-	public void setInvalidNode(AerospikeException e) {
+	public void batchKeyError(AerospikeException e) {
 		error = true;
 
 		if (! hasResultCode) {

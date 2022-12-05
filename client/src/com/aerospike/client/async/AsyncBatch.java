@@ -1009,7 +1009,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
+		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
 			sent[index] = true;
 			AsyncBatch.onRecord(listener, record, index);
@@ -1279,7 +1279,7 @@ public final class AsyncBatch {
 		}
 
 		@Override
-		public void setInvalidNode(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
+		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
 			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
 			sent[index] = true;
 			AsyncBatch.onRecord(listener, record, index);

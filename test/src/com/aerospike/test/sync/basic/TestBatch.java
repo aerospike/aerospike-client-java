@@ -304,22 +304,26 @@ public class TestBatch extends TestSync {
 		wp.sendKey = true;
 
 		BatchWrite bw1 = new BatchWrite(new Key(args.namespace, args.set, KeyPrefix + 1), wops1);
-		BatchWrite bw2 = new BatchWrite(wp, new Key(args.namespace, args.set, KeyPrefix + 6), wops2);
+		BatchWrite bw2 = new BatchWrite(new Key("invalid", args.set, KeyPrefix + 1), wops1);
+		BatchWrite bw3 = new BatchWrite(wp, new Key(args.namespace, args.set, KeyPrefix + 6), wops2);
 		BatchDelete bd1 = new BatchDelete(new Key(args.namespace, args.set, 10002));
 
 		List<BatchRecord> records = new ArrayList<BatchRecord>();
 		records.add(bw1);
 		records.add(bw2);
+		records.add(bw3);
 		records.add(bd1);
 
 		boolean status = client.operate(null, records);
-		assertTrue(status);
+		assertFalse(status);  // "invalid" namespace triggers the false status.
 
-		assertEquals(0, bw1.resultCode);
+		assertEquals(ResultCode.OK, bw1.resultCode);
 		assertBinEqual(bw1.key, bw1.record, BinName2, 0);
 
-		assertEquals(0, bw2.resultCode);
-		assertBinEqual(bw2.key, bw2.record, BinName3, 0);
+		assertEquals(ResultCode.INVALID_NAMESPACE, bw2.resultCode);
+
+		assertEquals(ResultCode.OK, bw3.resultCode);
+		assertBinEqual(bw3.key, bw3.record, BinName3, 0);
 
 		assertEquals(ResultCode.OK, bd1.resultCode);
 
