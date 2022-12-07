@@ -75,7 +75,7 @@ public class QueryPolicy extends Policy {
 	public boolean failOnClusterChange;
 
 	/**
-	 * Is query expected to return less than 100 records.
+	 * Is query expected to return less than 100 records per node.
 	 * If true, the server will optimize the query for a small record set.
 	 * This field is ignored for aggregation queries, background queries
 	 * and server versions &lt; 6.0.
