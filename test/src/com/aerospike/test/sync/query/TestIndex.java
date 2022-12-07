@@ -21,9 +21,11 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Info;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.task.IndexTask;
@@ -57,11 +59,14 @@ public class TestIndex extends TestSync {
 		task = client.dropIndex(policy, args.namespace, args.set, indexName);
 		task.waitTillComplete();
 
-		task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
-		task.waitTillComplete();
+		// Ensure all nodes have dropped the index.
+		Node[] nodes = client.getNodes();
+		String cmd = IndexTask.buildStatusCommand(args.namespace, indexName);
 
-		task = client.dropIndex(policy, args.namespace, args.set, indexName);
-		task.waitTillComplete();
+		for (Node node : nodes) {
+			String response = Info.request(node, cmd);
+			assertEquals(response, "FAIL:201:no-index");
+		}
 	}
 
 	@Test
