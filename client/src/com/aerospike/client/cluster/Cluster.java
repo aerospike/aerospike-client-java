@@ -168,6 +168,9 @@ public class Cluster implements Runnable, Closeable {
 	// Cluster tend counter
 	private int tendCount;
 
+	// Has cluster instance been closed.
+	private AtomicBoolean closed;
+
 	// Tend thread variables.
 	private Thread tendThread;
 	protected volatile boolean tendValid;
@@ -311,6 +314,7 @@ public class Cluster implements Runnable, Closeable {
 		replicaIndex = new AtomicInteger();
 		recoverCount = new AtomicInteger();
 		recoverQueue = new ConcurrentLinkedDeque<ConnectionRecover>();
+		closed = new AtomicBoolean();
 
 		eventLoops = policy.eventLoops;
 
@@ -1316,6 +1320,11 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	public void close() {
+		if (! closed.compareAndSet(false, true)) {
+			// close() has already been called.
+			return;
+		}
+
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
