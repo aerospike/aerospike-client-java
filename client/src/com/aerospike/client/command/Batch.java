@@ -528,6 +528,8 @@ public final class Batch {
 
 		@Override
 		protected boolean prepareRetry(boolean timeout) {
+			Log.error("BATCH RETRY IN PROGRESS!");
+
 			if (! ((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
 				   (parent == null || ! parent.isDone()))) {
 				// Perform regular retry to same node.
@@ -550,8 +552,6 @@ public final class Batch {
 			int iteration,
 			int commandSentCounter
 		) {
-			Log.error("BATCH RETRY OCCURRED!");
-
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
 			List<BatchNode> batchNodes = generateBatchNodes();
