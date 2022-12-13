@@ -44,6 +44,7 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.command.Batch;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
@@ -1059,6 +1060,7 @@ public class Main implements Log.Callback {
 		}
 
 		System.out.println("debug: " + args.debug);
+		System.out.println("batch: batchCount,batchNodeCount,batchRowCount,batchRowCount/batchCount");
 
 		Log.Level level = (args.debug)? Log.Level.DEBUG : Log.Level.INFO;
 		Log.setLevel(level);
@@ -1310,6 +1312,10 @@ public class Main implements Log.Callback {
 			int timeoutTxns = this.counters.transaction.timeouts.getAndSet(0);
 			int errorTxns = this.counters.transaction.errors.getAndSet(0);
 
+			int batchCount = Batch.BatchCount.getAndSet(0);
+			int batchNodeCount = Batch.BatchNodeCount.getAndSet(0);
+			int batchRowCount = Batch.BatchRowCount.getAndSet(0);
+
 			int notFound = 0;
 
 			if (args.reportNotFound) {
@@ -1342,6 +1348,9 @@ public class Main implements Log.Callback {
 					this.counters.transaction.latency.printResults(System.out, "txn");
 				}
 			}
+
+			int batchRatio = (batchCount != 0)? batchRowCount / batchCount : 0;
+			System.out.println("batch " + batchCount + ',' + batchNodeCount + ',' + batchRowCount + ',' + batchRatio);
 
 			if (args.transactionLimit > 0 ) {
 				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;

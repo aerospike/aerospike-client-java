@@ -106,6 +106,10 @@ public final class BatchNodeList {
 				status.batchKeyError(except);
 			}
 		}
+
+		Batch.BatchCount.getAndIncrement();
+		Batch.BatchNodeCount.getAndAdd(batchNodes.size());
+		Batch.BatchRowCount.getAndAdd(keys.length);
 		return batchNodes;
 	}
 
@@ -384,6 +388,10 @@ public final class BatchNodeList {
 				status.batchKeyError(except);
 			}
 		}
+
+		Batch.BatchCount.getAndIncrement();
+		Batch.BatchNodeCount.getAndAdd(batchNodes.size());
+		Batch.BatchRowCount.getAndAdd(records.size());
 		return batchNodes;
 	}
 

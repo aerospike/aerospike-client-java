@@ -17,11 +17,13 @@
 package com.aerospike.client.command;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -31,6 +33,10 @@ import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
 
 public final class Batch {
+	public static final AtomicInteger BatchCount = new AtomicInteger();
+	public static final AtomicInteger BatchNodeCount = new AtomicInteger();
+	public static final AtomicInteger BatchRowCount = new AtomicInteger();
+
 	//-------------------------------------------------------
 	// ReadList
 	//-------------------------------------------------------
@@ -544,6 +550,8 @@ public final class Batch {
 			int iteration,
 			int commandSentCounter
 		) {
+			Log.error("BATCH RETRY OCCURRED!");
+
 			// Retry requires keys for this node to be split among other nodes.
 			// This is both recursive and exponential.
 			List<BatchNode> batchNodes = generateBatchNodes();
