@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -118,14 +118,14 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				break;
 			}
 
+			// Set done to false so RecordSet thread has chance to close early again.
+			done.set(false);
+
 			if (tracker.isComplete(cluster, policy)) {
 				// All partitions received.
 				recordSet.put(RecordSet.END);
 				break;
 			}
-
-			// Set done to false so RecordSet thread has chance to close early again.
-			done.set(false);
 
 			if (policy.sleepBetweenRetries > 0) {
 				// Sleep before trying again.
