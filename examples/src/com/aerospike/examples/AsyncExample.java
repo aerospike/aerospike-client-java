@@ -21,6 +21,7 @@ import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
@@ -92,7 +93,7 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			AerospikeClient client = new AerospikeClient(policy, hosts);
+			IAerospikeClient client = new AerospikeClient(policy, hosts);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
@@ -114,7 +115,7 @@ public abstract class AsyncExample {
 	/**
 	 * Run asynchronous client example.
 	 */
-	public static void runExample(String exampleName, AerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
+	public static void runExample(String exampleName, IAerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
 		String fullName = "com.aerospike.examples." + exampleName;
 		Class<?> cls = Class.forName(fullName);
 
@@ -123,8 +124,8 @@ public abstract class AsyncExample {
 			AsyncExample example = (AsyncExample)ctor.newInstance();
 			example.console = console;
 			example.params = params;
-			example.writePolicy = client.writePolicyDefault;
-			example.policy = client.readPolicyDefault;
+			example.writePolicy = client.getWritePolicyDefault();
+			example.policy = client.getReadPolicyDefault();
 			example.run(client, eventLoop);
 		}
 		else {
@@ -138,7 +139,7 @@ public abstract class AsyncExample {
 	protected Policy policy;
 	private boolean completed;
 
-	public void run(AerospikeClient client, EventLoop eventLoop) {
+	public void run(IAerospikeClient client, EventLoop eventLoop) {
 		// Most async examples no longer wait for completion, so
 		// these examples are run in parallel with intertwined log
 		// messages.  It's done that way because most applications
@@ -169,5 +170,5 @@ public abstract class AsyncExample {
 		super.notify();
 	}
 
-	public abstract void runExample(AerospikeClient client, EventLoop eventLoop);
+	public abstract void runExample(IAerospikeClient client, EventLoop eventLoop);
 }

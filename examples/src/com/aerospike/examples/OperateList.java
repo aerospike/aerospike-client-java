@@ -19,8 +19,8 @@ package com.aerospike.examples;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -38,7 +38,7 @@ public class OperateList extends Example {
 	 * Perform operations on a list bin.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) {
+	public void runExample(IAerospikeClient client, Parameters params) {
 		runSimpleExample(client, params);
 		runNestedExample(client, params);
 	}
@@ -46,7 +46,7 @@ public class OperateList extends Example {
 	/**
 	 * Simple example of list functionality.
 	 */
-	public void runSimpleExample(AerospikeClient client, Parameters params) {
+	public void runSimpleExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "listkey");
 		String binName = params.getBinName("listbin");
 
@@ -85,7 +85,7 @@ public class OperateList extends Example {
 	/**
 	 * Operate on a list of lists.
 	 */
-	public void runNestedExample(AerospikeClient client, Parameters params) {
+	public void runNestedExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "listkey2");
 		String binName = params.getBinName("listbin");
 

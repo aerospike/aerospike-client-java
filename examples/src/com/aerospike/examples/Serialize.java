@@ -20,8 +20,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
@@ -36,7 +36,7 @@ public class Serialize extends Example {
 	 * Write complex objects using serializer.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		testArray(client, params);
 		testList(client, params);
 		testComplex(client, params);
@@ -45,7 +45,7 @@ public class Serialize extends Example {
 	/**
 	 * Write array of integers using standard java serializer..
 	 */
-	public void testArray(AerospikeClient client, Parameters params) throws Exception {
+	public void testArray(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "serialarraykey");
 
 		// Delete record if it already exists.
@@ -103,7 +103,7 @@ public class Serialize extends Example {
 	/**
 	 * Write list using standard java serializer.
 	 */
-	public void testList(AerospikeClient client, Parameters params) throws Exception {
+	public void testList(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "seriallistkey");
 
 		// Delete record if it already exists.
@@ -161,7 +161,7 @@ public class Serialize extends Example {
 	/**
 	 * Write complex object using standard java serializer.
 	 */
-	public void testComplex(AerospikeClient client, Parameters params) throws Exception {
+	public void testComplex(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "serialcomplexkey");
 
 		// Delete record if it already exists.

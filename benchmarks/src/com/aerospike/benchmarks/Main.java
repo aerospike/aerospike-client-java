@@ -35,6 +35,7 @@ import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -1148,7 +1149,7 @@ public class Main implements Log.Callback {
 				if (clientPolicy.asyncMaxConnsPerNode < this.asyncMaxCommands) {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
-				AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+				IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
 
 				try {
 					if (initialize) {
@@ -1168,7 +1169,7 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+			IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
 
 			try {
 				if (initialize) {
@@ -1185,7 +1186,7 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void doInserts(AerospikeClient client) throws Exception {
+	private void doInserts(IAerospikeClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 
 		// Create N insert tasks
@@ -1205,7 +1206,7 @@ public class Main implements Log.Callback {
 		es.shutdownNow();
 	}
 
-	private void doAsyncInserts(AerospikeClient client) throws Exception {
+	private void doAsyncInserts(IAerospikeClient client) throws Exception {
 		// Generate asyncMaxCommand writes to seed the event loops.
 		// Then start a new command in each command callback.
 		// This effectively throttles new command generation, by only allowing
@@ -1265,7 +1266,7 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void doRWTest(AerospikeClient client) throws Exception {
+	private void doRWTest(IAerospikeClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 		RWTask[] tasks = new RWTask[this.nThreads];
 
@@ -1279,7 +1280,7 @@ public class Main implements Log.Callback {
 		es.shutdown();
 	}
 
-	private void doAsyncRWTest(AerospikeClient client) throws Exception {
+	private void doAsyncRWTest(IAerospikeClient client) throws Exception {
 		// Generate asyncMaxCommand commands to seed the event loops.
 		// Then start a new command in each command callback.
 		// This effectively throttles new command generation, by only allowing
@@ -1384,7 +1385,7 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void showBatchNodes(AerospikeClient client) {
+	private void showBatchNodes(IAerospikeClient client) {
 		if (!batchShowNodes || args.batchSize <= 1) {
 			return;
 		}

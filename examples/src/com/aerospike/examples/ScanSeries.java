@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
@@ -38,7 +38,7 @@ public class ScanSeries extends Example implements ScanCallback {
 	 * Scan all nodes in series and read all records in all sets.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Scan series: namespace=" + params.namespace + " set=" + params.set);
 
 		// Limit scan to recordsPerSecond.  This will take more time, but it will reduce

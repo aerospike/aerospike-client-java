@@ -22,8 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -46,7 +46,7 @@ public class OperateMap extends Example {
 	 * Perform operations on a map bin.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) {
+	public void runExample(IAerospikeClient client, Parameters params) {
 		runSimpleExample(client, params);
 		runScoreExample(client, params);
 		runListRangeExample(client, params);
@@ -58,7 +58,7 @@ public class OperateMap extends Example {
 	/**
 	 * Simple example of map operate functionality.
 	 */
-	public void runSimpleExample(AerospikeClient client, Parameters params) {
+	public void runSimpleExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
 
@@ -97,7 +97,7 @@ public class OperateMap extends Example {
 	/**
 	 * Map score example.
 	 */
-	public void runScoreExample(AerospikeClient client, Parameters params) {
+	public void runScoreExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
 
@@ -143,7 +143,7 @@ public class OperateMap extends Example {
 	/**
 	 * Value list range example.
 	 */
-	public void runListRangeExample(AerospikeClient client, Parameters params) {
+	public void runListRangeExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey");
 		String binName = params.getBinName("mapbin");
 
@@ -199,7 +199,7 @@ public class OperateMap extends Example {
 	/**
 	 * Operate on a map of maps.
 	 */
-	public void runNestedExample(AerospikeClient client, Parameters params) {
+	public void runNestedExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey2");
 		String binName = params.getBinName("mapbin");
 
@@ -232,7 +232,7 @@ public class OperateMap extends Example {
 		console.info("Record: " + record);
 	}
 
-	public void runNestedMapCreateExample(AerospikeClient client, Parameters params) {
+	public void runNestedMapCreateExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey2");
 		String binName = params.getBinName("mapbin");
 
@@ -267,7 +267,7 @@ public class OperateMap extends Example {
 		console.info("Record: " + record);
 	}
 
-	public void runNestedListCreateExample(AerospikeClient client, Parameters params) {
+	public void runNestedListCreateExample(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mapkey3");
 		String binName = params.getBinName("mapbin");
 

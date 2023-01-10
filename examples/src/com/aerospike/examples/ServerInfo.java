@@ -18,7 +18,7 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.cluster.Node;
 
@@ -32,7 +32,7 @@ public class ServerInfo extends Example {
 	 * Query server configuration, cluster status and namespace configuration.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		Node node = client.getNodes()[0];
 		GetServerConfig(node, params);
 		console.write("");

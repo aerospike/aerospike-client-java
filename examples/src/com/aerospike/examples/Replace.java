@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -40,12 +40,12 @@ public class Replace extends Example {
 	 * the server does not have to read the existing record before overwriting it.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		runReplaceExample(client, params);
 		runReplaceOnlyExample(client, params);
 	}
 
-	public void runReplaceExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runReplaceExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "replacekey");
 		Bin bin1 = new Bin("bin1", "value1");
 		Bin bin2 = new Bin("bin2", "value2");
@@ -88,7 +88,7 @@ public class Replace extends Example {
 		validateBin(key, bin3, record);
 	}
 
-	public void runReplaceOnlyExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runReplaceOnlyExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "replaceonlykey");
 		Bin bin = new Bin("bin", "value");
 

@@ -27,8 +27,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.PosixParser;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -208,7 +208,7 @@ public class Args {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
-	public void setServerSpecific(AerospikeClient client) {
+	public void setServerSpecific(IAerospikeClient client) {
 		Node node = client.getNodes()[0];
 		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;

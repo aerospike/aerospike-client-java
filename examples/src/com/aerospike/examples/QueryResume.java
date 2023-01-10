@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -42,7 +42,7 @@ public class QueryResume extends Example {
 	 * Terminate a query and then resume query later.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "qridx";
 		String binName = "bin";
 		String setName = "qr";
@@ -98,7 +98,7 @@ public class QueryResume extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String setName,
 		String indexName,
@@ -121,7 +121,7 @@ public class QueryResume extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String setName,
 		String binName,

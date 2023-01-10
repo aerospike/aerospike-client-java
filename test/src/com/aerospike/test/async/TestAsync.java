@@ -19,8 +19,8 @@ package com.aerospike.test.async;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
@@ -29,7 +29,7 @@ import com.aerospike.test.SuiteSync;
 import com.aerospike.test.util.TestBase;
 
 public class TestAsync extends TestBase {
-	protected static AerospikeClient client = SuiteAsync.client;
+	protected static IAerospikeClient client = SuiteAsync.client;
 	protected static EventLoop eventLoop = SuiteAsync.eventLoop;
 	private static boolean DestroyClient = false;
 

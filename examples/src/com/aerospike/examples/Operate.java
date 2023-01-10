@@ -16,8 +16,8 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -33,7 +33,7 @@ public class Operate extends Example {
 	 * Demonstrate multiple operations on a single record in one call.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		// Write initial record.
 		Key key = new Key(params.namespace, params.set, "opkey");
 		Bin bin1 = new Bin("bin1", 7);
@@ -50,7 +50,7 @@ public class Operate extends Example {
 		touchReadMultipleBins(client, params.writePolicy, key, bin1.name, bin2.name, bin3.name);
 	}
 
-	private void addWriteGet(AerospikeClient client, WritePolicy policy, Key key, String bin1, String bin2)
+	private void addWriteGet(IAerospikeClient client, WritePolicy policy, Key key, String bin1, String bin2)
 		throws Exception {
 		// Add integer, write new string and read record.
 		Bin bin11 = new Bin(bin1, 4);
@@ -73,7 +73,7 @@ public class Operate extends Example {
 	}
 
 	private void touchReadMultipleBins(
-		AerospikeClient client,
+		IAerospikeClient client,
 		WritePolicy policy,
 		Key key,
 		String bin1,

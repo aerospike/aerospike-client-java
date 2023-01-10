@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -40,7 +40,7 @@ public class AsyncQuery extends AsyncExample {
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
 		String binName = params.getBinName("asqbin");
@@ -55,7 +55,7 @@ public class AsyncQuery extends AsyncExample {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		String indexName,
 		String binName
 	) {
@@ -77,7 +77,7 @@ public class AsyncQuery extends AsyncExample {
 	}
 
 	private void runQueryExample(
-		final AerospikeClient client,
+		final IAerospikeClient client,
 		final EventLoop eventLoop,
 		final String keyPrefix,
 		final String binName,
@@ -110,7 +110,7 @@ public class AsyncQuery extends AsyncExample {
 		}
 	}
 
-	private void runQuery(AerospikeClient client, EventLoop eventLoop, final String binName) {
+	private void runQuery(IAerospikeClient client, EventLoop eventLoop, final String binName) {
 		int begin = 26;
 		int end = 34;
 

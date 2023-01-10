@@ -19,9 +19,9 @@ package com.aerospike.examples;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
@@ -36,7 +36,7 @@ public class Batch extends Example {
 	 * Batch multiple gets in one call to the server.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String keyPrefix = "batchkey";
 		String valuePrefix = "batchvalue";
 		String binName = params.getBinName("batchbin");
@@ -53,7 +53,7 @@ public class Batch extends Example {
 	 * Write records individually.
 	 */
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -75,7 +75,7 @@ public class Batch extends Example {
 	 * Check existence of records in one batch.
 	 */
 	private void batchExists (
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		int size
@@ -100,7 +100,7 @@ public class Batch extends Example {
 	 * Read records in one batch.
 	 */
 	private void batchReads (
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -137,7 +137,7 @@ public class Batch extends Example {
 	 * Read record header data in one batch.
 	 */
 	private void batchReadHeaders (
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		int size
@@ -176,7 +176,7 @@ public class Batch extends Example {
 	 * This requires Aerospike Server version >= 3.6.0.
 	 */
 	private void batchReadComplex (
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName

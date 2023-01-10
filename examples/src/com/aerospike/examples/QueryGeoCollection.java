@@ -22,9 +22,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -47,14 +47,14 @@ public class QueryGeoCollection extends Example {
 	 * Perform region queries using a Geo index on a collection.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 
 		runMapExample(client,params);
 		runMapKeyExample(client,params);
 		runListExample(client,params);
 	}
 
-	private void runMapExample(AerospikeClient client, Parameters params) throws Exception {
+	private void runMapExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_map";
 		String keyPrefix = "map";
 		String mapValuePrefix = "mv";
@@ -70,7 +70,7 @@ public class QueryGeoCollection extends Example {
 		deleteRecords(client,params, keyPrefix, size);
 	}
 
-	private void runMapKeyExample(AerospikeClient client, Parameters params) throws Exception {
+	private void runMapKeyExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_mapkey";
 		String keyPrefix = "mapkey";
 		String mapValuePrefix = "mk";
@@ -86,7 +86,7 @@ public class QueryGeoCollection extends Example {
 		deleteRecords(client,params, keyPrefix, size);
 	}
 
-	private void runListExample(AerospikeClient client, Parameters params) throws Exception {
+	private void runListExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "geo_list";
 		String keyPrefix = "list";
 		String binName = "geo_list_bin";
@@ -102,7 +102,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		IndexCollectionType indexType,
 		String indexName,
@@ -127,7 +127,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void writeMapRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -164,7 +164,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void writeMapKeyRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -201,7 +201,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void writeListRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -238,7 +238,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String binName,
 		String binName2,
@@ -281,7 +281,7 @@ public class QueryGeoCollection extends Example {
 	}
 
 	private void deleteRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		int size

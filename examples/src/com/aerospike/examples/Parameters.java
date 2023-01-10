@@ -18,7 +18,7 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
@@ -60,7 +60,7 @@ public class Parameters {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
-	protected void setServerSpecific(AerospikeClient client) throws Exception {
+	protected void setServerSpecific(IAerospikeClient client) throws Exception {
 		Node node = client.getNodes()[0];
 		String featuresFilter = "features";
 		String namespaceFilter = "namespace/" + namespace;

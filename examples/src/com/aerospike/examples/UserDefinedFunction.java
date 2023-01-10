@@ -23,8 +23,8 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
@@ -41,7 +41,7 @@ public class UserDefinedFunction extends Example {
 	 * Register user defined function and call it.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		register(client, params);
 		writeUsingUdf(client, params);
 		writeIfGenerationNotChanged(client, params);
@@ -52,12 +52,12 @@ public class UserDefinedFunction extends Example {
 		writeBlobUsingUdf(client, params);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void writeUsingUdf(AerospikeClient client, Parameters params) throws Exception {
+	private void writeUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey1");
 		Bin bin = new Bin(params.getBinName("udfbin1"), "string value");
 
@@ -76,7 +76,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 
-	private void writeIfGenerationNotChanged(AerospikeClient client, Parameters params) throws Exception {
+	private void writeIfGenerationNotChanged(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey2");
 		Bin bin = new Bin(params.getBinName("udfbin2"), "string value");
 
@@ -91,7 +91,7 @@ public class UserDefinedFunction extends Example {
 		console.info("Record written.");
 	}
 
-	private void writeIfNotExists(AerospikeClient client, Parameters params) throws Exception {
+	private void writeIfNotExists(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey3");
 		String binName = "udfbin3";
 
@@ -131,7 +131,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 
-	private void writeWithValidation(AerospikeClient client, Parameters params) throws Exception {
+	private void writeWithValidation(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey4");
 		String binName = "udfbin4";
 
@@ -152,7 +152,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 
-	private void writeListMapUsingUdf(AerospikeClient client, Parameters params) throws Exception {
+	private void writeListMapUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey5");
 
 		ArrayList<Object> inner = new ArrayList<Object>();
@@ -187,7 +187,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 
-	private void appendListUsingUdf(AerospikeClient client, Parameters params) throws Exception {
+	private void appendListUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey5");
 		String binName = params.getBinName("udfbin5");
 		String value = "appended value";
@@ -221,7 +221,7 @@ public class UserDefinedFunction extends Example {
 		}
 	}
 
-	private void writeBlobUsingUdf(AerospikeClient client, Parameters params) throws Exception {
+	private void writeBlobUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey6");
 		String binName = params.getBinName("udfbin6");
 

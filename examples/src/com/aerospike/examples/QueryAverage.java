@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -42,7 +42,7 @@ public class QueryAverage extends Example {
 	 * Create secondary index and query on it and apply aggregation user defined function.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
 		String binName = params.getBinName("l2");
@@ -55,13 +55,13 @@ public class QueryAverage extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -84,7 +84,7 @@ public class QueryAverage extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		int size
@@ -101,7 +101,7 @@ public class QueryAverage extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName

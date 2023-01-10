@@ -19,9 +19,9 @@ package com.aerospike.examples;
 import java.io.IOException;
 import java.net.ConnectException;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
@@ -33,7 +33,7 @@ public class AsyncPutGet extends AsyncExample {
 	 * Asynchronously write and read a bin using alternate methods.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		Key key = new Key(params.namespace, params.set, "putgetkey");
 		Bin bin = new Bin(params.getBinName("putgetbin"), "value");
 
@@ -42,7 +42,7 @@ public class AsyncPutGet extends AsyncExample {
 	}
 
 	// Inline asynchronous put/get calls.
-	private void runPutGetInline(final AerospikeClient client, final EventLoop eventLoop, final Key key, final Bin bin) {
+	private void runPutGetInline(final IAerospikeClient client, final EventLoop eventLoop, final Key key, final Bin bin) {
 
 		console.info("Put inline: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 
@@ -74,19 +74,19 @@ public class AsyncPutGet extends AsyncExample {
 	}
 
 	// Asynchronous put/get calls with retry.
-	private void runPutGetWithRetry(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
+	private void runPutGetWithRetry(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
 		console.info("Put with retry: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 		client.put(eventLoop, new WriteHandler(client, eventLoop, key, bin), writePolicy, key, bin);
 	}
 
 	private class WriteHandler implements WriteListener {
-		private final AerospikeClient client;
+		private final IAerospikeClient client;
 		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public WriteHandler(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
+		public WriteHandler(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
 			this.client = client;
 			this.eventLoop = eventLoop;
 			this.key = key;
@@ -128,13 +128,13 @@ public class AsyncPutGet extends AsyncExample {
 	}
 
 	private class ReadHandler implements RecordListener {
-		private final AerospikeClient client;
+		private final IAerospikeClient client;
 		private final EventLoop eventLoop;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public ReadHandler(AerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
+		public ReadHandler(IAerospikeClient client, EventLoop eventLoop, Key key, Bin bin) {
 			this.client = client;
 			this.eventLoop = eventLoop;
 			this.key = key;

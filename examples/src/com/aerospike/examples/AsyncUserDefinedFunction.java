@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Value;
@@ -31,17 +31,17 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		register(client);
 		writeUsingUdfAsync(client, eventLoop);
 	}
 
-	private void register(AerospikeClient client) {
+	private void register(IAerospikeClient client) {
 		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void writeUsingUdfAsync(final AerospikeClient client, final EventLoop eventLoop) {
+	private void writeUsingUdfAsync(final IAerospikeClient client, final EventLoop eventLoop) {
 		final Key key = new Key(params.namespace, params.set, "audfkey1");
 		final Bin bin = new Bin(params.getBinName("audfbin1"), "string value");
 

@@ -16,8 +16,8 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
@@ -33,7 +33,7 @@ public class AsyncScan extends AsyncExample {
 	 * Asynchronous scan example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		console.info("Asynchronous scan: namespace=" + params.namespace + " set=" + params.set);
 		recordCount = 0;
 		final long begin = System.currentTimeMillis();

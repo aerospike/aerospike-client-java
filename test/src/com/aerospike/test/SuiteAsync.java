@@ -23,6 +23,7 @@ import org.junit.runners.Suite;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
@@ -54,7 +55,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 	TestAsyncUDF.class
 })
 public class SuiteAsync {
-	public static AerospikeClient client = null;
+	public static IAerospikeClient client = null;
 	public static EventLoops eventLoops = null;
 	public static EventLoop eventLoop = null;
 

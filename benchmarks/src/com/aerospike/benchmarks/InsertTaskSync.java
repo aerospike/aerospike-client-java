@@ -16,20 +16,20 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 public final class InsertTaskSync extends InsertTask implements Runnable {
 
-	private final AerospikeClient client;
+	private final IAerospikeClient client;
 	private final long keyStart;
 	private final long keyCount;
 
-	public InsertTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
+	public InsertTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(args, counters);
 		this.client = client;
 		this.keyStart = keyStart;

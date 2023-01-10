@@ -19,9 +19,9 @@ package com.aerospike.examples;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -45,7 +45,7 @@ public class QueryExp extends Example {
 	 * Perform secondary index query with a predicate filter.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "predidx";
 		String binName = params.getBinName("idxbin");
 		int size = 50;
@@ -59,7 +59,7 @@ public class QueryExp extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -82,7 +82,7 @@ public class QueryExp extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String binName,
 		int size
@@ -109,7 +109,7 @@ public class QueryExp extends Example {
 	}
 
 	private void runQuery1(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String binName
 	) throws Exception {
@@ -128,7 +128,7 @@ public class QueryExp extends Example {
 
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
-		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
 		policy.filterExp = Exp.build(
 			Exp.or(
 				Exp.and(
@@ -150,7 +150,7 @@ public class QueryExp extends Example {
 	}
 
 	private void runQuery2(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String binName
 	) throws Exception {
@@ -167,7 +167,7 @@ public class QueryExp extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
 		policy.filterExp = Exp.build(
 			Exp.and(
 				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
@@ -187,7 +187,7 @@ public class QueryExp extends Example {
 	}
 
 	private void runQuery3(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String binName
 	) throws Exception {
@@ -202,7 +202,7 @@ public class QueryExp extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = new QueryPolicy(client.queryPolicyDefault);
+		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
 		policy.filterExp = Exp.build(
 			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
 
