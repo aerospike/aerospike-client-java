@@ -28,10 +28,10 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
@@ -346,7 +346,7 @@ public class Main implements Log.Callback {
 		options.addOption("sendKey", false, "Send key to server");
 
 		// parse the command line arguments
-		CommandLineParser parser = new PosixParser();
+		CommandLineParser parser = new DefaultParser();
 		CommandLine line = parser.parse(options, commandLineArgs);
 		String[] extra = line.getArgs();
 
