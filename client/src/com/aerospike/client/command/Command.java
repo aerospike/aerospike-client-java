@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1547,6 +1547,16 @@ public abstract class Command {
 	//--------------------------------------------------
 
 	private final int estimateKeySize(Policy policy, Key key) {
+		int fieldCount = estimateKeySize(key);
+
+		if (policy.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
+		return fieldCount;
+	}
+
+	protected final int estimateKeySize(Key key) {
 		int fieldCount = 0;
 
 		if (key.namespace != null) {
@@ -1561,11 +1571,6 @@ public abstract class Command {
 
 		dataOffset += key.digest.length + FIELD_HEADER_SIZE;
 		fieldCount++;
-
-		if (policy.sendKey) {
-			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
-			fieldCount++;
-		}
 		return fieldCount;
 	}
 
@@ -1853,6 +1858,14 @@ public abstract class Command {
 	}
 
 	private final void writeKey(Policy policy, Key key) {
+		writeKey(key);
+
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+	}
+
+	protected final void writeKey(Key key) {
 		// Write key into buffer.
 		if (key.namespace != null) {
 			writeField(key.namespace, FieldType.NAMESPACE);
@@ -1863,10 +1876,6 @@ public abstract class Command {
 		}
 
 		writeField(key.digest, FieldType.DIGEST_RIPE);
-
-		if (policy.sendKey) {
-			writeField(key.userKey, FieldType.KEY);
-		}
 	}
 
 	private final int writeReadOnlyOperations(Operation[] ops, int readAttr) {
@@ -1988,11 +1997,11 @@ public abstract class Command {
 		writeFieldHeader(size, FieldType.FILTER_EXP);
 	}
 
-	private final void begin() {
+	protected final void begin() {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private final void end() {
+	protected final void end() {
 		// Write total size of message which is the current offset.
 		long proto = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(proto, dataBuffer, 0);

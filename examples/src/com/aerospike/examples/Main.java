@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -135,6 +135,7 @@ public class Main extends JPanel {
 					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
 					);
 
+			options.addOption("proxy", false, "Use proxy client.");
 			options.addOption("g", "gui", false, "Invoke GUI to selectively run tests.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
@@ -172,6 +173,10 @@ public class Main extends JPanel {
 
 			if (cl.hasOption("eventLoopType")) {
 				params.eventLoopType = EventLoopType.valueOf(cl.getOptionValue("eventLoopType", "").toUpperCase());
+			}
+
+			if (cl.hasOption("proxy")) {
+				params.useProxyClient = true;
 			}
 
 			if (cl.hasOption("d")) {

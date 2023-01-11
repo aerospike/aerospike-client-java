@@ -23,6 +23,7 @@
 
   <modules>
     <module>client</module>
+    <module>proxy</module>
     <module>examples</module>
     <module>benchmarks</module>
     <module>test</module>
@@ -43,6 +44,8 @@
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
+    <connect.maven.url>http://192.168.200.205:8008/repository/snapshots</connect.maven.url>
+    <connect.maven.releases.url>http://192.168.200.205:8008/repository/internal</connect.maven.releases.url>
   </properties>
 
   <dependencyManagement>
@@ -50,6 +53,12 @@
       <dependency>
         <groupId>com.aerospike</groupId>
         <artifactId>aerospike-client</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.aerospike</groupId>
+        <artifactId>aerospike-proxy-client</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -150,4 +159,22 @@
     </pluginManagement>
   </build>
 
+  <repositories>
+    <repository>
+      <id>connect-maven</id>
+      <url>${connect.maven.url}</url>
+    </repository>
+
+    <repository>
+      <id>connect-maven-releases</id>
+      <url>${connect.maven.releases.url}</url>
+    </repository>
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <id>connect-maven</id>
+      <url>${connect.maven.url}</url>
+    </repository>
+  </distributionManagement>
 </project>

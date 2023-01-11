@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,6 +44,7 @@ public class Parameters {
 	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	int maxCommandsInProcess;
 	int maxCommandsInQueue;
+	boolean useProxyClient;
 	boolean singleBin;
 
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {

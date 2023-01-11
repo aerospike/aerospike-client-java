@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,7 @@ import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientProxy;
 
 public abstract class Example {
 
@@ -43,10 +44,14 @@ public abstract class Example {
 
 		Host[] hosts = Host.parseHosts(params.host, params.port);
 
-		IAerospikeClient client = new AerospikeClient(policy, hosts);
+		IAerospikeClient client = params.useProxyClient?
+			new AerospikeClientProxy(policy, hosts) :
+			new AerospikeClient(policy, hosts);
 
 		try {
-			params.setServerSpecific(client);
+			if (! params.useProxyClient) {
+				params.setServerSpecific(client);
+			}
 
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);
