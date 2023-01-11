@@ -87,11 +87,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.proxy.client.AboutGrpc;
-import com.aerospike.proxy.client.Kvs;
-
-import io.grpc.Status;
-import io.grpc.StatusRuntimeException;
 
 /**
  * Aerospike Proxy based implementation of {@link AerospikeClient}.
@@ -188,40 +183,6 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
             // TODO convert to correct result code.
             throw new AerospikeException(ResultCode.CLIENT_ERROR, e);
-        }
-    }
-
-    /**
-     * Tests whether the remote endpoint is a proxy server.
-     * <p>
-     * WARN: this method is invoked by reflection in AerospikeClient. Any
-     * signature changes should be made at both places.
-     *
-     * @param clientPolicy aerospike client policy
-     * @param hosts        remote end point host to connect to
-     * @return true if the remote endpoint is a proxy server
-     */
-    @SuppressWarnings("unused")
-    public static boolean isRemoteProxy(ClientPolicy clientPolicy,
-                                        Host... hosts) {
-        try (GrpcCallExecutor channelPool = new GrpcCallExecutor(1, 1,
-                clientPolicy.timeout, null,
-                clientPolicy.tlsPolicy, hosts)) {
-            Kvs.AboutRequest aboutRequest = Kvs.AboutRequest.newBuilder().build();
-            //noinspection ResultOfMethodCallIgnored
-            AboutGrpc.newBlockingStub(channelPool.getChannel()).get(aboutRequest);
-            return true;
-        } catch (StatusRuntimeException e) {
-            // TODO: figure out more failure conditions.
-            if (e.getStatus() == Status.UNAVAILABLE && e.getMessage().equals(
-                    "Network closed for unknown reason")) {
-                // Aerospike receives a gRPC payload, which it recognises
-                // as invalid and closes the connection.
-                return false;
-            }
-            throw new AerospikeException(e);
-        } catch (Exception e) {
-            throw new AerospikeException(e);
         }
     }
 
