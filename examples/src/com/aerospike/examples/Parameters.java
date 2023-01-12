@@ -62,6 +62,11 @@ public class Parameters {
 	 * Some database calls need to know how the server is configured.
 	 */
 	protected void setServerSpecific(IAerospikeClient client) throws Exception {
+		if (useProxyClient) {
+			// Proxy client does not support querying nodes directly for their configuration.
+			return;
+		}
+
 		Node node = client.getNodes()[0];
 		String featuresFilter = "features";
 		String namespaceFilter = "namespace/" + namespace;

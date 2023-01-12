@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -30,6 +30,8 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.proxy.AerospikeClientProxy;
+import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
@@ -93,7 +95,9 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			IAerospikeClient client = new AerospikeClient(policy, hosts);
+			IAerospikeClient client = params.useProxyClient?
+				new AerospikeClientProxy(policy, hosts) :
+				new AerospikeClient(policy, hosts);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
@@ -102,6 +106,11 @@ public abstract class AsyncExample {
 				for (String exampleName : examples) {
 					runExample(exampleName, client, eventLoop, params, console);
 				}
+
+				// TODO: Remove sleep after adding functionality to wait until async commands complete.
+				System.out.println("Sleep 2 seconds");
+				Util.sleep(2000);
+				System.out.println("Sleep end");
 			}
 			finally {
 				client.close();
