@@ -58,6 +58,7 @@ import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
@@ -99,6 +100,7 @@ public class Main implements Log.Callback {
 	private int nThreads;
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
+	private boolean useProxyClient;
 	private boolean asyncEnabled;
 	private boolean initialize;
 	private boolean batchShowNodes;
@@ -340,6 +342,8 @@ public class Main implements Log.Callback {
 				"Use specified event loop type for async examples\n" +
 				"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
 				);
+
+		options.addOption("proxy", false, "Use proxy client.");
 
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
@@ -934,6 +938,10 @@ public class Main implements Log.Callback {
 			this.eventLoopType = EventLoopType.valueOf(line.getOptionValue("eventLoopType", "").toUpperCase());
 		}
 
+		if (line.hasOption("proxy")) {
+			this.useProxyClient = true;
+		}
+
 		if(line.hasOption("udfPackageName")){
 			args.udfPackageName = line.getOptionValue("udfPackageName");
 		}
@@ -1149,7 +1157,10 @@ public class Main implements Log.Callback {
 				if (clientPolicy.asyncMaxConnsPerNode < this.asyncMaxCommands) {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
-				IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+
+				IAerospikeClient client = useProxyClient?
+					new AerospikeClientProxy(clientPolicy, hosts) :
+					new AerospikeClient(clientPolicy, hosts);
 
 				try {
 					if (initialize) {

@@ -38,6 +38,9 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.async.NettyEventLoop;
+import com.aerospike.client.async.NettyEventLoops;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
@@ -50,14 +53,8 @@ import io.grpc.NameResolver;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.channel.ChannelOption;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
-import io.netty.channel.epoll.Epoll;
-import io.netty.channel.epoll.EpollEventLoopGroup;
-import io.netty.channel.epoll.EpollSocketChannel;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ClientAuth;
 import io.netty.handler.ssl.IdentityCipherSuiteFilter;
@@ -107,27 +104,33 @@ public class GrpcCallExecutor implements Closeable {
     private final ExecutorService executorService;
 
 
-    public GrpcCallExecutor(int maxConnections, int maxConcurrentStreams,
-                            int connectTimeout,
-                            AuthTokenManager tokenManager, TlsPolicy tlsPolicy,
-                            Host... hosts) {
+    public GrpcCallExecutor(ClientPolicy policy, AuthTokenManager tokenManager, Host... hosts) {
+        if (policy.eventLoops == null  || ! (policy.eventLoops instanceof NettyEventLoops)) {
+            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Netty eventLoops are required.");
+        }
+
         if (hosts == null || hosts.length < 1) {
             throw new AerospikeException(ResultCode.PARAMETER_ERROR,
                     "need at least one seed host");
         }
-        // TODO: Debugging use just on connection.
-        maxConnections = 1;
-        maxConcurrentStreams = 1;
 
-        this.channelExecutors = new GrpcChannelExecutor[maxConnections];
-        this.connectTimeout = connectTimeout;
+        NettyEventLoops eventLoops = (NettyEventLoops)policy.eventLoops;
+        NettyEventLoop[] eventLoopArray = eventLoops.getArray();
+        Class<? extends SocketChannel> channelClass = eventLoops.getSocketChannelClass();
+
+        this.channelExecutors = new GrpcChannelExecutor[eventLoopArray.length];
+        this.connectTimeout = policy.timeout;
+
+        // TODO: Restore back to 128
+        //int maxConcurrentStreams = 128;
+        int maxConcurrentStreams = 1;
 
         try {
             pokeExecutor =
                     Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("grpc-executor").build());
             executorService = createExecutorService();
-            for (int i = 0; i < maxConnections; i++) {
-                channelExecutors[i] = new GrpcChannelExecutor(createGrpcChannel(hosts, tlsPolicy),
+            for (int i = 0; i < channelExecutors.length; i++) {
+                channelExecutors[i] = new GrpcChannelExecutor(createGrpcChannel(eventLoopArray[i], channelClass, hosts, policy.tlsPolicy),
                         maxConcurrentStreams, callQueue, tokenManager);
             }
         } catch (Exception e) {
@@ -195,7 +198,7 @@ public class GrpcCallExecutor implements Closeable {
      * @return a nee gRPC channel
      */
     @SuppressWarnings("deprecation")
-    private ManagedChannel createGrpcChannel(Host[] hosts, TlsPolicy tlsPolicy) {
+    private ManagedChannel createGrpcChannel(NettyEventLoop eventLoop, Class<? extends SocketChannel> channelClass, Host[] hosts, TlsPolicy tlsPolicy) {
         NettyChannelBuilder builder;
 
         if (hosts.length == 1) {
@@ -213,21 +216,8 @@ public class GrpcCallExecutor implements Closeable {
             builder.defaultLoadBalancingPolicy("round_robin");
         }
 
-        EventLoopGroup workerGroup;
-        Class<? extends SocketChannel> channelClass;
-
-        //TODO: Disabling epoll until fat jar dependency issue in maven build
-        // can be resolved.
-        // Take thread count from configuration.
-        if (Epoll.isAvailable()) {
-            workerGroup = new EpollEventLoopGroup(128, executorService);
-            channelClass = EpollSocketChannel.class;
-        } else {
-            workerGroup = new NioEventLoopGroup(128, executorService);
-            channelClass = NioSocketChannel.class;
-        }
         builder
-                .eventLoopGroup(workerGroup)
+                .eventLoopGroup(eventLoop.get())
                 .perRpcBufferLimit(134217728L)
                 .channelType(channelClass)
                 .negotiationType(NegotiationType.PLAINTEXT)

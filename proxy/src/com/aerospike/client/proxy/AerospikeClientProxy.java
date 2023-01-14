@@ -159,9 +159,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
         try {
             GrpcChannelProvider channelProvider = new GrpcChannelProvider();
             this.authTokenManager = new AuthTokenManager(clientPolicy, channelProvider);
-            this.grpcCallExecutor =
-                    new GrpcCallExecutor(policy.maxConnsPerNode, 128,
-                            policy.timeout, authTokenManager, policy.tlsPolicy, hosts);
+            this.grpcCallExecutor = new GrpcCallExecutor(policy, authTokenManager, hosts);
             channelProvider.setCallExecutor(grpcCallExecutor);
             this.readPolicyDefault = policy.readPolicyDefault;
             this.writePolicyDefault = policy.writePolicyDefault;
