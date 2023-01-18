@@ -104,6 +104,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	public static String Version = getVersion();
 
+	private static String NotSupported = "Method not supported in proxy client: ";
+
 	//-------------------------------------------------------
 	// Member variables.
 	//-------------------------------------------------------
@@ -291,36 +293,27 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Node[] getNodes() {
-		notSupported("getNodes");
-		return null;
+		throw new AerospikeException(NotSupported + "getNodes");
 	}
 
 	@Override
 	public List<String> getNodeNames() {
-		notSupported("getNodeNames");
-		return null;
+		throw new AerospikeException(NotSupported + "getNodeNames");
 	}
 
 	@Override
 	public Node getNode(String nodeName) {
-		notSupported("getNode");
-		return null;
+		throw new AerospikeException(NotSupported + "getNode");
 	}
 
 	@Override
 	public ClusterStats getClusterStats() {
-		notSupported("getClusterStats");
-		return null;
+		throw new AerospikeException(NotSupported + "getClusterStats");
 	}
 
 	@Override
 	public Cluster getCluster() {
-		notSupported("getCluster");
-		return null;
-	}
-
-	private void notSupported(String name) {
-		throw new AerospikeException("Method not supported in proxy client: " + name);
+		throw new AerospikeException(NotSupported + "getCluster");
 	}
 
 	//-------------------------------------------------------
@@ -337,10 +330,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			}
 
 			@Override
-			public void onFailure(AerospikeException exception) {
-				System.out.println("ERROR");
-				System.out.println(exception);
-				future.completeExceptionally(exception);
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
 			}
 		};
 
@@ -349,12 +340,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		try {
 			future.get();
 		}
-		catch (ExecutionException e) {
-			throw new AerospikeException(e);
+		catch (ExecutionException ee) {
+			throw new AerospikeException(ee);
 		}
-		catch (InterruptedException e) {
+		catch (InterruptedException ie) {
 			Thread.currentThread().interrupt();
-			throw new AerospikeException(e);
+			throw new AerospikeException(ie);
 		}
 	}
 
@@ -367,129 +358,130 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		command.execute();
 	}
 
+	//-------------------------------------------------------
+	// String Operations
+	//-------------------------------------------------------
+
 	@Override
-	public void append(WritePolicy policy, Key key, Bin... bins)
-			throws AerospikeException {
+	public void append(WritePolicy policy, Key key, Bin... bins) {
 		// TODO: Are GRPC wrappers available for this methods?
 	}
 
 	@Override
-	public void append(EventLoop eventLoop, WriteListener listener,
-					   WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-
+	public void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
 	}
 
 	@Override
-	public void prepend(WritePolicy policy, Key key, Bin... bins)
-			throws AerospikeException {
-
+	public void prepend(WritePolicy policy, Key key, Bin... bins) {
 	}
 
 	@Override
-	public void prepend(EventLoop eventLoop, WriteListener listener,
-						WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
+	public void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
+	}
 
+	//-------------------------------------------------------
+	// Arithmetic Operations
+	//-------------------------------------------------------
+
+	@Override
+	public void add(WritePolicy policy, Key key, Bin... bins) {
 	}
 
 	@Override
-	public void add(WritePolicy policy, Key key, Bin... bins)
-			throws AerospikeException {
-
+	public void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
 	}
 
-	@Override
-	public void add(EventLoop eventLoop, WriteListener listener,
-					WritePolicy policy, Key key, Bin... bins) throws AerospikeException {
-
-	}
+	//-------------------------------------------------------
+	// Delete Operations
+	//-------------------------------------------------------
 
 	@Override
-	public boolean delete(WritePolicy policy, Key key)
-			throws AerospikeException {
+	public boolean delete(WritePolicy policy, Key key) {
 		return false;
 	}
 
 	@Override
-	public void delete(EventLoop eventLoop, DeleteListener listener,
-					   WritePolicy policy, Key key) throws AerospikeException {
-
+	public void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key) {
 	}
 
 	@Override
-	public BatchResults delete(BatchPolicy batchPolicy,
-							   BatchDeletePolicy deletePolicy, Key[] keys) throws AerospikeException {
+	public BatchResults delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys) {
 		return null;
 	}
 
 	@Override
-	public void delete(EventLoop eventLoop, BatchRecordArrayListener listener,
-					   BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
-			throws AerospikeException {
-
+	public void delete(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchDeletePolicy deletePolicy,
+		Key[] keys
+	) {
 	}
 
 	@Override
-	public void delete(EventLoop eventLoop,
-					   BatchRecordSequenceListener listener,
-					   BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys)
-			throws AerospikeException {
-
+	public void delete(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchDeletePolicy deletePolicy,
+		Key[] keys
+	) {
 	}
 
 	@Override
-	public void truncate(InfoPolicy policy, String ns, String set,
-						 Calendar beforeLastUpdate) throws AerospikeException {
+	public void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) {
+	}
 
+	//-------------------------------------------------------
+	// Touch Operations
+	//-------------------------------------------------------
+
+	@Override
+	public void touch(WritePolicy policy, Key key) {
 	}
 
 	@Override
-	public void touch(WritePolicy policy, Key key) throws AerospikeException {
-
+	public void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key) {
 	}
 
-	@Override
-	public void touch(EventLoop eventLoop, WriteListener listener,
-					  WritePolicy policy, Key key) throws AerospikeException {
-
-	}
+	//-------------------------------------------------------
+	// Existence-Check Operations
+	//-------------------------------------------------------
 
 	@Override
-	public boolean exists(Policy policy, Key key) throws AerospikeException {
+	public boolean exists(Policy policy, Key key) {
 		return false;
 	}
 
 	@Override
-	public void exists(EventLoop eventLoop, ExistsListener listener,
-					   Policy policy, Key key) throws AerospikeException {
-
+	public void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key) {
 	}
 
 	@Override
-	public boolean[] exists(BatchPolicy policy, Key[] keys)
-			throws AerospikeException {
+	public boolean[] exists(BatchPolicy policy, Key[] keys) {
 		return new boolean[0];
 	}
 
 	@Override
-	public void exists(EventLoop eventLoop, ExistsArrayListener listener,
-					   BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
 	@Override
-	public void exists(EventLoop eventLoop, ExistsSequenceListener listener,
-					   BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
+	//-------------------------------------------------------
+	// Read Record Operations
+	//-------------------------------------------------------
+
 	@Override
-	public Record get(Policy policy, Key key) throws AerospikeException {
+	public Record get(Policy policy, Key key) {
 		return get(policy, key, (String[]) null);
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordListener listener, Policy policy,
-					Key key) throws AerospikeException {
+	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) {
 		get(eventLoop, listener, policy, key, (String[]) null);
 	}
 
@@ -503,8 +495,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			}
 
 			@Override
-			public void onFailure(AerospikeException exception) {
-				future.completeExceptionally(exception);
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
 			}
 		};
 
@@ -523,509 +515,560 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordListener listener, Policy policy,
-					Key key, String... binNames) throws AerospikeException {
-		policy = policy != null ? policy : readPolicyDefault;
-		ReadCommandProxy readCommand = new ReadCommandProxy(grpcCallExecutor,
-				policy, key, binNames, listener);
+	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key, String... binNames) {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		ReadCommandProxy readCommand = new ReadCommandProxy(grpcCallExecutor, policy, key, binNames, listener);
 		readCommand.execute();
 	}
 
 	@Override
-	public Record getHeader(Policy policy, Key key) throws AerospikeException {
+	public Record getHeader(Policy policy, Key key) {
 		return null;
 	}
 
 	@Override
-	public void getHeader(EventLoop eventLoop, RecordListener listener,
-						  Policy policy, Key key) throws AerospikeException {
-
+	public void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) {
 	}
 
 	@Override
-	public boolean get(BatchPolicy policy, List<BatchRead> records)
-			throws AerospikeException {
+	public boolean get(BatchPolicy policy, List<BatchRead> records) {
 		return false;
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, BatchListListener listener,
-					BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
-
+	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records) {
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, BatchSequenceListener listener,
-					BatchPolicy policy, List<BatchRead> records) throws AerospikeException {
-
+	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) {
 	}
 
 	@Override
-	public Record[] get(BatchPolicy policy, Key[] keys)
-			throws AerospikeException {
+	public Record[] get(BatchPolicy policy, Key[] keys) {
 		return new Record[0];
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordArrayListener listener,
-					BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordSequenceListener listener,
-					BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
 	@Override
-	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames)
-			throws AerospikeException {
+	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames) {
 		return new Record[0];
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordArrayListener listener,
-					BatchPolicy policy, Key[] keys, String... binNames)
-			throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordSequenceListener listener,
-					BatchPolicy policy, Key[] keys, String... binNames)
-			throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
 	}
 
+	//-------------------------------------------------------
+	// Batch Read Operations
+	//-------------------------------------------------------
+
 	@Override
-	public Record[] get(BatchPolicy policy, Key[] keys, Operation... ops)
-			throws AerospikeException {
+	public Record[] get(BatchPolicy policy, Key[] keys, Operation... ops) {
 		return new Record[0];
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordArrayListener listener,
-					BatchPolicy policy, Key[] keys, Operation... ops)
-			throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
 	}
 
 	@Override
-	public void get(EventLoop eventLoop, RecordSequenceListener listener,
-					BatchPolicy policy, Key[] keys, Operation... ops)
-			throws AerospikeException {
-
+	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
 	}
 
 	@Override
-	public Record[] getHeader(BatchPolicy policy, Key[] keys)
-			throws AerospikeException {
+	public Record[] getHeader(BatchPolicy policy, Key[] keys) {
 		return new Record[0];
 	}
 
 	@Override
-	public void getHeader(EventLoop eventLoop, RecordArrayListener listener,
-						  BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
 	@Override
-	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener,
-						  BatchPolicy policy, Key[] keys) throws AerospikeException {
-
+	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
 	}
 
+	//-------------------------------------------------------
+	// Generic Database Operations
+	//-------------------------------------------------------
+
 	@Override
-	public Record operate(WritePolicy policy, Key key, Operation... operations)
-			throws AerospikeException {
+	public Record operate(WritePolicy policy, Key key, Operation... operations) {
 		return null;
 	}
 
 	@Override
-	public void operate(EventLoop eventLoop, RecordListener listener,
-						WritePolicy policy, Key key, Operation... operations)
-			throws AerospikeException {
-
+	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) {
 	}
 
+	//-------------------------------------------------------
+	// Batch Read/Write Operations
+	//-------------------------------------------------------
+
 	@Override
-	public boolean operate(BatchPolicy policy, List<BatchRecord> records)
-			throws AerospikeException {
+	public boolean operate(BatchPolicy policy, List<BatchRecord> records) {
 		return false;
 	}
 
 	@Override
-	public void operate(EventLoop eventLoop, BatchOperateListListener listener,
-						BatchPolicy policy, List<BatchRecord> records)
-			throws AerospikeException {
-
+	public void operate(
+		EventLoop eventLoop,
+		BatchOperateListListener listener,
+		BatchPolicy policy,
+		List<BatchRecord> records
+	) {
 	}
 
 	@Override
-	public void operate(EventLoop eventLoop,
-						BatchRecordSequenceListener listener,
-						BatchPolicy policy, List<BatchRecord> records)
-			throws AerospikeException {
-
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy policy,
+		List<BatchRecord> records
+	) {
 	}
 
 	@Override
-	public BatchResults operate(BatchPolicy batchPolicy,
-								BatchWritePolicy writePolicy, Key[] keys, Operation... ops)
-			throws AerospikeException {
+	public BatchResults operate(
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) {
 		return null;
 	}
 
 	@Override
-	public void operate(EventLoop eventLoop, BatchRecordArrayListener listener,
-						BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys,
-						Operation... ops) throws AerospikeException {
-
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) {
 	}
 
 	@Override
-	public void operate(EventLoop eventLoop,
-						BatchRecordSequenceListener listener,
-						BatchPolicy batchPolicy, BatchWritePolicy writePolicy, Key[] keys,
-						Operation... ops) throws AerospikeException {
+	public void operate(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchWritePolicy writePolicy,
+		Key[] keys,
+		Operation... ops
+	) {
+	}
 
+	//-------------------------------------------------------
+	// Scan Operations
+	//-------------------------------------------------------
+
+	@Override
+	public void scanAll(
+		ScanPolicy policy,
+		String namespace,
+		String setName,
+		ScanCallback callback,
+		String... binNames
+	) {
 	}
 
 	@Override
-	public void scanAll(ScanPolicy policy, String namespace, String setName,
-						ScanCallback callback, String... binNames) throws AerospikeException {
+	public void scanAll(
+		EventLoop eventLoop,
+		RecordSequenceListener listener,
+		ScanPolicy policy,
+		String namespace,
+		String setName,
+		String... binNames
+	) {
 	}
 
 	@Override
-	public void scanAll(EventLoop eventLoop, RecordSequenceListener listener,
-						ScanPolicy policy, String namespace, String setName, String... binNames)
-			throws AerospikeException {
-
+	public void scanNode(
+		ScanPolicy policy,
+		String nodeName,
+		String namespace,
+		String setName,
+		ScanCallback callback,
+		String... binNames
+	) {
 	}
 
 	@Override
-	public void scanNode(ScanPolicy policy, String nodeName, String namespace,
-						 String setName, ScanCallback callback, String... binNames)
-			throws AerospikeException {
-
+	public void scanNode(
+		ScanPolicy policy,
+		Node node,
+		String namespace,
+		String setName,
+		ScanCallback callback,
+		String... binNames
+	) {
 	}
 
 	@Override
-	public void scanNode(ScanPolicy policy, Node node, String namespace,
-						 String setName, ScanCallback callback, String... binNames)
-			throws AerospikeException {
-
+	public void scanPartitions(
+		ScanPolicy policy,
+		PartitionFilter partitionFilter,
+		String namespace,
+		String setName,
+		ScanCallback callback,
+		String... binNames
+	) {
 	}
 
 	@Override
-	public void scanPartitions(ScanPolicy policy,
-							   PartitionFilter partitionFilter,
-							   String namespace, String setName, ScanCallback callback,
-							   String... binNames) throws AerospikeException {
-
+	public void scanPartitions(
+		EventLoop eventLoop,
+		RecordSequenceListener listener,
+		ScanPolicy policy,
+		PartitionFilter partitionFilter,
+		String namespace,
+		String setName,
+		String... binNames
+	) {
 	}
 
-	@Override
-	public void scanPartitions(EventLoop eventLoop,
-							   RecordSequenceListener listener, ScanPolicy policy,
-							   PartitionFilter partitionFilter, String namespace, String setName,
-							   String... binNames) throws AerospikeException {
-
-	}
+	//---------------------------------------------------------------
+	// User defined functions
+	//---------------------------------------------------------------
 
 	@Override
-	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) throws AerospikeException {
+	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) {
 		return null;
 	}
 
 	@Override
-	public RegisterTask register(Policy policy, ClassLoader resourceLoader,
-								 String resourcePath, String serverPath, Language language)
-			throws AerospikeException {
+	public RegisterTask register(
+		Policy policy,
+		ClassLoader resourceLoader,
+		String resourcePath,
+		String serverPath,
+		Language language
+	) {
 		return null;
 	}
 
 	@Override
-	public RegisterTask registerUdfString(Policy policy, String code,
-										  String serverPath, Language language) throws AerospikeException {
+	public RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language) {
 		return null;
 	}
 
 	@Override
-	public void removeUdf(InfoPolicy policy, String serverPath)
-			throws AerospikeException {
-
+	public void removeUdf(InfoPolicy policy, String serverPath) {
 	}
 
 	@Override
-	public Object execute(WritePolicy policy, Key key, String packageName,
-						  String functionName, Value... args) throws AerospikeException {
+	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) {
 		return null;
 	}
 
 	@Override
-	public void execute(EventLoop eventLoop, ExecuteListener listener,
-						WritePolicy policy, Key key, String packageName, String functionName,
-						Value... functionArgs) throws AerospikeException {
-
+	public void execute(
+		EventLoop eventLoop,
+		ExecuteListener listener,
+		WritePolicy policy,
+		Key key,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 	}
 
 	@Override
-	public BatchResults execute(BatchPolicy batchPolicy,
-								BatchUDFPolicy udfPolicy,
-								Key[] keys, String packageName, String functionName,
-								Value... functionArgs) throws AerospikeException {
+	public BatchResults execute(
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 		return null;
 	}
 
 	@Override
-	public void execute(EventLoop eventLoop, BatchRecordArrayListener listener,
-						BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys,
-						String packageName, String functionName, Value... functionArgs)
-			throws AerospikeException {
-
+	public void execute(
+		EventLoop eventLoop,
+		BatchRecordArrayListener listener,
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 	}
 
 	@Override
-	public void execute(EventLoop eventLoop,
-						BatchRecordSequenceListener listener,
-						BatchPolicy batchPolicy, BatchUDFPolicy udfPolicy, Key[] keys,
-						String packageName, String functionName, Value... functionArgs)
-			throws AerospikeException {
-
+	public void execute(
+		EventLoop eventLoop,
+		BatchRecordSequenceListener listener,
+		BatchPolicy batchPolicy,
+		BatchUDFPolicy udfPolicy,
+		Key[] keys,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 	}
 
+	//----------------------------------------------------------
+	// Query/Execute
+	//----------------------------------------------------------
+
 	@Override
-	public ExecuteTask execute(WritePolicy policy, Statement statement,
-							   String packageName, String functionName, Value... functionArgs)
-			throws AerospikeException {
+	public ExecuteTask execute(
+		WritePolicy policy,
+		Statement statement,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 		return null;
 	}
 
 	@Override
-	public ExecuteTask execute(WritePolicy policy, Statement statement,
-							   Operation... operations) throws AerospikeException {
+	public ExecuteTask execute(WritePolicy policy, Statement statement, Operation... operations) {
+		return null;
+	}
+
+	//--------------------------------------------------------
+	// Query functions
+	//--------------------------------------------------------
+
+	@Override
+	public RecordSet query(QueryPolicy policy, Statement statement) {
 		return null;
 	}
 
 	@Override
-	public RecordSet query(QueryPolicy policy, Statement statement)
-			throws AerospikeException {
+	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) {
+	}
+
+	@Override
+	public void query(QueryPolicy policy, Statement statement, QueryListener listener) {
+	}
+
+	@Override
+	public void query(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter, QueryListener listener) {
+	}
+
+	@Override
+	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) {
 		return null;
 	}
 
 	@Override
-	public void query(EventLoop eventLoop, RecordSequenceListener listener,
-					  QueryPolicy policy, Statement statement) throws AerospikeException {
-
-	}
-
-	@Override
-	public void query(QueryPolicy policy, Statement statement,
-					  QueryListener listener) throws AerospikeException {
-
-	}
-
-	@Override
-	public void query(QueryPolicy policy, Statement statement,
-					  PartitionFilter partitionFilter, QueryListener listener)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public RecordSet queryNode(QueryPolicy policy, Statement statement,
-							   Node node)
-			throws AerospikeException {
+	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter) {
 		return null;
 	}
 
 	@Override
-	public RecordSet queryPartitions(QueryPolicy policy, Statement statement,
-									 PartitionFilter partitionFilter) throws AerospikeException {
+	public void queryPartitions(
+		EventLoop eventLoop,
+		RecordSequenceListener listener,
+		QueryPolicy policy,
+		Statement statement,
+		PartitionFilter partitionFilter
+	) {
+	}
+
+	@Override
+	public ResultSet queryAggregate(
+		QueryPolicy policy,
+		Statement statement,
+		String packageName,
+		String functionName,
+		Value... functionArgs
+	) {
 		return null;
 	}
 
 	@Override
-	public void queryPartitions(EventLoop eventLoop,
-								RecordSequenceListener listener, QueryPolicy policy,
-								Statement statement,
-								PartitionFilter partitionFilter) throws AerospikeException {
-
-	}
-
-	@Override
-	public ResultSet queryAggregate(QueryPolicy policy, Statement statement,
-									String packageName, String functionName, Value... functionArgs)
-			throws AerospikeException {
+	public ResultSet queryAggregate(QueryPolicy policy, Statement statement) {
 		return null;
 	}
 
 	@Override
-	public ResultSet queryAggregate(QueryPolicy policy, Statement statement)
-			throws AerospikeException {
+	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) {
+		return null;
+	}
+
+	//--------------------------------------------------------
+	// Secondary Index functions
+	//--------------------------------------------------------
+
+	@Override
+	public IndexTask createIndex(
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType
+	) {
 		return null;
 	}
 
 	@Override
-	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement,
-										Node node) throws AerospikeException {
+	public IndexTask createIndex(
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
+	) {
 		return null;
 	}
 
 	@Override
-	public IndexTask createIndex(Policy policy, String namespace,
-								 String setName,
-								 String indexName, String binName, IndexType indexType)
-			throws AerospikeException {
+	public void createIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName,
+		String binName,
+		IndexType indexType,
+		IndexCollectionType indexCollectionType,
+		CTX... ctx
+	) {
+	}
+
+	@Override
+	public IndexTask dropIndex(Policy policy, String namespace, String setName, String indexName) {
 		return null;
 	}
 
 	@Override
-	public IndexTask createIndex(Policy policy, String namespace,
-								 String setName,
-								 String indexName, String binName, IndexType indexType,
-								 IndexCollectionType indexCollectionType, CTX... ctx)
-			throws AerospikeException {
-		return null;
+	public void dropIndex(
+		EventLoop eventLoop,
+		IndexListener listener,
+		Policy policy,
+		String namespace,
+		String setName,
+		String indexName
+	) {
 	}
+
+	//-----------------------------------------------------------------
+	// Async Info functions (sync info functions located in Info class)
+	//-----------------------------------------------------------------
 
 	@Override
-	public void createIndex(EventLoop eventLoop, IndexListener listener,
-							Policy policy, String namespace, String setName, String indexName,
-							String binName, IndexType indexType,
-							IndexCollectionType indexCollectionType, CTX... ctx)
-			throws AerospikeException {
-
+	public void info(EventLoop eventLoop, InfoListener listener, InfoPolicy policy, Node node, String... commands) {
 	}
 
-	@Override
-	public IndexTask dropIndex(Policy policy, String namespace, String setName,
-							   String indexName) throws AerospikeException {
-		return null;
-	}
-
-	@Override
-	public void dropIndex(EventLoop eventLoop, IndexListener listener,
-						  Policy policy, String namespace, String setName, String indexName)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void info(EventLoop eventLoop, InfoListener listener,
-					 InfoPolicy policy, Node node, String... commands)
-			throws AerospikeException {
-
-	}
+	//-----------------------------------------------------------------
+	// XDR - Cross datacenter replication
+	//-----------------------------------------------------------------
 
 	@Override
 	public void setXDRFilter(InfoPolicy policy, String datacenter,
-							 String namespace, Expression filter) throws AerospikeException {
+							 String namespace, Expression filter) {
+
+	}
+
+	//-------------------------------------------------------
+	// User administration
+	//-------------------------------------------------------
+
+	@Override
+	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) {
+	}
+
+	@Override
+	public void dropUser(AdminPolicy policy, String user) {
+	}
+
+	@Override
+	public void changePassword(AdminPolicy policy, String user, String password) {
+	}
+
+	@Override
+	public void grantRoles(AdminPolicy policy, String user, List<String> roles) {
+	}
+
+	@Override
+	public void revokeRoles(AdminPolicy policy, String user, List<String> roles) {
+	}
+
+	@Override
+	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+	}
+
+	@Override
+	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist) {
+	}
+
+	@Override
+	public void createRole(
+		AdminPolicy policy,
+		String roleName,
+		List<Privilege> privileges,
+		List<String> whitelist,
+		int readQuota,
+		int writeQuota
+	) {
+	}
+
+	@Override
+	public void dropRole(AdminPolicy policy, String roleName) {
+	}
+
+	@Override
+	public void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+	}
+
+	@Override
+	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+	}
+
+	@Override
+	public void setWhitelist(AdminPolicy policy, String roleName, List<String> whitelist) {
+	}
+
+	@Override
+	public void setQuotas(AdminPolicy policy, String roleName, int readQuota, int writeQuota) {
 
 	}
 
 	@Override
-	public void createUser(AdminPolicy policy, String user, String password,
-						   List<String> roles) throws AerospikeException {
-
-	}
-
-	@Override
-	public void dropUser(AdminPolicy policy, String user)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void changePassword(AdminPolicy policy, String user, String password)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void grantRoles(AdminPolicy policy, String user, List<String> roles)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void revokeRoles(AdminPolicy policy, String user, List<String> roles)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void createRole(AdminPolicy policy, String roleName,
-						   List<Privilege> privileges) throws AerospikeException {
-
-	}
-
-	@Override
-	public void createRole(AdminPolicy policy, String roleName,
-						   List<Privilege> privileges, List<String> whitelist)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void createRole(AdminPolicy policy, String roleName,
-						   List<Privilege> privileges, List<String> whitelist, int readQuota,
-						   int writeQuota) throws AerospikeException {
-
-	}
-
-	@Override
-	public void dropRole(AdminPolicy policy, String roleName)
-			throws AerospikeException {
-
-	}
-
-	@Override
-	public void grantPrivileges(AdminPolicy policy, String roleName,
-								List<Privilege> privileges) throws AerospikeException {
-
-	}
-
-	@Override
-	public void revokePrivileges(AdminPolicy policy, String roleName,
-								 List<Privilege> privileges) throws AerospikeException {
-
-	}
-
-	@Override
-	public void setWhitelist(AdminPolicy policy, String roleName,
-							 List<String> whitelist) throws AerospikeException {
-
-	}
-
-	@Override
-	public void setQuotas(AdminPolicy policy, String roleName, int readQuota,
-						  int writeQuota) throws AerospikeException {
-
-	}
-
-	@Override
-	public User queryUser(AdminPolicy policy, String user)
-			throws AerospikeException {
+	public User queryUser(AdminPolicy policy, String user) {
 		return null;
 	}
 
 	@Override
-	public List<User> queryUsers(AdminPolicy policy) throws AerospikeException {
+	public List<User> queryUsers(AdminPolicy policy) {
 		return null;
 	}
 
 	@Override
-	public Role queryRole(AdminPolicy policy, String roleName)
-			throws AerospikeException {
+	public Role queryRole(AdminPolicy policy, String roleName) {
 		return null;
 	}
 
 	@Override
-	public List<Role> queryRoles(AdminPolicy policy) throws AerospikeException {
+	public List<Role> queryRoles(AdminPolicy policy) {
 		return null;
 	}
-
 }
