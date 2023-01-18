@@ -66,7 +66,7 @@ import io.netty.handler.ssl.SslContext;
 public class GrpcChannelPool implements Closeable {
 
     private static final String AEROSPIKE_CLIENT_USER_AGENT =
-            "AerospikeClientJava/" + AerospikeClientProxy.VERSION;
+            "AerospikeClientJava/" + AerospikeClientProxy.Version;
     private final int maxChannels;
     private final ManagedChannel[] channels;
 

@@ -38,6 +38,9 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.async.EventLoopType;
+import com.aerospike.client.async.EventLoops;
+import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoop;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
@@ -53,7 +56,11 @@ import io.grpc.NameResolver;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
 import io.netty.channel.ChannelOption;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.ClientAuth;
@@ -77,7 +84,7 @@ public class GrpcCallExecutor implements Closeable {
      */
     private static final long POKE_INTERVAL = 1;
     private static final String AEROSPIKE_CLIENT_USER_AGENT =
-            "AerospikeClientJava/" + AerospikeClientProxy.VERSION;
+            "AerospikeClientJava/" + AerospikeClientProxy.Version;
     /**
      * The call queue.
      */
@@ -105,18 +112,39 @@ public class GrpcCallExecutor implements Closeable {
 
 
     public GrpcCallExecutor(ClientPolicy policy, AuthTokenManager tokenManager, Host... hosts) {
-        if (policy.eventLoops == null  || ! (policy.eventLoops instanceof NettyEventLoops)) {
+    	EventLoops eventLoops = policy.eventLoops;
+
+    	if (eventLoops == null) {
+    		int cores = Runtime.getRuntime().availableProcessors();
+    		EventLoopGroup group;
+    		EventLoopType type;
+
+	        if (Epoll.isAvailable()) {
+	        	// TODO: What is the advantage of providing custom ExecutorService?
+	            //group = new EpollEventLoopGroup(cores, executorService);
+	            group = new EpollEventLoopGroup(cores);
+				type = EventLoopType.NETTY_EPOLL;
+	        }
+    		else {
+	            group = new NioEventLoopGroup(cores);
+				type = EventLoopType.NETTY_NIO;
+	        }
+
+	        EventPolicy eventPolicy = new EventPolicy();
+			eventLoops = new NettyEventLoops(eventPolicy, group, type);
+    	}
+    	else if (! (eventLoops instanceof NettyEventLoops)) {
             throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Netty eventLoops are required.");
-        }
+    	}
 
         if (hosts == null || hosts.length < 1) {
             throw new AerospikeException(ResultCode.PARAMETER_ERROR,
                     "need at least one seed host");
         }
 
-        NettyEventLoops eventLoops = (NettyEventLoops)policy.eventLoops;
-        NettyEventLoop[] eventLoopArray = eventLoops.getArray();
-        Class<? extends SocketChannel> channelClass = eventLoops.getSocketChannelClass();
+        NettyEventLoops nettyLoops = (NettyEventLoops)eventLoops;
+        Class<? extends SocketChannel> channelClass = nettyLoops.getSocketChannelClass();
+        NettyEventLoop[] eventLoopArray = nettyLoops.getArray();
 
         this.channelExecutors = new GrpcChannelExecutor[eventLoopArray.length];
         this.connectTimeout = policy.timeout;
@@ -133,7 +161,8 @@ public class GrpcCallExecutor implements Closeable {
                 channelExecutors[i] = new GrpcChannelExecutor(createGrpcChannel(eventLoopArray[i], channelClass, hosts, policy.tlsPolicy),
                         maxConcurrentStreams, callQueue, tokenManager);
             }
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             close();
             throw new AerospikeException(ResultCode.SERVER_ERROR, e);
         }

@@ -64,7 +64,8 @@
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
     <resources>
       <resource>
-        <directory>${project.basedir}/src/resources</directory>
+        <directory>resources</directory>
+        <filtering>true</filtering>
       </resource>
     </resources>
 
