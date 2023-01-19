@@ -206,8 +206,6 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	}
 
 	private static String getVersion() {
-		// TODO: Why need client version?  What happens when fail to retrieve version?
-		// Does proxy server require correct client version to work?
 		final Properties properties = new Properties();
 		String version = null;
 

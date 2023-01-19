@@ -110,11 +110,12 @@ public class GrpcCallExecutor implements Closeable {
      */
     private final ExecutorService executorService;
 
+    private final EventLoops eventLoops;
 
     public GrpcCallExecutor(ClientPolicy policy, AuthTokenManager tokenManager, Host... hosts) {
-    	EventLoops eventLoops = policy.eventLoops;
+    	EventLoops loops = policy.eventLoops;
 
-    	if (eventLoops == null) {
+    	if (loops == null) {
     		int cores = Runtime.getRuntime().availableProcessors();
     		EventLoopGroup group;
     		EventLoopType type;
@@ -131,10 +132,14 @@ public class GrpcCallExecutor implements Closeable {
 	        }
 
 	        EventPolicy eventPolicy = new EventPolicy();
-			eventLoops = new NettyEventLoops(eventPolicy, group, type);
+			this.eventLoops = loops = new NettyEventLoops(eventPolicy, group, type);
     	}
-    	else if (! (eventLoops instanceof NettyEventLoops)) {
-            throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Netty eventLoops are required.");
+    	else {
+    		this.eventLoops = null;
+
+    		if (! (loops instanceof NettyEventLoops)) {
+    			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Netty eventLoops are required.");
+    		}
     	}
 
         if (hosts == null || hosts.length < 1) {
@@ -142,7 +147,7 @@ public class GrpcCallExecutor implements Closeable {
                     "need at least one seed host");
         }
 
-        NettyEventLoops nettyLoops = (NettyEventLoops)eventLoops;
+        NettyEventLoops nettyLoops = (NettyEventLoops)loops;
         Class<? extends SocketChannel> channelClass = nettyLoops.getSocketChannelClass();
         NettyEventLoop[] eventLoopArray = nettyLoops.getArray();
 
@@ -298,13 +303,20 @@ public class GrpcCallExecutor implements Closeable {
         for (GrpcChannelExecutor channelExecutor : channelExecutors) {
             try {
                 channelExecutor.getChannel().shutdownNow();
-            } catch (Exception ignored) {
+            }
+            catch (Exception ignored) {
             }
         }
 
         try {
             executorService.shutdownNow();
-        } catch (Exception ignored) {
+        }
+        catch (Exception ignored) {
+        }
+
+        // Close eventLoops if they were created internally.
+        if (eventLoops != null) {
+        	eventLoops.close();
         }
     }
 
