@@ -2141,7 +2141,7 @@ public abstract class Command {
 		return isWrite && commandSentCounter > 1;
 	}
 
-	private static class OpResults extends ArrayList<Object> {
+	public static class OpResults extends ArrayList<Object> {
 		private static final long serialVersionUID = 1L;
 	}
 }

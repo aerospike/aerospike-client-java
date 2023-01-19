@@ -297,6 +297,7 @@ public class GrpcChannelExecutor {
                         streamedBytes += call.getRequestPayload().length;
                         // TODD pass iteration.
                         requestObserver.onNext(Kvs.AerospikeRequestPayload.newBuilder()
+                        		// TODO: Use ByteString.copyFrom(byte[], off, len);
                                 .setPayload(ByteString.copyFrom(call.getRequestPayload()))
                                 .setId(nextRequestID++).build());
                     }

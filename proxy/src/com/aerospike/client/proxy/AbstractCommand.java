@@ -16,11 +16,19 @@
  */
 package com.aerospike.client.proxy;
 
+import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
+import com.aerospike.proxy.client.KVSGrpc;
+import com.aerospike.proxy.client.Kvs;
+import com.google.protobuf.ByteString;
+
+import io.grpc.stub.StreamObserver;
 
 public abstract class AbstractCommand {
     /**
@@ -49,14 +57,14 @@ public abstract class AbstractCommand {
      */
     private long deadlineNanos;
 
-    public AbstractCommand(Policy policy) {
-        this.policy = policy;
-    }
+    final Serde serde;
+    private final GrpcCallExecutor grpcCallExecutor;
 
-    /**
-     * Send the request to the server.
-     */
-    abstract void sendRequest();
+    public AbstractCommand(GrpcCallExecutor grpcCallExecutor, Policy policy) {
+        this.policy = policy;
+        this.grpcCallExecutor = grpcCallExecutor;
+        this.serde = new Serde();
+    }
 
     /**
      * Subclasses should call this method on successful completion of
@@ -89,22 +97,26 @@ public abstract class AbstractCommand {
     abstract void allAttemptsFailed(AerospikeException exception);
 
     public void execute() {
-        //TODO: backoff based on in-flight command count.
         if (policy.totalTimeout > 0) {
-            deadlineNanos =
-                    System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+            deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
         }
-
         executeCommand();
     }
 
     private void executeCommand() {
         // TODO: accommodate Policy.sleepBetweenRetries here.
         // Keep trying inline if executeOnce fails.
+    	writePayload();
+
+    	// TODO: Use combination of variable length byte[] and length instead.
+    	ByteArrayOutputStream out = new ByteArrayOutputStream(serde.dataOffset);
+    	out.write(serde.dataBuffer, 0, serde.dataOffset);
+        byte[] payload = out.toByteArray();
+
         boolean success = false;
         while (!success && shouldRetry()) {
             try {
-                success = executeOnce();
+                success = executeOnce(payload);
             } catch (Throwable t) {
                 setException(t);
             }
@@ -117,6 +129,8 @@ public abstract class AbstractCommand {
         }
     }
 
+    abstract void writePayload();
+
     protected boolean isWrite() {
         return false;
     }
@@ -125,7 +139,7 @@ public abstract class AbstractCommand {
         commandSentCounter++;
     }
 
-    private boolean executeOnce() {
+    private boolean executeOnce(byte[] payload) {
         iteration++;
 
         // TODO: map stop conditions to the appropriate Exceptions.
@@ -134,9 +148,46 @@ public abstract class AbstractCommand {
             return false;
         }
 
-        sendRequest();
+        sendPayload(payload);
         return true;
     }
+
+    private void sendPayload(byte[] payload) {
+        grpcCallExecutor.enqueue(new GrpcStreamingUnaryCall(KVSGrpc.getGetStreamingMethod(),
+        	payload, policy.totalTimeout, new StreamObserver<Kvs.AerospikeResponsePayload>() {
+            @Override
+            public void onNext(Kvs.AerospikeResponsePayload value) {
+                try {
+                    receivePayload(value.getPayload());
+                }
+                catch (Throwable t) {
+                    onFailure(t);
+                }
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                onFailure(t);
+            }
+
+            @Override
+            public void onCompleted() {
+            }
+        }));
+
+        // TODO: this should be incremented only when the request has been
+        //  put on the wire?
+        incrementCommandSentCounter();
+    }
+
+	private void receivePayload(ByteString response) {
+		byte[] bytes = response.toByteArray();
+		Parser parser = new Parser(bytes);
+		parser.parseProto();
+		parseResult(parser);
+	}
+
+    abstract void parseResult(Parser parser);
 
     private boolean shouldRetry() {
         return iteration <= (policy.maxRetries + 1) && !shouldHaltOnException() &&

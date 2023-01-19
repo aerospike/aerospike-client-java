@@ -354,7 +354,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, policy, key, listener, bins);
+		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins);
 		command.execute();
 	}
 
@@ -519,17 +519,46 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommandProxy readCommand = new ReadCommandProxy(grpcCallExecutor, policy, key, binNames, listener);
-		readCommand.execute();
+		ReadCommandProxy command = new ReadCommandProxy(grpcCallExecutor, policy, key, binNames, listener);
+		command.execute();
 	}
 
 	@Override
 	public Record getHeader(Policy policy, Key key) {
-		return null;
+		CompletableFuture<Record> future = new CompletableFuture<>();
+		RecordListener listener = new RecordListener() {
+			@Override
+			public void onSuccess(Key key, Record record) {
+				future.complete(record);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+
+		getHeader(null, listener, policy, key);
+
+		try {
+			return future.get();
+		}
+		catch (ExecutionException e) {
+			throw new AerospikeException(e);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new AerospikeException(e);
+		}
 	}
 
 	@Override
 	public void getHeader(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(grpcCallExecutor, policy, key, listener);
+		command.execute();
 	}
 
 	@Override

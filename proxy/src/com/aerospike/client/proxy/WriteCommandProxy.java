@@ -16,124 +16,60 @@
  */
 package com.aerospike.client.proxy;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
-import com.aerospike.proxy.client.KVSGrpc;
-import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
-
-import io.grpc.stub.StreamObserver;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
 
 public class WriteCommandProxy extends AbstractCommand {
-    /**
-     * The gRPC channel pool.
-     */
-    private final GrpcCallExecutor grpcCallExecutor;
-    /**
-     * Key of the Aerospike record.
-     */
-    private final Key key;
-    /**
-     * The bins written to Aerospike.
-     */
-    private final Bin[] bins;
-    /**
-     * The listener to be invoked on command completion.
-     */
     private final WriteListener writeListener;
-
-    private final Serde serde;
-
-    /**
-     * The write policy to write the records.
-     */
     private final WritePolicy writePolicy;
-    /**
-     * The request payload, it is created lazily only once.
-     */
-    private byte[] requestPayload;
+    private final Key key;
+    private final Bin[] bins;
 
-
-    public WriteCommandProxy(GrpcCallExecutor grpcCallExecutor,
-                             WritePolicy writePolicy,
-                             Key key, WriteListener writeListener, Bin... bins) {
-        super(writePolicy);
-        this.writePolicy = writePolicy;
-        this.grpcCallExecutor = grpcCallExecutor;
-        this.key = key;
+    public WriteCommandProxy(
+    	GrpcCallExecutor grpcCallExecutor,
+    	WriteListener writeListener,
+    	WritePolicy writePolicy,
+    	Key key,
+    	Bin[] bins
+    ) {
+        super(grpcCallExecutor, writePolicy);
         this.writeListener = writeListener;
-        this.serde = new Serde();
+        this.writePolicy = writePolicy;
+        this.key = key;
         this.bins = bins;
     }
 
-    @Override
-    void sendRequest() {
-        // Create request payload once.
-        if (requestPayload == null) {
-            // TODO: Use a pool of byte arrays?
-            ByteArrayOutputStream out = new ByteArrayOutputStream(256);
-            try {
-                serde.writePutPayload(out, writePolicy, key, bins);
-                requestPayload = out.toByteArray();
-            } catch (IOException e) {
-                onFailure(e);
-                return;
-            }
-        }
+	@Override
+	void writePayload() {
+        serde.setWrite(writePolicy, Operation.Type.WRITE, key, bins);
+	}
 
-        grpcCallExecutor.enqueue(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
-                requestPayload, policy.totalTimeout, new StreamObserver<Kvs.AerospikeResponsePayload>() {
-            @Override
-            public void onNext(Kvs.AerospikeResponsePayload value) {
-                try {
-                    parseResponsePayload(value.getPayload());
-                } catch (Throwable t) {
-                    WriteCommandProxy.this.onFailure(t);
-                }
-            }
+	@Override
+	protected void parseResult(Parser parser) {
+		parser.validateHeaderSize();
 
-            @Override
-            public void onError(Throwable t) {
-                WriteCommandProxy.this.onFailure(t);
-            }
+		int resultCode = parser.parseResultCode();
 
-            @Override
-            public void onCompleted() {
-            }
-        }));
-
-        incrementCommandSentCounter();
-    }
-
-    private void parseResponsePayload(ByteString response) {
-        // TODO: Avoid conversions between ByteString, ByteArrays and ByteBuf.
-
-        byte[] payloadBytes = response.toByteArray();
-        ByteBuf payloadByteBuf = Unpooled.wrappedBuffer(payloadBytes);
-
-        serde.parseProtoHeader(payloadByteBuf);
-
-        // TODO: is write response never compressed?
-        Serde.ProtoMessageHeader header = serde.parseMessageHeader(payloadByteBuf);
-        if (header.resultCode == ResultCode.OK ||
-                (header.resultCode == ResultCode.FILTERED_OUT &&
-                        !writePolicy.failOnFilteredOut)) {
+		if (resultCode == 0) {
             writeListener.onSuccess(key);
-            return;
-        }
+			return;
+		}
 
-        throw new AerospikeException(header.resultCode);
+		if (resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(resultCode);
+			}
+            writeListener.onSuccess(key);
+			return;
+		}
+
+		throw new AerospikeException(resultCode);
     }
 
     @Override
