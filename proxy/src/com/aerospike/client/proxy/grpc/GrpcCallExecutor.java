@@ -154,9 +154,7 @@ public class GrpcCallExecutor implements Closeable {
         this.channelExecutors = new GrpcChannelExecutor[eventLoopArray.length];
         this.connectTimeout = policy.timeout;
 
-        // TODO: Restore back to 128
-        //int maxConcurrentStreams = 128;
-        int maxConcurrentStreams = 1;
+        int maxConcurrentStreams = 100;
 
         try {
             pokeExecutor =
