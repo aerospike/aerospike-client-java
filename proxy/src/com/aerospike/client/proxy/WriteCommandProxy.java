@@ -55,24 +55,23 @@ public final class WriteCommandProxy extends AbstractCommand {
 
 	@Override
 	protected void parseResult(Parser parser) {
-		parser.validateHeaderSize();
-
 		int resultCode = parser.parseResultCode();
 
-		if (resultCode == 0) {
-            listener.onSuccess(key);
-			return;
-		}
+		switch (resultCode) {
+			case ResultCode.OK:
+				break;
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			case ResultCode.FILTERED_OUT:
+				if (policy.failOnFilteredOut) {
+					throw new AerospikeException(resultCode);
+				}
+				break;
+
+			default:
 				throw new AerospikeException(resultCode);
-			}
-            listener.onSuccess(key);
-			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		listener.onSuccess(key);
     }
 
     @Override

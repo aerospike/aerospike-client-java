@@ -47,29 +47,30 @@ public final class DeleteCommandProxy extends AbstractCommand {
 
 	@Override
 	protected void parseResult(Parser parser) {
-		parser.validateHeaderSize();
-
 		int resultCode = parser.parseResultCode();
+		boolean existed;
 
-		if (resultCode == 0) {
-            listener.onSuccess(key, true);
-			return;
-		}
+		switch (resultCode) {
+			case ResultCode.OK:
+				existed = true;
+				break;
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-            listener.onSuccess(key, false);
-			return;
-		}
+			case ResultCode.KEY_NOT_FOUND_ERROR:
+				existed = false;
+				break;
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			case ResultCode.FILTERED_OUT:
+				if (policy.failOnFilteredOut) {
+					throw new AerospikeException(resultCode);
+				}
+				existed = true;
+				break;
+
+			default:
 				throw new AerospikeException(resultCode);
-			}
-            listener.onSuccess(key, true);
-			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		listener.onSuccess(key, existed);
     }
 
     @Override

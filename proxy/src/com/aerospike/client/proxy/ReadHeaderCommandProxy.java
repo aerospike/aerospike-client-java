@@ -25,13 +25,13 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
 public final class ReadHeaderCommandProxy extends AbstractCommand {
+    private final RecordListener listener;
     private final Key key;
-    private final RecordListener recordListener;
 
-    public ReadHeaderCommandProxy(GrpcCallExecutor grpcCallExecutor, Policy policy, Key key, RecordListener recordListener) {
+    public ReadHeaderCommandProxy(GrpcCallExecutor grpcCallExecutor, RecordListener listener, Policy policy, Key key) {
         super(grpcCallExecutor, policy);
+        this.listener = listener;
         this.key = key;
-        this.recordListener = recordListener;
     }
 
 	@Override
@@ -41,34 +41,32 @@ public final class ReadHeaderCommandProxy extends AbstractCommand {
 
 	@Override
 	protected void parseResult(Parser parser) {
-		parser.validateHeaderSize();
-
+		Record record = null;
 		int resultCode = parser.parseHeader();
 
-		if (resultCode == 0) {
-			Record record = new Record(null, parser.generation, parser.expiration);
-			recordListener.onSuccess(key, record);
-			return;
-		}
+		switch (resultCode) {
+			case ResultCode.OK:
+				record = new Record(null, parser.generation, parser.expiration);
+				break;
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			recordListener.onSuccess(key, null);
-			return;
-		}
+			case ResultCode.KEY_NOT_FOUND_ERROR:
+				break;
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			case ResultCode.FILTERED_OUT:
+				if (policy.failOnFilteredOut) {
+					throw new AerospikeException(resultCode);
+				}
+				break;
+
+			default:
 				throw new AerospikeException(resultCode);
-			}
-			recordListener.onSuccess(key, null);
-			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		listener.onSuccess(key, record);
 	}
 
     @Override
     void allAttemptsFailed(AerospikeException exception) {
-        recordListener.onFailure(exception);
+        listener.onFailure(exception);
     }
 }

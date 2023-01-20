@@ -530,7 +530,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(grpcCallExecutor, policy, key, listener);
+		ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(grpcCallExecutor, listener, policy, key);
 		command.execute();
 	}
 

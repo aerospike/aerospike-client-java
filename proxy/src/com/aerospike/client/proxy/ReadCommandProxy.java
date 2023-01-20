@@ -65,42 +65,42 @@ public class ReadCommandProxy extends AbstractCommand {
 
 	@Override
 	protected void parseResult(Parser parser) {
+		Record record = null;
 		int resultCode = parser.parseHeader();
 
-		if (resultCode == 0) {
-			if (parser.opCount == 0) {
-				// Bin data was not returned.
-				Record record = new Record(null, parser.generation, parser.expiration);
-				listener.onSuccess(key, record);
-				return;
-			}
-			parser.skipKey();
-			Record record = parser.parseRecord(isOperation);
-			listener.onSuccess(key, record);
-			return;
-		}
+		switch (resultCode) {
+			case ResultCode.OK:
+				if (parser.opCount == 0) {
+					// Bin data was not returned.
+					record = new Record(null, parser.generation, parser.expiration);
+				}
+				else {
+					parser.skipKey();
+					record = parser.parseRecord(isOperation);
+				}
+				break;
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			handleNotFound(resultCode);
-			return;
-		}
+			case ResultCode.KEY_NOT_FOUND_ERROR:
+				handleNotFound(resultCode);
+				break;
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
+			case ResultCode.FILTERED_OUT:
+				if (policy.failOnFilteredOut) {
+					throw new AerospikeException(resultCode);
+				}
+				break;
+
+			case ResultCode.UDF_BAD_RESPONSE:
+				parser.skipKey();
+				record = parser.parseRecord(isOperation);
+				handleUdfError(record, resultCode);
+				break;
+
+			default:
 				throw new AerospikeException(resultCode);
-			}
-			listener.onSuccess(key, null);
-			return;
 		}
 
-		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			parser.skipKey();
-			Record record = parser.parseRecord(isOperation);
-			handleUdfError(record, resultCode);
-			return;
-		}
-
-		throw new AerospikeException(resultCode);
+		listener.onSuccess(key, record);
     }
 
 	protected void handleNotFound(int resultCode) {

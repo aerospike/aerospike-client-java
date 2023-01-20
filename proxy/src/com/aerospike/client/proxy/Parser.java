@@ -159,10 +159,4 @@ public final class Parser {
 		}
 		return new Record(bins, generation, expiration);
 	}
-
-    public void validateHeaderSize() {
-    	if (buffer.length != Command.MSG_TOTAL_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive buffer length: " + buffer.length);
-    	}
-    }
 }
