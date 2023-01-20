@@ -24,7 +24,7 @@ import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public class ReadHeaderCommandProxy extends AbstractCommand {
+public final class ReadHeaderCommandProxy extends AbstractCommand {
     private final Key key;
     private final RecordListener recordListener;
 

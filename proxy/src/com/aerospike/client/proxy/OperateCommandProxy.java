@@ -14,36 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.async;
+package com.aerospike.client.proxy;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class AsyncOperate extends AsyncRead {
+public final class OperateCommandProxy extends ReadCommandProxy {
 	private final OperateArgs args;
 
-	public AsyncOperate(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
-		super(listener, args.writePolicy, key, args.getPartition(cluster, key), true);
+	public OperateCommandProxy(
+		GrpcCallExecutor grpcCallExecutor,
+		RecordListener listener,
+		Policy policy,
+		Key key,
+		OperateArgs args
+	) {
+		super(grpcCallExecutor, listener, policy, key, true);
 		this.args = args;
 	}
 
 	@Override
-	boolean isWrite() {
-		return args.hasWrite;
-	}
-
-	@Override
-	protected Node getNode(Cluster cluster) {
-		return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
-	}
-
-	@Override
-	protected void writeBuffer() {
-		setOperate(args.writePolicy, key, args);
+	void writePayload() {
+        serde.setOperate(args.writePolicy, key, args);
 	}
 
 	@Override
@@ -53,16 +49,5 @@ public final class AsyncOperate extends AsyncRead {
 		if (args.hasWrite) {
 			throw new AerospikeException(resultCode);
 		}
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		if (args.hasWrite) {
-			partition.prepareRetryWrite(timeout);
-		}
-		else {
-			partition.prepareRetryRead(timeout);
-		}
-		return true;
 	}
 }

@@ -17,40 +17,32 @@
 package com.aerospike.client.proxy;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class WriteCommandProxy extends AbstractCommand {
-    private final WriteListener listener;
+public final class DeleteCommandProxy extends AbstractCommand {
+    private final DeleteListener listener;
     private final WritePolicy writePolicy;
     private final Key key;
-    private final Bin[] bins;
-    private final Operation.Type type;
 
-    public WriteCommandProxy(
+    public DeleteCommandProxy(
     	GrpcCallExecutor grpcCallExecutor,
-    	WriteListener listener,
+    	DeleteListener listener,
     	WritePolicy writePolicy,
-    	Key key,
-    	Bin[] bins,
-    	Operation.Type type
+    	Key key
     ) {
         super(grpcCallExecutor, writePolicy);
         this.listener = listener;
         this.writePolicy = writePolicy;
         this.key = key;
-        this.bins = bins;
-        this.type = type;
     }
 
 	@Override
 	void writePayload() {
-        serde.setWrite(writePolicy, type, key, bins);
+        serde.setDelete(writePolicy, key);
 	}
 
 	@Override
@@ -60,7 +52,12 @@ public final class WriteCommandProxy extends AbstractCommand {
 		int resultCode = parser.parseResultCode();
 
 		if (resultCode == 0) {
-            listener.onSuccess(key);
+            listener.onSuccess(key, true);
+			return;
+		}
+
+		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+            listener.onSuccess(key, false);
 			return;
 		}
 
@@ -68,7 +65,7 @@ public final class WriteCommandProxy extends AbstractCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
-            listener.onSuccess(key);
+            listener.onSuccess(key, true);
 			return;
 		}
 

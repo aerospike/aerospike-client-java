@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1806,7 +1806,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
-		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
 		OperateCommand command = new OperateCommand(cluster, key, args);
 		command.execute();
 		return command.getRecord();
@@ -1838,8 +1838,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-		AsyncOperate command = new AsyncOperate(listener, key, args);
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		AsyncOperate command = new AsyncOperate(cluster, listener, key, args);
 		eventLoop.execute(cluster, command);
 	}
 

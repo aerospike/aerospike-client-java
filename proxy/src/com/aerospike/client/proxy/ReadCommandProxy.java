@@ -25,17 +25,37 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
 public class ReadCommandProxy extends AbstractCommand {
-	private final Key key;
-	private final RecordListener recordListener;
+	private final RecordListener listener;
+	final Key key;
 	private final String[] binNames;
 	private final boolean isOperation;
 
-	public ReadCommandProxy(GrpcCallExecutor grpcCallExecutor, Policy policy, Key key, String[] binNames, RecordListener recordListener) {
+	public ReadCommandProxy(
+		GrpcCallExecutor grpcCallExecutor,
+		RecordListener listener,
+		Policy policy,
+		Key key,
+		String[] binNames
+	) {
 		super(grpcCallExecutor, policy);
+		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
-		this.recordListener = recordListener;
 		this.isOperation = false;
+	}
+
+	public ReadCommandProxy(
+		GrpcCallExecutor grpcCallExecutor,
+		RecordListener listener,
+		Policy policy,
+		Key key,
+		boolean isOperation
+	) {
+		super(grpcCallExecutor, policy);
+		this.listener = listener;
+		this.key = key;
+		this.binNames = null;
+		this.isOperation = isOperation;
 	}
 
 	@Override
@@ -51,12 +71,12 @@ public class ReadCommandProxy extends AbstractCommand {
 			if (parser.opCount == 0) {
 				// Bin data was not returned.
 				Record record = new Record(null, parser.generation, parser.expiration);
-				recordListener.onSuccess(key, record);
+				listener.onSuccess(key, record);
 				return;
 			}
 			parser.skipKey();
 			Record record = parser.parseRecord(isOperation);
-			recordListener.onSuccess(key, record);
+			listener.onSuccess(key, record);
 			return;
 		}
 
@@ -69,7 +89,7 @@ public class ReadCommandProxy extends AbstractCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(resultCode);
 			}
-			recordListener.onSuccess(key, null);
+			listener.onSuccess(key, null);
 			return;
 		}
 
@@ -112,6 +132,6 @@ public class ReadCommandProxy extends AbstractCommand {
 
 	@Override
     void allAttemptsFailed(AerospikeException exception) {
-        recordListener.onFailure(exception);
+        listener.onFailure(exception);
     }
 }

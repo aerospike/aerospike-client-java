@@ -46,6 +46,7 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -320,31 +321,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void put(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<>();
-		WriteListener listener = new WriteListener() {
-			@Override
-			public void onSuccess(Key key) {
-				future.complete(null);
-			}
-
-			@Override
-			public void onFailure(AerospikeException ae) {
-				future.completeExceptionally(ae);
-			}
-		};
-
+		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		WriteListener listener = prepareWriteListener(future);
 		put(null, listener, policy, key, bins);
-
-		try {
-			future.get();
-		}
-		catch (ExecutionException ee) {
-			throw new AerospikeException(ee);
-		}
-		catch (InterruptedException ie) {
-			Thread.currentThread().interrupt();
-			throw new AerospikeException(ie);
-		}
+		getFuture(future);
 	}
 
 	@Override
@@ -352,7 +332,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins);
+		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}
 
@@ -362,19 +342,36 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void append(WritePolicy policy, Key key, Bin... bins) {
-		// TODO: Are GRPC wrappers available for this methods?
+		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		WriteListener listener = prepareWriteListener(future);
+		append(null, listener, policy, key, bins);
+		getFuture(future);
 	}
 
 	@Override
 	public void append(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.APPEND);
+		command.execute();
 	}
 
 	@Override
 	public void prepend(WritePolicy policy, Key key, Bin... bins) {
+		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		WriteListener listener = prepareWriteListener(future);
+		prepend(null, listener, policy, key, bins);
+		getFuture(future);
 	}
 
 	@Override
 	public void prepend(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.PREPEND);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -383,10 +380,19 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void add(WritePolicy policy, Key key, Bin... bins) {
+		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		WriteListener listener = prepareWriteListener(future);
+		add(null, listener, policy, key, bins);
+		getFuture(future);
 	}
 
 	@Override
 	public void add(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key, Bin... bins) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.ADD);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -395,16 +401,24 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean delete(WritePolicy policy, Key key) {
-		return false;
+		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		DeleteListener listener = prepareDeleteListener(future);
+		delete(null, listener, policy, key);
+		return getFuture(future);
 	}
 
 	@Override
 	public void delete(EventLoop eventLoop, DeleteListener listener, WritePolicy policy, Key key) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		DeleteCommandProxy command = new DeleteCommandProxy(grpcCallExecutor, listener, policy, key);
+		command.execute();
 	}
 
 	@Override
 	public BatchResults delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys) {
-		return null;
+		throw new AerospikeException(NotSupported + "batch delete");
 	}
 
 	@Override
@@ -415,6 +429,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchDeletePolicy deletePolicy,
 		Key[] keys
 	) {
+		throw new AerospikeException(NotSupported + "batch delete");
 	}
 
 	@Override
@@ -425,10 +440,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchDeletePolicy deletePolicy,
 		Key[] keys
 	) {
+		throw new AerospikeException(NotSupported + "batch delete");
 	}
 
 	@Override
 	public void truncate(InfoPolicy policy, String ns, String set, Calendar beforeLastUpdate) {
+		throw new AerospikeException(NotSupported + "truncate");
 	}
 
 	//-------------------------------------------------------
@@ -486,30 +503,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	@Override
 	public Record get(Policy policy, Key key, String... binNames) {
 		CompletableFuture<Record> future = new CompletableFuture<>();
-		RecordListener listener = new RecordListener() {
-			@Override
-			public void onSuccess(Key key, Record record) {
-				future.complete(record);
-			}
-
-			@Override
-			public void onFailure(AerospikeException ae) {
-				future.completeExceptionally(ae);
-			}
-		};
-
+		RecordListener listener = prepareRecordListener(future);
 		get(null, listener, policy, key, binNames);
-
-		try {
-			return future.get();
-		}
-		catch (ExecutionException e) {
-			throw new AerospikeException(e);
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new AerospikeException(e);
-		}
+		return getFuture(future);
 	}
 
 	@Override
@@ -517,37 +513,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommandProxy command = new ReadCommandProxy(grpcCallExecutor, policy, key, binNames, listener);
+		ReadCommandProxy command = new ReadCommandProxy(grpcCallExecutor, listener, policy, key, binNames);
 		command.execute();
 	}
 
 	@Override
 	public Record getHeader(Policy policy, Key key) {
 		CompletableFuture<Record> future = new CompletableFuture<>();
-		RecordListener listener = new RecordListener() {
-			@Override
-			public void onSuccess(Key key, Record record) {
-				future.complete(record);
-			}
-
-			@Override
-			public void onFailure(AerospikeException ae) {
-				future.completeExceptionally(ae);
-			}
-		};
-
+		RecordListener listener = prepareRecordListener(future);
 		getHeader(null, listener, policy, key);
-
-		try {
-			return future.get();
-		}
-		catch (ExecutionException e) {
-			throw new AerospikeException(e);
-		}
-		catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			throw new AerospikeException(e);
-		}
+		return getFuture(future);
 	}
 
 	@Override
@@ -634,11 +609,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record operate(WritePolicy policy, Key key, Operation... operations) {
-		return null;
+		CompletableFuture<Record> future = new CompletableFuture<>();
+		RecordListener listener = prepareRecordListener(future);
+		operate(null, listener, policy, key, operations);
+		return getFuture(future);
 	}
 
 	@Override
 	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) {
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateCommandProxy command = new OperateCommandProxy(grpcCallExecutor, listener, policy, key, args);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -1097,5 +1078,64 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	@Override
 	public List<Role> queryRoles(AdminPolicy policy) {
 		return null;
+	}
+
+	//-------------------------------------------------------
+	// Internal Methods
+	//-------------------------------------------------------
+
+	private static WriteListener prepareWriteListener(final CompletableFuture<Void> future) {
+		return new WriteListener() {
+			@Override
+			public void onSuccess(Key key) {
+				future.complete(null);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static DeleteListener prepareDeleteListener(final CompletableFuture<Boolean> future) {
+		return new DeleteListener() {
+			@Override
+			public void onSuccess(Key key, boolean existed) {
+				future.complete(existed);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static RecordListener prepareRecordListener(final CompletableFuture<Record> future) {
+		return new RecordListener() {
+			@Override
+			public void onSuccess(Key key, Record record) {
+				future.complete(record);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static <T> T getFuture(final CompletableFuture<T> future) {
+		try {
+			return future.get();
+		}
+		catch (ExecutionException e) {
+			throw new AerospikeException(e);
+		}
+		catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new AerospikeException(e);
+		}
 	}
 }
