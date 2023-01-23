@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,12 +20,14 @@ import static java.util.Collections.singletonList;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
@@ -135,7 +137,9 @@ public class TestOperateMap extends TestSync {
 			MapOperation.putItems(updateMode, binName, replaceMap),
 			MapOperation.getByKey(binName, Value.get(1), MapReturnType.VALUE),
 			MapOperation.getByKey(binName, Value.get(-8734), MapReturnType.VALUE),
-			MapOperation.getByKeyRange(binName, Value.get(12), Value.get(15), MapReturnType.KEY_VALUE)
+			MapOperation.getByKeyRange(binName, Value.get(12), Value.get(15), MapReturnType.KEY_VALUE),
+			MapOperation.getByKeyRange(binName, Value.get(12), Value.get(15), MapReturnType.UNORDERED_MAP),
+			MapOperation.getByKeyRange(binName, Value.get(12), Value.get(15), MapReturnType.ORDERED_MAP)
 			);
 
 		assertRecordFound(key, record);
@@ -164,6 +168,14 @@ public class TestOperateMap extends TestSync {
 
 		List<?> list = (List<?>)results.get(i++);
 		assertEquals(2, list.size());
+
+		Map<?,?> map = (Map<?,?>)results.get(i++);
+		assertEquals(2, map.size());
+		assertTrue(map instanceof HashMap);
+
+		map = (Map<?,?>)results.get(i++);
+		assertEquals(2, map.size());
+		assertTrue(map instanceof TreeMap);
 	}
 
 	@Test
