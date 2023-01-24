@@ -454,10 +454,19 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void touch(WritePolicy policy, Key key) {
+		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		WriteListener listener = prepareWriteListener(future);
+		touch(null, listener, policy, key);
+		getFuture(future);
 	}
 
 	@Override
 	public void touch(EventLoop eventLoop, WriteListener listener, WritePolicy policy, Key key) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		TouchCommandProxy command = new TouchCommandProxy(grpcCallExecutor, listener, policy, key);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -466,24 +475,34 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean exists(Policy policy, Key key) {
-		return false;
+		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		ExistsListener listener = prepareExistsListener(future);
+		exists(null, listener, policy, key);
+		return getFuture(future);
 	}
 
 	@Override
 	public void exists(EventLoop eventLoop, ExistsListener listener, Policy policy, Key key) {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+		ExistsCommandProxy command = new ExistsCommandProxy(grpcCallExecutor, listener, policy, key);
+		command.execute();
 	}
 
 	@Override
 	public boolean[] exists(BatchPolicy policy, Key[] keys) {
-		return new boolean[0];
+		throw new AerospikeException(NotSupported + "batch exists");
 	}
 
 	@Override
 	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch exists");
 	}
 
 	@Override
 	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch exists");
 	}
 
 	//-------------------------------------------------------
@@ -536,41 +555,47 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean get(BatchPolicy policy, List<BatchRead> records) {
-		return false;
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys) {
-		return new Record[0];
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames) {
-		return new Record[0];
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	//-------------------------------------------------------
@@ -579,28 +604,32 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys, Operation... ops) {
-		return new Record[0];
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public Record[] getHeader(BatchPolicy policy, Key[] keys) {
-		return new Record[0];
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	@Override
 	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
+		throw new AerospikeException(NotSupported + "batch get");
 	}
 
 	//-------------------------------------------------------
@@ -628,7 +657,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean operate(BatchPolicy policy, List<BatchRecord> records) {
-		return false;
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
@@ -638,6 +667,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchPolicy policy,
 		List<BatchRecord> records
 	) {
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
@@ -647,6 +677,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchPolicy policy,
 		List<BatchRecord> records
 	) {
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
@@ -656,7 +687,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Key[] keys,
 		Operation... ops
 	) {
-		return null;
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
@@ -668,6 +699,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Key[] keys,
 		Operation... ops
 	) {
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
@@ -679,6 +711,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Key[] keys,
 		Operation... ops
 	) {
+		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	//-------------------------------------------------------
@@ -1117,6 +1150,20 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			@Override
 			public void onSuccess(Key key, Record record) {
 				future.complete(record);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static ExistsListener prepareExistsListener(final CompletableFuture<Boolean> future) {
+		return new ExistsListener() {
+			@Override
+			public void onSuccess(Key key, boolean exists) {
+				future.complete(exists);
 			}
 
 			@Override
