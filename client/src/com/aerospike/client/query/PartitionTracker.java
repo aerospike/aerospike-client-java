@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -387,22 +387,30 @@ public final class PartitionTracker {
 
 		// Check if limits have been reached.
 		if (iteration > policy.maxRetries) {
-			StringBuilder sb = new StringBuilder(2048);
-			sb.append("Max retries exceeded: ");
-			sb.append(policy.maxRetries);
-			sb.append(System.lineSeparator());
-
-			if (exceptions != null) {
-				sb.append("sub-exceptions:");
-				sb.append(System.lineSeparator());
-
-				for (AerospikeException ae : exceptions) {
-					sb.append(ae.getMessage());
-					sb.append(System.lineSeparator());
-				}
+			if (exceptions == null || exceptions.size() <= 0) {
+				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED);
+				ae.setPolicy(policy);
+				ae.setIteration(iteration);
+				throw ae;
 			}
 
-			AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED, sb.toString());
+			// Use last sub-error code received.
+			AerospikeException last = exceptions.get(exceptions.size() - 1);
+
+			// Include all sub-errors in error message.
+			StringBuilder sb = new StringBuilder(2048);
+			sb.append(last.getBaseMessage());
+			sb.append(System.lineSeparator());
+			sb.append("sub-exceptions:");
+			sb.append(System.lineSeparator());
+
+			for (AerospikeException ae : exceptions) {
+				sb.append(ae.getMessage());
+				sb.append(System.lineSeparator());
+			}
+
+			AerospikeException ae = new AerospikeException(last.getResultCode(), sb.toString());
+			ae.setNode(last.getNode());
 			ae.setPolicy(policy);
 			ae.setIteration(iteration);
 			throw ae;
