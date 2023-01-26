@@ -65,6 +65,11 @@ public class ReadCommandProxy extends AbstractCommand {
 
 	@Override
 	protected void parseResult(Parser parser) {
+		Record record = parseRecordResult(parser);
+		listener.onSuccess(key, record);
+    }
+
+	protected final Record parseRecordResult(Parser parser) {
 		Record record = null;
 		int resultCode = parser.parseHeader();
 
@@ -100,8 +105,8 @@ public class ReadCommandProxy extends AbstractCommand {
 				throw new AerospikeException(resultCode);
 		}
 
-		listener.onSuccess(key, record);
-    }
+		return record;
+	}
 
 	protected void handleNotFound(int resultCode) {
 		// Do nothing in default case. Record will be null.

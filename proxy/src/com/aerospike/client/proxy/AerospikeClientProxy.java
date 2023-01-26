@@ -790,7 +790,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RegisterTask register(Policy policy, String clientPath, String serverPath, Language language) {
-		return null;
+		throw new AerospikeException(NotSupported + "register");
 	}
 
 	@Override
@@ -801,21 +801,25 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String serverPath,
 		Language language
 	) {
-		return null;
+		throw new AerospikeException(NotSupported + "register");
 	}
 
 	@Override
 	public RegisterTask registerUdfString(Policy policy, String code, String serverPath, Language language) {
-		return null;
+		throw new AerospikeException(NotSupported + "registerUdfString");
 	}
 
 	@Override
 	public void removeUdf(InfoPolicy policy, String serverPath) {
+		throw new AerospikeException(NotSupported + "removeUdf");
 	}
 
 	@Override
 	public Object execute(WritePolicy policy, Key key, String packageName, String functionName, Value... args) {
-		return null;
+		CompletableFuture<Object> future = new CompletableFuture<>();
+		ExecuteListener listener = prepareExecuteListener(future);
+		execute(null, listener, policy, key, packageName, functionName, args);
+		return getFuture(future);
 	}
 
 	@Override
@@ -828,6 +832,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+		ExecuteCommandProxy command = new ExecuteCommandProxy(grpcCallExecutor, listener, policy, key,
+			packageName, functionName, functionArgs);
+		command.execute();
 	}
 
 	@Override
@@ -839,7 +849,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		return null;
+		throw new AerospikeException(NotSupported + "batch execute");
 	}
 
 	@Override
@@ -853,6 +863,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
+		throw new AerospikeException(NotSupported + "batch execute");
 	}
 
 	@Override
@@ -866,6 +877,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
+		throw new AerospikeException(NotSupported + "batch execute");
 	}
 
 	//----------------------------------------------------------
@@ -1164,6 +1176,20 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			@Override
 			public void onSuccess(Key key, boolean exists) {
 				future.complete(exists);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static ExecuteListener prepareExecuteListener(final CompletableFuture<Object> future) {
+		return new ExecuteListener() {
+			@Override
+			public void onSuccess(Key key, Object obj) {
+				future.complete(obj);
 			}
 
 			@Override
