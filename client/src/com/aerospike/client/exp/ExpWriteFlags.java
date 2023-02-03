@@ -17,7 +17,9 @@
 package com.aerospike.client.exp;
 
 /**
- * Expression write flags.
+ * Expression write flags. 
+ * To combine flags, use BITWISE OR. 
+ * e.g. ExpWriteFlags.CREATE_ONLY | ExpWriteFlags.POLICY_NO_FAIL
  */
 public final class ExpWriteFlags {
 	/**
