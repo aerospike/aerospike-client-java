@@ -18,6 +18,8 @@ package com.aerospike.client.operation;
 
 /**
  * HyperLogLog operation policy write flags.
+ * Use BITWISE OR to combine flags.
+ * e.g. HLLWriteFlags.CREATE_ONLY | HLLWriteFlags.NO_FAIL
  */
 public final class HLLWriteFlags {
 	/**
