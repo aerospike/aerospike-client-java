@@ -18,6 +18,8 @@ package com.aerospike.client.query;
 
 /**
  * Regex bit flags.
+ * Use BITWISE OR to combine flags.
+ * e.g. RegexFlag.ICASE| RegexFlag.NEWLINE
  */
 public final class RegexFlag {
 	/**
