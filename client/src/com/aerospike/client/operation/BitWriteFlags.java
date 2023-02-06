@@ -18,6 +18,8 @@ package com.aerospike.client.operation;
 
 /**
  * Bitwise operation policy write flags.
+ * Use BITWISE OR to combine flags.
+ * e.g. BitWriteFlags.NO_FAIL | BitWriteFlags.PARTIAL
  */
 public final class BitWriteFlags {
 	/**
