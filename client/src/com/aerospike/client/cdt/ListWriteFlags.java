@@ -18,6 +18,8 @@ package com.aerospike.client.cdt;
 
 /**
  * List write bit flags.
+ * Use BITWISE OR to combine flags.
+ * e.g. ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL
  */
 public final class ListWriteFlags {
 	/**
