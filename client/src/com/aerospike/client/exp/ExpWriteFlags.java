@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,9 +17,11 @@
 package com.aerospike.client.exp;
 
 /**
- * Expression write flags. 
- * Use BITWISE OR to combine flags.
- * e.g. ExpWriteFlags.CREATE_ONLY | ExpWriteFlags.POLICY_NO_FAIL
+ * Expression write bit flags. Use BITWISE OR to combine flags. Example:
+ * 
+ * <pre>{@code 
+ * int flags = ExpWriteFlags.CREATE_ONLY | ExpWriteFlags.POLICY_NO_FAIL;
+ * }</pre>
  */
 public final class ExpWriteFlags {
 	/**
