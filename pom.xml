@@ -39,13 +39,15 @@
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
-    <netty.version>4.1.77.Final</netty.version>
+    <grpc.version>1.52.1</grpc.version>
+    <netty.version>4.1.86.Final</netty.version>
+    <netty.tcnative.version>2.0.54.Final</netty.tcnative.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.5.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
-    <connect.maven.url>http://192.168.200.205:8008/repository/snapshots</connect.maven.url>
-    <connect.maven.releases.url>http://192.168.200.205:8008/repository/internal</connect.maven.releases.url>
+    <oss.sonatype.url>https://oss.sonatype.org/content/repositories/snapshots</oss.sonatype.url>
+    <github.packages.url>https://maven.pkg.github.com/citrusleaf/aerospike-proxy-client-java</github.packages.url>
   </properties>
 
   <dependencyManagement>
@@ -108,6 +110,12 @@
       </dependency>
 
       <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-tcnative-boringssl-static</artifactId>
+        <version>${netty.tcnative.version}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.luaj</groupId>
         <artifactId>luaj-jse</artifactId>
         <version>${luaj-jse.version}</version>
@@ -161,20 +169,23 @@
 
   <repositories>
     <repository>
-      <id>connect-maven</id>
-      <url>${connect.maven.url}</url>
-    </repository>
-
-    <repository>
-      <id>connect-maven-releases</id>
-      <url>${connect.maven.releases.url}</url>
+      <id>oss-sonatype</id>
+      <url>${oss.sonatype.url}</url>
     </repository>
   </repositories>
 
   <distributionManagement>
+    <!-- For now releases are in github packages -->
     <repository>
-      <id>connect-maven</id>
-      <url>${connect.maven.url}</url>
+      <id>github-packages</id>
+      <url>${github.packages.url}</url>
     </repository>
+
+    <!-- For now snapshots are in maven central snapshots -->
+    <snapshotRepository>
+      <id>oss-sonatype</id>
+      <url>${oss.sonatype.url}</url>
+    </snapshotRepository>
   </distributionManagement>
+
 </project>
