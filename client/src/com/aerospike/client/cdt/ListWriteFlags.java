@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,11 @@
 package com.aerospike.client.cdt;
 
 /**
- * List write bit flags.
+ * List write bit flags. Use BITWISE OR to combine flags. Example:
+ * 
+ * <pre>{@code 
+ * int flags = ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL;
+ * }</pre>
  */
 public final class ListWriteFlags {
 	/**
