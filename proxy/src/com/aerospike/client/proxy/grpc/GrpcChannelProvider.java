@@ -24,11 +24,11 @@ public class GrpcChannelProvider {
     /**
      * @return a managed channel if available else null.
      */
-    public ManagedChannel getChannel() {
+    public ManagedChannel getControlChannel() {
         if (callExecutor == null) {
             return null;
         }
-        return callExecutor.getChannel();
+        return callExecutor.getControlChannel();
     }
 
     public void setCallExecutor(GrpcCallExecutor callExecutor) {

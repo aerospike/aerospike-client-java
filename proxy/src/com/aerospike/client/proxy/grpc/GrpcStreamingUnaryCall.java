@@ -16,7 +16,9 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import com.aerospike.client.AerospikeException;
+import java.util.concurrent.TimeUnit;
+
+import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
 
 import io.grpc.MethodDescriptor;
@@ -38,61 +40,95 @@ public class GrpcStreamingUnaryCall {
     private final byte[] requestPayload;
 
     /**
-     * The total call timeout.
-     */
-    private final long timeout;
-
-    /**
      * The stream response observer for the call.
      */
     private final StreamObserver<Kvs.AerospikeResponsePayload> responseObserver;
 
     /**
-     * Indicates if this call has been completed successfully or otherwise.
+     * The deadline in nanoseconds w.r.t System.nanoTime().
      */
-    private volatile boolean isComplete = false;
+    private final long expiresAtNanos;
 
-    public GrpcStreamingUnaryCall(MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor, byte[] requestPayload, long timeout, StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
+    /**
+     * Aerospike client policy for this request.
+     */
+    private final Policy policy;
+
+    /**
+     * Iteration number of this request.
+     */
+    private final int iteration;
+
+    protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
+        this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
+                other.iteration, other.responseObserver);
+    }
+
+
+    public GrpcStreamingUnaryCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
+            Kvs.AerospikeResponsePayload> methodDescriptor,
+                                  byte[] requestPayload,
+                                  Policy policy,
+                                  int iteration,
+                                  StreamObserver<Kvs.AerospikeResponsePayload>
+                                          responseObserver) {
         this.responseObserver = responseObserver;
         this.methodDescriptor = methodDescriptor;
         this.requestPayload = requestPayload;
-        this.timeout = timeout;
+        this.iteration = iteration;
+        this.policy = policy;
+
+        if (policy.totalTimeout > 0) {
+            this.expiresAtNanos =
+                    System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+        } else {
+            // TODO: should 0 (no timeout) be allowed?
+            this.expiresAtNanos =
+                    System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+        }
     }
 
     public void onSuccess(Kvs.AerospikeResponsePayload payload) {
-        try {
-            responseObserver.onNext(payload);
-            responseObserver.onCompleted();
-        } finally {
-            setComplete(true);
-        }
+        responseObserver.onNext(payload);
+        responseObserver.onCompleted();
     }
 
-    public void onError(AerospikeException e) {
-        try {
-            responseObserver.onError(e);
-        } finally {
-            setComplete(true);
-        }
+    public void onError(Throwable t) {
+        responseObserver.onError(t);
     }
 
     public MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getMethodDescriptor() {
         return methodDescriptor;
     }
 
+    /**
+     * @return true if this call has expired.
+     */
+    public boolean hasExpired() {
+        return expiresAtNanos > 0 && System.nanoTime() >= expiresAtNanos;
+    }
+
+    public boolean hasExpiry() {
+        return expiresAtNanos > 0;
+    }
+
+    public long nanosTillExpiry() {
+        if (expiresAtNanos == 0) {
+            return Long.MAX_VALUE;
+        }
+        long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+        return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
+    }
+
     public byte[] getRequestPayload() {
         return requestPayload;
     }
 
-    public long getTimeout() {
-        return timeout;
+    public int getIteration() {
+        return iteration;
     }
 
-    public boolean isComplete() {
-        return isComplete;
-    }
-
-    private void setComplete(boolean complete) {
-        isComplete = complete;
+    public Policy getPolicy() {
+        return policy;
     }
 }

@@ -17,11 +17,13 @@
 package com.aerospike.client.proxy;
 
 import java.io.Closeable;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -42,6 +44,8 @@ import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.NettyEventLoop;
+import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
@@ -78,6 +82,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcChannelProvider;
+import com.aerospike.client.proxy.grpc.GrpcClientPolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
@@ -89,6 +94,9 @@ import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Util;
+
+import io.netty.channel.Channel;
+import io.netty.channel.epoll.EpollSocketChannel;
 
 /**
  * Aerospike proxy client based implementation of {@link AerospikeClient}.
@@ -105,7 +113,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	public static String Version = getVersion();
 
-	private static String NotSupported = "Method not supported in proxy client: ";
+    /**
+     * Lower limit of proxy server connection.
+     */
+    private static final int MIN_CONNECTIONS = 1;
+
+    /**
+     * Upper limit of proxy server connection.
+     */
+    private static final int MAX_CONNECTIONS = 8;
+
+    private static String NotSupported = "Method not supported in proxy client: ";
 
 	//-------------------------------------------------------
 	// Member variables.
@@ -173,12 +191,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	public AerospikeClientProxy(ClientPolicy policy, Host... hosts) {
-		if (Version == null) {
-			throw new AerospikeException("Failed to retrieve client version from resource");
-		}
-
 		if (policy == null) {
 			policy = new ClientPolicy();
+			policy.minConnsPerNode = 1;
+			policy.maxConnsPerNode = 8;
+			policy.asyncMaxConnsPerNode = 8;
+			policy.timeout = 5000;
 		}
 
 		this.readPolicyDefault = policy.readPolicyDefault;
@@ -197,7 +215,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		authTokenManager = new AuthTokenManager(policy, channelProvider);
 
 		try {
-			grpcCallExecutor = new GrpcCallExecutor(policy, authTokenManager, hosts);
+            // The gRPC client policy transformed from the client policy.
+            GrpcClientPolicy grpcClientPolicy = toGrpcClientPolicy(policy);
+			grpcCallExecutor = new GrpcCallExecutor(grpcClientPolicy, authTokenManager, hosts);
 			channelProvider.setCallExecutor(grpcCallExecutor);
 		}
 		catch (Throwable e) {
@@ -1128,6 +1148,31 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 	// Internal Methods
 	//-------------------------------------------------------
+
+	private static GrpcClientPolicy toGrpcClientPolicy(ClientPolicy policy) {
+		// TODO: is this correct?
+		List<io.netty.channel.EventLoop> eventLoops = null;
+		Class<? extends Channel> channelType = null;
+
+		if (policy.eventLoops instanceof NettyEventLoops) {
+		    eventLoops = Arrays.stream(policy.eventLoops.getArray())
+		            .map(eventLoop -> ((NettyEventLoop) eventLoop).get())
+		            .collect(Collectors.toList());
+		    channelType = EpollSocketChannel.class;
+
+		}
+
+		int maxConnections =
+		        Math.min(MAX_CONNECTIONS,
+		                Math.max(MIN_CONNECTIONS, Math.max(policy.asyncMaxConnsPerNode,
+		                        policy.maxConnsPerNode)));
+
+		return GrpcClientPolicy.newBuilder(eventLoops, channelType)
+		        .maxChannels(maxConnections)
+		        .connectTimeoutMillis(policy.timeout)
+		        .tlsPolicy(policy.tlsPolicy)
+		        .build();
+	}
 
 	private static WriteListener prepareWriteListener(final CompletableFuture<Void> future) {
 		return new WriteListener() {
