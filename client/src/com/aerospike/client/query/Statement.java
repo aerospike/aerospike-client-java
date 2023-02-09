@@ -70,7 +70,9 @@ public final class Statement {
 
 	/**
 	 * Set optional query index name.  If not set, the server
-	 * will determine the index from the filter's bin name.
+	 * will determine the index from the filter's bin name. 
+	 * Note, the call is only applicable to pre-6.0 server versions,
+	 * and is ignored by server versions 6.0 and later. 
 	 */
 	public void setIndexName(String indexName) {
 		this.indexName = indexName;
