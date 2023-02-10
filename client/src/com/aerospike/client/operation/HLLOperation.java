@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -193,6 +193,8 @@ public final class HLLOperation {
 
 	/**
 	 * Create HLL getIntersectCount operation.
+	 * Bin contains an HLL value. 
+	 * List of HLL objects may have maximum 2 objects if minhash bits are 0, can have >2 objects otherwise.
 	 * Server returns estimated number of elements that would be contained by the intersection of
 	 * these HLL objects.
 	 *
@@ -206,6 +208,8 @@ public final class HLLOperation {
 
 	/**
 	 * Create HLL getSimilarity operation.
+	 * Bin contains an HLL value. 
+	 * List of HLL objects may have maximum 2 objects if minhash bits are 0, can have >2 objects otherwise.
 	 * Server returns estimated similarity of these HLL objects. Return type is a double.
 	 *
 	 * @param binName			name of bin
