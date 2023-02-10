@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -71,6 +71,8 @@ public final class Statement {
 	/**
 	 * Set optional query index name.  If not set, the server
 	 * will determine the index from the filter's bin name.
+	 * Note, the call is only applicable to pre-6.0 server versions,
+	 * and is ignored by server versions 6.0 and later.
 	 */
 	public void setIndexName(String indexName) {
 		this.indexName = indexName;

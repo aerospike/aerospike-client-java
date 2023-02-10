@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -73,7 +73,6 @@ public class AerospikeException extends RuntimeException {
 	@Override
 	public String getMessage() {
 		StringBuilder sb = new StringBuilder(512);
-		String message = super.getMessage();
 
 		sb.append("Error ");
 		sb.append(resultCode);
@@ -104,14 +103,16 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		sb.append(": ");
-
-		if (message != null) {
-			sb.append(message);
-		}
-		else {
-			sb.append(ResultCode.getResultString(resultCode));
-		}
+		sb.append(getBaseMessage());
 		return sb.toString();
+	}
+
+	/**
+	 * Return base message without extra metadata.
+	 */
+	public String getBaseMessage() {
+		String message = super.getMessage();
+		return (message != null)? message : ResultCode.getResultString(resultCode);
 	}
 
 	/**

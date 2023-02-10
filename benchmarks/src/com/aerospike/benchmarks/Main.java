@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,13 +28,14 @@ import java.util.concurrent.Executors;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Value;
@@ -44,6 +45,9 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.command.BatchNode;
+import com.aerospike.client.command.BatchNodeList;
+import com.aerospike.client.command.BatchStatus;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
@@ -96,6 +100,7 @@ public class Main implements Log.Callback {
 	private int eventLoopSize = 1;
 	private boolean asyncEnabled;
 	private boolean initialize;
+	private boolean batchShowNodes;
 	private String filepath;
 
 	private EventLoops eventLoops;
@@ -298,6 +303,10 @@ public class Main implements Log.Callback {
 			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
 			);
 
+		options.addOption("BSN", "batchShowNodes", false,
+			"Print target nodes and count of keys directed at each node once on start of benchmarks."
+			);
+
 		options.addOption("prole", false, "Distribute reads across proles in round-robin fashion.");
 
 		options.addOption("a", "async", false, "Benchmark asynchronous methods instead of synchronous methods.");
@@ -337,7 +346,7 @@ public class Main implements Log.Callback {
 		options.addOption("sendKey", false, "Send key to server");
 
 		// parse the command line arguments
-		CommandLineParser parser = new PosixParser();
+		CommandLineParser parser = new DefaultParser();
 		CommandLine line = parser.parse(options, commandLineArgs);
 		String[] extra = line.getArgs();
 
@@ -831,6 +840,10 @@ public class Main implements Log.Callback {
 			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
 		}
 
+		if (line.hasOption("batchShowNodes")) {
+			this.batchShowNodes = true;
+		}
+
 		if (line.hasOption("asyncMaxCommands")) {
 			this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
 		}
@@ -1142,6 +1155,7 @@ public class Main implements Log.Callback {
 						doAsyncInserts(client);
 					}
 					else {
+						showBatchNodes(client);
 						doAsyncRWTest(client);
 					}
 				}
@@ -1161,6 +1175,7 @@ public class Main implements Log.Callback {
 					doInserts(client);
 				}
 				else {
+					showBatchNodes(client);
 					doRWTest(client);
 				}
 			}
@@ -1366,6 +1381,31 @@ public class Main implements Log.Callback {
 			}
 
 			Thread.sleep(1000);
+		}
+	}
+
+	private void showBatchNodes(AerospikeClient client) {
+		if (!batchShowNodes || args.batchSize <= 1) {
+			return;
+		}
+
+		// Print target nodes for the first batchSize keys. The keys in each batch transaction
+		// are randomly generated, so the actual target nodes may differ in each batch transaction.
+		// This is useful to determine how increasing the cluster size also increases the number of
+		// batch target nodes, which may result in a performance decrease for batch commands.
+		Key[] keys = new Key[args.batchSize];
+
+		for (int i = 0; i < keys.length; i++) {
+			keys[i] = new Key(args.namespace, args.setName, i);
+		}
+
+		BatchStatus status = new BatchStatus(false);
+		List<BatchNode> batchNodes = BatchNodeList.generate(client.getCluster(), args.batchPolicy, keys, null, false, status);
+
+		System.out.println("Batch target nodes for first " + keys.length + " keys:");
+
+		for (BatchNode bn : batchNodes) {
+			System.out.println(bn.node.toString() + " keys: " + bn.offsetsSize);
 		}
 	}
 

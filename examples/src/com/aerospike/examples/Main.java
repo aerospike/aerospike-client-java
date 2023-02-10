@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,9 +25,9 @@ import javax.swing.JPanel;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
-import org.apache.commons.cli.PosixParser;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -139,7 +139,7 @@ public class Main extends JPanel {
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
-			CommandLineParser parser = new PosixParser();
+			CommandLineParser parser = new DefaultParser();
 			CommandLine cl = parser.parse(options, args, false);
 
 			if (args.length == 0 || cl.hasOption("u")) {

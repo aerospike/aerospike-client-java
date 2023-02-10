@@ -20,7 +20,7 @@ package com.aerospike.client.query;
  * Regex bit flags. Use BITWISE OR to combine flags. Example:
  * 
  * <pre>{@code 
- * int flags = RegexFlag.ICASE| RegexFlag.NEWLINE;
+ * int flags = RegexFlag.ICASE | RegexFlag.NEWLINE;
  * }</pre>
  */
 public final class RegexFlag {

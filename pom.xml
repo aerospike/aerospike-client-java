@@ -38,10 +38,10 @@
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
-    <netty.version>4.1.65.Final</netty.version>
-    <luaj-jse.version>3.0</luaj-jse.version>
+    <netty.version>4.1.77.Final</netty.version>
+    <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
-    <commons-cli.version>1.2</commons-cli.version>
+    <commons-cli.version>1.5.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
   </properties>
 
@@ -89,7 +89,7 @@
         <groupId>io.netty.incubator</groupId>
         <artifactId>netty-incubator-transport-native-io_uring</artifactId>
         <classifier>linux-x86_64</classifier>
-        <version>0.0.8.Final</version>
+        <version>0.0.11.Final</version>
       </dependency>
 
       <dependency>

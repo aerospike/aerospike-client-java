@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -93,6 +93,16 @@ public final class MapReturnType {
 	 * Return true if count > 0.
 	 */
 	public static final int EXISTS = 13;
+
+	/**
+	 * Return an unordered map.
+	 */
+	public static final int UNORDERED_MAP = 16;
+
+	/**
+	 * Return an ordered map.
+	 */
+	public static final int ORDERED_MAP = 17;
 
 	/**
 	 * Invert meaning of map command and return values.  For example:
