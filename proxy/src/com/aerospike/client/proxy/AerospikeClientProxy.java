@@ -17,13 +17,12 @@
 package com.aerospike.client.proxy;
 
 import java.io.Closeable;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.stream.Collectors;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -38,6 +37,7 @@ import com.aerospike.client.Language;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.Value;
 import com.aerospike.client.admin.Privilege;
@@ -96,7 +96,6 @@ import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.Channel;
-import io.netty.channel.epoll.EpollSocketChannel;
 
 /**
  * Aerospike proxy client based implementation of {@link AerospikeClient}.
@@ -1150,16 +1149,24 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	private static GrpcClientPolicy toGrpcClientPolicy(ClientPolicy policy) {
-		// TODO: is this correct?
 		List<io.netty.channel.EventLoop> eventLoops = null;
 		Class<? extends Channel> channelType = null;
 
-		if (policy.eventLoops instanceof NettyEventLoops) {
-		    eventLoops = Arrays.stream(policy.eventLoops.getArray())
-		            .map(eventLoop -> ((NettyEventLoop) eventLoop).get())
-		            .collect(Collectors.toList());
-		    channelType = EpollSocketChannel.class;
+		if (policy.eventLoops != null) {
+			if (! (policy.eventLoops instanceof NettyEventLoops)) {
+				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"Netty event loops are required in proxy client");
+			}
 
+			NettyEventLoops nettyLoops = (NettyEventLoops)policy.eventLoops;
+			NettyEventLoop[] array = nettyLoops.getArray();
+			eventLoops = new ArrayList<io.netty.channel.EventLoop>(array.length);
+
+			for (NettyEventLoop loop : array) {
+				eventLoops.add(loop.get());
+			}
+
+			channelType = nettyLoops.getSocketChannelClass();
 		}
 
 		int maxConnections =
