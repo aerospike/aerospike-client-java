@@ -46,7 +46,7 @@ public final class DeleteCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		int resultCode = parser.parseResultCode();
 		boolean existed;
 
@@ -74,7 +74,7 @@ public final class DeleteCommandProxy extends AbstractCommand {
     }
 
     @Override
-    void allAttemptsFailed(AerospikeException exception) {
-        listener.onFailure(exception);
+    void onFailure(AerospikeException ae) {
+        listener.onFailure(ae);
     }
 }

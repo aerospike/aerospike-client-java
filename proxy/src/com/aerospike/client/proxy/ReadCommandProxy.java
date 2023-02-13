@@ -64,7 +64,7 @@ public class ReadCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		Record record = parseRecordResult(parser);
 		listener.onSuccess(key, record);
     }
@@ -135,8 +135,8 @@ public class ReadCommandProxy extends AbstractCommand {
 		throw new AerospikeException(code, message);
 	}
 
-	@Override
-    void allAttemptsFailed(AerospikeException exception) {
-        listener.onFailure(exception);
+    @Override
+    void onFailure(AerospikeException ae) {
+        listener.onFailure(ae);
     }
 }

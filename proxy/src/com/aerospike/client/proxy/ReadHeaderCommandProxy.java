@@ -40,7 +40,7 @@ public final class ReadHeaderCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		Record record = null;
 		int resultCode = parser.parseHeader();
 
@@ -66,7 +66,7 @@ public final class ReadHeaderCommandProxy extends AbstractCommand {
 	}
 
     @Override
-    void allAttemptsFailed(AerospikeException exception) {
-        listener.onFailure(exception);
+    void onFailure(AerospikeException ae) {
+        listener.onFailure(ae);
     }
 }

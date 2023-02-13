@@ -46,7 +46,7 @@ public final class TouchCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		int resultCode = parser.parseResultCode();
 
 		switch (resultCode) {
@@ -67,7 +67,7 @@ public final class TouchCommandProxy extends AbstractCommand {
     }
 
     @Override
-    void allAttemptsFailed(AerospikeException exception) {
-        listener.onFailure(exception);
+    void onFailure(AerospikeException ae) {
+        listener.onFailure(ae);
     }
 }

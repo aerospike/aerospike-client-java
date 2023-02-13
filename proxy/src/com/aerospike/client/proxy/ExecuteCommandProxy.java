@@ -58,7 +58,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		Record record = parseRecordResult(parser);
 		Object obj = parseEndResult(record);
 		executeListener.onSuccess(key, obj);
@@ -95,8 +95,8 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 		throw new AerospikeException(resultCode);
 	}
 
-	@Override
-    void allAttemptsFailed(AerospikeException exception) {
-		executeListener.onFailure(exception);
+    @Override
+    void onFailure(AerospikeException ae) {
+        executeListener.onFailure(ae);
     }
 }

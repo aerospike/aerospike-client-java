@@ -44,7 +44,7 @@ public final class ExistsCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	void parseResult(Parser parser) {
 		int resultCode = parser.parseResultCode();
 		boolean exists;
 
@@ -72,7 +72,7 @@ public final class ExistsCommandProxy extends AbstractCommand {
     }
 
     @Override
-    void allAttemptsFailed(AerospikeException exception) {
-        listener.onFailure(exception);
+    void onFailure(AerospikeException ae) {
+        listener.onFailure(ae);
     }
 }

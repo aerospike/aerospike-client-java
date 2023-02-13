@@ -107,14 +107,6 @@ public abstract class AbstractCommand {
         executeCommand();
     }
 
-    /**
-     * This method is called when the command has failed to execute
-     * successfully after maxRetries attempts.
-     *
-     * @param exception the reason for failed execution.
-     */
-    abstract void allAttemptsFailed(AerospikeException exception);
-
     public void execute() {
         //TODO: backoff based on in-flight command count.
         if (policy.totalTimeout > 0) {
@@ -178,7 +170,7 @@ public abstract class AbstractCommand {
             // TODO: is iteration number correct?
             exception = new AerospikeException.Timeout(policy, iteration);
         }
-        allAttemptsFailed(exception);
+        onFailure(exception);
     }
 
     private void sendRequest(byte[] payload) {
@@ -215,9 +207,6 @@ public abstract class AbstractCommand {
 		parser.parseProto();
 		parseResult(parser);
 	}
-
-	abstract void writePayload();
-    abstract void parseResult(Parser parser);
 
     protected int getIteration() {
         return iteration;
@@ -317,4 +306,8 @@ public abstract class AbstractCommand {
                 return new AerospikeException("gRPC code " + code, exception);
         }
     }
+
+	abstract void writePayload();
+    abstract void parseResult(Parser parser);
+    abstract void onFailure(AerospikeException ae);
 }
