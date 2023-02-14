@@ -16,10 +16,6 @@
  */
 package com.aerospike.client.proxy;
 
-import java.util.concurrent.TimeUnit;
-
-import javax.annotation.Nullable;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
@@ -39,11 +35,7 @@ import io.grpc.stub.StreamObserver;
 public abstract class CommandProxy {
 	private final GrpcCallExecutor executor;
 	final Policy policy;
-	private AerospikeException exception;
-	private long deadlineNanos;
-	private volatile int iteration;
-	private int commandSentCounter;
-	private boolean isClientTimeout;
+	private final int iteration = 1;
 
 	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
 		this.executor = executor;
@@ -51,168 +43,81 @@ public abstract class CommandProxy {
 	}
 
 	final void execute() {
+		// TODO: Only set deadline if plan to retry?
+		/*
 		if (policy.totalTimeout > 0) {
 			deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
 		}
+		*/
 		executeCommand();
 	}
 
 	private void executeCommand() {
+		// TODO: Only need iteration counter if plan to retry?
+		// iteration++;
+
 		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		writeCommand(command);
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		while (iteration <= policy.maxRetries &&
-				!shouldHaltOnException() &&
-				(System.nanoTime() < deadlineNanos)) {
-			// iteration=0 is initial attempt, iteration=1 is first retry.
-			iteration++;
-			try {
-				sendRequest(payload);
-				return;
-			} catch (Throwable t) {
-				setException(t, null);
-			}
-		}
+		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(), payload, policy, iteration,
+			new StreamObserver<Kvs.AerospikeResponsePayload>() {
+				@Override
+				public void onNext(Kvs.AerospikeResponsePayload value) {
+					try {
+						parsePayload(value.getPayload());
+					}
+					catch (Throwable t) {
+						onFailure(t, value.getInDoubt());
+					}
+				}
 
-		// All attempts have failed.
-		if (exception == null && System.nanoTime() > deadlineNanos) {
-			// TODO: is iteration number correct?
-			exception = new AerospikeException.Timeout(policy, iteration);
-		}
-		onFailure(exception);
+				@Override
+				public void onError(Throwable t) {
+					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
+					onFailure(t, false);
+				}
+
+				@Override
+				public void onCompleted() {
+				}
+			}));
 	}
 
-	protected void schedule(Runnable command, long delay,
-							TimeUnit timeUnit) {
-		executor.getEventLoop().schedule(command, delay, timeUnit);
-	}
-
-	private void sendRequest(ByteString payload) {
-		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
-				payload, policy, getIteration(),
-				new StreamObserver<Kvs.AerospikeResponsePayload>() {
-					@Override
-					public void onNext(Kvs.AerospikeResponsePayload value) {
-						try {
-							receivePayload(value.getPayload());
-						} catch (Throwable t) {
-							onFailure(t, value);
-						}
-					}
-
-					@Override
-					public void onError(Throwable t) {
-						onFailure(t, null);
-					}
-
-					@Override
-					public void onCompleted() {
-					}
-				}));
-
-		// TODO: this should be incremented only when the request has been
-		//  put on the wire?
-		incrementCommandSentCounter();
-	}
-
-	private void receivePayload(ByteString response) {
+	private void parsePayload(ByteString response) {
 		byte[] bytes = response.toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
 		parseResult(parser);
 	}
 
-	/**
-	 * Subclasses should call this method on failed completion of
-	 * server call.
-	 *
-	 * @param throwable       reason for the failure.
-	 * @param responsePayload response from the proxy server.
-	 */
-	void onFailure(Throwable throwable,
-				   @Nullable Kvs.AerospikeResponsePayload responsePayload) {
-		setException(throwable, responsePayload);
+	private void onFailure(Throwable t, boolean inDoubt) {
+		// TODO: Retry on connection errors?
+		if (t instanceof AerospikeException) {
+			AerospikeException ae = (AerospikeException)t;
 
-		// TODO: should this be scheduled on another thread.
-		boolean isRetry = iteration > 0;
-
-		if (isRetry && !isClientTimeout &&
-				policy.sleepBetweenRetries > 0 &&
-				System.nanoTime() < deadlineNanos) {
-			schedule(this::executeCommand, policy.sleepBetweenRetries,
-					TimeUnit.MILLISECONDS);
-		} else {
-			executeCommand();
-		}
-	}
-
-	protected int getIteration() {
-		return iteration;
-	}
-
-	protected boolean isWrite() {
-		return false;
-	}
-
-	protected void incrementCommandSentCounter() {
-		commandSentCounter++;
-	}
-
-	private boolean shouldHaltOnException() {
-		// TODO: the command should not be retried on some exceptions.
-		return false;
-	}
-
-	private void setException(Throwable throwable,
-							  @Nullable Kvs.AerospikeResponsePayload responsePayload) {
-		// AerospikeException received on the proxy server are transmitted as-is
-		// to the proxy client and parsed from the aerospike wire payload to a
-		// AerospikeException in the `AbstractCommand.onNext` call . Any server
-		// response successfully received by the proxy client should always be
-		// an instance of AerospikeException.
-
-		if (throwable instanceof AerospikeException) {
-			isClientTimeout = false;
-			AerospikeException ae = (AerospikeException) throwable;
 			if (ae.getResultCode() == ResultCode.TIMEOUT) {
-				exception = new AerospikeException.Timeout(policy, false);
-			} else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
-				exception = ae;
-			} else {
-				exception = ae;
+				ae = new AerospikeException.Timeout(policy, false);
 			}
-		} else if (throwable instanceof StatusRuntimeException) {
-			exception = toAerospikeException((StatusRuntimeException) throwable);
-
-			// TODO: should more cases be handled for isClientTimeout?
-			isClientTimeout = exception instanceof AerospikeException.Timeout;
-		} else {
-			// TODO: can code fall through to this else branch? Should we
-			//  handle more types of exceptions?
-			// TODO: Is it correct to blanket convert to CLIENT_ERROR?
-			exception = new AerospikeException(ResultCode.CLIENT_ERROR,
-					throwable);
-			isClientTimeout = false;
+			notifyFailure(ae, inDoubt);
+			return;
 		}
 
-		exception.setIteration(iteration);
-		exception.setPolicy(policy);
-
-		//noinspection SimplifiableConditionalExpression
-		boolean inDoubt = responsePayload != null ? responsePayload.getInDoubt() : false;
-		if (inDoubt) {
-			exception.setInDoubt(true);
-		} else {
-			exception.setInDoubt(isWrite(), commandSentCounter);
+		if (t instanceof StatusRuntimeException) {
+			AerospikeException ae = toAerospikeException((StatusRuntimeException)t);
+			notifyFailure(ae, inDoubt);
+			return;
 		}
+
+		AerospikeException ae = new AerospikeException(ResultCode.CLIENT_ERROR, t);
+		notifyFailure(ae, inDoubt);
+		return;
 	}
 
-	private AerospikeException toAerospikeException(StatusRuntimeException exception) {
-		Status.Code code = exception.getStatus().getCode();
-		// TODO: check if the gRPC status code to AerospikeException
-		//  mappings are correct?
+	private AerospikeException toAerospikeException(StatusRuntimeException sre) {
+		Status.Code code = sre.getStatus().getCode();
+
 		switch (code) {
 			case CANCELLED:
 			case UNKNOWN:
@@ -224,26 +129,48 @@ public abstract class CommandProxy {
 			case UNIMPLEMENTED:
 			case INTERNAL:
 			case DATA_LOSS:
-				return new AerospikeException(ResultCode.CLIENT_ERROR,
-						"gRPC status code=" + code, exception);
+				return new AerospikeException(ResultCode.CLIENT_ERROR, "gRPC status code=" + code, sre);
+
 			case INVALID_ARGUMENT:
-				return new AerospikeException(ResultCode.SERIALIZE_ERROR,
-						exception);
+				return new AerospikeException(ResultCode.SERIALIZE_ERROR, sre);
+
 			case DEADLINE_EXCEEDED:
 				return new AerospikeException.Timeout(policy, iteration);
+
 			case PERMISSION_DENIED:
-				return new AerospikeException(ResultCode.FAIL_FORBIDDEN,
-						exception);
+				return new AerospikeException(ResultCode.FAIL_FORBIDDEN, sre);
+
 			case RESOURCE_EXHAUSTED:
-				return new AerospikeException(ResultCode.QUOTA_EXCEEDED,
-						exception);
+				return new AerospikeException(ResultCode.QUOTA_EXCEEDED, sre);
+
 			case UNAVAILABLE:
 				return new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
+
 			case UNAUTHENTICATED:
 				return new AerospikeException(ResultCode.NOT_AUTHENTICATED);
-			case OK:
+
 			default:
-				return new AerospikeException("gRPC code " + code, exception);
+				return new AerospikeException("gRPC code " + code, sre);
+		}
+	}
+
+	// TODO: Under what error codes should we retry?
+	/*
+	private void retry() {
+		executor.getEventLoop().schedule(this::executeCommand, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
+	}
+	*/
+
+	private void notifyFailure(AerospikeException ae, boolean inDoubt) {
+		ae.setPolicy(policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(inDoubt);
+
+		try {
+			onFailure(ae);
+		}
+		catch (Throwable t) {
+			Log.error("onFailure() error: " + Util.getStackTrace(t));
 		}
 	}
 
