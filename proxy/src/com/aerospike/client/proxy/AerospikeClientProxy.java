@@ -183,7 +183,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	private final WritePolicy operatePolicyReadDefault;
 	private final AuthTokenManager authTokenManager;
-	private final GrpcCallExecutor grpcCallExecutor;
+	private final GrpcCallExecutor executor;
 
 	//-------------------------------------------------------
 	// Constructors
@@ -216,8 +216,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		try {
             // The gRPC client policy transformed from the client policy.
             GrpcClientPolicy grpcClientPolicy = toGrpcClientPolicy(policy);
-			grpcCallExecutor = new GrpcCallExecutor(grpcClientPolicy, authTokenManager, hosts);
-			channelProvider.setCallExecutor(grpcCallExecutor);
+			executor = new GrpcCallExecutor(grpcClientPolicy, authTokenManager, hosts);
+			channelProvider.setCallExecutor(executor);
 		}
 		catch (Throwable e) {
 			authTokenManager.close();
@@ -290,7 +290,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	@Override
 	public void close() {
 		try {
-			grpcCallExecutor.close();
+			executor.close();
 		}
 		catch (Throwable e) {
 			Log.warn("Failed to close grpcCallExecutor: " + Util.getErrorMessage(e));
@@ -306,7 +306,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean isConnected() {
-		return grpcCallExecutor != null;
+		return executor != null;
 	}
 
 	@Override
@@ -351,7 +351,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.WRITE);
+		WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}
 
@@ -372,7 +372,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.APPEND);
+		WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
 
@@ -389,7 +389,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.PREPEND);
+		WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.PREPEND);
 		command.execute();
 	}
 
@@ -410,7 +410,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		WriteCommandProxy command = new WriteCommandProxy(grpcCallExecutor, listener, policy, key, bins, Operation.Type.ADD);
+		WriteCommandProxy command = new WriteCommandProxy(executor, listener, policy, key, bins, Operation.Type.ADD);
 		command.execute();
 	}
 
@@ -431,7 +431,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		DeleteCommandProxy command = new DeleteCommandProxy(grpcCallExecutor, listener, policy, key);
+		DeleteCommandProxy command = new DeleteCommandProxy(executor, listener, policy, key);
 		command.execute();
 	}
 
@@ -484,7 +484,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		TouchCommandProxy command = new TouchCommandProxy(grpcCallExecutor, listener, policy, key);
+		TouchCommandProxy command = new TouchCommandProxy(executor, listener, policy, key);
 		command.execute();
 	}
 
@@ -505,7 +505,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ExistsCommandProxy command = new ExistsCommandProxy(grpcCallExecutor, listener, policy, key);
+		ExistsCommandProxy command = new ExistsCommandProxy(executor, listener, policy, key);
 		command.execute();
 	}
 
@@ -551,7 +551,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadCommandProxy command = new ReadCommandProxy(grpcCallExecutor, listener, policy, key, binNames);
+		ReadCommandProxy command = new ReadCommandProxy(executor, listener, policy, key, binNames);
 		command.execute();
 	}
 
@@ -568,7 +568,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = readPolicyDefault;
 		}
-		ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(grpcCallExecutor, listener, policy, key);
+		ReadHeaderCommandProxy command = new ReadHeaderCommandProxy(executor, listener, policy, key);
 		command.execute();
 	}
 
@@ -666,7 +666,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	@Override
 	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) {
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-		OperateCommandProxy command = new OperateCommandProxy(grpcCallExecutor, listener, policy, key, args);
+		OperateCommandProxy command = new OperateCommandProxy(executor, listener, policy, key, args);
 		command.execute();
 	}
 
@@ -854,7 +854,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
-		ExecuteCommandProxy command = new ExecuteCommandProxy(grpcCallExecutor, listener, policy, key,
+		ExecuteCommandProxy command = new ExecuteCommandProxy(executor, listener, policy, key,
 			packageName, functionName, functionArgs);
 		command.execute();
 	}
