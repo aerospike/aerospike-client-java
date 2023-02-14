@@ -69,7 +69,12 @@ public final class ExistsCommandProxy extends CommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		listener.onSuccess(key, exists);
+		try {
+			listener.onSuccess(key, exists);
+		}
+		catch (Throwable t) {
+			logOnSuccessError(t);
+		}
     }
 
     @Override

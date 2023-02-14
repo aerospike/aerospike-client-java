@@ -72,7 +72,12 @@ public final class WriteCommandProxy extends CommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		listener.onSuccess(key);
+		try {
+			listener.onSuccess(key);
+		}
+		catch (Throwable t) {
+			logOnSuccessError(t);
+		}
     }
 
     @Override

@@ -68,7 +68,12 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		listener.onSuccess(key, record);
+		try {
+			listener.onSuccess(key, record);
+		}
+		catch (Throwable t) {
+			logOnSuccessError(t);
+		}
 	}
 
     @Override

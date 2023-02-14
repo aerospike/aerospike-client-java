@@ -62,7 +62,13 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	void parseResult(Parser parser) {
 		Record record = parseRecordResult(parser);
 		Object obj = parseEndResult(record);
-		executeListener.onSuccess(key, obj);
+
+		try {
+			executeListener.onSuccess(key, obj);
+		}
+		catch (Throwable t) {
+			logOnSuccessError(t);
+		}
 	}
 
 	private static Object parseEndResult(Record record) {

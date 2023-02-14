@@ -21,12 +21,14 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
+import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -298,6 +300,10 @@ public abstract class CommandProxy {
                 return new AerospikeException("gRPC code " + code, exception);
         }
     }
+
+    static void logOnSuccessError(Throwable t) {
+		Log.error("onSuccess() error: " + Util.getStackTrace(t));
+	}
 
 	abstract void writeCommand(Command command);
     abstract void parseResult(Parser parser);

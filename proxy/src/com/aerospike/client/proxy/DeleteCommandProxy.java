@@ -71,7 +71,12 @@ public final class DeleteCommandProxy extends CommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		listener.onSuccess(key, existed);
+		try {
+			listener.onSuccess(key, existed);
+		}
+		catch (Throwable t) {
+			logOnSuccessError(t);
+		}
     }
 
     @Override
