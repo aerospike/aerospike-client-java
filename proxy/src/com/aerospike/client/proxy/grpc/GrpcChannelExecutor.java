@@ -44,6 +44,7 @@ import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
+import com.google.protobuf.ByteString;
 
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
@@ -371,7 +372,8 @@ public class GrpcChannelExecutor implements Runnable {
     @SuppressWarnings("NonAtomicOperationOnVolatileField")
     private void scheduleCalls(GrpcStreamingUnaryCall call) {
         // Update stats.
-        bytesSent += call.getRequestPayload().length;
+    	ByteString payload = call.getRequestPayload();
+        bytesSent += payload.size();
         requestsSent++;
 
         GrpcStream stream =

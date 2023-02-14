@@ -20,23 +20,29 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class ReadHeaderCommandProxy extends AbstractCommand {
+public final class ReadHeaderCommandProxy extends CommandProxy {
     private final RecordListener listener;
     private final Key key;
 
-    public ReadHeaderCommandProxy(GrpcCallExecutor grpcCallExecutor, RecordListener listener, Policy policy, Key key) {
-        super(grpcCallExecutor, policy);
+    public ReadHeaderCommandProxy(
+    	GrpcCallExecutor executor,
+    	RecordListener listener,
+    	Policy policy,
+    	Key key
+    ) {
+        super(executor, policy);
         this.listener = listener;
         this.key = key;
     }
 
 	@Override
-	void writePayload() {
-		serde.setReadHeader(policy, key);
+	void writeCommand(Command command) {
+		command.setReadHeader(policy, key);
 	}
 
 	@Override

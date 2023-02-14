@@ -19,30 +19,31 @@ package com.aerospike.client.proxy;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class TouchCommandProxy extends AbstractCommand {
+public final class TouchCommandProxy extends CommandProxy {
     private final WriteListener listener;
     private final WritePolicy writePolicy;
     private final Key key;
 
     public TouchCommandProxy(
-    	GrpcCallExecutor grpcCallExecutor,
+    	GrpcCallExecutor executor,
     	WriteListener listener,
     	WritePolicy writePolicy,
     	Key key
     ) {
-        super(grpcCallExecutor, writePolicy);
+        super(executor, writePolicy);
         this.listener = listener;
         this.writePolicy = writePolicy;
         this.key = key;
     }
 
 	@Override
-	void writePayload() {
-        serde.setTouch(writePolicy, key);
+	void writeCommand(Command command) {
+        command.setTouch(writePolicy, key);
 	}
 
 	@Override

@@ -18,6 +18,7 @@ package com.aerospike.client.proxy;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
@@ -27,19 +28,19 @@ public final class OperateCommandProxy extends ReadCommandProxy {
 	private final OperateArgs args;
 
 	public OperateCommandProxy(
-		GrpcCallExecutor grpcCallExecutor,
+		GrpcCallExecutor executor,
 		RecordListener listener,
 		Policy policy,
 		Key key,
 		OperateArgs args
 	) {
-		super(grpcCallExecutor, listener, policy, key, true);
+		super(executor, listener, policy, key, true);
 		this.args = args;
 	}
 
 	@Override
-	void writePayload() {
-        serde.setOperate(args.writePolicy, key, args);
+	void writeCommand(Command command) {
+        command.setOperate(args.writePolicy, key, args);
 	}
 
 	@Override

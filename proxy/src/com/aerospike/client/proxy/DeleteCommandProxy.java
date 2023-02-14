@@ -19,30 +19,31 @@ package com.aerospike.client.proxy;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class DeleteCommandProxy extends AbstractCommand {
+public final class DeleteCommandProxy extends CommandProxy {
     private final DeleteListener listener;
     private final WritePolicy writePolicy;
     private final Key key;
 
     public DeleteCommandProxy(
-    	GrpcCallExecutor grpcCallExecutor,
+    	GrpcCallExecutor executor,
     	DeleteListener listener,
     	WritePolicy writePolicy,
     	Key key
     ) {
-        super(grpcCallExecutor, writePolicy);
+        super(executor, writePolicy);
         this.listener = listener;
         this.writePolicy = writePolicy;
         this.key = key;
     }
 
 	@Override
-	void writePayload() {
-        serde.setDelete(writePolicy, key);
+	void writeCommand(Command command) {
+        command.setDelete(writePolicy, key);
 	}
 
 	@Override

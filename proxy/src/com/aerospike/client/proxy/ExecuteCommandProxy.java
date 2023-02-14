@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
@@ -35,7 +36,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	private final Value[] args;
 
     public ExecuteCommandProxy(
-    	GrpcCallExecutor grpcCallExecutor,
+    	GrpcCallExecutor executor,
     	ExecuteListener executeListener,
     	WritePolicy writePolicy,
     	Key key,
@@ -43,7 +44,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
     	String functionName,
     	Value[] args
     ) {
-    	super(grpcCallExecutor, null, writePolicy, key, false);
+    	super(executor, null, writePolicy, key, false);
         this.executeListener = executeListener;
         this.writePolicy = writePolicy;
         this.key = key;
@@ -53,8 +54,8 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
     }
 
 	@Override
-	void writePayload() {
-        serde.setUdf(writePolicy, key, packageName, functionName, args);
+	void writeCommand(Command command) {
+        command.setUdf(writePolicy, key, packageName, functionName, args);
 	}
 
 	@Override

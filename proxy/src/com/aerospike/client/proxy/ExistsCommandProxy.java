@@ -19,28 +19,29 @@ package com.aerospike.client.proxy;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class ExistsCommandProxy extends AbstractCommand {
+public final class ExistsCommandProxy extends CommandProxy {
     private final ExistsListener listener;
     private final Key key;
 
     public ExistsCommandProxy(
-    	GrpcCallExecutor grpcCallExecutor,
+    	GrpcCallExecutor executor,
     	ExistsListener listener,
     	Policy policy,
     	Key key
     ) {
-        super(grpcCallExecutor, policy);
+        super(executor, policy);
         this.listener = listener;
         this.key = key;
     }
 
 	@Override
-	void writePayload() {
-        serde.setExists(policy, key);
+	void writeCommand(Command command) {
+        command.setExists(policy, key);
 	}
 
 	@Override

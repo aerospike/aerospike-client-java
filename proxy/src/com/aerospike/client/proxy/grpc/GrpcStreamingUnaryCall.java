@@ -20,6 +20,7 @@ import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
+import com.google.protobuf.ByteString;
 
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
@@ -37,7 +38,7 @@ public class GrpcStreamingUnaryCall {
     /**
      * The request payload.
      */
-    private final byte[] requestPayload;
+    private final ByteString requestPayload;
 
     /**
      * The stream response observer for the call.
@@ -67,7 +68,7 @@ public class GrpcStreamingUnaryCall {
 
     public GrpcStreamingUnaryCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
             Kvs.AerospikeResponsePayload> methodDescriptor,
-                                  byte[] requestPayload,
+                                  ByteString requestPayload,
                                   Policy policy,
                                   int iteration,
                                   StreamObserver<Kvs.AerospikeResponsePayload>
@@ -120,7 +121,7 @@ public class GrpcStreamingUnaryCall {
         return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
     }
 
-    public byte[] getRequestPayload() {
+    public ByteString getRequestPayload() {
         return requestPayload;
     }
 

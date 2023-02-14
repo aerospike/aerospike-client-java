@@ -21,11 +21,12 @@ import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public final class WriteCommandProxy extends AbstractCommand {
+public final class WriteCommandProxy extends CommandProxy {
     private final WriteListener listener;
     private final WritePolicy writePolicy;
     private final Key key;
@@ -33,14 +34,14 @@ public final class WriteCommandProxy extends AbstractCommand {
     private final Operation.Type type;
 
     public WriteCommandProxy(
-    	GrpcCallExecutor grpcCallExecutor,
+    	GrpcCallExecutor executor,
     	WriteListener listener,
     	WritePolicy writePolicy,
     	Key key,
     	Bin[] bins,
     	Operation.Type type
     ) {
-        super(grpcCallExecutor, writePolicy);
+        super(executor, writePolicy);
         this.listener = listener;
         this.writePolicy = writePolicy;
         this.key = key;
@@ -49,8 +50,8 @@ public final class WriteCommandProxy extends AbstractCommand {
     }
 
 	@Override
-	void writePayload() {
-        serde.setWrite(writePolicy, type, key, bins);
+	void writeCommand(Command command) {
+        command.setWrite(writePolicy, type, key, bins);
 	}
 
 	@Override

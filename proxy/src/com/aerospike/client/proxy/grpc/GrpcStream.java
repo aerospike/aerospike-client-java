@@ -1,21 +1,23 @@
 package com.aerospike.client.proxy.grpc;
 
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.jctools.queues.SpscUnboundedArrayQueue;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
+
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.ClientCalls;
 import io.grpc.stub.StreamObserver;
 import io.netty.channel.EventLoop;
-import org.jctools.queues.SpscUnboundedArrayQueue;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 /**
  * This class executes a single Aerospike API method like get, put, etc.
@@ -231,15 +233,15 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
                 return;
             }
 
-            byte[] payload = call.getRequestPayload();
+            ByteString payload = call.getRequestPayload();
 
             // Update stats.
             requestsInFlight++;
-            bytesSent += payload.length;
+            bytesSent += payload.size();
 
             int requestId = requestsSent++;
             Kvs.AerospikeRequestPayload.Builder requestBuilder = Kvs.AerospikeRequestPayload.newBuilder()
-                    .setPayload(ByteString.copyFrom(payload))
+                    .setPayload(payload)
                     .setId(requestId)
                     .setIteration(call.getIteration());
 

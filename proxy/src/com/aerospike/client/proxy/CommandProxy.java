@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.proxy;
 
-import java.io.ByteArrayOutputStream;
 import java.util.concurrent.TimeUnit;
 
 import javax.annotation.Nullable;
@@ -24,6 +23,7 @@ import javax.annotation.Nullable;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
@@ -35,11 +35,11 @@ import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
-public abstract class AbstractCommand {
+public abstract class CommandProxy {
     /**
      * The gRPC channel pool.
      */
-    protected final GrpcCallExecutor grpcCallExecutor;
+    protected final GrpcCallExecutor executor;
     /**
      * The command execution policy.
      */
@@ -72,16 +72,10 @@ public abstract class AbstractCommand {
      */
     private long deadlineNanos;
 
-    final Serde serde;
-
-
-//    public AbstractCommand(GrpcCallExecutor grpcCallExecutor, Policy policy, @Nullable EventLoop eventLoop) {
-    public AbstractCommand(GrpcCallExecutor grpcCallExecutor, Policy policy) {
-        this.grpcCallExecutor = grpcCallExecutor;
+    public CommandProxy(GrpcCallExecutor executor, Policy policy) {
+        this.executor = executor;
         this.policy = policy;
-//      this.eventLoop = eventLoop;
         this.eventLoop = null;
-        this.serde = new Serde();
     }
 
     /**
@@ -141,16 +135,14 @@ public abstract class AbstractCommand {
 
     protected void schedule(Runnable command, long delay,
                             TimeUnit timeUnit) {
-        grpcCallExecutor.getEventLoop().schedule(command, delay, timeUnit);
+        executor.getEventLoop().schedule(command, delay, timeUnit);
     }
 
     private void executeSendRequest() {
-    	writePayload();
+        Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
+    	writeCommand(command);
 
-    	// TODO: Only set payload once.
-    	ByteArrayOutputStream out = new ByteArrayOutputStream(serde.dataOffset);
-    	out.write(serde.dataBuffer, 0, serde.dataOffset);
-        byte[] payload = out.toByteArray();
+    	ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
         while (iteration <= policy.maxRetries &&
                 !shouldHaltOnException() &&
@@ -173,8 +165,8 @@ public abstract class AbstractCommand {
         onFailure(exception);
     }
 
-    private void sendRequest(byte[] payload) {
-        grpcCallExecutor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
+    private void sendRequest(ByteString payload) {
+        executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
                 payload, policy, getIteration(),
                 new StreamObserver<Kvs.AerospikeResponsePayload>() {
                     @Override
@@ -307,7 +299,7 @@ public abstract class AbstractCommand {
         }
     }
 
-	abstract void writePayload();
+	abstract void writeCommand(Command command);
     abstract void parseResult(Parser parser);
     abstract void onFailure(AerospikeException ae);
 }

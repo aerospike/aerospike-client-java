@@ -50,8 +50,9 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.util.ThreadLocalData;
 
-public abstract class Command {
+public class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_SHORT_QUERY		= (1 << 2); // Short query.
@@ -2032,7 +2033,13 @@ public abstract class Command {
 		}
 	}
 
-	protected abstract void sizeBuffer();
+	protected void sizeBuffer() {
+		dataBuffer = ThreadLocalData.getBuffer();
+
+		if (dataOffset > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
+		}
+	}
 
 	//--------------------------------------------------
 	// Response Parsing

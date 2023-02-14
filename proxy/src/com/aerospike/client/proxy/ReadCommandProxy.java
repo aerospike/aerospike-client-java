@@ -20,24 +20,25 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 
-public class ReadCommandProxy extends AbstractCommand {
+public class ReadCommandProxy extends CommandProxy {
 	private final RecordListener listener;
 	final Key key;
 	private final String[] binNames;
 	private final boolean isOperation;
 
 	public ReadCommandProxy(
-		GrpcCallExecutor grpcCallExecutor,
+		GrpcCallExecutor executor,
 		RecordListener listener,
 		Policy policy,
 		Key key,
 		String[] binNames
 	) {
-		super(grpcCallExecutor, policy);
+		super(executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
@@ -45,13 +46,13 @@ public class ReadCommandProxy extends AbstractCommand {
 	}
 
 	public ReadCommandProxy(
-		GrpcCallExecutor grpcCallExecutor,
+		GrpcCallExecutor executor,
 		RecordListener listener,
 		Policy policy,
 		Key key,
 		boolean isOperation
 	) {
-		super(grpcCallExecutor, policy);
+		super(executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;
@@ -59,8 +60,8 @@ public class ReadCommandProxy extends AbstractCommand {
 	}
 
 	@Override
-	void writePayload() {
-        serde.setRead(policy, key, binNames);
+	void writeCommand(Command command) {
+        command.setRead(policy, key, binNames);
 	}
 
 	@Override
