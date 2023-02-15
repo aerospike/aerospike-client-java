@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>6.1.6</version>
+    <version>6.1.7</version>
   </parent>
   <artifactId>aerospike-client</artifactId>
   <packaging>jar</packaging>
