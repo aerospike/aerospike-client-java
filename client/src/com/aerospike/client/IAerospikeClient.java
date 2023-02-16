@@ -1766,6 +1766,17 @@ public interface IAerospikeClient extends Closeable {
 		String indexName
 	) throws AerospikeException;
 
+	/**
+	 * Determine if secondary index exists.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param indexName				name of secondary index
+	 * @return						whether index exists or not
+	 * @throws AerospikeException	if command fails
+	 */
+	public boolean indexExists(Policy policy, String namespace, String indexName);
+
 	//-----------------------------------------------------------------
 	// Async Info functions (sync info functions located in Info class)
 	//-----------------------------------------------------------------

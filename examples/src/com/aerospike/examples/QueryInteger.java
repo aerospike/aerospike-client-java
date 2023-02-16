@@ -17,18 +17,13 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Buffer;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.task.IndexTask;
 
 public class QueryInteger extends Example {
 
@@ -47,9 +42,9 @@ public class QueryInteger extends Example {
 		int size = 50;
 
 		createIndex(client, params, indexName, binName);
-		writeRecords(client, params, keyPrefix, binName, size);
-		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+		//writeRecords(client, params, keyPrefix, binName, size);
+		//runQuery(client, params, indexName, binName);
+		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
 	private void createIndex(
@@ -61,18 +56,21 @@ public class QueryInteger extends Example {
 		console.info("Create index: ns=%s set=%s index=%s bin=%s",
 			params.namespace, params.set, indexName, binName);
 
-		Policy policy = new Policy();
-		policy.socketTimeout = 0; // Do not timeout on index create.
+		boolean exists = client.indexExists(null, "xx", indexName);
+		System.out.println(exists);
 
+		/*
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
+			System.out.println("createIndex succeeded?");
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
+			System.out.println("createIndex failed");
 			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {
 				throw ae;
 			}
-		}
+		}*/
 	}
 
 	private void writeRecords(

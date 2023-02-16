@@ -3270,6 +3270,44 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		sendIndexInfoCommand(eventLoop, listener, policy, namespace, indexName, command, false);
 	}
 
+	/**
+	 * Determine if secondary index exists.
+	 *
+	 * @param policy				generic configuration parameters, pass in null for defaults
+	 * @param namespace				namespace - equivalent to database name
+	 * @param indexName				name of secondary index
+	 * @return						whether index exists or not
+	 * @throws AerospikeException	if command fails
+	 */
+	public final boolean indexExists(Policy policy, String namespace, String indexName)
+		throws AerospikeException {
+		if (policy == null) {
+			policy = readPolicyDefault;
+		}
+
+		String command = buildIndexExistsInfoCommand(namespace, indexName);
+
+		// Send index command to one node. That node will distribute the command to other nodes.
+		String response = sendInfoCommand(policy, command);
+		System.out.println(response);
+
+		if (response.equals("true")) {
+			return true;
+		}
+
+		if (response.equals("false")) {
+			return false;
+		}
+
+		int code = parseIndexErrorCode(response);
+
+		// Server returns INVALID_NAMESPACE (20) instead of false when namespace not found.
+		if (code == ResultCode.INVALID_NAMESPACE) {
+			return false;
+		}
+		throw new AerospikeException(code, "indexExists failed: " + response);
+	}
+
 	//-----------------------------------------------------------------
 	// Async Info functions (sync info functions located in Info class)
 	//-----------------------------------------------------------------
@@ -3680,6 +3718,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			sb.append(";set=");
 			sb.append(setName);
 		}
+		sb.append(";indexname=");
+		sb.append(indexName);
+		return sb.toString();
+	}
+
+	private static String buildIndexExistsInfoCommand(String namespace, String indexName) {
+		StringBuilder sb = new StringBuilder(500);
+		sb.append("sindex-exists:ns=");
+		sb.append(namespace);
 		sb.append(";indexname=");
 		sb.append(indexName);
 		return sb.toString();
