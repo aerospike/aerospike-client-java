@@ -45,7 +45,7 @@ public final class ExistsCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	void parseResult(Parser parser, Boolean inDoubt) {
 		int resultCode = parser.parseResultCode();
 		boolean exists;
 

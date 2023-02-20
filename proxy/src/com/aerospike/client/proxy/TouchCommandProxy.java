@@ -47,7 +47,7 @@ public final class TouchCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	void parseResult(Parser parser, Boolean inDoubt) {
 		int resultCode = parser.parseResultCode();
 
 		switch (resultCode) {

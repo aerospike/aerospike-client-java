@@ -59,7 +59,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	void parseResult(Parser parser, Boolean inDoubt) {
 		Record record = parseRecordResult(parser);
 		Object obj = parseEndResult(record);
 

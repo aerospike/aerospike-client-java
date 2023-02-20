@@ -16,14 +16,6 @@
  */
 package com.aerospike.client.proxy;
 
-import java.io.Closeable;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.List;
-import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -50,7 +42,11 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.OperateArgs;
+import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -94,8 +90,15 @@ import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Util;
-
 import io.netty.channel.Channel;
+
+import java.io.Closeable;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.List;
+import java.util.Properties;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Aerospike proxy client based implementation of {@link AerospikeClient}.
@@ -211,7 +214,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 		GrpcChannelProvider channelProvider = new GrpcChannelProvider();
-		authTokenManager = new AuthTokenManager(policy, channelProvider);
+
+		if(policy.user != null || policy.password != null) {
+			authTokenManager = new AuthTokenManager(policy, channelProvider);
+		} else {
+			authTokenManager = null;
+		}
 
 		try {
             // The gRPC client policy transformed from the client policy.
@@ -220,7 +228,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			channelProvider.setCallExecutor(executor);
 		}
 		catch (Throwable e) {
-			authTokenManager.close();
+			if(authTokenManager != null) {
+				authTokenManager.close();
+			}
 			throw e;
 		}
 	}
@@ -730,7 +740,23 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Key[] keys,
 		Operation... ops
 	) {
-		throw new AerospikeException(NotSupported + "batch operate");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (writePolicy == null) {
+			writePolicy = batchWritePolicyDefault;
+		}
+
+		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+		CommandProxy command = new BatchProxy.OperateRecordSequenceCommandProxy(executor,
+				batchPolicy, keys, ops, listener, attr);
+		command.execute();
 	}
 
 	//-------------------------------------------------------

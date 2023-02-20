@@ -47,7 +47,7 @@ public final class DeleteCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	void parseResult(Parser parser, Boolean inDoubt) {
 		int resultCode = parser.parseResultCode();
 		boolean existed;
 

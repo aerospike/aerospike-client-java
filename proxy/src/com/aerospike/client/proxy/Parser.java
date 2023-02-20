@@ -34,6 +34,7 @@ public final class Parser {
 	private	int resultCode;
 	int generation;
 	int expiration;
+	int batchIndex;
 	int fieldCount;
 	int opCount;
 
@@ -94,13 +95,20 @@ public final class Parser {
 		return buffer[offset] & 0xFF;
     }
 
+	public int parseHeader(int startOffset) {
+		offset = startOffset;
+		return parseHeader();
+	}
+
     public int parseHeader() {
 		resultCode = buffer[offset] & 0xFF;
 		offset += 1;
 		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
 		expiration = Buffer.bytesToInt(buffer, offset);
-		offset += 8;
+		offset += 4;
+		batchIndex = Buffer.bytesToInt(buffer, offset);
+		offset += 4;
 		fieldCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
 		opCount = Buffer.bytesToShort(buffer, offset);

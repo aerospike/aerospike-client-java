@@ -118,6 +118,16 @@ public class GrpcCallExecutor implements Closeable {
                 .getChannel();
     }
 
+
+    public ManagedChannel getChannel() {
+        if(channelExecutors.isEmpty()) {
+            return null;
+        }
+
+        return channelExecutors.get(random.nextInt(channelExecutors.size()))
+                .getChannel();
+    }
+
     @Override
     public void close() {
         if (isClosed.getAndSet(true)) {
@@ -191,6 +201,7 @@ public class GrpcCallExecutor implements Closeable {
         }
         */
     }
+
 
     private class WrappedGrpcStreamingUnaryCall extends GrpcStreamingUnaryCall {
         WrappedGrpcStreamingUnaryCall(GrpcStreamingUnaryCall delegate) {
