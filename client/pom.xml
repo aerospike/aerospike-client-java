@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>6.1.7</version>
+    <version>6.1.7-SNAPSHOT</version>
   </parent>
   <artifactId>aerospike-client</artifactId>
   <packaging>jar</packaging>
@@ -98,10 +98,10 @@
         <executions>
           <execution>
             <id>make-my-jar-with-dependencies</id>
-              <phase>package</phase>
-              <goals>
-                <goal>single</goal>
-              </goals>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
