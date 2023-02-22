@@ -38,7 +38,7 @@
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
-    <netty.version>4.1.77.Final</netty.version>
+    <netty.version>4.1.87.Final</netty.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.5.0</commons-cli.version>
