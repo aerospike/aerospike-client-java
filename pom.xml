@@ -5,15 +5,15 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>6.1.6-0.9.0-proxy-SNAPSHOT</version>
+  <version>6.1.7</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
-
+  
   <organization>
     <name>Aerospike Inc.</name>
     <url>https://www.aerospike.com</url>
   </organization>
-
+  
   <licenses>
     <license>
       <name>The Apache License, Version 2.0</name>
@@ -173,6 +173,13 @@
       </plugins>
     </pluginManagement>
   </build>
+
+  <repositories>
+    <repository>
+      <id>oss-sonatype</id>
+      <url>${oss.sonatype.url}</url>
+    </repository>
+  </repositories>
 
   <distributionManagement>
     <!-- For now releases are in github packages -->
