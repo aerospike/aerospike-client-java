@@ -56,7 +56,7 @@ public class BatchProxy {
 
         @Override
         protected MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getGrpcMethod() {
-            return KVSGrpc.getBatchGetStreamingMethod();
+            return KVSGrpc.getBatchOperateStreamingMethod();
         }
 
         @Override
