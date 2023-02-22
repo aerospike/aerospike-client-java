@@ -112,17 +112,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	public static String Version = getVersion();
 
-    /**
-     * Lower limit of proxy server connection.
-     */
-    private static final int MIN_CONNECTIONS = 1;
+	/**
+	 * Lower limit of proxy server connection.
+	 */
+	private static final int MIN_CONNECTIONS = 1;
 
-    /**
-     * Upper limit of proxy server connection.
-     */
-    private static final int MAX_CONNECTIONS = 8;
+	/**
+	 * Upper limit of proxy server connection.
+	 */
+	private static final int MAX_CONNECTIONS = 8;
 
-    private static String NotSupported = "Method not supported in proxy client: ";
+	private static final String NotSupported = "Method not supported in proxy client: ";
 
 	//-------------------------------------------------------
 	// Member variables.
@@ -214,8 +214,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		authTokenManager = new AuthTokenManager(policy, channelProvider);
 
 		try {
-            // The gRPC client policy transformed from the client policy.
-            GrpcClientPolicy grpcClientPolicy = toGrpcClientPolicy(policy);
+			// The gRPC client policy transformed from the client policy.
+			GrpcClientPolicy grpcClientPolicy = toGrpcClientPolicy(policy);
 			executor = new GrpcCallExecutor(grpcClientPolicy, authTokenManager, hosts);
 			channelProvider.setCallExecutor(executor);
 		}
@@ -530,12 +530,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record get(Policy policy, Key key) {
-		return get(policy, key, (String[]) null);
+		return get(policy, key, (String[])null);
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordListener listener, Policy policy, Key key) {
-		get(eventLoop, listener, policy, key, (String[]) null);
+		get(eventLoop, listener, policy, key, (String[])null);
 	}
 
 	@Override
@@ -1169,16 +1169,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			channelType = nettyLoops.getSocketChannelClass();
 		}
 
-		int maxConnections =
-		        Math.min(MAX_CONNECTIONS,
-		                Math.max(MIN_CONNECTIONS, Math.max(policy.asyncMaxConnsPerNode,
-		                        policy.maxConnsPerNode)));
+		int maxConnections = Math.min(MAX_CONNECTIONS, Math.max(MIN_CONNECTIONS,
+			Math.max(policy.asyncMaxConnsPerNode, policy.maxConnsPerNode)));
 
 		return GrpcClientPolicy.newBuilder(eventLoops, channelType)
-		        .maxChannels(maxConnections)
-		        .connectTimeoutMillis(policy.timeout)
-		        .tlsPolicy(policy.tlsPolicy)
-		        .build();
+			.maxChannels(maxConnections)
+			.connectTimeoutMillis(policy.timeout)
+			.tlsPolicy(policy.tlsPolicy)
+			.build();
 	}
 
 	private static WriteListener prepareWriteListener(final CompletableFuture<Void> future) {
@@ -1256,6 +1254,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			return future.get();
 		}
 		catch (ExecutionException e) {
+			if (e.getCause() instanceof AerospikeException) {
+				throw (AerospikeException)e.getCause();
+			}
 			throw new AerospikeException(e);
 		}
 		catch (InterruptedException e) {

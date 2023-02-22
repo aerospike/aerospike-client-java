@@ -58,7 +58,7 @@
     </dependency>
   </dependencies>
 
- <build>
+  <build>
     <sourceDirectory>${project.basedir}/src</sourceDirectory>
     <plugins>
       <plugin>
@@ -91,5 +91,5 @@
       </plugin>
     </plugins>
   </build>
-    
+
 </project>
