@@ -25,6 +25,9 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
+import com.aerospike.proxy.client.Kvs;
+import io.grpc.MethodDescriptor;
 
 public final class WriteCommandProxy extends CommandProxy {
     private final WriteListener listener;
@@ -48,6 +51,11 @@ public final class WriteCommandProxy extends CommandProxy {
         this.bins = bins;
         this.type = type;
     }
+
+	@Override
+	protected MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getGrpcMethod() {
+		return KVSGrpc.getPutStreamingMethod();
+	}
 
 	@Override
 	void writeCommand(Command command) {

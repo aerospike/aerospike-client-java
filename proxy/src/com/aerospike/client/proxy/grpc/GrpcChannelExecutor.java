@@ -117,7 +117,7 @@ public class GrpcChannelExecutor implements Runnable {
     /**
      * Queued unary calls awaiting execution.
      */
-    private final MpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls =
+    private final MpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls =
             new MpscUnboundedArrayQueue<>(32);
     /**
      * Queue of closed streams.
@@ -335,7 +335,7 @@ public class GrpcChannelExecutor implements Runnable {
         }
     }
 
-    public void execute(GrpcStreamingUnaryCall call) {
+    public void execute(GrpcStreamingCall call) {
         // TODO: add always succeeds?
         ongoingRequests.getAndIncrement();
         pendingCalls.add(call);
@@ -370,7 +370,7 @@ public class GrpcChannelExecutor implements Runnable {
      * Schedule the call on a stream.
      */
     @SuppressWarnings("NonAtomicOperationOnVolatileField")
-    private void scheduleCalls(GrpcStreamingUnaryCall call) {
+    private void scheduleCalls(GrpcStreamingCall call) {
         // Update stats.
     	ByteString payload = call.getRequestPayload();
         bytesSent += payload.size();
@@ -385,7 +385,7 @@ public class GrpcChannelExecutor implements Runnable {
         }
 
         // Create new stream.
-        SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> queue =
+        SpscUnboundedArrayQueue<GrpcStreamingCall> queue =
                 new SpscUnboundedArrayQueue<>(128);
         queue.add(call);
 
@@ -418,7 +418,7 @@ public class GrpcChannelExecutor implements Runnable {
      */
     @SuppressWarnings("NonAtomicOperationOnVolatileField")
     private void scheduleCallsOnNewStream(MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-                                          SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls) {
+                                          SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls) {
         CallOptions options = grpcClientPolicy.callOptions;
         if (authTokenManager != null) {
             try {
@@ -426,7 +426,7 @@ public class GrpcChannelExecutor implements Runnable {
             } catch (Exception e) {
                 AerospikeException aerospikeException =
                         new AerospikeException(ResultCode.NOT_AUTHENTICATED, e);
-                for (GrpcStreamingUnaryCall call = pendingCalls.poll();
+                for (GrpcStreamingCall call = pendingCalls.poll();
                      call != null;
                      call = pendingCalls.poll()) {
                     call.onError(aerospikeException);
@@ -446,9 +446,9 @@ public class GrpcChannelExecutor implements Runnable {
         // .onStreamClosed with the same pendingCalls
         // - in the next call of GrpcChannelExecutor.processClosedStreams in
         // a iteration the above steps are repeated again
-        SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> activeCalls =
+        SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls =
                 new SpscUnboundedArrayQueue<>(128);
-        for (GrpcStreamingUnaryCall call = pendingCalls.poll(); call != null;
+        for (GrpcStreamingCall call = pendingCalls.poll(); call != null;
              call = pendingCalls.poll()) {
             if (call.hasExpired()) {
                 call.onError(new AerospikeException.Timeout(call.getPolicy(),
@@ -531,10 +531,14 @@ public class GrpcChannelExecutor implements Runnable {
     }
 
     @SuppressWarnings("NonAtomicOperationOnVolatileField")
-    void responseReceived(int responsePayloadSize) {
-        bytesReceived += responsePayloadSize;
+    void onRequestCompleted() {
         responsesReceived++;
         ongoingRequests.getAndDecrement();
+    }
+
+    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    void onPayloadReceived(int size) {
+        bytesReceived += size;
     }
 
     public long getBytesSent() {

@@ -26,9 +26,9 @@ import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 
 /**
- * A unary gRPC call that is converted to a streaming call for performance.
+ * A gRPC call that is converted to a streaming call for performance.
  */
-public class GrpcStreamingUnaryCall {
+public class GrpcStreamingCall {
     /**
      * The streaming method to execute for this unary call.
      */
@@ -60,24 +60,32 @@ public class GrpcStreamingUnaryCall {
      */
     private final int iteration;
 
-    protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
+    /**
+     * Is the stream response a unary call.
+     */
+    private final boolean isUnaryCall;
+
+    protected GrpcStreamingCall(GrpcStreamingCall other) {
         this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                other.iteration, other.responseObserver);
+                 other.iteration, other.isUnaryCall, other.responseObserver);
     }
 
 
-    public GrpcStreamingUnaryCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
+    public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
             Kvs.AerospikeResponsePayload> methodDescriptor,
-                                  ByteString requestPayload,
-                                  Policy policy,
-                                  int iteration,
-                                  StreamObserver<Kvs.AerospikeResponsePayload>
-                                          responseObserver) {
+                             ByteString requestPayload,
+                             Policy policy,
+                             int iteration,
+                             boolean isUnaryCall,
+                             StreamObserver<Kvs.AerospikeResponsePayload>
+                                          responseObserver
+                             ) {
         this.responseObserver = responseObserver;
         this.methodDescriptor = methodDescriptor;
         this.requestPayload = requestPayload;
         this.iteration = iteration;
         this.policy = policy;
+        this.isUnaryCall = isUnaryCall;
 
         if (policy.totalTimeout > 0) {
             this.expiresAtNanos =
@@ -91,7 +99,9 @@ public class GrpcStreamingUnaryCall {
 
     public void onSuccess(Kvs.AerospikeResponsePayload payload) {
         responseObserver.onNext(payload);
-        responseObserver.onCompleted();
+        if(isUnaryCall) {
+            responseObserver.onCompleted();
+        }
     }
 
     public void onError(Throwable t) {

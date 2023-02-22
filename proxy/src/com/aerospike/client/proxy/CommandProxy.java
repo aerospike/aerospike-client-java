@@ -22,13 +22,12 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
+import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
 import com.aerospike.client.util.Util;
-import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
-import com.aerospike.proxy.client.QueryGrpc;
 import com.google.protobuf.ByteString;
 
+import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
@@ -62,42 +61,46 @@ public abstract class CommandProxy {
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executeCall(payload, new StreamObserver<Kvs.AerospikeResponsePayload>() {
-			@Override
-			public void onNext(Kvs.AerospikeResponsePayload value) {
-				try {
-					parsePayload(value);
-				}
-				catch (Throwable t) {
-					onFailure(t, value.getInDoubt());
-				}
-			}
+		executor.execute(new GrpcStreamingCall(getGrpcMethod(), payload, policy, iteration,
+				isUnaryCall(),
+				new StreamObserver<Kvs.AerospikeResponsePayload>() {
+					@Override
+					public void onNext(Kvs.AerospikeResponsePayload value) {
+						try {
+							parsePayload(value);
+						}
+						catch (Throwable t) {
+							onFailure(t, value.getInDoubt());
+						}
+					}
 
-			@Override
-			public void onError(Throwable t) {
-				// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-				onFailure(t, false);
-			}
+					@Override
+					public void onError(Throwable t) {
+						// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
+						onFailure(t, false);
+					}
 
-			@Override
-			public void onCompleted() {
-				onSuccess();
-			}
-		});
+					@Override
+					public void onCompleted() {
+					}
+				}));
 	}
 
-	protected void executeCall(ByteString payload,
-					  StreamObserver<Kvs.AerospikeResponsePayload> streamObserver) {
-		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
-				payload, policy, iteration,streamObserver));
+	protected MethodDescriptor<Kvs.AerospikeRequestPayload,
+			Kvs.AerospikeResponsePayload> getGrpcMethod() {
+		// TODO should be implemented by all subclasses and this method
+		//  should be made abstract.
+		throw new RuntimeException("not implemented");
 	}
 
-	private void parsePayload(Kvs.AerospikeResponsePayload value) {
+	protected boolean isUnaryCall() {
+		return true;
+	}
+
+	void parsePayload(Kvs.AerospikeResponsePayload value) {
 		byte[] bytes = value.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
-		if(!isMultiCommand()) {
-			parser.parseProto();
-		}
+		parser.parseProto();
 		parseResult(parser, value.getInDoubt());
 	}
 
@@ -189,10 +192,6 @@ public abstract class CommandProxy {
 
 	protected void onSuccess() {
 		// Overridden by multi commands.
-	}
-
-	protected boolean isMultiCommand() {
-		return false;
 	}
 
 	abstract void writeCommand(Command command);

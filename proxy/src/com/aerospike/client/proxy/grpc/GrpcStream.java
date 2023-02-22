@@ -63,12 +63,12 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
     /**
      * Queued calls pending execution.
      */
-    private final SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls;
+    private final SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls;
 
     /**
      * Map of request id to the calls executing in this stream.
      */
-    private final Map<Integer, GrpcStreamingUnaryCall> executingCalls =
+    private final Map<Integer, GrpcStreamingCall> executingCalls =
             new HashMap<>();
 
     /**
@@ -87,7 +87,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
 
     public static GrpcStream newInstance(GrpcChannelExecutor channelExecutor,
                                          MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-                                         SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls,
+                                         SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
                                          CallOptions callOptions,
                                          GrpcClientPolicy grpcClientPolicy,
                                          int streamIndex, EventLoop eventLoop) {
@@ -102,7 +102,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
     }
 
     private GrpcStream(GrpcChannelExecutor channelExecutor, MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-                       SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls,
+                       SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
                        GrpcClientPolicy grpcClientPolicy,
                        int id, EventLoop eventLoop) {
         this.channelExecutor = channelExecutor;
@@ -121,7 +121,22 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
     public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
         // Invoke callback.
         int id = aerospikeResponsePayload.getId();
-        GrpcStreamingUnaryCall call = executingCalls.remove(id);
+        GrpcStreamingCall call;
+
+        int payloadSize = aerospikeResponsePayload.getPayload().size();
+        bytesReceived += payloadSize;
+        channelExecutor.onPayloadReceived(payloadSize);
+
+        if(aerospikeResponsePayload.getHasNext()) {
+            call = executingCalls.get(id);
+        } else {
+            call = executingCalls.remove(id);
+
+            // Update stats.
+            requestsInFlight--;
+            responsesReceived++;
+            channelExecutor.onRequestCompleted();
+        }
 
         // Call might have expired and been cancelled.
         if (call != null) {
@@ -129,15 +144,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
         } else {
             // TODO: log the expired call?
         }
-
-        // Update stats.
-        requestsInFlight--;
-
-        int payloadSize = aerospikeResponsePayload.getPayload().size();
-        bytesReceived += payloadSize;
-        responsesReceived++;
-
-        channelExecutor.responseReceived(payloadSize);
 
         // TODO can it ever be greater than?
         if (responsesReceived >= grpcClientPolicy.totalRequestsPerStream) {
@@ -150,7 +156,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
 
     private void abortExecutingCalls(Throwable throwable) {
         isClosed = true;
-        for (GrpcStreamingUnaryCall call : executingCalls.values()) {
+        for (GrpcStreamingCall call : executingCalls.values()) {
             call.onError(throwable);
             requestsInFlight--;
         }
@@ -171,7 +177,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
                 "stream completed before all responses have been received"));
     }
 
-    SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> getQueue() {
+    SpscUnboundedArrayQueue<GrpcStreamingCall> getQueue() {
         return pendingCalls;
     }
 
@@ -225,7 +231,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
     }
 
 
-    private void execute(GrpcStreamingUnaryCall call) {
+    private void execute(GrpcStreamingCall call) {
         try {
             if (call.hasExpired()) {
                 call.onError(new AerospikeException.Timeout(call.getPolicy(),
@@ -265,7 +271,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
     }
 
     private void onCancelCall(int callId) {
-        GrpcStreamingUnaryCall call = executingCalls.remove(callId);
+        GrpcStreamingCall call = executingCalls.remove(callId);
 
         // Call might have completed.
         if (call != null) {
@@ -274,7 +280,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
         }
     }
 
-    void enqueue(GrpcStreamingUnaryCall call) {
+    void enqueue(GrpcStreamingCall call) {
         // TODO: can this call fail?
         pendingCalls.add(call);
     }

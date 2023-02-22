@@ -5,20 +5,17 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
-import com.aerospike.client.async.AsyncBatch;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
-import io.grpc.Channel;
-import io.grpc.stub.StreamObserver;
+import io.grpc.MethodDescriptor;
 
 /**
  * All batch executors in one class mimicking
@@ -58,6 +55,16 @@ public class BatchProxy {
         }
 
         @Override
+        protected MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getGrpcMethod() {
+            return KVSGrpc.getBatchGetStreamingMethod();
+        }
+
+        @Override
+        protected boolean isUnaryCall() {
+            return false;
+        }
+
+        @Override
         void writeCommand(Command command) {
             // The destination node is a single Aerospike proxy instance,
             // where all keys are sent to the same node. Keys are not
@@ -74,19 +81,22 @@ public class BatchProxy {
         }
 
         @Override
-        protected void executeCall(ByteString payload, StreamObserver<Kvs.AerospikeResponsePayload> streamObserver) {
-            Channel channel = executor.getChannel();
-            Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
+        void parsePayload(Kvs.AerospikeResponsePayload value) {
+            byte[] bytes = value.getPayload().toByteArray();
+            Parser parser = new Parser(bytes);
 
-            // All batch policy fields are part of the wire payload. The
-            // batch policy is used in the proxy server for retry logic.
-            GrpcConversions.setRequestPolicy(batchPolicy, builder);
-            builder.setPayload(payload);
+            if (value.getHasNext()) {
+                parseResult(parser, value.getInDoubt());
+                return;
+            }
 
-            // TODO @BrianNichols set iteration.
-            // builder.setIteration(0);
-
-            KVSGrpc.newStub(channel).batchGet(builder.build(), streamObserver);
+            parser.parseProto();
+            int resultCode = parser.parseResultCode();
+            if (resultCode == ResultCode.OK) {
+                onSuccess();
+            } else {
+                onFailure(new AerospikeException(resultCode));
+            }
         }
 
         @Override
@@ -126,11 +136,6 @@ public class BatchProxy {
         @Override
         protected void onSuccess() {
             listener.onSuccess();
-        }
-
-        @Override
-        protected boolean isMultiCommand() {
-            return true;
         }
     }
 }

@@ -82,7 +82,7 @@ public class GrpcCallExecutor implements Closeable {
         }
     }
 
-    public void execute(GrpcStreamingUnaryCall call) {
+    public void execute(GrpcStreamingCall call) {
         if (totalQueueSize.sum() > maxQueueSize) {
             throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
                     "Maximum queue " + maxQueueSize +
@@ -98,7 +98,7 @@ public class GrpcCallExecutor implements Closeable {
         //  per channel and reject this call if all the channels are full.
         totalQueueSize.increment();
         try {
-            executor.execute(new WrappedGrpcStreamingUnaryCall(call));
+            executor.execute(new WrappedGrpcStreamingCall(call));
         } catch (Exception e) {
             // Call scheduling failed.
             totalQueueSize.decrement();
@@ -203,8 +203,8 @@ public class GrpcCallExecutor implements Closeable {
     }
 
 
-    private class WrappedGrpcStreamingUnaryCall extends GrpcStreamingUnaryCall {
-        WrappedGrpcStreamingUnaryCall(GrpcStreamingUnaryCall delegate) {
+    private class WrappedGrpcStreamingCall extends GrpcStreamingCall {
+        WrappedGrpcStreamingCall(GrpcStreamingCall delegate) {
             super(delegate);
         }
 
