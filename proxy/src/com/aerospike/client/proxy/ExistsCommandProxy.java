@@ -23,25 +23,26 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExistsListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class ExistsCommandProxy extends CommandProxy {
-    private final ExistsListener listener;
-    private final Key key;
+	private final ExistsListener listener;
+	private final Key key;
 
-    public ExistsCommandProxy(
-    	GrpcCallExecutor executor,
-    	ExistsListener listener,
-    	Policy policy,
-    	Key key
-    ) {
-        super(executor, policy);
-        this.listener = listener;
-        this.key = key;
-    }
+	public ExistsCommandProxy(
+			GrpcCallExecutor executor,
+			ExistsListener listener,
+			Policy policy,
+			Key key
+	) {
+		super(KVSGrpc.getExistsStreamingMethod(), executor, policy);
+		this.listener = listener;
+		this.key = key;
+	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setExists(policy, key);
+		command.setExists(policy, key);
 	}
 
 	@Override
@@ -75,10 +76,10 @@ public final class ExistsCommandProxy extends CommandProxy {
 		catch (Throwable t) {
 			logOnSuccessError(t);
 		}
-    }
+	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }

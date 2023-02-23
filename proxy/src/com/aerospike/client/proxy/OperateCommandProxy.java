@@ -23,24 +23,26 @@ import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class OperateCommandProxy extends ReadCommandProxy {
 	private final OperateArgs args;
 
 	public OperateCommandProxy(
-		GrpcCallExecutor executor,
-		RecordListener listener,
-		Policy policy,
-		Key key,
-		OperateArgs args
+			GrpcCallExecutor executor,
+			RecordListener listener,
+			Policy policy,
+			Key key,
+			OperateArgs args
 	) {
-		super(executor, listener, policy, key, true);
+		super(KVSGrpc.getOperateStreamingMethod(), executor, listener, policy,
+				key, true);
 		this.args = args;
 	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setOperate(args.writePolicy, key, args);
+		command.setOperate(args.writePolicy, key, args);
 	}
 
 	@Override

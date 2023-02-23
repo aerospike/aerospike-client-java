@@ -26,36 +26,38 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class ExecuteCommandProxy extends ReadCommandProxy {
-    private final ExecuteListener executeListener;
-    private final WritePolicy writePolicy;
-    private final Key key;
- 	private final String packageName;
+	private final ExecuteListener executeListener;
+	private final WritePolicy writePolicy;
+	private final Key key;
+	private final String packageName;
 	private final String functionName;
 	private final Value[] args;
 
-    public ExecuteCommandProxy(
-    	GrpcCallExecutor executor,
-    	ExecuteListener executeListener,
-    	WritePolicy writePolicy,
-    	Key key,
-    	String packageName,
-    	String functionName,
-    	Value[] args
-    ) {
-    	super(executor, null, writePolicy, key, false);
-        this.executeListener = executeListener;
-        this.writePolicy = writePolicy;
-        this.key = key;
-        this.packageName = packageName;
-        this.functionName = functionName;
-        this.args = args;
-    }
+	public ExecuteCommandProxy(
+			GrpcCallExecutor executor,
+			ExecuteListener executeListener,
+			WritePolicy writePolicy,
+			Key key,
+			String packageName,
+			String functionName,
+			Value[] args
+	) {
+		super(KVSGrpc.getExecuteStreamingMethod(), executor, null, writePolicy
+				, key, false);
+		this.executeListener = executeListener;
+		this.writePolicy = writePolicy;
+		this.key = key;
+		this.packageName = packageName;
+		this.functionName = functionName;
+		this.args = args;
+	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setUdf(writePolicy, key, packageName, functionName, args);
+		command.setUdf(writePolicy, key, packageName, functionName, args);
 	}
 
 	@Override
@@ -76,7 +78,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 			return null;
 		}
 
-		Map<String,Object> map = record.bins;
+		Map<String, Object> map = record.bins;
 
 		Object obj = map.get("SUCCESS");
 
@@ -102,8 +104,8 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 		throw new AerospikeException(resultCode);
 	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        executeListener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		executeListener.onFailure(ae);
+	}
 }

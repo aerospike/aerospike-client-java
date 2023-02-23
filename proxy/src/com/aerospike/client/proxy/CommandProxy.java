@@ -26,24 +26,31 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
 import com.aerospike.client.util.Util;
-import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
-
+import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
 public abstract class CommandProxy {
-	private final GrpcCallExecutor executor;
 	final Policy policy;
+	private final GrpcCallExecutor executor;
+	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> streamingMethodDescriptor;
 	private long deadline;
 	private int iteration;
 	private boolean inDoubt;
 
-	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
+	public CommandProxy(MethodDescriptor<Kvs.AerospikeRequestPayload,
+			Kvs.AerospikeResponsePayload> streamingMethodDescriptor,
+						GrpcCallExecutor executor, Policy policy) {
+		this.streamingMethodDescriptor = streamingMethodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
+	}
+
+	static void logOnSuccessError(Throwable t) {
+		Log.error("onSuccess() error: " + Util.getStackTrace(t));
 	}
 
 	final void execute() {
@@ -61,28 +68,29 @@ public abstract class CommandProxy {
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(), payload, policy, iteration,
-			new StreamObserver<Kvs.AerospikeResponsePayload>() {
-				@Override
-				public void onNext(Kvs.AerospikeResponsePayload value) {
-					try {
-						parsePayload(value.getPayload());
+		executor.execute(new GrpcStreamingUnaryCall(streamingMethodDescriptor, payload, policy,
+				iteration,
+				new StreamObserver<Kvs.AerospikeResponsePayload>() {
+					@Override
+					public void onNext(Kvs.AerospikeResponsePayload value) {
+						try {
+							parsePayload(value.getPayload());
+						}
+						catch (Throwable t) {
+							onFailure(t, value.getInDoubt());
+						}
 					}
-					catch (Throwable t) {
-						onFailure(t, value.getInDoubt());
+
+					@Override
+					public void onError(Throwable t) {
+						// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
+						onFailure(t, false);
 					}
-				}
 
-				@Override
-				public void onError(Throwable t) {
-					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-					onFailure(t, false);
-				}
-
-				@Override
-				public void onCompleted() {
-				}
-			}));
+					@Override
+					public void onCompleted() {
+					}
+				}));
 	}
 
 	private void parsePayload(ByteString response) {
@@ -159,7 +167,6 @@ public abstract class CommandProxy {
 		}
 
 		notifyFailure(ae);
-		return;
 	}
 
 	private AerospikeException toAerospikeException(StatusRuntimeException sre, Status.Code code) {
@@ -211,11 +218,9 @@ public abstract class CommandProxy {
 		}
 	}
 
-	static void logOnSuccessError(Throwable t) {
-		Log.error("onSuccess() error: " + Util.getStackTrace(t));
-	}
-
 	abstract void writeCommand(Command command);
+
 	abstract void parseResult(Parser parser);
+
 	abstract void onFailure(AerospikeException ae);
 }

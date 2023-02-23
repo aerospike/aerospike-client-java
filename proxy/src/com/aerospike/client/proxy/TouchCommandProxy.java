@@ -23,27 +23,28 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class TouchCommandProxy extends CommandProxy {
-    private final WriteListener listener;
-    private final WritePolicy writePolicy;
-    private final Key key;
+	private final WriteListener listener;
+	private final WritePolicy writePolicy;
+	private final Key key;
 
-    public TouchCommandProxy(
-    	GrpcCallExecutor executor,
-    	WriteListener listener,
-    	WritePolicy writePolicy,
-    	Key key
-    ) {
-        super(executor, writePolicy);
-        this.listener = listener;
-        this.writePolicy = writePolicy;
-        this.key = key;
-    }
+	public TouchCommandProxy(
+			GrpcCallExecutor executor,
+			WriteListener listener,
+			WritePolicy writePolicy,
+			Key key
+	) {
+		super(KVSGrpc.getTouchStreamingMethod(), executor, writePolicy);
+		this.listener = listener;
+		this.writePolicy = writePolicy;
+		this.key = key;
+	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setTouch(writePolicy, key);
+		command.setTouch(writePolicy, key);
 	}
 
 	@Override
@@ -70,10 +71,10 @@ public final class TouchCommandProxy extends CommandProxy {
 		catch (Throwable t) {
 			logOnSuccessError(t);
 		}
-    }
+	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }

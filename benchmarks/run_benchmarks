@@ -4,4 +4,6 @@
 # Build with maven before running this script.
 # mvn package
 
-java -jar target/aerospike-benchmarks-*-jar-with-dependencies.jar $*
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+java -jar $SCRIPT_DIR/target/aerospike-benchmarks-*-jar-with-dependencies.jar $*
+

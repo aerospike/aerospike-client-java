@@ -94,7 +94,6 @@ import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.util.Util;
-
 import io.netty.channel.Channel;
 
 /**
@@ -172,7 +171,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	public final BatchDeletePolicy batchDeletePolicyDefault;
 
 	/**
-	 * Default user defined function policy used in batch UDF excecute commands.
+	 * Default user defined function policy used in batch UDF execute commands.
 	 */
 	public final BatchUDFPolicy batchUDFPolicyDefault;
 
@@ -340,7 +339,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void put(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		put(null, listener, policy, key, bins);
 		getFuture(future);
@@ -361,7 +360,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void append(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		append(null, listener, policy, key, bins);
 		getFuture(future);
@@ -378,7 +377,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void prepend(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		prepend(null, listener, policy, key, bins);
 		getFuture(future);
@@ -399,7 +398,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void add(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		add(null, listener, policy, key, bins);
 		getFuture(future);
@@ -420,7 +419,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean delete(WritePolicy policy, Key key) {
-		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		DeleteListener listener = prepareDeleteListener(future);
 		delete(null, listener, policy, key);
 		return getFuture(future);
@@ -442,22 +441,22 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void delete(
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy batchPolicy,
-		BatchDeletePolicy deletePolicy,
-		Key[] keys
+			EventLoop eventLoop,
+			BatchRecordArrayListener listener,
+			BatchPolicy batchPolicy,
+			BatchDeletePolicy deletePolicy,
+			Key[] keys
 	) {
 		throw new AerospikeException(NotSupported + "batch delete");
 	}
 
 	@Override
 	public void delete(
-		EventLoop eventLoop,
-		BatchRecordSequenceListener listener,
-		BatchPolicy batchPolicy,
-		BatchDeletePolicy deletePolicy,
-		Key[] keys
+			EventLoop eventLoop,
+			BatchRecordSequenceListener listener,
+			BatchPolicy batchPolicy,
+			BatchDeletePolicy deletePolicy,
+			Key[] keys
 	) {
 		throw new AerospikeException(NotSupported + "batch delete");
 	}
@@ -473,7 +472,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void touch(WritePolicy policy, Key key) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		touch(null, listener, policy, key);
 		getFuture(future);
@@ -494,7 +493,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean exists(Policy policy, Key key) {
-		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		ExistsListener listener = prepareExistsListener(future);
 		exists(null, listener, policy, key);
 		return getFuture(future);
@@ -681,54 +680,54 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void operate(
-		EventLoop eventLoop,
-		BatchOperateListListener listener,
-		BatchPolicy policy,
-		List<BatchRecord> records
+			EventLoop eventLoop,
+			BatchOperateListListener listener,
+			BatchPolicy policy,
+			List<BatchRecord> records
 	) {
 		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
 	public void operate(
-		EventLoop eventLoop,
-		BatchRecordSequenceListener listener,
-		BatchPolicy policy,
-		List<BatchRecord> records
+			EventLoop eventLoop,
+			BatchRecordSequenceListener listener,
+			BatchPolicy policy,
+			List<BatchRecord> records
 	) {
 		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
 	public BatchResults operate(
-		BatchPolicy batchPolicy,
-		BatchWritePolicy writePolicy,
-		Key[] keys,
-		Operation... ops
+			BatchPolicy batchPolicy,
+			BatchWritePolicy writePolicy,
+			Key[] keys,
+			Operation... ops
 	) {
 		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
 	public void operate(
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy batchPolicy,
-		BatchWritePolicy writePolicy,
-		Key[] keys,
-		Operation... ops
+			EventLoop eventLoop,
+			BatchRecordArrayListener listener,
+			BatchPolicy batchPolicy,
+			BatchWritePolicy writePolicy,
+			Key[] keys,
+			Operation... ops
 	) {
 		throw new AerospikeException(NotSupported + "batch operate");
 	}
 
 	@Override
 	public void operate(
-		EventLoop eventLoop,
-		BatchRecordSequenceListener listener,
-		BatchPolicy batchPolicy,
-		BatchWritePolicy writePolicy,
-		Key[] keys,
-		Operation... ops
+			EventLoop eventLoop,
+			BatchRecordSequenceListener listener,
+			BatchPolicy batchPolicy,
+			BatchWritePolicy writePolicy,
+			Key[] keys,
+			Operation... ops
 	) {
 		throw new AerospikeException(NotSupported + "batch operate");
 	}
@@ -739,67 +738,67 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void scanAll(
-		ScanPolicy policy,
-		String namespace,
-		String setName,
-		ScanCallback callback,
-		String... binNames
+			ScanPolicy policy,
+			String namespace,
+			String setName,
+			ScanCallback callback,
+			String... binNames
 	) {
 	}
 
 	@Override
 	public void scanAll(
-		EventLoop eventLoop,
-		RecordSequenceListener listener,
-		ScanPolicy policy,
-		String namespace,
-		String setName,
-		String... binNames
+			EventLoop eventLoop,
+			RecordSequenceListener listener,
+			ScanPolicy policy,
+			String namespace,
+			String setName,
+			String... binNames
 	) {
 	}
 
 	@Override
 	public void scanNode(
-		ScanPolicy policy,
-		String nodeName,
-		String namespace,
-		String setName,
-		ScanCallback callback,
-		String... binNames
+			ScanPolicy policy,
+			String nodeName,
+			String namespace,
+			String setName,
+			ScanCallback callback,
+			String... binNames
 	) {
 	}
 
 	@Override
 	public void scanNode(
-		ScanPolicy policy,
-		Node node,
-		String namespace,
-		String setName,
-		ScanCallback callback,
-		String... binNames
+			ScanPolicy policy,
+			Node node,
+			String namespace,
+			String setName,
+			ScanCallback callback,
+			String... binNames
 	) {
 	}
 
 	@Override
 	public void scanPartitions(
-		ScanPolicy policy,
-		PartitionFilter partitionFilter,
-		String namespace,
-		String setName,
-		ScanCallback callback,
-		String... binNames
+			ScanPolicy policy,
+			PartitionFilter partitionFilter,
+			String namespace,
+			String setName,
+			ScanCallback callback,
+			String... binNames
 	) {
 	}
 
 	@Override
 	public void scanPartitions(
-		EventLoop eventLoop,
-		RecordSequenceListener listener,
-		ScanPolicy policy,
-		PartitionFilter partitionFilter,
-		String namespace,
-		String setName,
-		String... binNames
+			EventLoop eventLoop,
+			RecordSequenceListener listener,
+			ScanPolicy policy,
+			PartitionFilter partitionFilter,
+			String namespace,
+			String setName,
+			String... binNames
 	) {
 	}
 
@@ -814,11 +813,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RegisterTask register(
-		Policy policy,
-		ClassLoader resourceLoader,
-		String resourcePath,
-		String serverPath,
-		Language language
+			Policy policy,
+			ClassLoader resourceLoader,
+			String resourcePath,
+			String serverPath,
+			Language language
 	) {
 		throw new AerospikeException(NotSupported + "register");
 	}
@@ -843,58 +842,58 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void execute(
-		EventLoop eventLoop,
-		ExecuteListener listener,
-		WritePolicy policy,
-		Key key,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			EventLoop eventLoop,
+			ExecuteListener listener,
+			WritePolicy policy,
+			Key key,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
 		ExecuteCommandProxy command = new ExecuteCommandProxy(executor, listener, policy, key,
-			packageName, functionName, functionArgs);
+				packageName, functionName, functionArgs);
 		command.execute();
 	}
 
 	@Override
 	public BatchResults execute(
-		BatchPolicy batchPolicy,
-		BatchUDFPolicy udfPolicy,
-		Key[] keys,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			BatchPolicy batchPolicy,
+			BatchUDFPolicy udfPolicy,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		throw new AerospikeException(NotSupported + "batch execute");
 	}
 
 	@Override
 	public void execute(
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy batchPolicy,
-		BatchUDFPolicy udfPolicy,
-		Key[] keys,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			EventLoop eventLoop,
+			BatchRecordArrayListener listener,
+			BatchPolicy batchPolicy,
+			BatchUDFPolicy udfPolicy,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		throw new AerospikeException(NotSupported + "batch execute");
 	}
 
 	@Override
 	public void execute(
-		EventLoop eventLoop,
-		BatchRecordSequenceListener listener,
-		BatchPolicy batchPolicy,
-		BatchUDFPolicy udfPolicy,
-		Key[] keys,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			EventLoop eventLoop,
+			BatchRecordSequenceListener listener,
+			BatchPolicy batchPolicy,
+			BatchUDFPolicy udfPolicy,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		throw new AerospikeException(NotSupported + "batch execute");
 	}
@@ -905,11 +904,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public ExecuteTask execute(
-		WritePolicy policy,
-		Statement statement,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			WritePolicy policy,
+			Statement statement,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		return null;
 	}
@@ -952,21 +951,21 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void queryPartitions(
-		EventLoop eventLoop,
-		RecordSequenceListener listener,
-		QueryPolicy policy,
-		Statement statement,
-		PartitionFilter partitionFilter
+			EventLoop eventLoop,
+			RecordSequenceListener listener,
+			QueryPolicy policy,
+			Statement statement,
+			PartitionFilter partitionFilter
 	) {
 	}
 
 	@Override
 	public ResultSet queryAggregate(
-		QueryPolicy policy,
-		Statement statement,
-		String packageName,
-		String functionName,
-		Value... functionArgs
+			QueryPolicy policy,
+			Statement statement,
+			String packageName,
+			String functionName,
+			Value... functionArgs
 	) {
 		return null;
 	}
@@ -987,42 +986,42 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public IndexTask createIndex(
-		Policy policy,
-		String namespace,
-		String setName,
-		String indexName,
-		String binName,
-		IndexType indexType
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName,
+			String binName,
+			IndexType indexType
 	) {
 		return null;
 	}
 
 	@Override
 	public IndexTask createIndex(
-		Policy policy,
-		String namespace,
-		String setName,
-		String indexName,
-		String binName,
-		IndexType indexType,
-		IndexCollectionType indexCollectionType,
-		CTX... ctx
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName,
+			String binName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType,
+			CTX... ctx
 	) {
 		return null;
 	}
 
 	@Override
 	public void createIndex(
-		EventLoop eventLoop,
-		IndexListener listener,
-		Policy policy,
-		String namespace,
-		String setName,
-		String indexName,
-		String binName,
-		IndexType indexType,
-		IndexCollectionType indexCollectionType,
-		CTX... ctx
+			EventLoop eventLoop,
+			IndexListener listener,
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName,
+			String binName,
+			IndexType indexType,
+			IndexCollectionType indexCollectionType,
+			CTX... ctx
 	) {
 	}
 
@@ -1033,12 +1032,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void dropIndex(
-		EventLoop eventLoop,
-		IndexListener listener,
-		Policy policy,
-		String namespace,
-		String setName,
-		String indexName
+			EventLoop eventLoop,
+			IndexListener listener,
+			Policy policy,
+			String namespace,
+			String setName,
+			String indexName
 	) {
 	}
 
@@ -1094,12 +1093,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void createRole(
-		AdminPolicy policy,
-		String roleName,
-		List<Privilege> privileges,
-		List<String> whitelist,
-		int readQuota,
-		int writeQuota
+			AdminPolicy policy,
+			String roleName,
+			List<Privilege> privileges,
+			List<String> whitelist,
+			int readQuota,
+			int writeQuota
 	) {
 	}
 
@@ -1153,14 +1152,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Class<? extends Channel> channelType = null;
 
 		if (policy.eventLoops != null) {
-			if (! (policy.eventLoops instanceof NettyEventLoops)) {
+			if (!(policy.eventLoops instanceof NettyEventLoops)) {
 				throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-					"Netty event loops are required in proxy client");
+						"Netty event loops are required in proxy client");
 			}
 
 			NettyEventLoops nettyLoops = (NettyEventLoops)policy.eventLoops;
 			NettyEventLoop[] array = nettyLoops.getArray();
-			eventLoops = new ArrayList<io.netty.channel.EventLoop>(array.length);
+			eventLoops = new ArrayList<>(array.length);
 
 			for (NettyEventLoop loop : array) {
 				eventLoops.add(loop.get());
@@ -1170,13 +1169,13 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 
 		int maxConnections = Math.min(MAX_CONNECTIONS, Math.max(MIN_CONNECTIONS,
-			Math.max(policy.asyncMaxConnsPerNode, policy.maxConnsPerNode)));
+				Math.max(policy.asyncMaxConnsPerNode, policy.maxConnsPerNode)));
 
 		return GrpcClientPolicy.newBuilder(eventLoops, channelType)
-			.maxChannels(maxConnections)
-			.connectTimeoutMillis(policy.timeout)
-			.tlsPolicy(policy.tlsPolicy)
-			.build();
+				.maxChannels(maxConnections)
+				.connectTimeoutMillis(policy.timeout)
+				.tlsPolicy(policy.tlsPolicy)
+				.build();
 	}
 
 	private static WriteListener prepareWriteListener(final CompletableFuture<Void> future) {
