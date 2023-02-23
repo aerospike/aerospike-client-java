@@ -73,7 +73,7 @@ public class BatchProxy {
             //  native and proxy client, to be passed to setBatchOperate as an
             //  argument? node is passed in as "null" in BatchNode constructor.
             BatchNode batchNode = new BatchNode(null, keys.length, 0);
-            for(int i = 1; i < keys.length; i++) {
+            for (int i = 1; i < keys.length; i++) {
                 batchNode.addKey(i);
             }
 
@@ -90,8 +90,7 @@ public class BatchProxy {
                 return;
             }
 
-            parser.parseProto();
-            int resultCode = parser.parseResultCode();
+            int resultCode = parser.parseHeader(5);
             if (resultCode == ResultCode.OK) {
                 onSuccess();
             } else {
@@ -109,8 +108,7 @@ public class BatchProxy {
 
             if (resultCode == 0) {
                 record = new BatchRecord(keyOrig, parser.parseRecord(isOperation), attr.hasWrite);
-            }
-            else {
+            } else {
                 // TODO @BrianNichols commandSentCounter?
                 int commandSentCounter = 0;
                 record = new BatchRecord(keyOrig, null, resultCode,
@@ -122,8 +120,7 @@ public class BatchProxy {
 
             try {
                 listener.onRecord(record, parser.batchIndex);
-            }
-            catch (Throwable e) {
+            } catch (Throwable e) {
                 Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
             }
         }
