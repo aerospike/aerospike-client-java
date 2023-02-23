@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import java.util.concurrent.TimeUnit;
-
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -62,7 +60,7 @@ public class GrpcStreamingUnaryCall {
 
     protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
         this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                other.iteration, other.responseObserver);
+                other.iteration, other.expiresAtNanos, other.responseObserver);
     }
 
 
@@ -71,6 +69,7 @@ public class GrpcStreamingUnaryCall {
                                   ByteString requestPayload,
                                   Policy policy,
                                   int iteration,
+                                  long expiresAtNanos,
                                   StreamObserver<Kvs.AerospikeResponsePayload>
                                           responseObserver) {
         this.responseObserver = responseObserver;
@@ -78,15 +77,7 @@ public class GrpcStreamingUnaryCall {
         this.requestPayload = requestPayload;
         this.iteration = iteration;
         this.policy = policy;
-
-        if (policy.totalTimeout > 0) {
-            this.expiresAtNanos =
-                    System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
-        } else {
-            // TODO: should 0 (no timeout) be allowed?
-            this.expiresAtNanos =
-                    System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
-        }
+        this.expiresAtNanos = expiresAtNanos;
     }
 
     public void onSuccess(Kvs.AerospikeResponsePayload payload) {
@@ -106,15 +97,15 @@ public class GrpcStreamingUnaryCall {
      * @return true if this call has expired.
      */
     public boolean hasExpired() {
-        return expiresAtNanos > 0 && System.nanoTime() >= expiresAtNanos;
+        return policy.totalTimeout > 0 && System.nanoTime() >= expiresAtNanos;
     }
 
     public boolean hasExpiry() {
-        return expiresAtNanos > 0;
+        return policy.totalTimeout > 0;
     }
 
     public long nanosTillExpiry() {
-        if (expiresAtNanos == 0) {
+        if (policy.totalTimeout == 0) {
             return Long.MAX_VALUE;
         }
         long nanosTillExpiry = expiresAtNanos - System.nanoTime();

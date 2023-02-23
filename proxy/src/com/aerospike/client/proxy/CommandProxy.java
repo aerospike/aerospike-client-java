@@ -38,7 +38,7 @@ public abstract class CommandProxy {
 	private final GrpcCallExecutor executor;
 	final Policy policy;
 	private long deadline;
-	private int iteration;
+	private int iteration = 1;
 	private boolean inDoubt;
 
 	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
@@ -54,14 +54,13 @@ public abstract class CommandProxy {
 	}
 
 	private void executeCommand() {
-		iteration++;
-
 		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		writeCommand(command);
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(), payload, policy, iteration,
+		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
+			payload, policy, iteration, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload value) {
@@ -105,6 +104,7 @@ public abstract class CommandProxy {
 			}
 		}
 
+		iteration++;
 		executor.getEventLoop().schedule(this::retryNow, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
 		return true;
 	}
