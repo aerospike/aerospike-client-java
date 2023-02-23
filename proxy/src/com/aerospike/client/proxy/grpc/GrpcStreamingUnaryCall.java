@@ -97,7 +97,7 @@ public class GrpcStreamingUnaryCall {
      * @return true if this call has expired.
      */
     public boolean hasExpired() {
-        return policy.totalTimeout > 0 && System.nanoTime() >= expiresAtNanos;
+        return policy.totalTimeout > 0 && System.nanoTime() - expiresAtNanos >= 0;
     }
 
     public boolean hasExpiry() {
