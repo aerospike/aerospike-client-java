@@ -81,12 +81,12 @@ public class BatchProxy {
         }
 
         @Override
-        void parsePayload(Kvs.AerospikeResponsePayload value) {
-            byte[] bytes = value.getPayload().toByteArray();
-            Parser parser = new Parser(bytes);
+        void onResponse(Kvs.AerospikeResponsePayload response) {
+            byte[] bytes = response.getPayload().toByteArray();
+            Parser parser = new Parser(bytes, response.getStatus());
 
-            if (value.getHasNext()) {
-                parseResult(parser, value.getInDoubt());
+            if (response.getHasNext()) {
+                parseResult(parser, response.getInDoubt());
                 return;
             }
 

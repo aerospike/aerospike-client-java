@@ -67,7 +67,7 @@ public abstract class CommandProxy {
 					@Override
 					public void onNext(Kvs.AerospikeResponsePayload value) {
 						try {
-							parsePayload(value);
+							onResponse(value);
 						}
 						catch (Throwable t) {
 							onFailure(t, value.getInDoubt());
@@ -97,11 +97,11 @@ public abstract class CommandProxy {
 		return true;
 	}
 
-	void parsePayload(Kvs.AerospikeResponsePayload value) {
-		byte[] bytes = value.getPayload().toByteArray();
-		Parser parser = new Parser(bytes);
+	void onResponse(Kvs.AerospikeResponsePayload response) {
+		byte[] bytes = response.getPayload().toByteArray();
+		Parser parser = new Parser(bytes, response.getStatus());
 		parser.parseProto();
-		parseResult(parser, value.getInDoubt());
+		parseResult(parser, response.getInDoubt());
 	}
 
 	private void onFailure(Throwable t, boolean inDoubt) {

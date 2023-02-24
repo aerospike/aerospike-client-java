@@ -32,14 +32,21 @@ public final class Parser {
 	private int offset;
 	private int receiveSize;
 	private	int resultCode;
+	private int responseStatus;
 	int generation;
 	int expiration;
 	int batchIndex;
 	int fieldCount;
 	int opCount;
 
-    public Parser(byte[] buffer) {
+	/**
+	 * Create a new parser.
+	 * @param buffer the response payload.
+	 * @param responseStatus the response status part of the AerospikeResponsePayload.
+	 */
+    public Parser(byte[] buffer, int responseStatus) {
         this.buffer = buffer;
+		this.responseStatus = responseStatus;
     }
 
     public void parseProto() {
@@ -92,7 +99,11 @@ public final class Parser {
     }
 
     public int parseResultCode() {
-		return buffer[offset] & 0xFF;
+		if(responseStatus == 0) {
+            return buffer[offset] & 0xFF;
+		} else {
+		    return responseStatus;
+		}
     }
 
 	public int parseHeader(int startOffset) {
@@ -101,7 +112,7 @@ public final class Parser {
 	}
 
     public int parseHeader() {
-		resultCode = buffer[offset] & 0xFF;
+		resultCode = parseResultCode();
 		offset += 1;
 		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
