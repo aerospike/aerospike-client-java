@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -82,13 +82,13 @@ public abstract class MultiCommand extends SyncCommand {
 		this.first = first;
 	}
 
-	public void executeAndValidate() {
+	public void executeAndValidate(int infoTimeout) {
 		if (clusterKey != 0) {
 			if (! first) {
-				QueryValidate.validate(node, namespace, clusterKey);
+				QueryValidate.validate(node, namespace, clusterKey, infoTimeout);
 			}
 			super.execute();
-			QueryValidate.validate(node, namespace, clusterKey);
+			QueryValidate.validate(node, namespace, clusterKey, infoTimeout);
 		}
 		else {
 			super.execute();

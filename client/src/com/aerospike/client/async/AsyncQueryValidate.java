@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,6 +23,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.InfoListener;
+import com.aerospike.client.policy.InfoPolicy;
 
 public final class AsyncQueryValidate {
 
@@ -36,10 +37,15 @@ public final class AsyncQueryValidate {
 		EventLoop eventLoop,
 		AsyncQueryValidate.BeginListener listener,
 		Node node,
-		String namespace
+		String namespace,
+		int timeout
 	) {
 		String command = "cluster-stable:namespace=" + namespace;
-		AsyncInfoCommand aic = new AsyncInfoCommand(new BeginHandler(listener, command), null, node, command);
+
+		InfoPolicy policy = new InfoPolicy();
+		policy.timeout = timeout;
+
+		AsyncInfoCommand aic = new AsyncInfoCommand(new BeginHandler(listener, command), policy, node, command);
 		eventLoop.execute(cluster, aic);
 	}
 
@@ -86,10 +92,15 @@ public final class AsyncQueryValidate {
 		AsyncQueryValidate.Listener listener,
 		Node node,
 		String namespace,
-		long expectedKey
+		long expectedKey,
+		int timeout
 	) {
 		String command = "cluster-stable:namespace=" + namespace;
-		AsyncInfoCommand aic = new AsyncInfoCommand(new Handler(listener, command, expectedKey), null, node, command);
+
+		InfoPolicy policy = new InfoPolicy();
+		policy.timeout = timeout;
+
+		AsyncInfoCommand aic = new AsyncInfoCommand(new Handler(listener, command, expectedKey), policy, node, command);
 		eventLoop.execute(cluster, aic);
 	}
 
