@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>6.1.6</version>
+  <version>6.1.7-SNAPSHOT</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
   
@@ -39,9 +39,9 @@
     <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
-    <grpc.version>1.52.1</grpc.version>
-    <netty.version>4.1.86.Final</netty.version>
+    <netty.version>4.1.87.Final</netty.version>
     <netty.tcnative.version>2.0.54.Final</netty.tcnative.version>
+    <grpc.version>1.52.1</grpc.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.5.0</commons-cli.version>
@@ -100,7 +100,7 @@
         <groupId>io.netty.incubator</groupId>
         <artifactId>netty-incubator-transport-native-io_uring</artifactId>
         <classifier>linux-x86_64</classifier>
-        <version>0.0.11.Final</version>
+        <version>0.0.16.Final</version>
       </dependency>
 
       <dependency>

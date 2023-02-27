@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.proxy;
 
+import java.util.concurrent.TimeUnit;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
@@ -35,7 +37,9 @@ import io.grpc.stub.StreamObserver;
 public abstract class CommandProxy {
 	protected final GrpcCallExecutor executor;
 	final Policy policy;
-	private final int iteration = 1;
+	private long deadline;
+	private int iteration = 1;
+	private boolean inDoubt;
 
 	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
 		this.executor = executor;
@@ -43,27 +47,26 @@ public abstract class CommandProxy {
 	}
 
 	final void execute() {
-		// TODO: Only set deadline if plan to retry?
-		/*
 		if (policy.totalTimeout > 0) {
-			deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+		} else if (policy.socketTimeout > 0) {
+			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.socketTimeout);
+		} else {
+			// TODO: @BrianNichols call SHOULD expire at some time. What
+			//  is a good default value?
+			deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
 		}
-		*/
 		executeCommand();
 	}
 
 	private void executeCommand() {
-		// TODO: Only need iteration counter if plan to retry?
-		// iteration++;
-
 		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
 		writeCommand(command);
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
 		executor.execute(new GrpcStreamingCall(getGrpcMethod(), payload, policy, iteration,
-				isUnaryCall(),
-				new StreamObserver<Kvs.AerospikeResponsePayload>() {
+				isUnaryCall(), deadline, new StreamObserver<Kvs.AerospikeResponsePayload>() {
 					@Override
 					public void onNext(Kvs.AerospikeResponsePayload value) {
 						try {
@@ -104,32 +107,78 @@ public abstract class CommandProxy {
 		parseResult(parser, response.getInDoubt());
 	}
 
-	private void onFailure(Throwable t, boolean inDoubt) {
-		// TODO: Retry on connection errors?
-		if (t instanceof AerospikeException) {
-			AerospikeException ae = (AerospikeException)t;
+	private boolean retry() {
+		if (iteration > policy.maxRetries) {
+			return false;
+		}
 
-			if (ae.getResultCode() == ResultCode.TIMEOUT) {
-				ae = new AerospikeException.Timeout(policy, false);
+		if (policy.totalTimeout > 0) {
+			long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
+
+			if (remaining <= 0) {
+				return false;
 			}
-			notifyFailure(ae, inDoubt);
-			return;
 		}
 
-		if (t instanceof StatusRuntimeException) {
-			AerospikeException ae = toAerospikeException((StatusRuntimeException)t);
-			notifyFailure(ae, inDoubt);
-			return;
+		iteration++;
+		executor.getEventLoop().schedule(this::retryNow, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
+		return true;
+	}
+
+	private void retryNow() {
+		try {
+			executeCommand();
+		}
+		catch (AerospikeException ae) {
+			notifyFailure(ae);
+		}
+		catch (Throwable t) {
+			notifyFailure(new AerospikeException(ResultCode.CLIENT_ERROR, t));
+		}
+	}
+
+	private void onFailure(Throwable t, boolean doubt) {
+		if (doubt) {
+			this.inDoubt = true;
 		}
 
-		AerospikeException ae = new AerospikeException(ResultCode.CLIENT_ERROR, t);
-		notifyFailure(ae, inDoubt);
+		AerospikeException ae;
+
+		try {
+			if (t instanceof AerospikeException) {
+				ae = (AerospikeException)t;
+
+				if (ae.getResultCode() == ResultCode.TIMEOUT) {
+					ae = new AerospikeException.Timeout(policy, false);
+				}
+			}
+			else if (t instanceof StatusRuntimeException) {
+				StatusRuntimeException sre = (StatusRuntimeException)t;
+				Status.Code code = sre.getStatus().getCode();
+
+				if (code == Status.Code.UNAVAILABLE) {
+					if (retry()) {
+						return;
+					}
+				}
+				ae = toAerospikeException(sre, code);
+			}
+			else {
+				ae = new AerospikeException(ResultCode.CLIENT_ERROR, t);
+			}
+		}
+		catch (AerospikeException ae2) {
+			ae = ae2;
+		}
+		catch (Throwable t2) {
+			ae = new AerospikeException(ResultCode.CLIENT_ERROR, t2);
+		}
+
+		notifyFailure(ae);
 		return;
 	}
 
-	private AerospikeException toAerospikeException(StatusRuntimeException sre) {
-		Status.Code code = sre.getStatus().getCode();
-
+	private AerospikeException toAerospikeException(StatusRuntimeException sre, Status.Code code) {
 		switch (code) {
 			case CANCELLED:
 			case UNKNOWN:
@@ -155,30 +204,22 @@ public abstract class CommandProxy {
 			case RESOURCE_EXHAUSTED:
 				return new AerospikeException(ResultCode.QUOTA_EXCEEDED, sre);
 
-			case UNAVAILABLE:
-				return new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
-
 			case UNAUTHENTICATED:
-				return new AerospikeException(ResultCode.NOT_AUTHENTICATED);
+				return new AerospikeException(ResultCode.NOT_AUTHENTICATED, sre);
+
+			case UNAVAILABLE:
+				return new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, sre);
 
 			default:
 				return new AerospikeException("gRPC code " + code, sre);
 		}
 	}
 
-	// TODO: Under what error codes should we retry?
-	/*
-	private void retry() {
-		executor.getEventLoop().schedule(this::executeCommand, policy.sleepBetweenRetries, TimeUnit.MILLISECONDS);
-	}
-	*/
-
-	private void notifyFailure(AerospikeException ae, boolean inDoubt) {
-		ae.setPolicy(policy);
-		ae.setIteration(iteration);
-		ae.setInDoubt(inDoubt);
-
+	private void notifyFailure(AerospikeException ae) {
 		try {
+			ae.setPolicy(policy);
+			ae.setIteration(iteration);
+			ae.setInDoubt(inDoubt);
 			onFailure(ae);
 		}
 		catch (Throwable t) {

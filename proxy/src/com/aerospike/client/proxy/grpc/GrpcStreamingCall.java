@@ -16,12 +16,9 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import java.util.concurrent.TimeUnit;
-
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
-
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 
@@ -67,19 +64,18 @@ public class GrpcStreamingCall {
 
     protected GrpcStreamingCall(GrpcStreamingCall other) {
         this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                 other.iteration, other.isUnaryCall, other.responseObserver);
+                other.iteration, other.isUnaryCall, other.expiresAtNanos,
+                other.responseObserver);
+
     }
 
 
     public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
             Kvs.AerospikeResponsePayload> methodDescriptor,
-                             ByteString requestPayload,
-                             Policy policy,
-                             int iteration,
-                             boolean isUnaryCall,
-                             StreamObserver<Kvs.AerospikeResponsePayload>
-                                          responseObserver
-                             ) {
+                             ByteString requestPayload, Policy policy,
+                             int iteration, boolean isUnaryCall,
+                             long expiresAtNanos,
+                             StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
         this.responseObserver = responseObserver;
         this.methodDescriptor = methodDescriptor;
         this.requestPayload = requestPayload;
@@ -87,14 +83,10 @@ public class GrpcStreamingCall {
         this.policy = policy;
         this.isUnaryCall = isUnaryCall;
 
-        if (policy.totalTimeout > 0) {
-            this.expiresAtNanos =
-                    System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
-        } else {
-            // TODO: should 0 (no timeout) be allowed?
-            this.expiresAtNanos =
-                    System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+        if(expiresAtNanos <= 0) {
+            throw new IllegalArgumentException("call has to have an expiry");
         }
+        this.expiresAtNanos = expiresAtNanos;
     }
 
     public void onSuccess(Kvs.AerospikeResponsePayload payload) {
@@ -116,7 +108,7 @@ public class GrpcStreamingCall {
      * @return true if this call has expired.
      */
     public boolean hasExpired() {
-        return expiresAtNanos > 0 && System.nanoTime() >= expiresAtNanos;
+        return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
     }
 
     public boolean hasExpiry() {
@@ -124,8 +116,8 @@ public class GrpcStreamingCall {
     }
 
     public long nanosTillExpiry() {
-        if (expiresAtNanos == 0) {
-            return Long.MAX_VALUE;
+        if (!hasExpiry()) {
+            throw new IllegalStateException("call does not expire");
         }
         long nanosTillExpiry = expiresAtNanos - System.nanoTime();
         return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
