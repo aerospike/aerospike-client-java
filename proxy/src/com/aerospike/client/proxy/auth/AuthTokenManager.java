@@ -76,15 +76,13 @@ public class AuthTokenManager implements Closeable {
 	private final ScheduledExecutorService executor;
 	private final AtomicBoolean isFetchingToken = new AtomicBoolean(false);
 	private final AtomicBoolean isClosed = new AtomicBoolean(false);
-	private volatile AccessToken accessToken;
-	private volatile boolean fetchScheduled;
-
 	/**
 	 * Count of consecutive errors while refreshing the token.
 	 */
 	private final AtomicInteger consecutiveRefreshErrors =
 			new AtomicInteger(0);
-
+	private volatile AccessToken accessToken;
+	private volatile boolean fetchScheduled;
 	/**
 	 * A {@link ScheduledFuture} holding reference to the next auto schedule task.
 	 */
@@ -96,27 +94,6 @@ public class AuthTokenManager implements Closeable {
 		this.executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("auth-manager").build());
 		this.accessToken = new AccessToken(System.currentTimeMillis(), 0, "");
 		fetchToken(true);
-	}
-
-	public CallOptions setCallCredentials(
-			CallOptions callOptions) {
-		if (isTokenRequired()) {
-			if (!isTokenValid()) {
-				if (Log.warnEnabled()) {
-					// TODO: This warns for evey call, spamming the output.
-					//  Should be rate limited. Possibly once in a few seconds.
-					// This alerts that auto refresh didn't finish correctly. In normal scenario, this should never
-					// happen.
-					Log.warn("Trying to refresh token before setting into call");
-				}
-				unsafeScheduleRefresh(0, false);
-			}
-			if (!isTokenValid()) {
-				throw new IllegalStateException("Access token has expired");
-			}
-			return callOptions.withCallCredentials(new BearerTokenCallCredentials(accessToken.token));
-		}
-		return callOptions;
 	}
 
 	/**
@@ -246,12 +223,6 @@ public class AuthTokenManager implements Closeable {
 		return clientPolicy.user != null;
 	}
 
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
-	private boolean isTokenValid() {
-		AccessToken token = accessToken;
-		return !isTokenRequired() || (token != null && System.currentTimeMillis() <= token.expiry);
-	}
-
 	private AccessToken parseToken(String token) throws IOException {
 		String claims = token.split("\\.")[1];
 		byte[] decodedClaims = Base64.getDecoder().decode(claims);
@@ -271,6 +242,40 @@ public class AuthTokenManager implements Closeable {
 		else {
 			throw new IllegalArgumentException("Unsupported access token format");
 		}
+	}
+
+	public CallOptions setCallCredentials(
+			CallOptions callOptions) {
+		if (isTokenRequired()) {
+			if (!isTokenValid()) {
+				if (Log.warnEnabled()) {
+					// TODO: This warns for evey call, spamming the output.
+					//  Should be rate limited. Possibly once in a few seconds.
+					// This alerts that auto refresh didn't finish correctly. In normal scenario, this should never
+					// happen.
+					Log.warn("Trying to refresh token before setting into call");
+				}
+				unsafeScheduleRefresh(0, false);
+			}
+			if (!isTokenValid()) {
+				throw new IllegalStateException("Access token has expired");
+			}
+			return callOptions.withCallCredentials(new BearerTokenCallCredentials(accessToken.token));
+		}
+		return callOptions;
+	}
+
+	/**
+	 * @return the minimum amount of time it takes for the token to refresh.
+	 */
+	public int getRefreshMinTime() {
+		return refreshMinTime;
+	}
+
+	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
+	public boolean isTokenValid() {
+		AccessToken token = accessToken;
+		return !isTokenRequired() || (token != null && System.currentTimeMillis() <= token.expiry);
 	}
 
 	@Override

@@ -49,9 +49,9 @@ import io.grpc.NameResolver;
 import io.grpc.netty.GrpcSslContexts;
 import io.grpc.netty.NegotiationType;
 import io.grpc.netty.NettyChannelBuilder;
+import io.netty.channel.Channel;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoop;
-import io.netty.channel.EventLoopGroup;
 import io.netty.channel.WriteBufferWaterMark;
 import io.netty.handler.ssl.ApplicationProtocolConfig;
 import io.netty.handler.ssl.CipherSuiteFilter;
@@ -81,6 +81,12 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private static final String AEROSPIKE_CLIENT_USER_AGENT =
 			"AerospikeClientJava/" + AerospikeClientProxy.Version;
+
+	/**
+	 * Call queue initial chunk size.
+	 */
+	private static final int CALL_QUEUE_CHUNK_SIZE = 128;
+
 	/**
 	 * The delay between iterations of this executor.
 	 * <p>
@@ -135,6 +141,7 @@ public class GrpcChannelExecutor implements Runnable {
 	private final long id;
 	// Statistics.
 	private final AtomicLong ongoingRequests = new AtomicLong();
+	private final int drainLimit;
 	/**
 	 * The future to cancel the scheduled iteration of this executor.
 	 */
@@ -147,31 +154,18 @@ public class GrpcChannelExecutor implements Runnable {
 	private volatile long responsesReceived;
 	private volatile long streamsOpen;
 	private volatile long streamsClosed;
+	/**
+	 * Time when the channel executor saw an invalid token. If this field is
+	 * zero the token is valid.
+	 * <p>
+	 * Is not volatile because it is access from a single thread.
+	 */
+	private long tokenInvalidStartTime = 0;
 
-	private GrpcChannelExecutor(ManagedChannel channel,
-								GrpcClientPolicy grpcClientPolicy,
-								@Nullable AuthTokenManager authTokenManager,
-								EventLoop eventLoop, long id) {
-		if (channel == null) {
-			throw new NullPointerException("channel");
-		}
-		if (eventLoop == null) {
-			throw new NullPointerException("eventLoop");
-		}
-		if (grpcClientPolicy == null) {
-			throw new NullPointerException("grpcClientPolicy");
-		}
-
-		this.authTokenManager = authTokenManager;
-		this.channel = channel;
-		this.eventLoop = eventLoop;
-		this.grpcClientPolicy = grpcClientPolicy;
-		this.id = id;
-	}
-
-	public static GrpcChannelExecutor newInstance(GrpcClientPolicy grpcClientPolicy,
-												  @Nullable AuthTokenManager authTokenManager,
-												  Host... hosts) {
+	public GrpcChannelExecutor(GrpcClientPolicy grpcClientPolicy,
+							   ChannelTypeAndEventLoop channelTypeAndEventLoop,
+							   @Nullable AuthTokenManager authTokenManager,
+							   Host... hosts) {
 		if (grpcClientPolicy == null) {
 			throw new NullPointerException("grpcClientPolicy");
 		}
@@ -179,25 +173,79 @@ public class GrpcChannelExecutor implements Runnable {
 			throw new IllegalArgumentException("hosts should be non-empty");
 		}
 
-		ChannelAndEventLoop channelAndEventLoop = createGrpcChannel(grpcClientPolicy, hosts);
-		GrpcChannelExecutor executor =
-				new GrpcChannelExecutor(channelAndEventLoop.managedChannel,
-						grpcClientPolicy, authTokenManager, channelAndEventLoop.eventLoop,
-						executorIdIndex.getAndIncrement());
+		this.grpcClientPolicy = grpcClientPolicy;
+		this.drainLimit =
+				this.grpcClientPolicy.maxConcurrentStreamsPerChannel * grpcClientPolicy.maxConcurrentRequestsPerStream;
+		this.authTokenManager = authTokenManager;
+		this.id = executorIdIndex.getAndIncrement();
+		ChannelAndEventLoop channelAndEventLoop =
+				createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
+						, channelTypeAndEventLoop.getChannelType(), hosts);
+		this.channel = channelAndEventLoop.managedChannel;
+		this.eventLoop = channelAndEventLoop.eventLoop;
 
-		ScheduledFuture<?> future = channelAndEventLoop.eventLoop.scheduleAtFixedRate(executor, 0,
-				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
-		executor.setScheduledFuture(future);
+		ScheduledFuture<?> future =
+				channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
+						ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
+		setScheduledFuture(future);
+	}
 
-		return executor;
+	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
+		try {
+			SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient();
+			Field field = sslContextBuilder.getClass().getDeclaredField("apn");
+			field.setAccessible(true);
+			ApplicationProtocolConfig apn = (ApplicationProtocolConfig)field.get(sslContextBuilder);
+			if (tlsPolicy.context != null) {
+				CipherSuiteFilter csf = (tlsPolicy.ciphers != null) ? (iterable, list, set) -> {
+					if (tlsPolicy.ciphers != null) {
+						return tlsPolicy.ciphers;
+					}
+					return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();
+				} : IdentityCipherSuiteFilter.INSTANCE;
+				return new JdkSslContext(tlsPolicy.context, true, null, csf, apn, ClientAuth.NONE, null, false);
+			}
+			SslContextBuilder builder = SslContextBuilder.forClient();
+			builder.applicationProtocolConfig(apn);
+			if (tlsPolicy.protocols != null) {
+				builder.protocols(tlsPolicy.protocols);
+			}
+
+			if (tlsPolicy.ciphers != null) {
+				builder.ciphers(Arrays.asList(tlsPolicy.ciphers));
+			}
+
+			String keyStoreLocation = System.getProperty("javax.net.ssl.keyStore");
+
+			// Keystore is only required for mutual authentication.
+			if (keyStoreLocation != null) {
+				String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
+				char[] pass = (keyStorePassword != null) ? keyStorePassword.toCharArray() : null;
+
+				KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
+
+				try (FileInputStream is = new FileInputStream(keyStoreLocation)) {
+					ks.load(is, pass);
+				}
+
+				KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+				kmf.init(ks, pass);
+
+				builder.keyManager(kmf);
+			}
+			return builder.build();
+		}
+		catch (Exception e) {
+			throw new AerospikeException("Failed to init netty TLS: " + Util.getErrorMessage(e));
+		}
 	}
 
 	/**
 	 * Create a gRPC channel.
 	 */
 	@SuppressWarnings("deprecation")
-	private static ChannelAndEventLoop createGrpcChannel(GrpcClientPolicy grpcClientPolicy,
-														 Host[] hosts) {
+	private ChannelAndEventLoop createGrpcChannel(EventLoop eventLoop,
+												  Class<? extends Channel> channelType, Host[] hosts) {
 		NettyChannelBuilder builder;
 
 		if (hosts.length == 1) {
@@ -216,13 +264,11 @@ public class GrpcChannelExecutor implements Runnable {
 			builder.defaultLoadBalancingPolicy("round_robin");
 		}
 
-		EventLoop eventLoop = grpcClientPolicy.nextEventLoop();
-		EventLoopGroup eventLoopGroup = new SingleEventLoopGroup(eventLoop);
-
+		SingleEventLoopGroup eventLoopGroup = new SingleEventLoopGroup(eventLoop);
 		builder
 				.eventLoopGroup(eventLoopGroup)
 				.perRpcBufferLimit(128 * 1024 * 1024)
-				.channelType(grpcClientPolicy.channelType)
+				.channelType(channelType)
 				.negotiationType(NegotiationType.PLAINTEXT)
 
 				// Execute callbacks in the assigned event loop.
@@ -285,56 +331,6 @@ public class GrpcChannelExecutor implements Runnable {
 		return new ChannelAndEventLoop(channel, eventLoop);
 	}
 
-	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
-		try {
-			SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient();
-			Field field = sslContextBuilder.getClass().getDeclaredField("apn");
-			field.setAccessible(true);
-			ApplicationProtocolConfig apn = (ApplicationProtocolConfig)field.get(sslContextBuilder);
-			if (tlsPolicy.context != null) {
-				CipherSuiteFilter csf = (tlsPolicy.ciphers != null) ? (iterable, list, set) -> {
-					if (tlsPolicy.ciphers != null) {
-						return tlsPolicy.ciphers;
-					}
-					return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();
-				} : IdentityCipherSuiteFilter.INSTANCE;
-				return new JdkSslContext(tlsPolicy.context, true, null, csf, apn, ClientAuth.NONE, null, false);
-			}
-			SslContextBuilder builder = SslContextBuilder.forClient();
-			builder.applicationProtocolConfig(apn);
-			if (tlsPolicy.protocols != null) {
-				builder.protocols(tlsPolicy.protocols);
-			}
-
-			if (tlsPolicy.ciphers != null) {
-				builder.ciphers(Arrays.asList(tlsPolicy.ciphers));
-			}
-
-			String keyStoreLocation = System.getProperty("javax.net.ssl.keyStore");
-
-			// Keystore is only required for mutual authentication.
-			if (keyStoreLocation != null) {
-				String keyStorePassword = System.getProperty("javax.net.ssl.keyStorePassword");
-				char[] pass = (keyStorePassword != null) ? keyStorePassword.toCharArray() : null;
-
-				KeyStore ks = KeyStore.getInstance(KeyStore.getDefaultType());
-
-				try (FileInputStream is = new FileInputStream(keyStoreLocation)) {
-					ks.load(is, pass);
-				}
-
-				KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
-				kmf.init(ks, pass);
-
-				builder.keyManager(kmf);
-			}
-			return builder.build();
-		}
-		catch (Exception e) {
-			throw new AerospikeException("Failed to init netty TLS: " + Util.getErrorMessage(e));
-		}
-	}
-
 	public void execute(GrpcStreamingUnaryCall call) {
 		// TODO: add always succeeds?
 		ongoingRequests.getAndIncrement();
@@ -355,16 +351,59 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Process a single iteration.
 	 */
 	private void iterate() {
+		if (authTokenManager != null && !authTokenManager.isTokenValid()) {
+			expireOrDrainOnInvalidToken();
+			return;
+		}
+
 		// Schedule pending calls onto streams.
-		final int LIMIT =
-				grpcClientPolicy.maxConcurrentStreamsPerChannel * grpcClientPolicy.maxConcurrentRequestsPerStream;
-		pendingCalls.drain(this::scheduleCalls, LIMIT);
+		pendingCalls.drain(this::scheduleCalls, drainLimit);
 
 		// Execute stream calls.
 		streams.values().forEach(GrpcStream::executeCall);
 
 		// Process closed streams.
-		closedStreams.drain(this::processClosedStream, LIMIT);
+		closedStreams.drain(this::processClosedStream, drainLimit);
+	}
+
+	/**
+	 * Expire queued calls and drain queue if required when we have an invalid
+	 * auth token.
+	 */
+	private void expireOrDrainOnInvalidToken() {
+		assert authTokenManager != null;
+
+		if (tokenInvalidStartTime == 0) {
+			tokenInvalidStartTime = System.currentTimeMillis();
+		}
+
+		// Token is invalid. This happens at the start before the first
+		// access token fetch or if the token expires and could not be
+		// refreshed.
+		pendingCalls.forEach(call -> {
+			if (!call.hasCompleted() && call.hasExpired()) {
+				call.onError(new AerospikeException.Timeout(call.getPolicy(),
+						call.getIteration()));
+			}
+		});
+
+
+		long tokenWaitTimeout = tokenInvalidStartTime + authTokenManager.getRefreshMinTime() * 3L;
+		if (tokenWaitTimeout < System.currentTimeMillis()) {
+			tokenInvalidStartTime = 0;
+			// It's been too long without a valid access token. Drain and
+			// report all queued calls as failed.
+			pendingCalls.drain(this::failOnInvalidToken);
+		}
+	}
+
+	/**
+	 * @param grpcStreamingUnaryCall call to fail.
+	 */
+	private void failOnInvalidToken(GrpcStreamingUnaryCall grpcStreamingUnaryCall) {
+		if (!grpcStreamingUnaryCall.hasCompleted()) {
+			grpcStreamingUnaryCall.onError(new AerospikeException(ResultCode.NOT_AUTHENTICATED));
+		}
 	}
 
 	/**
@@ -372,6 +411,11 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	private void scheduleCalls(GrpcStreamingUnaryCall call) {
+		if (call.hasCompleted()) {
+			// Most likely expired while in queue.
+			return;
+		}
+
 		// Update stats.
 		ByteString payload = call.getRequestPayload();
 		bytesSent += payload.size();
@@ -387,7 +431,7 @@ public class GrpcChannelExecutor implements Runnable {
 
 		// Create new stream.
 		SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> queue =
-				new SpscUnboundedArrayQueue<>(128);
+				new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 		queue.add(call);
 
 		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue);
@@ -449,7 +493,7 @@ public class GrpcChannelExecutor implements Runnable {
 		// - in the next call of GrpcChannelExecutor.processClosedStreams in
 		// an iteration the above steps repeat
 		SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> activeCalls =
-				new SpscUnboundedArrayQueue<>(128);
+				new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 		for (GrpcStreamingUnaryCall call = pendingCalls.poll(); call != null;
 			 call = pendingCalls.poll()) {
 			if (call.hasExpired()) {
@@ -465,7 +509,7 @@ public class GrpcChannelExecutor implements Runnable {
 			return;
 		}
 
-		GrpcStream stream = GrpcStream.newInstance(this, methodDescriptor,
+		GrpcStream stream = new GrpcStream(this, methodDescriptor,
 				activeCalls, options, grpcClientPolicy, nextStreamId(), eventLoop);
 
 		streams.put(stream.getId(), stream);
@@ -585,6 +629,24 @@ public class GrpcChannelExecutor implements Runnable {
 		private ChannelAndEventLoop(ManagedChannel managedChannel, EventLoop eventLoop) {
 			this.managedChannel = managedChannel;
 			this.eventLoop = eventLoop;
+		}
+	}
+
+	public static class ChannelTypeAndEventLoop {
+		private final Class<? extends Channel> channelType;
+		private final EventLoop eventLoop;
+
+		public ChannelTypeAndEventLoop(Class<? extends Channel> channelType, EventLoop eventLoop) {
+			this.channelType = channelType;
+			this.eventLoop = eventLoop;
+		}
+
+		public Class<? extends Channel> getChannelType() {
+			return channelType;
+		}
+
+		public EventLoop getEventLoop() {
+			return eventLoop;
 		}
 	}
 }

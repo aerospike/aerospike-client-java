@@ -59,9 +59,15 @@ public class GrpcStreamingUnaryCall {
 	 */
 	private final int iteration;
 
+	/**
+	 * Indicates if this call completed (successfully or unsuccessfully).
+	 */
+	private volatile boolean completed;
+
 	protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
 		this(other.streamingMethodDescriptor, other.requestPayload, other.getPolicy(),
 				other.iteration, other.responseObserver);
+		completed = other.completed;
 	}
 
 
@@ -90,12 +96,23 @@ public class GrpcStreamingUnaryCall {
 	}
 
 	public void onSuccess(Kvs.AerospikeResponsePayload payload) {
+		completed = true;
 		responseObserver.onNext(payload);
 		responseObserver.onCompleted();
 	}
 
 	public void onError(Throwable t) {
+		completed = true;
 		responseObserver.onError(t);
+	}
+
+	/**
+	 * @return <code>true</code> iff this call has completed either because
+	 * {@link #onSuccess(Kvs.AerospikeResponsePayload)} or
+	 * {@link #onError(Throwable)} was invoked.
+	 */
+	public boolean hasCompleted() {
+		return completed;
 	}
 
 	public MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getStreamingMethodDescriptor() {
@@ -106,7 +123,7 @@ public class GrpcStreamingUnaryCall {
 	 * @return true if this call has expired.
 	 */
 	public boolean hasExpired() {
-		return expiresAtNanos > 0 && System.nanoTime() >= expiresAtNanos;
+		return hasExpiry() && System.nanoTime() >= expiresAtNanos;
 	}
 
 	public boolean hasExpiry() {

@@ -17,6 +17,7 @@
 package com.aerospike.client.proxy.grpc;
 
 import java.io.Closeable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +33,15 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
 import io.grpc.ManagedChannel;
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 
 public class GrpcCallExecutor implements Closeable {
 	private static final int QUEUE_SIZE_UPPER_BOUND = 100 * 1024;
@@ -48,6 +57,7 @@ public class GrpcCallExecutor implements Closeable {
 	private final int maxQueueSize;
 
 	private final LongAdder totalQueueSize = new LongAdder();
+	private final GrpcChannelExecutor.ChannelTypeAndEventLoop controlChannelTypeAndEventLoop;
 
 	public GrpcCallExecutor(GrpcClientPolicy grpcClientPolicy,
 							@Nullable AuthTokenManager authTokenManager,
@@ -64,16 +74,20 @@ public class GrpcCallExecutor implements Closeable {
 								* grpcClientPolicy.maxConcurrentStreamsPerChannel
 								* grpcClientPolicy.maxConcurrentRequestsPerStream);
 
+		this.controlChannelTypeAndEventLoop = getControlEventLoop();
 		try {
 			this.channelExecutors =
 					IntStream.range(0, grpcClientPolicy.maxChannels).mapToObj(value ->
-							GrpcChannelExecutor.newInstance(grpcClientPolicy,
+							new GrpcChannelExecutor(grpcClientPolicy,
+									new GrpcChannelExecutor.ChannelTypeAndEventLoop(grpcClientPolicy.channelType,
+											grpcClientPolicy.nextEventLoop()),
 									authTokenManager, hosts)
 					).collect(Collectors.toList());
 			this.controlChannelExecutors =
 					IntStream.range(0, 1).mapToObj(value ->
-							GrpcChannelExecutor.newInstance(grpcClientPolicy,
-									authTokenManager, hosts)
+							new GrpcChannelExecutor(grpcClientPolicy,
+									controlChannelTypeAndEventLoop, authTokenManager,
+									hosts)
 					).collect(Collectors.toList());
 		}
 		catch (Exception e) {
@@ -127,71 +141,79 @@ public class GrpcCallExecutor implements Closeable {
 		isClosed.set(true);
 		closeExecutors(channelExecutors);
 		closeExecutors(controlChannelExecutors);
+		closeEventLoops();
+	}
+
+	private GrpcChannelExecutor.ChannelTypeAndEventLoop getControlEventLoop() {
+		EventLoopGroup eventLoopGroup;
+		Class<? extends Channel> channelType;
+		DefaultThreadFactory tf =
+				new DefaultThreadFactory("aerospike-proxy-control", true
+						/*daemon */);
+
+		if (Epoll.isAvailable()) {
+			eventLoopGroup = new EpollEventLoopGroup(1, tf);
+			channelType = EpollSocketChannel.class;
+		}
+		else {
+			eventLoopGroup = new NioEventLoopGroup(1, tf);
+			channelType = NioSocketChannel.class;
+		}
+
+		return new GrpcChannelExecutor.ChannelTypeAndEventLoop(channelType, (EventLoop)eventLoopGroup.iterator().next());
 	}
 
 	private void closeExecutors(List<GrpcChannelExecutor> executors) {
-		// TODO FIX HANG!
+		// FIXME: each executor waits for terminationWaitMillis which will be
+		//  add up to greater than the terminationWaitMillis.
 		for (GrpcChannelExecutor executor : executors) {
 			executor.shutdown();
 		}
 
-		if (grpcClientPolicy.closeEventLoops) {
-			grpcClientPolicy.eventLoops.stream()
-					.map(eventLoop ->
-							eventLoop.shutdownGracefully(0,
-									grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
-
-					).forEach(future -> {
-								try {
-									future.await(grpcClientPolicy.terminationWaitMillis);
-								}
-								catch (Exception e) {
-									// TODO log error?
-								}
-							}
-					);
+		boolean interrupted = false;
+		for (GrpcChannelExecutor executor : executors) {
+			while (!executor.awaitTermination(grpcClientPolicy.terminationWaitMillis)) {
+				try {
+					//noinspection BusyWait
+					Thread.sleep(10);
+				}
+				catch (InterruptedException e) {
+					interrupted = true;
+				}
+			}
 		}
 
-		// FIXME: each executor waits for terminationWaitMillis which will be
-		//  add up to greater than the terminationWaitMillis.
-    	/*
-        for (GrpcChannelExecutor executor : executors) {
-            executor.shutdown();
-        }
-
-        boolean interrupted = false;
-        for (GrpcChannelExecutor executor : executors) {
-            while (!executor.awaitTermination(grpcClientPolicy.terminationWaitMillis)) {
-                try {
-                    //noinspection BusyWait
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    interrupted = true;
-                }
-            }
-        }
-
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
-
-        if (grpcClientPolicy.closeEventLoops) {
-            grpcClientPolicy.eventLoops.stream()
-                    .map(eventLoop ->
-                            eventLoop.shutdownGracefully(0,
-                                    grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
-
-                    ).forEach(future -> {
-                                try {
-                                    future.await(grpcClientPolicy.terminationWaitMillis);
-                                } catch (Exception e) {
-                                    // TODO log error?
-                                }
-                            }
-                    );
-        }
-        */
+		if (interrupted) {
+			Thread.currentThread().interrupt();
+		}
 	}
+
+	private void closeEventLoops() {
+		if (grpcClientPolicy.closeEventLoops) {
+			closeEventLoops(grpcClientPolicy.eventLoops);
+		}
+
+		// Close the control event loop.
+		closeEventLoops(Collections.singletonList(controlChannelTypeAndEventLoop.getEventLoop()));
+	}
+
+	private void closeEventLoops(List<EventLoop> eventLoops) {
+		eventLoops.stream()
+				.map(eventLoop ->
+						eventLoop.shutdownGracefully(0,
+								grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
+
+				).forEach(future -> {
+							try {
+								future.await(grpcClientPolicy.terminationWaitMillis);
+							}
+							catch (Exception e) {
+								// TODO log error?
+							}
+						}
+				);
+	}
+
 
 	private class WrappedGrpcStreamingUnaryCall extends GrpcStreamingUnaryCall {
 		WrappedGrpcStreamingUnaryCall(GrpcStreamingUnaryCall delegate) {
