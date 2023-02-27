@@ -83,7 +83,7 @@ public class GrpcStreamingCall {
         this.policy = policy;
         this.isUnaryCall = isUnaryCall;
 
-        if(expiresAtNanos <= 0) {
+        if(expiresAtNanos == 0) {
             throw new IllegalArgumentException("call has to have an expiry");
         }
         this.expiresAtNanos = expiresAtNanos;
