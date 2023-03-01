@@ -44,7 +44,8 @@ public class BatchProxy {
                 BatchRecordSequenceListener listener,
                 BatchAttr attr
         ) {
-            super(grpcCallExecutor, batchPolicy);
+            super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor,
+                    batchPolicy);
             this.batchPolicy = batchPolicy;
             this.keys = keys;
             this.ops = ops;
@@ -52,11 +53,6 @@ public class BatchProxy {
             this.listener = listener;
             this.attr = attr;
             this.isOperation = ops != null;
-        }
-
-        @Override
-        protected MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getGrpcMethod() {
-            return KVSGrpc.getBatchOperateStreamingMethod();
         }
 
         @Override
@@ -73,6 +69,9 @@ public class BatchProxy {
             //  native and proxy client, to be passed to setBatchOperate as an
             //  argument? node is passed in as "null" in BatchNode constructor.
             BatchNode batchNode = new BatchNode(null, keys.length, 0);
+
+            // 0 is already added in the "new BatchNode(...)" constructor
+            // above, hence i starts from 1 here.
             for (int i = 1; i < keys.length; i++) {
                 batchNode.addKey(i);
             }

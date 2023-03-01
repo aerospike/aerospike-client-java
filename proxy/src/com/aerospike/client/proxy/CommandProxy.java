@@ -35,13 +35,19 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
 public abstract class CommandProxy {
-	protected final GrpcCallExecutor executor;
 	final Policy policy;
+	protected final GrpcCallExecutor executor;
+	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
 	private boolean inDoubt;
 
-	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
+	public CommandProxy(
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		GrpcCallExecutor executor,
+		Policy policy
+	) {
+		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
 	}
@@ -65,8 +71,9 @@ public abstract class CommandProxy {
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executor.execute(new GrpcStreamingCall(getGrpcMethod(), payload, policy, iteration,
-				isUnaryCall(), deadline, new StreamObserver<Kvs.AerospikeResponsePayload>() {
+		executor.execute(new GrpcStreamingCall(methodDescriptor,
+				payload, policy, iteration, isUnaryCall(), deadline,
+				new StreamObserver<Kvs.AerospikeResponsePayload>() {
 					@Override
 					public void onNext(Kvs.AerospikeResponsePayload value) {
 						try {
@@ -87,13 +94,6 @@ public abstract class CommandProxy {
 					public void onCompleted() {
 					}
 				}));
-	}
-
-	protected MethodDescriptor<Kvs.AerospikeRequestPayload,
-			Kvs.AerospikeResponsePayload> getGrpcMethod() {
-		// TODO should be implemented by all subclasses and this method
-		//  should be made abstract.
-		throw new RuntimeException("not implemented");
 	}
 
 	protected boolean isUnaryCall() {
@@ -175,7 +175,6 @@ public abstract class CommandProxy {
 		}
 
 		notifyFailure(ae);
-		return;
 	}
 
 	private AerospikeException toAerospikeException(StatusRuntimeException sre, Status.Code code) {

@@ -17,6 +17,7 @@
 package com.aerospike.client.proxy.grpc;
 
 import java.io.Closeable;
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.TimeUnit;
@@ -24,7 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
@@ -32,55 +32,68 @@ import com.aerospike.client.Host;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
-
 import io.grpc.ManagedChannel;
+import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.util.concurrent.DefaultThreadFactory;
 
 public class GrpcCallExecutor implements Closeable {
-    private static final int QUEUE_SIZE_UPPER_BOUND = 100 * 1024;
-    private final List<GrpcChannelExecutor> channelExecutors;
-    private final List<GrpcChannelExecutor> controlChannelExecutors;
-    private final GrpcClientPolicy grpcClientPolicy;
-    private final Random random = new Random();
-    private final AtomicBoolean isClosed = new AtomicBoolean(false);
+	private static final int QUEUE_SIZE_UPPER_BOUND = 100 * 1024;
+	private final List<GrpcChannelExecutor> channelExecutors;
+	private final List<GrpcChannelExecutor> controlChannelExecutors;
+	private final GrpcClientPolicy grpcClientPolicy;
+	private final Random random = new Random();
+	private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
-    /**
-     * Maximum allowed queue size.
-     */
-    private final int maxQueueSize;
+	/**
+	 * Maximum allowed queue size.
+	 */
+	private final int maxQueueSize;
 
-    private final LongAdder totalQueueSize = new LongAdder();
+	private final LongAdder totalQueueSize = new LongAdder();
+	private final GrpcChannelExecutor.ChannelTypeAndEventLoop controlChannelTypeAndEventLoop;
 
-    public GrpcCallExecutor(GrpcClientPolicy grpcClientPolicy,
-                            @Nullable AuthTokenManager authTokenManager,
-                            Host... hosts) {
-        if (hosts == null || hosts.length < 1) {
-            throw new AerospikeException(ResultCode.PARAMETER_ERROR,
-                    "need at least one seed host");
-        }
+	public GrpcCallExecutor(GrpcClientPolicy grpcClientPolicy,
+							@Nullable AuthTokenManager authTokenManager,
+							Host... hosts) {
+		if (hosts == null || hosts.length < 1) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
+					"need at least one seed host");
+		}
 
-        this.grpcClientPolicy = grpcClientPolicy;
-        maxQueueSize =
-                Math.min(QUEUE_SIZE_UPPER_BOUND,
-                        5 * grpcClientPolicy.maxChannels
-                                * grpcClientPolicy.maxConcurrentStreamsPerChannel
-                                * grpcClientPolicy.maxConcurrentRequestsPerStream);
+		this.grpcClientPolicy = grpcClientPolicy;
+		maxQueueSize =
+				Math.min(QUEUE_SIZE_UPPER_BOUND,
+						5 * grpcClientPolicy.maxChannels
+								* grpcClientPolicy.maxConcurrentStreamsPerChannel
+								* grpcClientPolicy.maxConcurrentRequestsPerStream);
 
-        try {
-            this.channelExecutors =
-                    IntStream.range(0, grpcClientPolicy.maxChannels).mapToObj(value ->
-                            GrpcChannelExecutor.newInstance(grpcClientPolicy,
-                                    authTokenManager, hosts)
-                    ).collect(Collectors.toList());
-            this.controlChannelExecutors =
-                    IntStream.range(0, 1).mapToObj(value ->
-                            GrpcChannelExecutor.newInstance(grpcClientPolicy,
-                                    authTokenManager, hosts)
-                    ).collect(Collectors.toList());
-        } catch (Exception e) {
-            throw new AerospikeException(ResultCode.SERVER_ERROR, e);
-        }
-    }
+		this.controlChannelTypeAndEventLoop = getControlEventLoop();
+		try {
+			this.channelExecutors =
+					IntStream.range(0, grpcClientPolicy.maxChannels).mapToObj(value ->
+							new GrpcChannelExecutor(grpcClientPolicy,
+									new GrpcChannelExecutor.ChannelTypeAndEventLoop(grpcClientPolicy.channelType,
+											grpcClientPolicy.nextEventLoop()),
+									authTokenManager, hosts)
+					).collect(Collectors.toList());
+			this.controlChannelExecutors =
+					IntStream.range(0, 1).mapToObj(value ->
+							new GrpcChannelExecutor(grpcClientPolicy,
+									controlChannelTypeAndEventLoop, authTokenManager,
+									hosts)
+					).collect(Collectors.toList());
+		}
+		catch (Exception e) {
+			throw new AerospikeException(ResultCode.SERVER_ERROR, e);
+		}
+	}
 
     public void execute(GrpcStreamingCall call) {
         if (totalQueueSize.sum() > maxQueueSize) {
@@ -90,7 +103,7 @@ public class GrpcCallExecutor implements Closeable {
         }
         GrpcChannelExecutor executor =
                 grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
-                        call.getMethodDescriptor());
+                        call.getStreamingMethodDescriptor());
 
         // TODO: In case of timeouts, lots of calls will end up filling the
         //  wait queues and timeout once removed for execution from the wait
@@ -105,19 +118,18 @@ public class GrpcCallExecutor implements Closeable {
         }
     }
 
-    public EventLoop getEventLoop() {
-        return channelExecutors.get(random.nextInt(channelExecutors.size()))
-                .getEventLoop();
-    }
+	public EventLoop getEventLoop() {
+		return channelExecutors.get(random.nextInt(channelExecutors.size()))
+				.getEventLoop();
+	}
 
-    public ManagedChannel getControlChannel() {
-        if (controlChannelExecutors.isEmpty()) {
-            return null;
-        }
-        return controlChannelExecutors.get(random.nextInt(controlChannelExecutors.size()))
-                .getChannel();
-    }
-
+	public ManagedChannel getControlChannel() {
+		if (controlChannelExecutors.isEmpty()) {
+			return null;
+		}
+		return controlChannelExecutors.get(random.nextInt(controlChannelExecutors.size()))
+				.getChannel();
+	}
 
     public ManagedChannel getChannel() {
         if(channelExecutors.isEmpty()) {
@@ -134,90 +146,97 @@ public class GrpcCallExecutor implements Closeable {
             return;
         }
 
-        isClosed.set(true);
-        closeExecutors(channelExecutors);
-        closeExecutors(controlChannelExecutors);
-    }
+		closeExecutors(channelExecutors);
+		closeExecutors(controlChannelExecutors);
+		closeEventLoops();
+	}
 
-    private void closeExecutors(List<GrpcChannelExecutor> executors) {
-    	// TODO FIX HANG!
-        for (GrpcChannelExecutor executor : executors) {
-            executor.shutdown();
-        }
+	private GrpcChannelExecutor.ChannelTypeAndEventLoop getControlEventLoop() {
+		EventLoopGroup eventLoopGroup;
+		Class<? extends Channel> channelType;
+		DefaultThreadFactory tf =
+				new DefaultThreadFactory("aerospike-proxy-control", true
+						/*daemon */);
 
-        if (grpcClientPolicy.closeEventLoops) {
-            grpcClientPolicy.eventLoops.stream()
-                    .map(eventLoop ->
-                            eventLoop.shutdownGracefully(0,
-                                    grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
+		if (Epoll.isAvailable()) {
+			eventLoopGroup = new EpollEventLoopGroup(1, tf);
+			channelType = EpollSocketChannel.class;
+		}
+		else {
+			eventLoopGroup = new NioEventLoopGroup(1, tf);
+			channelType = NioSocketChannel.class;
+		}
 
-                    ).forEach(future -> {
-                                try {
-                                    future.await(grpcClientPolicy.terminationWaitMillis);
-                                } catch (Exception e) {
-                                    // TODO log error?
-                                }
-                            }
-                    );
-        }
+		return new GrpcChannelExecutor.ChannelTypeAndEventLoop(channelType, (EventLoop)eventLoopGroup.iterator().next());
+	}
 
-        // FIXME: each executor waits for terminationWaitMillis which will be
-        //  add up to greater than the terminationWaitMillis.
-    	/*
-        for (GrpcChannelExecutor executor : executors) {
-            executor.shutdown();
-        }
+	private void closeExecutors(List<GrpcChannelExecutor> executors) {
+		// FIXME: each executor waits for terminationWaitMillis which will be
+		//  add up to greater than the terminationWaitMillis.
+		for (GrpcChannelExecutor executor : executors) {
+			executor.shutdown();
+		}
 
-        boolean interrupted = false;
-        for (GrpcChannelExecutor executor : executors) {
-            while (!executor.awaitTermination(grpcClientPolicy.terminationWaitMillis)) {
-                try {
-                    //noinspection BusyWait
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    interrupted = true;
-                }
-            }
-        }
+		boolean interrupted = false;
+		for (GrpcChannelExecutor executor : executors) {
+			while (!executor.awaitTermination(grpcClientPolicy.terminationWaitMillis)) {
+				try {
+					//noinspection BusyWait
+					Thread.sleep(10);
+				}
+				catch (InterruptedException e) {
+					interrupted = true;
+				}
+			}
+		}
 
-        if (interrupted) {
-            Thread.currentThread().interrupt();
-        }
-
-        if (grpcClientPolicy.closeEventLoops) {
-            grpcClientPolicy.eventLoops.stream()
-                    .map(eventLoop ->
-                            eventLoop.shutdownGracefully(0,
-                                    grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
-
-                    ).forEach(future -> {
-                                try {
-                                    future.await(grpcClientPolicy.terminationWaitMillis);
-                                } catch (Exception e) {
-                                    // TODO log error?
-                                }
-                            }
-                    );
-        }
-        */
-    }
+		if (interrupted) {
+			Thread.currentThread().interrupt();
+		}
+	}
 
 
-    private class WrappedGrpcStreamingCall extends GrpcStreamingCall {
-        WrappedGrpcStreamingCall(GrpcStreamingCall delegate) {
-            super(delegate);
-        }
+	private void closeEventLoops() {
+		if (grpcClientPolicy.closeEventLoops) {
+			closeEventLoops(grpcClientPolicy.eventLoops);
+		}
 
-        @Override
-        public void onSuccess(Kvs.AerospikeResponsePayload payload) {
-            totalQueueSize.decrement();
-            super.onSuccess(payload);
-        }
+		// Close the control event loop.
+		closeEventLoops(Collections.singletonList(controlChannelTypeAndEventLoop.getEventLoop()));
+	}
 
-        @Override
-        public void onError(Throwable t) {
-            totalQueueSize.decrement();
-            super.onError(t);
-        }
-    }
+	private void closeEventLoops(List<EventLoop> eventLoops) {
+		eventLoops.stream()
+				.map(eventLoop ->
+						eventLoop.shutdownGracefully(0,
+								grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
+
+				).forEach(future -> {
+							try {
+								future.await(grpcClientPolicy.terminationWaitMillis);
+							}
+							catch (Exception e) {
+								// TODO log error?
+							}
+						}
+				);
+	}
+
+	private class WrappedGrpcStreamingCall extends GrpcStreamingCall {
+		WrappedGrpcStreamingCall(GrpcStreamingCall delegate) {
+			super(delegate);
+		}
+
+		@Override
+		public void onSuccess(Kvs.AerospikeResponsePayload payload) {
+			totalQueueSize.decrement();
+			super.onSuccess(payload);
+		}
+
+		@Override
+		public void onError(Throwable t) {
+			totalQueueSize.decrement();
+			super.onError(t);
+		}
+	}
 }

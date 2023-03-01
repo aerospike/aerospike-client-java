@@ -175,7 +175,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	public final BatchDeletePolicy batchDeletePolicyDefault;
 
 	/**
-	 * Default user defined function policy used in batch UDF excecute commands.
+	 * Default user defined function policy used in batch UDF execute commands.
 	 */
 	public final BatchUDFPolicy batchUDFPolicyDefault;
 
