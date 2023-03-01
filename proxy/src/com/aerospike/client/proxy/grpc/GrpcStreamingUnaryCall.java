@@ -27,100 +27,115 @@ import io.grpc.stub.StreamObserver;
  * A unary gRPC call that is converted to a streaming call for performance.
  */
 public class GrpcStreamingUnaryCall {
-    /**
-     * The streaming method to execute for this unary call.
-     */
-    private final MethodDescriptor<Kvs.AerospikeRequestPayload,
-            Kvs.AerospikeResponsePayload> methodDescriptor;
+	/**
+	 * The streaming method to execute for this unary call.
+	 */
+	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 
-    /**
-     * The request payload.
-     */
-    private final ByteString requestPayload;
+	/**
+	 * The request payload.
+	 */
+	private final ByteString requestPayload;
 
-    /**
-     * The stream response observer for the call.
-     */
-    private final StreamObserver<Kvs.AerospikeResponsePayload> responseObserver;
+	/**
+	 * The stream response observer for the call.
+	 */
+	private final StreamObserver<Kvs.AerospikeResponsePayload> responseObserver;
 
-    /**
-     * The deadline in nanoseconds w.r.t System.nanoTime().
-     */
-    private final long expiresAtNanos;
+	/**
+	 * The deadline in nanoseconds w.r.t System.nanoTime().
+	 */
+	private final long expiresAtNanos;
 
-    /**
-     * Aerospike client policy for this request.
-     */
-    private final Policy policy;
+	/**
+	 * Aerospike client policy for this request.
+	 */
+	private final Policy policy;
 
-    /**
-     * Iteration number of this request.
-     */
-    private final int iteration;
+	/**
+	 * Iteration number of this request.
+	 */
+	private final int iteration;
 
-    protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
-        this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                other.iteration, other.expiresAtNanos, other.responseObserver);
-    }
+	/**
+	 * Indicates if this call completed (successfully or unsuccessfully).
+	 */
+	private volatile boolean completed;
 
+	protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
+		this(other.methodDescriptor, other.requestPayload, other.policy,
+			 other.iteration, other.expiresAtNanos, other.responseObserver);
+		completed = other.completed;
+	}
 
-    public GrpcStreamingUnaryCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
-            Kvs.AerospikeResponsePayload> methodDescriptor,
-                                  ByteString requestPayload,
-                                  Policy policy,
-                                  int iteration,
-                                  long expiresAtNanos,
-                                  StreamObserver<Kvs.AerospikeResponsePayload>
-                                          responseObserver) {
-        this.responseObserver = responseObserver;
-        this.methodDescriptor = methodDescriptor;
-        this.requestPayload = requestPayload;
-        this.iteration = iteration;
-        this.policy = policy;
+	public GrpcStreamingUnaryCall(
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		ByteString requestPayload,
+		Policy policy,
+		int iteration,
+		long expiresAtNanos,
+		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
+	) {
+		this.responseObserver = responseObserver;
+		this.methodDescriptor = methodDescriptor;
+		this.requestPayload = requestPayload;
+		this.iteration = iteration;
+		this.policy = policy;
         this.expiresAtNanos = expiresAtNanos;
-    }
+	}
 
-    public void onSuccess(Kvs.AerospikeResponsePayload payload) {
-        responseObserver.onNext(payload);
-        responseObserver.onCompleted();
-    }
+	public void onSuccess(Kvs.AerospikeResponsePayload payload) {
+		completed = true;
+		responseObserver.onNext(payload);
+		responseObserver.onCompleted();
+	}
 
-    public void onError(Throwable t) {
-        responseObserver.onError(t);
-    }
+	public void onError(Throwable t) {
+		completed = true;
+		responseObserver.onError(t);
+	}
 
-    public MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getMethodDescriptor() {
-        return methodDescriptor;
-    }
+	/**
+	 * @return <code>true</code> if this call has completed either because
+	 * {@link #onSuccess(Kvs.AerospikeResponsePayload)} or
+	 * {@link #onError(Throwable)} was invoked.
+	 */
+	public boolean hasCompleted() {
+		return completed;
+	}
 
-    /**
-     * @return true if this call has expired.
-     */
-    public boolean hasExpired() {
-        return policy.totalTimeout > 0 && System.nanoTime() - expiresAtNanos >= 0;
-    }
+	public MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> getStreamingMethodDescriptor() {
+		return methodDescriptor;
+	}
 
-    public boolean hasExpiry() {
-        return policy.totalTimeout > 0;
-    }
+	/**
+	 * @return true if this call has expired.
+	 */
+	public boolean hasExpired() {
+		return hasExpiry() && System.nanoTime() - expiresAtNanos >= 0;
+	}
 
-    public long nanosTillExpiry() {
-        if (policy.totalTimeout == 0) {
-            return Long.MAX_VALUE;
-        }
-        long nanosTillExpiry = expiresAtNanos - System.nanoTime();
-        return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
-    }
+	public boolean hasExpiry() {
+		return policy.totalTimeout > 0;
+	}
 
-    public ByteString getRequestPayload() {
-        return requestPayload;
-    }
+	public long nanosTillExpiry() {
+		if (policy.totalTimeout == 0) {
+			return Long.MAX_VALUE;
+		}
+		long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+		return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
+	}
 
-    public int getIteration() {
-        return iteration;
-    }
+	public ByteString getRequestPayload() {
+		return requestPayload;
+	}
 
-    public Policy getPolicy() {
-        return policy;
-    }
+	public int getIteration() {
+		return iteration;
+	}
+
+	public Policy getPolicy() {
+		return policy;
+	}
 }

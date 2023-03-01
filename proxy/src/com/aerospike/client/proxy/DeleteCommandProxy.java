@@ -23,27 +23,28 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class DeleteCommandProxy extends CommandProxy {
-    private final DeleteListener listener;
-    private final WritePolicy writePolicy;
-    private final Key key;
+	private final DeleteListener listener;
+	private final WritePolicy writePolicy;
+	private final Key key;
 
-    public DeleteCommandProxy(
-    	GrpcCallExecutor executor,
-    	DeleteListener listener,
-    	WritePolicy writePolicy,
-    	Key key
-    ) {
-        super(executor, writePolicy);
-        this.listener = listener;
-        this.writePolicy = writePolicy;
-        this.key = key;
-    }
+	public DeleteCommandProxy(
+		GrpcCallExecutor executor,
+		DeleteListener listener,
+		WritePolicy writePolicy,
+		Key key
+	) {
+		super(KVSGrpc.getDeleteStreamingMethod(), executor, writePolicy);
+		this.listener = listener;
+		this.writePolicy = writePolicy;
+		this.key = key;
+	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setDelete(writePolicy, key);
+		command.setDelete(writePolicy, key);
 	}
 
 	@Override
@@ -77,10 +78,10 @@ public final class DeleteCommandProxy extends CommandProxy {
 		catch (Throwable t) {
 			logOnSuccessError(t);
 		}
-    }
+	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }

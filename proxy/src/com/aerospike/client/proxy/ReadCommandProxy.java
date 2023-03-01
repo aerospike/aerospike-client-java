@@ -24,6 +24,10 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
+import com.aerospike.proxy.client.Kvs;
+
+import io.grpc.MethodDescriptor;
 
 public class ReadCommandProxy extends CommandProxy {
 	private final RecordListener listener;
@@ -38,7 +42,7 @@ public class ReadCommandProxy extends CommandProxy {
 		Key key,
 		String[] binNames
 	) {
-		super(executor, policy);
+		super(KVSGrpc.getGetStreamingMethod(), executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
@@ -46,13 +50,14 @@ public class ReadCommandProxy extends CommandProxy {
 	}
 
 	public ReadCommandProxy(
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
 		RecordListener listener,
 		Policy policy,
 		Key key,
 		boolean isOperation
 	) {
-		super(executor, policy);
+		super(methodDescriptor, executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;
@@ -61,7 +66,7 @@ public class ReadCommandProxy extends CommandProxy {
 
 	@Override
 	void writeCommand(Command command) {
-        command.setRead(policy, key, binNames);
+		command.setRead(policy, key, binNames);
 	}
 
 	@Override
@@ -74,7 +79,7 @@ public class ReadCommandProxy extends CommandProxy {
 		catch (Throwable t) {
 			logOnSuccessError(t);
 		}
-    }
+	}
 
 	protected final Record parseRecordResult(Parser parser) {
 		Record record = null;
@@ -142,8 +147,8 @@ public class ReadCommandProxy extends CommandProxy {
 		throw new AerospikeException(code, message);
 	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }

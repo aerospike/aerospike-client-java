@@ -379,9 +379,9 @@ public class Main implements Log.Callback {
 		args.batchPolicy = clientPolicy.batchPolicyDefault;
 
 		if (line.hasOption("e")) {
-			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
+			args.writePolicy.expiration = Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
-				throw new Exception("Invalid expiration: "+ args.writePolicy.expiration + " It should be >= -1");
+				throw new Exception("Invalid expiration: " + args.writePolicy.expiration + " It should be >= -1");
 			}
 		}
 
@@ -513,7 +513,8 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("keys")) {
 			this.nKeys = Long.parseLong(line.getOptionValue("keys"));
-		} else {
+		}
+		else {
 			this.nKeys = 100000;
 		}
 
@@ -546,12 +547,13 @@ public class Main implements Log.Callback {
 				else if (keyType.equals("I")) {
 					if (Utils.isNumeric(keyList.get(0))) {
 						args.keyType = KeyType.INTEGER;
-					} else {
-						throw new Exception("Invalid keyType '"+keyType+"' Key type doesn't match with file content type.");
+					}
+					else {
+						throw new Exception("Invalid keyType '" + keyType + "' Key type doesn't match with file content type.");
 					}
 				}
 				else {
-					throw new Exception("Invalid keyType: "+keyType);
+					throw new Exception("Invalid keyType: " + keyType);
 				}
 			}
 			else {
@@ -570,7 +572,7 @@ public class Main implements Log.Callback {
 		if (line.hasOption("objectSpec")) {
 			String[] objectsArr = line.getOptionValue("objectSpec").split(",");
 			args.objectSpec = new DBObjectSpec[objectsArr.length];
-			for (int i=0; i<objectsArr.length; i++) {
+			for (int i = 0; i < objectsArr.length; i++) {
 				String[] objarr = objectsArr[i].split(":");
 				DBObjectSpec dbobj = new DBObjectSpec();
 				dbobj.type = objarr[0].charAt(0);
@@ -838,7 +840,7 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("batchSize")) {
-			args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
+			args.batchSize = Integer.parseInt(line.getOptionValue("batchSize"));
 		}
 
 		if (line.hasOption("batchThreads")) {
@@ -850,11 +852,11 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("asyncMaxCommands")) {
-			this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
+			this.asyncMaxCommands = Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
 		}
 
 		if (line.hasOption("eventLoops")) {
-			this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
+			this.eventLoopSize = Integer.parseInt(line.getOptionValue("eventLoops"));
 		}
 
 		if (line.hasOption("latency")) {
@@ -942,29 +944,29 @@ public class Main implements Log.Callback {
 			this.useProxyClient = true;
 		}
 
-		if(line.hasOption("udfPackageName")){
+		if (line.hasOption("udfPackageName")) {
 			args.udfPackageName = line.getOptionValue("udfPackageName");
 		}
 
-		if(line.hasOption("udfFunctionName")){
-			if(args.udfPackageName == null){
+		if (line.hasOption("udfFunctionName")) {
+			if (args.udfPackageName == null) {
 				throw new Exception("Udf Package name missing");
 			}
 			args.udfFunctionName = line.getOptionValue("udfFunctionName");
 		}
 
-		if(line.hasOption("udfFunctionValues")){
+		if (line.hasOption("udfFunctionValues")) {
 			Object[] udfVals = line.getOptionValue("udfFunctionValues").split(",");
-			if(args.udfPackageName == null){
+			if (args.udfPackageName == null) {
 				throw new Exception("Udf Package name missing");
 			}
 
-			if(args.udfFunctionName == null){
+			if (args.udfFunctionName == null) {
 				throw new Exception("Udf Function name missing");
 			}
 			Value[] udfValues = new Value[udfVals.length];
 			int index = 0;
-			for(Object value : udfVals){
+			for (Object value : udfVals) {
 				udfValues[index++] = Value.get(value);
 			}
 			args.udfValues = udfValues;
@@ -1115,7 +1117,7 @@ public class Main implements Log.Callback {
 				eventPolicy.minTimeout = args.readPolicy.socketTimeout;
 			}
 
-			if (args.writePolicy.socketTimeout > 0 &&  args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
+			if (args.writePolicy.socketTimeout > 0 && args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
 				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
 			}
 
@@ -1252,7 +1254,7 @@ public class Main implements Log.Callback {
 		while (total < this.nKeys) {
 			long time = System.currentTimeMillis();
 
-			int	numWrites = this.counters.write.count.getAndSet(0);
+			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			total += numWrites;
@@ -1281,7 +1283,7 @@ public class Main implements Log.Callback {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 		RWTask[] tasks = new RWTask[this.nThreads];
 
-		for (int i = 0 ; i < this.nThreads; i++) {
+		for (int i = 0; i < this.nThreads; i++) {
 			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			tasks[i] = rt;
 			es.execute(rt);
@@ -1325,11 +1327,11 @@ public class Main implements Log.Callback {
 		while (true) {
 			long time = System.currentTimeMillis();
 
-			int	numWrites = this.counters.write.count.getAndSet(0);
+			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 
-			int	numReads = this.counters.read.count.getAndSet(0);
+			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 
@@ -1370,7 +1372,7 @@ public class Main implements Log.Callback {
 				}
 			}
 
-			if (args.transactionLimit > 0 ) {
+			if (args.transactionLimit > 0) {
 				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;
 
 				if (transactionTotal >= args.transactionLimit) {
@@ -1439,14 +1441,15 @@ public class Main implements Log.Callback {
 		private static final long serialVersionUID = 1L;
 	}
 
-	private static void printVersion()
-	{
+	private static void printVersion() {
 		final Properties properties = new Properties();
 		try {
 			properties.load(Main.class.getClassLoader().getResourceAsStream("project.properties"));
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			System.out.println("None");
-		} finally {
+		}
+		finally {
 			System.out.println(properties.getProperty("name"));
 			System.out.println("Version " + properties.getProperty("version"));
 		}

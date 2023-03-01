@@ -25,33 +25,34 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class WriteCommandProxy extends CommandProxy {
-    private final WriteListener listener;
-    private final WritePolicy writePolicy;
-    private final Key key;
-    private final Bin[] bins;
-    private final Operation.Type type;
+	private final WriteListener listener;
+	private final WritePolicy writePolicy;
+	private final Key key;
+	private final Bin[] bins;
+	private final Operation.Type type;
 
-    public WriteCommandProxy(
-    	GrpcCallExecutor executor,
-    	WriteListener listener,
-    	WritePolicy writePolicy,
-    	Key key,
-    	Bin[] bins,
-    	Operation.Type type
-    ) {
-        super(executor, writePolicy);
-        this.listener = listener;
-        this.writePolicy = writePolicy;
-        this.key = key;
-        this.bins = bins;
-        this.type = type;
-    }
+	public WriteCommandProxy(
+		GrpcCallExecutor executor,
+		WriteListener listener,
+		WritePolicy writePolicy,
+		Key key,
+		Bin[] bins,
+		Operation.Type type
+	) {
+		super(KVSGrpc.getPutStreamingMethod(), executor, writePolicy);
+		this.listener = listener;
+		this.writePolicy = writePolicy;
+		this.key = key;
+		this.bins = bins;
+		this.type = type;
+	}
 
 	@Override
 	void writeCommand(Command command) {
-        command.setWrite(writePolicy, type, key, bins);
+		command.setWrite(writePolicy, type, key, bins);
 	}
 
 	@Override
@@ -78,10 +79,10 @@ public final class WriteCommandProxy extends CommandProxy {
 		catch (Throwable t) {
 			logOnSuccessError(t);
 		}
-    }
+	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }

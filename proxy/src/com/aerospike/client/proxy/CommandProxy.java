@@ -26,22 +26,28 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
 import com.aerospike.client.util.Util;
-import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
 
+import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
 public abstract class CommandProxy {
-	private final GrpcCallExecutor executor;
 	final Policy policy;
+	private final GrpcCallExecutor executor;
+	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
 	private boolean inDoubt;
 
-	public CommandProxy(GrpcCallExecutor executor, Policy policy) {
+	public CommandProxy(
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		GrpcCallExecutor executor,
+		Policy policy
+	) {
+		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
 	}
@@ -59,7 +65,7 @@ public abstract class CommandProxy {
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executor.execute(new GrpcStreamingUnaryCall(KVSGrpc.getPutStreamingMethod(),
+		executor.execute(new GrpcStreamingUnaryCall(methodDescriptor,
 			payload, policy, iteration, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
@@ -74,14 +80,15 @@ public abstract class CommandProxy {
 
 				@Override
 				public void onError(Throwable t) {
-					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-					onFailure(t, false);
-				}
+						// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
+						onFailure(t, false);
+					}
 
-				@Override
-				public void onCompleted() {
+					@Override
+					public void onCompleted() {
+					}
 				}
-			}));
+			));
 	}
 
 	private void parsePayload(ByteString response) {
@@ -159,7 +166,6 @@ public abstract class CommandProxy {
 		}
 
 		notifyFailure(ae);
-		return;
 	}
 
 	private AerospikeException toAerospikeException(StatusRuntimeException sre, Status.Code code) {

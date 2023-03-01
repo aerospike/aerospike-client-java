@@ -24,21 +24,22 @@ import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.proxy.client.KVSGrpc;
 
 public final class ReadHeaderCommandProxy extends CommandProxy {
-    private final RecordListener listener;
-    private final Key key;
+	private final RecordListener listener;
+	private final Key key;
 
-    public ReadHeaderCommandProxy(
-    	GrpcCallExecutor executor,
-    	RecordListener listener,
-    	Policy policy,
-    	Key key
-    ) {
-        super(executor, policy);
-        this.listener = listener;
-        this.key = key;
-    }
+	public ReadHeaderCommandProxy(
+		GrpcCallExecutor executor,
+		RecordListener listener,
+		Policy policy,
+		Key key
+	) {
+		super(KVSGrpc.getGetHeaderStreamingMethod(), executor, policy);
+		this.listener = listener;
+		this.key = key;
+	}
 
 	@Override
 	void writeCommand(Command command) {
@@ -76,8 +77,8 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 		}
 	}
 
-    @Override
-    void onFailure(AerospikeException ae) {
-        listener.onFailure(ae);
-    }
+	@Override
+	void onFailure(AerospikeException ae) {
+		listener.onFailure(ae);
+	}
 }
