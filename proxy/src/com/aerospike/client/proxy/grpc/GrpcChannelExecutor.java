@@ -33,8 +33,11 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
 
+import org.jctools.queues.SpscUnboundedArrayQueue;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.proxy.AerospikeClientProxy;
@@ -42,6 +45,7 @@ import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
+
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
@@ -62,7 +66,6 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.ScheduledFuture;
 import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
-import org.jctools.queues.SpscUnboundedArrayQueue;
 
 /**
  * All gRPC requests on a HTTP/2 channel are handled by this class throughout
@@ -332,6 +335,10 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 	public void execute(GrpcStreamingCall call) {
+		if (isClosed.get()) {
+			call.failIfNotComplete(ResultCode.CLIENT_ERROR);
+			return;
+		}
 		// TODO: add always succeeds?
 		ongoingRequests.getAndIncrement();
 		pendingCalls.add(call);
@@ -393,16 +400,7 @@ public class GrpcChannelExecutor implements Runnable {
 			tokenInvalidStartTime = 0;
 			// It's been too long without a valid access token. Drain and
 			// report all queued calls as failed.
-			pendingCalls.drain(this::failOnInvalidToken);
-		}
-	}
-
-	/**
-	 * @param grpcStreamingCall call to fail.
-	 */
-	private void failOnInvalidToken(GrpcStreamingCall grpcStreamingCall) {
-		if (!grpcStreamingCall.hasCompleted()) {
-            grpcStreamingCall.onError(new AerospikeException(ResultCode.NOT_AUTHENTICATED));
+			pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.NOT_AUTHENTICATED));
 		}
 	}
 
@@ -535,7 +533,14 @@ public class GrpcChannelExecutor implements Runnable {
 		if (isClosed.getAndSet(true)) {
 			return;
 		}
-
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		}
 		// TODO FIX shutdown() hang!
 		// Just call shutdownNow() instead?
 		//channel.shutdown();

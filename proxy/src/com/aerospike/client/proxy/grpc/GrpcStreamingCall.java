@@ -16,9 +16,11 @@
  */
 package com.aerospike.client.proxy.grpc;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
+
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 
@@ -94,15 +96,26 @@ public class GrpcStreamingCall {
 
     public void onSuccess(Kvs.AerospikeResponsePayload payload) {
 		completed = true;
-        responseObserver.onNext(payload);
-        if(isUnaryCall) {
-            responseObserver.onCompleted();
-        }
-    }
+		responseObserver.onNext(payload);
+		if (isUnaryCall) {
+			responseObserver.onCompleted();
+		}
+	}
 
 	public void onError(Throwable t) {
 		completed = true;
 		responseObserver.onError(t);
+	}
+
+	/**
+	 * Fail the call if it is not completed.
+	 *
+	 * @param resultCode aerospike error code.
+	 */
+	public void failIfNotComplete(int resultCode) {
+		if (!hasCompleted()) {
+			onError(new AerospikeException(resultCode));
+		}
 	}
 
 	/**

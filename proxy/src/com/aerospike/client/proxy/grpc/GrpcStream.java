@@ -16,6 +16,8 @@
  */
 package com.aerospike.client.proxy.grpc;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -23,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import org.jctools.queues.SpscUnboundedArrayQueue;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -49,42 +52,42 @@ import io.netty.channel.EventLoop;
  *
  * <p>TODO: Should the stream be closed if it has been idle for some duration?
  */
-public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> {
-    /**
-     * Unique stream id in the channel.
-     */
-    private final int id;
-    /**
-     * The event loop within which all of GrpcStream calls are executed.
-     */
-    private final EventLoop eventLoop;
-    /**
-     * The request observer of the stream.
-     */
-    private StreamObserver<Kvs.AerospikeRequestPayload> requestObserver;
-    /**
-     * The gRPC client policy.
-     */
-    private final GrpcClientPolicy grpcClientPolicy;
-    /**
-     * The executor for this stream.
-     */
-    private final GrpcChannelExecutor channelExecutor;
-    /**
-     * The method processed by this stream.
-     */
-    private final MethodDescriptor<Kvs.AerospikeRequestPayload,
-            Kvs.AerospikeResponsePayload> methodDescriptor;
-    /**
-     * Queued calls pending execution.
-     */
-    private final SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls;
+public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>, Closeable {
+	/**
+	 * Unique stream id in the channel.
+	 */
+	private final int id;
+	/**
+	 * The event loop within which all of GrpcStream calls are executed.
+	 */
+	private final EventLoop eventLoop;
+	/**
+	 * The request observer of the stream.
+	 */
+	private StreamObserver<Kvs.AerospikeRequestPayload> requestObserver;
+	/**
+	 * The gRPC client policy.
+	 */
+	private final GrpcClientPolicy grpcClientPolicy;
+	/**
+	 * The executor for this stream.
+	 */
+	private final GrpcChannelExecutor channelExecutor;
+	/**
+	 * The method processed by this stream.
+	 */
+	private final MethodDescriptor<Kvs.AerospikeRequestPayload,
+		Kvs.AerospikeResponsePayload> methodDescriptor;
+	/**
+	 * Queued calls pending execution.
+	 */
+	private final SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls;
 
-    /**
-     * Map of request id to the calls executing in this stream.
-     */
-    private final Map<Integer, GrpcStreamingCall> executingCalls =
-            new HashMap<>();
+	/**
+	 * Map of request id to the calls executing in this stream.
+	 */
+	private final Map<Integer, GrpcStreamingCall> executingCalls =
+		new HashMap<>();
 
 	/**
 	 * Is the stream closed. This variable is only accessed from the event
@@ -268,7 +271,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
 				// TODO: Is there a need for a more efficient implementation in
 				//  terms of the call cancellation.
 				eventLoop.schedule(() -> onCancelCall(requestId),
-						call.nanosTillExpiry(), TimeUnit.NANOSECONDS);
+					call.nanosTillExpiry(), TimeUnit.NANOSECONDS);
 			}
 		}
 		catch (Exception e) {
@@ -277,18 +280,39 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> 
 		}
 	}
 
-    private void onCancelCall(int callId) {
-        GrpcStreamingCall call = executingCalls.remove(callId);
+	private void onCancelCall(int callId) {
+		GrpcStreamingCall call = executingCalls.remove(callId);
 
 		// Call might have completed.
 		if (call != null) {
 			call.onError(new AerospikeException.Timeout(call.getPolicy(),
-					call.getIteration()));
+				call.getIteration()));
 		}
 	}
 
-    void enqueue(GrpcStreamingCall call) {
-        // TODO: can this call fail?
-        pendingCalls.add(call);
-    }
+	void enqueue(GrpcStreamingCall call) {
+		// TODO: can this call fail?
+		pendingCalls.add(call);
+	}
+
+	@Override
+	public void close() throws IOException {
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		}
+		executingCalls.values().forEach(call -> {
+			try {
+				call.failIfNotComplete(ResultCode.CLIENT_ERROR);
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+			}
+		);
+	}
 }

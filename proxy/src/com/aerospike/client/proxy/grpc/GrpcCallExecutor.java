@@ -32,6 +32,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
+
 import io.grpc.ManagedChannel;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
@@ -96,27 +97,29 @@ public class GrpcCallExecutor implements Closeable {
 	}
 
     public void execute(GrpcStreamingCall call) {
-        if (totalQueueSize.sum() > maxQueueSize) {
-            throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
-                    "Maximum queue " + maxQueueSize +
-                            " size exceeded");
-        }
-        GrpcChannelExecutor executor =
-                grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
-                        call.getStreamingMethodDescriptor());
+		if (totalQueueSize.sum() > maxQueueSize) {
+			call.onError(new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
+				"Maximum queue " + maxQueueSize + " size exceeded"));
+			return;
+		}
 
-        // TODO: In case of timeouts, lots of calls will end up filling the
-        //  wait queues and timeout once removed for execution from the wait
-        //  queue. Have a upper limit on the number of concurrent transactions
-        //  per channel and reject this call if all the channels are full.
-        totalQueueSize.increment();
-        try {
-            executor.execute(new WrappedGrpcStreamingCall(call));
-        } catch (Exception e) {
-            // Call scheduling failed.
-            totalQueueSize.decrement();
-        }
-    }
+		GrpcChannelExecutor executor =
+			grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
+				call.getStreamingMethodDescriptor());
+
+		// TODO: In case of timeouts, lots of calls will end up filling the
+		//  wait queues and timeout once removed for execution from the wait
+		//  queue. Have a upper limit on the number of concurrent transactions
+		//  per channel and reject this call if all the channels are full.
+		totalQueueSize.increment();
+		try {
+			executor.execute(new WrappedGrpcStreamingCall(call));
+		}
+		catch (Exception e) {
+			// Call scheduling failed.
+			totalQueueSize.decrement();
+		}
+	}
 
 	public EventLoop getEventLoop() {
 		return channelExecutors.get(random.nextInt(channelExecutors.size()))

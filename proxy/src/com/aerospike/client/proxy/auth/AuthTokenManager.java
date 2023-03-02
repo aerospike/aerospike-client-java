@@ -91,7 +91,8 @@ public class AuthTokenManager implements Closeable {
 	public AuthTokenManager(ClientPolicy clientPolicy, GrpcChannelProvider grpcCallExecutor) {
 		this.clientPolicy = clientPolicy;
 		this.channelProvider = grpcCallExecutor;
-		this.executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("auth-manager").build());
+		this.executor = Executors.newSingleThreadScheduledExecutor(
+			new ThreadFactoryBuilder().setNameFormat("aerospike-auth-manager").build());
 		this.accessToken = new AccessToken(System.currentTimeMillis(), 0, "");
 		fetchToken(true);
 	}
