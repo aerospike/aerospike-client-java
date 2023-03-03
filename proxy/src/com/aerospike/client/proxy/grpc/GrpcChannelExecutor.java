@@ -541,6 +541,14 @@ public class GrpcChannelExecutor implements Runnable {
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
 			}
 		}
+		streams.values().forEach(stream -> {
+			try {
+				stream.close();
+			}
+			catch (Exception e) {
+				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
+			}
+		});
 		// TODO FIX shutdown() hang!
 		// Just call shutdownNow() instead?
 		//channel.shutdown();
