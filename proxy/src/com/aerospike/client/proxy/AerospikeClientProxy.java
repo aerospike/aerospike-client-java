@@ -50,6 +50,7 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -211,7 +212,13 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
 		GrpcChannelProvider channelProvider = new GrpcChannelProvider();
-		authTokenManager = new AuthTokenManager(policy, channelProvider);
+
+		if (policy.user != null || policy.password != null) {
+			authTokenManager = new AuthTokenManager(policy, channelProvider);
+		}
+		else {
+			authTokenManager = null;
+		}
 
 		try {
 			// The gRPC client policy transformed from the client policy.
@@ -220,7 +227,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			channelProvider.setCallExecutor(executor);
 		}
 		catch (Throwable e) {
-			authTokenManager.close();
+			if(authTokenManager != null) {
+				authTokenManager.close();
+			}
 			throw e;
 		}
 	}
@@ -297,7 +306,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 
 		try {
-			authTokenManager.close();
+			if (authTokenManager != null) {
+				authTokenManager.close();
+			}
 		}
 		catch (Throwable e) {
 			Log.warn("Failed to close authTokenManager: " + Util.getErrorMessage(e));
@@ -730,7 +741,25 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Key[] keys,
 		Operation... ops
 	) {
-		throw new AerospikeException(NotSupported + "batch operate");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (writePolicy == null) {
+			writePolicy = batchWritePolicyDefault;
+		}
+
+		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
+
+		CommandProxy command = new BatchProxy.OperateRecordSequenceCommandProxy(executor,
+			batchPolicy, keys, ops, listener, attr);
+
+		command.execute();
 	}
 
 	//-------------------------------------------------------

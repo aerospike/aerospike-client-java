@@ -47,7 +47,7 @@ public class AuthTokenManager implements Closeable {
 	/**
 	 * A conservative estimate of minimum amount of time in millis it takes for
 	 * token refresh to complete. Auto refresh should be scheduled at least
-	 * this amount before expiry, i.e, ff remaining expiry time is less than
+	 * this amount before expiry, i.e, if remaining expiry time is less than
 	 * this amount refresh should be scheduled immediately.
 	 */
 	private static final int refreshMinTime = 5000;
@@ -91,7 +91,8 @@ public class AuthTokenManager implements Closeable {
 	public AuthTokenManager(ClientPolicy clientPolicy, GrpcChannelProvider grpcCallExecutor) {
 		this.clientPolicy = clientPolicy;
 		this.channelProvider = grpcCallExecutor;
-		this.executor = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setNameFormat("auth-manager").build());
+		this.executor = Executors.newSingleThreadScheduledExecutor(
+			new ThreadFactoryBuilder().setNameFormat("aerospike-auth-manager").build());
 		this.accessToken = new AccessToken(System.currentTimeMillis(), 0, "");
 		fetchToken(true);
 	}

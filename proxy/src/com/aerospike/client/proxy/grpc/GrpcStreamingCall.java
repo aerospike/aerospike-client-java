@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.proxy.grpc;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -24,13 +25,14 @@ import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
 
 /**
- * A unary gRPC call that is converted to a streaming call for performance.
+ * A gRPC call that is converted to a streaming call for performance.
  */
-public class GrpcStreamingUnaryCall {
-	/**
-	 * The streaming method to execute for this unary call.
-	 */
-	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
+public class GrpcStreamingCall {
+    /**
+     * The streaming method to execute for this unary call.
+     */
+    private final MethodDescriptor<Kvs.AerospikeRequestPayload,
+            Kvs.AerospikeResponsePayload> methodDescriptor;
 
 	/**
 	 * The request payload.
@@ -56,43 +58,64 @@ public class GrpcStreamingUnaryCall {
 	 * Iteration number of this request.
 	 */
 	private final int iteration;
-
+    /**
+     * Is the stream response a unary call.
+     */
+    private final boolean isUnaryCall;
 	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
 	 */
 	private volatile boolean completed;
 
-	protected GrpcStreamingUnaryCall(GrpcStreamingUnaryCall other) {
-		this(other.methodDescriptor, other.requestPayload, other.policy,
-			 other.iteration, other.expiresAtNanos, other.responseObserver);
+    protected GrpcStreamingCall(GrpcStreamingCall other) {
+        this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
+                other.iteration, other.isUnaryCall, other.expiresAtNanos,
+                other.responseObserver);
 		completed = other.completed;
-	}
+    }
 
-	public GrpcStreamingUnaryCall(
-		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-		ByteString requestPayload,
-		Policy policy,
-		int iteration,
-		long expiresAtNanos,
-		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
-	) {
-		this.responseObserver = responseObserver;
-		this.methodDescriptor = methodDescriptor;
-		this.requestPayload = requestPayload;
-		this.iteration = iteration;
-		this.policy = policy;
+    public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
+            Kvs.AerospikeResponsePayload> methodDescriptor,
+                             ByteString requestPayload, Policy policy,
+                             int iteration, boolean isUnaryCall,
+                             long expiresAtNanos,
+                             StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
+        this.responseObserver = responseObserver;
+        this.methodDescriptor = methodDescriptor;
+        this.requestPayload = requestPayload;
+        this.iteration = iteration;
+        this.policy = policy;
+        this.isUnaryCall = isUnaryCall;
+
+        if(expiresAtNanos == 0) {
+            throw new IllegalArgumentException("call has to have an expiry");
+        }
+
         this.expiresAtNanos = expiresAtNanos;
 	}
 
-	public void onSuccess(Kvs.AerospikeResponsePayload payload) {
+    public void onSuccess(Kvs.AerospikeResponsePayload payload) {
 		completed = true;
 		responseObserver.onNext(payload);
-		responseObserver.onCompleted();
+		if (isUnaryCall) {
+			responseObserver.onCompleted();
+		}
 	}
 
 	public void onError(Throwable t) {
 		completed = true;
 		responseObserver.onError(t);
+	}
+
+	/**
+	 * Fail the call if it is not completed.
+	 *
+	 * @param resultCode aerospike error code.
+	 */
+	public void failIfNotComplete(int resultCode) {
+		if (!hasCompleted()) {
+			onError(new AerospikeException(resultCode));
+		}
 	}
 
 	/**
@@ -108,24 +131,24 @@ public class GrpcStreamingUnaryCall {
 		return methodDescriptor;
 	}
 
-	/**
-	 * @return true if this call has expired.
-	 */
-	public boolean hasExpired() {
-		return hasExpiry() && System.nanoTime() - expiresAtNanos >= 0;
-	}
+    /**
+     * @return true if this call has expired.
+     */
+    public boolean hasExpired() {
+        return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
+    }
 
-	public boolean hasExpiry() {
-		return policy.totalTimeout > 0;
-	}
+    public boolean hasExpiry() {
+        return expiresAtNanos != 0;
+    }
 
-	public long nanosTillExpiry() {
-		if (policy.totalTimeout == 0) {
-			return Long.MAX_VALUE;
-		}
-		long nanosTillExpiry = expiresAtNanos - System.nanoTime();
-		return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
-	}
+    public long nanosTillExpiry() {
+        if (!hasExpiry()) {
+            throw new IllegalStateException("call does not expire");
+        }
+        long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+        return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
+    }
 
 	public ByteString getRequestPayload() {
 		return requestPayload;

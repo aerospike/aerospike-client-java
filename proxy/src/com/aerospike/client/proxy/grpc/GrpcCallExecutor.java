@@ -32,6 +32,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
+
 import io.grpc.ManagedChannel;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
@@ -95,15 +96,16 @@ public class GrpcCallExecutor implements Closeable {
 		}
 	}
 
-	public void execute(GrpcStreamingUnaryCall call) {
+    public void execute(GrpcStreamingCall call) {
 		if (totalQueueSize.sum() > maxQueueSize) {
-			throw new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
-					"Maximum queue " + maxQueueSize +
-							" size exceeded");
+			call.onError(new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
+				"Maximum queue " + maxQueueSize + " size exceeded"));
+			return;
 		}
+
 		GrpcChannelExecutor executor =
-				grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
-						call.getStreamingMethodDescriptor());
+			grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
+				call.getStreamingMethodDescriptor());
 
 		// TODO: In case of timeouts, lots of calls will end up filling the
 		//  wait queues and timeout once removed for execution from the wait
@@ -111,7 +113,7 @@ public class GrpcCallExecutor implements Closeable {
 		//  per channel and reject this call if all the channels are full.
 		totalQueueSize.increment();
 		try {
-			executor.execute(new WrappedGrpcStreamingUnaryCall(call));
+			executor.execute(new WrappedGrpcStreamingCall(call));
 		}
 		catch (Exception e) {
 			// Call scheduling failed.
@@ -132,13 +134,21 @@ public class GrpcCallExecutor implements Closeable {
 				.getChannel();
 	}
 
-	@Override
-	public void close() {
-		if (isClosed.getAndSet(true)) {
-			return;
-		}
+    public ManagedChannel getChannel() {
+        if(channelExecutors.isEmpty()) {
+            return null;
+        }
 
-		isClosed.set(true);
+        return channelExecutors.get(random.nextInt(channelExecutors.size()))
+                .getChannel();
+    }
+
+    @Override
+    public void close() {
+        if (isClosed.getAndSet(true)) {
+            return;
+        }
+
 		closeExecutors(channelExecutors);
 		closeExecutors(controlChannelExecutors);
 		closeEventLoops();
@@ -188,6 +198,7 @@ public class GrpcCallExecutor implements Closeable {
 		}
 	}
 
+
 	private void closeEventLoops() {
 		if (grpcClientPolicy.closeEventLoops) {
 			closeEventLoops(grpcClientPolicy.eventLoops);
@@ -214,9 +225,8 @@ public class GrpcCallExecutor implements Closeable {
 				);
 	}
 
-
-	private class WrappedGrpcStreamingUnaryCall extends GrpcStreamingUnaryCall {
-		WrappedGrpcStreamingUnaryCall(GrpcStreamingUnaryCall delegate) {
+	private class WrappedGrpcStreamingCall extends GrpcStreamingCall {
+		WrappedGrpcStreamingCall(GrpcStreamingCall delegate) {
 			super(delegate);
 		}
 

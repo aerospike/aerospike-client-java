@@ -33,8 +33,11 @@ import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
 
+import org.jctools.queues.SpscUnboundedArrayQueue;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.proxy.AerospikeClientProxy;
@@ -42,6 +45,7 @@ import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
+
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
@@ -62,7 +66,6 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.ScheduledFuture;
 import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
-import org.jctools.queues.SpscUnboundedArrayQueue;
 
 /**
  * All gRPC requests on a HTTP/2 channel are handled by this class throughout
@@ -120,7 +123,7 @@ public class GrpcChannelExecutor implements Runnable {
 	/**
 	 * Queued unary calls awaiting execution.
 	 */
-	private final MpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls =
+	private final MpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls =
 			new MpscUnboundedArrayQueue<>(32);
 	/**
 	 * Queue of closed streams.
@@ -331,7 +334,11 @@ public class GrpcChannelExecutor implements Runnable {
 		return new ChannelAndEventLoop(channel, eventLoop);
 	}
 
-	public void execute(GrpcStreamingUnaryCall call) {
+	public void execute(GrpcStreamingCall call) {
+		if (isClosed.get()) {
+			call.failIfNotComplete(ResultCode.CLIENT_ERROR);
+			return;
+		}
 		// TODO: add always succeeds?
 		ongoingRequests.getAndIncrement();
 		pendingCalls.add(call);
@@ -393,16 +400,7 @@ public class GrpcChannelExecutor implements Runnable {
 			tokenInvalidStartTime = 0;
 			// It's been too long without a valid access token. Drain and
 			// report all queued calls as failed.
-			pendingCalls.drain(this::failOnInvalidToken);
-		}
-	}
-
-	/**
-	 * @param grpcStreamingUnaryCall call to fail.
-	 */
-	private void failOnInvalidToken(GrpcStreamingUnaryCall grpcStreamingUnaryCall) {
-		if (!grpcStreamingUnaryCall.hasCompleted()) {
-			grpcStreamingUnaryCall.onError(new AerospikeException(ResultCode.NOT_AUTHENTICATED));
+			pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.NOT_AUTHENTICATED));
 		}
 	}
 
@@ -410,7 +408,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Schedule the call on a stream.
 	 */
 	@SuppressWarnings("NonAtomicOperationOnVolatileField")
-	private void scheduleCalls(GrpcStreamingUnaryCall call) {
+	private void scheduleCalls(GrpcStreamingCall call) {
 		if (call.hasCompleted()) {
 			// Most likely expired while in queue.
 			return;
@@ -430,7 +428,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Create new stream.
-		SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> queue =
+		SpscUnboundedArrayQueue<GrpcStreamingCall> queue =
 				new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 		queue.add(call);
 
@@ -463,7 +461,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	private void scheduleCallsOnNewStream(MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-										  SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> pendingCalls) {
+										  SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls) {
 		CallOptions options = grpcClientPolicy.callOptions;
 		if (authTokenManager != null) {
 			try {
@@ -472,7 +470,7 @@ public class GrpcChannelExecutor implements Runnable {
 			catch (Exception e) {
 				AerospikeException aerospikeException =
 						new AerospikeException(ResultCode.NOT_AUTHENTICATED, e);
-				for (GrpcStreamingUnaryCall call = pendingCalls.poll();
+				for (GrpcStreamingCall call = pendingCalls.poll();
 					 call != null;
 					 call = pendingCalls.poll()) {
 					call.onError(aerospikeException);
@@ -492,9 +490,9 @@ public class GrpcChannelExecutor implements Runnable {
 		// .onStreamClosed with the same pendingCalls
 		// - in the next call of GrpcChannelExecutor.processClosedStreams in
 		// an iteration the above steps repeat
-		SpscUnboundedArrayQueue<GrpcStreamingUnaryCall> activeCalls =
+		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls =
 				new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
-		for (GrpcStreamingUnaryCall call = pendingCalls.poll(); call != null;
+		for (GrpcStreamingCall call = pendingCalls.poll(); call != null;
 			 call = pendingCalls.poll()) {
 			if (call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
@@ -535,7 +533,14 @@ public class GrpcChannelExecutor implements Runnable {
 		if (isClosed.getAndSet(true)) {
 			return;
 		}
-
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		}
 		// TODO FIX shutdown() hang!
 		// Just call shutdownNow() instead?
 		//channel.shutdown();
@@ -578,12 +583,17 @@ public class GrpcChannelExecutor implements Runnable {
 		return ongoingRequests.get();
 	}
 
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
-	void responseReceived(int responsePayloadSize) {
-		bytesReceived += responsePayloadSize;
-		responsesReceived++;
-		ongoingRequests.getAndDecrement();
-	}
+
+    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    void onRequestCompleted() {
+        responsesReceived++;
+        ongoingRequests.getAndDecrement();
+    }
+
+    @SuppressWarnings("NonAtomicOperationOnVolatileField")
+    void onPayloadReceived(int size) {
+        bytesReceived += size;
+    }
 
 	public long getBytesSent() {
 		return bytesSent;
@@ -622,15 +632,15 @@ public class GrpcChannelExecutor implements Runnable {
 		return streamsOpen;
 	}
 
-	private static class ChannelAndEventLoop {
-		final ManagedChannel managedChannel;
-		final EventLoop eventLoop;
+    private static class ChannelAndEventLoop {
+        final ManagedChannel managedChannel;
+        final EventLoop eventLoop;
 
-		private ChannelAndEventLoop(ManagedChannel managedChannel, EventLoop eventLoop) {
-			this.managedChannel = managedChannel;
-			this.eventLoop = eventLoop;
-		}
-	}
+        private ChannelAndEventLoop(ManagedChannel managedChannel, EventLoop eventLoop) {
+            this.managedChannel = managedChannel;
+            this.eventLoop = eventLoop;
+        }
+    }
 
 	public static class ChannelTypeAndEventLoop {
 		private final Class<? extends Channel> channelType;

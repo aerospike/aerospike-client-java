@@ -24,7 +24,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.client.proxy.grpc.GrpcStreamingUnaryCall;
+import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -53,9 +53,19 @@ public abstract class CommandProxy {
 	}
 
 	final void execute() {
+		long ms;
+
 		if (policy.totalTimeout > 0) {
-			deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+			ms = policy.totalTimeout;
 		}
+		else if (policy.socketTimeout > 0) {
+			ms = policy.socketTimeout;
+		}
+		else {
+			ms = 30000;
+		}
+
+		deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ms);
 		executeCommand();
 	}
 
@@ -65,13 +75,13 @@ public abstract class CommandProxy {
 
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
-		executor.execute(new GrpcStreamingUnaryCall(methodDescriptor,
-			payload, policy, iteration, deadline,
+		executor.execute(new GrpcStreamingCall(methodDescriptor,
+			payload, policy, iteration, isUnaryCall(), deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload value) {
 					try {
-						parsePayload(value.getPayload());
+						onResponse(value);
 					}
 					catch (Throwable t) {
 						onFailure(t, value.getInDoubt());
@@ -80,20 +90,23 @@ public abstract class CommandProxy {
 
 				@Override
 				public void onError(Throwable t) {
-						// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-						onFailure(t, false);
-					}
-
-					@Override
-					public void onCompleted() {
-					}
+					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
+					onFailure(t, false);
 				}
-			));
+
+				@Override
+				public void onCompleted() {
+				}
+			}));
 	}
 
-	private void parsePayload(ByteString response) {
-		byte[] bytes = response.toByteArray();
-		Parser parser = new Parser(bytes);
+	boolean isUnaryCall() {
+		return true;
+	}
+
+	void onResponse(Kvs.AerospikeResponsePayload response) {
+		byte[] bytes = response.getPayload().toByteArray();
+		Parser parser = new Parser(bytes, response.getStatus());
 		parser.parseProto();
 		parseResult(parser);
 	}
