@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -31,6 +31,7 @@ import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
@@ -111,7 +112,10 @@ public class SuiteAsync {
 			Host[] hosts = Host.parseHosts(args.host, args.port);
 
 			eventLoop = eventLoops.get(0);
-			client = new AerospikeClient(policy, hosts);
+
+			client = args.useProxyClient?
+				new AerospikeClientProxy(policy, hosts) :
+				new AerospikeClient(policy, hosts);
 
 			try {
 				args.setServerSpecific(client);

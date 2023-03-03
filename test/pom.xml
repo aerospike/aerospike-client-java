@@ -25,6 +25,11 @@
     </dependency>
 
     <dependency>
+      <groupId>com.aerospike</groupId>
+      <artifactId>aerospike-proxy-client</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
     </dependency>

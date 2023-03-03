@@ -52,6 +52,7 @@ public class Args {
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public boolean enterprise;
 	public boolean singleBin;
+	public boolean useProxyClient;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -112,6 +113,7 @@ public class Args {
 					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
 					);
 
+			options.addOption("proxy", false, "Use proxy client.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -187,6 +189,10 @@ public class Args {
 				}
 			}
 
+			if (cl.hasOption("proxy")) {
+				useProxyClient = true;
+			}
+
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
@@ -209,6 +215,11 @@ public class Args {
 	 * Some database calls need to know how the server is configured.
 	 */
 	public void setServerSpecific(IAerospikeClient client) {
+		if (useProxyClient) {
+			// Proxy client does not support querying nodes directly for their configuration.
+			return;
+		}
+
 		Node node = client.getNodes()[0];
 		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;
