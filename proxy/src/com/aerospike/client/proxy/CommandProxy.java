@@ -79,12 +79,12 @@ public abstract class CommandProxy {
 			payload, policy, iteration, isUnaryCall(), deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
-				public void onNext(Kvs.AerospikeResponsePayload value) {
+				public void onNext(Kvs.AerospikeResponsePayload response) {
 					try {
-						onResponse(value);
+						onResponse(response);
 					}
 					catch (Throwable t) {
-						onFailure(t, value.getInDoubt());
+						onFailure(t, response.getInDoubt());
 					}
 				}
 
@@ -105,8 +105,18 @@ public abstract class CommandProxy {
 	}
 
 	void onResponse(Kvs.AerospikeResponsePayload response) {
+		// Check response status for client errors (negative error codes).
+		// Server errors are checked in response payload in Parser.
+		int status = response.getStatus();
+
+		if (status != 0) {
+			setInDoubt(response.getInDoubt());
+			notifyFailure(new AerospikeException(status));
+			return;
+		}
+
 		byte[] bytes = response.getPayload().toByteArray();
-		Parser parser = new Parser(bytes, response.getStatus());
+		Parser parser = new Parser(bytes);
 		parser.parseProto();
 		parseResult(parser);
 	}
@@ -142,9 +152,7 @@ public abstract class CommandProxy {
 	}
 
 	private void onFailure(Throwable t, boolean doubt) {
-		if (doubt) {
-			this.inDoubt = true;
-		}
+		setInDoubt(doubt);
 
 		AerospikeException ae;
 
@@ -215,6 +223,12 @@ public abstract class CommandProxy {
 
 			default:
 				return new AerospikeException("gRPC code " + code, sre);
+		}
+	}
+
+	private void setInDoubt(boolean doubt) {
+		if (doubt) {
+			this.inDoubt = true;
 		}
 	}
 
