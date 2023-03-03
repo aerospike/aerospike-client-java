@@ -96,7 +96,7 @@ public class BatchProxy {
 		@Override
 		void onResponse(Kvs.AerospikeResponsePayload response) {
 			byte[] bytes = response.getPayload().toByteArray();
-			Parser parser = new Parser(bytes, response.getStatus());
+			Parser parser = new Parser(bytes);
 
 			if (response.getHasNext()) {
 				parse(parser, response.getInDoubt());

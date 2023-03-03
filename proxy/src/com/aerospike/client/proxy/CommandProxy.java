@@ -81,6 +81,15 @@ public abstract class CommandProxy {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
 					try {
+						// Check response status for client errors (negative error codes).
+						// Server errors are checked in response payload in Parser.
+						int status = response.getStatus();
+
+						if (status != 0) {
+							setInDoubt(response.getInDoubt());
+							notifyFailure(new AerospikeException(status));
+							return;
+						}
 						onResponse(response);
 					}
 					catch (Throwable t) {
@@ -105,16 +114,6 @@ public abstract class CommandProxy {
 	}
 
 	void onResponse(Kvs.AerospikeResponsePayload response) {
-		// Check response status for client errors (negative error codes).
-		// Server errors are checked in response payload in Parser.
-		int status = response.getStatus();
-
-		if (status != 0) {
-			setInDoubt(response.getInDoubt());
-			notifyFailure(new AerospikeException(status));
-			return;
-		}
-
 		byte[] bytes = response.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
