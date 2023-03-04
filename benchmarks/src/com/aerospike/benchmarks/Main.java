@@ -62,6 +62,7 @@ import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -1119,6 +1120,16 @@ public class Main implements Log.Callback {
 
 			if (args.writePolicy.socketTimeout > 0 && args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
 				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
+			}
+
+			if (this.useProxyClient && this.eventLoopType == EventLoopType.DIRECT_NIO) {
+				// Proxy client requires netty event loops.
+				if (Epoll.isAvailable()) {
+					this.eventLoopType = EventLoopType.NETTY_EPOLL;
+				}
+				else {
+					this.eventLoopType = EventLoopType.NETTY_NIO;
+				}
 			}
 
 			switch (this.eventLoopType) {
