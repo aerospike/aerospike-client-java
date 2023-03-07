@@ -38,13 +38,13 @@ public final class Parser {
 	int fieldCount;
 	int opCount;
 
-	/**
-	 * Create a new parser.
-	 * @param buffer the response payload.
-	 * @param responseStatus the response status part of the AerospikeResponsePayload.
-	 */
     public Parser(byte[] buffer) {
         this.buffer = buffer;
+    }
+
+    public Parser(byte[] buffer, int offset) {
+        this.buffer = buffer;
+        this.offset = offset;
     }
 
     public void parseProto() {
@@ -98,11 +98,6 @@ public final class Parser {
 
 	public int parseResultCode() {
 		return buffer[offset] & 0xFF;
-	}
-
-	public int parseHeader(int startOffset) {
-		offset = startOffset;
-		return parseHeader();
 	}
 
 	public int parseHeader() {

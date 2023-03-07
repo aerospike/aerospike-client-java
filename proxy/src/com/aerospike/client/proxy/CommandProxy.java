@@ -40,7 +40,7 @@ public abstract class CommandProxy {
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
-	private boolean inDoubt;
+	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
