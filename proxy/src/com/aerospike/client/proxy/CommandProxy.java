@@ -231,7 +231,7 @@ public abstract class CommandProxy {
 		}
 	}
 
-	private void notifyFailure(AerospikeException ae) {
+	void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setPolicy(policy);
 			ae.setIteration(iteration);
