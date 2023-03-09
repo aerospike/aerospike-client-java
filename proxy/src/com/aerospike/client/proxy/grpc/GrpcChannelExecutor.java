@@ -384,12 +384,28 @@ public class GrpcChannelExecutor implements Runnable {
 		closedStreams.drain(this::processClosedStream, drainLimit);
 
 		if (isClosed.get()) {
-			if (pendingCalls.isEmpty() &&
-				streams.isEmpty() &&
-				closedStreams.isEmpty()) {
-				shutdownCondition.signal();
+			cleanupOnChannelClosed();
+			shutdownCondition.signal();
+		}
+	}
+
+	private void cleanupOnChannelClosed() {
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
 			}
 		}
+		streams.values().forEach(stream -> {
+			try {
+				stream.close();
+			}
+			catch (Exception e) {
+				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
+			}
+		});
 	}
 
 	/**
