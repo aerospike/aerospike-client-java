@@ -42,7 +42,7 @@ public final class WriteCommandProxy extends CommandProxy {
 		Bin[] bins,
 		Operation.Type type
 	) {
-		super(KVSGrpc.getPutStreamingMethod(), executor, writePolicy);
+		super(KVSGrpc.getWriteStreamingMethod(), executor, writePolicy, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;

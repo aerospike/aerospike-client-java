@@ -16,42 +16,214 @@
  */
 package com.aerospike.client.proxy;
 
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
-import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.BatchAttr;
-import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.command.Command.KeyIter;
+import com.aerospike.client.listener.BatchOperateListListener;
+import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 
 /**
- * All batch executors in one class mimicking
- * {@link com.aerospike.client.async.AsyncBatch}.
+ * Batch proxy commands.
  */
 public class BatchProxy {
-	//-------------------------------------------------------
-	// OperateRecordSequence
-	//-------------------------------------------------------
+	public static final class OperateListCommand extends CommandProxy {
+		private final BatchOperateListListener listener;
+		private final BatchPolicy batchPolicy;
+		private final List<BatchRecord> records;
+		private boolean status;
 
-	// TODO @BrianNichols handle retries.
-	public static final class OperateRecordSequenceCommandProxy extends CommandProxy {
+		public OperateListCommand(
+			GrpcCallExecutor grpcCallExecutor,
+			BatchPolicy batchPolicy,
+			BatchOperateListListener listener,
+			List<BatchRecord> records
+		) {
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
+			this.listener = listener;
+			this.batchPolicy = batchPolicy;
+			this.records = records;
+			this.status = true;
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
+			command.setBatchOperate(batchPolicy, iter);
+		}
+
+		@Override
+		void onResponse(Kvs.AerospikeResponsePayload response) {
+			byte[] bytes = response.getPayload().toByteArray();
+			Parser parser = new Parser(bytes, 5);
+
+			int resultCode = parser.parseHeader();
+
+			if (response.getHasNext()) {
+				parse(parser, response, resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.OK) {
+				try {
+					listener.onSuccess(records, status);
+				}
+				catch (Throwable t) {
+					logOnSuccessError(t);
+				}
+			}
+			else {
+				notifyFailure(new AerospikeException(resultCode));
+			}
+		}
+
+		private void parse(Parser parser, Kvs.AerospikeResponsePayload response, int resultCode) {
+			parser.skipKey();
+
+			BatchRecord record = records.get(parser.batchIndex);
+
+			if (resultCode == ResultCode.OK) {
+				record.setRecord(parser.parseRecord(true));
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parser.parseRecord(true);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = inDoubt || response.getInDoubt();
+					status = false;
+					return;
+				}
+			}
+
+			record.setError(resultCode, inDoubt || response.getInDoubt());
+			status = false;
+		}
+
+		@Override
+		void parseResult(Parser parser) {
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class OperateRecordArrayCommand extends CommandProxy {
+		private final BatchRecordArrayListener listener;
+		private final BatchRecord[] records;
+		private final BatchPolicy batchPolicy;
+		private final Key[] keys;
+		private final Operation[] ops;
+		private final BatchAttr attr;
+		private final boolean isOperation;
+		private boolean status;
+
+		public OperateRecordArrayCommand(
+			GrpcCallExecutor grpcCallExecutor,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Operation[] ops,
+			BatchRecordArrayListener listener,
+			BatchAttr attr
+		) {
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
+			this.batchPolicy = batchPolicy;
+			this.keys = keys;
+			this.ops = ops;
+			this.listener = listener;
+			this.attr = attr;
+			this.isOperation = ops != null;
+			this.status = true;
+			this.records = new BatchRecord[keys.length];
+
+			for (int i = 0; i < keys.length; i++) {
+				this.records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			KeyIterProxy iter = new KeyIterProxy(keys);
+			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
+		}
+
+		@Override
+		void onResponse(Kvs.AerospikeResponsePayload response) {
+			byte[] bytes = response.getPayload().toByteArray();
+			Parser parser = new Parser(bytes, 5);
+
+			int resultCode = parser.parseHeader();
+
+			if (response.getHasNext()) {
+				parse(parser, response, resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.OK) {
+				try {
+					listener.onSuccess(records, status);
+				}
+				catch (Throwable t) {
+					logOnSuccessError(t);
+				}
+			}
+			else {
+				notifyFailure(new AerospikeException(resultCode));
+			}
+		}
+
+		private void parse(Parser parser, Kvs.AerospikeResponsePayload response, int resultCode) {
+			parser.skipKey();
+
+			BatchRecord record = records[parser.batchIndex];
+
+			if (resultCode == 0) {
+				record.setRecord(parser.parseRecord(isOperation));
+			}
+			else {
+				record.setError(resultCode, inDoubt || response.getInDoubt());
+				status = false;
+			}
+		}
+
+		@Override
+		void parseResult(Parser parser) {
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(records, ae);
+		}
+	}
+
+	public static final class OperateRecordSequenceCommand extends CommandProxy {
 		private final BatchRecordSequenceListener listener;
-		private final boolean[] sent;
 		private final BatchPolicy batchPolicy;
 		private final Key[] keys;
 		private final Operation[] ops;
 		private final BatchAttr attr;
 		private final boolean isOperation;
 
-		public OperateRecordSequenceCommandProxy(
+		public OperateRecordSequenceCommand(
 			GrpcCallExecutor grpcCallExecutor,
 			BatchPolicy batchPolicy,
 			Key[] keys,
@@ -59,81 +231,64 @@ public class BatchProxy {
 			BatchRecordSequenceListener listener,
 			BatchAttr attr
 		) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy);
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
 			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.ops = ops;
-			this.sent = new boolean[keys.length];
 			this.listener = listener;
 			this.attr = attr;
 			this.isOperation = ops != null;
 		}
 
 		@Override
-		boolean isUnaryCall() {
-			return false;
-		}
-
-		@Override
 		void writeCommand(Command command) {
-			// The destination node is a single Aerospike proxy instance,
-			// where all keys are sent to the same node. Keys are not
-			// distributed across nodes.
-			// TODO @BrianNichols can a interface be implemented by both the
-			//  native and proxy client, to be passed to setBatchOperate as an
-			//  argument? node is passed in as "null" in BatchNode constructor.
-			BatchNode batchNode = new BatchNode(null, keys.length, 0);
-
-			// 0 is already added in the "new BatchNode(...)" constructor
-			// above, hence i starts from 1 here.
-			for (int i = 1; i < keys.length; i++) {
-				batchNode.addKey(i);
-			}
-
-			command.setBatchOperate(batchPolicy, keys, batchNode, null, ops, attr);
+			KeyIterProxy iter = new KeyIterProxy(keys);
+			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
 		}
 
 		@Override
 		void onResponse(Kvs.AerospikeResponsePayload response) {
 			byte[] bytes = response.getPayload().toByteArray();
-			Parser parser = new Parser(bytes, response.getStatus());
+			Parser parser = new Parser(bytes, 5);
+
+			int resultCode = parser.parseHeader();
 
 			if (response.getHasNext()) {
-				parse(parser, response.getInDoubt());
+				parse(parser, response, resultCode);
 				return;
 			}
 
-			int resultCode = parser.parseHeader(5);
 			if (resultCode == ResultCode.OK) {
-				onSuccess();
-			} else {
-				onFailure(new AerospikeException(resultCode));
+				try {
+					listener.onSuccess();
+				}
+				catch (Throwable t) {
+					logOnSuccessError(t);
+				}
+			}
+			else {
+				notifyFailure(new AerospikeException(resultCode));
 			}
 		}
 
-		private void parse(Parser parser, boolean inDoubt) {
-			int resultCode = parser.parseHeader(5);
+		private void parse(Parser parser, Kvs.AerospikeResponsePayload response, int resultCode) {
 			parser.skipKey();
 
 			Key keyOrig = keys[parser.batchIndex];
 			BatchRecord record;
 
-			if (resultCode == 0) {
+			if (resultCode == ResultCode.OK) {
 				record = new BatchRecord(keyOrig, parser.parseRecord(isOperation), attr.hasWrite);
-			} else {
-				// TODO @BrianNichols commandSentCounter?
-				int commandSentCounter = 0;
-				record = new BatchRecord(keyOrig, null, resultCode,
-						inDoubt || Command.batchInDoubt(attr.hasWrite,
-								commandSentCounter),
-						attr.hasWrite);
 			}
-			sent[parser.batchIndex] = true;
+			else {
+				record = new BatchRecord(keyOrig, null, resultCode, inDoubt || response.getInDoubt(), attr.hasWrite);
+			}
 
 			try {
 				listener.onRecord(record, parser.batchIndex);
-			} catch (Throwable e) {
-				Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
+			}
+			catch (Throwable t) {
+				logOnSuccessError(t);
 			}
 		}
 
@@ -145,14 +300,75 @@ public class BatchProxy {
 		void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
+	}
 
-		private void onSuccess() {
-			try {
-				listener.onSuccess();
+	private static class BatchRecordIterProxy implements KeyIter<BatchRecord> {
+		private final List<? extends BatchRecord> records;
+		private final int size;
+		private int offset;
+		private int index;
+
+		public BatchRecordIterProxy(List<? extends BatchRecord> records) {
+			this.records = records;
+			this.size = records.size();
+		}
+
+		@Override
+		public int size() {
+			return size;
+		}
+
+		@Override
+		public BatchRecord next() {
+			if (index >= size) {
+				return null;
 			}
-			catch (Throwable t) {
-				logOnSuccessError(t);
+			offset = index++;
+			return records.get(offset);
+		}
+
+		@Override
+		public int offset() {
+			return offset;
+		}
+
+		@Override
+		public void reset() {
+			index = 0;
+		}
+	}
+
+	private static class KeyIterProxy implements KeyIter<Key> {
+		private final Key[] keys;
+		private int offset;
+		private int index;
+
+		public KeyIterProxy(Key[] keys) {
+			this.keys = keys;
+		}
+
+		@Override
+		public int size() {
+			return keys.length;
+		}
+
+		@Override
+		public Key next() {
+			if (index >= keys.length) {
+				return null;
 			}
+			offset = index++;
+			return keys[offset];
+		}
+
+		@Override
+		public int offset() {
+			return offset;
+		}
+
+		@Override
+		public void reset() {
+			index = 0;
 		}
 	}
 }

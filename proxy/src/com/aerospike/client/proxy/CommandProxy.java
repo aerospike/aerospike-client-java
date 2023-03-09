@@ -40,16 +40,19 @@ public abstract class CommandProxy {
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
-	private boolean inDoubt;
+	private final boolean isUnary;
+	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
-		Policy policy
+		Policy policy,
+		boolean isUnary
 	) {
 		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
+		this.isUnary = isUnary;
 	}
 
 	final void execute() {
@@ -76,22 +79,31 @@ public abstract class CommandProxy {
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
 		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			payload, policy, iteration, isUnaryCall(), deadline,
+			payload, policy, iteration, isUnary, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
-				public void onNext(Kvs.AerospikeResponsePayload value) {
+				public void onNext(Kvs.AerospikeResponsePayload response) {
 					try {
-						onResponse(value);
+						// Check response status for client errors (negative error codes).
+						// Server errors are checked in response payload in Parser.
+						int status = response.getStatus();
+
+						if (status != 0) {
+							setInDoubt(response.getInDoubt());
+							notifyFailure(new AerospikeException(status));
+							return;
+						}
+						onResponse(response);
 					}
 					catch (Throwable t) {
-						onFailure(t, value.getInDoubt());
+						onFailure(t, response.getInDoubt());
 					}
 				}
 
 				@Override
 				public void onError(Throwable t) {
-					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-					onFailure(t, false);
+					// TODO: What kind of errors returned here. If timeouts, should inDoubt always be true?
+					onFailure(t, inDoubt);
 				}
 
 				@Override
@@ -100,13 +112,9 @@ public abstract class CommandProxy {
 			}));
 	}
 
-	boolean isUnaryCall() {
-		return true;
-	}
-
 	void onResponse(Kvs.AerospikeResponsePayload response) {
 		byte[] bytes = response.getPayload().toByteArray();
-		Parser parser = new Parser(bytes, response.getStatus());
+		Parser parser = new Parser(bytes);
 		parser.parseProto();
 		parseResult(parser);
 	}
@@ -142,9 +150,7 @@ public abstract class CommandProxy {
 	}
 
 	private void onFailure(Throwable t, boolean doubt) {
-		if (doubt) {
-			this.inDoubt = true;
-		}
+		setInDoubt(doubt);
 
 		AerospikeException ae;
 
@@ -218,7 +224,13 @@ public abstract class CommandProxy {
 		}
 	}
 
-	private void notifyFailure(AerospikeException ae) {
+	private void setInDoubt(boolean doubt) {
+		if (doubt) {
+			this.inDoubt = true;
+		}
+	}
+
+	void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setPolicy(policy);
 			ae.setIteration(iteration);
