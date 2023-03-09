@@ -448,7 +448,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public BatchResults delete(BatchPolicy batchPolicy, BatchDeletePolicy deletePolicy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch delete");
+		CompletableFuture<BatchResults> future = new CompletableFuture<>();
+		BatchRecordArrayListener listener = prepareBatchRecordArrayListener(future);
+		delete(null, listener, batchPolicy, deletePolicy, keys);
+		return getFuture(future);
 	}
 
 	@Override
@@ -459,7 +462,26 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchDeletePolicy deletePolicy,
 		Key[] keys
 	) {
-		throw new AerospikeException(NotSupported + "batch delete");
+		if (keys.length == 0) {
+			listener.onSuccess(new BatchRecord[0], true);
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (deletePolicy == null) {
+			deletePolicy = batchDeletePolicyDefault;
+		}
+
+		BatchAttr attr = new BatchAttr();
+		attr.setDelete(deletePolicy);
+
+		CommandProxy command = new BatchProxy.OperateRecordArrayCommand(executor,
+			batchPolicy, keys, null, listener, attr);
+
+		command.execute();
 	}
 
 	@Override
@@ -470,7 +492,26 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchDeletePolicy deletePolicy,
 		Key[] keys
 	) {
-		throw new AerospikeException(NotSupported + "batch delete");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (deletePolicy == null) {
+			deletePolicy = batchDeletePolicyDefault;
+		}
+
+		BatchAttr attr = new BatchAttr();
+		attr.setDelete(deletePolicy);
+
+		CommandProxy command = new BatchProxy.OperateRecordSequenceCommand(executor,
+			batchPolicy, keys, null, listener, attr);
+
+		command.execute();
 	}
 
 	@Override
@@ -505,7 +546,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean exists(Policy policy, Key key) {
-		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		ExistsListener listener = prepareExistsListener(future);
 		exists(null, listener, policy, key);
 		return getFuture(future);
@@ -522,17 +563,40 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean[] exists(BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch exists");
+		CompletableFuture<boolean[]> future = new CompletableFuture<>();
+		ExistsArrayListener listener = prepareExistsArrayListener(future);
+		exists(null, listener, policy, keys);
+		return getFuture(future);
 	}
 
 	@Override
 	public void exists(EventLoop eventLoop, ExistsArrayListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch exists");
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new boolean[0]);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.ExistsArrayCommand(executor, policy, listener, keys);
+		command.execute();
 	}
 
 	@Override
 	public void exists(EventLoop eventLoop, ExistsSequenceListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch exists");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.ExistsSequenceCommand(executor, policy, listener, keys);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -1313,6 +1377,20 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			@Override
 			public void onSuccess(Key key, Object obj) {
 				future.complete(obj);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static ExistsArrayListener prepareExistsArrayListener(final CompletableFuture<boolean[]> future) {
+		return new ExistsArrayListener() {
+			@Override
+			public void onSuccess(Key[] keys, boolean[] exists) {
+				future.complete(exists);
 			}
 
 			@Override
