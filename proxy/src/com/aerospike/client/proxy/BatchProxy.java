@@ -127,6 +127,98 @@ public class BatchProxy {
 		}
 	}
 
+	public static final class OperateSequenceCommand extends CommandProxy {
+		private final BatchRecordSequenceListener listener;
+		private final BatchPolicy batchPolicy;
+		private final List<BatchRecord> records;
+
+		public OperateSequenceCommand(
+			GrpcCallExecutor grpcCallExecutor,
+			BatchPolicy batchPolicy,
+			BatchRecordSequenceListener listener,
+			List<BatchRecord> records
+		) {
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
+			this.listener = listener;
+			this.batchPolicy = batchPolicy;
+			this.records = records;
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
+			command.setBatchOperate(batchPolicy, iter);
+		}
+
+		@Override
+		void onResponse(Kvs.AerospikeResponsePayload response) {
+			byte[] bytes = response.getPayload().toByteArray();
+			Parser parser = new Parser(bytes, 5);
+
+			int resultCode = parser.parseHeader();
+
+			if (response.getHasNext()) {
+				parse(parser, response, resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.OK) {
+				try {
+					listener.onSuccess();
+				}
+				catch (Throwable t) {
+					logOnSuccessError(t);
+				}
+			}
+			else {
+				notifyFailure(new AerospikeException(resultCode));
+			}
+		}
+
+		private void parse(Parser parser, Kvs.AerospikeResponsePayload response, int resultCode) {
+			parser.skipKey();
+
+			BatchRecord record = records.get(parser.batchIndex);
+
+			if (resultCode == ResultCode.OK) {
+				record.setRecord(parser.parseRecord(true));
+			}
+			else if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parser.parseRecord(true);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = inDoubt || response.getInDoubt();
+				}
+				else {
+					record.setError(resultCode, inDoubt || response.getInDoubt());
+				}
+			}
+			else {
+				record.setError(resultCode, inDoubt || response.getInDoubt());
+			}
+
+			try {
+				listener.onRecord(record, parser.batchIndex);
+			}
+			catch (Throwable t) {
+				logOnSuccessError(t);
+			}
+		}
+
+		@Override
+		void parseResult(Parser parser) {
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
 	public static final class OperateRecordArrayCommand extends CommandProxy {
 		private final BatchRecordArrayListener listener;
 		private final BatchRecord[] records;

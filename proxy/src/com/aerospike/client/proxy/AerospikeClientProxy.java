@@ -720,7 +720,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchPolicy policy,
 		List<BatchRecord> records
 	) {
-		throw new AerospikeException(NotSupported + "batch operate");
+		if (records.size() == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchParentPolicyWriteDefault;
+		}
+
+		CommandProxy command = new BatchProxy.OperateSequenceCommand(executor, policy, listener, records);
+		command.execute();
 	}
 
 	@Override
