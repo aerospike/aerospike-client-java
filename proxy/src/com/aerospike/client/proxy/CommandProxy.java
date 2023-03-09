@@ -40,16 +40,19 @@ public abstract class CommandProxy {
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
+	private final boolean isUnary;
 	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
-		Policy policy
+		Policy policy,
+		boolean isUnary
 	) {
 		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
+		this.isUnary = isUnary;
 	}
 
 	final void execute() {
@@ -76,7 +79,7 @@ public abstract class CommandProxy {
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
 		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			payload, policy, iteration, isUnaryCall(), deadline,
+			payload, policy, iteration, isUnary, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -107,10 +110,6 @@ public abstract class CommandProxy {
 				public void onCompleted() {
 				}
 			}));
-	}
-
-	boolean isUnaryCall() {
-		return true;
 	}
 
 	void onResponse(Kvs.AerospikeResponsePayload response) {

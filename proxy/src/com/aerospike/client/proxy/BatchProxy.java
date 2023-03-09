@@ -51,17 +51,11 @@ public class BatchProxy {
 			BatchOperateListListener listener,
 			List<BatchRecord> records
 		) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy);
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
 			this.listener = listener;
 			this.batchPolicy = batchPolicy;
 			this.records = records;
 			this.status = true;
-		}
-
-		@Override
-		boolean isUnaryCall() {
-			// TODO PASS IN TO CONSTRUCTOR.
-			return false;
 		}
 
 		@Override
@@ -151,7 +145,7 @@ public class BatchProxy {
 			BatchRecordArrayListener listener,
 			BatchAttr attr
 		) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy);
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
 			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.ops = ops;
@@ -164,11 +158,6 @@ public class BatchProxy {
 			for (int i = 0; i < keys.length; i++) {
 				this.records[i] = new BatchRecord(keys[i], attr.hasWrite);
 			}
-		}
-
-		@Override
-		boolean isUnaryCall() {
-			return false;
 		}
 
 		@Override
@@ -242,18 +231,13 @@ public class BatchProxy {
 			BatchRecordSequenceListener listener,
 			BatchAttr attr
 		) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy);
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy, false);
 			this.batchPolicy = batchPolicy;
 			this.keys = keys;
 			this.ops = ops;
 			this.listener = listener;
 			this.attr = attr;
 			this.isOperation = ops != null;
-		}
-
-		@Override
-		boolean isUnaryCall() {
-			return false;
 		}
 
 		@Override

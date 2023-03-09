@@ -36,7 +36,7 @@ public final class DeleteCommandProxy extends CommandProxy {
 		WritePolicy writePolicy,
 		Key key
 	) {
-		super(KVSGrpc.getDeleteStreamingMethod(), executor, writePolicy);
+		super(KVSGrpc.getDeleteStreamingMethod(), executor, writePolicy, true);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
