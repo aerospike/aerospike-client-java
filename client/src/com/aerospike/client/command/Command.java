@@ -612,9 +612,12 @@ public class Command {
 	//--------------------------------------------------
 
 	public final void setBatchOperate(BatchPolicy policy, List<? extends BatchRecord> records, BatchNode batch) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final BatchRecordIterNative iter = new BatchRecordIterNative(records, batch);
+		setBatchOperate(policy, iter);
+	}
+
+	public final void setBatchOperate(BatchPolicy policy, KeyIter<BatchRecord> iter) {
+		BatchRecord record;
 		BatchRecord prev = null;
 
 		begin();
@@ -627,8 +630,7 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		for (int i = 0; i < max; i++) {
-			final BatchRecord record = records.get(offsets[i]);
+		while ((record = iter.next()) != null) {
 			final Key key = record.key;
 
 			dataOffset += key.digest.length + 4;
@@ -662,19 +664,18 @@ public class Command {
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 
 		BatchAttr attr = new BatchAttr();
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			final int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((record = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			final BatchRecord record = records.get(index);
 			final Key key = record.key;
 			final byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
@@ -783,7 +784,7 @@ public class Command {
 
 	public final void setBatchOperate(
 		BatchPolicy policy,
-		KeyIter iter,
+		KeyIter<Key> iter,
 		String[] binNames,
 		Operation[] ops,
 		BatchAttr attr
@@ -2157,22 +2158,48 @@ public class Command {
 		private static final long serialVersionUID = 1L;
 	}
 
-	public interface KeyIter {
+	public interface KeyIter<T> {
 		int size();
-		Key next();
+		T next();
 		int offset();
 		void reset();
 	}
 
-	private static class KeyIterNative implements KeyIter {
+	private static class BatchRecordIterNative extends BaseIterNative<BatchRecord> {
+		private final List<? extends BatchRecord> records;
+
+		public BatchRecordIterNative(List<? extends BatchRecord> records, BatchNode batch) {
+			super(batch);
+			this.records = records;
+		}
+
+		@Override
+		public BatchRecord get(int offset) {
+			return records.get(offset);
+		}
+	}
+
+	private static class KeyIterNative extends BaseIterNative<Key> {
 		private final Key[] keys;
+
+		public KeyIterNative(Key[] keys, BatchNode batch) {
+			super(batch);
+			this.keys = keys;
+		}
+
+		@Override
+		public Key get(int offset) {
+			return keys[offset];
+		}
+	}
+
+	private static abstract class BaseIterNative<T> implements KeyIter<T> {
 		private final int size;
 		private final int[] offsets;
 		private int offset;
 		private int index;
 
-		public KeyIterNative(Key[] keys, BatchNode batch) {
-			this.keys = keys;
+		public BaseIterNative(BatchNode batch) {
 			this.size = batch.offsetsSize;
 			this.offsets = batch.offsets;
 		}
@@ -2183,13 +2210,15 @@ public class Command {
 		}
 
 		@Override
-		public Key next() {
+		public T next() {
 			if (index >= size) {
 				return null;
 			}
 			offset = offsets[index++];
-			return keys[offset];
+			return get(offset);
 		}
+
+		abstract T get(int offset);
 
 		@Override
 		public int offset() {

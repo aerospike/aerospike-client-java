@@ -687,7 +687,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean operate(BatchPolicy policy, List<BatchRecord> records) {
-		throw new AerospikeException(NotSupported + "batch operate");
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
+		BatchOperateListListener listener = prepareBatchOperateListListener(future);
+		operate(null, listener, policy, records);
+		return getFuture(future);
 	}
 
 	@Override
@@ -697,7 +700,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		BatchPolicy policy,
 		List<BatchRecord> records
 	) {
-		throw new AerospikeException(NotSupported + "batch operate");
+		if (records.size() == 0) {
+			listener.onSuccess(records, true);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchParentPolicyWriteDefault;
+		}
+
+		CommandProxy command = new BatchProxy.OperateListCommand(executor, policy, listener, records);
+		command.execute();
 	}
 
 	@Override
@@ -1290,6 +1303,20 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			@Override
 			public void onSuccess(Key key, Object obj) {
 				future.complete(obj);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static BatchOperateListListener prepareBatchOperateListListener(final CompletableFuture<Boolean> future) {
+		return new BatchOperateListListener() {
+			@Override
+			public void onSuccess(List<BatchRecord> records, boolean status) {
+				future.complete(status);
 			}
 
 			@Override

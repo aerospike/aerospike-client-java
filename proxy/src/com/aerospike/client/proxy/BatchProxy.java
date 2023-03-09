@@ -16,14 +16,18 @@
  */
 package com.aerospike.client.proxy;
 
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.Command.KeyIter;
+import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.policy.BatchPolicy;
@@ -32,13 +36,102 @@ import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 
 /**
- * All batch executors in one class mimicking
- * {@link com.aerospike.client.async.AsyncBatch}.
+ * Batch proxy commands.
  */
 public class BatchProxy {
-	//-------------------------------------------------------
-	// OperateRecordSequence
-	//-------------------------------------------------------
+	public static final class OperateListCommand extends CommandProxy {
+		private final BatchOperateListListener listener;
+		private final BatchPolicy batchPolicy;
+		private final List<BatchRecord> records;
+		private boolean status;
+
+		public OperateListCommand(
+			GrpcCallExecutor grpcCallExecutor,
+			BatchPolicy batchPolicy,
+			BatchOperateListListener listener,
+			List<BatchRecord> records
+		) {
+			super(KVSGrpc.getBatchOperateStreamingMethod(), grpcCallExecutor, batchPolicy);
+			this.listener = listener;
+			this.batchPolicy = batchPolicy;
+			this.records = records;
+			this.status = true;
+		}
+
+		@Override
+		boolean isUnaryCall() {
+			// TODO PASS IN TO CONSTRUCTOR.
+			return false;
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
+			command.setBatchOperate(batchPolicy, iter);
+		}
+
+		@Override
+		void onResponse(Kvs.AerospikeResponsePayload response) {
+			byte[] bytes = response.getPayload().toByteArray();
+			Parser parser = new Parser(bytes, 5);
+
+			int resultCode = parser.parseHeader();
+
+			if (response.getHasNext()) {
+				parse(parser, response, resultCode);
+				return;
+			}
+
+			if (resultCode == ResultCode.OK) {
+				try {
+					listener.onSuccess(records, status);
+				}
+				catch (Throwable t) {
+					logOnSuccessError(t);
+				}
+			}
+			else {
+				notifyFailure(new AerospikeException(resultCode));
+			}
+		}
+
+		private void parse(Parser parser, Kvs.AerospikeResponsePayload response, int resultCode) {
+			parser.skipKey();
+
+			BatchRecord record = records.get(parser.batchIndex);
+
+			if (resultCode == ResultCode.OK) {
+				record.setRecord(parser.parseRecord(true));
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parser.parseRecord(true);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = inDoubt || response.getInDoubt();
+					status = false;
+					return;
+				}
+			}
+
+			record.setError(resultCode, inDoubt || response.getInDoubt());
+			status = false;
+		}
+
+		@Override
+		void parseResult(Parser parser) {
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
 
 	public static final class OperateRecordArrayCommand extends CommandProxy {
 		private final BatchRecordArrayListener listener;
@@ -225,7 +318,43 @@ public class BatchProxy {
 		}
 	}
 
-	private static class KeyIterProxy implements KeyIter {
+	private static class BatchRecordIterProxy implements KeyIter<BatchRecord> {
+		private final List<? extends BatchRecord> records;
+		private final int size;
+		private int offset;
+		private int index;
+
+		public BatchRecordIterProxy(List<? extends BatchRecord> records) {
+			this.records = records;
+			this.size = records.size();
+		}
+
+		@Override
+		public int size() {
+			return size;
+		}
+
+		@Override
+		public BatchRecord next() {
+			if (index >= size) {
+				return null;
+			}
+			offset = index++;
+			return records.get(offset);
+		}
+
+		@Override
+		public int offset() {
+			return offset;
+		}
+
+		@Override
+		public void reset() {
+			index = 0;
+		}
+	}
+
+	private static class KeyIterProxy implements KeyIter<Key> {
 		private final Key[] keys;
 		private int offset;
 		private int index;

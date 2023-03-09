@@ -99,8 +99,8 @@ public abstract class CommandProxy {
 
 				@Override
 				public void onError(Throwable t) {
-					// TODO: What kind of errors returned here. If timeouts, should inDoubt be true?
-					onFailure(t, false);
+					// TODO: What kind of errors returned here. If timeouts, should inDoubt always be true?
+					onFailure(t, inDoubt);
 				}
 
 				@Override
