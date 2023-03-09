@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -25,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 import org.jctools.queues.SpscUnboundedArrayQueue;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -52,7 +49,7 @@ import io.netty.channel.EventLoop;
  *
  * <p>TODO: Should the stream be closed if it has been idle for some duration?
  */
-public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>, Closeable {
+public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> {
 	/**
 	 * Unique stream id in the channel.
 	 */
@@ -293,25 +290,5 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	void enqueue(GrpcStreamingCall call) {
 		// TODO: can this call fail?
 		pendingCalls.add(call);
-	}
-
-	@Override
-	public void close() throws IOException {
-		while (!pendingCalls.isEmpty()) {
-			try {
-				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
-			}
-			catch (Exception e) {
-				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			}
-		}
-		executingCalls.values().forEach(call -> {
-			try {
-				call.failIfNotComplete(ResultCode.CLIENT_ERROR);
-			}
-			catch (Exception e) {
-				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			}
-		});
 	}
 }
