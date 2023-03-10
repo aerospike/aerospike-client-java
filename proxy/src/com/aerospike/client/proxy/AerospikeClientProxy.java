@@ -699,32 +699,78 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		CompletableFuture<Record[]> future = new CompletableFuture<>();
+		RecordArrayListener listener = prepareRecordArrayListener(future);
+		get(null, listener, policy, keys);
+		return getFuture(future);
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+		command.execute();
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_GET_ALL, false);
+		command.execute();
 	}
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys, String... binNames) {
-		throw new AerospikeException(NotSupported + "batch get");
+		CompletableFuture<Record[]> future = new CompletableFuture<>();
+		RecordArrayListener listener = prepareRecordArrayListener(future);
+		get(null, listener, policy, keys, binNames);
+		return getFuture(future);
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+		command.execute();
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, String... binNames) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
@@ -771,17 +817,40 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record[] getHeader(BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		CompletableFuture<Record[]> future = new CompletableFuture<>();
+		RecordArrayListener listener = prepareRecordArrayListener(future);
+		getHeader(null, listener, policy, keys);
+		return getFuture(future);
 	}
 
 	@Override
 	public void getHeader(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+		command.execute();
 	}
 
 	@Override
 	public void getHeader(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, null, Command.INFO1_READ | Command.INFO1_NOBINDATA, false);
+		command.execute();
 	}
 
 	//-------------------------------------------------------
