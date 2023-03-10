@@ -47,7 +47,7 @@ import com.aerospike.proxy.client.Kvs;
  */
 public class BatchProxy {
 	//-------------------------------------------------------
-	// Read with BatchRecord
+	// Batch Read Record List
 	//-------------------------------------------------------
 
 	public interface BatchListListenerSync {
@@ -192,7 +192,7 @@ public class BatchProxy {
 	}
 
 	//-------------------------------------------------------
-	// Read with Key[]
+	// Batch Read Key Array
 	//-------------------------------------------------------
 
 	public static final class GetArrayCommand extends BaseCommand {
@@ -304,7 +304,7 @@ public class BatchProxy {
 	}
 
 	//-------------------------------------------------------
-	// Exists
+	// Batch Exists
 	//-------------------------------------------------------
 
 	public static final class ExistsArrayCommand extends BaseCommand {
@@ -392,7 +392,7 @@ public class BatchProxy {
 	}
 
 	//-------------------------------------------------------
-	// Operate on List<BatchRecord>
+	// Batch Operate Record List
 	//-------------------------------------------------------
 
 	public static final class OperateListCommand extends BaseCommand {
@@ -517,7 +517,7 @@ public class BatchProxy {
 	}
 
 	//-------------------------------------------------------
-	// Operate on Key[] keys
+	// Batch Operate Key Array
 	//-------------------------------------------------------
 
 	public static final class OperateRecordArrayCommand extends BaseCommand {
@@ -633,7 +633,159 @@ public class BatchProxy {
 	}
 
 	//-------------------------------------------------------
-	// Base Batch Proxy Command
+	// Batch UDF
+	//-------------------------------------------------------
+
+	public static final class UDFArrayCommand extends BaseCommand {
+		private final BatchRecordArrayListener listener;
+		private final BatchRecord[] records;
+		private final Key[] keys;
+		private final String packageName;
+		private final String functionName;
+		private final byte[] argBytes;
+		private final BatchAttr attr;
+		private boolean status;
+
+		public UDFArrayCommand(
+			GrpcCallExecutor executor,
+			BatchPolicy batchPolicy,
+			BatchRecordArrayListener listener,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			byte[] argBytes,
+			BatchAttr attr
+		) {
+			super(executor, batchPolicy, false);
+			this.listener = listener;
+			this.keys = keys;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.argBytes = argBytes;
+			this.attr = attr;
+			this.records = new BatchRecord[keys.length];
+
+			for (int i = 0; i < keys.length; i++) {
+				this.records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			}
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			KeyIterProxy iter = new KeyIterProxy(keys);
+			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
+		}
+
+		@Override
+		void parse(Parser parser, int resultCode) {
+			BatchRecord record = records[parser.batchIndex];
+
+			if (resultCode == ResultCode.OK) {
+				record.setRecord(parseRecord(parser));
+				return;
+			}
+
+			if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parseRecord(parser);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = resultCode;
+					record.inDoubt = inDoubt;
+					status = false;
+					return;
+				}
+			}
+
+			record.setError(resultCode, inDoubt);
+			status = false;
+		}
+
+		@Override
+		void onSuccess() {
+			listener.onSuccess(records, status);
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(records, ae);
+		}
+	}
+
+	public static final class UDFSequenceCommand extends BaseCommand {
+		private final BatchRecordSequenceListener listener;
+		private final Key[] keys;
+		private final String packageName;
+		private final String functionName;
+		private final byte[] argBytes;
+		private final BatchAttr attr;
+
+		public UDFSequenceCommand(
+			GrpcCallExecutor executor,
+			BatchPolicy batchPolicy,
+			BatchRecordSequenceListener listener,
+			Key[] keys,
+			String packageName,
+			String functionName,
+			byte[] argBytes,
+			BatchAttr attr
+		) {
+			super(executor, batchPolicy, false);
+			this.listener = listener;
+			this.keys = keys;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.argBytes = argBytes;
+			this.attr = attr;
+		}
+
+		@Override
+		void writeCommand(Command command) {
+			KeyIterProxy iter = new KeyIterProxy(keys);
+			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
+		}
+
+		@Override
+		void parse(Parser parser, int resultCode) {
+			Key keyOrig = keys[parser.batchIndex];
+			BatchRecord record;
+
+			if (resultCode == ResultCode.OK) {
+				record = new BatchRecord(keyOrig, parseRecord(parser), attr.hasWrite);
+			}
+			else if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = parseRecord(parser);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record = new BatchRecord(keyOrig, r, resultCode, inDoubt, attr.hasWrite);
+				}
+				else {
+					record = new BatchRecord(keyOrig, null, resultCode, inDoubt, attr.hasWrite);
+				}
+			}
+			else {
+				record = new BatchRecord(keyOrig, null, resultCode, inDoubt, attr.hasWrite);
+			}
+			listener.onRecord(record, parser.batchIndex);
+		}
+
+		@Override
+		void onSuccess() {
+			listener.onSuccess();
+		}
+
+		@Override
+		void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	//-------------------------------------------------------
+	// Batch Base
 	//-------------------------------------------------------
 
 	private static abstract class BaseCommand extends CommandProxy {

@@ -908,10 +908,18 @@ public class Command {
 		byte[] argBytes,
 		BatchAttr attr
 	) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchUDF(policy, iter, packageName, functionName, argBytes, attr);
+	}
 
+	public final void setBatchUDF(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		String packageName,
+		String functionName,
+		byte[] argBytes,
+		BatchAttr attr
+	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
@@ -924,11 +932,10 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		Key key;
 		Key prev = null;
 
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-
+		while ((key = iter.next()) != null) {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
@@ -962,17 +969,16 @@ public class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((key = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			Key key = keys[index];
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;

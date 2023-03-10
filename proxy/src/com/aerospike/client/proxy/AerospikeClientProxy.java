@@ -96,6 +96,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.Channel;
@@ -1132,7 +1133,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		throw new AerospikeException(NotSupported + "batch execute");
+		CompletableFuture<BatchResults> future = new CompletableFuture<>();
+		BatchRecordArrayListener listener = prepareBatchRecordArrayListener(future);
+		execute(null, listener, batchPolicy, udfPolicy, keys, packageName, functionName, functionArgs);
+		return getFuture(future);
 	}
 
 	@Override
@@ -1146,7 +1150,28 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		throw new AerospikeException(NotSupported + "batch execute");
+		if (keys.length == 0) {
+			listener.onSuccess(new BatchRecord[0], true);
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (udfPolicy == null) {
+			udfPolicy = batchUDFPolicyDefault;
+		}
+
+		byte[] argBytes = Packer.pack(functionArgs);
+
+		BatchAttr attr = new BatchAttr();
+		attr.setUDF(udfPolicy);
+
+		CommandProxy command = new BatchProxy.UDFArrayCommand(executor, batchPolicy,
+			listener, keys, packageName, functionName, argBytes, attr);
+
+		command.execute();
 	}
 
 	@Override
@@ -1160,7 +1185,28 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		throw new AerospikeException(NotSupported + "batch execute");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (batchPolicy == null) {
+			batchPolicy = batchParentPolicyWriteDefault;
+		}
+
+		if (udfPolicy == null) {
+			udfPolicy = batchUDFPolicyDefault;
+		}
+
+		byte[] argBytes = Packer.pack(functionArgs);
+
+		BatchAttr attr = new BatchAttr();
+		attr.setUDF(udfPolicy);
+
+		CommandProxy command = new BatchProxy.UDFSequenceCommand(executor, batchPolicy,
+			listener, keys, packageName, functionName, argBytes, attr);
+
+		command.execute();
 	}
 
 	//----------------------------------------------------------
