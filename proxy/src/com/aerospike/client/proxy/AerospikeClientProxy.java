@@ -51,6 +51,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchAttr;
+import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -80,6 +81,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.proxy.BatchProxy.BatchListListenerSync;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcChannelProvider;
@@ -649,17 +651,50 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean get(BatchPolicy policy, List<BatchRead> records) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (records.size() == 0) {
+			return true;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
+		BatchListListenerSync listener = prepareBatchListListenerSync(future);
+
+		CommandProxy command = new BatchProxy.ReadListCommandSync(executor, policy, listener, records);
+		command.execute();
+
+		return getFuture(future);
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, BatchListListener listener, BatchPolicy policy, List<BatchRead> records) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (records.size() == 0) {
+			listener.onSuccess(records);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+		CommandProxy command = new BatchProxy.ReadListCommand(executor, policy, listener, records);
+		command.execute();
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, BatchSequenceListener listener, BatchPolicy policy, List<BatchRead> records) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (records.size() == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.ReadSequenceCommand(executor, policy, listener, records);
+		command.execute();
 	}
 
 	@Override
@@ -698,17 +733,40 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public Record[] get(BatchPolicy policy, Key[] keys, Operation... ops) {
-		throw new AerospikeException(NotSupported + "batch get");
+		CompletableFuture<Record[]> future = new CompletableFuture<>();
+		RecordArrayListener listener = prepareRecordArrayListener(future);
+		get(null, listener, policy, keys, ops);
+		return getFuture(future);
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordArrayListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess(keys, new Record[0]);
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+		command.execute();
 	}
 
 	@Override
 	public void get(EventLoop eventLoop, RecordSequenceListener listener, BatchPolicy policy, Key[] keys, Operation... ops) {
-		throw new AerospikeException(NotSupported + "batch get");
+		if (keys.length == 0) {
+			listener.onSuccess();
+			return;
+		}
+
+		if (policy == null) {
+			policy = batchPolicyDefault;
+		}
+
+		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, null, ops, Command.INFO1_READ, true);
+		command.execute();
 	}
 
 	@Override
@@ -1391,6 +1449,34 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			@Override
 			public void onSuccess(Key[] keys, boolean[] exists) {
 				future.complete(exists);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static RecordArrayListener prepareRecordArrayListener(final CompletableFuture<Record[]> future) {
+		return new RecordArrayListener() {
+			@Override
+			public void onSuccess(Key[] keys, Record[] records) {
+				future.complete(records);
+			}
+
+			@Override
+			public void onFailure(AerospikeException ae) {
+				future.completeExceptionally(ae);
+			}
+		};
+	}
+
+	private static BatchListListenerSync prepareBatchListListenerSync(final CompletableFuture<Boolean> future) {
+		return new BatchListListenerSync() {
+			@Override
+			public void onSuccess(List<BatchRead> records, boolean status) {
+				future.complete(status);
 			}
 
 			@Override
