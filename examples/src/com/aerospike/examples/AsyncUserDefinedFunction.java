@@ -32,12 +32,18 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
-		register(client);
+		// Register is not supported in the proxy client. To run this example with the proxy client,
+		// first run example with native client (which supports register) and then run proxy client.
+		if (! params.useProxyClient) {
+			register(client);
+		}
 		writeUsingUdfAsync(client, eventLoop);
 	}
 
 	private void register(IAerospikeClient client) {
-		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		String filename = "record_example.lua";
+		console.info("Register: " + filename);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
 		task.waitTillComplete();
 	}
 

@@ -42,7 +42,12 @@ public class UserDefinedFunction extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		register(client, params);
+		// Register is not supported in the proxy client. To run this example with the proxy client,
+		// first run example with native client (which supports register) and then run proxy client.
+		if (! params.useProxyClient) {
+			register(client, params);
+		}
+
 		writeUsingUdf(client, params);
 		writeIfGenerationNotChanged(client, params);
 		writeIfNotExists(client, params);
@@ -53,7 +58,9 @@ public class UserDefinedFunction extends Example {
 	}
 
 	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+		String filename = "record_example.lua";
+		console.info("Register: " + filename);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
 		task.waitTillComplete();
 	}
 

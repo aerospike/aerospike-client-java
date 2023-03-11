@@ -188,6 +188,14 @@ public class Main extends JPanel {
 			}
 			else {
 				Console console = new Console();
+
+				// If the Aerospike server's default port (3000) is used and the proxy client is used,
+				// Reset the port to the proxy server's default port (4000).
+				if (params.port == 3000 && params.useProxyClient) {
+					console.info("Change proxy server port to 4000");
+					params.port = 4000;
+				}
+
 				runExamples(console, params, exampleNames);
 			}
 		}
