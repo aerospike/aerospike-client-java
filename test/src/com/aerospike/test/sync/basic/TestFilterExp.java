@@ -63,6 +63,10 @@ public class TestFilterExp extends TestSync {
 
 	@BeforeClass
 	public static void register() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestFilterExp.register");
+			return;
+		}
 		RegisterTask task = client.register(null,
 				TestUDF.class.getClassLoader(), "udf/record_example.lua",
 				"record_example.lua", Language.LUA);
