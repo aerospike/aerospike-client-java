@@ -1178,7 +1178,7 @@ public class Main implements Log.Callback {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
 
-				IAerospikeClient client = useProxyClient?
+				IAerospikeClient client = useProxyClient ?
 					new AerospikeClientProxy(clientPolicy, hosts) :
 					new AerospikeClient(clientPolicy, hosts);
 
@@ -1200,7 +1200,9 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+			IAerospikeClient client = useProxyClient ?
+				new AerospikeClientProxy(clientPolicy, hosts) :
+				new AerospikeClient(clientPolicy, hosts);
 
 			try {
 				if (initialize) {
@@ -1226,8 +1228,8 @@ public class Main implements Log.Callback {
 		long rem = this.nKeys - (keysPerTask * ntasks);
 		long start = this.startKey;
 
-		for (long i = 0 ; i < ntasks; i++) {
-			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
+		for (long i = 0; i < ntasks; i++) {
+			long keyCount = (i < rem) ? keysPerTask + 1 : keysPerTask;
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
 			start += keyCount;
@@ -1254,7 +1256,7 @@ public class Main implements Log.Callback {
 
 		for (int i = 0; i < maxConcurrentCommands; i++) {
 			// Allocate separate tasks for each seed command and reuse them in callbacks.
-			long keyCount = (i < keysRem)? keysPerCommand + 1 : keysPerCommand;
+			long keyCount = (i < keysRem) ? keysPerCommand + 1 : keysPerCommand;
 
 			// Start seed commands on random event loops.
 			EventLoop eventLoop = this.eventLoops.next();
