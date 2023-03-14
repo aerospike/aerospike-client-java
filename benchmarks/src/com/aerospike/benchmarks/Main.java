@@ -1200,7 +1200,9 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			IAerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+			IAerospikeClient client = useProxyClient?
+				new AerospikeClientProxy(clientPolicy, hosts) :
+				new AerospikeClient(clientPolicy, hosts);
 
 			try {
 				if (initialize) {
@@ -1226,7 +1228,7 @@ public class Main implements Log.Callback {
 		long rem = this.nKeys - (keysPerTask * ntasks);
 		long start = this.startKey;
 
-		for (long i = 0 ; i < ntasks; i++) {
+		for (long i = 0; i < ntasks; i++) {
 			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
