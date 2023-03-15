@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
@@ -146,6 +148,15 @@ public class GrpcChannelExecutor implements Runnable {
 	// Statistics.
 	private final AtomicLong ongoingRequests = new AtomicLong();
 	private final int drainLimit;
+
+	/**
+	 * A lock and its {@link Condition} to wait on for all ongoing streams
+	 * to finish before we shutdown the channel.
+	 */
+	private final ReentrantLock shutdownLock = new ReentrantLock();
+	private final Condition shutdownCondition = shutdownLock.newCondition();
+
+
 	/**
 	 * The future to cancel the scheduled iteration of this executor.
 	 */
@@ -376,6 +387,37 @@ public class GrpcChannelExecutor implements Runnable {
 
 		// Process closed streams.
 		closedStreams.drain(this::processClosedStream, drainLimit);
+
+		if (isClosed.get()) {
+			cleanupOnChannelClosed();
+
+			shutdownLock.lock();
+			try {
+				shutdownCondition.signal();
+			} finally {
+				shutdownLock.unlock();
+			}
+		}
+	}
+
+	private void cleanupOnChannelClosed() {
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		}
+		streams.values().forEach(stream -> {
+			try {
+				stream.close();
+			}
+			catch (Exception e) {
+				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
+			}
+		});
+		streams.clear();
 	}
 
 	/**
@@ -535,19 +577,31 @@ public class GrpcChannelExecutor implements Runnable {
 		return "GrpcChannelExecutor{id=" + id + '}';
 	}
 
-
+	/**
+	 * Shutdown all resources for resource cleanup. **NOTE** Be careful
+	 * before changing the order of different shutdown/cleanup calls in
+	 * this method implementation.
+	 */
 	public void shutdown() {
 		if (isClosed.getAndSet(true)) {
 			return;
 		}
-		while (!pendingCalls.isEmpty()) {
+
+		if(eventLoop.inEventLoop()) {
+			cleanupOnChannelClosed();
+		} else {
+			// All the calls will be closed cleanly on the next call of
+			// [iterate] method in the event loop.
+			shutdownLock.lock();
 			try {
-				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
-			}
-			catch (Exception e) {
+				shutdownCondition.await();
+			} catch (InterruptedException e) {
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			} finally {
+				shutdownLock.unlock();
 			}
 		}
+
 		// TODO FIX shutdown() hang!
 		// Just call shutdownNow() instead?
 		//channel.shutdown();

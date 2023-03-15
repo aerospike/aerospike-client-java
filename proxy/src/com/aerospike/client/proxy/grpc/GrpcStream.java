@@ -322,14 +322,15 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
 			}
 		}
+
 		executingCalls.values().forEach(call -> {
-				try {
-					call.failIfNotComplete(ResultCode.CLIENT_ERROR);
-				}
-				catch (Exception e) {
-					Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-				}
+			try {
+				call.failIfNotComplete(ResultCode.CLIENT_ERROR);
 			}
-		);
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		});
+		executingCalls.clear();
 	}
 }
