@@ -16,27 +16,6 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import java.io.FileInputStream;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
-import javax.annotation.Nullable;
-import javax.net.ssl.KeyManagerFactory;
-
-import org.jctools.queues.SpscUnboundedArrayQueue;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
@@ -47,7 +26,6 @@ import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
-
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
@@ -68,6 +46,26 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.ScheduledFuture;
 import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
+import org.jctools.queues.SpscUnboundedArrayQueue;
+
+import javax.annotation.Nullable;
+import javax.net.ssl.KeyManagerFactory;
+import java.io.FileInputStream;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 /**
  * All gRPC requests on a HTTP/2 channel are handled by this class throughout
@@ -149,10 +147,12 @@ public class GrpcChannelExecutor implements Runnable {
 	private final int drainLimit;
 
 	/**
-	 * A {@link Condition} to wait on for all ongoing streams to finish
-	 * before we shutdown the channel.
+	 * A lock and its {@link Condition} to wait on for all ongoing streams
+	 * to finish before we shutdown the channel.
 	 */
-	private final Condition shutdownCondition;
+	private final ReentrantLock shutdownLock = new ReentrantLock();
+	private final Condition shutdownCondition = shutdownLock.newCondition();
+
 
 	/**
 	 * The future to cancel the scheduled iteration of this executor.
@@ -200,8 +200,6 @@ public class GrpcChannelExecutor implements Runnable {
 			channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
 				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
 		setScheduledFuture(future);
-		ReentrantLock lock = new ReentrantLock();
-		shutdownCondition = lock.newCondition();
 	}
 
 	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
@@ -385,7 +383,13 @@ public class GrpcChannelExecutor implements Runnable {
 
 		if (isClosed.get()) {
 			cleanupOnChannelClosed();
-			shutdownCondition.signal();
+
+			shutdownLock.lock();
+			try {
+				shutdownCondition.signal();
+			} finally {
+				shutdownLock.unlock();
+			}
 		}
 	}
 
@@ -406,6 +410,7 @@ public class GrpcChannelExecutor implements Runnable {
 				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
 			}
 		});
+		streams.clear();
 	}
 
 	/**
@@ -572,11 +577,20 @@ public class GrpcChannelExecutor implements Runnable {
 		if (isClosed.getAndSet(true)) {
 			return;
 		}
-		try {
-			shutdownCondition.await();
-		}
-		catch (InterruptedException e) {
-			Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+
+		if(eventLoop.inEventLoop()) {
+			cleanupOnChannelClosed();
+		} else {
+			// All the calls will be closed cleanly on the next call of
+			// [iterate] method in the event loop.
+			shutdownLock.lock();
+			try {
+				shutdownCondition.await();
+			} catch (InterruptedException e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			} finally {
+				shutdownLock.unlock();
+			}
 		}
 
 		// TODO FIX shutdown() hang!
