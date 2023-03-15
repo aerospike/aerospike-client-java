@@ -16,6 +16,27 @@
  */
 package com.aerospike.client.proxy.grpc;
 
+import java.io.FileInputStream;
+import java.lang.reflect.Field;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.security.KeyStore;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
+import javax.annotation.Nullable;
+import javax.net.ssl.KeyManagerFactory;
+
+import org.jctools.queues.SpscUnboundedArrayQueue;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
@@ -26,6 +47,7 @@ import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
+
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
@@ -46,26 +68,6 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.util.concurrent.ScheduledFuture;
 import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
-import org.jctools.queues.SpscUnboundedArrayQueue;
-
-import javax.annotation.Nullable;
-import javax.net.ssl.KeyManagerFactory;
-import java.io.FileInputStream;
-import java.lang.reflect.Field;
-import java.net.InetSocketAddress;
-import java.net.SocketAddress;
-import java.security.KeyStore;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collectors;
 
 /**
  * All gRPC requests on a HTTP/2 channel are handled by this class throughout
