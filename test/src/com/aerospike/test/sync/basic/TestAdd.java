@@ -58,11 +58,13 @@ public class TestAdd extends TestSync {
 
 	@Test
 	public void addNullValue() {
-		Version version = Version.getServerVersion(client, null);
+		if (! args.useProxyClient) {
+			Version version = Version.getServerVersion(client, null);
 
-		// Do not run on servers < 3.6.1
-		if (version.isLess(3, 6, 1)) {
-			return;
+			// Do not run on servers < 3.6.1
+			if (version.isLess(3, 6, 1)) {
+				return;
+			}
 		}
 
 		Key key = new Key(args.namespace, args.set, "addkey");

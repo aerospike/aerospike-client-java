@@ -116,9 +116,9 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		this.id = streamIndex;
 		this.eventLoop = eventLoop;
 		ClientCall<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> call = channelExecutor.getChannel()
-				.newCall(methodDescriptor, callOptions);
+			.newCall(methodDescriptor, callOptions);
 		StreamObserver<Kvs.AerospikeRequestPayload> requestObserver =
-				ClientCalls.asyncBidiStreamingCall(call, this);
+			ClientCalls.asyncBidiStreamingCall(call, this);
 		setRequestObserver(requestObserver);
 	}
 
@@ -126,49 +126,58 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		this.requestObserver = requestObserver;
 	}
 
-    @Override
-    public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
-        // Invoke callback.
-        int id = aerospikeResponsePayload.getId();
-        GrpcStreamingCall call;
+	@Override
+	public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
+		if (!eventLoop.inEventLoop()) {
+			// This call is not within the event loop thread. For some reason
+			// gRPC invokes some callbacks from a different thread.
+			eventLoop.schedule(() -> onNext(aerospikeResponsePayload), 0,
+				TimeUnit.NANOSECONDS);
+			return;
+		}
 
-        int payloadSize = aerospikeResponsePayload.getPayload().size();
-        bytesReceived += payloadSize;
-        channelExecutor.onPayloadReceived(payloadSize);
+		// Invoke callback.
+		int id = aerospikeResponsePayload.getId();
+		GrpcStreamingCall call;
 
-        if(aerospikeResponsePayload.getHasNext()) {
-            call = executingCalls.get(id);
-        } else {
-            call = executingCalls.remove(id);
+		int payloadSize = aerospikeResponsePayload.getPayload().size();
+		bytesReceived += payloadSize;
+		channelExecutor.onPayloadReceived(payloadSize);
 
-            // Update stats.
-            requestsInFlight--;
-            responsesReceived++;
-            channelExecutor.onRequestCompleted();
-        }
+		if (aerospikeResponsePayload.getHasNext()) {
+			call = executingCalls.get(id);
+		}
+		else {
+			call = executingCalls.remove(id);
+
+			// Update stats.
+			requestsInFlight--;
+			responsesReceived++;
+			channelExecutor.onRequestCompleted();
+		}
 
 		// Call might have expired and been cancelled.
 		if (call != null) {
 			call.onSuccess(aerospikeResponsePayload);
-		} else {
-			// TODO: log the expired call?
 		}
 
-        // TODO can it ever be greater than?
-        if (responsesReceived >= grpcClientPolicy.totalRequestsPerStream) {
-            // Complete this stream.
-            requestObserver.onCompleted();
-        } else {
-            executeCall();
-        }
-    }
+		// TODO can it ever be greater than?
+		if (responsesReceived >= grpcClientPolicy.totalRequestsPerStream) {
+			// Complete this stream.
+			requestObserver.onCompleted();
+		}
+		else {
+			executeCall();
+		}
+	}
 
-    private void abortExecutingCalls(Throwable throwable) {
-        isClosed = true;
-        for (GrpcStreamingCall call : executingCalls.values()) {
-            call.onError(throwable);
-            requestsInFlight--;
-        }
+	private void abortExecutingCalls(Throwable throwable) {
+		isClosed = true;
+
+		for (GrpcStreamingCall call : executingCalls.values()) {
+			call.onError(throwable);
+			requestsInFlight--;
+		}
 
 		executingCalls.clear();
 
@@ -177,21 +186,29 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 	@Override
 	public void onError(Throwable throwable) {
+		if (!eventLoop.inEventLoop()) {
+			// This call is not within the event loop thread. For some reason
+			// gRPC invokes error callback from a different thread.
+			eventLoop.schedule(() -> onError(throwable), 0,
+				TimeUnit.NANOSECONDS);
+			return;
+		}
+
 		abortExecutingCalls(throwable);
 	}
 
 	@Override
 	public void onCompleted() {
 		abortExecutingCalls(new AerospikeException(ResultCode.SERVER_ERROR,
-				"stream completed before all responses have been received"));
+			"stream completed before all responses have been received"));
 	}
 
-    SpscUnboundedArrayQueue<GrpcStreamingCall> getQueue() {
-        return pendingCalls;
-    }
+	SpscUnboundedArrayQueue<GrpcStreamingCall> getQueue() {
+		return pendingCalls;
+	}
 
 	MethodDescriptor<Kvs.AerospikeRequestPayload,
-			Kvs.AerospikeResponsePayload> getMethodDescriptor() {
+		Kvs.AerospikeResponsePayload> getMethodDescriptor() {
 		return methodDescriptor;
 	}
 
@@ -234,19 +251,19 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 
 		pendingCalls.drain(GrpcStream.this::execute, idleCounter -> idleCounter,
-				() -> !pendingCalls.isEmpty() &&
-						requestsSent < grpcClientPolicy.totalRequestsPerStream &&
-						requestsInFlight < grpcClientPolicy.maxConcurrentRequestsPerStream);
+			() -> !pendingCalls.isEmpty() &&
+				requestsSent < grpcClientPolicy.totalRequestsPerStream &&
+				requestsInFlight < grpcClientPolicy.maxConcurrentRequestsPerStream);
 	}
 
 
-    private void execute(GrpcStreamingCall call) {
-        try {
-            if (call.hasExpired()) {
-                call.onError(new AerospikeException.Timeout(call.getPolicy(),
-                        call.getIteration()));
-                return;
-            }
+	private void execute(GrpcStreamingCall call) {
+		try {
+			if (call.hasExpired()) {
+				call.onError(new AerospikeException.Timeout(call.getPolicy(),
+					call.getIteration()));
+				return;
+			}
 
 			ByteString payload = call.getRequestPayload();
 
@@ -256,13 +273,13 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 			int requestId = requestsSent++;
 			Kvs.AerospikeRequestPayload.Builder requestBuilder = Kvs.AerospikeRequestPayload.newBuilder()
-					.setPayload(payload)
-					.setId(requestId)
-					.setIteration(call.getIteration());
+				.setPayload(payload)
+				.setId(requestId)
+				.setIteration(call.getIteration());
 
 			GrpcConversions.setRequestPolicy(call.getPolicy(), requestBuilder);
 			Kvs.AerospikeRequestPayload requestPayload = requestBuilder
-					.build();
+				.build();
 			executingCalls.put(requestId, call);
 
 			requestObserver.onNext(requestPayload);

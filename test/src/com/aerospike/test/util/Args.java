@@ -193,6 +193,13 @@ public class Args {
 				useProxyClient = true;
 			}
 
+			// If the Aerospike server's default port (3000) is used and the proxy client is used,
+			// Reset the port to the proxy server's default port (4000).
+			if (port == 3000 && useProxyClient) {
+				System.out.println("Change proxy server port to 4000");
+				port = 4000;
+			}
+
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}

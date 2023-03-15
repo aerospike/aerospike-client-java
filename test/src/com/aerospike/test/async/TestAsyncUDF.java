@@ -41,6 +41,10 @@ public class TestAsyncUDF extends TestAsync {
 
 	@BeforeClass
 	public static void prepare() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestAsyncUDF.prepare");
+			return;
+		}
 		RegisterTask rtask = client.register(null, TestAsyncUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		rtask.waitTillComplete();
 	}

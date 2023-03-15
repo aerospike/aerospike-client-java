@@ -224,13 +224,11 @@ public abstract class CommandProxy {
 		}
 	}
 
-	private void setInDoubt(boolean doubt) {
-		if (doubt) {
-			this.inDoubt = true;
-		}
+	final void setInDoubt(boolean doubt) {
+		this.inDoubt |= doubt;
 	}
 
-	void notifyFailure(AerospikeException ae) {
+	final void notifyFailure(AerospikeException ae) {
 		try {
 			ae.setPolicy(policy);
 			ae.setIteration(iteration);

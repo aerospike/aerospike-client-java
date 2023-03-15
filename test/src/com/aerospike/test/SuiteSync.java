@@ -26,6 +26,7 @@ import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
@@ -123,7 +124,9 @@ public class SuiteSync {
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
-		client = new AerospikeClient(policy, hosts);
+		client = args.useProxyClient?
+			new AerospikeClientProxy(policy, hosts) :
+			new AerospikeClient(policy, hosts);
 
 		try {
 			args.setServerSpecific(client);
