@@ -58,10 +58,6 @@ public class GrpcStreamingCall {
 	 * Iteration number of this request.
 	 */
 	private final int iteration;
-    /**
-     * Is the stream response a unary call.
-     */
-    private final boolean isUnaryCall;
 	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
 	 */
@@ -69,7 +65,7 @@ public class GrpcStreamingCall {
 
     protected GrpcStreamingCall(GrpcStreamingCall other) {
         this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                other.iteration, other.isUnaryCall, other.expiresAtNanos,
+                other.iteration, other.expiresAtNanos,
                 other.responseObserver);
 		completed = other.completed;
     }
@@ -77,7 +73,7 @@ public class GrpcStreamingCall {
     public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
             Kvs.AerospikeResponsePayload> methodDescriptor,
                              ByteString requestPayload, Policy policy,
-                             int iteration, boolean isUnaryCall,
+                             int iteration,
                              long expiresAtNanos,
                              StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
         this.responseObserver = responseObserver;
@@ -85,7 +81,6 @@ public class GrpcStreamingCall {
         this.requestPayload = requestPayload;
         this.iteration = iteration;
         this.policy = policy;
-        this.isUnaryCall = isUnaryCall;
 
         if(expiresAtNanos == 0) {
             throw new IllegalArgumentException("call has to have an expiry");
@@ -94,10 +89,10 @@ public class GrpcStreamingCall {
         this.expiresAtNanos = expiresAtNanos;
 	}
 
-    public void onSuccess(Kvs.AerospikeResponsePayload payload) {
-		completed = true;
+    public void onNext(Kvs.AerospikeResponsePayload payload) {
 		responseObserver.onNext(payload);
-		if (isUnaryCall) {
+		if (!payload.getHasNext()) {
+			completed = true;
 			responseObserver.onCompleted();
 		}
 	}
@@ -120,7 +115,7 @@ public class GrpcStreamingCall {
 
 	/**
 	 * @return <code>true</code> if this call has completed either because
-	 * {@link #onSuccess(Kvs.AerospikeResponsePayload)} or
+	 * {@link #onNext(Kvs.AerospikeResponsePayload)} or
 	 * {@link #onError(Throwable)} was invoked.
 	 */
 	public boolean hasCompleted() {
