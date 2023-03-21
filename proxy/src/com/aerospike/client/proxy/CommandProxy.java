@@ -79,7 +79,7 @@ public abstract class CommandProxy {
 		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
 
 		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			payload, policy, iteration, isUnary, deadline,
+			payload, policy, iteration, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {

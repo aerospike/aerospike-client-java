@@ -86,7 +86,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	/**
 	 * Map of request id to the calls executing in this stream.
 	 */
-	private final Map<Integer, GrpcStreamingCall> executingCalls =
+	private final Map<Integer, StatsGrpcStreamingCall> executingCalls =
 		new HashMap<>();
 
 	/**
@@ -158,7 +158,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 		// Call might have expired and been cancelled.
 		if (call != null) {
-			call.onSuccess(aerospikeResponsePayload);
+			call.onNext(aerospikeResponsePayload);
 		}
 
 		// TODO can it ever be greater than?
@@ -280,7 +280,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			GrpcConversions.setRequestPolicy(call.getPolicy(), requestBuilder);
 			Kvs.AerospikeRequestPayload requestPayload = requestBuilder
 				.build();
-			executingCalls.put(requestId, call);
+			executingCalls.put(requestId, new StatsGrpcStreamingCall(call));
 
 			requestObserver.onNext(requestPayload);
 
@@ -298,13 +298,21 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	}
 
 	private void onCancelCall(int callId) {
-		GrpcStreamingCall call = executingCalls.remove(callId);
+		StatsGrpcStreamingCall call = executingCalls.get(callId);
 
-		// Call might have completed.
-		if (call != null) {
-			call.onError(new AerospikeException.Timeout(call.getPolicy(),
-				call.getIteration()));
+		if (call == null) {
+			// Call might have completed.
+			return;
 		}
+		if (call.hasReceivedResponse()) {
+			// Call has received a response, do not cancel.
+			return;
+		}
+
+		// Cancel call.
+		executingCalls.remove(callId);
+		call.onError(new AerospikeException.Timeout(call.getPolicy(),
+				call.getIteration()));
 	}
 
 	void enqueue(GrpcStreamingCall call) {
@@ -332,5 +340,29 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 		});
 		executingCalls.clear();
+	}
+
+	private class StatsGrpcStreamingCall extends GrpcStreamingCall {
+		private volatile boolean hasReceivedResponse;
+
+		StatsGrpcStreamingCall(GrpcStreamingCall delegate) {
+			super(delegate);
+		}
+
+		@Override
+		public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
+			hasReceivedResponse = true;
+			super.onNext(aerospikeResponsePayload);
+		}
+
+		@Override
+		public void onError(Throwable throwable) {
+			hasReceivedResponse = true;
+			super.onError(throwable);
+		}
+
+		boolean hasReceivedResponse() {
+			return hasReceivedResponse;
+		}
 	}
 }

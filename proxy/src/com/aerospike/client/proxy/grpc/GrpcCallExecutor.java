@@ -231,9 +231,9 @@ public class GrpcCallExecutor implements Closeable {
 		}
 
 		@Override
-		public void onSuccess(Kvs.AerospikeResponsePayload payload) {
+		public void onNext(Kvs.AerospikeResponsePayload payload) {
 			totalQueueSize.decrement();
-			super.onSuccess(payload);
+			super.onNext(payload);
 		}
 
 		@Override
