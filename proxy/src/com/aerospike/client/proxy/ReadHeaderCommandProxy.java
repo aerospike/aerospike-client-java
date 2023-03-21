@@ -36,7 +36,7 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 		Policy policy,
 		Key key
 	) {
-		super(KVSGrpc.getGetHeaderStreamingMethod(), executor, policy, true);
+		super(KVSGrpc.getGetHeaderStreamingMethod(), executor, policy);
 		this.listener = listener;
 		this.key = key;
 	}

@@ -35,7 +35,7 @@ public final class ExistsCommandProxy extends CommandProxy {
 		Policy policy,
 		Key key
 	) {
-		super(KVSGrpc.getExistsStreamingMethod(), executor, policy, true);
+		super(KVSGrpc.getExistsStreamingMethod(), executor, policy);
 		this.listener = listener;
 		this.key = key;
 	}

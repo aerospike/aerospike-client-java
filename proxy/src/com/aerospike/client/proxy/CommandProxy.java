@@ -40,19 +40,16 @@ public abstract class CommandProxy {
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
 	private int iteration = 1;
-	private final boolean isUnary;
 	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
-		Policy policy,
-		boolean isUnary
+		Policy policy
 	) {
 		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
-		this.isUnary = isUnary;
 	}
 
 	final void execute() {

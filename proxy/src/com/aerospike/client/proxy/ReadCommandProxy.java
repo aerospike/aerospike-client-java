@@ -42,7 +42,7 @@ public class ReadCommandProxy extends CommandProxy {
 		Key key,
 		String[] binNames
 	) {
-		super(KVSGrpc.getReadStreamingMethod(), executor, policy, true);
+		super(KVSGrpc.getReadStreamingMethod(), executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = binNames;
@@ -57,7 +57,7 @@ public class ReadCommandProxy extends CommandProxy {
 		Key key,
 		boolean isOperation
 	) {
-		super(methodDescriptor, executor, policy, true);
+		super(methodDescriptor, executor, policy);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;

@@ -36,7 +36,7 @@ public final class TouchCommandProxy extends CommandProxy {
 		WritePolicy writePolicy,
 		Key key
 	) {
-		super(KVSGrpc.getTouchStreamingMethod(), executor, writePolicy, true);
+		super(KVSGrpc.getTouchStreamingMethod(), executor, writePolicy);
 		this.listener = listener;
 		this.writePolicy = writePolicy;
 		this.key = key;
