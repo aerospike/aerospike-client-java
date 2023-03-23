@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,14 +25,12 @@ public interface TaskStatusListener {
 	/**
 	 * This method is called when an asynchronous command completes successfully.
 	 *
-	 * @param status		task status (see {@link com.aerospike.client.task.Task})
+	 * @param status	task status (see {@link com.aerospike.client.task.Task})
 	 */
 	void onSuccess(int status);
 
 	/**
 	 * This method is called when an asynchronous command fails.
-	 *
-	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

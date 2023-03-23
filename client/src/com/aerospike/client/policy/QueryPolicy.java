@@ -60,7 +60,7 @@ public class QueryPolicy extends Policy {
 
 	/**
 	 * Timeout in milliseconds for "cluster-stable" info command that is run when
-	 * {@link failOnClusterChange} is true and server version is less than 6.0.
+	 * {@link #failOnClusterChange} is true and server version is less than 6.0.
 	 * <p>
 	 * Default: 1000
 	 */

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,15 +26,13 @@ public interface ExecuteListener {
 	/**
 	 * This method is called when an asynchronous execute command completes successfully.
 	 *
-	 * @param key			unique record identifier
-	 * @param obj			returned object
+	 * @param key	unique record identifier
+	 * @param obj	returned object
 	 */
 	public void onSuccess(Key key, Object obj);
 
 	/**
 	 * This method is called when an asynchronous execute command fails.
-	 *
-	 * @param exception		error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

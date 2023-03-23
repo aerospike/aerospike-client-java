@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,7 +21,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
 /**
- * Asynchronous result notifications for batch get and scan commands.
+ * Asynchronous result notifications for batch get and scan/query commands.
  * The results are sent one record at a time.
  */
 public interface RecordSequenceListener {
@@ -29,11 +29,14 @@ public interface RecordSequenceListener {
 	 * This method is called when an asynchronous record is received from the server.
 	 * The receive sequence is not ordered.
 	 * <p>
-	 * The user may throw a
+	 * If this listener is used in a scan/query command, The user may throw a
 	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated}
-	 * exception if the command should be aborted.  If any exception is thrown, parallel command threads
+	 * exception if the command should be aborted. If any exception is thrown, parallel command threads
 	 * to other nodes will also be terminated and the exception will be propagated back through the
-	 * commandFailed() call.
+	 * onFailure() call.
+	 * <p>
+	 * If this listener is used in a batch command, an user thrown exception will terminate the batch
+	 * to the current node, but parallel batch command threads to other nodes will continue to run.
 	 *
 	 * @param key					unique record identifier
 	 * @param record				record instance, will be null if the key is not found
@@ -48,8 +51,6 @@ public interface RecordSequenceListener {
 
 	/**
 	 * This method is called when an asynchronous batch get or scan command fails.
-	 *
-	 * @param exception				error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }
