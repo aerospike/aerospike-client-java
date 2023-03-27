@@ -85,7 +85,9 @@ public abstract class CommandProxy {
 						// Server errors are checked in response payload in Parser.
 						int status = response.getStatus();
 
-						if (status != 0) {
+						// This is the last response for the request and it is
+						// an error.
+						if (!response.getHasNext() && status != 0) {
 							setInDoubt(response.getInDoubt());
 							notifyFailure(new AerospikeException(status));
 							return;
@@ -93,7 +95,14 @@ public abstract class CommandProxy {
 						onResponse(response);
 					}
 					catch (Throwable t) {
-						onFailure(t, response.getInDoubt());
+						// Invoke onFailure only on last response for the
+						// request.
+						if (!response.getHasNext()) {
+							onFailure(t, response.getInDoubt());
+						}
+						else {
+							Log.debug("onResponse() error: " + Util.getStackTrace(t));
+						}
 					}
 				}
 

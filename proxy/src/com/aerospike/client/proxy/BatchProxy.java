@@ -807,6 +807,11 @@ public class BatchProxy {
 
 			int resultCode = parser.parseHeader();
 
+			// Use response result code if it exists.
+			if (response.getStatus() != 0) {
+				resultCode = response.getStatus();
+			}
+
 			if (response.getHasNext()) {
 				setInDoubt(response.getInDoubt());
 				parser.skipKey();
