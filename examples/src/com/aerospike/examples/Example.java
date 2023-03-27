@@ -17,7 +17,9 @@
 package com.aerospike.examples;
 
 import java.lang.reflect.Constructor;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
@@ -31,11 +33,16 @@ public abstract class Example {
 	 * Connect and run one or more client examples.
 	 */
 	public static void runExamples(Console console, Parameters params, List<String> examples) throws Exception {
-		ClientPolicy policy = new ClientPolicy();
+        Map<String, String> ipMap = new HashMap<>();
+        ipMap.put("10.0.30.112", "3.120.178.69");
+        ipMap.put("10.0.30.146", "18.192.123.13");
+
+	    ClientPolicy policy = new ClientPolicy();
 		policy.user = params.user;
 		policy.password = params.password;
 		policy.authMode = params.authMode;
 		policy.tlsPolicy = params.tlsPolicy;
+		policy.ipMap = ipMap;
 
 		params.policy = policy.readPolicyDefault;
 		params.writePolicy = policy.writePolicyDefault;
