@@ -66,6 +66,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 	@Override
 	final boolean parseResult() {
 		while (dataOffset < receiveSize) {
+			System.out.println("parseResult() row");
 			dataOffset += 3;
 			info3 = dataBuffer[dataOffset] & 0xFF;
 			dataOffset += 2;
@@ -73,6 +74,7 @@ public abstract class AsyncMultiCommand extends AsyncCommand {
 
 			// If this is the end marker of the response, do not proceed further.
 			if ((info3 & Command.INFO3_LAST) != 0) {
+				System.out.println("recieved INFO3_LAST");
 				if (resultCode != 0) {
 					// The server returned a fatal error.
 					throw new AerospikeException(resultCode);

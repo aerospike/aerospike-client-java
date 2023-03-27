@@ -16,24 +16,18 @@
  */
 package com.aerospike.examples;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.CountDownLatch;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.EventLoop;
-import com.aerospike.client.command.Buffer;
+import com.aerospike.client.exp.Exp;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.listener.WriteListener;
-import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Filter;
-import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.task.IndexTask;
-import com.aerospike.client.util.Util;
 
 public class AsyncQuery extends AsyncExample {
 	/**
@@ -41,20 +35,73 @@ public class AsyncQuery extends AsyncExample {
 	 */
 	@Override
 	public void runExample(AerospikeClient client, EventLoop eventLoop) {
-		String indexName = "asqindex";
-		String keyPrefix = "asqkey";
-		String binName = params.getBinName("asqbin");
-		int size = 50;
+		final Statement queryStatement = buildQueueQueryStatement("pitr-ns1", "testset76", "as-backup-queue", 200);
 
-		createIndex(client, indexName, binName);
-		runQueryExample(client, eventLoop, keyPrefix, binName, size);
+        final CountDownLatch latch = new CountDownLatch(1);
+        RecordSequenceListener listener = new RecordSequenceListener() {
 
-		// Wait until query finishes before dropping index.
-		waitTillComplete();
-		client.dropIndex(policy, params.namespace, params.set, indexName);
+           @Override
+            public void onRecord(Key key, Record record) throws AerospikeException {
+                System.out.println(key + ": " + record.bins);
+            }
+
+            @Override
+            public void onSuccess() {
+                System.out.println("Done");
+                latch.countDown();
+            }
+
+            @Override
+            public void onFailure(AerospikeException e) {
+                e.printStackTrace();
+                latch.countDown();
+            }
+		};
+
+        client.query(null, listener, queryRecordsStatusNew(), queryStatement);
+
+        try {
+        	latch.await();
+        }
+        catch (InterruptedException ie) {
+        	System.out.println("INTERRUPTED");
+        }
 	}
 
-	private void createIndex(
+	private Statement buildQueueQueryStatement(String namespace, String set, String queueSet, long batchSize) {
+        Statement queryStatement = new Statement();
+        queryStatement.setMaxRecords(2L * batchSize);
+        queryStatement.setNamespace(namespace);
+        queryStatement.setSetName(queueSet);
+
+        /* Get records from a specific source set */
+        queryStatement.setFilter(Filter.equal("set", "testset76"));
+
+        // ---> The following secondary index filter returns records
+//        queryStatement.setFilter(Filter.equal("status", QueueRecord.QueueRecordStatus.NEW.getStatus()));
+        return queryStatement;
+    }
+
+    private QueryPolicy queryRecordsStatusNew() {
+        QueryPolicy queryPolicy = new QueryPolicy();
+        queryPolicy.shortQuery = false;
+        queryPolicy.includeBinData = true;
+        queryPolicy.filterExp = Exp.build(
+                Exp.and(
+                        Exp.eq(
+                                Exp.stringBin("status"),
+                                Exp.val("New")
+                        ),
+                        Exp.eq(
+                                Exp.stringBin("set"),
+                                Exp.val("testset76")
+                        )
+                ));
+        return queryPolicy;
+    }
+
+    /*
+    private void createIndex(
 		AerospikeClient client,
 		String indexName,
 		String binName
@@ -150,5 +197,5 @@ public class AsyncQuery extends AsyncExample {
 			}
 
 		}, null, stmt);
-	}
+	}*/
 }

@@ -60,6 +60,7 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 
 	@Override
 	protected void parseRow() {
+		System.out.println("IN parseRow()");
 		BVal bval = new BVal();
 		Key key = parseKey(fieldCount, bval);
 
