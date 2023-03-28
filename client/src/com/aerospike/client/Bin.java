@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,7 @@ package com.aerospike.client;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.SortedMap;
 
 import com.aerospike.client.cdt.MapOrder;
 
@@ -210,6 +211,22 @@ public final class Bin {
 	}
 
 	/**
+	 * Create bin with a sorted map value.  The map value will be serialized as a server ordered map type.
+	 * For servers configured as "single-bin", enter a null or empty name.
+	 *
+	 * @param name		bin name, current limit is 15 characters
+	 * @param value		bin value
+	 */
+	public Bin(String name, SortedMap<?,?> value) {
+		this.name = name;
+		this.value = Value.get(value);
+	}
+
+	/**
+	 * This constructor is deprecated.
+	 * Use {@link Bin#Bin(String, Map)} if the map is unsorted (like HashMap).
+	 * Use {@link Bin#Bin(String, SortedMap)} if the map is sorted (like TreeMap).
+	 * <p>
 	 * Create bin with a map value and order.  The map value will be serialized as a server map type.
 	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
@@ -217,6 +234,7 @@ public final class Bin {
 	 * @param value		bin value, pass in a {@link java.util.SortedMap} instance if map order is sorted.
 	 * @param mapOrder	map sorted order.
 	 */
+	@Deprecated
 	public Bin(String name, Map<?,?> value, MapOrder mapOrder) {
 		this.name = name;
 		this.value = Value.get(value, mapOrder);

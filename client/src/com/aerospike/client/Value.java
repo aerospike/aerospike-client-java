@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -209,8 +209,20 @@ public abstract class Value {
 	}
 
 	/**
+	 * Get sorted map or null value instance.
+	 */
+	public static Value get(SortedMap<?,?> value) {
+		return (value == null)? NullValue.INSTANCE : new MapValue(value, MapOrder.KEY_ORDERED);
+	}
+
+	/**
+	 * This method is deprecated.
+	 * Use {@link #get(Map)} if the map is unsorted (like HashMap).
+	 * Use {@link #get(SortedMap)} if the map is sorted (like TreeMap).
+	 * <p>
 	 * Get map or null value instance.
 	 */
+	@Deprecated
 	public static Value get(Map<?,?> value, MapOrder order) {
 		return (value == null)? NullValue.INSTANCE : new MapValue(value, order);
 	}

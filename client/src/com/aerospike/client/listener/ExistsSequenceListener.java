@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,8 +28,8 @@ public interface ExistsSequenceListener {
 	 * This method is called when an asynchronous batch exists result is received from the server.
 	 * The receive sequence is not ordered.
 	 *
-	 * @param key				unique record identifier
-	 * @param exists			whether key exists on server
+	 * @param key		unique record identifier
+	 * @param exists	whether key exists on server
 	 */
 	public void onExists(Key key, boolean exists);
 
@@ -40,8 +40,6 @@ public interface ExistsSequenceListener {
 
 	/**
 	 * This method is called when an asynchronous batch exists command fails.
-	 *
-	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

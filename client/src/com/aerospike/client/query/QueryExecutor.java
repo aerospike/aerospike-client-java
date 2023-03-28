@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -57,7 +57,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 
 	protected final void initializeThreads() {
 		// Detect cluster migrations when performing scan.
-		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], statement.namespace) : 0;
+		long clusterKey = policy.failOnClusterChange ? QueryValidate.validateBegin(nodes[0], statement.namespace, policy.infoTimeout) : 0;
 		boolean first = true;
 
 		// Initialize threads.
@@ -133,7 +133,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 		public void run() {
 			try {
 				if (command.isValid()) {
-					command.executeAndValidate();
+					command.executeAndValidate(policy.infoTimeout);
 				}
 				threadCompleted();
 			}

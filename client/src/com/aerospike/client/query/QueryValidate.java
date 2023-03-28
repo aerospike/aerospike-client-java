@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,29 +20,32 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.policy.InfoPolicy;
 
 public final class QueryValidate {
 
-	public static long validateBegin(Node node, String namespace) {
+	public static long validateBegin(Node node, String namespace, int timeout) {
 		// Fail when cluster is in migration.
-		String result = Info.request(node, "cluster-stable:namespace=" + namespace);
+		InfoPolicy policy = new InfoPolicy();
+		policy.timeout = timeout;
+
+		String result = Info.request(policy, node, "cluster-stable:namespace=" + namespace);
 
 		try {
 			return Long.parseLong(result, 16);
 		}
 		catch (Exception e) {
-			// Yes, even scans return QUERY_ABORTED.
 			throw new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + result);
 		}
 	}
 
-	public static void validate(Node node, String namespace, long expectedKey) {
+	public static void validate(Node node, String namespace, long expectedKey, int timeout) {
 		if (expectedKey == 0) {
 			return;
 		}
 
 		// Fail when cluster is in migration.
-		long clusterKey = validateBegin(node, namespace);
+		long clusterKey = validateBegin(node, namespace, timeout);
 
 		if (clusterKey != expectedKey) {
 			throw new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + expectedKey + ' ' + clusterKey);
