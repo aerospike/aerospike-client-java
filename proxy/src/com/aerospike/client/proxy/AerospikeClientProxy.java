@@ -354,7 +354,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void put(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		put(null, listener, policy, key, bins);
 		getFuture(future);
@@ -375,7 +375,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void append(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		append(null, listener, policy, key, bins);
 		getFuture(future);
@@ -392,7 +392,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void prepend(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		prepend(null, listener, policy, key, bins);
 		getFuture(future);
@@ -413,7 +413,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void add(WritePolicy policy, Key key, Bin... bins) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		add(null, listener, policy, key, bins);
 		getFuture(future);
@@ -434,7 +434,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public boolean delete(WritePolicy policy, Key key) {
-		CompletableFuture<Boolean> future = new CompletableFuture<Boolean>();
+		CompletableFuture<Boolean> future = new CompletableFuture<>();
 		DeleteListener listener = prepareDeleteListener(future);
 		delete(null, listener, policy, key);
 		return getFuture(future);
@@ -528,7 +528,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void touch(WritePolicy policy, Key key) {
-		CompletableFuture<Void> future = new CompletableFuture<Void>();
+		CompletableFuture<Void> future = new CompletableFuture<>();
 		WriteListener listener = prepareWriteListener(future);
 		touch(null, listener, policy, key);
 		getFuture(future);
@@ -1470,7 +1470,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 			NettyEventLoops nettyLoops = (NettyEventLoops)policy.eventLoops;
 			NettyEventLoop[] array = nettyLoops.getArray();
-			eventLoops = new ArrayList<io.netty.channel.EventLoop>(array.length);
+			eventLoops = new ArrayList<>(array.length);
 
 			for (NettyEventLoop loop : array) {
 				eventLoops.add(loop.get());
@@ -1485,6 +1485,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		return GrpcClientPolicy.newBuilder(eventLoops, channelType)
 			.maxChannels(maxConnections)
 			.connectTimeoutMillis(policy.timeout)
+			.closeTimeout(policy.closeTimeout)
 			.tlsPolicy(policy.tlsPolicy)
 			.build();
 	}

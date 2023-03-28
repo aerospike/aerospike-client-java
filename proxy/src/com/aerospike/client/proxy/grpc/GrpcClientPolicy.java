@@ -20,9 +20,9 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
 import javax.annotation.Nullable;
 
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 
 import io.grpc.CallOptions;
@@ -115,6 +115,10 @@ public class GrpcClientPolicy {
 	 */
 	public final int connectTimeoutMillis;
 	/**
+	 * See {@link ClientPolicy#closeTimeout}.
+	 */
+	public final int closeTimeout;
+	/**
 	 * Strategy to select a channel for a gRPC request.
 	 */
 
@@ -154,7 +158,7 @@ public class GrpcClientPolicy {
 							 int totalRequestsPerStream,
 							 int connectTimeoutMillis,
 							 long terminationWaitMillis,
-							 GrpcChannelSelector grpcChannelSelector,
+							 int closeTimeout, GrpcChannelSelector grpcChannelSelector,
 							 GrpcStreamSelector grpcStreamSelector,
 							 CallOptions callOptions,
 							 List<EventLoop> eventLoops,
@@ -167,6 +171,7 @@ public class GrpcClientPolicy {
 		this.totalRequestsPerStream = totalRequestsPerStream;
 		this.connectTimeoutMillis = connectTimeoutMillis;
 		this.terminationWaitMillis = terminationWaitMillis;
+		this.closeTimeout = closeTimeout;
 		this.grpcChannelSelector = grpcChannelSelector;
 		this.grpcStreamSelector = grpcStreamSelector;
 		this.callOptions = callOptions;
@@ -248,7 +253,7 @@ public class GrpcClientPolicy {
 		@Nullable
 		private CallOptions callOptions;
 		private long terminationWaitMillis;
-
+		private int closeTimeout;
 		private Builder() {
 		}
 
@@ -272,10 +277,10 @@ public class GrpcClientPolicy {
 			}
 
 			return new GrpcClientPolicy(maxChannels, maxConcurrentStreamsPerChannel,
-					maxConcurrentRequestsPerStream, totalRequestsPerStream,
-					connectTimeoutMillis, terminationWaitMillis, grpcChannelSelector,
-					grpcStreamSelector, callOptions, eventLoops, channelType,
-					closeEventLoops, tlsPolicy);
+				maxConcurrentRequestsPerStream, totalRequestsPerStream,
+				connectTimeoutMillis, terminationWaitMillis, closeTimeout,
+				grpcChannelSelector, grpcStreamSelector, callOptions, eventLoops,
+				channelType, closeEventLoops, tlsPolicy);
 		}
 
 		public Builder maxChannels(int maxChannels) {
@@ -321,10 +326,15 @@ public class GrpcClientPolicy {
 		public Builder connectTimeoutMillis(int connectTimeoutMillis) {
 			if (connectTimeoutMillis < 0) {
 				throw new IllegalArgumentException(String.format(
-						"connectTimeoutMillis=%d < 0", connectTimeoutMillis
+					"connectTimeoutMillis=%d < 0", connectTimeoutMillis
 				));
 			}
 			this.connectTimeoutMillis = connectTimeoutMillis;
+			return this;
+		}
+
+		public Builder closeTimeout(int closeTimeout) {
+			this.closeTimeout = closeTimeout;
 			return this;
 		}
 

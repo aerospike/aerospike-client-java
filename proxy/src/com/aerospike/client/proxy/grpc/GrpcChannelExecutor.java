@@ -26,9 +26,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
@@ -138,9 +138,13 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private final Map<Integer, GrpcStream> streams = new HashMap<>();
 	/**
-	 * Indicates if this executor is shutdown.
+	 * Shutdown initiation time.
 	 */
-	private final AtomicBoolean isClosed = new AtomicBoolean(false);
+	private long shutdownStartTime = -1;
+	/**
+	 * Current state of the channel.
+	 */
+	private final AtomicReference<ChannelState> channelState;
 	/**
 	 * Unique id of the executor.
 	 */
@@ -197,6 +201,7 @@ public class GrpcChannelExecutor implements Runnable {
 			createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
 				, channelTypeAndEventLoop.getChannelType(), hosts);
 		this.channel = channelAndEventLoop.managedChannel;
+		channelState = new AtomicReference<>(ChannelState.READY);
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
 		ScheduledFuture<?> future =
@@ -351,7 +356,7 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 	public void execute(GrpcStreamingCall call) {
-		if (isClosed.get()) {
+		if (channelState.get() != ChannelState.READY) {
 			call.failIfNotComplete(ResultCode.CLIENT_ERROR);
 			return;
 		}
@@ -374,6 +379,31 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Process a single iteration.
 	 */
 	private void iterate() {
+		ChannelState channelState = this.channelState.get();
+		if (channelState != ChannelState.READY) {
+			int closeTimeout = grpcClientPolicy.closeTimeout;
+			if ((channelState == ChannelState.SHUTTING_DOWN && (closeTimeout == 0 ||
+				System.currentTimeMillis() < shutdownStartTime + closeTimeout)) ||
+				// TODO can this happen?
+				channelState == ChannelState.SHUTDOWN) {
+				return;
+			}
+			// TODO is it okay to mark state as SHUTDOWN from here? If we keep
+			//  this inside try block, if shutdown doesn't finish within next
+			//  iterate call interval, it will not return from the above if block.
+			this.channelState.set(ChannelState.SHUTDOWN);
+			cleanupOnChannelClosed();
+
+			shutdownLock.lock();
+			try {
+				shutdownCondition.signal();
+			}
+			finally {
+				shutdownLock.unlock();
+			}
+			return;
+		}
+
 		if (authTokenManager != null && !authTokenManager.isTokenValid()) {
 			expireOrDrainOnInvalidToken();
 			return;
@@ -387,17 +417,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 		// Process closed streams.
 		closedStreams.drain(this::processClosedStream, drainLimit);
-
-		if (isClosed.get()) {
-			cleanupOnChannelClosed();
-
-			shutdownLock.lock();
-			try {
-				shutdownCondition.signal();
-			} finally {
-				shutdownLock.unlock();
-			}
-		}
 	}
 
 	private void cleanupOnChannelClosed() {
@@ -583,21 +602,25 @@ public class GrpcChannelExecutor implements Runnable {
 	 * this method implementation.
 	 */
 	public void shutdown() {
-		if (isClosed.getAndSet(true)) {
+		if (channelState.getAndSet(ChannelState.SHUTTING_DOWN) ==
+			ChannelState.SHUTTING_DOWN) {
 			return;
 		}
-
-		if(eventLoop.inEventLoop()) {
+		shutdownStartTime = System.currentTimeMillis();
+		if (eventLoop.inEventLoop()) {
 			cleanupOnChannelClosed();
-		} else {
+		}
+		else {
 			// All the calls will be closed cleanly on the next call of
 			// [iterate] method in the event loop.
 			shutdownLock.lock();
 			try {
 				shutdownCondition.await();
-			} catch (InterruptedException e) {
+			}
+			catch (InterruptedException e) {
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			} finally {
+			}
+			finally {
 				shutdownLock.unlock();
 			}
 		}
@@ -700,6 +723,10 @@ public class GrpcChannelExecutor implements Runnable {
 			this.managedChannel = managedChannel;
 			this.eventLoop = eventLoop;
 		}
+	}
+
+	private enum ChannelState {
+		READY, SHUTTING_DOWN, SHUTDOWN
 	}
 
 	public static class ChannelTypeAndEventLoop {
