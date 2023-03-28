@@ -81,26 +81,18 @@ public abstract class CommandProxy {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
 					try {
-						// Check response status for client errors (negative error codes).
-						// Server errors are checked in response payload in Parser.
-						int status = response.getStatus();
-
-						if (status != 0) {
-							setInDoubt(response.getInDoubt());
-							notifyFailure(new AerospikeException(status));
-							return;
-						}
+						inDoubt |= response.getInDoubt();
 						onResponse(response);
 					}
 					catch (Throwable t) {
-						onFailure(t, response.getInDoubt());
+						onFailure(t);
 					}
 				}
 
 				@Override
 				public void onError(Throwable t) {
-					// TODO: What kind of errors returned here. If timeouts, should inDoubt always be true?
-					onFailure(t, inDoubt);
+					inDoubt = true;
+					onFailure(t);
 				}
 
 				@Override
@@ -110,6 +102,15 @@ public abstract class CommandProxy {
 	}
 
 	void onResponse(Kvs.AerospikeResponsePayload response) {
+		// Check response status for client errors (negative error codes).
+		// Server errors are checked in response payload in Parser.
+		int status = response.getStatus();
+
+		if (status != 0) {
+			notifyFailure(new AerospikeException(status));
+			return;
+		}
+
 		byte[] bytes = response.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
@@ -146,9 +147,7 @@ public abstract class CommandProxy {
 		}
 	}
 
-	private void onFailure(Throwable t, boolean doubt) {
-		setInDoubt(doubt);
-
+	private void onFailure(Throwable t) {
 		AerospikeException ae;
 
 		try {
@@ -219,10 +218,6 @@ public abstract class CommandProxy {
 			default:
 				return new AerospikeException("gRPC code " + code, sre);
 		}
-	}
-
-	final void setInDoubt(boolean doubt) {
-		this.inDoubt |= doubt;
 	}
 
 	final void notifyFailure(AerospikeException ae) {
