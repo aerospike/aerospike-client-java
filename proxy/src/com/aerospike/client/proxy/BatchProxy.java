@@ -813,7 +813,8 @@ public class BatchProxy {
 
 			// Server errors are checked in response payload in Parser.
 			byte[] bytes = response.getPayload().toByteArray();
-			Parser parser = new Parser(bytes, 5);
+			Parser parser = new Parser(bytes);
+			parser.parseProto();
 			int rc = parser.parseHeader();
 
 			if (hasNext) {
