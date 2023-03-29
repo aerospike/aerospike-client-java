@@ -55,14 +55,14 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	}
 
 	@Override
-	void writeCommand(Command command) {
+	protected void writeCommand(Command command) {
 		command.setUdf(writePolicy, key, packageName, functionName, args);
 	}
 
 	@Override
-	void parseResult(Parser parser) {
-		Record record = parseRecordResult(parser);
-		Object obj = parseEndResult(record);
+	protected void parseResult(Parser parser) {
+		ProxyRecord proxyRecord = parseRecordResult(parser, false, false, false);
+		Object obj = parseEndResult(proxyRecord.record);
 
 		try {
 			executeListener.onSuccess(key, obj);
@@ -104,7 +104,7 @@ public final class ExecuteCommandProxy extends ReadCommandProxy {
 	}
 
 	@Override
-	void onFailure(AerospikeException ae) {
+	protected void onFailure(AerospikeException ae) {
 		executeListener.onFailure(ae);
 	}
 }

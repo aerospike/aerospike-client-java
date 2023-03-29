@@ -46,7 +46,6 @@ import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
 
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
@@ -151,7 +150,7 @@ public class GrpcChannelExecutor implements Runnable {
 
 	/**
 	 * A lock and its {@link Condition} to wait on for all ongoing streams
-	 * to finish before we shutdown the channel.
+	 * to finish before we shut down the channel.
 	 */
 	private final ReentrantLock shutdownLock = new ReentrantLock();
 	private final Condition shutdownCondition = shutdownLock.newCondition();
@@ -462,8 +461,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Update stats.
-		ByteString payload = call.getRequestPayload();
-		bytesSent += payload.size();
+		bytesSent += call.getRequestBuilder().getPayload().size();
 		requestsSent++;
 
 		// The stream will be close by the selector.

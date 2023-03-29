@@ -137,7 +137,7 @@ public abstract class AsyncMultiExecutor {
 
 	final void childFailure(AerospikeException ae) {
 		// There is no need to stop commands if all commands have already completed.
-		if (! done) {
+		if (!done) {
 			done = true;
 
 			// Send stop signal to all commands.

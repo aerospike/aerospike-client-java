@@ -42,12 +42,12 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void writeCommand(Command command) {
+	protected void writeCommand(Command command) {
 		command.setReadHeader(policy, key);
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	protected void parseResult(Parser parser) {
 		Record record = null;
 		int resultCode = parser.parseHeader();
 
@@ -78,7 +78,7 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void onFailure(AerospikeException ae) {
+	protected void onFailure(AerospikeException ae) {
 		listener.onFailure(ae);
 	}
 }

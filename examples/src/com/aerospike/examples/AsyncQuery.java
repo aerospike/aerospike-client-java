@@ -67,7 +67,11 @@ public class AsyncQuery extends AsyncExample {
 
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-			task.waitTillComplete();
+			if (task != null) {
+				// Task is not null for regular aerospike client, it will be
+				// null for proxy.
+				task.waitTillComplete();
+			}
 		}
 		catch (AerospikeException ae) {
 			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {

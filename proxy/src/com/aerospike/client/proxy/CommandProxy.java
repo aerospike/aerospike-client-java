@@ -19,12 +19,15 @@ package com.aerospike.client.proxy;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Log;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
+import com.aerospike.client.query.BVal;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
@@ -70,13 +73,9 @@ public abstract class CommandProxy {
 	}
 
 	private void executeCommand() {
-		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
-		writeCommand(command);
-
-		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
-
+		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
 		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			payload, policy, iteration, deadline,
+			builder, policy, iteration, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -237,11 +236,106 @@ public abstract class CommandProxy {
 		}
 	}
 
-	static void logOnSuccessError(Throwable t) {
+	protected static void logOnSuccessError(Throwable t) {
 		Log.error("onSuccess() error: " + Util.getStackTrace(t));
 	}
 
-	abstract void writeCommand(Command command);
-	abstract void parseResult(Parser parser);
-	abstract void onFailure(AerospikeException ae);
+	protected Kvs.AerospikeRequestPayload.Builder getRequestBuilder() {
+		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
+		writeCommand(command);
+
+		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
+		return Kvs.AerospikeRequestPayload.newBuilder().setPayload(payload);
+	}
+
+	/**
+	 * Parse the Aerospike record byes accumulated in the parser.
+	 *
+	 * @param parser      the parser
+	 * @param isOperation indicates if the payload is the result of an
+	 *                    operation.
+	 * @param parseKey    indicates if key is to be parsed
+	 * @param parseBVal   indicates if bVal should be parsed
+	 * @return proxy record
+	 */
+	protected final ProxyRecord parseRecordResult(Parser parser,
+												  boolean isOperation, boolean parseKey,
+												  boolean parseBVal) {
+		Record record = null;
+		Key key = null;
+		BVal bVal = parseBVal ? new BVal() : null;
+		int resultCode = parser.parseHeader();
+
+		switch (resultCode) {
+			case ResultCode.OK:
+				if (parser.opCount == 0) {
+					// Bin data was not returned.
+					record = new Record(null, parser.generation, parser.expiration);
+				}
+				else {
+					if (parseKey) {
+						key = parser.parseKey(bVal);
+					}
+					else {
+						parser.skipKey();
+					}
+					record = parser.parseRecord(isOperation);
+				}
+				break;
+
+			case ResultCode.KEY_NOT_FOUND_ERROR:
+				handleNotFound(resultCode);
+				break;
+
+			case ResultCode.FILTERED_OUT:
+				if (policy.failOnFilteredOut) {
+					throw new AerospikeException(resultCode);
+				}
+				break;
+
+			case ResultCode.UDF_BAD_RESPONSE:
+				parser.skipKey();
+				record = parser.parseRecord(isOperation);
+				handleUdfError(record, resultCode);
+				break;
+
+			default:
+				throw new AerospikeException(resultCode);
+		}
+
+		return new ProxyRecord(resultCode, key, record, bVal);
+	}
+
+	protected void handleNotFound(int resultCode) {
+		// Do nothing in default case. Record will be null.
+	}
+
+	protected void handleUdfError(Record record, int resultCode) {
+		String ret = (String)record.bins.get("FAILURE");
+
+		if (ret == null) {
+			throw new AerospikeException(resultCode);
+		}
+
+		String message;
+		int code;
+
+		try {
+			String[] list = ret.split(":");
+			code = Integer.parseInt(list[2].trim());
+			message = list[0] + ':' + list[1] + ' ' + list[3];
+		}
+		catch (Exception e) {
+			// Use generic exception if parse error occurs.
+			throw new AerospikeException(resultCode, ret);
+		}
+
+		throw new AerospikeException(code, message);
+	}
+
+	protected abstract void writeCommand(Command command);
+
+	protected abstract void parseResult(Parser parser);
+
+	protected abstract void onFailure(AerospikeException ae);
 }

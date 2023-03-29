@@ -40,7 +40,8 @@ public class QueryPolicy extends Policy {
 
 	/**
 	 * Maximum number of concurrent requests to server nodes at any point in time.
-	 * If there are 16 nodes in the cluster and maxConcurrentNodes is 8, then queries
+	 * If there are 16 nodes in the cluster and
+	 * maxConcurrentNodes is 8, then queries
 	 * will be made to 8 nodes in parallel.  When a query completes, a new query will
 	 * be issued until all 16 nodes have been queried.
 	 * <p>

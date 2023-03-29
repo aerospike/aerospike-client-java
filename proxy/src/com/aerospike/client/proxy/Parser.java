@@ -22,10 +22,14 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.Command.OpResults;
+import com.aerospike.client.command.FieldType;
+import com.aerospike.client.query.BVal;
 
 public final class Parser {
 	private byte[] buffer;
@@ -114,9 +118,9 @@ public final class Parser {
 		opCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
 		return resultCode;
-    }
+	}
 
-    public void skipKey() {
+	public void skipKey() {
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		for (int i = 0; i < fieldCount; i++) {
@@ -125,10 +129,58 @@ public final class Parser {
 		}
 	}
 
-    public Record parseRecord(boolean isOperation)  {
-		Map<String,Object> bins = new LinkedHashMap<>();
+	/**
+	 * @param bVal optional bVal which is present will be set.
+	 * @return parsed key
+	 */
+	public final Key parseKey(BVal bVal) {
+		byte[] digest = null;
+		String namespace = null;
+		String setName = null;
+		Value userKey = null;
 
-		for (int i = 0 ; i < opCount; i++) {
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(buffer, offset);
+			offset += 4;
+
+			int fieldtype = buffer[offset++];
+			int size = fieldlen - 1;
+
+			switch (fieldtype) {
+				case FieldType.DIGEST_RIPE:
+					digest = new byte[size];
+					System.arraycopy(buffer, offset, digest, 0, size);
+					break;
+
+				case FieldType.NAMESPACE:
+					namespace = Buffer.utf8ToString(buffer, offset, size);
+					break;
+
+				case FieldType.TABLE:
+					setName = Buffer.utf8ToString(buffer, offset, size);
+					break;
+
+				case FieldType.KEY:
+					int type = buffer[offset++];
+					size--;
+					userKey = Buffer.bytesToKeyValue(type, buffer, offset, size);
+					break;
+
+				case FieldType.BVAL_ARRAY:
+					if (bVal != null) {
+						bVal.val = Buffer.littleBytesToLong(buffer, offset);
+					}
+					break;
+			}
+			offset += size;
+		}
+		return new Key(namespace, digest, setName, userKey);
+	}
+
+	public Record parseRecord(boolean isOperation) {
+		Map<String, Object> bins = new LinkedHashMap<>();
+
+		for (int i = 0; i < opCount; i++) {
 			int opSize = Buffer.bytesToInt(buffer, offset);
 			byte particleType = buffer[offset + 5];
 			byte nameSize = buffer[offset + 7];

@@ -63,11 +63,22 @@ public final class PartitionFilter implements Serializable {
 	/**
 	 * Filter by partition range.
 	 *
-	 * @param begin		start partition id (0 - 4095)
-	 * @param count		number of partitions
+	 * @param begin start partition id (0 - 4095)
+	 * @param count number of partitions
 	 */
 	public static PartitionFilter range(int begin, int count) {
 		return new PartitionFilter(begin, count);
+	}
+
+	/**
+	 * Return records after the digest in partition containing the digest.
+	 * Note that digest order is not the same as userKey order. This method
+	 * only works for scan or query with null filter.
+	 *
+	 * @param digest return records after this digest
+	 */
+	static PartitionFilter after(byte[] digest) {
+		return new PartitionFilter(digest);
 	}
 
 	final int begin;

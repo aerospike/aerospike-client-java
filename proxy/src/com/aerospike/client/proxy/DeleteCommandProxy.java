@@ -43,12 +43,12 @@ public final class DeleteCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void writeCommand(Command command) {
+	protected void writeCommand(Command command) {
 		command.setDelete(writePolicy, key);
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	protected void parseResult(Parser parser) {
 		int resultCode = parser.parseResultCode();
 		boolean existed;
 
@@ -81,7 +81,7 @@ public final class DeleteCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void onFailure(AerospikeException ae) {
+	protected void onFailure(AerospikeException ae) {
 		listener.onFailure(ae);
 	}
 }

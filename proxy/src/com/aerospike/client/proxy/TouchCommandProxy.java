@@ -43,12 +43,12 @@ public final class TouchCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void writeCommand(Command command) {
+	protected void writeCommand(Command command) {
 		command.setTouch(writePolicy, key);
 	}
 
 	@Override
-	void parseResult(Parser parser) {
+	protected void parseResult(Parser parser) {
 		int resultCode = parser.parseResultCode();
 
 		switch (resultCode) {
@@ -74,7 +74,7 @@ public final class TouchCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	void onFailure(AerospikeException ae) {
+	protected void onFailure(AerospikeException ae) {
 		listener.onFailure(ae);
 	}
 }

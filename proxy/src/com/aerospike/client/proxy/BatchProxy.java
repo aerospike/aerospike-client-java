@@ -51,8 +51,9 @@ public class BatchProxy {
 	//-------------------------------------------------------
 
 	public interface BatchListListenerSync {
-		public void onSuccess(List<BatchRead> records, boolean status);
-		public void onFailure(AerospikeException ae);
+		void onSuccess(List<BatchRead> records, boolean status);
+
+		void onFailure(AerospikeException ae);
 	}
 
 	public static final class ReadListCommandSync extends BaseCommand {
@@ -73,7 +74,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
 			command.setBatchOperate(batchPolicy, iter);
 		}
@@ -97,7 +98,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -118,7 +119,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
 			command.setBatchOperate(batchPolicy, iter);
 		}
@@ -141,7 +142,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -162,7 +163,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
 			command.setBatchOperate(batchPolicy, iter);
 		}
@@ -186,7 +187,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -223,7 +224,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, binNames, ops, attr);
@@ -242,7 +243,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -273,7 +274,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, readAttr, ops);
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, binNames, ops, attr);
@@ -298,7 +299,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -325,7 +326,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, null, null, attr);
@@ -345,7 +346,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -366,7 +367,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchAttr attr = new BatchAttr(batchPolicy, Command.INFO1_READ | Command.INFO1_NOBINDATA);
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, null, null, attr);
@@ -386,7 +387,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -413,7 +414,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
 			command.setBatchOperate(batchPolicy, iter);
 		}
@@ -451,7 +452,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -472,7 +473,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
 			command.setBatchOperate(batchPolicy, iter);
 		}
@@ -511,7 +512,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -550,7 +551,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
 		}
@@ -574,7 +575,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(records, ae);
 		}
 	}
@@ -601,7 +602,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchOperate(batchPolicy, iter, null, ops, attr);
 		}
@@ -627,7 +628,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -673,7 +674,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
 		}
@@ -711,7 +712,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(records, ae);
 		}
 	}
@@ -744,7 +745,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void writeCommand(Command command) {
+		protected void writeCommand(Command command) {
 			KeyIterProxy iter = new KeyIterProxy(keys);
 			command.setBatchUDF(batchPolicy, iter, packageName, functionName, argBytes, attr);
 		}
@@ -781,7 +782,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		void onFailure(AerospikeException ae) {
+		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
 	}
@@ -828,7 +829,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		final void parseResult(Parser parser) {
+		protected final void parseResult(Parser parser) {
 		}
 
 		final Record parseRecord(Parser parser) {

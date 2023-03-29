@@ -1240,6 +1240,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+		QueryCommandProxy command = new QueryCommandProxy(executor, policy,
+			statement, listener);
+		command.execute();
 	}
 
 	@Override

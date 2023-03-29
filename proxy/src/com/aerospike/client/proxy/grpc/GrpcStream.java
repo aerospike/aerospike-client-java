@@ -28,7 +28,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
 
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
@@ -265,15 +264,14 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 				return;
 			}
 
-			ByteString payload = call.getRequestPayload();
+			Kvs.AerospikeRequestPayload.Builder requestBuilder = call.getRequestBuilder();
 
 			// Update stats.
 			requestsInFlight++;
-			bytesSent += payload.size();
+			bytesSent += requestBuilder.getPayload().size();
 
 			int requestId = requestsSent++;
-			Kvs.AerospikeRequestPayload.Builder requestBuilder = Kvs.AerospikeRequestPayload.newBuilder()
-				.setPayload(payload)
+			requestBuilder
 				.setId(requestId)
 				.setIteration(call.getIteration());
 
@@ -342,23 +340,25 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		executingCalls.clear();
 	}
 
-	private class StatsGrpcStreamingCall extends GrpcStreamingCall {
+	private static class StatsGrpcStreamingCall extends GrpcStreamingCall {
+		private final GrpcStreamingCall delegate;
 		private volatile boolean hasReceivedResponse;
 
 		StatsGrpcStreamingCall(GrpcStreamingCall delegate) {
 			super(delegate);
+			this.delegate = delegate;
 		}
 
 		@Override
 		public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
 			hasReceivedResponse = true;
-			super.onNext(aerospikeResponsePayload);
+			delegate.onNext(aerospikeResponsePayload);
 		}
 
 		@Override
 		public void onError(Throwable throwable) {
 			hasReceivedResponse = true;
-			super.onError(throwable);
+			delegate.onError(throwable);
 		}
 
 		boolean hasReceivedResponse() {

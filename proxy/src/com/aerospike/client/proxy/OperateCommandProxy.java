@@ -40,7 +40,7 @@ public final class OperateCommandProxy extends ReadCommandProxy {
 	}
 
 	@Override
-	void writeCommand(Command command) {
+	protected void writeCommand(Command command) {
 		command.setOperate(args.writePolicy, key, args);
 	}
 
