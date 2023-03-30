@@ -56,8 +56,13 @@ public class QueryAverage extends Example {
 	}
 
 	private void register(IAerospikeClient client, Parameters params) throws Exception {
-		RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
-		task.waitTillComplete();
+		try {
+			RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
+			task.waitTillComplete();
+		}
+		catch (AerospikeException e) {
+			// Ignore for proxy.
+		}
 	}
 
 	private void createIndex(
@@ -74,7 +79,9 @@ public class QueryAverage extends Example {
 
 		try {
 			IndexTask task = client.createIndex(policy, params.namespace, params.set, indexName, binName, IndexType.NUMERIC);
-			task.waitTillComplete();
+			if (task != null) {
+				task.waitTillComplete();
+			}
 		}
 		catch (AerospikeException ae) {
 			if (ae.getResultCode() != ResultCode.INDEX_ALREADY_EXISTS) {

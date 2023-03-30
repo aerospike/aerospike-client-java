@@ -56,7 +56,7 @@ public final class WriteCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	protected void parseResult(Parser parser, boolean isLast) {
 		int resultCode = parser.parseResultCode();
 
 		switch (resultCode) {

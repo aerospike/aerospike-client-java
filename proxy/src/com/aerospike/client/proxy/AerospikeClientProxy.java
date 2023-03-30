@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -50,6 +52,7 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.ThreadDaemonFactory;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
@@ -120,6 +123,39 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * Lower limit of proxy server connection.
 	 */
 	private static final int MIN_CONNECTIONS = 1;
+
+	/**
+	 * Is threadPool shared between other client instances or classes.  If threadPool is
+	 * not shared (default), threadPool will be shutdown when the client instance is closed.
+	 * <p>
+	 * If threadPool is shared, threadPool will not be shutdown when the client instance is
+	 * closed. This shared threadPool should be shutdown manually before the program
+	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is
+	 * constructed to use daemon threads.
+	 * <p>
+	 * Default: false
+	 */
+	private final boolean sharedThreadPool;
+
+	/**
+	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
+	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
+	 * performance because threads do not have to be created/destroyed for each command.
+	 * The default, null, indicates that the following daemon thread pool will be used:
+	 * <pre>
+	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+	 *     public final Thread newThread(Runnable runnable) {
+	 * 			Thread thread = new Thread(runnable);
+	 * 			thread.setDaemon(true);
+	 * 			return thread;
+	 *        }
+	 *    });
+	 * </pre>
+	 * Daemon threads automatically terminate when the program terminates.
+	 * <p>
+	 * Default: null (use Executors.newCachedThreadPool)
+	 */
+	private ExecutorService threadPool;
 
 	/**
 	 * Upper limit of proxy server connection.
@@ -201,6 +237,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy.asyncMaxConnsPerNode = 8;
 			policy.timeout = 5000;
 		}
+
+		if (policy.threadPool == null) {
+			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
+		}
+		else {
+			threadPool = policy.threadPool;
+		}
+		sharedThreadPool = policy.sharedThreadPool;
 
 		this.readPolicyDefault = policy.readPolicyDefault;
 		this.writePolicyDefault = policy.writePolicyDefault;
@@ -315,6 +359,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 		catch (Throwable e) {
 			Log.warn("Failed to close authTokenManager: " + Util.getErrorMessage(e));
+		}
+
+		if (! sharedThreadPool) {
+			// Shutdown synchronous thread pool.
+			threadPool.shutdown();
 		}
 	}
 
@@ -1021,6 +1070,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String setName,
 		String... binNames
 	) {
+		scanPartitions(eventLoop, listener, policy, null, namespace, setName,
+			binNames);
 	}
 
 	@Override
@@ -1032,6 +1083,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanNode");
 	}
 
 	@Override
@@ -1043,6 +1095,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanNode");
 	}
 
 	@Override
@@ -1066,6 +1119,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String setName,
 		String... binNames
 	) {
+		if (policy == null) {
+			policy = scanPolicyDefault;
+		}
+		ScanCommandProxy command = new ScanCommandProxy(executor,
+			policy, namespace, setName, binNames, partitionFilter, listener);
+		command.execute();
 	}
 
 	//---------------------------------------------------------------
@@ -1244,7 +1303,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 		QueryCommandProxy command = new QueryCommandProxy(executor, policy,
-			statement, listener);
+			statement, null, listener);
 		command.execute();
 	}
 
@@ -1258,7 +1317,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryNode");
 	}
 
 	@Override
@@ -1274,6 +1333,13 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Statement statement,
 		PartitionFilter partitionFilter
 	) {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		QueryCommandProxy command = new QueryCommandProxy(executor, policy,
+			statement, partitionFilter, listener);
+		command.execute();
 	}
 
 	@Override
@@ -1284,17 +1350,24 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		return null;
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		return queryAggregate(policy, statement);
 	}
 
 	@Override
 	public ResultSet queryAggregate(QueryPolicy policy, Statement statement) {
-		return null;
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+		QueryAggregateCommandProxy commandProxy =
+			new QueryAggregateCommandProxy(executor, threadPool, policy, statement);
+		commandProxy.execute();
+		return commandProxy.getResultSet();
 	}
 
 	@Override
 	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryAggregateNode");
 	}
 
 	//--------------------------------------------------------

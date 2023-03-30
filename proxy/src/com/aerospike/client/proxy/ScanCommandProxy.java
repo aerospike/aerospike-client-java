@@ -17,36 +17,45 @@
 
 package com.aerospike.client.proxy;
 
+import javax.annotation.Nullable;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.query.PartitionFilter;
-import com.aerospike.client.query.Statement;
 import com.aerospike.proxy.client.Kvs;
-import com.aerospike.proxy.client.QueryGrpc;
+import com.aerospike.proxy.client.ScanGrpc;
 
 /**
- * Implements asynchronous query for the proxy.
+ * Implements asynchronous scan for the proxy.
  */
-public class QueryCommandProxy extends CommandProxy {
-	private final Statement statement;
-
-	private final RecordSequenceListener listener;
+public class ScanCommandProxy extends CommandProxy {
+	private final String namespace;
+	private final String setName;
+	private final String[] binNames;
 	private final PartitionFilter partitionFilter;
+	private final RecordSequenceListener listener;
 
-	public QueryCommandProxy(GrpcCallExecutor executor,
-							 QueryPolicy queryPolicy,
-							 Statement statement,
-							 PartitionFilter partitionFilter, RecordSequenceListener listener
+	public ScanCommandProxy(GrpcCallExecutor executor,
+							ScanPolicy scanPolicy,
+							String namespace,
+							@Nullable
+							String setName,
+							@Nullable
+							String[] binNames,
+							@Nullable PartitionFilter partitionFilter,
+							RecordSequenceListener listener
 	) {
-		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
-		this.statement = statement;
-		this.listener = listener;
+		super(ScanGrpc.getScanStreamingMethod(), executor, scanPolicy);
+		this.namespace = namespace;
+		this.setName = setName;
+		this.binNames = binNames;
 		this.partitionFilter = partitionFilter;
+		this.listener = listener;
 	}
 
 	@Override
@@ -60,7 +69,7 @@ public class QueryCommandProxy extends CommandProxy {
 			false);
 
 		if (proxyRecord.resultCode == ResultCode.OK && proxyRecord.key == null) {
-			// This is the end of query marker record.
+			// This is the end of scan marker record.
 			listener.onSuccess();
 			return;
 		}
@@ -82,18 +91,27 @@ public class QueryCommandProxy extends CommandProxy {
 
 	@Override
 	protected Kvs.AerospikeRequestPayload.Builder getRequestBuilder() {
-		// Set the query parameters in the Aerospike request payload.
+		// Set the scan parameters in the Aerospike request payload.
 		Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
-		Kvs.QueryRequest.Builder queryRequestBuilder =
-			Kvs.QueryRequest.newBuilder();
+		Kvs.ScanRequest.Builder scanRequestBuilder =
+			Kvs.ScanRequest.newBuilder();
 
-		queryRequestBuilder.setQueryPolicy(GrpcConversions.toGrpc((QueryPolicy)policy));
-		if (partitionFilter != null) {
-			queryRequestBuilder.setPartitionFilter(GrpcConversions.toGrpc(partitionFilter));
+		scanRequestBuilder.setScanPolicy(GrpcConversions.toGrpc((ScanPolicy)policy));
+
+		scanRequestBuilder.setNamespace(namespace);
+		if (setName != null) {
+			scanRequestBuilder.setSetName(setName);
 		}
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement));
-		builder.setQueryRequest(queryRequestBuilder.build());
+		if (binNames != null) {
+			for (String binName : binNames) {
+				scanRequestBuilder.addBinNames(binName);
+			}
+		}
+		if (partitionFilter != null) {
+			scanRequestBuilder.setPartitionFilter(GrpcConversions.toGrpc(partitionFilter));
+		}
 
+		builder.setScanRequest(scanRequestBuilder.build());
 		return builder;
 	}
 }

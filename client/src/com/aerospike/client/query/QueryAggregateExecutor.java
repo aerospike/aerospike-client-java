@@ -33,7 +33,7 @@ import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.lua.LuaOutputStream;
 import com.aerospike.client.policy.QueryPolicy;
 
-public final class QueryAggregateExecutor extends QueryExecutor implements Runnable {
+public class QueryAggregateExecutor extends QueryExecutor implements Runnable {
 
 	private final BlockingQueue<LuaValue> inputQueue;
 	private final ResultSet resultSet;

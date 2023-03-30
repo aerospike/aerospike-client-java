@@ -38,7 +38,7 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 
 public abstract class CommandProxy {
-	final Policy policy;
+	protected final Policy policy;
 	private final GrpcCallExecutor executor;
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 	private long deadline;
@@ -112,7 +112,7 @@ public abstract class CommandProxy {
 		byte[] bytes = response.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
-		parseResult(parser);
+		parseResult(parser, !response.getHasNext());
 	}
 
 	private boolean retry() {
@@ -335,7 +335,7 @@ public abstract class CommandProxy {
 
 	protected abstract void writeCommand(Command command);
 
-	protected abstract void parseResult(Parser parser);
+	protected abstract void parseResult(Parser parser, boolean isLast);
 
 	protected abstract void onFailure(AerospikeException ae);
 }

@@ -21,14 +21,18 @@ import java.util.Map;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
+import org.luaj.vm2.LuaValue;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.Command.OpResults;
 import com.aerospike.client.command.FieldType;
+import com.aerospike.client.lua.LuaInstance;
 import com.aerospike.client.query.BVal;
 
 public final class Parser {
@@ -218,5 +222,33 @@ public final class Parser {
 			}
 		}
 		return new Record(bins, generation, expiration);
+	}
+
+	public LuaValue getLuaAggregateValue(LuaInstance instance) {
+		// Parse aggregateValue.
+		int opSize = Buffer.bytesToInt(buffer, offset);
+		offset += 5;
+		byte particleType = buffer[offset];
+		offset += 2;
+		byte nameSize = buffer[offset++];
+
+		String name = Buffer.utf8ToString(buffer, offset, nameSize);
+		offset += nameSize;
+
+		int particleBytesSize = opSize - (4 + nameSize);
+
+		if (!name.equals("SUCCESS")) {
+			if (name.equals("FAILURE")) {
+				Object value = Buffer.bytesToParticle(particleType, buffer, offset, particleBytesSize);
+				throw new AerospikeException(ResultCode.QUERY_GENERIC, value != null ? value.toString() : null);
+			}
+			else {
+				throw new AerospikeException(ResultCode.PARSE_ERROR, "Query aggregate expected bin name SUCCESS.  Received " + name);
+			}
+		}
+
+		LuaValue aggregateValue = instance.getLuaValue(particleType, buffer, offset, particleBytesSize);
+		offset += particleBytesSize;
+		return aggregateValue;
 	}
 }

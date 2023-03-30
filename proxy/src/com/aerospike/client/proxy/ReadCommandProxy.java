@@ -68,7 +68,7 @@ public class ReadCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	protected void parseResult(Parser parser, boolean isLast) {
 		ProxyRecord proxyRecord = parseRecordResult(parser, isOperation,
 			false, false);
 

@@ -47,7 +47,7 @@ public final class ReadHeaderCommandProxy extends CommandProxy {
 	}
 
 	@Override
-	protected void parseResult(Parser parser) {
+	protected void parseResult(Parser parser, boolean isLast) {
 		Record record = null;
 		int resultCode = parser.parseHeader();
 

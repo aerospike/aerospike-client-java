@@ -829,7 +829,7 @@ public class BatchProxy {
 		}
 
 		@Override
-		protected final void parseResult(Parser parser) {
+		protected final void parseResult(Parser parser, boolean isLast) {
 		}
 
 		final Record parseRecord(Parser parser) {
