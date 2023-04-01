@@ -17,36 +17,40 @@
 
 package com.aerospike.client.proxy;
 
+import java.util.concurrent.CompletableFuture;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.RecordSequenceListener;
-import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
-import com.aerospike.client.query.PartitionFilter;
 import com.aerospike.client.query.Statement;
 import com.aerospike.proxy.client.Kvs;
 import com.aerospike.proxy.client.QueryGrpc;
 
 /**
- * Implements asynchronous query for the proxy.
+ * Implements asynchronous background query execute for the proxy.
  */
-public class QueryCommandProxy extends CommandProxy {
+public class BackgroundExecuteCommandProxy extends CommandProxy {
 	private final Statement statement;
 
-	private final RecordSequenceListener listener;
-	private final PartitionFilter partitionFilter;
+	private final CompletableFuture<Void> future;
 
-	public QueryCommandProxy(GrpcCallExecutor executor,
-							 QueryPolicy queryPolicy,
-							 Statement statement,
-							 PartitionFilter partitionFilter, RecordSequenceListener listener
-	) {
-		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
+	/**
+	 * @param executor    the gRPC call executor
+	 * @param writePolicy the query write policy
+	 * @param statement   the query statement
+	 * @param future      future to signal success or failure of starting the
+	 *                    background query
+	 */
+	public BackgroundExecuteCommandProxy(GrpcCallExecutor executor,
+										 WritePolicy writePolicy,
+										 Statement statement,
+										 CompletableFuture<Void> future) {
+		super(QueryGrpc.getBackgroundExecuteStreamingMethod(), executor, writePolicy);
 		this.statement = statement;
-		this.listener = listener;
-		this.partitionFilter = partitionFilter;
+		this.future = future;
 	}
 
 	@Override
@@ -59,40 +63,29 @@ public class QueryCommandProxy extends CommandProxy {
 		RecordProxy recordProxy = parseRecordResult(parser, false, true,
 			false);
 
-		if (recordProxy.resultCode == ResultCode.OK && recordProxy.key == null) {
-			// This is the end of query marker record.
-			listener.onSuccess();
-			return;
+		// Only on response is expected.
+		if (recordProxy.resultCode != ResultCode.OK) {
+			throw new AerospikeException(recordProxy.resultCode);
 		}
 
-		try {
-			listener.onRecord(recordProxy.key, recordProxy.record);
-		}
-		catch (Throwable t) {
-			// Exception thrown from the server.
-			// TODO: sent a request to the proxy server to abort the scan.
-			logOnSuccessError(t);
-		}
+		future.complete(null);
 	}
 
 	@Override
 	protected void onFailure(AerospikeException ae) {
-		listener.onFailure(ae);
+		future.completeExceptionally(ae);
 	}
 
 	@Override
 	protected Kvs.AerospikeRequestPayload.Builder getRequestBuilder() {
 		// Set the query parameters in the Aerospike request payload.
 		Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
-		Kvs.QueryRequest.Builder queryRequestBuilder =
-			Kvs.QueryRequest.newBuilder();
+		Kvs.BackgroundExecuteRequest.Builder queryRequestBuilder =
+			Kvs.BackgroundExecuteRequest.newBuilder();
 
-		queryRequestBuilder.setQueryPolicy(GrpcConversions.toGrpc((QueryPolicy)policy));
-		if (partitionFilter != null) {
-			queryRequestBuilder.setPartitionFilter(GrpcConversions.toGrpc(partitionFilter));
-		}
+		queryRequestBuilder.setWritePolicy(GrpcConversions.toGrpc((WritePolicy)policy));
 		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement));
-		builder.setQueryRequest(queryRequestBuilder.build());
+		builder.setBackgroundExecuteRequest(queryRequestBuilder.build());
 
 		return builder;
 	}

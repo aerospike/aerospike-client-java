@@ -239,4 +239,36 @@ public class GrpcConversions {
         }
         return builder.build();
     }
+
+    public static Kvs.BackgroundExecutePolicy toGrpc(WritePolicy writePolicy) {
+        // Base policy fields.
+        Kvs.BackgroundExecutePolicy.Builder queryPolicyBuilder = Kvs.BackgroundExecutePolicy.newBuilder();
+        Kvs.ReadModeAP readModeAP =
+            Kvs.ReadModeAP.valueOf(writePolicy.readModeAP.name());
+        queryPolicyBuilder.setReadModeAP(readModeAP);
+        Kvs.ReadModeSC readModeSC =
+            Kvs.ReadModeSC.valueOf(writePolicy.readModeSC.name());
+        queryPolicyBuilder.setReadModeSC(readModeSC);
+        Kvs.Replica replica =
+            Kvs.Replica.valueOf(writePolicy.replica.name());
+        queryPolicyBuilder.setReplica(replica);
+        if (writePolicy.filterExp != null) {
+            queryPolicyBuilder.setExpression(ByteString.copyFrom(writePolicy.filterExp.getBytes()));
+        }
+
+        queryPolicyBuilder.setTotalTimeout(writePolicy.totalTimeout);
+        queryPolicyBuilder.setCompress(writePolicy.compress);
+        queryPolicyBuilder.setSendKey(writePolicy.sendKey);
+
+        // Query policy specific fields
+        queryPolicyBuilder.setRecordExistsAction(Kvs.RecordExistsAction.valueOf(writePolicy.recordExistsAction.name()));
+        queryPolicyBuilder.setGenerationPolicy(Kvs.GenerationPolicy.valueOf(writePolicy.generationPolicy.name()));
+        queryPolicyBuilder.setCommitLevel(Kvs.CommitLevel.valueOf(writePolicy.commitLevel.name()));
+        queryPolicyBuilder.setGeneration(writePolicy.generation);
+        queryPolicyBuilder.setExpiration(writePolicy.expiration);
+        queryPolicyBuilder.setRespondAllOps(writePolicy.respondAllOps);
+        queryPolicyBuilder.setDurableDelete(writePolicy.durableDelete);
+        queryPolicyBuilder.setXdr(writePolicy.xdr);
+        return queryPolicyBuilder.build();
+    }
 }

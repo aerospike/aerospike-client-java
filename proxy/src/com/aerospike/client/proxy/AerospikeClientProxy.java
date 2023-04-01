@@ -155,7 +155,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * <p>
 	 * Default: null (use Executors.newCachedThreadPool)
 	 */
-	private ExecutorService threadPool;
+	private final ExecutorService threadPool;
 
 	/**
 	 * Upper limit of proxy server connection.
@@ -1271,6 +1271,22 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//----------------------------------------------------------
 	// Query/Execute
 	//----------------------------------------------------------
+	private ExecuteTask executeBackgroundTask(WritePolicy policy, Statement statement) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		long taskId = statement.prepareTaskId();
+		BackgroundExecuteCommandProxy command =
+			new BackgroundExecuteCommandProxy(executor, policy, statement,
+				future);
+		command.execute();
+
+		// Check whether the background task started.
+		getFuture(future);
+		return new ExecuteTaskProxy(executor, taskId, statement.isScan());
+	}
 
 	@Override
 	public ExecuteTask execute(
@@ -1280,12 +1296,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		return null;
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		return executeBackgroundTask(policy, statement);
 	}
 
 	@Override
 	public ExecuteTask execute(WritePolicy policy, Statement statement, Operation... operations) {
-		return null;
+		if (operations.length > 0) {
+			statement.setOperations(operations);
+		}
+		return executeBackgroundTask(policy, statement);
 	}
 
 	//--------------------------------------------------------
@@ -1708,7 +1728,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		};
 	}
 
-	private static <T> T getFuture(final CompletableFuture<T> future) {
+	static <T> T getFuture(final CompletableFuture<T> future) {
 		try {
 			return future.get();
 		}

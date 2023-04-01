@@ -258,7 +258,7 @@ public abstract class CommandProxy {
 	 * @param parseBVal   indicates if bVal should be parsed
 	 * @return proxy record
 	 */
-	protected final ProxyRecord parseRecordResult(Parser parser,
+	protected final RecordProxy parseRecordResult(Parser parser,
 												  boolean isOperation, boolean parseKey,
 												  boolean parseBVal) {
 		Record record = null;
@@ -303,7 +303,7 @@ public abstract class CommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		return new ProxyRecord(resultCode, key, record, bVal);
+		return new RecordProxy(resultCode, key, record, bVal);
 	}
 
 	protected void handleNotFound(int resultCode) {

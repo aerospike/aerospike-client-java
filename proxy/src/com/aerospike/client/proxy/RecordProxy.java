@@ -21,7 +21,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.query.BVal;
 
-public class ProxyRecord {
+public class RecordProxy {
 	/**
 	 * Optional Key.
 	 */
@@ -42,7 +42,7 @@ public class ProxyRecord {
 	 */
 	public final int resultCode;
 
-	public ProxyRecord(int resultCode, Key key, Record record, BVal bVal) {
+	public RecordProxy(int resultCode, Key key, Record record, BVal bVal) {
 		this.resultCode = resultCode;
 		this.key = key;
 		this.record = record;

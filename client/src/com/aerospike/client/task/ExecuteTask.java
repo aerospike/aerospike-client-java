@@ -26,7 +26,7 @@ import com.aerospike.client.query.Statement;
 /**
  * Task used to poll for long running server execute job completion.
  */
-public final class ExecuteTask extends Task {
+public class ExecuteTask extends Task {
 	private final long taskId;
 	private final boolean scan;
 
@@ -34,9 +34,30 @@ public final class ExecuteTask extends Task {
 	 * Initialize task with fields needed to query server nodes.
 	 */
 	public ExecuteTask(Cluster cluster, Policy policy, Statement statement, long taskId) {
+		this(cluster, policy, taskId, statement.isScan());
+	}
+
+	/**
+	 * Initialize task with fields needed to query server nodes.
+	 */
+	public ExecuteTask(Cluster cluster, Policy policy, long taskId,
+					   boolean isScan) {
 		super(cluster, policy);
 		this.taskId = taskId;
-		this.scan = statement.isScan();
+		this.scan = isScan;
+	}
+
+
+	/**
+	 * Initialize task with fields needed to query server nodes.
+	 * <p>
+	 * Internal use only.
+	 */
+	protected ExecuteTask(long taskId,
+						  boolean isScan) {
+		super(null, new Policy());
+		this.taskId = taskId;
+		this.scan = isScan;
 	}
 
 	/**

@@ -30,7 +30,7 @@ import com.aerospike.client.query.ResultSet;
  * Multiple threads will retrieve results from the server nodes and put these results on the queue.
  * The single user thread consumes these results from the queue.
  */
-public class ProxyResultSet extends ResultSet {
+public class ResultSetProxy extends ResultSet {
 	private final QueryAggregateCommandProxy queryAggregateCommand;
 
 	private final BlockingQueue<Object> queue;
@@ -42,7 +42,7 @@ public class ProxyResultSet extends ResultSet {
 	/**
 	 * Initialize result set with underlying producer/consumer queue.
 	 */
-	protected ProxyResultSet(QueryAggregateCommandProxy queryAggregateCommand, int capacity) {
+	protected ResultSetProxy(QueryAggregateCommandProxy queryAggregateCommand, int capacity) {
 		this.queryAggregateCommand = queryAggregateCommand;
 		this.queue = new ArrayBlockingQueue<>(capacity);
 	}
@@ -175,10 +175,10 @@ public class ProxyResultSet extends ResultSet {
 	 */
 	private static class ResultSetIterator implements Iterator<Object>, Closeable {
 
-		private final ProxyResultSet resultSet;
+		private final ResultSetProxy resultSet;
 		private boolean more;
 
-		ResultSetIterator(ProxyResultSet resultSet) {
+		ResultSetIterator(ResultSetProxy resultSet) {
 			this.resultSet = resultSet;
 			more = this.resultSet.next();
 		}

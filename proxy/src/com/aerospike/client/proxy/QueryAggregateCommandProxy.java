@@ -46,7 +46,7 @@ import com.aerospike.proxy.client.QueryGrpc;
  */
 public final class QueryAggregateCommandProxy extends CommandProxy implements Runnable {
 	private final BlockingQueue<LuaValue> inputQueue;
-	private final ProxyResultSet resultSet;
+	private final ResultSetProxy resultSet;
 	private final LuaInstance lua;
 	private final Statement statement;
 	private final AtomicBoolean done;
@@ -59,7 +59,7 @@ public final class QueryAggregateCommandProxy extends CommandProxy implements Ru
 		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
 		this.statement = statement;
 		this.inputQueue = new ArrayBlockingQueue<>(500);
-		this.resultSet = new ProxyResultSet(this, queryPolicy.recordQueueSize);
+		this.resultSet = new ResultSetProxy(this, queryPolicy.recordQueueSize);
 		this.done = new AtomicBoolean();
 
 		// Work around luaj LuaInteger static initialization bug.

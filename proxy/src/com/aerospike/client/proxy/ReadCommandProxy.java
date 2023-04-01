@@ -69,11 +69,11 @@ public class ReadCommandProxy extends CommandProxy {
 
 	@Override
 	protected void parseResult(Parser parser, boolean isLast) {
-		ProxyRecord proxyRecord = parseRecordResult(parser, isOperation,
+		RecordProxy recordProxy = parseRecordResult(parser, isOperation,
 			false, false);
 
 		try {
-			listener.onSuccess(key, proxyRecord.record);
+			listener.onSuccess(key, recordProxy.record);
 		}
 		catch (Throwable t) {
 			logOnSuccessError(t);

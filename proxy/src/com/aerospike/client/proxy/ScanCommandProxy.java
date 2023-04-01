@@ -65,17 +65,17 @@ public class ScanCommandProxy extends CommandProxy {
 
 	@Override
 	protected void parseResult(Parser parser, boolean isLast) {
-		ProxyRecord proxyRecord = parseRecordResult(parser, false, true,
+		RecordProxy recordProxy = parseRecordResult(parser, false, true,
 			false);
 
-		if (proxyRecord.resultCode == ResultCode.OK && proxyRecord.key == null) {
+		if (recordProxy.resultCode == ResultCode.OK && recordProxy.key == null) {
 			// This is the end of scan marker record.
 			listener.onSuccess();
 			return;
 		}
 
 		try {
-			listener.onRecord(proxyRecord.key, proxyRecord.record);
+			listener.onRecord(recordProxy.key, recordProxy.record);
 		}
 		catch (Throwable t) {
 			// Exception thrown from the server.
