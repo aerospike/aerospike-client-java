@@ -296,10 +296,40 @@ public final class PartitionTracker {
 		nodePartitions.partsUnavailable++;
 	}
 
+	/**
+	 * Update the last seen digest for a partition.
+	 * Internal use only.
+	 *
+	 * @param partitionId partition id
+	 * @param digest      the last seen digest.
+	 */
+	void setDigest(int partitionId, byte[] digest) {
+		for (PartitionStatus ps : partitions) {
+			if (ps.id == partitionId) {
+				ps.digest = digest;
+			}
+		}
+	}
+
 	public void setDigest(NodePartitions nodePartitions, Key key) {
 		int partitionId = Partition.getPartitionId(key.digest);
 		partitions[partitionId - partitionBegin].digest = key.digest;
 		nodePartitions.recordCount++;
+	}
+
+	/**
+	 * Update the last seen value for a partition.
+	 * Internal use only.
+	 *
+	 * @param partitionId partition id
+	 * @param bval        the last seen value.
+	 */
+	void setLast(int partitionId, long bval) {
+		for (PartitionStatus ps : partitions) {
+			if (ps.id == partitionId) {
+				ps.bval = bval;
+			}
+		}
 	}
 
 	public void setLast(NodePartitions nodePartitions, Key key, long bval) {
