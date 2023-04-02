@@ -92,6 +92,7 @@ import com.aerospike.client.proxy.grpc.GrpcClientPolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.QueryListener;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
@@ -1122,8 +1123,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = scanPolicyDefault;
 		}
+
+		PartitionTracker tracker = null;
+		if (partitionFilter != null) {
+			tracker = new PartitionTracker(policy, 1,
+				partitionFilter);
+		}
+
 		ScanCommandProxy command = new ScanCommandProxy(executor,
-			policy, namespace, setName, binNames, partitionFilter, listener);
+			policy, listener, namespace, setName, binNames, partitionFilter,
+			tracker);
 		command.execute();
 	}
 
@@ -1322,8 +1331,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = queryPolicyDefault;
 		}
-		QueryCommandProxy command = new QueryCommandProxy(executor, policy,
-			statement, null, listener);
+		QueryCommandProxy command = new QueryCommandProxy(executor, listener,
+			policy,
+			statement, null, null);
 		command.execute();
 	}
 
@@ -1357,8 +1367,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
-		QueryCommandProxy command = new QueryCommandProxy(executor, policy,
-			statement, partitionFilter, listener);
+		PartitionTracker tracker = new PartitionTracker(policy, statement, 1,
+			partitionFilter);
+		QueryCommandProxy command = new QueryCommandProxy(executor, listener,
+			policy,
+			statement, partitionFilter, tracker);
 		command.execute();
 	}
 
@@ -1569,7 +1582,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 			NettyEventLoops nettyLoops = (NettyEventLoops)policy.eventLoops;
 			NettyEventLoop[] array = nettyLoops.getArray();
-			eventLoops = new ArrayList<io.netty.channel.EventLoop>(array.length);
+			eventLoops = new ArrayList<>(array.length);
 
 			for (NettyEventLoop loop : array) {
 				eventLoops.add(loop.get());

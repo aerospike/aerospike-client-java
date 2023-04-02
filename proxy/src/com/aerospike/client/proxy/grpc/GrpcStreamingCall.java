@@ -57,16 +57,23 @@ public class GrpcStreamingCall {
 	 * Iteration number of this request.
 	 */
 	private final int iteration;
+
 	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
 	 */
 	private volatile boolean completed;
+
+	/**
+	 * Indicates if this call aborted due to an application exception..
+	 */
+	private volatile boolean aborted;
 
 	protected GrpcStreamingCall(GrpcStreamingCall other) {
 		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
 			other.iteration, other.expiresAtNanos,
 			other.responseObserver);
 		completed = other.completed;
+		aborted = other.aborted;
 	}
 
 	public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
@@ -155,5 +162,14 @@ public class GrpcStreamingCall {
 
 	public Policy getPolicy() {
 		return policy;
+	}
+
+	public void markAborted() {
+		this.aborted = true;
+		this.completed = true;
+	}
+
+	public boolean isAborted() {
+		return aborted;
 	}
 }

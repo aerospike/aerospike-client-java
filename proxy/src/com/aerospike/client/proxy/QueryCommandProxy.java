@@ -17,14 +17,18 @@
 
 package com.aerospike.client.proxy;
 
+import javax.annotation.Nullable;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.Statement;
 import com.aerospike.proxy.client.Kvs;
 import com.aerospike.proxy.client.QueryGrpc;
@@ -37,16 +41,32 @@ public class QueryCommandProxy extends CommandProxy {
 
 	private final RecordSequenceListener listener;
 	private final PartitionFilter partitionFilter;
+	private final PartitionTracker partitionTracker;
+	private final PartitionTracker.NodePartitions dummyNodePartitions;
 
 	public QueryCommandProxy(GrpcCallExecutor executor,
-							 QueryPolicy queryPolicy,
+							 RecordSequenceListener listener, QueryPolicy queryPolicy,
 							 Statement statement,
-							 PartitionFilter partitionFilter, RecordSequenceListener listener
+							 @Nullable
+							 PartitionFilter partitionFilter,
+							 @Nullable
+							 PartitionTracker partitionTracker
 	) {
 		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
 		this.statement = statement;
+
+		// gRPC query policy does not have the deprecated maxRecords field.
+		// Set the max records in the statement from query policy.
+		// noinspection deprecation
+		this.statement.setMaxRecords(statement.getMaxRecords() > 0 ?
+			statement.getMaxRecords() :
+			queryPolicy.maxRecords);
+
 		this.listener = listener;
 		this.partitionFilter = partitionFilter;
+		this.partitionTracker = partitionTracker;
+		this.dummyNodePartitions = new PartitionTracker.NodePartitions(null,
+			Node.PARTITIONS);
 	}
 
 	@Override
@@ -57,7 +77,7 @@ public class QueryCommandProxy extends CommandProxy {
 	@Override
 	protected void parseResult(Parser parser, boolean isLast) {
 		RecordProxy recordProxy = parseRecordResult(parser, false, true,
-			false);
+			true);
 
 		if (recordProxy.resultCode == ResultCode.OK && recordProxy.key == null) {
 			// This is the end of query marker record.
@@ -65,13 +85,11 @@ public class QueryCommandProxy extends CommandProxy {
 			return;
 		}
 
-		try {
-			listener.onRecord(recordProxy.key, recordProxy.record);
-		}
-		catch (Throwable t) {
-			// Exception thrown from the server.
-			// TODO: sent a request to the proxy server to abort the scan.
-			logOnSuccessError(t);
+		listener.onRecord(recordProxy.key, recordProxy.record);
+
+		if (partitionTracker != null) {
+			partitionTracker.setLast(dummyNodePartitions, recordProxy.key,
+				recordProxy.bVal.val);
 		}
 	}
 

@@ -93,6 +93,8 @@ public abstract class CommandProxy {
 					}
 					catch (Throwable t) {
 						onFailure(t, response.getInDoubt());
+						// Re-throw to abort at the proxy/
+						throw t;
 					}
 				}
 

@@ -21,12 +21,14 @@ import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.proxy.client.Kvs;
 import com.aerospike.proxy.client.ScanGrpc;
 
@@ -39,16 +41,19 @@ public class ScanCommandProxy extends CommandProxy {
 	private final String[] binNames;
 	private final PartitionFilter partitionFilter;
 	private final RecordSequenceListener listener;
+	private final PartitionTracker partitionTracker;
+	private final PartitionTracker.NodePartitions dummyNodePartitions;
 
 	public ScanCommandProxy(GrpcCallExecutor executor,
 							ScanPolicy scanPolicy,
-							String namespace,
+							RecordSequenceListener listener, String namespace,
 							@Nullable
 							String setName,
 							@Nullable
 							String[] binNames,
 							@Nullable PartitionFilter partitionFilter,
-							RecordSequenceListener listener
+							@Nullable
+							PartitionTracker partitionTracker
 	) {
 		super(ScanGrpc.getScanStreamingMethod(), executor, scanPolicy);
 		this.namespace = namespace;
@@ -56,6 +61,9 @@ public class ScanCommandProxy extends CommandProxy {
 		this.binNames = binNames;
 		this.partitionFilter = partitionFilter;
 		this.listener = listener;
+		this.partitionTracker = partitionTracker;
+		this.dummyNodePartitions = new PartitionTracker.NodePartitions(null,
+			Node.PARTITIONS);
 	}
 
 	@Override
@@ -74,13 +82,9 @@ public class ScanCommandProxy extends CommandProxy {
 			return;
 		}
 
-		try {
-			listener.onRecord(recordProxy.key, recordProxy.record);
-		}
-		catch (Throwable t) {
-			// Exception thrown from the server.
-			// TODO: sent a request to the proxy server to abort the scan.
-			logOnSuccessError(t);
+		listener.onRecord(recordProxy.key, recordProxy.record);
+		if (partitionTracker != null) {
+			partitionTracker.setDigest(dummyNodePartitions, recordProxy.key);
 		}
 	}
 

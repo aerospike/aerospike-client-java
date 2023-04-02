@@ -156,8 +156,22 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 
 		// Call might have expired and been cancelled.
-		if (call != null) {
-			call.onNext(aerospikeResponsePayload);
+		if (call != null && !call.isAborted()) {
+			try {
+				call.onNext(aerospikeResponsePayload);
+			}
+			catch (Throwable t) {
+				if (aerospikeResponsePayload.getHasNext()) {
+					call.markAborted();
+					// Let the proxy know that there has been a failure so that
+					// it can abort long-running jobs.
+					int requestId = requestsSent++;
+					Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
+					builder.setId(requestId);
+					builder.setAbortRequest(Kvs.AbortRequest.newBuilder().setAbortId(id));
+					requestObserver.onNext(builder.build());
+				}
+			}
 		}
 
 		// TODO can it ever be greater than?
@@ -338,6 +352,13 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 		});
 		executingCalls.clear();
+		// For hygiene close the stream as well.
+		try {
+			requestObserver.onCompleted();
+		}
+		catch (Throwable t) {
+			// Ignore.
+		}
 	}
 
 	private static class StatsGrpcStreamingCall extends GrpcStreamingCall {

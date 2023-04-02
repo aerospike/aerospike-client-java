@@ -8,6 +8,7 @@ import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.Filter;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
 import com.aerospike.proxy.client.Kvs;
@@ -228,6 +229,16 @@ public class GrpcConversions {
         return statementBuilder.build();
     }
 
+    public static Kvs.PartitionStatus toGrpc(PartitionStatus ps) {
+        Kvs.PartitionStatus.Builder builder = Kvs.PartitionStatus.newBuilder();
+        builder.setId(ps.id);
+        builder.setBVal(ps.bval);
+        if (ps.digest != null) {
+            builder.setDigest(ByteString.copyFrom(ps.digest));
+        }
+        return builder.build();
+    }
+
     public static Kvs.PartitionFilter toGrpc(PartitionFilter partitionFilter) {
         Kvs.PartitionFilter.Builder builder = Kvs.PartitionFilter.newBuilder();
         builder.setBegin(partitionFilter.getBegin());
@@ -236,6 +247,12 @@ public class GrpcConversions {
         byte[] digest = partitionFilter.getDigest();
         if (digest != null && digest.length > 0) {
             builder.setDigest(ByteString.copyFrom(digest));
+        }
+
+        if (partitionFilter.getPartitions() != null) {
+            for (PartitionStatus ps : partitionFilter.getPartitions()) {
+                builder.addPartitionStatuses(toGrpc(ps));
+            }
         }
         return builder.build();
     }
