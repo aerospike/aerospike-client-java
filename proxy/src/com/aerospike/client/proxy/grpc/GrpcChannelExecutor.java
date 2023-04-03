@@ -26,11 +26,9 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
@@ -137,9 +135,13 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private final Map<Integer, GrpcStream> streams = new HashMap<>();
 	/**
-	 * Indicates if this executor is shutdown.
+	 * Shutdown initiation time.
 	 */
-	private final AtomicBoolean isClosed = new AtomicBoolean(false);
+	private long shutdownStartTimeNanos;
+	/**
+	 * Current state of the channel.
+	 */
+	private final AtomicReference<ChannelState> channelState;
 	/**
 	 * Unique id of the executor.
 	 */
@@ -147,14 +149,6 @@ public class GrpcChannelExecutor implements Runnable {
 	// Statistics.
 	private final AtomicLong ongoingRequests = new AtomicLong();
 	private final int drainLimit;
-
-	/**
-	 * A lock and its {@link Condition} to wait on for all ongoing streams
-	 * to finish before we shut down the channel.
-	 */
-	private final ReentrantLock shutdownLock = new ReentrantLock();
-	private final Condition shutdownCondition = shutdownLock.newCondition();
-
 
 	/**
 	 * The future to cancel the scheduled iteration of this executor.
@@ -196,6 +190,7 @@ public class GrpcChannelExecutor implements Runnable {
 			createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
 				, channelTypeAndEventLoop.getChannelType(), hosts);
 		this.channel = channelAndEventLoop.managedChannel;
+		channelState = new AtomicReference<>(ChannelState.READY);
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
 		ScheduledFuture<?> future =
@@ -350,7 +345,7 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 	public void execute(GrpcStreamingCall call) {
-		if (isClosed.get()) {
+		if (channelState.get() != ChannelState.READY) {
 			call.failIfNotComplete(ResultCode.CLIENT_ERROR);
 			return;
 		}
@@ -373,6 +368,58 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Process a single iteration.
 	 */
 	private void iterate() {
+		switch (channelState.get()) {
+			case READY:
+				executeCalls();
+				break;
+
+			case SHUTTING_DOWN:
+				boolean allCallsCompleted = pendingCalls.isEmpty() &&
+					streams.values().stream()
+						.allMatch(grpcStream -> grpcStream.getOngoingRequests() == 0);
+
+				int closeTimeout = grpcClientPolicy.closeTimeout;
+				if (closeTimeout < 0) {
+					// Shutdown immediately.
+					shutdownNow();
+				}
+				else if (closeTimeout == 0) {
+					// Wait for all pending calls to complete.
+					if (allCallsCompleted) {
+						shutdownNow();
+					}
+					else {
+						Log.debug(this + " shutdown: awaiting completion of " +
+							"all calls for closeTimeout=0.");
+						executeCalls();
+					}
+				}
+				else {
+					// Wait for all pending calls to complete or timeout.
+					long elapsedTimeMillis =
+						TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - shutdownStartTimeNanos);
+					if (allCallsCompleted || elapsedTimeMillis >= closeTimeout) {
+						shutdownNow();
+					}
+					else {
+						Log.debug(this + " shutdown: awaiting closeTimeout="
+							+ closeTimeout + ", elapsed time=" + elapsedTimeMillis);
+						executeCalls();
+					}
+				}
+				break;
+
+			case SHUTDOWN:
+				Log.warn("Iterate being called after channel shutdown");
+				break;
+
+			default:
+				Log.error("Unknown channel state: " + channelState.get());
+				break;
+		}
+	}
+
+	private void executeCalls() {
 		if (authTokenManager != null && !authTokenManager.isTokenValid()) {
 			expireOrDrainOnInvalidToken();
 			return;
@@ -386,37 +433,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 		// Process closed streams.
 		closedStreams.drain(this::processClosedStream, drainLimit);
-
-		if (isClosed.get()) {
-			cleanupOnChannelClosed();
-
-			shutdownLock.lock();
-			try {
-				shutdownCondition.signal();
-			} finally {
-				shutdownLock.unlock();
-			}
-		}
-	}
-
-	private void cleanupOnChannelClosed() {
-		while (!pendingCalls.isEmpty()) {
-			try {
-				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
-			}
-			catch (Exception e) {
-				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			}
-		}
-		streams.values().forEach(stream -> {
-			try {
-				stream.close();
-			}
-			catch (Exception e) {
-				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
-			}
-		});
-		streams.clear();
 	}
 
 	/**
@@ -561,6 +577,63 @@ public class GrpcChannelExecutor implements Runnable {
 		streamsOpen++;
 	}
 
+	/**
+	 * Start the shutdown of this channel. Any new requests will be rejected.
+	 * The shutdown respects the clientTimeout setting. Use
+	 * {@link #isTerminated()} to see if shutdown is complete.
+	 */
+	public void shutdown() {
+		if (!channelState.compareAndSet(ChannelState.READY, ChannelState.SHUTTING_DOWN)) {
+			return;
+		}
+
+		shutdownStartTimeNanos = System.nanoTime();
+
+		// If inside event loop thread, cannot wait for calls in this channel
+		// to complete without deadlocking, abort and shutdown now.
+		if (eventLoop.inEventLoop()) {
+			shutdownNow();
+		}
+	}
+
+	/**
+	 * <b>WARN</b> This method should always be called from the [eventLoop]
+	 * thread.
+	 */
+	private void shutdownNow() {
+		if (channelState.getAndSet(ChannelState.SHUTDOWN) == ChannelState.SHUTDOWN) {
+			return;
+		}
+
+		closeAllPendingCalls();
+		channel.shutdownNow();
+		iterateFuture.cancel(false);
+	}
+
+	private void closeAllPendingCalls() {
+		while (!pendingCalls.isEmpty()) {
+			try {
+				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+			}
+			catch (Exception e) {
+				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
+			}
+		}
+		streams.values().forEach(stream -> {
+			try {
+				stream.close();
+			}
+			catch (Exception e) {
+				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
+			}
+		});
+		streams.clear();
+	}
+
+	boolean isTerminated() {
+		return channelState.get() == ChannelState.SHUTDOWN && channel.isTerminated();
+	}
+
 	private int nextStreamId() {
 		return streamIdIndex.getAndIncrement();
 	}
@@ -573,65 +646,6 @@ public class GrpcChannelExecutor implements Runnable {
 	@Override
 	public String toString() {
 		return "GrpcChannelExecutor{id=" + id + '}';
-	}
-
-	/**
-	 * Shutdown all resources for resource cleanup. **NOTE** Be careful
-	 * before changing the order of different shutdown/cleanup calls in
-	 * this method implementation.
-	 */
-	public void shutdown() {
-		if (isClosed.getAndSet(true)) {
-			return;
-		}
-
-		if(eventLoop.inEventLoop()) {
-			cleanupOnChannelClosed();
-		} else {
-			// All the calls will be closed cleanly on the next call of
-			// [iterate] method in the event loop.
-			shutdownLock.lock();
-			try {
-				shutdownCondition.await();
-			} catch (InterruptedException e) {
-				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			} finally {
-				shutdownLock.unlock();
-			}
-		}
-
-		// TODO FIX shutdown() hang!
-		// Just call shutdownNow() instead?
-		//channel.shutdown();
-		channel.shutdownNow();
-
-		// Cancel iterations.
-		iterateFuture.cancel(false);
-	}
-
-	/**
-	 * Should be called after a call to shut down.
-	 */
-	public boolean awaitTermination(long terminationWaitMillis) {
-		final long startTime = System.nanoTime();
-		boolean interrupted = false;
-		boolean terminated = false;
-		do {
-			try {
-				terminated = channel.awaitTermination(terminationWaitMillis,
-					TimeUnit.MILLISECONDS);
-				break;
-			}
-			catch (InterruptedException e) {
-				interrupted = true;
-			}
-		} while (TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startTime) < terminationWaitMillis);
-
-
-		if (interrupted) {
-			Thread.currentThread().interrupt();
-		}
-		return terminated;
 	}
 
 	public long getId() {
@@ -698,6 +712,10 @@ public class GrpcChannelExecutor implements Runnable {
 			this.managedChannel = managedChannel;
 			this.eventLoop = eventLoop;
 		}
+	}
+
+	private enum ChannelState {
+		READY, SHUTTING_DOWN, SHUTDOWN
 	}
 
 	public static class ChannelTypeAndEventLoop {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,13 +27,15 @@ public abstract class AsyncMultiExecutor {
 	private String namespace;
 	private AerospikeException exception;
 	private long clusterKey;
+	private final int infoTimeout;
 	private int maxConcurrent;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
 	boolean done;
 
-	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster) {
+	public AsyncMultiExecutor(EventLoop eventLoop, Cluster cluster, int infoTimeout) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
+		this.infoTimeout = infoTimeout;
 	}
 
 	public void execute(AsyncMultiCommand[] commands, int maxConcurrent) {
@@ -67,7 +69,7 @@ public abstract class AsyncMultiExecutor {
 			public void onFailure(AerospikeException ae) {
 				initFailure(ae);
 			}
-		}, commands[0].node, namespace);
+		}, commands[0].node, namespace, infoTimeout);
 	}
 
 	private final void executeValidateCommand(final AsyncMultiCommand command) {
@@ -81,7 +83,7 @@ public abstract class AsyncMultiExecutor {
 			public void onFailure(AerospikeException ae) {
 				childFailure(ae);
 			}
-		}, command.node, namespace, clusterKey);
+		}, command.node, namespace, clusterKey, infoTimeout);
 	}
 
 	protected final void childSuccess(Node node) {
@@ -99,7 +101,7 @@ public abstract class AsyncMultiExecutor {
 				public void onFailure(AerospikeException ae) {
 					childFailure(ae);
 				}
-			}, node, namespace, clusterKey);
+			}, node, namespace, clusterKey, infoTimeout);
 		}
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,14 +26,12 @@ public interface IndexListener {
 	/**
 	 * This method is called when an asynchronous command completes successfully.
 	 *
-	 * @param indexTask			task monitor that can be used to query for index command completion.
+	 * @param indexTask		task monitor that can be used to query for index command completion.
 	 */
 	void onSuccess(AsyncIndexTask indexTask);
 
 	/**
 	 * This method is called when an asynchronous command fails.
-	 *
-	 * @param exception			error that occurred
 	 */
-	public void onFailure(AerospikeException exception);
+	public void onFailure(AerospikeException ae);
 }

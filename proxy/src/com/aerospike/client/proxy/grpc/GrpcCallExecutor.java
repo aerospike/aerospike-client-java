@@ -29,6 +29,7 @@ import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
+import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
@@ -145,12 +146,14 @@ public class GrpcCallExecutor implements Closeable {
 
     @Override
     public void close() {
-        if (isClosed.getAndSet(true)) {
-            return;
-        }
+		if (isClosed.getAndSet(true)) {
+			return;
+		}
 
 		closeExecutors(channelExecutors);
 		closeExecutors(controlChannelExecutors);
+
+		// Event loops should be closed after shutdown of channels.
 		closeEventLoops();
 	}
 
@@ -174,27 +177,24 @@ public class GrpcCallExecutor implements Closeable {
 	}
 
 	private void closeExecutors(List<GrpcChannelExecutor> executors) {
-		// FIXME: each executor waits for terminationWaitMillis which will be
-		//  add up to greater than the terminationWaitMillis.
 		for (GrpcChannelExecutor executor : executors) {
 			executor.shutdown();
 		}
 
-		boolean interrupted = false;
-		for (GrpcChannelExecutor executor : executors) {
-			while (!executor.awaitTermination(grpcClientPolicy.terminationWaitMillis)) {
-				try {
-					//noinspection BusyWait
-					Thread.sleep(10);
-				}
-				catch (InterruptedException e) {
-					interrupted = true;
-				}
-			}
-		}
+		// Wait for all executors to terminate.
+		while (true) {
+			boolean allTerminated = executors.stream()
+				.allMatch(executor -> executor.isTerminated());
 
-		if (interrupted) {
-			Thread.currentThread().interrupt();
+			if (allTerminated) {
+				return;
+			}
+
+			Log.debug("Waiting for executors to shutdown with closeTimeout=" + grpcClientPolicy.closeTimeout);
+			try {
+				Thread.sleep(1000);
+			}
+			catch (Throwable t) {/* Ignore*/}
 		}
 	}
 

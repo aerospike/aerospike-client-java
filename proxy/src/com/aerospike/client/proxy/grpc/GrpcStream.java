@@ -100,7 +100,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	private long bytesReceived;
 	private int requestsSent;
 	private int responsesReceived;
-	private int requestsInFlight;
 
 	public GrpcStream(GrpcChannelExecutor channelExecutor,
 					  MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
@@ -150,7 +149,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			call = executingCalls.remove(id);
 
 			// Update stats.
-			requestsInFlight--;
 			responsesReceived++;
 			channelExecutor.onRequestCompleted();
 		}
@@ -189,7 +187,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 		for (GrpcStreamingCall call : executingCalls.values()) {
 			call.onError(throwable);
-			requestsInFlight--;
 		}
 
 		executingCalls.clear();
@@ -226,7 +223,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	}
 
 	int getOngoingRequests() {
-		return requestsInFlight + pendingCalls.size();
+		return executingCalls.size() + pendingCalls.size();
 	}
 
 	public int getId() {
@@ -266,7 +263,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		pendingCalls.drain(GrpcStream.this::execute, idleCounter -> idleCounter,
 			() -> !pendingCalls.isEmpty() &&
 				requestsSent < grpcClientPolicy.totalRequestsPerStream &&
-				requestsInFlight < grpcClientPolicy.maxConcurrentRequestsPerStream);
+				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream);
 	}
 
 
@@ -281,7 +278,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			Kvs.AerospikeRequestPayload.Builder requestBuilder = call.getRequestBuilder();
 
 			// Update stats.
-			requestsInFlight++;
 			bytesSent += requestBuilder.getPayload().size();
 
 			int requestId = requestsSent++;

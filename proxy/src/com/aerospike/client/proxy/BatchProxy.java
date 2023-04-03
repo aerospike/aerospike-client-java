@@ -803,19 +803,31 @@ public class BatchProxy {
 
 		@Override
 		final void onResponse(Kvs.AerospikeResponsePayload response) {
+			// Check final response status for client errors (negative error codes).
+			int resultCode = response.getStatus();
+			boolean hasNext = response.getHasNext();
+
+			if (resultCode != 0 && !hasNext) {
+				notifyFailure(new AerospikeException(resultCode));
+				return;
+			}
+
+			// Server errors are checked in response payload in Parser.
 			byte[] bytes = response.getPayload().toByteArray();
-			Parser parser = new Parser(bytes, 5);
+			Parser parser = new Parser(bytes);
+			parser.parseProto();
+			int rc = parser.parseHeader();
 
-			int resultCode = parser.parseHeader();
-
-			if (response.getHasNext()) {
-				setInDoubt(response.getInDoubt());
+			if (hasNext) {
+				if (resultCode == 0) {
+					resultCode = rc;
+				}
 				parser.skipKey();
 				parse(parser, resultCode);
 				return;
 			}
 
-			if (resultCode == ResultCode.OK) {
+			if (rc == ResultCode.OK) {
 				try {
 					onSuccess();
 				}
@@ -824,7 +836,7 @@ public class BatchProxy {
 				}
 			}
 			else {
-				notifyFailure(new AerospikeException(resultCode));
+				notifyFailure(new AerospikeException(rc));
 			}
 		}
 

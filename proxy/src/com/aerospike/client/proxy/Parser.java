@@ -50,11 +50,6 @@ public final class Parser {
         this.buffer = buffer;
     }
 
-    public Parser(byte[] buffer, int offset) {
-        this.buffer = buffer;
-        this.offset = offset;
-    }
-
     public void parseProto() {
 		long sz = Buffer.bytesToLong(buffer, offset);
 		receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);

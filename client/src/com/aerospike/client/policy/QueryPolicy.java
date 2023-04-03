@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -60,6 +60,14 @@ public class QueryPolicy extends Policy {
 	public int recordQueueSize = 5000;
 
 	/**
+	 * Timeout in milliseconds for "cluster-stable" info command that is run when
+	 * {@link #failOnClusterChange} is true and server version is less than 6.0.
+	 * <p>
+	 * Default: 1000
+	 */
+	public int infoTimeout = 1000;
+
+	/**
 	 * Should bin data be retrieved. If false, only record digests (and user keys
 	 * if stored on the server) are retrieved.
 	 * <p>
@@ -93,6 +101,7 @@ public class QueryPolicy extends Policy {
 		this.maxRecords = other.maxRecords;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.recordQueueSize = other.recordQueueSize;
+		this.infoTimeout = other.infoTimeout;
 		this.includeBinData = other.includeBinData;
 		this.failOnClusterChange = other.failOnClusterChange;
 		this.shortQuery = other.shortQuery;
