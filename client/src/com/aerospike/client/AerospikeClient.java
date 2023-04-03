@@ -2760,9 +2760,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//--------------------------------------------------------
 
 	/**
-	 * Execute query on all server nodes and return record iterator.  The query executor puts
-	 * records on a queue in separate threads.  The calling thread concurrently pops records off
+	 * Execute query on all server nodes and return record iterator. The query executor puts
+	 * records on a queue in separate threads. The calling thread concurrently pops records off
 	 * the queue through the record iterator.
+	 * <p>
+	 * This method is not recommended for paginated queries when the user does not iterate through
+	 * all records in the RecordSet. In this case, there is a lag between when the client marks the
+	 * last record retrieved from the server and when the record is retrieved from the RecordSet.
+	 * For this case, use {@link #query(QueryPolicy, Statement, QueryListener)} which uses a listener
+	 * callback (without a buffer) instead of a RecordSet.
 	 *
 	 * @param policy				query configuration parameters, pass in null for defaults
 	 * @param statement				query definition

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,6 +39,7 @@ import com.aerospike.test.sync.basic.TestGeneration;
 import com.aerospike.test.sync.basic.TestHLLExp;
 import com.aerospike.test.sync.basic.TestListExp;
 import com.aerospike.test.sync.basic.TestListMap;
+import com.aerospike.test.sync.basic.TestMapExp;
 import com.aerospike.test.sync.basic.TestOperate;
 import com.aerospike.test.sync.basic.TestOperateBit;
 import com.aerospike.test.sync.basic.TestOperateHll;
@@ -54,6 +55,7 @@ import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
 import com.aerospike.test.sync.query.TestQueryCollection;
+import com.aerospike.test.sync.query.TestQueryContext;
 import com.aerospike.test.sync.query.TestQueryExecute;
 import com.aerospike.test.sync.query.TestQueryFilter;
 import com.aerospike.test.sync.query.TestQueryFilterExp;
@@ -73,13 +75,14 @@ import com.aerospike.test.util.Args;
 	TestBatch.class,
 	TestBitExp.class,
 	TestDeleteBin.class,
-	TestExpOperation.class,
 	TestExpire.class,
+	TestExpOperation.class,
 	TestFilterExp.class,
 	TestGeneration.class,
 	TestHLLExp.class,
 	TestListExp.class,
 	TestListMap.class,
+	TestMapExp.class,
 	TestOperate.class,
 	TestOperateBit.class,
 	TestOperateHll.class,
@@ -95,6 +98,7 @@ import com.aerospike.test.util.Args;
 	TestIndex.class,
 	TestQueryAverage.class,
 	TestQueryCollection.class,
+	TestQueryContext.class,
 	TestQueryExecute.class,
 	TestQueryFilter.class,
 	TestQueryFilterExp.class,
