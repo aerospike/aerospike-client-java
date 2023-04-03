@@ -105,6 +105,7 @@ public class GrpcConversions {
         // Query policy specific fields
         queryPolicyBuilder.setMaxConcurrentNodes(queryPolicy.maxConcurrentNodes);
         queryPolicyBuilder.setRecordQueueSize(queryPolicy.recordQueueSize);
+        queryPolicyBuilder.setInfoTimeout(queryPolicy.infoTimeout);
         queryPolicyBuilder.setIncludeBinData(queryPolicy.includeBinData);
         queryPolicyBuilder.setFailOnClusterChange(queryPolicy.failOnClusterChange);
         queryPolicyBuilder.setShortQuery(queryPolicy.shortQuery);

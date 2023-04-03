@@ -24,7 +24,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Statement;
 
 /**
- * Task used to poll for long running server execute job completion.
+ * Task used to poll for long-running server execute job completion.
  */
 public class ExecuteTask extends Task {
 	private final long taskId;
