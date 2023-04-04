@@ -25,7 +25,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.proxy.client.KVSGrpc;
 
-public final class TouchCommandProxy extends CommandProxy {
+public final class TouchCommandProxy extends SingleCommandProxy {
 	private final WriteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;

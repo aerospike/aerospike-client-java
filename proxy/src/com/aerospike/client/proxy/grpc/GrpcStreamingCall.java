@@ -19,7 +19,6 @@ package com.aerospike.client.proxy.grpc;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
 
 import io.grpc.MethodDescriptor;
 import io.grpc.stub.StreamObserver;
@@ -35,9 +34,9 @@ public class GrpcStreamingCall {
             Kvs.AerospikeResponsePayload> methodDescriptor;
 
 	/**
-	 * The request payload.
+	 * The request builder populated with command call specific parameters.
 	 */
-	private final ByteString requestPayload;
+	private final Kvs.AerospikeRequestPayload.Builder requestBuilder;
 
 	/**
 	 * The stream response observer for the call.
@@ -58,38 +57,46 @@ public class GrpcStreamingCall {
 	 * Iteration number of this request.
 	 */
 	private final int iteration;
+
 	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
 	 */
 	private volatile boolean completed;
 
-    protected GrpcStreamingCall(GrpcStreamingCall other) {
-        this(other.methodDescriptor, other.requestPayload, other.getPolicy(),
-                other.iteration, other.expiresAtNanos,
-                other.responseObserver);
+	/**
+	 * Indicates if this call aborted due to an application exception..
+	 */
+	private volatile boolean aborted;
+
+	protected GrpcStreamingCall(GrpcStreamingCall other) {
+		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
+			other.iteration, other.expiresAtNanos,
+			other.responseObserver);
 		completed = other.completed;
-    }
-
-    public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
-            Kvs.AerospikeResponsePayload> methodDescriptor,
-                             ByteString requestPayload, Policy policy,
-                             int iteration,
-                             long expiresAtNanos,
-                             StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
-        this.responseObserver = responseObserver;
-        this.methodDescriptor = methodDescriptor;
-        this.requestPayload = requestPayload;
-        this.iteration = iteration;
-        this.policy = policy;
-
-        if(expiresAtNanos == 0) {
-            throw new IllegalArgumentException("call has to have an expiry");
-        }
-
-        this.expiresAtNanos = expiresAtNanos;
+		aborted = other.aborted;
 	}
 
-    public void onNext(Kvs.AerospikeResponsePayload payload) {
+	public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
+		Kvs.AerospikeResponsePayload> methodDescriptor,
+							 Kvs.AerospikeRequestPayload.Builder requestBuilder,
+							 Policy policy,
+							 int iteration,
+							 long expiresAtNanos,
+							 StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
+		this.responseObserver = responseObserver;
+		this.methodDescriptor = methodDescriptor;
+		this.requestBuilder = requestBuilder;
+		this.iteration = iteration;
+		this.policy = policy;
+
+		if (expiresAtNanos == 0) {
+			throw new IllegalArgumentException("call has to have an expiry");
+		}
+
+		this.expiresAtNanos = expiresAtNanos;
+	}
+
+	public void onNext(Kvs.AerospikeResponsePayload payload) {
 		responseObserver.onNext(payload);
 		if (!payload.getHasNext()) {
 			completed = true;
@@ -126,27 +133,27 @@ public class GrpcStreamingCall {
 		return methodDescriptor;
 	}
 
-    /**
-     * @return true if this call has expired.
-     */
-    public boolean hasExpired() {
-        return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
-    }
+	/**
+	 * @return true if this call has expired.
+	 */
+	public boolean hasExpired() {
+		return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
+	}
 
-    public boolean hasExpiry() {
-        return expiresAtNanos != 0;
-    }
+	public boolean hasExpiry() {
+		return expiresAtNanos != 0;
+	}
 
-    public long nanosTillExpiry() {
-        if (!hasExpiry()) {
-            throw new IllegalStateException("call does not expire");
-        }
-        long nanosTillExpiry = expiresAtNanos - System.nanoTime();
-        return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
-    }
+	public long nanosTillExpiry() {
+		if (!hasExpiry()) {
+			throw new IllegalStateException("call does not expire");
+		}
+		long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+		return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
+	}
 
-	public ByteString getRequestPayload() {
-		return requestPayload;
+	public Kvs.AerospikeRequestPayload.Builder getRequestBuilder() {
+		return requestBuilder;
 	}
 
 	public int getIteration() {
@@ -155,5 +162,14 @@ public class GrpcStreamingCall {
 
 	public Policy getPolicy() {
 		return policy;
+	}
+
+	public void markAborted() {
+		this.aborted = true;
+		this.completed = true;
+	}
+
+	public boolean isAborted() {
+		return aborted;
 	}
 }

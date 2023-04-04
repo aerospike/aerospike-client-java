@@ -839,10 +839,6 @@ public class BatchProxy {
 			}
 		}
 
-		@Override
-		final void parseResult(Parser parser) {
-		}
-
 		final Record parseRecord(Parser parser) {
 			return parser.parseRecord(isOperation);
 		}

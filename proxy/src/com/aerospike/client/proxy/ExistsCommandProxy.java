@@ -25,7 +25,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.proxy.client.KVSGrpc;
 
-public final class ExistsCommandProxy extends CommandProxy {
+public final class ExistsCommandProxy extends SingleCommandProxy {
 	private final ExistsListener listener;
 	private final Key key;
 

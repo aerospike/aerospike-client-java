@@ -26,7 +26,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.proxy.client.KVSGrpc;
 
-public final class ReadHeaderCommandProxy extends CommandProxy {
+public final class ReadHeaderCommandProxy extends SingleCommandProxy {
 	private final RecordListener listener;
 	private final Key key;
 

@@ -25,7 +25,7 @@ import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
 import com.aerospike.proxy.client.KVSGrpc;
 
-public final class DeleteCommandProxy extends CommandProxy {
+public final class DeleteCommandProxy extends SingleCommandProxy {
 	private final DeleteListener listener;
 	private final WritePolicy writePolicy;
 	private final Key key;

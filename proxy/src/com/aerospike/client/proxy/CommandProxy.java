@@ -70,13 +70,9 @@ public abstract class CommandProxy {
 	}
 
 	private void executeCommand() {
-		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
-		writeCommand(command);
-
-		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
-
+		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
 		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			payload, policy, iteration, deadline,
+			builder, policy, iteration, deadline,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -86,6 +82,8 @@ public abstract class CommandProxy {
 					}
 					catch (Throwable t) {
 						onFailure(t);
+						// Re-throw to abort at the proxy/
+						throw t;
 					}
 				}
 
@@ -99,22 +97,6 @@ public abstract class CommandProxy {
 				public void onCompleted() {
 				}
 			}));
-	}
-
-	void onResponse(Kvs.AerospikeResponsePayload response) {
-		// Check response status for client errors (negative error codes).
-		// Server errors are checked in response payload in Parser.
-		int status = response.getStatus();
-
-		if (status != 0) {
-			notifyFailure(new AerospikeException(status));
-			return;
-		}
-
-		byte[] bytes = response.getPayload().toByteArray();
-		Parser parser = new Parser(bytes);
-		parser.parseProto();
-		parseResult(parser);
 	}
 
 	private boolean retry() {
@@ -236,7 +218,15 @@ public abstract class CommandProxy {
 		Log.error("onSuccess() error: " + Util.getStackTrace(t));
 	}
 
+	Kvs.AerospikeRequestPayload.Builder getRequestBuilder() {
+		Command command = new Command(policy.socketTimeout, policy.totalTimeout, policy.maxRetries);
+		writeCommand(command);
+
+		ByteString payload = ByteString.copyFrom(command.dataBuffer, 0, command.dataOffset);
+		return Kvs.AerospikeRequestPayload.newBuilder().setPayload(payload);
+	}
+
 	abstract void writeCommand(Command command);
-	abstract void parseResult(Parser parser);
+	abstract void onResponse(Kvs.AerospikeResponsePayload response);
 	abstract void onFailure(AerospikeException ae);
 }

@@ -44,7 +44,6 @@ import com.aerospike.client.proxy.AerospikeClientProxy;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
 
 import io.grpc.CallOptions;
 import io.grpc.ManagedChannel;
@@ -478,8 +477,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Update stats.
-		ByteString payload = call.getRequestPayload();
-		bytesSent += payload.size();
+		bytesSent += call.getRequestBuilder().getPayload().size();
 		requestsSent++;
 
 		// The stream will be close by the selector.

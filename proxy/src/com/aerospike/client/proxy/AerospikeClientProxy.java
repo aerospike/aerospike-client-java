@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
@@ -50,6 +52,7 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.cluster.ThreadDaemonFactory;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
@@ -89,6 +92,7 @@ import com.aerospike.client.proxy.grpc.GrpcClientPolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.query.PartitionFilter;
+import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.QueryListener;
 import com.aerospike.client.query.RecordSet;
 import com.aerospike.client.query.ResultSet;
@@ -120,6 +124,39 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * Lower limit of proxy server connection.
 	 */
 	private static final int MIN_CONNECTIONS = 1;
+
+	/**
+	 * Is threadPool shared between other client instances or classes.  If threadPool is
+	 * not shared (default), threadPool will be shutdown when the client instance is closed.
+	 * <p>
+	 * If threadPool is shared, threadPool will not be shutdown when the client instance is
+	 * closed. This shared threadPool should be shutdown manually before the program
+	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is
+	 * constructed to use daemon threads.
+	 * <p>
+	 * Default: false
+	 */
+	private final boolean sharedThreadPool;
+
+	/**
+	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
+	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
+	 * performance because threads do not have to be created/destroyed for each command.
+	 * The default, null, indicates that the following daemon thread pool will be used:
+	 * <pre>
+	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
+	 *     public final Thread newThread(Runnable runnable) {
+	 * 			Thread thread = new Thread(runnable);
+	 * 			thread.setDaemon(true);
+	 * 			return thread;
+	 *        }
+	 *    });
+	 * </pre>
+	 * Daemon threads automatically terminate when the program terminates.
+	 * <p>
+	 * Default: null (use Executors.newCachedThreadPool)
+	 */
+	private final ExecutorService threadPool;
 
 	/**
 	 * Upper limit of proxy server connection.
@@ -201,6 +238,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy.asyncMaxConnsPerNode = 8;
 			policy.timeout = 5000;
 		}
+
+		if (policy.threadPool == null) {
+			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
+		}
+		else {
+			threadPool = policy.threadPool;
+		}
+		sharedThreadPool = policy.sharedThreadPool;
 
 		this.readPolicyDefault = policy.readPolicyDefault;
 		this.writePolicyDefault = policy.writePolicyDefault;
@@ -315,6 +360,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 		catch (Throwable e) {
 			Log.warn("Failed to close authTokenManager: " + Util.getErrorMessage(e));
+		}
+
+		if (! sharedThreadPool) {
+			// Shutdown synchronous thread pool.
+			threadPool.shutdown();
 		}
 	}
 
@@ -1010,6 +1060,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanAll");
 	}
 
 	@Override
@@ -1021,6 +1072,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String setName,
 		String... binNames
 	) {
+		scanPartitions(eventLoop, listener, policy, null, namespace, setName, binNames);
 	}
 
 	@Override
@@ -1032,6 +1084,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanNode");
 	}
 
 	@Override
@@ -1043,6 +1096,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanNode");
 	}
 
 	@Override
@@ -1054,6 +1108,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
+		throw new AerospikeException(NotSupported + "scanPartitions");
 	}
 
 	@Override
@@ -1066,6 +1121,19 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String setName,
 		String... binNames
 	) {
+		if (policy == null) {
+			policy = scanPolicyDefault;
+		}
+
+		PartitionTracker tracker = null;
+
+		if (partitionFilter != null) {
+			tracker = new PartitionTracker(policy, 1, partitionFilter);
+		}
+
+		ScanCommandProxy command = new ScanCommandProxy(executor, policy, listener, namespace,
+			setName, binNames, partitionFilter, tracker);
+		command.execute();
 	}
 
 	//---------------------------------------------------------------
@@ -1213,6 +1281,22 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	// Query/Execute
 	//----------------------------------------------------------
 
+	private ExecuteTask executeBackgroundTask(WritePolicy policy, Statement statement) {
+		if (policy == null) {
+			policy = writePolicyDefault;
+		}
+
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		long taskId = statement.prepareTaskId();
+		BackgroundExecuteCommandProxy command = new BackgroundExecuteCommandProxy(executor, policy,
+			statement, future);
+		command.execute();
+
+		// Check whether the background task started.
+		getFuture(future);
+		return new ExecuteTaskProxy(executor, taskId, statement.isScan());
+	}
+
 	@Override
 	public ExecuteTask execute(
 		WritePolicy policy,
@@ -1221,12 +1305,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		return null;
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		return executeBackgroundTask(policy, statement);
 	}
 
 	@Override
 	public ExecuteTask execute(WritePolicy policy, Statement statement, Operation... operations) {
-		return null;
+		if (operations.length > 0) {
+			statement.setOperations(operations);
+		}
+		return executeBackgroundTask(policy, statement);
 	}
 
 	//--------------------------------------------------------
@@ -1235,29 +1323,37 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RecordSet query(QueryPolicy policy, Statement statement) {
-		return null;
+		throw new AerospikeException(NotSupported + "query");
 	}
 
 	@Override
 	public void query(EventLoop eventLoop, RecordSequenceListener listener, QueryPolicy policy, Statement statement) {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		QueryCommandProxy command = new QueryCommandProxy(executor, listener, policy, statement, null, null);
+		command.execute();
 	}
 
 	@Override
 	public void query(QueryPolicy policy, Statement statement, QueryListener listener) {
+		throw new AerospikeException(NotSupported + "query");
 	}
 
 	@Override
 	public void query(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter, QueryListener listener) {
+		throw new AerospikeException(NotSupported + "query");
 	}
 
 	@Override
 	public RecordSet queryNode(QueryPolicy policy, Statement statement, Node node) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryNode");
 	}
 
 	@Override
 	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryPartitions");
 	}
 
 	@Override
@@ -1268,6 +1364,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		Statement statement,
 		PartitionFilter partitionFilter
 	) {
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		PartitionTracker tracker = new PartitionTracker(policy, statement, 1, partitionFilter);
+		QueryCommandProxy command = new QueryCommandProxy(executor, listener, policy,
+			statement, partitionFilter, tracker);
+		command.execute();
 	}
 
 	@Override
@@ -1278,17 +1382,25 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String functionName,
 		Value... functionArgs
 	) {
-		return null;
+		statement.setAggregateFunction(packageName, functionName, functionArgs);
+		return queryAggregate(policy, statement);
 	}
 
 	@Override
 	public ResultSet queryAggregate(QueryPolicy policy, Statement statement) {
-		return null;
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		QueryAggregateCommandProxy commandProxy = new QueryAggregateCommandProxy(
+			executor, threadPool, policy, statement);
+		commandProxy.execute();
+		return commandProxy.getResultSet();
 	}
 
 	@Override
 	public ResultSet queryAggregateNode(QueryPolicy policy, Statement statement, Node node) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryAggregateNode");
 	}
 
 	//--------------------------------------------------------
@@ -1304,7 +1416,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String binName,
 		IndexType indexType
 	) {
-		return null;
+		throw new AerospikeException(NotSupported + "createIndex");
 	}
 
 	@Override
@@ -1318,7 +1430,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		IndexCollectionType indexCollectionType,
 		CTX... ctx
 	) {
-		return null;
+		throw new AerospikeException(NotSupported + "createIndex");
 	}
 
 	@Override
@@ -1334,11 +1446,12 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		IndexCollectionType indexCollectionType,
 		CTX... ctx
 	) {
+		throw new AerospikeException(NotSupported + "createIndex");
 	}
 
 	@Override
 	public IndexTask dropIndex(Policy policy, String namespace, String setName, String indexName) {
-		return null;
+		throw new AerospikeException(NotSupported + "dropIndex");
 	}
 
 	@Override
@@ -1350,6 +1463,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		String setName,
 		String indexName
 	) {
+		throw new AerospikeException(NotSupported + "dropIndex");
 	}
 
 	//-----------------------------------------------------------------
@@ -1358,6 +1472,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void info(EventLoop eventLoop, InfoListener listener, InfoPolicy policy, Node node, String... commands) {
+		throw new AerospikeException(NotSupported + "info");
 	}
 
 	//-----------------------------------------------------------------
@@ -1365,9 +1480,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	//-----------------------------------------------------------------
 
 	@Override
-	public void setXDRFilter(InfoPolicy policy, String datacenter,
-							 String namespace, Expression filter) {
-
+	public void setXDRFilter(InfoPolicy policy, String datacenter, String namespace, Expression filter) {
+		throw new AerospikeException(NotSupported + "setXDRFilter");
 	}
 
 	//-------------------------------------------------------
@@ -1376,30 +1490,37 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void createUser(AdminPolicy policy, String user, String password, List<String> roles) {
+		throw new AerospikeException(NotSupported + "createUser");
 	}
 
 	@Override
 	public void dropUser(AdminPolicy policy, String user) {
+		throw new AerospikeException(NotSupported + "dropUser");
 	}
 
 	@Override
 	public void changePassword(AdminPolicy policy, String user, String password) {
+		throw new AerospikeException(NotSupported + "changePassword");
 	}
 
 	@Override
 	public void grantRoles(AdminPolicy policy, String user, List<String> roles) {
+		throw new AerospikeException(NotSupported + "grantRoles");
 	}
 
 	@Override
 	public void revokeRoles(AdminPolicy policy, String user, List<String> roles) {
+		throw new AerospikeException(NotSupported + "revokeRoles");
 	}
 
 	@Override
 	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+		throw new AerospikeException(NotSupported + "createRole");
 	}
 
 	@Override
 	public void createRole(AdminPolicy policy, String roleName, List<Privilege> privileges, List<String> whitelist) {
+		throw new AerospikeException(NotSupported + "createRole");
 	}
 
 	@Override
@@ -1411,47 +1532,52 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		int readQuota,
 		int writeQuota
 	) {
+		throw new AerospikeException(NotSupported + "createRole");
 	}
 
 	@Override
 	public void dropRole(AdminPolicy policy, String roleName) {
+		throw new AerospikeException(NotSupported + "dropRole");
 	}
 
 	@Override
 	public void grantPrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+		throw new AerospikeException(NotSupported + "grantPrivileges");
 	}
 
 	@Override
 	public void revokePrivileges(AdminPolicy policy, String roleName, List<Privilege> privileges) {
+		throw new AerospikeException(NotSupported + "revokePrivileges");
 	}
 
 	@Override
 	public void setWhitelist(AdminPolicy policy, String roleName, List<String> whitelist) {
+		throw new AerospikeException(NotSupported + "setWhitelist");
 	}
 
 	@Override
 	public void setQuotas(AdminPolicy policy, String roleName, int readQuota, int writeQuota) {
-
+		throw new AerospikeException(NotSupported + "setQuotas");
 	}
 
 	@Override
 	public User queryUser(AdminPolicy policy, String user) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryUser");
 	}
 
 	@Override
 	public List<User> queryUsers(AdminPolicy policy) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryUsers");
 	}
 
 	@Override
 	public Role queryRole(AdminPolicy policy, String roleName) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryRole");
 	}
 
 	@Override
 	public List<Role> queryRoles(AdminPolicy policy) {
-		return null;
+		throw new AerospikeException(NotSupported + "queryRoles");
 	}
 
 	//-------------------------------------------------------
@@ -1630,7 +1756,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		};
 	}
 
-	private static <T> T getFuture(final CompletableFuture<T> future) {
+	static <T> T getFuture(final CompletableFuture<T> future) {
 		try {
 			return future.get();
 		}

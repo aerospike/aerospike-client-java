@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,11 +48,18 @@ public class QueryAverage extends Example {
 		String binName = params.getBinName("l2");
 		int size = 10;
 
-		register(client, params);
-		createIndex(client, params, indexName, binName);
+		// Proxy client does not support register() nor createIndex(), so must assume
+		// there are already created to run this test.
+		if (! params.useProxyClient) {
+			register(client, params);
+			createIndex(client, params, indexName, binName);
+		}
 		writeRecords(client, params, keyPrefix, size);
 		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+
+		// Do not drop index because after native client tests run, the proxy
+		// client tests need the index to exist.
+		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
 	private void register(IAerospikeClient client, Parameters params) throws Exception {

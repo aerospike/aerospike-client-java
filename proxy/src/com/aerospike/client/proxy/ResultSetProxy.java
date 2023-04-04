@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.proxy;
 
 import java.io.Closeable;
 import java.util.Iterator;
@@ -23,34 +23,28 @@ import java.util.concurrent.BlockingQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
+import com.aerospike.client.query.ResultSet;
 
 /**
  * This class manages result retrieval from queries.
  * Multiple threads will retrieve results from the server nodes and put these results on the queue.
  * The single user thread consumes these results from the queue.
  */
-public class ResultSet implements Iterable<Object>, Closeable {
-	public static final Object END = new Object();
+public class ResultSetProxy extends ResultSet {
+	private final QueryAggregateCommandProxy queryAggregateCommand;
 
-	private final QueryAggregateExecutor executor;
 	private final BlockingQueue<Object> queue;
-	private Object row;
+
 	private volatile boolean valid = true;
+
+	private Object row;
 
 	/**
 	 * Initialize result set with underlying producer/consumer queue.
 	 */
-	protected ResultSet(QueryAggregateExecutor executor, int capacity) {
-		this.executor = executor;
-		this.queue = new ArrayBlockingQueue<Object>(capacity);
-	}
-
-	/**
-	 * For internal use only.
-	 */
-	protected ResultSet() {
-		this.executor = null;
-		this.queue = null;
+	protected ResultSetProxy(QueryAggregateCommandProxy queryAggregateCommand, int capacity) {
+		this.queryAggregateCommand = queryAggregateCommand;
+		this.queue = new ArrayBlockingQueue<>(capacity);
 	}
 
 	//-------------------------------------------------------
@@ -63,9 +57,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	 *
 	 * @return whether result exists - if false, no more results are available
 	 */
-	public boolean next() throws AerospikeException {
+	public final boolean next() throws AerospikeException {
 		if (!valid) {
-			executor.checkForException();
+			queryAggregateCommand.checkForException();
 			return false;
 		}
 
@@ -76,14 +70,15 @@ public class ResultSet implements Iterable<Object>, Closeable {
 			valid = false;
 
 			if (Log.debugEnabled()) {
-				Log.debug("ResultSet " + executor.statement.taskId + " take interrupted");
+				Log.debug("ResultSet " + queryAggregateCommand.getTaskId() + " take " +
+					"interrupted");
 			}
 			return false;
 		}
 
 		if (row == END) {
 			valid = false;
-			executor.checkForException();
+			queryAggregateCommand.checkForException();
 			return false;
 		}
 		return true;
@@ -92,13 +87,13 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Close query.
 	 */
-	public void close() {
+	public final void close() {
 		valid = false;
 
 		// Check if more results are available.
 		if (row != END && queue.poll() != END) {
 			// Some query threads may still be running. Stop these threads.
-			executor.stopThreads(new AerospikeException.QueryTerminated());
+			queryAggregateCommand.stop(new AerospikeException.QueryTerminated());
 		}
 	}
 
@@ -117,7 +112,7 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Get result.
 	 */
-	public Object getObject() {
+	public final Object getObject() {
 		return row;
 	}
 
@@ -128,7 +123,7 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Put object on the queue.
 	 */
-	public boolean put(Object object) {
+	public final boolean put(Object object) {
 		if (!valid) {
 			return false;
 		}
@@ -140,7 +135,8 @@ public class ResultSet implements Iterable<Object>, Closeable {
 		}
 		catch (InterruptedException ie) {
 			if (Log.debugEnabled()) {
-				Log.debug("ResultSet " + executor.statement.taskId + " put interrupted");
+				Log.debug("ResultSet " + queryAggregateCommand.getTaskId() + " put " +
+					"interrupted");
 			}
 
 			// Valid may have changed.  Check again.
@@ -154,7 +150,7 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Abort retrieval with end token.
 	 */
-	protected void abort() {
+	public final void abort() {
 		valid = false;
 		queue.clear();
 
@@ -165,7 +161,9 @@ public class ResultSet implements Iterable<Object>, Closeable {
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.
 				if (Log.debugEnabled()) {
-					Log.debug("ResultSet " + executor.statement.taskId + " both offer and poll failed on abort");
+					Log.debug("ResultSet " + queryAggregateCommand.getTaskId() + " both" +
+						" " +
+						"offer and poll failed on abort");
 				}
 				break;
 			}
@@ -175,12 +173,12 @@ public class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Support standard iteration interface for RecordSet.
 	 */
-	private class ResultSetIterator implements Iterator<Object>, Closeable {
+	private static class ResultSetIterator implements Iterator<Object>, Closeable {
 
-		private final ResultSet resultSet;
+		private final ResultSetProxy resultSet;
 		private boolean more;
 
-		ResultSetIterator(ResultSet resultSet) {
+		ResultSetIterator(ResultSetProxy resultSet) {
 			this.resultSet = resultSet;
 			more = this.resultSet.next();
 		}

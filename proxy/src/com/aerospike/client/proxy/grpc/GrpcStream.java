@@ -28,7 +28,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.proxy.client.Kvs;
-import com.google.protobuf.ByteString;
 
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
@@ -155,8 +154,22 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 
 		// Call might have expired and been cancelled.
-		if (call != null) {
-			call.onNext(aerospikeResponsePayload);
+		if (call != null && !call.isAborted()) {
+			try {
+				call.onNext(aerospikeResponsePayload);
+			}
+			catch (Throwable t) {
+				if (aerospikeResponsePayload.getHasNext()) {
+					call.markAborted();
+					// Let the proxy know that there has been a failure so that
+					// it can abort long-running jobs.
+					int requestId = requestsSent++;
+					Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
+					builder.setId(requestId);
+					builder.setAbortRequest(Kvs.AbortRequest.newBuilder().setAbortId(id));
+					requestObserver.onNext(builder.build());
+				}
+			}
 		}
 
 		// TODO can it ever be greater than?
@@ -262,14 +275,13 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 				return;
 			}
 
-			ByteString payload = call.getRequestPayload();
+			Kvs.AerospikeRequestPayload.Builder requestBuilder = call.getRequestBuilder();
 
 			// Update stats.
-			bytesSent += payload.size();
+			bytesSent += requestBuilder.getPayload().size();
 
 			int requestId = requestsSent++;
-			Kvs.AerospikeRequestPayload.Builder requestBuilder = Kvs.AerospikeRequestPayload.newBuilder()
-				.setPayload(payload)
+			requestBuilder
 				.setId(requestId)
 				.setIteration(call.getIteration());
 
@@ -336,11 +348,18 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 		});
 		executingCalls.clear();
+		// For hygiene close the stream as well.
+		try {
+			requestObserver.onCompleted();
+		}
+		catch (Throwable t) {
+			// Ignore.
+		}
 	}
 
-	private class StatsGrpcStreamingCall extends GrpcStreamingCall {
+	private static class StatsGrpcStreamingCall extends GrpcStreamingCall {
+		private final GrpcStreamingCall delegate;
 		private volatile boolean hasReceivedResponse;
-		private GrpcStreamingCall delegate;
 
 		StatsGrpcStreamingCall(GrpcStreamingCall delegate) {
 			super(delegate);

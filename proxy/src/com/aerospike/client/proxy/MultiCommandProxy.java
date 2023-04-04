@@ -20,69 +20,92 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
-import com.aerospike.proxy.client.KVSGrpc;
+import com.aerospike.client.query.BVal;
 import com.aerospike.proxy.client.Kvs;
 
 import io.grpc.MethodDescriptor;
 
-public class ReadCommandProxy extends SingleCommandProxy {
-	private final RecordListener listener;
-	final Key key;
-	private final String[] binNames;
-	private final boolean isOperation;
+public abstract class MultiCommandProxy extends CommandProxy {
 
-	public ReadCommandProxy(
-		GrpcCallExecutor executor,
-		RecordListener listener,
-		Policy policy,
-		Key key,
-		String[] binNames
-	) {
-		super(KVSGrpc.getReadStreamingMethod(), executor, policy);
-		this.listener = listener;
-		this.key = key;
-		this.binNames = binNames;
-		this.isOperation = false;
-	}
+	int resultCode;
+	boolean hasNext;
 
-	public ReadCommandProxy(
+	public MultiCommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
-		RecordListener listener,
-		Policy policy,
-		Key key,
-		boolean isOperation
+		Policy policy
 	) {
 		super(methodDescriptor, executor, policy);
-		this.listener = listener;
-		this.key = key;
-		this.binNames = null;
-		this.isOperation = isOperation;
 	}
 
 	@Override
-	void writeCommand(Command command) {
-		command.setRead(policy, key, binNames);
+	void onResponse(Kvs.AerospikeResponsePayload response) {
+		// Check response status for client errors (negative error codes).
+		// Server errors are checked in response payload in Parser.
+		int status = response.getStatus();
+
+		if (status != 0) {
+			notifyFailure(new AerospikeException(status));
+			return;
+		}
+
+		byte[] bytes = response.getPayload().toByteArray();
+		Parser parser = new Parser(bytes);
+		parser.parseProto();
+		parseResult(parser);
+
+
+		// TODO: Integrate the following code just like batch.
+/*
+		// Check final response status for client errors (negative error codes).
+		resultCode = response.getStatus();
+		hasNext = response.getHasNext();
+
+		if (resultCode != 0 && !hasNext) {
+			notifyFailure(new AerospikeException(resultCode));
+			return;
+		}
+
+		// Server errors are checked in response payload in Parser.
+		byte[] bytes = response.getPayload().toByteArray();
+		Parser parser = new Parser(bytes);
+		parser.parseProto();
+		int rc = parser.parseHeader();
+
+		if (hasNext) {
+			if (resultCode == 0) {
+				resultCode = rc;
+			}
+			parser.skipKey();
+			parseResult(parser);
+			return;
+		}
+
+		if (rc == ResultCode.OK) {
+			try {
+				onSuccess();
+			}
+			catch (Throwable t) {
+				logOnSuccessError(t);
+			}
+		}
+		else {
+			notifyFailure(new AerospikeException(rc));
+		}
+*/
 	}
 
-	@Override
-	void parseResult(Parser parser) {
-		Record record = parseRecordResult(parser);
-
-		try {
-			listener.onSuccess(key, record);
-		}
-		catch (Throwable t) {
-			logOnSuccessError(t);
-		}
-	}
-
-	protected final Record parseRecordResult(Parser parser) {
+	final RecordProxy parseRecordResult(
+		Parser parser,
+		boolean isOperation,
+		boolean parseKey,
+		boolean parseBVal
+	) {
 		Record record = null;
+		Key key = null;
+		BVal bVal = parseBVal ? new BVal() : null;
 		int resultCode = parser.parseHeader();
 
 		switch (resultCode) {
@@ -92,7 +115,12 @@ public class ReadCommandProxy extends SingleCommandProxy {
 					record = new Record(null, parser.generation, parser.expiration);
 				}
 				else {
-					parser.skipKey();
+					if (parseKey) {
+						key = parser.parseKey(bVal);
+					}
+					else {
+						parser.skipKey();
+					}
 					record = parser.parseRecord(isOperation);
 				}
 				break;
@@ -117,14 +145,14 @@ public class ReadCommandProxy extends SingleCommandProxy {
 				throw new AerospikeException(resultCode);
 		}
 
-		return record;
+		return new RecordProxy(resultCode, key, record, bVal);
 	}
 
 	protected void handleNotFound(int resultCode) {
 		// Do nothing in default case. Record will be null.
 	}
 
-	private void handleUdfError(Record record, int resultCode) {
+	protected void handleUdfError(Record record, int resultCode) {
 		String ret = (String)record.bins.get("FAILURE");
 
 		if (ret == null) {
@@ -147,8 +175,5 @@ public class ReadCommandProxy extends SingleCommandProxy {
 		throw new AerospikeException(code, message);
 	}
 
-	@Override
-	void onFailure(AerospikeException ae) {
-		listener.onFailure(ae);
-	}
+	abstract void parseResult(Parser parser);
 }
