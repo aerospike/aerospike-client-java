@@ -221,8 +221,10 @@ public class GrpcConversions {
         }
 
         if (statement.getTaskId() == 0) {
-	        // @Ashish This does not work. This code mutates the Statement class and
-        	// makes it no longer shareable among queries.
+	        // @Ashish This does not work. This code mutates the Statement instance and
+        	// makes it no longer shareable among queries. This is why the taskId must
+        	// be set to a separate variable at the beginning and then passed around
+        	// independently of Statement.
             statement.setTaskId(statement.prepareTaskId());
         }
         statementBuilder.setTaskId(statement.getTaskId());
