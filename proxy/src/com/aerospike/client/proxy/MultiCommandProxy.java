@@ -28,8 +28,6 @@ import com.aerospike.proxy.client.Kvs;
 import io.grpc.MethodDescriptor;
 
 public abstract class MultiCommandProxy extends CommandProxy {
-
-	int resultCode;
 	boolean hasNext;
 
 	public MultiCommandProxy(
@@ -45,6 +43,7 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		// Check response status for client errors (negative error codes).
 		// Server errors are checked in response payload in Parser.
 		int status = response.getStatus();
+		this.hasNext = response.getHasNext();
 
 		if (status != 0) {
 			notifyFailure(new AerospikeException(status));
