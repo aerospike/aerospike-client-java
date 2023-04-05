@@ -114,23 +114,47 @@ public class AdminCommand {
 
 		private void login(Cluster cluster, Connection conn) throws IOException {
 			if (cluster.authMode == AuthMode.INTERNAL) {
-				writeHeader(LOGIN, 2);
-				writeField(USER, cluster.getUser());
-				writeField(CREDENTIAL, cluster.getPasswordHash());
+				loginInternal(cluster, conn);
+			} else if (cluster.authMode == AuthMode.PKI) {
+				loginPKI(conn);
+			} else {
+				loginExternal(cluster, conn);
 			}
-			else if (cluster.authMode == AuthMode.PKI) {
-				writeHeader(LOGIN, 0);
-			}
-			else {
-				writeHeader(LOGIN, 3);
-				writeField(USER, cluster.getUser());
-				writeField(CREDENTIAL, cluster.getPasswordHash());
-				writeField(CLEAR_PASSWORD, cluster.getPassword());
-			}
+		}
+
+		private void loginInternal(Cluster cluster, Connection conn) throws IOException {
+			writeHeader(LOGIN, 2);
+			writeField(USER, cluster.getUser());
+			writeField(CREDENTIAL, cluster.getPasswordHash());
 			writeSize();
 			conn.write(dataBuffer, dataOffset);
 			conn.readFully(dataBuffer, HEADER_SIZE);
+			checkResult();
+			readSessionToken(conn);
+		}
 
+		private void loginPKI(Connection conn) throws IOException {
+			writeHeader(LOGIN, 0);
+			writeSize();
+			conn.write(dataBuffer, dataOffset);
+			conn.readFully(dataBuffer, HEADER_SIZE);
+			checkResult();
+			readSessionToken(conn);
+		}
+
+		private void loginExternal(Cluster cluster, Connection conn) throws IOException {
+			writeHeader(LOGIN, 3);
+			writeField(USER, cluster.getUser());
+			writeField(CREDENTIAL, cluster.getPasswordHash());
+			writeField(CLEAR_PASSWORD, cluster.getPassword());
+			writeSize();
+			conn.write(dataBuffer, dataOffset);
+			conn.readFully(dataBuffer, HEADER_SIZE);
+			checkResult();
+			readSessionToken(conn);
+		}
+
+		private void checkResult() {
 			int result = dataBuffer[RESULT_CODE] & 0xFF;
 
 			if (result != 0) {
@@ -139,16 +163,17 @@ public class AdminCommand {
 					return;
 				}
 
-				throw new AerospikeException(result, "Login failed");
+				throw new AerospikeException( "Login failed");
 			}
+		}
 
-			// Read session token.
+		private void readSessionToken(Connection conn) throws IOException {
 			long size = Buffer.bytesToLong(dataBuffer, 0);
 			int receiveSize = ((int)(size & 0xFFFFFFFFFFFFL)) - HEADER_REMAINING;
 			int fieldCount = dataBuffer[11] & 0xFF;
 
 			if (receiveSize <= 0 || receiveSize > dataBuffer.length || fieldCount <= 0) {
-				throw new AerospikeException(result, "Failed to retrieve session token");
+				throw new AerospikeException("Failed to retrieve session token");
 			}
 
 			conn.readFully(dataBuffer, receiveSize);
@@ -180,19 +205,19 @@ public class AdminCommand {
 			}
 
 			if (sessionToken == null) {
-				throw new AerospikeException(result, "Failed to retrieve session token");
+				throw new AerospikeException( "Failed to retrieve session token");
 			}
 		}
 	}
 
 	public static boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
-		throws IOException {
+			throws IOException {
 		AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
 		return command.authenticateSession(cluster, conn, sessionToken);
 	}
 
 	private boolean authenticateSession(Cluster cluster, Connection conn, byte[] sessionToken)
-		throws IOException {
+			throws IOException {
 
 		dataOffset = 8;
 		setAuthenticate(cluster, sessionToken);
@@ -267,12 +292,12 @@ public class AdminCommand {
 	}
 
 	public void createRole(
-		Cluster cluster,
-		AdminPolicy policy,
-		String roleName,
-		List<Privilege> privileges,
-		List<String> whitelist,
-		int readQuota,
+			Cluster cluster,
+			AdminPolicy policy,
+			String roleName,
+			List<Privilege> privileges,
+			List<String> whitelist,
+			int readQuota,
 		int writeQuota
 	) {
 		int fieldCount = 1;
@@ -380,9 +405,9 @@ public class AdminCommand {
 			if (privilege.code.canScope()) {
 
 				if (! (privilege.setName == null || privilege.setName.length() == 0) &&
-					(privilege.namespace == null || privilege.namespace.length() == 0)) {
+						(privilege.namespace == null || privilege.namespace.length() == 0)) {
 					throw new AerospikeException(ResultCode.INVALID_PRIVILEGE, "Admin privilege '" +
-						privilege.code + "' has a set scope with an empty namespace.");
+							privilege.code + "' has a set scope with an empty namespace.");
 				}
 
 				int len = Buffer.stringToUtf8(privilege.namespace, dataBuffer, offset + 1);
@@ -397,7 +422,7 @@ public class AdminCommand {
 				if (! (privilege.namespace == null || privilege.namespace.length() == 0) ||
 					! (privilege.setName == null || privilege.setName.length() == 0)) {
 					throw new AerospikeException(ResultCode.INVALID_PRIVILEGE, "Admin global privilege '" +
-						privilege.code + "' has namespace/set scope which is invalid.");
+							privilege.code + "' has namespace/set scope which is invalid.");
 				}
 			}
 		}
@@ -585,31 +610,31 @@ public class AdminCommand {
 					len--;
 
 					switch (id) {
-					case USER:
-						user.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
-						super.dataOffset += len;
-						break;
+						case USER:
+							user.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+							super.dataOffset += len;
+							break;
 
-					case ROLES:
-						parseRoles(user);
-						break;
+						case ROLES:
+							parseRoles(user);
+							break;
 
-					case READ_INFO:
-						user.readInfo = parseInfo();
-						break;
+						case READ_INFO:
+							user.readInfo = parseInfo();
+							break;
 
-					case WRITE_INFO:
-						user.writeInfo = parseInfo();
-						break;
+						case WRITE_INFO:
+							user.writeInfo = parseInfo();
+							break;
 
-					case CONNECTIONS:
-						user.connsInUse = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
-						super.dataOffset += len;
-						break;
+						case CONNECTIONS:
+							user.connsInUse = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+							super.dataOffset += len;
+							break;
 
-					default:
-						super.dataOffset += len;
-						break;
+						default:
+							super.dataOffset += len;
+							break;
 					}
 				}
 
@@ -692,32 +717,32 @@ public class AdminCommand {
 					len--;
 
 					switch (id) {
-					case ROLE:
-						role.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
-						super.dataOffset += len;
-						break;
+						case ROLE:
+							role.name = Buffer.utf8ToString(super.dataBuffer, super.dataOffset, len);
+							super.dataOffset += len;
+							break;
 
-					case PRIVILEGES:
-						parsePrivileges(role);
-						break;
+						case PRIVILEGES:
+							parsePrivileges(role);
+							break;
 
-					case WHITELIST:
-						role.whitelist = parseWhitelist(len);
-						break;
+						case WHITELIST:
+							role.whitelist = parseWhitelist(len);
+							break;
 
-					case READ_QUOTA:
-						role.readQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
-						super.dataOffset += len;
-						break;
+						case READ_QUOTA:
+							role.readQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+							super.dataOffset += len;
+							break;
 
-					case WRITE_QUOTA:
-						role.writeQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
-						super.dataOffset += len;
-						break;
+						case WRITE_QUOTA:
+							role.writeQuota = Buffer.bytesToInt(super.dataBuffer, super.dataOffset);
+							super.dataOffset += len;
+							break;
 
-					default:
-						super.dataOffset += len;
-						break;
+						default:
+							super.dataOffset += len;
+							break;
 					}
 				}
 
