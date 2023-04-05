@@ -43,12 +43,10 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 			for (long i = 0; i < keyCount; i++) {
 				try {
 					runCommand(keyStart + i, random);
-				}
-				catch (AerospikeException ae) {
+				} catch (AerospikeException ae) {
 					i--;
 					writeFailure(ae);
-				}
-				catch (Exception e) {
+				} catch (Exception e) {
 					i--;
 					writeFailure(e);
 				}
@@ -58,7 +56,8 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 					int transactions = counters.write.count.get();
 
 					if (transactions > args.throughput) {
-						long millis = counters.periodBegin.get() + 1000L - System.currentTimeMillis();
+						long timeUntilExpiration = 1000L - System.currentTimeMillis();
+						long millis = counters.periodBegin.get() + timeUntilExpiration;
 
 						if (millis > 0) {
 							Util.sleep(millis);
@@ -66,8 +65,7 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 					}
 				}
 			}
-		}
-		catch (Exception ex) {
+		} catch (Exception ex) {
 			System.out.println("Insert task error: " + ex.getMessage());
 			ex.printStackTrace();
 		}
@@ -87,8 +85,7 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
-		}
-		else {
+		} else {
 			client.put(args.writePolicy, key, bins);
 			counters.write.count.getAndIncrement();
 		}

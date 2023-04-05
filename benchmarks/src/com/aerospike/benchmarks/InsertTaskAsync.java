@@ -37,13 +37,12 @@ public final class InsertTaskAsync extends InsertTask {
 	private final boolean useLatency;
 
 	public InsertTaskAsync(
-		AerospikeClient client,
-		EventLoop eventLoop,
-		Arguments args,
-		CounterStore counters,
-		long keyStart,
-		long keyMax
-	) {
+			AerospikeClient client,
+			EventLoop eventLoop,
+			Arguments args,
+			CounterStore counters,
+			long keyStart,
+			long keyMax) {
 		super(args, counters);
 		this.client = client;
 		this.eventLoop = eventLoop;
@@ -54,8 +53,7 @@ public final class InsertTaskAsync extends InsertTask {
 
 		if (useLatency) {
 			listener = new LatencyWriteHandler();
-		}
-		else {
+		} else {
 			listener = new WriteHandler();
 		}
 	}

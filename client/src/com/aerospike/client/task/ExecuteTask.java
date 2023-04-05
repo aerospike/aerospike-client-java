@@ -54,34 +54,15 @@ public final class ExecuteTask extends Task {
 		// All nodes must respond with complete to be considered done.
 		Node[] nodes = cluster.validateNodes();
 
-		String tid = Long.toUnsignedString(taskId);
-		String module = (scan) ? "scan" : "query";
-		String cmd1 = "query-show:trid=" + tid;
-		String cmd2 = module + "-show:trid=" + tid;
-		String cmd3 = "jobs:module=" + module + ";cmd=get-job;trid=" + tid;
-
 		for (Node node : nodes) {
-			String command;
-
-			if (node.hasPartitionQuery()) {
-				// query-show works for both scan and query.
-				command = cmd1;
-			}
-			else if (node.hasQueryShow()) {
-				// scan-show and query-show are separate.
-				command = cmd2;
-			}
-			else {
-				// old job monitor syntax.
-				command = cmd3;
-			}
+			String command = buildCommandString(node);
 
 			String response = Info.request(policy, node, command);
 
 			if (response.startsWith("ERROR:2")) {
 				// Query not found.
 				if (node.hasPartitionQuery()) {
-					// Server >= 6.0:  Query has completed.
+					// Server >= 6.0: Query has completed.
 					// Continue checking other nodes.
 					continue;
 				}
@@ -95,22 +76,40 @@ public final class ExecuteTask extends Task {
 				throw new AerospikeException(command + " failed: " + response);
 			}
 
-			String find = "status=";
-			int index = response.indexOf(find);
-
-			if (index < 0) {
-				throw new AerospikeException(command + " failed: " + response);
-			}
-
-			int begin = index + find.length();
-			int end = response.indexOf(':', begin);
-			String status = response.substring(begin, end);
-
+			String status = extractStatusFromResponse(response, command);
 			// Newer servers use "done" while older servers use "DONE"
-			if (! (status.startsWith("done") || status.startsWith("DONE"))) {
+			if (!(status.startsWith("done") || status.startsWith("DONE"))) {
 				return Task.IN_PROGRESS;
 			}
 		}
+
 		return Task.COMPLETE;
 	}
+
+	private String buildCommandString(Node node) {
+		String taskID = Long.toUnsignedString(taskId);
+		String module = (scan) ? "scan" : "query";
+		String queryShowCommand = module + "-show:trid=" + taskID;
+		String jobsCommand = "jobs:module=" + module + ";cmd=get-job;trid=" + taskID;
+
+		if (node.hasPartitionQuery()) {
+			return "query-show:trid=" + taskID;
+		}
+
+		return node.hasQueryShow() ? queryShowCommand : jobsCommand;
+	}
+
+	private String extractStatusFromResponse(String response, String command) throws AerospikeException {
+		String find = "status=";
+		int index = response.indexOf(find);
+
+		if (index < 0) {
+			throw new AerospikeException(command + " failed: " + response);
+		}
+
+		int begin = index + find.length();
+		int end = response.indexOf(':', begin);
+		return response.substring(begin, end);
+	}
+
 }
