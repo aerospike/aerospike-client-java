@@ -220,9 +220,10 @@ public class GrpcConversions {
             }
         }
 
-        if (statement.getTaskId() != 0) {
-            statementBuilder.setTaskId(statement.getTaskId());
+        if (statement.getTaskId() == 0) {
+            statement.setTaskId(statement.prepareTaskId());
         }
+        statementBuilder.setTaskId(statement.getTaskId());
 
         statementBuilder.setMaxRecords(statement.getMaxRecords());
         statementBuilder.setRecordsPerSecond(statement.getRecordsPerSecond());

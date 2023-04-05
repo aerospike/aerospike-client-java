@@ -30,7 +30,7 @@ import com.aerospike.client.Record;
  * Multiple threads will retrieve records from the server nodes and put these records on the queue.
  * The single user thread consumes these records from the queue.
  */
-public final class RecordSet implements Iterable<KeyRecord>, Closeable {
+public class RecordSet implements Iterable<KeyRecord>, Closeable {
 	public static final KeyRecord END = new KeyRecord(null, null);
 
 	private final IQueryExecutor executor;
@@ -46,6 +46,14 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 		this.queue = new ArrayBlockingQueue<KeyRecord>(capacity);
 	}
 
+	/**
+	 * For internal use only.
+	 */
+	protected RecordSet() {
+		this.executor = null;
+		this.queue = null;
+	}
+
 	//-------------------------------------------------------
 	// Record traversal methods
 	//-------------------------------------------------------
@@ -54,10 +62,10 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	 * Retrieve next record.  This method will block until a record is retrieved
 	 * or the query is cancelled.
 	 *
-	 * @return		whether record exists - if false, no more records are available
+	 * @return whether record exists - if false, no more records are available
 	 */
-	public final boolean next() throws AerospikeException {
-		if (! valid) {
+	public boolean next() throws AerospikeException {
+		if (!valid) {
 			executor.checkForException();
 			return false;
 		}
@@ -87,7 +95,7 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	/**
 	 * Close query.
 	 */
-	public final void close() {
+	public void close() {
 		valid = false;
 
 		// Check if more records are available.
@@ -112,14 +120,14 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	/**
 	 * Get record's unique identifier.
 	 */
-	public final Key getKey() {
+	public Key getKey() {
 		return record.key;
 	}
 
 	/**
 	 * Get record's header and bin data.
 	 */
-	public final Record getRecord() {
+	public Record getRecord() {
 		return record.record;
 	}
 
@@ -158,13 +166,13 @@ public final class RecordSet implements Iterable<KeyRecord>, Closeable {
 	/**
 	 * Abort retrieval with end token.
 	 */
-	protected final void abort() {
+	protected void abort() {
 		valid = false;
 		queue.clear();
 
 		// Send end command to transaction thread.
 		// It's critical that the end offer succeeds.
-		while (! queue.offer(END)) {
+		while (!queue.offer(END)) {
 			// Queue must be full. Remove one item to make room.
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.

@@ -51,6 +51,7 @@ public abstract class MultiCommandProxy extends CommandProxy {
 			return;
 		}
 
+		hasNext = response.getHasNext();
 		byte[] bytes = response.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
@@ -58,6 +59,8 @@ public abstract class MultiCommandProxy extends CommandProxy {
 
 
 		// TODO: Integrate the following code just like batch.
+		// @Brian I do not think this is required. Every implementing command
+		// deals with the result code.
 /*
 		// Check final response status for client errors (negative error codes).
 		resultCode = response.getStatus();

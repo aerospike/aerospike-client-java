@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -14,29 +14,38 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.query;
+
+package com.aerospike.client.proxy;
+
+import java.util.concurrent.CompletableFuture;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ScanCallback;
+import com.aerospike.client.listener.RecordSequenceListener;
 
-/**
- * Result notification for sync query command.
- * The results are sent one record at a time.
- */
-public interface QueryListener {
-	/**
-	 * This method is called when a record is received from the server.
-	 * The received sequence is not ordered.
-	 * <p>
-	 * The user may throw a
-	 * {@link com.aerospike.client.AerospikeException.QueryTerminated AerospikeException.QueryTerminated}
-	 * exception if the command should be aborted. If an exception is thrown, parallel query command
-	 * threads to other nodes will also be terminated.
-	 *
-	 * @param key    unique record identifier
-	 * @param record record instance
-	 * @throws AerospikeException if error occurs or query should be terminated.
-	 */
-	public void onRecord(Key key, Record record);
+class RecordSequenceListenerToCallback implements RecordSequenceListener {
+	private final ScanCallback callback;
+	private final CompletableFuture<Void> future;
+
+	public RecordSequenceListenerToCallback(ScanCallback callback, CompletableFuture<Void> future) {
+		this.callback = callback;
+		this.future = future;
+	}
+
+	@Override
+	public void onRecord(Key key, Record record) throws AerospikeException {
+		callback.scanCallback(key, record);
+	}
+
+	@Override
+	public void onSuccess() {
+		future.complete(null);
+	}
+
+	@Override
+	public void onFailure(AerospikeException ae) {
+		future.completeExceptionally(ae);
+	}
 }
