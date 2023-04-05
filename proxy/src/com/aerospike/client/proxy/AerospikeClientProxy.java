@@ -1060,7 +1060,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
-		throw new AerospikeException(NotSupported + "scanAll");
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		RecordSequenceListener listener = new RecordSequenceListenerToCallback(callback, future);
+		scanPartitions(null, listener, policy, null, namespace, setName, binNames);
+		getFuture(future);
 	}
 
 	@Override
@@ -1108,7 +1111,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		ScanCallback callback,
 		String... binNames
 	) {
-		throw new AerospikeException(NotSupported + "scanPartitions");
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		RecordSequenceListener listener = new RecordSequenceListenerToCallback(callback, future);
+		scanPartitions(null, listener, policy, partitionFilter, namespace, setName, binNames);
+		getFuture(future);
 	}
 
 	@Override
@@ -1287,14 +1293,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 
 		CompletableFuture<Void> future = new CompletableFuture<>();
-		long taskId = statement.prepareTaskId();
 		BackgroundExecuteCommandProxy command = new BackgroundExecuteCommandProxy(executor, policy,
 			statement, future);
 		command.execute();
 
 		// Check whether the background task started.
 		getFuture(future);
-		return new ExecuteTaskProxy(executor, taskId, statement.isScan());
+
+		// The background executor ensures the statement has a taskId either
+		// from user input or separately prepared.
+		return new ExecuteTaskProxy(executor, statement.getTaskId(), statement.isScan());
 	}
 
 	@Override
@@ -1323,7 +1331,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RecordSet query(QueryPolicy policy, Statement statement) {
-		throw new AerospikeException(NotSupported + "query");
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		// @Ashish taskId will be zero by default here.
+		RecordSequenceRecordSet recordSet = new RecordSequenceRecordSet(statement.getTaskId(), policy.recordQueueSize);
+		query(null, recordSet, policy, statement);
+		return recordSet;
 	}
 
 	@Override
@@ -1338,12 +1353,18 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public void query(QueryPolicy policy, Statement statement, QueryListener listener) {
-		throw new AerospikeException(NotSupported + "query");
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		RecordSequenceToQueryListener adaptor = new RecordSequenceToQueryListener(listener, future);
+		query(null, adaptor, policy, statement);
+		getFuture(future);
 	}
 
 	@Override
 	public void query(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter, QueryListener listener) {
-		throw new AerospikeException(NotSupported + "query");
+		CompletableFuture<Void> future = new CompletableFuture<>();
+		RecordSequenceToQueryListener adaptor = new RecordSequenceToQueryListener(listener, future);
+		queryPartitions(null, adaptor, policy, statement, partitionFilter);
+		getFuture(future);
 	}
 
 	@Override
@@ -1353,7 +1374,14 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	@Override
 	public RecordSet queryPartitions(QueryPolicy policy, Statement statement, PartitionFilter partitionFilter) {
-		throw new AerospikeException(NotSupported + "queryPartitions");
+		if (policy == null) {
+			policy = queryPolicyDefault;
+		}
+
+		// @Ashish taskId will be zero by default here.
+		RecordSequenceRecordSet recordSet = new RecordSequenceRecordSet(statement.getTaskId(), policy.recordQueueSize);
+		queryPartitions(null, recordSet, policy, statement, partitionFilter);
+		return recordSet;
 	}
 
 	@Override

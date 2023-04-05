@@ -220,9 +220,12 @@ public class GrpcConversions {
             }
         }
 
-        if (statement.getTaskId() != 0) {
-            statementBuilder.setTaskId(statement.getTaskId());
+        if (statement.getTaskId() == 0) {
+	        // @Ashish This does not work. This code mutates the Statement class and
+        	// makes it no longer shareable among queries.
+            statement.setTaskId(statement.prepareTaskId());
         }
+        statementBuilder.setTaskId(statement.getTaskId());
 
         statementBuilder.setMaxRecords(statement.getMaxRecords());
         statementBuilder.setRecordsPerSecond(statement.getRecordsPerSecond());

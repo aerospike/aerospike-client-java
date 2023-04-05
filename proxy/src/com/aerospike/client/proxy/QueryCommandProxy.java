@@ -72,17 +72,21 @@ public class QueryCommandProxy extends MultiCommandProxy {
 	protected void parseResult(Parser parser) {
 		RecordProxy recordProxy = parseRecordResult(parser, false, true, true);
 
-		if (recordProxy.resultCode == ResultCode.OK && recordProxy.key == null) {
+		if (recordProxy.resultCode == ResultCode.OK && !super.hasNext) {
 			// This is the end of query marker record.
 			listener.onSuccess();
 			return;
+		}
+
+		if (recordProxy.resultCode != ResultCode.OK) {
+			throw new AerospikeException(recordProxy.resultCode);
 		}
 
 		listener.onRecord(recordProxy.key, recordProxy.record);
 
 		if (partitionTracker != null) {
 			partitionTracker.setLast(dummyNodePartitions, recordProxy.key,
-				recordProxy.bVal.val);
+					recordProxy.bVal.val);
 		}
 	}
 

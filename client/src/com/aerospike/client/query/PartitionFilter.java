@@ -62,6 +62,18 @@ public final class PartitionFilter implements Serializable {
 	}
 
 	/**
+	 * Return records after the digest in partition containing the digest.
+	 * Note that digest order is not the same as userKey order. This method
+	 * only works for scan or query with null filter (primary index query).
+	 * This method does not work for a secondary index query.
+	 *
+	 * @param digest	return records after this digest
+	 */
+	public static PartitionFilter after(byte[] digest) {
+		return new PartitionFilter(digest);
+	}
+
+	/**
 	 * Filter by partition range.
 	 *
 	 * @param begin		start partition id (0 - 4095)

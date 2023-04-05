@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,12 +50,16 @@ public class QueryExp extends Example {
 		String binName = params.getBinName("idxbin");
 		int size = 50;
 
-		createIndex(client, params, indexName, binName);
+		if (!params.useProxyClient) {
+			createIndex(client, params, indexName, binName);
+		}
+
 		writeRecords(client, params, binName, size);
 		runQuery1(client, params, binName);
 		runQuery2(client, params, binName);
 		runQuery3(client, params, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+
+		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
 	private void createIndex(

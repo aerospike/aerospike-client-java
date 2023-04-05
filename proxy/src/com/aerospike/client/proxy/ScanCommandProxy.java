@@ -70,10 +70,14 @@ public class ScanCommandProxy extends MultiCommandProxy {
 	void parseResult(Parser parser) {
 		RecordProxy recordProxy = parseRecordResult(parser, false, true, false);
 
-		if (recordProxy.resultCode == ResultCode.OK && recordProxy.key == null) {
+		if (recordProxy.resultCode == ResultCode.OK && !super.hasNext) {
 			// This is the end of scan marker record.
 			listener.onSuccess();
 			return;
+		}
+
+		if (recordProxy.resultCode != ResultCode.OK) {
+			throw new AerospikeException(recordProxy.resultCode);
 		}
 
 		listener.onRecord(recordProxy.key, recordProxy.record);

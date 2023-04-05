@@ -43,57 +43,17 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		// Check response status for client errors (negative error codes).
 		// Server errors are checked in response payload in Parser.
 		int status = response.getStatus();
-		this.hasNext = response.getHasNext();
 
 		if (status != 0) {
 			notifyFailure(new AerospikeException(status));
 			return;
 		}
 
+		hasNext = response.getHasNext();
 		byte[] bytes = response.getPayload().toByteArray();
 		Parser parser = new Parser(bytes);
 		parser.parseProto();
 		parseResult(parser);
-
-
-		// TODO: Integrate the following code just like batch.
-/*
-		// Check final response status for client errors (negative error codes).
-		resultCode = response.getStatus();
-		hasNext = response.getHasNext();
-
-		if (resultCode != 0 && !hasNext) {
-			notifyFailure(new AerospikeException(resultCode));
-			return;
-		}
-
-		// Server errors are checked in response payload in Parser.
-		byte[] bytes = response.getPayload().toByteArray();
-		Parser parser = new Parser(bytes);
-		parser.parseProto();
-		int rc = parser.parseHeader();
-
-		if (hasNext) {
-			if (resultCode == 0) {
-				resultCode = rc;
-			}
-			parser.skipKey();
-			parseResult(parser);
-			return;
-		}
-
-		if (rc == ResultCode.OK) {
-			try {
-				onSuccess();
-			}
-			catch (Throwable t) {
-				logOnSuccessError(t);
-			}
-		}
-		else {
-			notifyFailure(new AerospikeException(rc));
-		}
-*/
 	}
 
 	final RecordProxy parseRecordResult(
