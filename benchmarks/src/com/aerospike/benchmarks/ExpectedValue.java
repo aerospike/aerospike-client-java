@@ -25,21 +25,17 @@ public final class ExpectedValue {
 	Bin[] bins;
 	int generation;
 
-	public ExpectedValue(Bin[] bins, int generation) {
-		this.bins = bins;
+	public ExpectedValue(int generation) {
 		this.generation = generation;
-	}
-
-	public void write(Bin[] bins) {
-		this.bins = bins;
-		this.generation++;
 	}
 
 	public void add(Bin[] addBins, int incrValue) {
 		int orig = 0;
 
-		if (this.bins != null) {
-			Bin bin = this.bins[0];
+		Bin[] bins = read();
+
+		if (bins != null) {
+			Bin bin = bins[0];
 
 			if (bin != null) {
 				Object object = bin.value.getObject();
@@ -51,15 +47,15 @@ public final class ExpectedValue {
 		}
 
 		if (orig != 0) {
-			this.bins[0] = new Bin(addBins[0].name, orig + incrValue);
+			bins[0] = new Bin(addBins[0].name, orig + incrValue);
+			write(bins);
 		}
 		else {
-			this.bins = addBins;
+			write(addBins);
 		}
-		this.generation++;
 	}
 
-	public boolean validate(Record record) {
+	public boolean validate(Record record, Bin[] bins) {
 		if (bins == null) {
 			if (record == null) {
 				return true;
@@ -85,5 +81,15 @@ public final class ExpectedValue {
 			}
 		}
 		return true;
+	}
+	
+	private Bin[] read() {
+		// TODO: read from Aerospike
+		return bins;
+	}
+	
+	public void write(Bin[] bins) {
+		this.bins = bins;
+		this.generation++;
 	}
 }
