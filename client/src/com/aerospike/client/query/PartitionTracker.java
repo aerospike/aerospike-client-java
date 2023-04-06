@@ -388,6 +388,7 @@ public final class PartitionTracker {
 		if (partsUnavailable == 0) {
 			if (maxRecords == 0) {
 				if (partitionFilter != null) {
+					partitionFilter.retry = false;
 					partitionFilter.done = true;
 				}
 			}
