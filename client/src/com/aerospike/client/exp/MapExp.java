@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.exp;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
@@ -610,13 +611,33 @@ public final class MapExp {
 	private static Exp.Type getValueType(int returnType) {
 		int t = returnType & ~MapReturnType.INVERTED;
 
-		if (t <= MapReturnType.COUNT) {
-			return Exp.Type.INT;
-		}
+		switch (t) {
+		case MapReturnType.INDEX:
+		case MapReturnType.REVERSE_INDEX:
+		case MapReturnType.RANK:
+		case MapReturnType.REVERSE_RANK:
+			// This method only called from expressions that can return multiple integers (ie list).
+			return Exp.Type.LIST;
 
-		if (t == MapReturnType.KEY_VALUE) {
+		case MapReturnType.COUNT:
+			return Exp.Type.INT;
+
+		case MapReturnType.KEY:
+		case MapReturnType.VALUE:
+			// This method only called from expressions that can return multiple objects (ie list).
+			return Exp.Type.LIST;
+
+		case MapReturnType.KEY_VALUE:
+		case MapReturnType.ORDERED_MAP:
+		case MapReturnType.UNORDERED_MAP:
 			return Exp.Type.MAP;
+
+		case MapReturnType.EXISTS:
+			return Exp.Type.BOOL;
+
+		default:
+		case MapReturnType.NONE:
+			throw new AerospikeException("Invalid MapReturnType: " + returnType);
 		}
-		return Exp.Type.LIST;
 	}
 }
