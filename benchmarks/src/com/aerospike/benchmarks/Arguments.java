@@ -78,31 +78,42 @@ public class Arguments {
 		return bins;
 	}
 
-	private static Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
-		switch (spec.type) {
-		case 'I':
+	public abstract class ValueGenerator {
+		public abstract Value genValue(RandomShift random, DBObjectSpec spec, long keySeed);
+	}
+	
+	public class IntValueGenerator extends ValueGenerator {
+		public Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 			if (keySeed == -1) {
 				return Value.get(random.nextInt());
 			} else {
 				return Value.get(keySeed);
 			}
-
-		case 'B':
+		}
+	}
+	
+	public class ByteValueGenerator extends ValueGenerator {
+		public Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 			byte[] ba = new byte[spec.size];
 			random.nextBytes(ba);
 			return Value.get(ba);
-
-		case 'S':
+		}
+	}
+	
+	public class StringValueGenerator extends ValueGenerator {
+		public Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 			StringBuilder sb = new StringBuilder(spec.size);
 			for (int i = 0; i < spec.size; i++) {
 				// Append ascii value between ordinal 33 and 127.
 				sb.append((char)(random.nextInt(94) + 33));
 			}
 			return Value.get(sb.toString());
-
-		case 'R':
+		}
+	}
+	
+	public class LongArrayValueGenerator extends ValueGenerator {
+		public Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 			spec.size = Math.abs(spec.size / 8);
-			// ... relies on size being a multiple of 8, which it will be.
 			spec.rand_pct = Math.abs(spec.rand_pct);
 			long[] data = new long[spec.size];
 			int idx = 0;
@@ -121,12 +132,40 @@ public class Arguments {
 				data[idx++] = random.nextLong();
 			}
 			return Value.get(data);
-
-		case 'D':
-			return Value.get(System.currentTimeMillis());
-
-		default:
-			return Value.getAsNull();
 		}
 	}
+	
+	public class DateValueGenerator extends ValueGenerator {
+		public Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
+			return Value.get(System.currentTimeMillis());
+		}
+	}
+
+	private Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
+		ValueGenerator generator;
+	
+		switch (spec.type) {
+			case 'I':
+				generator = new IntValueGenerator();
+				break;
+			case 'B':
+				generator = new ByteValueGenerator();
+				break;
+			case 'S':
+				generator = new StringValueGenerator();
+				break;
+			case 'R':
+				generator = new LongArrayValueGenerator();
+				break;
+			case 'D':
+				generator = new DateValueGenerator();
+				break;
+			default:
+				return Value.getAsNull();
+		}
+	
+		return generator.genValue(random, spec, keySeed);
+	}
+	
+	
 }
