@@ -160,4 +160,11 @@ public final class PartitionFilter implements Serializable {
 	public boolean isDone() {
 		return done;
 	}
+
+	/**
+	 * Indicates if the entire filter requires a retry after a failed attempt.
+	 */
+	public boolean isRetry() {
+		return retry;
+	}
 }

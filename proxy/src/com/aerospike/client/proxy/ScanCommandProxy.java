@@ -17,10 +17,6 @@
 
 package com.aerospike.client.proxy;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
@@ -33,14 +29,11 @@ import com.aerospike.proxy.client.ScanGrpc;
 /**
  * Implements asynchronous scan for the proxy.
  */
-public class ScanCommandProxy extends MultiCommandProxy {
+public class ScanCommandProxy extends ScanQueryBaseCommandProxy {
 	private final String namespace;
 	private final String setName;
 	private final String[] binNames;
 	private final PartitionFilter partitionFilter;
-	private final RecordSequenceListener listener;
-	private final PartitionTracker partitionTracker;
-	private final PartitionTracker.NodePartitions dummyNodePartitions;
 
 	public ScanCommandProxy(
 		GrpcCallExecutor executor,
@@ -51,45 +44,12 @@ public class ScanCommandProxy extends MultiCommandProxy {
 		PartitionFilter partitionFilter,
 		PartitionTracker partitionTracker
 	) {
-		super(ScanGrpc.getScanStreamingMethod(), executor, scanPolicy);
+		super(true, ScanGrpc.getScanStreamingMethod(), executor, scanPolicy,
+			listener, partitionTracker);
 		this.namespace = namespace;
 		this.setName = setName;
 		this.binNames = binNames;
 		this.partitionFilter = partitionFilter;
-		this.listener = listener;
-		this.partitionTracker = partitionTracker;
-		this.dummyNodePartitions = new PartitionTracker.NodePartitions(null, Node.PARTITIONS);
-	}
-
-	@Override
-	void writeCommand(Command command) {
-		// Nothing to do since there is no Aerospike payload.
-	}
-
-	@Override
-	void parseResult(Parser parser) {
-		RecordProxy recordProxy = parseRecordResult(parser, false, true, false);
-
-		if (recordProxy.resultCode == ResultCode.OK && !super.hasNext) {
-			// This is the end of scan marker record.
-			listener.onSuccess();
-			return;
-		}
-
-		if (recordProxy.resultCode != ResultCode.OK) {
-			throw new AerospikeException(recordProxy.resultCode);
-		}
-
-		listener.onRecord(recordProxy.key, recordProxy.record);
-
-		if (partitionTracker != null) {
-			partitionTracker.setDigest(dummyNodePartitions, recordProxy.key);
-		}
-	}
-
-	@Override
-	void onFailure(AerospikeException ae) {
-		listener.onFailure(ae);
 	}
 
 	@Override

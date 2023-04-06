@@ -178,9 +178,11 @@ public class GrpcConversions {
 
     /**
      * @param statement Aerospike client statement
+     * @param taskId    required non-zero taskId to use for the execution at the
+     *                  proxy.
      * @return equivalent gRPC {@link com.aerospike.proxy.client.Kvs.Statement}
      */
-    public static Kvs.Statement toGrpc(Statement statement) {
+    public static Kvs.Statement toGrpc(Statement statement, long taskId) {
         Kvs.Statement.Builder statementBuilder = Kvs.Statement.newBuilder();
         statementBuilder.setNamespace(statement.getNamespace());
         if (statement.getSetName() != null) {
@@ -220,14 +222,7 @@ public class GrpcConversions {
             }
         }
 
-        if (statement.getTaskId() == 0) {
-	        // @Ashish This does not work. This code mutates the Statement instance and
-        	// makes it no longer shareable among queries. This is why the taskId must
-        	// be set to a separate variable at the beginning and then passed around
-        	// independently of Statement.
-            statement.setTaskId(statement.prepareTaskId());
-        }
-        statementBuilder.setTaskId(statement.getTaskId());
+        statementBuilder.setTaskId(taskId);
 
         statementBuilder.setMaxRecords(statement.getMaxRecords());
         statementBuilder.setRecordsPerSecond(statement.getRecordsPerSecond());
@@ -239,6 +234,7 @@ public class GrpcConversions {
         Kvs.PartitionStatus.Builder builder = Kvs.PartitionStatus.newBuilder();
         builder.setId(ps.id);
         builder.setBVal(ps.bval);
+        builder.setRetry(ps.retry);
         if (ps.digest != null) {
             builder.setDigest(ByteString.copyFrom(ps.digest));
         }
@@ -249,6 +245,7 @@ public class GrpcConversions {
         Kvs.PartitionFilter.Builder builder = Kvs.PartitionFilter.newBuilder();
         builder.setBegin(partitionFilter.getBegin());
         builder.setCount(partitionFilter.getCount());
+        builder.setRetry(partitionFilter.isRetry());
 
         byte[] digest = partitionFilter.getDigest();
         if (digest != null && digest.length > 0) {

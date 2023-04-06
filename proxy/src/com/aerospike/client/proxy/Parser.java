@@ -45,12 +45,13 @@ public final class Parser {
 	int batchIndex;
 	int fieldCount;
 	int opCount;
+	int info3;
 
-    public Parser(byte[] buffer) {
-        this.buffer = buffer;
-    }
+	public Parser(byte[] buffer) {
+		this.buffer = buffer;
+	}
 
-    public void parseProto() {
+	public void parseProto() {
 		long sz = Buffer.bytesToLong(buffer, offset);
 		receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
 		int totalSize = receiveSize + 8;
@@ -97,6 +98,7 @@ public final class Parser {
 		else {
 			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 		}
+		info3 = buffer[offset - 2] & 0xFF;
     }
 
 	public int parseResultCode() {
@@ -128,7 +130,7 @@ public final class Parser {
 		}
 	}
 
-	public final Key parseKey(BVal bVal) {
+	public Key parseKey(BVal bVal) {
 		byte[] digest = null;
 		String namespace = null;
 		String setName = null;

@@ -1293,16 +1293,16 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 
 		CompletableFuture<Void> future = new CompletableFuture<>();
+		long taskId = statement.prepareTaskId();
+
 		BackgroundExecuteCommandProxy command = new BackgroundExecuteCommandProxy(executor, policy,
-			statement, future);
+			statement, taskId, future);
 		command.execute();
 
 		// Check whether the background task started.
 		getFuture(future);
 
-		// The background executor ensures the statement has a taskId either
-		// from user input or separately prepared.
-		return new ExecuteTaskProxy(executor, statement.getTaskId(), statement.isScan());
+		return new ExecuteTaskProxy(executor, taskId, statement.isScan());
 	}
 
 	@Override
@@ -1347,7 +1347,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
-		QueryCommandProxy command = new QueryCommandProxy(executor, listener, policy, statement, null, null);
+		long taskId = statement.prepareTaskId();
+		QueryCommandProxy command = new QueryCommandProxy(executor, listener,
+			policy, statement, taskId, null, null);
 		command.execute();
 	}
 
@@ -1396,9 +1398,10 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		long taskId = statement.prepareTaskId();
 		PartitionTracker tracker = new PartitionTracker(policy, statement, 1, partitionFilter);
 		QueryCommandProxy command = new QueryCommandProxy(executor, listener, policy,
-			statement, partitionFilter, tracker);
+			statement, taskId, partitionFilter, tracker);
 		command.execute();
 	}
 
@@ -1420,8 +1423,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = queryPolicyDefault;
 		}
 
+		long taskId = statement.prepareTaskId();
 		QueryAggregateCommandProxy commandProxy = new QueryAggregateCommandProxy(
-			executor, threadPool, policy, statement);
+			executor, threadPool, policy, statement, taskId);
 		commandProxy.execute();
 		return commandProxy.getResultSet();
 	}

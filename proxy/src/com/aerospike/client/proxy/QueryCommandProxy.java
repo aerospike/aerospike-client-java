@@ -17,10 +17,6 @@
 
 package com.aerospike.client.proxy;
 
-import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
@@ -34,22 +30,23 @@ import com.aerospike.proxy.client.QueryGrpc;
 /**
  * Implements asynchronous query for the proxy.
  */
-public class QueryCommandProxy extends MultiCommandProxy {
+public class QueryCommandProxy extends ScanQueryBaseCommandProxy {
 	private final Statement statement;
-	private final RecordSequenceListener listener;
 	private final PartitionFilter partitionFilter;
-	private final PartitionTracker partitionTracker;
-	private final PartitionTracker.NodePartitions dummyNodePartitions;
+	private final long taskId;
 
 	public QueryCommandProxy(
 		GrpcCallExecutor executor,
 		RecordSequenceListener listener, QueryPolicy queryPolicy,
 		Statement statement,
+		long taskId,
 		PartitionFilter partitionFilter,
 		PartitionTracker partitionTracker
 	) {
-		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
+		super(false, QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy,
+			listener, partitionTracker);
 		this.statement = statement;
+		this.taskId = taskId;
 
 		// gRPC query policy does not have the deprecated maxRecords field.
 		// Set the max records in the statement from query policy.
@@ -57,42 +54,7 @@ public class QueryCommandProxy extends MultiCommandProxy {
 		this.statement.setMaxRecords(statement.getMaxRecords() > 0 ?
 			statement.getMaxRecords() : queryPolicy.maxRecords);
 
-		this.listener = listener;
 		this.partitionFilter = partitionFilter;
-		this.partitionTracker = partitionTracker;
-		this.dummyNodePartitions = new PartitionTracker.NodePartitions(null,Node.PARTITIONS);
-	}
-
-	@Override
-	protected void writeCommand(Command command) {
-		// Nothing to do since there is no Aerospike payload.
-	}
-
-	@Override
-	protected void parseResult(Parser parser) {
-		RecordProxy recordProxy = parseRecordResult(parser, false, true, true);
-
-		if (recordProxy.resultCode == ResultCode.OK && !super.hasNext) {
-			// This is the end of query marker record.
-			listener.onSuccess();
-			return;
-		}
-
-		if (recordProxy.resultCode != ResultCode.OK) {
-			throw new AerospikeException(recordProxy.resultCode);
-		}
-
-		listener.onRecord(recordProxy.key, recordProxy.record);
-
-		if (partitionTracker != null) {
-			partitionTracker.setLast(dummyNodePartitions, recordProxy.key,
-					recordProxy.bVal.val);
-		}
-	}
-
-	@Override
-	protected void onFailure(AerospikeException ae) {
-		listener.onFailure(ae);
 	}
 
 	@Override
@@ -105,7 +67,7 @@ public class QueryCommandProxy extends MultiCommandProxy {
 		if (partitionFilter != null) {
 			queryRequestBuilder.setPartitionFilter(GrpcConversions.toGrpc(partitionFilter));
 		}
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement));
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
 		builder.setQueryRequest(queryRequestBuilder.build());
 
 		return builder;
