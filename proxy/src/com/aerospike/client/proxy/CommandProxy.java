@@ -99,7 +99,7 @@ public abstract class CommandProxy {
 			}));
 	}
 
-	private boolean retry() {
+	boolean retry() {
 		if (iteration > policy.maxRetries) {
 			return false;
 		}
@@ -172,12 +172,15 @@ public abstract class CommandProxy {
 			case NOT_FOUND:
 			case ALREADY_EXISTS:
 			case FAILED_PRECONDITION:
-			case ABORTED:
 			case OUT_OF_RANGE:
 			case UNIMPLEMENTED:
 			case INTERNAL:
-			case DATA_LOSS:
 				return new AerospikeException(ResultCode.CLIENT_ERROR, "gRPC status code=" + code, sre);
+
+			case ABORTED:
+			case DATA_LOSS:
+				return new AerospikeException(ResultCode.SERVER_ERROR, "gRPC status " +
+					"code=" + code, sre);
 
 			case INVALID_ARGUMENT:
 				return new AerospikeException(ResultCode.SERIALIZE_ERROR, sre);

@@ -47,7 +47,9 @@ public class QueryResume extends Example {
 		String binName = "bin";
 		String setName = "qr";
 
-		createIndex(client, params, setName, indexName, binName);
+		if (!params.useProxyClient) {
+			createIndex(client, params, setName, indexName, binName);
+		}
 		writeRecords(client, params, setName, binName, 200);
 
 		Statement stmt = new Statement();

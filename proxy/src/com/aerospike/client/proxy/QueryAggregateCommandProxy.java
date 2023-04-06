@@ -50,16 +50,19 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 	private final LuaInstance lua;
 	private final Statement statement;
 	private final AtomicBoolean done;
+	private final long taskId;
 	private volatile Exception exception;
 
 	public QueryAggregateCommandProxy(
 		GrpcCallExecutor executor,
 		ExecutorService threadPool,
 		QueryPolicy queryPolicy,
-		Statement statement
+		Statement statement,
+		long taskId
 	) {
 		super(QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy);
 		this.statement = statement;
+		this.taskId = taskId;
 		this.inputQueue = new ArrayBlockingQueue<>(500);
 		this.resultSet = new ResultSetProxy(this, queryPolicy.recordQueueSize);
 		this.done = new AtomicBoolean();
@@ -147,8 +150,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 			Kvs.QueryRequest.newBuilder();
 
 		queryRequestBuilder.setQueryPolicy(GrpcConversions.toGrpc((QueryPolicy)policy));
-
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement));
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
 		builder.setQueryRequest(queryRequestBuilder.build());
 		return builder;
 	}
@@ -172,7 +174,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 			}
 			catch (InterruptedException ie) {
 				if (Log.debugEnabled()) {
-					Log.debug("Lua input queue " + statement.getTaskId() + " put " +
+					Log.debug("Lua input queue " + taskId + " put " +
 						"interrupted");
 				}
 			}
@@ -191,7 +193,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 			if (inputQueue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.
 				if (Log.debugEnabled()) {
-					Log.debug("Lua input queue " + statement.getTaskId() + " both " +
+					Log.debug("Lua input queue " + taskId + " both " +
 						"offer and poll failed on abort");
 				}
 				break;
@@ -239,7 +241,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 	}
 
 	long getTaskId() {
-		return statement.getTaskId();
+		return taskId;
 	}
 
 	public ResultSet getResultSet() {

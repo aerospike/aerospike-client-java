@@ -34,16 +34,19 @@ import com.aerospike.proxy.client.QueryGrpc;
  */
 public class BackgroundExecuteCommandProxy extends MultiCommandProxy {
 	private final Statement statement;
+	private final long taskId;
 	private final CompletableFuture<Void> future;
 
 	public BackgroundExecuteCommandProxy(
 		GrpcCallExecutor executor,
 		WritePolicy writePolicy,
 		Statement statement,
+		long taskId,
 		CompletableFuture<Void> future
 	) {
 		super(QueryGrpc.getBackgroundExecuteStreamingMethod(), executor, writePolicy);
 		this.statement = statement;
+		this.taskId = taskId;
 		this.future = future;
 	}
 
@@ -77,7 +80,7 @@ public class BackgroundExecuteCommandProxy extends MultiCommandProxy {
 			Kvs.BackgroundExecuteRequest.newBuilder();
 
 		queryRequestBuilder.setWritePolicy(GrpcConversions.toGrpc((WritePolicy)policy));
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement));
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
 		builder.setBackgroundExecuteRequest(queryRequestBuilder.build());
 
 		return builder;

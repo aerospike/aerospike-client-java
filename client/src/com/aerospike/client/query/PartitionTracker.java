@@ -347,13 +347,16 @@ public final class PartitionTracker {
 	 * @param partitionId partition id
 	 * @param digest      the record digest
 	 * @param bval        the last seen value.
+	 * @param retry       indicates if this partition should be retried.
 	 */
-	void setLast(int partitionId, byte[] digest, long bval) {
-		for (PartitionStatus ps : partitions) {
-			if (ps.id == partitionId) {
-				ps.bval = bval;
-				ps.digest = digest;
-			}
+	void setLast(int partitionId, byte[] digest, long bval, boolean retry) {
+		int pIndex = partitionId - partitionBegin;
+		if (pIndex < partitions.length) {
+			PartitionStatus ps = partitions[pIndex];
+			assert ps.id == partitionId;
+			ps.bval = bval;
+			ps.digest = digest;
+			ps.retry = retry;
 		}
 	}
 
@@ -366,6 +369,10 @@ public final class PartitionTracker {
 	}
 
 	public boolean isComplete(Cluster cluster, Policy policy) {
+		return isComplete(cluster.hasPartitionQuery, policy, nodePartitionsList);
+	}
+
+	public boolean isComplete(boolean hasPartitionQuery, Policy policy, List<NodePartitions> nodePartitionsList) {
 		long recordCount = 0;
 		int partsUnavailable = 0;
 
@@ -395,7 +402,7 @@ public final class PartitionTracker {
 				}
 			}
 			else {
-				if (cluster.hasPartitionQuery) {
+				if (hasPartitionQuery) {
 					// Server version >= 6.0 will return all records for each node up to
 					// that node's max. If node's record count reached max, there still
 					// may be records available for that node.
