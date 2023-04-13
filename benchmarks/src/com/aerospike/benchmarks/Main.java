@@ -375,6 +375,10 @@ public class Main implements Log.Callback {
 			this.asyncEnabled = true;
 		}
 
+		if (line.hasOption("proxy")) {
+			this.useProxyClient = true;
+		}
+
 		args.readPolicy = clientPolicy.readPolicyDefault;
 		args.writePolicy = clientPolicy.writePolicyDefault;
 		args.batchPolicy = clientPolicy.batchPolicyDefault;
@@ -391,6 +395,13 @@ public class Main implements Log.Callback {
 		}
 		else {
 			this.port = 3000;
+		}
+
+		// If the Aerospike server's default port (3000) is used and the proxy client is used,
+		// Reset the port to the proxy server's default port (4000).
+		if (port == 3000 && useProxyClient) {
+			System.out.println("Change proxy server port to 4000");
+			port = 4000;
 		}
 
 		if (line.hasOption("hosts")) {
@@ -939,10 +950,6 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("eventLoopType")) {
 			this.eventLoopType = EventLoopType.valueOf(line.getOptionValue("eventLoopType", "").toUpperCase());
-		}
-
-		if (line.hasOption("proxy")) {
-			this.useProxyClient = true;
 		}
 
 		if (line.hasOption("udfPackageName")) {
