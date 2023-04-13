@@ -984,13 +984,6 @@ public class Main implements Log.Callback {
 			args.writePolicy.sendKey = true;
 		}
 
-		// If the Aerospike server's default port (3000) is used and the proxy client is used,
-		// Reset the port to the proxy server's default port (4000).
-		if (port == 3000 && useProxyClient) {
-			System.out.println("Change proxy server port to 4000");
-			port = 4000;
-		}
-
 		System.out.println("Benchmark: " + this.hosts[0]
 			+ ", namespace: " + args.namespace
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
