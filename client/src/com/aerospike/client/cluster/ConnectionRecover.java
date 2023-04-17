@@ -168,7 +168,7 @@ public final class ConnectionRecover {
 	 * Close connection.
 	 */
 	public void abort() {
-		node.closeConnection(conn);
+		node.closeConnection(conn, Connection.AbortRecovery);
 		state = Command.STATE_COMPLETE;
 	}
 

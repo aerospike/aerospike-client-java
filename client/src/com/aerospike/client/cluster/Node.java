@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -59,6 +60,8 @@ public class Node implements Closeable {
 	private static final String[] INFO_PERIODIC = new String[] {"node", "peers-generation", "partition-generation"};
 	private static final String[] INFO_PERIODIC_REB = new String[] {"node", "peers-generation", "partition-generation", "rebalance-generation"};
 
+	final AtomicLong tranCount = new AtomicLong();
+	public final AtomicLong errorCountStat = new AtomicLong();
 	protected final Cluster cluster;
 	private final String name;
 	private final Host host;
@@ -209,8 +212,8 @@ public class Node implements Closeable {
 		try {
 			if (tendConnection.isClosed()) {
 				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, null) :
-					new Connection(address, cluster.connectTimeout, this, null);
+					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, null, Connection.Tend) :
+					new Connection(address, cluster.connectTimeout, this, null, Connection.Tend);
 
 				connsOpened.getAndIncrement();
 
@@ -442,7 +445,7 @@ public class Node implements Closeable {
 
 							if (findPeerNode(cluster, peers, nv.name)) {
 								// Node already exists. Do not even try to connect to hosts.
-								nv.primaryConn.close();
+								nv.primaryConn.close(Connection.PeerExists);
 								nodeValidated = true;
 								break;
 							}
@@ -547,7 +550,7 @@ public class Node implements Closeable {
 		failures++;
 
 		if (! tendConnection.isClosed()) {
-			closeConnectionOnError(tendConnection);
+			closeConnectionOnError(tendConnection, Connection.Tend);
 		}
 
 		// Only log message if cluster is still active.
@@ -577,7 +580,7 @@ public class Node implements Closeable {
 				pool.total.getAndIncrement();
 			}
 			else {
-				closeIdleConnection(conn);
+				closeIdleConnection(conn, Connection.MinOfferFailed);
 				break;
 			}
 			count--;
@@ -587,8 +590,8 @@ public class Node implements Closeable {
 	private Connection createConnection(Pool pool) {
 		// Create sync connection.
 		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, pool) :
-				new Connection(address, cluster.connectTimeout, this, pool);
+				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, pool, Connection.MinConn) :
+				new Connection(address, cluster.connectTimeout, this, pool, Connection.MinConn);
 
 		connsOpened.getAndIncrement();
 
@@ -602,11 +605,11 @@ public class Node implements Closeable {
 					}
 				}
 				catch (AerospikeException ae) {
-					closeConnectionOnError(conn);
+					closeConnectionOnError(conn, Connection.MinFailed);
 					throw ae;
 				}
 				catch (Exception e) {
-					closeConnectionOnError(conn);
+					closeConnectionOnError(conn, Connection.MinFailed);
 					throw new AerospikeException(e);
 				}
 			}
@@ -642,6 +645,8 @@ public class Node implements Closeable {
 	 * Get a socket connection from connection pool to the server node.
 	 */
 	public final Connection getConnection(int connectTimeout, int socketTimeout, int timeoutDelay) {
+		tranCount.getAndIncrement();
+
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -677,11 +682,11 @@ public class Node implements Closeable {
 					catch (Exception e) {
 						// Set timeout failed. Something is probably wrong with timeout
 						// value itself, so don't empty queue retrying.  Just get out.
-						closeConnection(conn);
+						closeConnection(conn, Connection.SetTimeout);
 						throw new AerospikeException.Connection(e);
 					}
 				}
-				pool.closeIdle(this, conn);
+				pool.closeIdle(this, conn, Connection.CloseIdleTran);
 			}
 			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
@@ -690,8 +695,8 @@ public class Node implements Closeable {
 
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
-						new Connection(address, timeout, this, pool);
+						new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool, Connection.Tran) :
+						new Connection(address, timeout, this, pool, Connection.Tran);
 
 					connsOpened.getAndIncrement();
 				}
@@ -712,7 +717,7 @@ public class Node implements Closeable {
 						}
 						catch (AerospikeException ae) {
 							// Socket not authenticated.  Do not put back into pool.
-							closeConnection(conn);
+							closeConnection(conn, Connection.AuthFailed);
 							throw ae;
 						}
 						catch (Connection.ReadTimeout crt) {
@@ -722,23 +727,23 @@ public class Node implements Closeable {
 								cluster.recoverConnection(new ConnectionRecover(conn, this, timeoutDelay, crt, true));
 							}
 							else {
-								closeConnection(conn);
+								closeConnection(conn, Connection.AuthFailed);
 							}
 							throw crt;
 						}
 						catch (RuntimeException re) {
-							closeConnection(conn);
+							closeConnection(conn, Connection.AuthFailed);
 							throw re;
 						}
 						catch (SocketTimeoutException ste) {
-							closeConnection(conn);
+							closeConnection(conn, Connection.AuthFailed);
 							// This is really a socket write timeout, but the calling
 							// method's catch handler just identifies error as a client
 							// timeout, which is what we need.
 							throw new Connection.ReadTimeout(null, 0, 0, (byte)0);
 						}
 						catch (IOException ioe) {
-							closeConnection(conn);
+							closeConnection(conn, Connection.AuthFailed);
 							throw new AerospikeException.Connection(ioe);
 						}
 					}
@@ -750,7 +755,7 @@ public class Node implements Closeable {
 						conn.setTimeout(socketTimeout);
 					}
 					catch (Exception e) {
-						closeConnection(conn);
+						closeConnection(conn, Connection.SetTimeout);
 						throw new AerospikeException.Connection(e);
 					}
 				}
@@ -789,34 +794,53 @@ public class Node implements Closeable {
 	 * @param conn					socket connection
 	 */
 	public final void putConnection(Connection conn) {
-		if (! active || ! conn.pool.offer(conn)) {
-			closeConnection(conn);
+		try {
+			if (! active || ! conn.pool.offer(conn)) {
+				closeConnection(conn, Connection.OfferFailed);
+			}
+		}
+		catch (Throwable t) {
+			Log.error("putConnection failed: " + Util.getErrorMessage(t));
+			throw t;
 		}
 	}
 
 	/**
 	 * Close pooled connection on error and decrement connection count.
 	 */
-	public final void closeConnection(Connection conn) {
-		conn.pool.total.getAndDecrement();
-		closeConnectionOnError(conn);
+	public final void closeConnection(Connection conn, String reason) {
+		try {
+			conn.pool.total.getAndDecrement();
+			closeConnectionOnError(conn, reason);
+		}
+		catch (Throwable t) {
+			Log.error("closeConnection failed: " + Util.getErrorMessage(t));
+			throw t;
+		}
 	}
 
 	/**
 	 * Close any connection on error.
 	 */
-	public final void closeConnectionOnError(Connection conn) {
-		connsClosed.getAndIncrement();
-		incrErrorCount();
-		conn.close();
+	public final void closeConnectionOnError(Connection conn, String reason) {
+		try {
+			connsClosed.getAndIncrement();
+			errorCountStat.getAndIncrement();
+			incrErrorCount();
+			conn.close(reason);
+		}
+		catch (Throwable t) {
+			Log.error("closeConnectionOnError failed: " + Util.getErrorMessage(t));
+			throw t;
+		}
 	}
 
 	/**
 	 * Close connection without incrementing error count.
 	 */
-	public final void closeIdleConnection(Connection conn) {
+	public final void closeIdleConnection(Connection conn, String reason) {
 		connsClosed.getAndIncrement();
-		conn.close();
+		conn.close(reason);
 	}
 
 	final void balanceConnections() {
@@ -1190,12 +1214,12 @@ public class Node implements Closeable {
 
 		// Close tend connection after making reference copy.
 		Connection conn = tendConnection;
-		conn.close();
+		conn.close(Connection.CloseNode);
 
 		// Close synchronous connections.
 		for (Pool pool : connectionPools) {
 			while ((conn = pool.poll()) != null) {
-				conn.close();
+				conn.close(Connection.CloseNode);
 			}
 		}
 	}

@@ -29,6 +29,7 @@ import java.net.SocketTimeoutException;
 import java.security.cert.X509Certificate;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.naming.directory.Attribute;
 import javax.naming.ldap.LdapName;
@@ -46,18 +47,49 @@ import com.aerospike.client.util.Util;
  * Socket connection wrapper.
  */
 public final class Connection implements Closeable {
+	public static final String Info = "info";
+	public static final String Tend = "tend";
+	public static final String Tran = "tran";
+	public static final String Validate = "validate";
+	public static final String LoadBalancer = "loadbalancer";
+	public static final String LoadBalFailed = "loadbalfailed";
+	public static final String SwitchClear = "switchclear";
+	public static final String SwitchTLS = "switchtls";
+	public static final String MinConn = "minconn";
+	public static final String CloseIdleTend = "idletend";
+	public static final String CloseIdleTran = "idletran";
+	public static final String MinOfferFailed = "offerfailed";
+	public static final String MinFailed = "minfailed";
+	public static final String CloseNode = "closenode";
+	public static final String AdminError = "adminerror";
+	public static final String InfoError = "infoerror";
+	public static final String AbortRecovery = "abortrecovery";
+	public static final String SetTimeout = "settimeout";
+	public static final String AuthFailed = "authfailed";
+	public static final String OfferFailed = "offerfailed";
+	public static final String RegisterFailed = "registerfailed";
+	public static final String TranFailed = "tranfailed";
+	public static final String PeerExists = "peerexists";
+	public static final String ValFailed = "valfailed";
+
+	private static final AtomicInteger ConnCounter = new AtomicInteger();
+
+	private final int connId;
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
 	protected final Pool pool;
 	private volatile long lastUsed;
 
-	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(address, timeoutMillis, null, null);
+	public Connection(InetSocketAddress address, int timeoutMillis, String reason) throws AerospikeException.Connection {
+		this(address, timeoutMillis, null, null, reason);
 	}
 
-	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
+	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool, String reason) throws AerospikeException.Connection {
+		this.connId = ConnCounter.incrementAndGet();
 		this.pool = pool;
+
+		Log.info("Open connection: " + connId + ',' + address + ',' + reason);
 
 		try {
 			socket = new Socket();
@@ -80,9 +112,11 @@ public final class Connection implements Closeable {
 			}
 			catch (Exception e) {
 				// socket.close() will close input/output streams according to doc.
+				Log.info("Open failed: " + connId + ',' + address + ',' + Util.getErrorMessage(e));
 				socket.close();
 
 				if (node != null) {
+					node.errorCountStat.getAndIncrement();
 					node.incrErrorCount();
 				}
 				throw e;
@@ -96,12 +130,15 @@ public final class Connection implements Closeable {
 		}
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
-		this(policy, tlsName, address, timeoutMillis, null, null);
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, String reason) throws AerospikeException.Connection {
+		this(policy, tlsName, address, timeoutMillis, null, null, reason);
 	}
 
-	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
+	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool, String reason) throws AerospikeException.Connection {
+		this.connId = ConnCounter.incrementAndGet();
 		this.pool = pool;
+
+		Log.info("Open connection: " + connId + ',' + address + ',' + reason);
 
 		try {
 			SSLSocketFactory sslsocketfactory = (policy.context != null) ?
@@ -153,9 +190,11 @@ public final class Connection implements Closeable {
 			}
 			catch (Exception e) {
 				// socket.close() will close input/output streams according to doc.
+				Log.info("Open failed: " + connId + ',' + address + ',' + Util.getErrorMessage(e));
 				socket.close();
 
 				if (node != null) {
+					node.errorCountStat.getAndIncrement();
 					node.incrErrorCount();
 				}
 				throw e;
@@ -308,10 +347,15 @@ public final class Connection implements Closeable {
 		lastUsed = System.nanoTime();
 	}
 
+	public void close() {
+		close("Unknown");
+	}
+
 	/**
 	 * Close socket and associated streams.
 	 */
-	public void close() {
+	public void close(String reason) {
+		Log.info("Close connection: " + connId + ',' + reason);
 		lastUsed = 0;
 
 		try {

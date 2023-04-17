@@ -33,6 +33,8 @@ public final class ClusterStats {
 	 */
 	public final EventLoopStats[] eventLoops;
 
+	public final int clusterId;
+
 	/**
 	 * Number of active threads executing sync batch/scan/query commands.
 	 */
@@ -54,12 +56,14 @@ public final class ClusterStats {
 	public ClusterStats(
 		NodeStats[] nodes,
 		EventLoopStats[] eventLoops,
+		int clusterId,
 		int threadsInUse,
 		int recoverQueueSize,
 		int invalidNodeCount
 	) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
+		this.clusterId = clusterId;
 		this.threadsInUse = threadsInUse;
 		this.recoverQueueSize = recoverQueueSize;
 		this.invalidNodeCount = invalidNodeCount;
@@ -71,7 +75,9 @@ public final class ClusterStats {
 	public String toString() {
 		StringBuilder sb = new StringBuilder(1024);
 
-		sb.append("nodes(inUse,inPool,opened,closed):");
+		sb.append("cluster ");
+		sb.append(clusterId);
+		sb.append(" nodes(inUse,inPool,opened,closed):");
 		sb.append(System.lineSeparator());
 
 		for (NodeStats stat : nodes) {

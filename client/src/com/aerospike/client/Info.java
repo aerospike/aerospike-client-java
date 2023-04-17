@@ -65,7 +65,7 @@ public class Info {
 			return response;
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.InfoError);
 			throw re;
 		}
 	}
@@ -88,7 +88,7 @@ public class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.InfoError);
 			throw re;
 		}
 	}
@@ -111,7 +111,7 @@ public class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.InfoError);
 			throw re;
 		}
 	}
@@ -133,7 +133,7 @@ public class Info {
 			return result;
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.InfoError);
 			throw re;
 		}
 	}
@@ -199,13 +199,13 @@ public class Info {
 	 */
 	public static String request(InetSocketAddress socketAddress, String name)
 		throws AerospikeException {
-		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, Connection.Info);
 
 		try {
 			return request(conn, name);
 		}
 		finally {
-			conn.close();
+			conn.close(Connection.Info);
 		}
 	}
 
@@ -219,13 +219,13 @@ public class Info {
 	 */
 	public static HashMap<String,String> request(InetSocketAddress socketAddress, String... names)
 		throws AerospikeException {
-		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, Connection.Info);
 
 		try {
 			return request(conn, names);
 		}
 		finally {
-			conn.close();
+			conn.close(Connection.Info);
 		}
 	}
 
@@ -238,13 +238,13 @@ public class Info {
 	 */
 	public static HashMap<String,String> request(InetSocketAddress socketAddress)
 		throws AerospikeException {
-		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT);
+		Connection conn = new Connection(socketAddress, DEFAULT_TIMEOUT, Connection.Info);
 
 		try {
 			return request(conn);
 		}
 		finally {
-			conn.close();
+			conn.close(Connection.Info);
 		}
 	}
 

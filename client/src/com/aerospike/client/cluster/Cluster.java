@@ -55,6 +55,10 @@ import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
+	private static final AtomicInteger ClusterCounter = new AtomicInteger();
+
+	private final int clusterId;
+
 	// Expected cluster name.
 	protected final String clusterName;
 
@@ -193,6 +197,7 @@ public class Cluster implements Runnable, Closeable {
 	private boolean asyncComplete;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
+		this.clusterId = ClusterCounter.incrementAndGet();
 		this.clusterName = policy.clusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
@@ -352,6 +357,42 @@ public class Cluster implements Runnable, Closeable {
 			eventState = null;
 			nettyTlsContext = null;
 		}
+
+		Log.info(
+			"Initialize cluster " +
+			"clusterId=" + clusterId + ',' +
+			"clusterName=" + clusterName + ',' +
+			"userName=" + policy.user + ',' +
+			"rackId=" + policy.rackId + ',' +
+			"rackAware=" + policy.rackAware + ',' +
+			"minConnsPerNode=" + minConnsPerNode + ',' +
+			"maxConnsPerNode=" + maxConnsPerNode + ',' +
+			"connPoolsPerNode=" + connPoolsPerNode + ',' +
+			"async=" + (eventLoops != null) + ',' +
+			"asyncMinConnsPerNode=" + asyncMinConnsPerNode + ',' +
+			"asyncMaxConnsPerNode=" + asyncMaxConnsPerNode + ',' +
+			"maxSocketIdle=" + policy.maxSocketIdle + ',' +
+			"maxErrorRate=" + maxErrorRate + ',' +
+			"errorRateWindow=" + errorRateWindow + ',' +
+			"connectTimeout=" + connectTimeout + ',' +
+			"loginTimeout=" + loginTimeout + ',' +
+			"closeTimeout=" + closeTimeout + ',' +
+			"tendInterval=" + tendInterval + ',' +
+			"TLS=" + (tlsPolicy != null) + ',' +
+			"authMode=" + authMode + ',' +
+			"useServicesAlternate=" + useServicesAlternate + ',' +
+			"keepAlive=" + keepAlive + ',' +
+			"read.connectTimeout=" + policy.readPolicyDefault.connectTimeout + ',' +
+			"read.socketTimeout=" + policy.readPolicyDefault.socketTimeout + ',' +
+			"read.totalTimeout=" + policy.readPolicyDefault.totalTimeout + ',' +
+			"read.timeoutDelay=" + policy.readPolicyDefault.timeoutDelay + ',' +
+			"read.maxRetries=" + policy.readPolicyDefault.maxRetries + ',' +
+			"write.connectTimeout=" + policy.writePolicyDefault.connectTimeout + ',' +
+			"write.socketTimeout=" + policy.writePolicyDefault.socketTimeout + ',' +
+			"write.totalTimeout=" + policy.writePolicyDefault.totalTimeout + ',' +
+			"write.timeoutDelay=" + policy.writePolicyDefault.timeoutDelay + ',' +
+			"write.maxRetries=" + policy.writePolicyDefault.maxRetries
+			);
 
 		if (policy.forceSingleNode) {
 			// Communicate with the first seed node only.
@@ -608,6 +649,13 @@ public class Cluster implements Runnable, Closeable {
 				}
 			}
 		}
+
+		/*
+		if (tendCount % 10 == 0) {
+			ClusterStats cs = getStats();
+			Log.info(cs.toString());
+		}
+		*/
 
 		// Reset connection error window for all nodes every connErrorWindow tend iterations.
 		if (maxErrorRate > 0 && tendCount % errorRateWindow == 0) {
@@ -1083,7 +1131,7 @@ public class Cluster implements Runnable, Closeable {
 					for (int i = 0; i < nodeArray.length; i++) {
 						nodeStats[i].async = nodeArray[i].getAsyncConnectionStats();
 					}
-					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+					return new ClusterStats(nodeStats, eventLoopStats, clusterId, threadsInUse, recoverCount.get(), invalidNodeCount);
 				}
 			}
 
@@ -1130,7 +1178,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
 			}
 		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+		return new ClusterStats(nodeStats, eventLoopStats, clusterId, threadsInUse, recoverCount.get(), invalidNodeCount);
 	}
 
 	public final void getStats(ClusterStatsListener listener) {
@@ -1153,7 +1201,7 @@ public class Cluster implements Runnable, Closeable {
 
 			if (eventLoops == null) {
 				try {
-					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount));
+					listener.onSuccess(new ClusterStats(nodeStats, null, clusterId, threadsInUse, recoverCount.get(), invalidNodeCount));
 				}
 				catch (Throwable e) {
 				}
@@ -1198,7 +1246,7 @@ public class Cluster implements Runnable, Closeable {
 							}
 
 							try {
-								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount));
+								listener.onSuccess(new ClusterStats(nodeStats, loopStats, clusterId, threadCount, recoverCount.get(), invalidNodeCount));
 							}
 							catch (Throwable e) {
 							}

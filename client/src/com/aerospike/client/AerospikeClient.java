@@ -3695,7 +3695,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			node.putConnection(conn);
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.InfoError);
 			throw re;
 		}
 		return info.getValue();

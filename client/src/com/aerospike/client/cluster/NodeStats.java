@@ -25,6 +25,9 @@ public final class NodeStats {
 	 */
 	public final Node node;
 
+	public final long tranCount;
+	public final long connErrorCount;
+
 	/**
 	 * Connection statistics for sync commands.
 	 */
@@ -40,6 +43,8 @@ public final class NodeStats {
 	 */
 	public NodeStats(Node node) {
 		this.node = node;
+		this.tranCount = node.tranCount.getAndSet(0);
+		this.connErrorCount = node.errorCountStat.getAndSet(0);
 		this.sync = node.getConnectionStats();
 	}
 
@@ -47,6 +52,6 @@ public final class NodeStats {
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return node + " sync(" + sync + ") async(" + async + ')';
+		return node + " tran(" + tranCount + ") connError(" + connErrorCount + ") sync(" + sync + ") async(" + async + ')';
 	}
 }

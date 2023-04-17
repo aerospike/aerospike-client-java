@@ -85,7 +85,7 @@ public final class RegisterCommand {
 			return new RegisterTask(cluster, policy, serverPath);
 		}
 		catch (RuntimeException re) {
-			node.closeConnection(conn);
+			node.closeConnection(conn, Connection.RegisterFailed);
 			throw re;
 		}
 	}

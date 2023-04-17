@@ -115,7 +115,7 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						// Close socket to flush out possible garbage.  Do not put back in pool.
-						node.closeConnection(conn);
+						node.closeConnection(conn, Connection.TranFailed);
 					}
 
 					if (ae.getResultCode() == ResultCode.TIMEOUT) {
@@ -123,6 +123,7 @@ public abstract class SyncCommand extends Command {
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
+						node.errorCountStat.getAndIncrement();
 						node.incrErrorCount();
 					}
 					else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
@@ -140,7 +141,7 @@ public abstract class SyncCommand extends Command {
 						cluster.recoverConnection(new ConnectionRecover(conn, node, policy.timeoutDelay, crt, isSingle()));
 					}
 					else {
-						node.closeConnection(conn);
+						node.closeConnection(conn, Connection.TranFailed);
 					}
 					isClientTimeout = true;
 				}
@@ -148,19 +149,19 @@ public abstract class SyncCommand extends Command {
 					// All runtime exceptions are considered fatal.  Do not retry.
 					// Close socket to flush out possible garbage.  Do not put back in pool.
 					// Log.info("Throw RuntimeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					node.closeConnection(conn);
+					node.closeConnection(conn, Connection.TranFailed);
 					throw re;
 				}
 				catch (SocketTimeoutException ste) {
 					// Full timeout has been reached.
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					node.closeConnection(conn);
+					node.closeConnection(conn, Connection.TranFailed);
 					isClientTimeout = true;
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
 					// Log.info("IOException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					node.closeConnection(conn);
+					node.closeConnection(conn, Connection.TranFailed);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
 				}

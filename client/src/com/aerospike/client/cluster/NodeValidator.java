@@ -184,8 +184,8 @@ public final class NodeValidator {
 
 		InetSocketAddress socketAddress = new InetSocketAddress(address, port);
 		Connection conn = (cluster.tlsPolicy != null) ?
-			new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectTimeout) :
-			new Connection(socketAddress, cluster.connectTimeout);
+			new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectTimeout, Connection.Validate) :
+			new Connection(socketAddress, cluster.connectTimeout, Connection.Validate);
 
 		try {
 			if (cluster.authEnabled) {
@@ -197,7 +197,7 @@ public final class NodeValidator {
 				if (cluster.tlsPolicy != null && cluster.tlsPolicy.forLoginOnly) {
 					// Switch to using non-TLS socket.
 					SwitchClear sc = new SwitchClear(cluster, conn, sessionToken);
-					conn.close();
+					conn.close(Connection.SwitchTLS);
 					address = sc.clearAddress;
 					socketAddress = sc.clearSocketAddress;
 					conn = sc.clearConn;
@@ -257,7 +257,7 @@ public final class NodeValidator {
 			}
 		}
 		catch (Exception e) {
-			conn.close();
+			conn.close(Connection.ValFailed);
 			throw e;
 		}
 	}
@@ -388,8 +388,8 @@ public final class NodeValidator {
 					try {
 						InetSocketAddress socketAddress = new InetSocketAddress(address, h.port);
 						Connection conn = (cluster.tlsPolicy != null) ?
-							new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectTimeout) :
-							new Connection(socketAddress, cluster.connectTimeout);
+							new Connection(cluster.tlsPolicy, tlsName, socketAddress, cluster.connectTimeout, Connection.LoadBalancer) :
+							new Connection(socketAddress, cluster.connectTimeout, Connection.LoadBalancer);
 
 						try {
 							if (this.sessionToken != null) {
@@ -402,12 +402,12 @@ public final class NodeValidator {
 							setAliases(address, tlsName, h.port);
 							this.primaryHost = new Host(address.getHostAddress(), tlsName, h.port);
 							this.primaryAddress = socketAddress;
-							this.primaryConn.close();
+							this.primaryConn.close(Connection.LoadBalancer);
 							this.primaryConn = conn;
 							return;
 						}
 						catch (Exception e) {
-							conn.close();
+							conn.close(Connection.LoadBalFailed);
 						}
 					}
 					catch (Exception e) {
@@ -466,7 +466,7 @@ public final class NodeValidator {
 						try {
 							clearAddress = ia;
 							clearSocketAddress = new InetSocketAddress(clearAddress, clearHost.port);
-							clearConn = new Connection(clearSocketAddress, cluster.connectTimeout);
+							clearConn = new Connection(clearSocketAddress, cluster.connectTimeout, Connection.SwitchClear);
 
 							try {
 								if (sessionToken != null) {
@@ -477,7 +477,7 @@ public final class NodeValidator {
 								return;  // Authenticated clear connection.
 							}
 							catch (Exception e) {
-								clearConn.close();
+								clearConn.close(Connection.AuthFailed);
 							}
 						}
 						catch (Exception e) {
