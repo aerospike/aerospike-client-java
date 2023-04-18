@@ -35,6 +35,7 @@ import com.aerospike.proxy.client.Auth;
 import com.aerospike.proxy.client.AuthServiceGrpc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
+
 import io.grpc.CallOptions;
 import io.grpc.Deadline;
 import io.grpc.ManagedChannel;
@@ -273,7 +274,6 @@ public class AuthTokenManager implements Closeable {
 		return refreshMinTime;
 	}
 
-	@SuppressWarnings("BooleanMethodIsAlwaysInverted")
 	public boolean isTokenValid() {
 		AccessToken token = accessToken;
 		return !isTokenRequired() || (token != null && System.currentTimeMillis() <= token.expiry);

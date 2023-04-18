@@ -1,16 +1,5 @@
 package com.aerospike.client.proxy.grpc;
 
-import com.fasterxml.jackson.databind.util.ArrayIterator;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelPromise;
-import io.netty.channel.EventLoop;
-import io.netty.channel.EventLoopGroup;
-import io.netty.util.concurrent.EventExecutor;
-import io.netty.util.concurrent.Future;
-import io.netty.util.concurrent.ScheduledFuture;
-import org.checkerframework.checker.nullness.qual.NonNull;
-
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
@@ -18,6 +7,20 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import javax.annotation.Nonnull;
+
+import org.checkerframework.checker.nullness.qual.NonNull;
+
+import com.fasterxml.jackson.databind.util.ArrayIterator;
+
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelPromise;
+import io.netty.channel.EventLoop;
+import io.netty.channel.EventLoopGroup;
+import io.netty.util.concurrent.EventExecutor;
+import io.netty.util.concurrent.Future;
+import io.netty.util.concurrent.ScheduledFuture;
 
 /**
  * An event loop group containing a single event loop.
@@ -51,12 +54,14 @@ class SingleEventLoopGroup implements EventLoopGroup {
         return eventLoop.terminationFuture();
     }
 
-    @Override
+    @SuppressWarnings("deprecation")
+	@Override
     public void shutdown() {
         eventLoop.shutdown();
     }
 
-    @Override
+    @SuppressWarnings("deprecation")
+	@Override
     public List<Runnable> shutdownNow() {
         return eventLoop.shutdownNow();
     }
@@ -154,9 +159,9 @@ class SingleEventLoopGroup implements EventLoopGroup {
         return eventLoop.register(promise);
     }
 
-    @Override
+    @SuppressWarnings("deprecation")
+	@Override
     public ChannelFuture register(io.netty.channel.Channel channel, ChannelPromise promise) {
-        // TODO: @Tejas Handle deprecation.
         return eventLoop.register(channel, promise);
     }
 

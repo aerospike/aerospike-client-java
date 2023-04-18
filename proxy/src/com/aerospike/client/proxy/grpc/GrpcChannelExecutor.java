@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
 
@@ -469,7 +470,6 @@ public class GrpcChannelExecutor implements Runnable {
 	/**
 	 * Schedule the call on a stream.
 	 */
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	private void scheduleCalls(GrpcStreamingCall call) {
 		if (call.hasCompleted()) {
 			// Most likely expired while in queue.
@@ -498,7 +498,6 @@ public class GrpcChannelExecutor implements Runnable {
 		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue);
 	}
 
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	private void processClosedStream(GrpcStream grpcStream) {
 		if (!streams.containsKey(grpcStream.getId())) {
 			// Should never happen.
@@ -522,7 +521,6 @@ public class GrpcChannelExecutor implements Runnable {
 	/**
 	 * Schedule calls in pendingCalls on a new stream.
 	 */
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	private void scheduleCallsOnNewStream(MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 										  SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls) {
 		CallOptions options = grpcClientPolicy.callOptions;
@@ -657,13 +655,11 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	void onRequestCompleted() {
 		responsesReceived++;
 		ongoingRequests.getAndDecrement();
 	}
 
-	@SuppressWarnings("NonAtomicOperationOnVolatileField")
 	void onPayloadReceived(int size) {
 		bytesReceived += size;
 	}
