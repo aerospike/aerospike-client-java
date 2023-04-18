@@ -34,7 +34,9 @@ public class QueryCommandProxy extends ScanQueryBaseCommandProxy {
 	private final Statement statement;
 	private final PartitionFilter partitionFilter;
 	private final long taskId;
+	private final long maxRecords;
 
+	@SuppressWarnings("deprecation")
 	public QueryCommandProxy(
 		GrpcCallExecutor executor,
 		RecordSequenceListener listener, QueryPolicy queryPolicy,
@@ -43,18 +45,11 @@ public class QueryCommandProxy extends ScanQueryBaseCommandProxy {
 		PartitionFilter partitionFilter,
 		PartitionTracker partitionTracker
 	) {
-		super(false, QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy,
-			listener, partitionTracker);
+		super(false, QueryGrpc.getQueryStreamingMethod(), executor, queryPolicy, listener, partitionTracker);
 		this.statement = statement;
-		this.taskId = taskId;
-
-		// gRPC query policy does not have the deprecated maxRecords field.
-		// Set the max records in the statement from query policy.
-		// noinspection deprecation
-		this.statement.setMaxRecords(statement.getMaxRecords() > 0 ?
-			statement.getMaxRecords() : queryPolicy.maxRecords);
-
 		this.partitionFilter = partitionFilter;
+		this.taskId = taskId;
+		this.maxRecords = statement.getMaxRecords() > 0 ? statement.getMaxRecords() : queryPolicy.maxRecords;
 	}
 
 	@Override
@@ -64,12 +59,13 @@ public class QueryCommandProxy extends ScanQueryBaseCommandProxy {
 		Kvs.QueryRequest.Builder queryRequestBuilder = Kvs.QueryRequest.newBuilder();
 
 		queryRequestBuilder.setQueryPolicy(GrpcConversions.toGrpc((QueryPolicy)policy));
+
 		if (partitionFilter != null) {
 			queryRequestBuilder.setPartitionFilter(GrpcConversions.toGrpc(partitionFilter));
 		}
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
-		builder.setQueryRequest(queryRequestBuilder.build());
 
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId, maxRecords));
+		builder.setQueryRequest(queryRequestBuilder.build());
 		return builder;
 	}
 }

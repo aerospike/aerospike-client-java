@@ -177,12 +177,12 @@ public class GrpcConversions {
 
 
     /**
-     * @param statement Aerospike client statement
-     * @param taskId    required non-zero taskId to use for the execution at the
-     *                  proxy.
+     * @param statement 	Aerospike client statement
+     * @param taskId    	required non-zero taskId to use for the execution at the proxy
+     * @param maxRecords	max records to return
      * @return equivalent gRPC {@link com.aerospike.proxy.client.Kvs.Statement}
      */
-    public static Kvs.Statement toGrpc(Statement statement, long taskId) {
+    public static Kvs.Statement toGrpc(Statement statement, long taskId, long maxRecords) {
         Kvs.Statement.Builder statementBuilder = Kvs.Statement.newBuilder();
         statementBuilder.setNamespace(statement.getNamespace());
         if (statement.getSetName() != null) {
@@ -224,7 +224,7 @@ public class GrpcConversions {
 
         statementBuilder.setTaskId(taskId);
 
-        statementBuilder.setMaxRecords(statement.getMaxRecords());
+        statementBuilder.setMaxRecords(maxRecords);
         statementBuilder.setRecordsPerSecond(statement.getRecordsPerSecond());
 
         return statementBuilder.build();

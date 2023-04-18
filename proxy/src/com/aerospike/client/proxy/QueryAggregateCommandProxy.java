@@ -150,7 +150,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 			Kvs.QueryRequest.newBuilder();
 
 		queryRequestBuilder.setQueryPolicy(GrpcConversions.toGrpc((QueryPolicy)policy));
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId, 0));
 		builder.setQueryRequest(queryRequestBuilder.build());
 		return builder;
 	}

@@ -80,7 +80,7 @@ public class BackgroundExecuteCommandProxy extends MultiCommandProxy {
 			Kvs.BackgroundExecuteRequest.newBuilder();
 
 		queryRequestBuilder.setWritePolicy(GrpcConversions.toGrpc((WritePolicy)policy));
-		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId));
+		queryRequestBuilder.setStatement(GrpcConversions.toGrpc(statement, taskId, 0));
 		builder.setBackgroundExecuteRequest(queryRequestBuilder.build());
 
 		return builder;
