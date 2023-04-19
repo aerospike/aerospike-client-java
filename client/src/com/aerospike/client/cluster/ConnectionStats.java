@@ -18,15 +18,17 @@ package com.aerospike.client.cluster;
 
 /**
  * Connection statistics.
+ * Note: InUse plus inPool connections should be equal to the total number of currently open connections, i.e.
+ * InUse + inPool == opened - closed
  */
 public final class ConnectionStats {
 	/**
-	 * Active connections in currently executing commands.
+	 * Active connections from connection pool(s) currently executing commands.
 	 */
 	public final int inUse;
 
 	/**
-	 * Connections residing in connection pool(s).
+	 * Initialized connections in connection pool(s) that are not currently active.
 	 */
 	public final int inPool;
 
