@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -485,6 +485,20 @@ public abstract class Exp {
 	 */
 	public static Exp nil() {
 		return new Nil();
+	}
+
+	/**
+	 * Create infinity value for use in CDT range expressions.
+	 */
+	public static Exp inf() {
+		return new Infinity();
+	}
+
+	/**
+	 * Create wildcard value for use in CDT expressions.
+	 */
+	public static Exp wildcard() {
+		return new Wildcard();
 	}
 
 	//--------------------------------------------------
@@ -1480,6 +1494,20 @@ public abstract class Exp {
 		@Override
 		public void pack(Packer packer) {
 			packer.packNil();
+		}
+	}
+
+	private static final class Infinity extends Exp {
+		@Override
+		public void pack(Packer packer) {
+			packer.packInfinity();
+		}
+	}
+
+	private static final class Wildcard extends Exp {
+		@Override
+		public void pack(Packer packer) {
+			packer.packWildcard();
 		}
 	}
 
