@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,7 +46,9 @@ public class TestQueryFilterSet extends TestSync {
 
 		// Write records in set p1.
 		for (int i = 1; i <= 5; i++) {
-			policy.expiration = i * 60;
+			if (args.hasTtl) {
+				policy.expiration = i * 60;
+			}
 
 			Key key = new Key(args.namespace, set1, i);
 			client.put(policy, key, new Bin(binA, i));
@@ -196,6 +198,10 @@ public class TestQueryFilterSet extends TestSync {
 
 	@Test
 	public void queryVoidTime() {
+		if (! args.hasTtl) {
+			return;
+		}
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(set1);
@@ -227,6 +233,10 @@ public class TestQueryFilterSet extends TestSync {
 
 	@Test
 	public void queryTTL() {
+		if (! args.hasTtl) {
+			return;
+		}
+
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
 		stmt.setSetName(set1);
