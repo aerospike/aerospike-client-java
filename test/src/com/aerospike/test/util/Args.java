@@ -51,6 +51,7 @@ public class Args {
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public boolean enterprise;
+	public boolean hasTtl;
 	public boolean singleBin;
 	public boolean useProxyClient;
 
@@ -252,14 +253,33 @@ public class Args {
 		}
 
 		singleBin = parseBoolean(namespaceTokens, "single-bin");
+
+		int nsup = parseInt(namespaceTokens, "nsup-period");
+
+		if (nsup == 0) {
+			hasTtl = parseBoolean(namespaceTokens, "allow-ttl-without-nsup");
+		}
+		else {
+			hasTtl = true;
+		}
+	}
+
+	private static int parseInt(String namespaceTokens, String name) {
+		String s = parseString(namespaceTokens, name);
+		return Integer.parseInt(s);
 	}
 
 	private static boolean parseBoolean(String namespaceTokens, String name) {
+		String s = parseString(namespaceTokens, name);
+		return Boolean.parseBoolean(s);
+	}
+
+	private static String parseString(String namespaceTokens, String name) {
 		String search = name + '=';
 		int begin = namespaceTokens.indexOf(search);
 
 		if (begin < 0) {
-			return false;
+			throw new RuntimeException("Failed to find server config: " + name);
 		}
 
 		begin += search.length();
@@ -269,8 +289,7 @@ public class Args {
 			end = namespaceTokens.length();
 		}
 
-		String value = namespaceTokens.substring(begin, end);
-		return Boolean.parseBoolean(value);
+		return namespaceTokens.substring(begin, end);
 	}
 
 	public String getBinName(String name) {

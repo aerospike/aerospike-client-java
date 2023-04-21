@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -96,7 +96,10 @@ public class TestAsyncBatch extends TestAsync {
 		};
 
 		WritePolicy policy = new WritePolicy();
-		policy.expiration = 2592000;
+
+		if (args.hasTtl) {
+			policy.expiration = 2592000;
+		}
 
 		for (int i = 1; i <= Size; i++) {
 			Key key = sendKeys[i-1];
@@ -250,7 +253,7 @@ public class TestAsyncBatch extends TestAsync {
 							break;
 						}
 
-						if (! assertGreaterThanZero(record.expiration)) {
+						if (args.hasTtl && !assertGreaterThanZero(record.expiration)) {
 							break;
 						}
 					}
