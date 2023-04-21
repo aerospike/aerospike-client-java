@@ -40,43 +40,49 @@ import io.netty.channel.EventLoop;
  * This class executes a single Aerospike API method like get, put, etc.
  * throughout its lifetime. It executes a maximum of `totalRequestsPerStream`
  * before closing the stream.
- *
- * <p><em>NOTE</em> All methods of the stream are executed within a single
+ * <p>
+ * <em>NOTE</em> All methods of the stream are executed within a single
  * thread. This is implemented by
  * <ul>
  *     <li>having the channel configured to use the direct executor</li>
  *     <li>have the channel and streams associated with the channel be
  *     executed on a single event loop</li>
  * </ul>
- *
- * <p>TODO: Should the stream be closed if it has been idle for some duration?
+ * <p>
+ * TODO: Should the stream be closed if it has been idle for some duration?
  */
 public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>, Closeable {
 	/**
 	 * Unique stream id in the channel.
 	 */
 	private final int id;
+
 	/**
 	 * The event loop within which all of GrpcStream calls are executed.
 	 */
 	private final EventLoop eventLoop;
+
 	/**
 	 * The request observer of the stream.
 	 */
 	private StreamObserver<Kvs.AerospikeRequestPayload> requestObserver;
+
 	/**
 	 * The gRPC client policy.
 	 */
 	private final GrpcClientPolicy grpcClientPolicy;
+
 	/**
 	 * The executor for this stream.
 	 */
 	private final GrpcChannelExecutor channelExecutor;
+
 	/**
 	 * The method processed by this stream.
 	 */
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload,
 		Kvs.AerospikeResponsePayload> methodDescriptor;
+
 	/**
 	 * Queued calls pending execution.
 	 */
@@ -101,12 +107,15 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	private int requestsSent;
 	private int responsesReceived;
 
-	public GrpcStream(GrpcChannelExecutor channelExecutor,
-					  MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-					  SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
-					  CallOptions callOptions,
-					  GrpcClientPolicy grpcClientPolicy,
-					  int streamIndex, EventLoop eventLoop) {
+	public GrpcStream(
+		GrpcChannelExecutor channelExecutor,
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
+		CallOptions callOptions,
+		GrpcClientPolicy grpcClientPolicy,
+		int streamIndex,
+		EventLoop eventLoop
+	) {
 		this.channelExecutor = channelExecutor;
 		this.methodDescriptor = methodDescriptor;
 		this.pendingCalls = pendingCalls;
@@ -266,7 +275,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream);
 	}
 
-
 	private void execute(GrpcStreamingCall call) {
 		try {
 			if (call.hasExpired()) {
@@ -319,8 +327,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 		// Cancel call.
 		executingCalls.remove(callId);
-		call.onError(new AerospikeException.Timeout(call.getPolicy(),
-				call.getIteration()));
+		call.onError(new AerospikeException.Timeout(call.getPolicy(), call.getIteration()));
 	}
 
 	void enqueue(GrpcStreamingCall call) {
@@ -347,7 +354,9 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
 			}
 		});
+
 		executingCalls.clear();
+
 		// For hygiene close the stream as well.
 		try {
 			requestObserver.onCompleted();

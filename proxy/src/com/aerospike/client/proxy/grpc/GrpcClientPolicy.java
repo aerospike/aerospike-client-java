@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
+
 import javax.annotation.Nullable;
 
 import com.aerospike.client.policy.ClientPolicy;
@@ -51,14 +52,15 @@ public class GrpcClientPolicy {
 	 * The type of the eventLoops.
 	 */
 	public final Class<? extends Channel> channelType;
+
 	/**
 	 * Should the event loops be closed in close.
 	 */
 	public final boolean closeEventLoops;
+
 	/**
 	 * Maximum number of HTTP/2 channels (connections) to open to the Aerospike
 	 * gRPC proxy server.
-	 *
 	 * <p>
 	 * Generally HTTP/2 based gRPC recommends a single channel to be
 	 * sufficient for most purposes. In our performance experiments we have
@@ -66,19 +68,19 @@ public class GrpcClientPolicy {
 	 * performance gains.
 	 */
 	public final int maxChannels;
+
 	/**
 	 * Maximum number of concurrent HTTP/2 streams to have in-flight per HTTP/2
 	 * channel (connection).
-	 *
 	 * <p>
 	 * Generally HTTP/2 servers restrict the number of concurrent HTTP/2 streams
 	 * to about a <code>100</code> on a channel (connection).
 	 */
 	public final int maxConcurrentStreamsPerChannel;
+
 	/**
 	 * Maximum number of concurrent requests that are in-flight per streaming
 	 * HTTP/2 call.
-	 *
 	 * <p>
 	 * The Aerospike gRPC proxy server implements streaming for unary calls
 	 * like Aerospike get, put, operate, etc to improve latency and throughput.
@@ -88,16 +90,15 @@ public class GrpcClientPolicy {
 	 * <bold>NOTE</bold> This policy does not apply to queries, scans, etc.
 	 */
 	public final int maxConcurrentRequestsPerStream;
+
 	/**
 	 * Total number of HTTP/2 requests that are sent on a stream, after which
 	 * the stream is closed.
-	 *
 	 * <p>
 	 * The Aerospike gRPC proxy server implements streaming for unary calls
 	 * like Aerospike get, put, operate, etc to improve latency and throughput.
 	 * <code>totalRequestsPerStream</code> specifies the total number of
 	 * requests that are sent on the stream, after which the stream is closed.
-	 *
 	 * <p>
 	 * Requests to the Aerospike gRPC proxy server will be routed through a
 	 * HTTP/2 load balancer over the public internet. HTTP/2 load balancer
@@ -109,62 +110,70 @@ public class GrpcClientPolicy {
 	 * <bold>NOTE</bold> This policy does not apply to queries, scans, etc.
 	 */
 	public final int totalRequestsPerStream;
+
 	/**
 	 * The connection timeout in milliseconds when creating a new HTTP/2
 	 * channel (connection) to a gRPC Aerospike proxy server.
 	 */
 	public final int connectTimeoutMillis;
+
 	/**
 	 * See {@link ClientPolicy#closeTimeout}.
 	 */
 	public final int closeTimeout;
+
 	/**
 	 * Strategy to select a channel for a gRPC request.
 	 */
 
 	public final GrpcChannelSelector grpcChannelSelector;
+
 	/**
 	 * Strategy to select a stream for a gRPC request.
 	 */
-
 	public final GrpcStreamSelector grpcStreamSelector;
+
 	/**
 	 * Call options.
 	 */
-
 	public final CallOptions callOptions;
+
 	/**
 	 * The TLS policy to connect to the gRPC Aerospike proxy server.
-	 * <p/>
+	 * <p>
 	 * <bold>NOTE</bold> The channel (connection) will  be non-encrypted if
 	 * this policy is <code>null</code>.
 	 */
 	@Nullable
 	public final TlsPolicy tlsPolicy;
+
 	/**
 	 * Milliseconds to wait for termination of the channels. Should be
 	 * greater than the deadlines. The implementation is best-effort, its
 	 * possible termination takes more time than this.
 	 */
 	public final long terminationWaitMillis;
+
 	/**
 	 * Index to get the next event loop.
 	 */
 	private final AtomicInteger eventLoopIndex = new AtomicInteger(0);
 
-	private GrpcClientPolicy(int maxChannels,
-							 int maxConcurrentStreamsPerChannel,
-							 int maxConcurrentRequestsPerStream,
-							 int totalRequestsPerStream,
-							 int connectTimeoutMillis,
-							 long terminationWaitMillis,
-							 int closeTimeout, GrpcChannelSelector grpcChannelSelector,
-							 GrpcStreamSelector grpcStreamSelector,
-							 CallOptions callOptions,
-							 List<EventLoop> eventLoops,
-							 Class<? extends Channel> channelType,
-							 boolean closeEventLoops,
-							 @Nullable TlsPolicy tlsPolicy) {
+	private GrpcClientPolicy(
+		int maxChannels,
+		int maxConcurrentStreamsPerChannel,
+		int maxConcurrentRequestsPerStream,
+		int totalRequestsPerStream,
+		int connectTimeoutMillis,
+		long terminationWaitMillis,
+		int closeTimeout, GrpcChannelSelector grpcChannelSelector,
+		GrpcStreamSelector grpcStreamSelector,
+		CallOptions callOptions,
+		List<EventLoop> eventLoops,
+		Class<? extends Channel> channelType,
+		boolean closeEventLoops,
+		@Nullable TlsPolicy tlsPolicy
+	) {
 		this.maxChannels = maxChannels;
 		this.maxConcurrentStreamsPerChannel = maxConcurrentStreamsPerChannel;
 		this.maxConcurrentRequestsPerStream = maxConcurrentRequestsPerStream;
@@ -181,18 +190,21 @@ public class GrpcClientPolicy {
 		this.tlsPolicy = tlsPolicy;
 	}
 
-	public static Builder newBuilder(@Nullable List<EventLoop> eventLoops,
-									 @Nullable Class<? extends Channel> channelType) {
+	public static Builder newBuilder(
+		@Nullable List<EventLoop> eventLoops,
+		@Nullable Class<? extends Channel> channelType
+	) {
 		Builder builder = new Builder();
 
 		if (eventLoops == null || channelType == null) {
 			builder.closeEventLoops = true;
 
 			DefaultThreadFactory tf =
-					new DefaultThreadFactory("aerospike-proxy", true /*daemon */);
+				new DefaultThreadFactory("aerospike-proxy", true /*daemon */);
 
 			// TODO: select number of event loop threads?
 			EventLoopGroup eventLoopGroup;
+
 			if (Epoll.isAvailable()) {
 				eventLoopGroup = new EpollEventLoopGroup(0, tf);
 				builder.channelType = EpollSocketChannel.class;
@@ -202,8 +214,7 @@ public class GrpcClientPolicy {
 				builder.channelType = NioSocketChannel.class;
 			}
 
-			builder.eventLoops = StreamSupport.stream(eventLoopGroup.spliterator(),
-							false)
+			builder.eventLoops = StreamSupport.stream(eventLoopGroup.spliterator(), false)
 					.map(eventExecutor -> (EventLoop)eventExecutor)
 					.collect(Collectors.toList());
 		}
@@ -254,6 +265,7 @@ public class GrpcClientPolicy {
 		private CallOptions callOptions;
 		private long terminationWaitMillis;
 		private int closeTimeout;
+
 		private Builder() {
 		}
 

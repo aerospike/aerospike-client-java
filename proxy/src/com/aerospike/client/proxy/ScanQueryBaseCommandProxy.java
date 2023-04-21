@@ -14,7 +14,6 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.aerospike.client.proxy;
 
 import java.util.Collections;
@@ -40,8 +39,14 @@ abstract class ScanQueryBaseCommandProxy extends MultiCommandProxy {
 	protected final PartitionTracker.NodePartitions dummyNodePartitions;
 	private final boolean isScan;
 
-	public ScanQueryBaseCommandProxy(boolean isScan, MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor, GrpcCallExecutor executor, Policy policy, RecordSequenceListener listener,
-									 PartitionTracker partitionTracker) {
+	public ScanQueryBaseCommandProxy(
+		boolean isScan,
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		GrpcCallExecutor executor,
+		Policy policy,
+		RecordSequenceListener listener,
+		PartitionTracker partitionTracker
+	) {
 		super(methodDescriptor, executor, policy);
 		this.isScan = isScan;
 		this.listener = listener;
@@ -102,7 +107,6 @@ abstract class ScanQueryBaseCommandProxy extends MultiCommandProxy {
 			if (retry()) {
 				return;
 			}
-
 			// Retry failed. Notify the listener.
 		}
 		listener.onFailure(ae);

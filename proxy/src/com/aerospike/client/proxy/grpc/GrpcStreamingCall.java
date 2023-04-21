@@ -30,8 +30,7 @@ public class GrpcStreamingCall {
     /**
      * The streaming method to execute for this unary call.
      */
-    private final MethodDescriptor<Kvs.AerospikeRequestPayload,
-            Kvs.AerospikeResponsePayload> methodDescriptor;
+    private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
 
 	/**
 	 * The request builder populated with command call specific parameters.
@@ -69,20 +68,22 @@ public class GrpcStreamingCall {
 	private volatile boolean aborted;
 
 	protected GrpcStreamingCall(GrpcStreamingCall other) {
-		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
-			other.iteration, other.expiresAtNanos,
-			other.responseObserver);
+		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(), other.iteration, other.expiresAtNanos,
+			 other.responseObserver);
+
 		completed = other.completed;
 		aborted = other.aborted;
 	}
 
-	public GrpcStreamingCall(MethodDescriptor<Kvs.AerospikeRequestPayload,
+	public GrpcStreamingCall(
+		MethodDescriptor<Kvs.AerospikeRequestPayload,
 		Kvs.AerospikeResponsePayload> methodDescriptor,
-							 Kvs.AerospikeRequestPayload.Builder requestBuilder,
-							 Policy policy,
-							 int iteration,
-							 long expiresAtNanos,
-							 StreamObserver<Kvs.AerospikeResponsePayload> responseObserver) {
+		Kvs.AerospikeRequestPayload.Builder requestBuilder,
+		Policy policy,
+		int iteration,
+		long expiresAtNanos,
+		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
+	) {
 		this.responseObserver = responseObserver;
 		this.methodDescriptor = methodDescriptor;
 		this.requestBuilder = requestBuilder;
@@ -98,6 +99,7 @@ public class GrpcStreamingCall {
 
 	public void onNext(Kvs.AerospikeResponsePayload payload) {
 		responseObserver.onNext(payload);
+
 		if (!payload.getHasNext()) {
 			completed = true;
 			responseObserver.onCompleted();

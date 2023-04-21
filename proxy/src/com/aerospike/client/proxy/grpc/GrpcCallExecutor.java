@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
 import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
@@ -61,9 +62,11 @@ public class GrpcCallExecutor implements Closeable {
 	private final LongAdder totalQueueSize = new LongAdder();
 	private final GrpcChannelExecutor.ChannelTypeAndEventLoop controlChannelTypeAndEventLoop;
 
-	public GrpcCallExecutor(GrpcClientPolicy grpcClientPolicy,
-							@Nullable AuthTokenManager authTokenManager,
-							Host... hosts) {
+	public GrpcCallExecutor(
+		GrpcClientPolicy grpcClientPolicy,
+		@Nullable AuthTokenManager authTokenManager,
+		Host... hosts
+	) {
 		if (hosts == null || hosts.length < 1) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR,
 					"need at least one seed host");
@@ -73,10 +76,11 @@ public class GrpcCallExecutor implements Closeable {
 		maxQueueSize =
 				Math.min(QUEUE_SIZE_UPPER_BOUND,
 						5 * grpcClientPolicy.maxChannels
-								* grpcClientPolicy.maxConcurrentStreamsPerChannel
-								* grpcClientPolicy.maxConcurrentRequestsPerStream);
+						  * grpcClientPolicy.maxConcurrentStreamsPerChannel
+						  * grpcClientPolicy.maxConcurrentRequestsPerStream);
 
 		this.controlChannelTypeAndEventLoop = getControlEventLoop();
+
 		try {
 			this.channelExecutors =
 					IntStream.range(0, grpcClientPolicy.maxChannels).mapToObj(value ->
@@ -113,6 +117,7 @@ public class GrpcCallExecutor implements Closeable {
 		//  queue. Have a upper limit on the number of concurrent transactions
 		//  per channel and reject this call if all the channels are full.
 		totalQueueSize.increment();
+
 		try {
 			executor.execute(new WrappedGrpcStreamingCall(call));
 		}
@@ -139,7 +144,6 @@ public class GrpcCallExecutor implements Closeable {
         if(channelExecutors.isEmpty()) {
             return null;
         }
-
         return channelExecutors.get(random.nextInt(channelExecutors.size()))
                 .getChannel();
     }
@@ -160,9 +164,7 @@ public class GrpcCallExecutor implements Closeable {
 	private GrpcChannelExecutor.ChannelTypeAndEventLoop getControlEventLoop() {
 		EventLoopGroup eventLoopGroup;
 		Class<? extends Channel> channelType;
-		DefaultThreadFactory tf =
-				new DefaultThreadFactory("aerospike-proxy-control", true
-						/*daemon */);
+		DefaultThreadFactory tf = new DefaultThreadFactory("aerospike-proxy-control", true /*daemon*/);
 
 		if (Epoll.isAvailable()) {
 			eventLoopGroup = new EpollEventLoopGroup(1, tf);
@@ -210,19 +212,17 @@ public class GrpcCallExecutor implements Closeable {
 
 	private void closeEventLoops(List<EventLoop> eventLoops) {
 		eventLoops.stream()
-				.map(eventLoop ->
-						eventLoop.shutdownGracefully(0,
-								grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
-
-				).forEach(future -> {
-							try {
-								future.await(grpcClientPolicy.terminationWaitMillis);
-							}
-							catch (Exception e) {
-								// TODO log error?
-							}
-						}
-				);
+			.map(eventLoop ->
+				eventLoop.shutdownGracefully(0, grpcClientPolicy.terminationWaitMillis, TimeUnit.MILLISECONDS)
+			).forEach(future -> {
+					try {
+						future.await(grpcClientPolicy.terminationWaitMillis);
+					}
+					catch (Exception e) {
+						// TODO log error?
+					}
+				}
+			);
 	}
 
 	private class WrappedGrpcStreamingCall extends GrpcStreamingCall {

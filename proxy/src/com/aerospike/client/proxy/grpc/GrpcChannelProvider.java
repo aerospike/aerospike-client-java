@@ -19,19 +19,19 @@ package com.aerospike.client.proxy.grpc;
 import io.grpc.ManagedChannel;
 
 public class GrpcChannelProvider {
-    private GrpcCallExecutor callExecutor;
+	private GrpcCallExecutor callExecutor;
 
-    /**
-     * @return a managed channel if available else null.
-     */
-    public ManagedChannel getControlChannel() {
-        if (callExecutor == null) {
-            return null;
-        }
-        return callExecutor.getControlChannel();
-    }
+	/**
+	 * @return a managed channel if available else null.
+	 */
+	public ManagedChannel getControlChannel() {
+		if (callExecutor == null) {
+			return null;
+		}
+		return callExecutor.getControlChannel();
+	}
 
-    public void setCallExecutor(GrpcCallExecutor callExecutor) {
-        this.callExecutor = callExecutor;
-    }
+	public void setCallExecutor(GrpcCallExecutor callExecutor) {
+		this.callExecutor = callExecutor;
+	}
 }

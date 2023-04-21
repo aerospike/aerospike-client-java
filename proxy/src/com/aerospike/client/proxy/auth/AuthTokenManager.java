@@ -80,8 +80,7 @@ public class AuthTokenManager implements Closeable {
 	/**
 	 * Count of consecutive errors while refreshing the token.
 	 */
-	private final AtomicInteger consecutiveRefreshErrors =
-			new AtomicInteger(0);
+	private final AtomicInteger consecutiveRefreshErrors = new AtomicInteger(0);
 	private volatile AccessToken accessToken;
 	private volatile boolean fetchScheduled;
 	/**
@@ -246,8 +245,7 @@ public class AuthTokenManager implements Closeable {
 		}
 	}
 
-	public CallOptions setCallCredentials(
-			CallOptions callOptions) {
+	public CallOptions setCallCredentials(CallOptions callOptions) {
 		if (isTokenRequired()) {
 			if (!isTokenValid()) {
 				if (Log.warnEnabled()) {
@@ -310,7 +308,6 @@ public class AuthTokenManager implements Closeable {
 			}
 		}
 	}
-
 
 	private static class AccessToken {
 		/**

@@ -70,7 +70,6 @@ import io.netty.util.internal.shaded.org.jctools.queues.MpscUnboundedArrayQueue;
 /**
  * All gRPC requests on a HTTP/2 channel are handled by this class throughout
  * the channel lifetime.
- *
  * <p>
  * TODO: handle close of channel.
  */
@@ -171,10 +170,12 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private long tokenInvalidStartTime = 0;
 
-	public GrpcChannelExecutor(GrpcClientPolicy grpcClientPolicy,
-							   ChannelTypeAndEventLoop channelTypeAndEventLoop,
-							   @Nullable AuthTokenManager authTokenManager,
-							   Host... hosts) {
+	public GrpcChannelExecutor(
+		GrpcClientPolicy grpcClientPolicy,
+		ChannelTypeAndEventLoop channelTypeAndEventLoop,
+		@Nullable AuthTokenManager authTokenManager,
+		Host... hosts
+	) {
 		if (grpcClientPolicy == null) {
 			throw new NullPointerException("grpcClientPolicy");
 		}
@@ -254,8 +255,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Create a gRPC channel.
 	 */
 	@SuppressWarnings("deprecation")
-	private ChannelAndEventLoop createGrpcChannel(EventLoop eventLoop,
-												  Class<? extends Channel> channelType, Host[] hosts) {
+	private ChannelAndEventLoop createGrpcChannel(EventLoop eventLoop, Class<? extends Channel> channelType, Host[] hosts) {
 		NettyChannelBuilder builder;
 
 		if (hosts.length == 1) {
@@ -318,8 +318,8 @@ public class GrpcChannelExecutor implements Runnable {
 		// For testing. Set this to force a hostname irrespective of the
 		// target IP for TLS verification. A simpler way than adding a DNS
 		// entry in the hosts file.
-		String authorityProperty =
-			System.getProperty(OVERRIDE_AUTHORITY);
+		String authorityProperty = System.getProperty(OVERRIDE_AUTHORITY);
+
 		if (authorityProperty != null && !authorityProperty.trim().isEmpty()) {
 			builder.overrideAuthority(authorityProperty);
 		}
@@ -459,6 +459,7 @@ public class GrpcChannelExecutor implements Runnable {
 
 
 		long tokenWaitTimeout = tokenInvalidStartTime + authTokenManager.getRefreshMinTime() * 3L;
+
 		if (tokenWaitTimeout < System.currentTimeMillis()) {
 			tokenInvalidStartTime = 0;
 			// It's been too long without a valid access token. Drain and
@@ -484,6 +485,7 @@ public class GrpcChannelExecutor implements Runnable {
 		//noinspection resource
 		GrpcStream stream =
 			grpcClientPolicy.grpcStreamSelector.select(new ArrayList<>(streams.values()), call.getStreamingMethodDescriptor());
+
 		if (stream != null) {
 			// TODO: what if add fails
 			stream.enqueue(call);
@@ -491,8 +493,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Create new stream.
-		SpscUnboundedArrayQueue<GrpcStreamingCall> queue =
-			new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
+		SpscUnboundedArrayQueue<GrpcStreamingCall> queue = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 		queue.add(call);
 
 		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue);
@@ -521,8 +522,10 @@ public class GrpcChannelExecutor implements Runnable {
 	/**
 	 * Schedule calls in pendingCalls on a new stream.
 	 */
-	private void scheduleCallsOnNewStream(MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-										  SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls) {
+	private void scheduleCallsOnNewStream(
+		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
+		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls
+	) {
 		CallOptions options = grpcClientPolicy.callOptions;
 		if (authTokenManager != null) {
 			try {
@@ -551,10 +554,9 @@ public class GrpcChannelExecutor implements Runnable {
 		// .onStreamClosed with the same pendingCalls
 		// - in the next call of GrpcChannelExecutor.processClosedStreams in
 		// an iteration the above steps repeat
-		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls =
-			new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
-		for (GrpcStreamingCall call = pendingCalls.poll(); call != null;
-			 call = pendingCalls.poll()) {
+		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
+
+		for (GrpcStreamingCall call = pendingCalls.poll(); call != null; call = pendingCalls.poll()) {
 			if (call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));

@@ -27,33 +27,33 @@ import io.grpc.NameResolver;
 
 class MultiAddressNameResolverFactory extends NameResolver.Factory {
 
-    final List<EquivalentAddressGroup> addresses;
+	final List<EquivalentAddressGroup> addresses;
 
-    MultiAddressNameResolverFactory(List<SocketAddress> addresses) {
-        this.addresses = addresses.stream()
-                .map(EquivalentAddressGroup::new)
-                .collect(Collectors.toList());
-    }
+	MultiAddressNameResolverFactory(List<SocketAddress> addresses) {
+		this.addresses = addresses.stream()
+				.map(EquivalentAddressGroup::new)
+				.collect(Collectors.toList());
+	}
 
-    public NameResolver newNameResolver(URI notUsedUri, NameResolver.Args args) {
-        return new NameResolver() {
-            @Override
-            public String getServiceAuthority() {
-                return "Authority";
-            }
+	public NameResolver newNameResolver(URI notUsedUri, NameResolver.Args args) {
+		return new NameResolver() {
+			@Override
+			public String getServiceAuthority() {
+				return "Authority";
+			}
 
-            public void start(Listener2 listener) {
-                listener.onResult(ResolutionResult.newBuilder().setAddresses(addresses)
-                        .setAttributes(Attributes.EMPTY).build());
-            }
+			public void start(Listener2 listener) {
+				listener.onResult(ResolutionResult.newBuilder().setAddresses(addresses)
+						.setAttributes(Attributes.EMPTY).build());
+			}
 
-            public void shutdown() {
-            }
-        };
-    }
+			public void shutdown() {
+			}
+		};
+	}
 
-    @Override
-    public String getDefaultScheme() {
-        return "multiaddress";
-    }
+	@Override
+	public String getDefaultScheme() {
+		return "multiaddress";
+	}
 }

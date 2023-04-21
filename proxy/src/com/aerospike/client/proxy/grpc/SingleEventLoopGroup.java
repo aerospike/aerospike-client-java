@@ -1,3 +1,19 @@
+/*
+ * Copyright 2012-2023 Aerospike, Inc.
+ *
+ * Portions may be licensed to Aerospike, Inc. under one or more contributor
+ * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not
+ * use this file except in compliance with the License. You may obtain a copy of
+ * the License at http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
+ */
 package com.aerospike.client.proxy.grpc;
 
 import java.util.Collection;
@@ -28,145 +44,145 @@ import io.netty.util.concurrent.ScheduledFuture;
  * TODO: verify it is correct to delegate to the singleton event loop.
  */
 class SingleEventLoopGroup implements EventLoopGroup {
-    private final EventLoop eventLoop;
+	private final EventLoop eventLoop;
 
-    SingleEventLoopGroup(EventLoop eventLoop) {
-        this.eventLoop = eventLoop;
-    }
+	SingleEventLoopGroup(EventLoop eventLoop) {
+		this.eventLoop = eventLoop;
+	}
 
-    @Override
-    public boolean isShuttingDown() {
-        return eventLoop.isShuttingDown();
-    }
-
-    @Override
-    public Future<?> shutdownGracefully() {
-        return eventLoop.shutdownGracefully();
-    }
-
-    @Override
-    public Future<?> shutdownGracefully(long quietPeriod, long timeout, TimeUnit unit) {
-        return eventLoop.shutdownGracefully(quietPeriod, timeout, unit);
-    }
-
-    @Override
-    public Future<?> terminationFuture() {
-        return eventLoop.terminationFuture();
-    }
-
-    @SuppressWarnings("deprecation")
 	@Override
-    public void shutdown() {
-        eventLoop.shutdown();
-    }
+	public boolean isShuttingDown() {
+		return eventLoop.isShuttingDown();
+	}
 
-    @SuppressWarnings("deprecation")
 	@Override
-    public List<Runnable> shutdownNow() {
-        return eventLoop.shutdownNow();
-    }
+	public Future<?> shutdownGracefully() {
+		return eventLoop.shutdownGracefully();
+	}
 
-    @Override
-    public boolean isShutdown() {
-        return eventLoop.isShutdown();
-    }
-
-    @Override
-    public boolean isTerminated() {
-        return eventLoop.isShutdown();
-    }
-
-    @Override
-    public boolean awaitTermination(long timeout, @Nonnull TimeUnit unit) throws InterruptedException {
-        return eventLoop.awaitTermination(timeout, unit);
-    }
-
-    @Override
-    public EventLoop next() {
-        return eventLoop;
-    }
-
-    @Override
-    public Iterator<EventExecutor> iterator() {
-        return new ArrayIterator<>(new EventExecutor[]{eventLoop});
-    }
-
-    @Override
-    public Future<?> submit(Runnable task) {
-        return eventLoop.submit(task);
-    }
-
-    @NonNull
-    @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(@NonNull Collection<? extends Callable<T>> tasks) throws InterruptedException {
-        return eventLoop.invokeAll(tasks);
-    }
-
-    @NonNull
-    @Override
-    public <T> List<java.util.concurrent.Future<T>> invokeAll(@NonNull Collection<? extends Callable<T>> tasks, long timeout, @NonNull TimeUnit unit) throws InterruptedException {
-        return eventLoop.invokeAll(tasks, timeout, unit);
-    }
-
-    @NonNull
-    @Override
-    public <T> T invokeAny(@NonNull Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
-        return eventLoop.invokeAny(tasks);
-    }
-
-    @Override
-    public <T> T invokeAny(@NonNull Collection<? extends Callable<T>> tasks, long timeout, @NonNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
-        return eventLoop.invokeAny(tasks, timeout, unit);
-    }
-
-    @Override
-    public <T> Future<T> submit(Runnable task, T result) {
-        return eventLoop.submit(task, result);
-    }
-
-    @Override
-    public <T> Future<T> submit(Callable<T> task) {
-        return eventLoop.submit(task);
-    }
-
-    @Override
-    public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
-        return eventLoop.schedule(command, delay, unit);
-    }
-
-    @Override
-    public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
-        return eventLoop.schedule(callable, delay, unit);
-    }
-
-    @Override
-    public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
-        return eventLoop.scheduleAtFixedRate(command, initialDelay, period, unit);
-    }
-
-    @Override
-    public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit) {
-        return eventLoop.scheduleWithFixedDelay(command, initialDelay, delay, unit);
-    }
-
-    @Override
-    public ChannelFuture register(io.netty.channel.Channel channel) {
-        return eventLoop.register(channel);
-    }
-
-    @Override
-    public ChannelFuture register(ChannelPromise promise) {
-        return eventLoop.register(promise);
-    }
-
-    @SuppressWarnings("deprecation")
 	@Override
-    public ChannelFuture register(io.netty.channel.Channel channel, ChannelPromise promise) {
-        return eventLoop.register(channel, promise);
-    }
+	public Future<?> shutdownGracefully(long quietPeriod, long timeout, TimeUnit unit) {
+		return eventLoop.shutdownGracefully(quietPeriod, timeout, unit);
+	}
 
-    @Override
-    public void execute(@NonNull Runnable command) {
-        eventLoop.execute(command);
-    }
+	@Override
+	public Future<?> terminationFuture() {
+		return eventLoop.terminationFuture();
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public void shutdown() {
+		eventLoop.shutdown();
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public List<Runnable> shutdownNow() {
+		return eventLoop.shutdownNow();
+	}
+
+	@Override
+	public boolean isShutdown() {
+		return eventLoop.isShutdown();
+	}
+
+	@Override
+	public boolean isTerminated() {
+		return eventLoop.isShutdown();
+	}
+
+	@Override
+	public boolean awaitTermination(long timeout, @Nonnull TimeUnit unit) throws InterruptedException {
+		return eventLoop.awaitTermination(timeout, unit);
+	}
+
+	@Override
+	public EventLoop next() {
+		return eventLoop;
+	}
+
+	@Override
+	public Iterator<EventExecutor> iterator() {
+		return new ArrayIterator<>(new EventExecutor[]{eventLoop});
+	}
+
+	@Override
+	public Future<?> submit(Runnable task) {
+		return eventLoop.submit(task);
+	}
+
+	@NonNull
+	@Override
+	public <T> List<java.util.concurrent.Future<T>> invokeAll(@NonNull Collection<? extends Callable<T>> tasks) throws InterruptedException {
+		return eventLoop.invokeAll(tasks);
+	}
+
+	@NonNull
+	@Override
+	public <T> List<java.util.concurrent.Future<T>> invokeAll(@NonNull Collection<? extends Callable<T>> tasks, long timeout, @NonNull TimeUnit unit) throws InterruptedException {
+		return eventLoop.invokeAll(tasks, timeout, unit);
+	}
+
+	@NonNull
+	@Override
+	public <T> T invokeAny(@NonNull Collection<? extends Callable<T>> tasks) throws InterruptedException, ExecutionException {
+		return eventLoop.invokeAny(tasks);
+	}
+
+	@Override
+	public <T> T invokeAny(@NonNull Collection<? extends Callable<T>> tasks, long timeout, @NonNull TimeUnit unit) throws InterruptedException, ExecutionException, TimeoutException {
+		return eventLoop.invokeAny(tasks, timeout, unit);
+	}
+
+	@Override
+	public <T> Future<T> submit(Runnable task, T result) {
+		return eventLoop.submit(task, result);
+	}
+
+	@Override
+	public <T> Future<T> submit(Callable<T> task) {
+		return eventLoop.submit(task);
+	}
+
+	@Override
+	public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit) {
+		return eventLoop.schedule(command, delay, unit);
+	}
+
+	@Override
+	public <V> ScheduledFuture<V> schedule(Callable<V> callable, long delay, TimeUnit unit) {
+		return eventLoop.schedule(callable, delay, unit);
+	}
+
+	@Override
+	public ScheduledFuture<?> scheduleAtFixedRate(Runnable command, long initialDelay, long period, TimeUnit unit) {
+		return eventLoop.scheduleAtFixedRate(command, initialDelay, period, unit);
+	}
+
+	@Override
+	public ScheduledFuture<?> scheduleWithFixedDelay(Runnable command, long initialDelay, long delay, TimeUnit unit) {
+		return eventLoop.scheduleWithFixedDelay(command, initialDelay, delay, unit);
+	}
+
+	@Override
+	public ChannelFuture register(io.netty.channel.Channel channel) {
+		return eventLoop.register(channel);
+	}
+
+	@Override
+	public ChannelFuture register(ChannelPromise promise) {
+		return eventLoop.register(promise);
+	}
+
+	@SuppressWarnings("deprecation")
+	@Override
+	public ChannelFuture register(io.netty.channel.Channel channel, ChannelPromise promise) {
+		return eventLoop.register(channel, promise);
+	}
+
+	@Override
+	public void execute(@NonNull Runnable command) {
+		eventLoop.execute(command);
+	}
 }
