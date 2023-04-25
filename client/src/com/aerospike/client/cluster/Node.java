@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,6 +40,7 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
+import com.aerospike.client.command.SyncCommand;
 import com.aerospike.client.util.Util;
 
 /**
@@ -619,7 +620,7 @@ public class Node implements Closeable {
 	 */
 	public final Connection getConnection(int timeoutMillis) {
 		try {
-			return getConnection(timeoutMillis, timeoutMillis, 0);
+			return getConnection(null, timeoutMillis, timeoutMillis, 0);
 		}
 		catch (Connection.ReadTimeout crt) {
 			throw new AerospikeException.Timeout(this, timeoutMillis, timeoutMillis, timeoutMillis);
@@ -631,7 +632,7 @@ public class Node implements Closeable {
 	 */
 	public final Connection getConnection(int connectTimeout, int socketTimeout) {
 		try {
-			return getConnection(connectTimeout, socketTimeout, 0);
+			return getConnection(null, connectTimeout, socketTimeout, 0);
 		}
 		catch (Connection.ReadTimeout crt) {
 			throw new AerospikeException.Timeout(this, connectTimeout, socketTimeout, socketTimeout);
@@ -641,7 +642,7 @@ public class Node implements Closeable {
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
-	public final Connection getConnection(int connectTimeout, int socketTimeout, int timeoutDelay) {
+	public final Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -686,7 +687,17 @@ public class Node implements Closeable {
 			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
 				// Create new connection.
-				int timeout = (connectTimeout > 0)? connectTimeout : socketTimeout;
+				long startTime;
+				int timeout;
+
+				if (connectTimeout > 0) {
+					timeout = connectTimeout;
+					startTime = System.nanoTime();
+				}
+				else {
+					timeout = socketTimeout;
+					startTime = 0;
+				}
 
 				try {
 					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -754,6 +765,12 @@ public class Node implements Closeable {
 						throw new AerospikeException.Connection(e);
 					}
 				}
+
+				if (connectTimeout > 0 && cmd != null) {
+					// Adjust deadline for socket connect time when connectTimeout defined.
+					cmd.resetDeadline(startTime);
+				}
+
 				return conn;
 			}
 			else {

@@ -89,7 +89,7 @@ public abstract class SyncCommand extends Command {
 
 			try {
 				node.validateErrorCount();
-				Connection conn = node.getConnection(policy.connectTimeout, socketTimeout, policy.timeoutDelay);
+				Connection conn = node.getConnection(this, policy.connectTimeout, socketTimeout, policy.timeoutDelay);
 
 				try {
 					// Set command buffer.
@@ -243,6 +243,11 @@ public abstract class SyncCommand extends Command {
 		exception.setIteration(iteration);
 		exception.setInDoubt(isWrite(), commandSentCounter);
 		throw exception;
+	}
+
+	public void resetDeadline(long startTime) {
+		long elapsed = System.nanoTime() - startTime;
+		deadline += elapsed;
 	}
 
 	protected void sizeBuffer(int size) {
