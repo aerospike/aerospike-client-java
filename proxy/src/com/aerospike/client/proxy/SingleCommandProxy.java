@@ -49,5 +49,10 @@ public abstract class SingleCommandProxy extends CommandProxy {
 		parseResult(parser);
 	}
 
+	@Override
+	boolean isSingle() {
+		return true;
+	}
+
 	abstract void parseResult(Parser parser);
 }

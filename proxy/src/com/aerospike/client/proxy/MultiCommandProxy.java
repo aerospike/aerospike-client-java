@@ -134,5 +134,10 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		throw new AerospikeException(code, message);
 	}
 
+	@Override
+	boolean isSingle() {
+		return false;
+	}
+
 	abstract void parseResult(Parser parser);
 }

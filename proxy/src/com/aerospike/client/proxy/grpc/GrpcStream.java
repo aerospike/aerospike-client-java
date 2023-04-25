@@ -91,8 +91,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	/**
 	 * Map of request id to the calls executing in this stream.
 	 */
-	private final Map<Integer, StatsGrpcStreamingCall> executingCalls =
-		new HashMap<>();
+	private final Map<Integer, GrpcStreamingCall> executingCalls = new HashMap<>();
 
 	/**
 	 * Is the stream closed. This variable is only accessed from the event
@@ -144,7 +143,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 
 		// Invoke callback.
-		int id = aerospikeResponsePayload.getId();
+		int callId = aerospikeResponsePayload.getId();
 		GrpcStreamingCall call;
 
 		int payloadSize = aerospikeResponsePayload.getPayload().size();
@@ -152,10 +151,10 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		channelExecutor.onPayloadReceived(payloadSize);
 
 		if (aerospikeResponsePayload.getHasNext()) {
-			call = executingCalls.get(id);
+			call = executingCalls.get(callId);
 		}
 		else {
-			call = executingCalls.remove(id);
+			call = executingCalls.remove(callId);
 
 			// Update stats.
 			responsesReceived++;
@@ -169,14 +168,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 			catch (Throwable t) {
 				if (aerospikeResponsePayload.getHasNext()) {
-					call.markAborted();
-					// Let the proxy know that there has been a failure so that
-					// it can abort long-running jobs.
-					int requestId = requestsSent++;
-					Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
-					builder.setId(requestId);
-					builder.setAbortRequest(Kvs.AbortRequest.newBuilder().setAbortId(id));
-					requestObserver.onNext(builder.build());
+					abortCallAtServer(call, callId);
 				}
 			}
 		}
@@ -189,6 +181,18 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		else {
 			executeCall();
 		}
+	}
+
+	private void abortCallAtServer(GrpcStreamingCall call, int callId) {
+		call.markAborted();
+
+		// Let the proxy know that there has been a failure so that
+		// it can abort long-running jobs.
+		int requestId = requestsSent++;
+		Kvs.AerospikeRequestPayload.Builder builder = Kvs.AerospikeRequestPayload.newBuilder();
+		builder.setId(requestId);
+		builder.setAbortRequest(Kvs.AbortRequest.newBuilder().setAbortId(callId));
+		requestObserver.onNext(builder.build());
 	}
 
 	private void abortExecutingCalls(Throwable throwable) {
@@ -296,14 +300,14 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			GrpcConversions.setRequestPolicy(call.getPolicy(), requestBuilder);
 			Kvs.AerospikeRequestPayload requestPayload = requestBuilder
 				.build();
-			executingCalls.put(requestId, new StatsGrpcStreamingCall(call));
+			executingCalls.put(requestId, call);
 
 			requestObserver.onNext(requestPayload);
 
 			if (call.hasExpiry()) {
 				// TODO: Is there a need for a more efficient implementation in
 				//  terms of the call cancellation.
-				eventLoop.schedule(() -> onCancelCall(requestId),
+				eventLoop.schedule(() -> onCallExpired(requestId),
 					call.nanosTillExpiry(), TimeUnit.NANOSECONDS);
 			}
 		}
@@ -313,21 +317,21 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 	}
 
-	private void onCancelCall(int callId) {
-		StatsGrpcStreamingCall call = executingCalls.get(callId);
+	private void onCallExpired(int callId) {
+		GrpcStreamingCall call = executingCalls.remove(callId);
 
+		// Call has completed.
 		if (call == null) {
-			// Call might have completed.
-			return;
-		}
-		if (call.hasReceivedResponse()) {
-			// Call has received a response, do not cancel.
 			return;
 		}
 
 		// Cancel call.
-		executingCalls.remove(callId);
 		call.onError(new AerospikeException.Timeout(call.getPolicy(), call.getIteration()));
+
+		// Abort long running calls at server.
+		if (!call.isSingleResponse()) {
+			abortCallAtServer(call, callId);
+		}
 	}
 
 	void enqueue(GrpcStreamingCall call) {
@@ -363,32 +367,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 		catch (Throwable t) {
 			// Ignore.
-		}
-	}
-
-	private static class StatsGrpcStreamingCall extends GrpcStreamingCall {
-		private final GrpcStreamingCall delegate;
-		private volatile boolean hasReceivedResponse;
-
-		StatsGrpcStreamingCall(GrpcStreamingCall delegate) {
-			super(delegate);
-			this.delegate = delegate;
-		}
-
-		@Override
-		public void onNext(Kvs.AerospikeResponsePayload aerospikeResponsePayload) {
-			hasReceivedResponse = true;
-			delegate.onNext(aerospikeResponsePayload);
-		}
-
-		@Override
-		public void onError(Throwable throwable) {
-			hasReceivedResponse = true;
-			delegate.onError(throwable);
-		}
-
-		boolean hasReceivedResponse() {
-			return hasReceivedResponse;
 		}
 	}
 }

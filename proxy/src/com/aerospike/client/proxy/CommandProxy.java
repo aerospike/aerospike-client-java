@@ -53,26 +53,44 @@ public abstract class CommandProxy {
 	}
 
 	final void execute() {
-		long ms;
-
 		if (policy.totalTimeout > 0) {
-			ms = policy.totalTimeout;
+			deadline =
+				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
 		}
 		else if (policy.socketTimeout > 0) {
-			ms = policy.socketTimeout;
+			deadline =
+				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.socketTimeout);
 		}
 		else {
-			ms = 30000;
+			deadline = 0; // No deadline.
 		}
 
-		deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ms);
 		executeCommand();
 	}
 
 	private void executeCommand() {
 		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
-		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			builder, policy, iteration, deadline,
+
+		int connectTimeoutMillis;
+		if (policy.connectTimeout > 0) {
+			connectTimeoutMillis = policy.connectTimeout;
+		}
+		else if (policy.socketTimeout > 0) {
+			connectTimeoutMillis = policy.socketTimeout;
+		}
+		else if (policy.totalTimeout > 0) {
+			connectTimeoutMillis = policy.totalTimeout;
+		}
+		else {
+			// A large default value.
+			// TODO: what default value should be selected?
+			connectTimeoutMillis = 10_000;
+		}
+		long connectDeadline =
+			System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis);
+
+		executor.execute(new GrpcStreamingCall(methodDescriptor, builder,
+			policy, iteration, deadline, connectDeadline, isSingle(),
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -229,6 +247,7 @@ public abstract class CommandProxy {
 		return Kvs.AerospikeRequestPayload.newBuilder().setPayload(payload);
 	}
 
+	abstract boolean isSingle();
 	abstract void writeCommand(Command command);
 	abstract void onResponse(Kvs.AerospikeResponsePayload response);
 	abstract void onFailure(AerospikeException ae);

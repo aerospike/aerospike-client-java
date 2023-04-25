@@ -557,7 +557,7 @@ public class GrpcChannelExecutor implements Runnable {
 		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 
 		for (GrpcStreamingCall call = pendingCalls.poll(); call != null; call = pendingCalls.poll()) {
-			if (call.hasExpired()) {
+			if (call.hasConnectTimeoutExpired() || call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));
 			}

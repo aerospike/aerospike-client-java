@@ -843,7 +843,13 @@ public class BatchProxy {
 			return parser.parseRecord(isOperation);
 		}
 
+		@Override
+		boolean isSingle() {
+			return false;
+		}
+
 		abstract void parse(Parser parser, int resultCode);
+
 		abstract void onSuccess();
 	}
 
