@@ -38,7 +38,7 @@ public abstract class CommandProxy {
 	final Policy policy;
 	private final GrpcCallExecutor executor;
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
-	private long deadline;
+	private long deadlineNanos;
 	private int iteration = 1;
 	boolean inDoubt;
 
@@ -54,15 +54,15 @@ public abstract class CommandProxy {
 
 	final void execute() {
 		if (policy.totalTimeout > 0) {
-			deadline =
+			deadlineNanos =
 				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
 		}
 		else if (policy.socketTimeout > 0) {
-			deadline =
+			deadlineNanos =
 				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.socketTimeout);
 		}
 		else {
-			deadline = 0; // No deadline.
+			deadlineNanos = 0; // No deadline.
 		}
 
 		executeCommand();
@@ -71,26 +71,23 @@ public abstract class CommandProxy {
 	private void executeCommand() {
 		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
 
-		int connectTimeoutMillis;
-		if (policy.connectTimeout > 0) {
-			connectTimeoutMillis = policy.connectTimeout;
+		int sendTimeoutMillis;
+		if (policy.totalTimeout > 0) {
+			sendTimeoutMillis = policy.totalTimeout;
 		}
 		else if (policy.socketTimeout > 0) {
-			connectTimeoutMillis = policy.socketTimeout;
-		}
-		else if (policy.totalTimeout > 0) {
-			connectTimeoutMillis = policy.totalTimeout;
+			sendTimeoutMillis = policy.socketTimeout;
 		}
 		else {
 			// A large default value.
 			// TODO: what default value should be selected?
-			connectTimeoutMillis = 10_000;
+			sendTimeoutMillis = 10_000;
 		}
-		long connectDeadline =
-			System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis);
+		long sendDeadlineNanos =
+			System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis);
 
 		executor.execute(new GrpcStreamingCall(methodDescriptor, builder,
-			policy, iteration, deadline, connectDeadline, isSingle(),
+			policy, iteration, deadlineNanos, sendDeadlineNanos, isSingle(),
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -123,7 +120,7 @@ public abstract class CommandProxy {
 		}
 
 		if (policy.totalTimeout > 0) {
-			long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
+			long remaining = deadlineNanos - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
 
 			if (remaining <= 0) {
 				return false;

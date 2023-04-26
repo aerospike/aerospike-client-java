@@ -46,13 +46,13 @@ public class GrpcStreamingCall {
 	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
 	 * complete. A value of zero indicates that the call has no deadline.
 	 */
-	private final long expiresAtNanos;
+	private final long deadlineNanos;
 
 	/**
 	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
-	 * be written to a HTTP/2 stream.
+	 * be handed to the underlying gRPC sub system.
 	 */
-	private final long connectTimeoutExpiresAtNanos;
+	private final long sendDeadlineNanos;
 
 	/**
 	 * Aerospike client policy for this request.
@@ -82,7 +82,7 @@ public class GrpcStreamingCall {
 
 	protected GrpcStreamingCall(GrpcStreamingCall other) {
 		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
-			other.iteration, other.expiresAtNanos, other.connectTimeoutExpiresAtNanos,
+			other.iteration, other.deadlineNanos, other.sendDeadlineNanos,
 			other.isSingleResponse, other.responseObserver);
 
 		completed = other.completed;
@@ -95,8 +95,8 @@ public class GrpcStreamingCall {
 		Kvs.AerospikeRequestPayload.Builder requestBuilder,
 		Policy policy,
 		int iteration,
-		long expiresAtNanos,
-		long connectTimeoutExpiresAtNanos,
+		long deadlineNanos,
+		long sendDeadlineNanos,
 		boolean isSingleResponse,
 		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
 	) {
@@ -105,8 +105,8 @@ public class GrpcStreamingCall {
 		this.requestBuilder = requestBuilder;
 		this.iteration = iteration;
 		this.policy = policy;
-		this.expiresAtNanos = expiresAtNanos;
-		this.connectTimeoutExpiresAtNanos = connectTimeoutExpiresAtNanos;
+		this.deadlineNanos = deadlineNanos;
+		this.sendDeadlineNanos = sendDeadlineNanos;
 		this.isSingleResponse = isSingleResponse;
 	}
 
@@ -152,25 +152,25 @@ public class GrpcStreamingCall {
 	 * @return true if this call has expired.
 	 */
 	public boolean hasExpired() {
-		return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
+		return hasExpiry() && (System.nanoTime() - deadlineNanos) >= 0;
 	}
 
 	/**
-	 * @return true if the connect timeout has expired.
+	 * @return true if the send deadline has expired.
 	 */
-	public boolean hasConnectTimeoutExpired() {
-		return (System.nanoTime() - connectTimeoutExpiresAtNanos) >= 0;
+	public boolean hasSendDeadlineExpired() {
+		return (System.nanoTime() - sendDeadlineNanos) >= 0;
 	}
 
 	public boolean hasExpiry() {
-		return expiresAtNanos != 0;
+		return deadlineNanos != 0;
 	}
 
 	public long nanosTillExpiry() {
 		if (!hasExpiry()) {
 			throw new IllegalStateException("call does not expire");
 		}
-		long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+		long nanosTillExpiry = deadlineNanos - System.nanoTime();
 		return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
 	}
 
