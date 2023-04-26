@@ -43,9 +43,16 @@ public class GrpcStreamingCall {
 	private final StreamObserver<Kvs.AerospikeResponsePayload> responseObserver;
 
 	/**
-	 * The deadline in nanoseconds w.r.t System.nanoTime().
+	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
+	 * complete. A value of zero indicates that the call has no deadline.
 	 */
-	private final long expiresAtNanos;
+	private final long deadlineNanos;
+
+	/**
+	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
+	 * be handed to the underlying gRPC sub system.
+	 */
+	private final long sendDeadlineNanos;
 
 	/**
 	 * Aerospike client policy for this request.
@@ -58,6 +65,12 @@ public class GrpcStreamingCall {
 	private final int iteration;
 
 	/**
+	 * Does this call have single or multiple responses from the server? Calls
+	 * like batch, query, scan have multiple responses from the server.
+	 */
+	private final boolean isSingleResponse;
+
+	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
 	 */
 	private volatile boolean completed;
@@ -68,8 +81,9 @@ public class GrpcStreamingCall {
 	private volatile boolean aborted;
 
 	protected GrpcStreamingCall(GrpcStreamingCall other) {
-		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(), other.iteration, other.expiresAtNanos,
-			 other.responseObserver);
+		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
+			other.iteration, other.deadlineNanos, other.sendDeadlineNanos,
+			other.isSingleResponse, other.responseObserver);
 
 		completed = other.completed;
 		aborted = other.aborted;
@@ -77,11 +91,13 @@ public class GrpcStreamingCall {
 
 	public GrpcStreamingCall(
 		MethodDescriptor<Kvs.AerospikeRequestPayload,
-		Kvs.AerospikeResponsePayload> methodDescriptor,
+			Kvs.AerospikeResponsePayload> methodDescriptor,
 		Kvs.AerospikeRequestPayload.Builder requestBuilder,
 		Policy policy,
 		int iteration,
-		long expiresAtNanos,
+		long deadlineNanos,
+		long sendDeadlineNanos,
+		boolean isSingleResponse,
 		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
 	) {
 		this.responseObserver = responseObserver;
@@ -89,12 +105,9 @@ public class GrpcStreamingCall {
 		this.requestBuilder = requestBuilder;
 		this.iteration = iteration;
 		this.policy = policy;
-
-		if (expiresAtNanos == 0) {
-			throw new IllegalArgumentException("call has to have an expiry");
-		}
-
-		this.expiresAtNanos = expiresAtNanos;
+		this.deadlineNanos = deadlineNanos;
+		this.sendDeadlineNanos = sendDeadlineNanos;
+		this.isSingleResponse = isSingleResponse;
 	}
 
 	public void onNext(Kvs.AerospikeResponsePayload payload) {
@@ -139,18 +152,25 @@ public class GrpcStreamingCall {
 	 * @return true if this call has expired.
 	 */
 	public boolean hasExpired() {
-		return hasExpiry() && (System.nanoTime() - expiresAtNanos) >= 0;
+		return hasExpiry() && (System.nanoTime() - deadlineNanos) >= 0;
+	}
+
+	/**
+	 * @return true if the send deadline has expired.
+	 */
+	public boolean hasSendDeadlineExpired() {
+		return (System.nanoTime() - sendDeadlineNanos) >= 0;
 	}
 
 	public boolean hasExpiry() {
-		return expiresAtNanos != 0;
+		return deadlineNanos != 0;
 	}
 
 	public long nanosTillExpiry() {
 		if (!hasExpiry()) {
 			throw new IllegalStateException("call does not expire");
 		}
-		long nanosTillExpiry = expiresAtNanos - System.nanoTime();
+		long nanosTillExpiry = deadlineNanos - System.nanoTime();
 		return nanosTillExpiry > 0 ? nanosTillExpiry : 0;
 	}
 
@@ -173,5 +193,9 @@ public class GrpcStreamingCall {
 
 	public boolean isAborted() {
 		return aborted;
+	}
+
+	public boolean isSingleResponse() {
+		return isSingleResponse;
 	}
 }

@@ -35,7 +35,7 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		GrpcCallExecutor executor,
 		Policy policy
 	) {
-		super(methodDescriptor, executor, policy);
+		super(methodDescriptor, executor, policy, false);
 	}
 
 	@Override

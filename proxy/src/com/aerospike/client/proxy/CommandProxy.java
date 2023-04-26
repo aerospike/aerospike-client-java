@@ -38,41 +38,45 @@ public abstract class CommandProxy {
 	final Policy policy;
 	private final GrpcCallExecutor executor;
 	private final MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor;
-	private long deadline;
+	private long deadlineNanos;
+	private int sendTimeoutMillis;
 	private int iteration = 1;
+	private final boolean isSingle;
 	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
-		Policy policy
+		Policy policy,
+		boolean isSingle
 	) {
 		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
+		this.isSingle = isSingle;
 	}
 
 	final void execute() {
-		long ms;
-
 		if (policy.totalTimeout > 0) {
-			ms = policy.totalTimeout;
-		}
-		else if (policy.socketTimeout > 0) {
-			ms = policy.socketTimeout;
+			deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.totalTimeout);
+			sendTimeoutMillis = (policy.socketTimeout > 0 && policy.socketTimeout < policy.totalTimeout)?
+								 policy.socketTimeout : policy.totalTimeout;
 		}
 		else {
-			ms = 30000;
+			deadlineNanos = 0; // No total deadline.
+			sendTimeoutMillis = (policy.socketTimeout > 0)? policy.socketTimeout : 10_000;
 		}
 
-		deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(ms);
 		executeCommand();
 	}
 
 	private void executeCommand() {
+		long sendDeadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis);
+
 		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
-		executor.execute(new GrpcStreamingCall(methodDescriptor,
-			builder, policy, iteration, deadline,
+
+		executor.execute(new GrpcStreamingCall(methodDescriptor, builder,
+			policy, iteration, deadlineNanos, sendDeadlineNanos, isSingle,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {
@@ -105,7 +109,7 @@ public abstract class CommandProxy {
 		}
 
 		if (policy.totalTimeout > 0) {
-			long remaining = deadline - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
+			long remaining = deadlineNanos - System.nanoTime() - TimeUnit.MILLISECONDS.toNanos(policy.sleepBetweenRetries);
 
 			if (remaining <= 0) {
 				return false;

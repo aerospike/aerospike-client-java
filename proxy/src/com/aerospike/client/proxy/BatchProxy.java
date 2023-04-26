@@ -795,7 +795,7 @@ public class BatchProxy {
 		final boolean isOperation;
 
 		public BaseCommand(GrpcCallExecutor executor, BatchPolicy batchPolicy, boolean isOperation) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), executor, batchPolicy);
+			super(KVSGrpc.getBatchOperateStreamingMethod(), executor, batchPolicy, false);
 			this.batchPolicy = batchPolicy;
 			this.isOperation = isOperation;
 		}
