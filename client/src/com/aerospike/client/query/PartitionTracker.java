@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -31,6 +30,7 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 
 @SuppressWarnings("deprecation")
@@ -41,6 +41,7 @@ public final class PartitionTracker {
 	private final int nodeCapacity;
 	private final Node nodeFilter;
 	private final PartitionFilter partitionFilter;
+	private final Replica replica;
 	private List<NodePartitions> nodePartitionsList;
 	private List<AerospikeException> exceptions;
 	private long maxRecords;
@@ -65,13 +66,14 @@ public final class PartitionTracker {
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
 		this.partitionFilter = null;
+		this.replica = policy.replica;
 
 		// Create initial partition capacity for each node as average + 25%.
 		int ppn = Node.PARTITIONS / nodes.length;
 		ppn += ppn >>> 2;
 		this.partitionsCapacity = ppn;
 		this.partitions = initPartitions(Node.PARTITIONS, null);
-		initTimeout(policy);
+		init(policy);
 	}
 
 	public PartitionTracker(ScanPolicy policy, Node nodeFilter) {
@@ -90,8 +92,9 @@ public final class PartitionTracker {
 		this.nodeFilter = nodeFilter;
 		this.partitionFilter = null;
 		this.partitionsCapacity = Node.PARTITIONS;
+		this.replica = policy.replica;
 		this.partitions = initPartitions(Node.PARTITIONS, null);
-		initTimeout(policy);
+		init(policy);
 	}
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes, PartitionFilter filter) {
@@ -125,6 +128,7 @@ public final class PartitionTracker {
 		this.nodeCapacity = nodes.length;
 		this.nodeFilter = null;
 		this.partitionsCapacity = filter.count;
+		this.replica = policy.replica;
 
 		if (filter.partitions == null) {
 			filter.partitions = initPartitions(filter.count, filter.digest);
@@ -135,10 +139,16 @@ public final class PartitionTracker {
 			if (maxRecords == 0) {
 				filter.retry = true;
 			}
+
+			// Reset replica sequence and last node used.
+			for (PartitionStatus part : filter.partitions) {
+				part.sequence = 0;
+				part.node = null;
+			}
 		}
 		this.partitions = filter.partitions;
 		this.partitionFilter = filter;
-		initTimeout(policy);
+		init(policy);
 	}
 
 	private void setMaxRecords(QueryPolicy policy, Statement stmt) {
@@ -165,7 +175,7 @@ public final class PartitionTracker {
 		return partsAll;
 	}
 
-	private void initTimeout(Policy policy) {
+	private void init(Policy policy) {
 		sleepBetweenRetries = policy.sleepBetweenRetries;
 		socketTimeout = policy.socketTimeout;
 		totalTimeout = policy.totalTimeout;
@@ -176,6 +186,10 @@ public final class PartitionTracker {
 			if (socketTimeout == 0 || socketTimeout > totalTimeout) {
 				socketTimeout = totalTimeout;
 			}
+		}
+
+		if (replica == Replica.RANDOM) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid replica: " + replica.toString());
 		}
 	}
 
@@ -194,36 +208,12 @@ public final class PartitionTracker {
 			throw new AerospikeException.InvalidNamespace(namespace, map.size());
 		}
 
-		AtomicReferenceArray<Node> master = parts.replicas[0];
+		Partition p = new Partition(namespace, replica);
 		boolean retry = (partitionFilter == null || partitionFilter.retry) && iteration == 1;
 
 		for (PartitionStatus part : partitions) {
 			if (retry || part.retry) {
-				Node masterNode = master.get(part.id);
-				Node node;
-
-				if (iteration == 1 || ! part.unavailable || part.masterNode != masterNode) {
-					node = part.masterNode = masterNode;
-					part.replicaIndex = 0;
-				}
-				else {
-					// Partition was unavailable in the previous iteration and the
-					// master node has not changed. Switch replica.
-					part.replicaIndex++;
-
-					if (part.replicaIndex >= parts.replicas.length) {
-						part.replicaIndex = 0;
-					}
-
-					node = parts.replicas[part.replicaIndex].get(part.id);
-				}
-
-				if (node == null) {
-					throw new AerospikeException.InvalidNode(part.id);
-				}
-
-				part.unavailable = false;
-				part.retry = false;
+				Node node = p.getNodeQuery(cluster, parts, part);
 
 				// Use node name to check for single node equality because
 				// partition map may be in transitional state between
@@ -291,8 +281,8 @@ public final class PartitionTracker {
 
 	public void partitionUnavailable(NodePartitions nodePartitions, int partitionId) {
 		PartitionStatus ps = partitions[partitionId - partitionBegin];
-		ps.unavailable = true;
 		ps.retry = true;
+		ps.sequence++;
 		nodePartitions.partsUnavailable++;
 	}
 
@@ -460,7 +450,7 @@ public final class PartitionTracker {
 				}
 				exceptions.add(ae);
 			}
-			markRetry(nodePartitions);
+			markRetrySequence(nodePartitions);
 			nodePartitions.partsUnavailable = nodePartitions.partsFull.size() + nodePartitions.partsPartial.size();
 			return true;
 
@@ -469,7 +459,21 @@ public final class PartitionTracker {
 		}
 	}
 
+	private void markRetrySequence(NodePartitions nodePartitions) {
+		// Mark retry for next replica.
+		for (PartitionStatus ps : nodePartitions.partsFull) {
+			ps.retry = true;
+			ps.sequence++;
+		}
+
+		for (PartitionStatus ps : nodePartitions.partsPartial) {
+			ps.retry = true;
+			ps.sequence++;
+		}
+	}
+
 	private void markRetry(NodePartitions nodePartitions) {
+		// Mark retry for same replica.
 		for (PartitionStatus ps : nodePartitions.partsFull) {
 			ps.retry = true;
 		}

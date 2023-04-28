@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,8 +37,8 @@ public class Policy {
 	public ReadModeSC readModeSC = ReadModeSC.SESSION;
 
 	/**
-	 * Replica algorithm used to determine the target node for a single record command.
-	 * Scan and query are not affected by replica algorithms.
+	 * Replica algorithm used to determine the target node for a partition derived from a key
+	 * or requested in a scan/query.
 	 * <p>
 	 * Default: {@link Replica#SEQUENCE}
 	 */
