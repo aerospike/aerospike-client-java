@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -148,8 +148,7 @@ public final class ResultCode {
 	public static final int PARTITION_UNAVAILABLE = 11;
 
 	/**
-	 * Operation is not supported with configured bin type (single-bin or
-	 * multi-bin).
+	 * Operation is not supported with configured bin type.
 	 */
 	public static final int BIN_TYPE_ERROR = 12;
 

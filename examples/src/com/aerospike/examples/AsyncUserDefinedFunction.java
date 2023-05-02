@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,7 +43,7 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 
 	private void writeUsingUdfAsync(final AerospikeClient client, final EventLoop eventLoop) {
 		final Key key = new Key(params.namespace, params.set, "audfkey1");
-		final Bin bin = new Bin(params.getBinName("audfbin1"), "string value");
+		final Bin bin = new Bin("audfbin1", "string value");
 
 		console.info("Write with udf: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 

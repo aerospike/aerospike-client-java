@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,8 +48,8 @@ import com.aerospike.test.sync.TestSync;
 public class TestQueryExecute extends TestSync {
 	private static final String indexName = "tqeindex";
 	private static final String keyPrefix = "tqekey";
-	private static final String binName1 = args.getBinName("tqebin1");
-	private static final String binName2 = args.getBinName("tqebin2");
+	private static final String binName1 = "tqebin1";
+	private static final String binName2 = "tqebin2";
 	private static final int size = 10;
 
 	@BeforeClass

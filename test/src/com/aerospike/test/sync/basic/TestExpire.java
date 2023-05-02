@@ -29,7 +29,7 @@ import com.aerospike.client.util.Util;
 import com.aerospike.test.sync.TestSync;
 
 public class TestExpire extends TestSync {
-	private static final String binName = args.getBinName("expirebin");
+	private static final String binName = "expirebin";
 
 	@Test
 	public void expire() {

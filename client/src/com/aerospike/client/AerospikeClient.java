@@ -130,10 +130,6 @@ import com.aerospike.client.util.Util;
  * writing and reading records, and selecting sets of records. Write operations
  * include specialized functionality such as append/prepend and arithmetic
  * addition.
- * <p>
- * Each record may have multiple bins, unless the Aerospike server nodes are
- * configured as "single-bin". In "multi-bin" mode, partial records may be
- * written or read by specifying the relevant subset of bins.
  */
 public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------

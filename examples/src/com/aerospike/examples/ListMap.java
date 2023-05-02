@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -58,7 +58,7 @@ public class ListMap extends Example {
 		list.add("string2");
 		list.add("string3");
 
-		Bin bin = new Bin(params.getBinName("listbin1"), list);
+		Bin bin = new Bin("listbin1", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -86,7 +86,7 @@ public class ListMap extends Example {
 		list.add(2);
 		list.add(blob);
 
-		Bin bin = new Bin(params.getBinName("listbin2"), list);
+		Bin bin = new Bin("listbin2", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -114,7 +114,7 @@ public class ListMap extends Example {
 		map.put("key2", "string2");
 		map.put("key3", "string3");
 
-		Bin bin = new Bin(params.getBinName("mapbin1"), map);
+		Bin bin = new Bin("mapbin1", map);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -151,7 +151,7 @@ public class ListMap extends Example {
 		map.put("key5", true);
 		map.put("key6", false);
 
-		Bin bin = new Bin(params.getBinName("mapbin2"), map);
+		Bin bin = new Bin("mapbin2", map);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -201,7 +201,7 @@ public class ListMap extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("listmapbin"), list);
+		Bin bin = new Bin("listmapbin", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
