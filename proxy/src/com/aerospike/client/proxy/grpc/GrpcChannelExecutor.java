@@ -451,7 +451,8 @@ public class GrpcChannelExecutor implements Runnable {
 		// access token fetch or if the token expires and could not be
 		// refreshed.
 		pendingCalls.forEach(call -> {
-			if (!call.hasCompleted() && call.hasExpired()) {
+			if (!call.hasCompleted() &&
+				(call.hasSendDeadlineExpired() || call.hasExpired())) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));
 			}
@@ -537,7 +538,9 @@ public class GrpcChannelExecutor implements Runnable {
 				for (GrpcStreamingCall call = pendingCalls.poll();
 					 call != null;
 					 call = pendingCalls.poll()) {
-					call.onError(aerospikeException);
+					if (!call.hasCompleted()) {
+						call.onError(aerospikeException);
+					}
 				}
 
 				return;
@@ -557,6 +560,9 @@ public class GrpcChannelExecutor implements Runnable {
 		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 
 		for (GrpcStreamingCall call = pendingCalls.poll(); call != null; call = pendingCalls.poll()) {
+			if (call.hasCompleted()) {
+				continue;
+			}
 			if (call.hasSendDeadlineExpired() || call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));

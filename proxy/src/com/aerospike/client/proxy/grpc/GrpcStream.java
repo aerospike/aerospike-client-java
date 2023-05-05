@@ -273,13 +273,31 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			return;
 		}
 
+		// Execute pending calls.
 		pendingCalls.drain(GrpcStream.this::execute, idleCounter -> idleCounter,
 			() -> !pendingCalls.isEmpty() &&
 				requestsSent < grpcClientPolicy.totalRequestsPerStream &&
 				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream);
+
+
+		// Error out expired pending calls. For performance reasons the call
+		// is not removed from the queue. onError sets the completion flag on
+		// the call, which is checked by execute.
+		pendingCalls.forEach(call -> {
+			if (!call.hasCompleted() &&
+				(call.hasSendDeadlineExpired() || call.hasExpired())) {
+				call.onError(new AerospikeException.Timeout(call.getPolicy(),
+					call.getIteration()));
+			}
+		});
 	}
 
 	private void execute(GrpcStreamingCall call) {
+		if (call.hasCompleted()) {
+			// Call has expired while in queue.
+			return;
+		}
+
 		try {
 			if (call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
