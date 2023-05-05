@@ -19,10 +19,10 @@ package com.aerospike.client.proxy.grpc;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-
-import org.jctools.queues.SpscUnboundedArrayQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
@@ -85,8 +85,11 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 	/**
 	 * Queued calls pending execution.
+	 *
+	 * <b>WARN</b> Ensure this is always accessed from the {@link #eventLoop}
+	 * thread.
 	 */
-	private final SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls;
+	private final LinkedList<GrpcStreamingCall> pendingCalls;
 
 	/**
 	 * Map of request id to the calls executing in this stream.
@@ -109,7 +112,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	public GrpcStream(
 		GrpcChannelExecutor channelExecutor,
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
+		LinkedList<GrpcStreamingCall> pendingCalls,
 		CallOptions callOptions,
 		GrpcClientPolicy grpcClientPolicy,
 		int streamIndex,
@@ -226,7 +229,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			"stream completed before all responses have been received"));
 	}
 
-	SpscUnboundedArrayQueue<GrpcStreamingCall> getQueue() {
+	LinkedList<GrpcStreamingCall> getQueue() {
 		return pendingCalls;
 	}
 
@@ -273,31 +276,29 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			return;
 		}
 
-		// Execute pending calls.
-		pendingCalls.drain(GrpcStream.this::execute, idleCounter -> idleCounter,
-			() -> !pendingCalls.isEmpty() &&
-				requestsSent < grpcClientPolicy.totalRequestsPerStream &&
-				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream);
+		Iterator<GrpcStreamingCall> iterator = pendingCalls.iterator();
+		while (iterator.hasNext()) {
+			GrpcStreamingCall call = iterator.next();
 
-
-		// Error out expired pending calls. For performance reasons the call
-		// is not removed from the queue. onError sets the completion flag on
-		// the call, which is checked by execute.
-		pendingCalls.forEach(call -> {
-			if (!call.hasCompleted() &&
-				(call.hasSendDeadlineExpired() || call.hasExpired())) {
+			if (call.hasSendDeadlineExpired() || call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));
+
+				iterator.remove(); // Remove from pending.
 			}
-		});
+			else if (requestsSent < grpcClientPolicy.totalRequestsPerStream &&
+				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream) {
+				execute(call);
+
+				iterator.remove(); // Remove from pending.
+			}
+			else {
+				// Call remains in pending.
+			}
+		}
 	}
 
 	private void execute(GrpcStreamingCall call) {
-		if (call.hasCompleted()) {
-			// Call has expired while in queue.
-			return;
-		}
-
 		try {
 			if (call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
@@ -353,20 +354,21 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	}
 
 	void enqueue(GrpcStreamingCall call) {
-		// TODO: can this call fail?
 		pendingCalls.add(call);
 	}
 
 	@Override
 	public void close() throws IOException {
-		while (!pendingCalls.isEmpty()) {
+		pendingCalls.forEach(call -> {
 			try {
-				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
+				call.failIfNotComplete(ResultCode.CLIENT_ERROR);
 			}
 			catch (Exception e) {
 				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
 			}
-		}
+		});
+
+		pendingCalls.clear();
 
 		executingCalls.values().forEach(call -> {
 			try {

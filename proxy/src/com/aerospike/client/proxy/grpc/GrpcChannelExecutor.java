@@ -24,17 +24,16 @@ import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
 import javax.annotation.Nullable;
 import javax.net.ssl.KeyManagerFactory;
-
-import org.jctools.queues.SpscUnboundedArrayQueue;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -83,11 +82,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private static final String AEROSPIKE_CLIENT_USER_AGENT =
 		"AerospikeClientJava/" + AerospikeClientProxy.Version;
-
-	/**
-	 * Call queue initial chunk size.
-	 */
-	private static final int CALL_QUEUE_CHUNK_SIZE = 128;
 
 	/**
 	 * The delay between iterations of this executor.
@@ -494,7 +488,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Create new stream.
-		SpscUnboundedArrayQueue<GrpcStreamingCall> queue = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
+		LinkedList<GrpcStreamingCall> queue = new LinkedList();
 		queue.add(call);
 
 		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue);
@@ -525,7 +519,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private void scheduleCallsOnNewStream(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls
+		LinkedList<GrpcStreamingCall> pendingCalls
 	) {
 		CallOptions options = grpcClientPolicy.callOptions;
 		if (authTokenManager != null) {
@@ -535,14 +529,7 @@ public class GrpcChannelExecutor implements Runnable {
 			catch (Exception e) {
 				AerospikeException aerospikeException =
 					new AerospikeException(ResultCode.NOT_AUTHENTICATED, e);
-				for (GrpcStreamingCall call = pendingCalls.poll();
-					 call != null;
-					 call = pendingCalls.poll()) {
-					if (!call.hasCompleted()) {
-						call.onError(aerospikeException);
-					}
-				}
-
+				pendingCalls.forEach(call -> call.onError(aerospikeException));
 				return;
 			}
 		}
@@ -557,27 +544,23 @@ public class GrpcChannelExecutor implements Runnable {
 		// .onStreamClosed with the same pendingCalls
 		// - in the next call of GrpcChannelExecutor.processClosedStreams in
 		// an iteration the above steps repeat
-		SpscUnboundedArrayQueue<GrpcStreamingCall> activeCalls = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 
-		for (GrpcStreamingCall call = pendingCalls.poll(); call != null; call = pendingCalls.poll()) {
-			if (call.hasCompleted()) {
-				continue;
-			}
+		Iterator<GrpcStreamingCall> iterator = pendingCalls.iterator();
+		while (iterator.hasNext()) {
+			GrpcStreamingCall call = iterator.next();
 			if (call.hasSendDeadlineExpired() || call.hasExpired()) {
 				call.onError(new AerospikeException.Timeout(call.getPolicy(),
 					call.getIteration()));
-			}
-			else {
-				activeCalls.add(call);
+				iterator.remove(); // Remove expired call from queue.
 			}
 		}
 
-		if (activeCalls.isEmpty()) {
+		if (pendingCalls.isEmpty()) {
 			return;
 		}
 
 		GrpcStream stream = new GrpcStream(this, methodDescriptor,
-			activeCalls, options, grpcClientPolicy, nextStreamId(), eventLoop);
+			pendingCalls, options, grpcClientPolicy, nextStreamId(), eventLoop);
 
 		streams.put(stream.getId(), stream);
 		streamsOpen++;
@@ -618,19 +601,21 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private void closeAllPendingCalls() {
 		while (!pendingCalls.isEmpty()) {
-			try {
-				pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.CLIENT_ERROR));
-			}
-			catch (Exception e) {
-				Log.error("Error shutting down " + this.getClass() + ": " + e.getMessage());
-			}
+			pendingCalls.drain(call -> {
+				try {
+					call.failIfNotComplete(ResultCode.CLIENT_ERROR);
+				}
+				catch (Exception e) {
+					Log.error("Error on call close " + call + ": " + e.getMessage());
+				}
+			});
 		}
 		streams.values().forEach(stream -> {
 			try {
 				stream.close();
 			}
 			catch (Exception e) {
-				Log.error("Error closing " + GrpcStream.class + ": " + e.getMessage());
+				Log.error("Error closing stream " + stream + ": " + e.getMessage());
 			}
 		});
 		streams.clear();
