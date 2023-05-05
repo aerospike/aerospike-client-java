@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,8 @@ public final class PartitionFilter implements Serializable {
 	/**
 	 * Return records after key's digest in partition containing the digest.
 	 * Note that digest order is not the same as userKey order. This method
-	 * only works for scan or query with null filter.
+	 * only works for scan or query with null filter (primary index query).
+	 * This method does not work for a secondary index query.
 	 *
 	 * @param key		return records after this key's digest
 	 */

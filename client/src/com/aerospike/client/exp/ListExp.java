@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.exp;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListReturnType;
@@ -463,11 +464,29 @@ public final class ListExp {
 	}
 
 	private static Exp.Type getValueType(int returnType) {
-		if ((returnType & ~ListReturnType.INVERTED) == ListReturnType.VALUE) {
+		int t = returnType & ~ListReturnType.INVERTED;
+
+		switch (t) {
+		case ListReturnType.INDEX:
+		case ListReturnType.REVERSE_INDEX:
+		case ListReturnType.RANK:
+		case ListReturnType.REVERSE_RANK:
+			// This method only called from expressions that can return multiple integers (ie list).
 			return Exp.Type.LIST;
-		}
-		else {
+
+		case ListReturnType.COUNT:
 			return Exp.Type.INT;
+
+		case ListReturnType.VALUE:
+			// This method only called from expressions that can return multiple objects (ie list).
+			return Exp.Type.LIST;
+
+		case ListReturnType.EXISTS:
+			return Exp.Type.BOOL;
+
+		default:
+		case ListReturnType.NONE:
+			throw new AerospikeException("Invalid ListReturnType: " + returnType);
 		}
 	}
 
