@@ -16,8 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -51,24 +49,6 @@ public abstract class Value {
 	 * server 5.6+.
 	 */
 	public static boolean UseBoolBin = false;
-
-	/**
-	 * Should default object serializer be disabled. If true, an exception will be thrown when
-	 * a default object serialization is attempted. Default object serialization is triggered
-	 * when a bin constructed by {@link com.aerospike.client.Bin#Bin(String, Object)} or
-	 * {@link com.aerospike.client.Bin#asBlob(String, Object)} is used in a write command
-	 * with an unrecognized object type.
-	 */
-	public static boolean DisableSerializer = false;
-
-	/**
-	 * Should default object deserializer be disabled. If true, an exception will be thrown when
-	 * a default object deserialization is attempted. Default object serialization is triggered
-	 * when serialized data is read/parsed from the server. DisableDeserializer is separate from
-	 * DisableSerializer because there may be cases when no new serialization is allowed, but
-	 * existing serialized objects need to be supported.
-	 */
-	public static boolean DisableDeserializer = false;
 
 	/**
 	 * Should the client return a map when {@link com.aerospike.client.cdt.MapReturnType#KEY_VALUE}
@@ -242,13 +222,6 @@ public abstract class Value {
 	}
 
 	/**
-	 * Get blob or null value instance.
-	 */
-	public static Value getAsBlob(Object value) {
-		return (value == null)? NullValue.INSTANCE : new BlobValue(value);
-	}
-
-	/**
 	 * Get GeoJSON or null value instance.
 	 */
 	public static Value getAsGeoJSON(String value) {
@@ -349,7 +322,7 @@ public abstract class Value {
 			return new BytesValue(bb.array());
 		}
 
-		return new BlobValue(value);
+		throw new AerospikeException("Unsupported type: " + value.getClass().getName());
 	}
 
 	/**
@@ -1257,88 +1230,6 @@ public abstract class Value {
 		@Override
 		public long toLong() {
 			return value? 1L : 0L;
-		}
-	}
-
-	/**
-	 * Blob value.
-	 */
-	public static final class BlobValue extends Value {
-		private final Object object;
-		private byte[] bytes;
-
-		public BlobValue(Object object) {
-			this.object = object;
-		}
-
-		@Override
-		public int estimateSize() throws AerospikeException.Serialize {
-			bytes = serialize(object);
-			return bytes.length;
-		}
-
-		public static byte[] serialize(Object val) {
-			if (DisableSerializer) {
-				throw new AerospikeException("Object serializer has been disabled");
-			}
-
-			try (ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
-				try (ObjectOutputStream ostream = new ObjectOutputStream(bstream)) {
-					ostream.writeObject(val);
-				}
-				return bstream.toByteArray();
-			}
-			catch (Exception e) {
-				throw new AerospikeException.Serialize(e);
-			}
-		}
-
-		@Override
-		public int write(byte[] buffer, int offset) {
-			System.arraycopy(bytes, 0, buffer, offset, bytes.length);
-			return bytes.length;
-		}
-
-		@Override
-		public void pack(Packer packer) {
-			packer.packBlob(object);
-		}
-
-		@Override
-		public void validateKeyType() {
-			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid key type: jblob");
-		}
-
-		@Override
-		public int getType() {
-			return ParticleType.JBLOB;
-		}
-
-		@Override
-		public Object getObject() {
-			return object;
-		}
-
-		@Override
-		public LuaValue getLuaValue(LuaInstance instance) {
-			return LuaString.valueOf(bytes);
-		}
-
-		@Override
-		public String toString() {
-			return Buffer.bytesToHexString(bytes);
-		}
-
-		@Override
-		public boolean equals(Object other) {
-			return (other != null &&
-				this.getClass().equals(other.getClass()) &&
-				this.object.equals(((BlobValue)other).object));
-		}
-
-		@Override
-		public int hashCode() {
-			return object.hashCode();
 		}
 	}
 

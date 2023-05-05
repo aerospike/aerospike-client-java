@@ -48,7 +48,6 @@ public class Main extends JPanel {
 		"Prepend",
 		"Batch",
 		"Generation",
-		"Serialize",
 		"Expire",
 		"Touch",
 		"StoreKey",
