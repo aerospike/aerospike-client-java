@@ -229,7 +229,7 @@ public final class Statement {
 	}
 
 	/**
-	 * Set operations to be performed on query/execute.
+	 * Set operations to be performed on execute. Note: query() and queryPartitions() silently ignore setOperations().
 	 */
 	public void setOperations(Operation[] operations) {
 		this.operations = operations;
