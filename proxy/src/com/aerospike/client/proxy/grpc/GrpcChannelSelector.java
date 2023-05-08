@@ -30,10 +30,8 @@ public interface GrpcChannelSelector {
 	 * Select a channel for the gRPC method.
 	 *
 	 * @param channels channels to select from.
-	 * @param methodDescriptor the method description of the request.
+	 * @param call     the streaming call to be executed.
 	 * @return the selected channel.
 	 */
-	GrpcChannelExecutor select(
-		List<GrpcChannelExecutor> channels,
-		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor);
+	GrpcChannelExecutor select(List<GrpcChannelExecutor> channels, GrpcStreamingCall call);
 }

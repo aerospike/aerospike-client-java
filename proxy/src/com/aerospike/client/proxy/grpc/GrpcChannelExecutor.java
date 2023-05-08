@@ -483,12 +483,12 @@ public class GrpcChannelExecutor implements Runnable {
 
 		// The stream will be close by the selector.
 		//noinspection resource
-		GrpcStream stream =
-			grpcClientPolicy.grpcStreamSelector.select(new ArrayList<>(streams.values()), call.getStreamingMethodDescriptor());
+		GrpcStreamSelector.SelectedStream selectedStream =
+			grpcClientPolicy.grpcStreamSelector.select(new ArrayList<>(streams.values()), call);
 
-		if (stream != null) {
+		if (selectedStream.useExistingStream()) {
 			// TODO: what if add fails
-			stream.enqueue(call);
+			selectedStream.getStream().enqueue(call);
 			return;
 		}
 
@@ -496,7 +496,9 @@ public class GrpcChannelExecutor implements Runnable {
 		SpscUnboundedArrayQueue<GrpcStreamingCall> queue = new SpscUnboundedArrayQueue<>(CALL_QUEUE_CHUNK_SIZE);
 		queue.add(call);
 
-		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue);
+		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue,
+			selectedStream.getMaxConcurrentRequestsPerStream(),
+			selectedStream.getTotalRequestsPerStream());
 	}
 
 	private void processClosedStream(GrpcStream grpcStream) {
@@ -516,7 +518,9 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		// Reuse same queue which has pending requests.
-		scheduleCallsOnNewStream(grpcStream.getMethodDescriptor(), grpcStream.getQueue());
+		scheduleCallsOnNewStream(grpcStream.getMethodDescriptor(),
+			grpcStream.getQueue(), grpcStream.getMaxConcurrentRequests(),
+			grpcStream.getTotalRequestsToExecute());
 	}
 
 	/**
@@ -524,8 +528,17 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private void scheduleCallsOnNewStream(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls
+		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
+		int maxConcurrentRequestsPerStream, int totalRequestsPerStream
 	) {
+		if (maxConcurrentRequestsPerStream <= 0) { // Should never happen.
+			maxConcurrentRequestsPerStream =
+				grpcClientPolicy.maxConcurrentRequestsPerStream;
+		}
+		if (totalRequestsPerStream <= 0) { // Should never happen.
+			totalRequestsPerStream = grpcClientPolicy.totalRequestsPerStream;
+		}
+
 		CallOptions options = grpcClientPolicy.callOptions;
 		if (authTokenManager != null) {
 			try {
@@ -571,7 +584,8 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		GrpcStream stream = new GrpcStream(this, methodDescriptor,
-			activeCalls, options, grpcClientPolicy, nextStreamId(), eventLoop);
+			activeCalls, options, nextStreamId(), eventLoop,
+			maxConcurrentRequestsPerStream, totalRequestsPerStream);
 
 		streams.put(stream.getId(), stream);
 		streamsOpen++;

@@ -68,9 +68,14 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	private StreamObserver<Kvs.AerospikeRequestPayload> requestObserver;
 
 	/**
-	 * The gRPC client policy.
+	 * Maximum number of concurrent requests that can be in-flight.
 	 */
-	private final GrpcClientPolicy grpcClientPolicy;
+	private final int maxConcurrentRequests;
+
+	/**
+	 * Total number of requests to process in this stream for its lifetime.
+	 */
+	private final int totalRequestsToExecute;
 
 	/**
 	 * The executor for this stream.
@@ -104,23 +109,25 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	private long bytesSent;
 	private long bytesReceived;
 	private int requestsSent;
-	private int responsesReceived;
+	private int requestsCompleted;
 
 	public GrpcStream(
 		GrpcChannelExecutor channelExecutor,
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		SpscUnboundedArrayQueue<GrpcStreamingCall> pendingCalls,
 		CallOptions callOptions,
-		GrpcClientPolicy grpcClientPolicy,
 		int streamIndex,
-		EventLoop eventLoop
+		EventLoop eventLoop,
+		int maxConcurrentRequests,
+		int totalRequestsToExecute
 	) {
 		this.channelExecutor = channelExecutor;
 		this.methodDescriptor = methodDescriptor;
 		this.pendingCalls = pendingCalls;
-		this.grpcClientPolicy = grpcClientPolicy;
 		this.id = streamIndex;
 		this.eventLoop = eventLoop;
+		this.maxConcurrentRequests = maxConcurrentRequests;
+		this.totalRequestsToExecute = totalRequestsToExecute;
 		ClientCall<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> call = channelExecutor.getChannel()
 			.newCall(methodDescriptor, callOptions);
 		StreamObserver<Kvs.AerospikeRequestPayload> requestObserver =
@@ -157,7 +164,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			call = executingCalls.remove(callId);
 
 			// Update stats.
-			responsesReceived++;
+			requestsCompleted++;
 			channelExecutor.onRequestCompleted();
 		}
 
@@ -174,7 +181,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		}
 
 		// TODO can it ever be greater than?
-		if (responsesReceived >= grpcClientPolicy.totalRequestsPerStream) {
+		if (requestsCompleted >= totalRequestsToExecute) {
 			// Complete this stream.
 			requestObserver.onCompleted();
 		}
@@ -255,8 +262,17 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		return requestsSent;
 	}
 
-	public int getResponsesReceived() {
-		return responsesReceived;
+	public int getRequestsCompleted() {
+		return requestsCompleted;
+	}
+
+
+	int getMaxConcurrentRequests() {
+		return maxConcurrentRequests;
+	}
+
+	int getTotalRequestsToExecute() {
+		return totalRequestsToExecute;
 	}
 
 	@Override
@@ -264,8 +280,8 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		return "GrpcStream{id=" + id + ", channelExecutor=" + channelExecutor + '}';
 	}
 
-	public int getTotalExecutedRequests() {
-		return getRequestsSent() + getOngoingRequests();
+	public int getExecutedRequests() {
+		return getRequestsCompleted() + getOngoingRequests();
 	}
 
 	public void executeCall() {
@@ -275,8 +291,8 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 		pendingCalls.drain(GrpcStream.this::execute, idleCounter -> idleCounter,
 			() -> !pendingCalls.isEmpty() &&
-				requestsSent < grpcClientPolicy.totalRequestsPerStream &&
-				executingCalls.size() < grpcClientPolicy.maxConcurrentRequestsPerStream);
+				requestsSent < totalRequestsToExecute &&
+				executingCalls.size() < maxConcurrentRequests);
 	}
 
 	private void execute(GrpcStreamingCall call) {

@@ -21,8 +21,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.aerospike.proxy.client.Kvs;
-
-import io.grpc.MethodDescriptor;
+import com.aerospike.proxy.client.QueryGrpc;
+import com.aerospike.proxy.client.ScanGrpc;
 
 /**
  * A default gRPC stream selector which selects a free stream.
@@ -30,50 +30,107 @@ import io.grpc.MethodDescriptor;
 public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 	private final int maxConcurrentStreamsPerChannel;
 	private final int maxConcurrentRequestsPerStream;
+	private final int totalRequestsPerStream;
 
-	public DefaultGrpcStreamSelector(int maxConcurrentStreamsPerChannel, int maxConcurrentRequestsPerStream) {
+	public DefaultGrpcStreamSelector(int maxConcurrentStreamsPerChannel, int maxConcurrentRequestsPerStream, int totalRequestsPerStream) {
 		this.maxConcurrentStreamsPerChannel = maxConcurrentStreamsPerChannel;
 		this.maxConcurrentRequestsPerStream = maxConcurrentRequestsPerStream;
+		this.totalRequestsPerStream = totalRequestsPerStream;
 	}
 
 	@Override
-	public GrpcStream select(
-		List<GrpcStream> streams,
-		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor
-	) {
+	public SelectedStream select(List<GrpcStream> streams, GrpcStreamingCall call) {
+		final String fullMethodName =
+			call.getStreamingMethodDescriptor().getFullMethodName();
+
+		// Always use a dedicated new stream for a scan and a long query.
+		if (isScan(call) || isLongQuery(call)) {
+			return new SelectedStream(1, 1);
+		}
+
 		// Sort by stream id. Leave original list as it is.
 		List<GrpcStream> filteredStreams = streams.stream()
-				.filter(grpcStream ->
-						grpcStream.getMethodDescriptor().getFullMethodName()
-								.equals(methodDescriptor.getFullMethodName())
-				)
-				.sorted(Comparator.comparingInt(GrpcStream::getId))
-				.collect(Collectors.toList());
+			.filter(grpcStream ->
+				grpcStream.getMethodDescriptor().getFullMethodName()
+					.equals(fullMethodName)
+			)
+			.sorted(Comparator.comparingInt(GrpcStream::getId))
+			.collect(Collectors.toList());
 
 		// Select first stream with less than max concurrent requests.
 		for (GrpcStream stream : filteredStreams) {
-			if (stream.getOngoingRequests() < maxConcurrentRequestsPerStream) {
-				return stream;
+			if (stream.getOngoingRequests() < stream.getMaxConcurrentRequests()) {
+				return new SelectedStream(stream);
 			}
 		}
 
 		if (streams.size() < maxConcurrentStreamsPerChannel) {
-			return null;  // Create new stream.
+			// Create new stream.
+			return new SelectedStream(maxConcurrentRequestsPerStream, totalRequestsPerStream);
 		}
 
 		// TODO What is the probability of this occurring? Should some streams
 		//  in a channel be reserved for rarely used API's?
 		if (filteredStreams.isEmpty()) {
-			return null; // Create new stream.
+			// Create new stream.
+			return new SelectedStream(maxConcurrentRequestsPerStream, totalRequestsPerStream);
 		}
 
-		// Select stream with lowest total requests.
+		// Select stream with lowest percent of total requests executed.
 		GrpcStream selected = filteredStreams.get(0);
 		for (GrpcStream stream : filteredStreams) {
-			if (stream.getTotalExecutedRequests() < selected.getTotalExecutedRequests()) {
+			float executedPercent =
+				(float)stream.getExecutedRequests() / stream.getTotalRequestsToExecute();
+			float selectedPercent =
+				(float)selected.getExecutedRequests() / stream.getTotalRequestsToExecute();
+			if (executedPercent < selectedPercent) {
 				selected = stream;
 			}
 		}
-		return selected;
+		return new SelectedStream(selected);
+	}
+
+	private boolean isScan(GrpcStreamingCall call) {
+		String fullMethodName =
+			call.getStreamingMethodDescriptor().getFullMethodName();
+		String scanFullMethodName =
+			ScanGrpc.getScanMethod().getFullMethodName();
+		String scanStreamingFullMethodName =
+			ScanGrpc.getScanStreamingMethod().getFullMethodName();
+		return scanFullMethodName.equals(fullMethodName) ||
+			scanStreamingFullMethodName.equals(fullMethodName);
+	}
+
+	private boolean isLongQuery(GrpcStreamingCall call) {
+		String fullMethodName =
+			call.getStreamingMethodDescriptor().getFullMethodName();
+		String queryFullMethodName =
+			QueryGrpc.getQueryMethod().getFullMethodName();
+		String queryStreamingFullMethodName =
+			QueryGrpc.getQueryStreamingMethod().getFullMethodName();
+
+		if (!queryFullMethodName.equals(fullMethodName) &&
+			!queryStreamingFullMethodName.equals(fullMethodName)) {
+			return false;  // Not a query request.
+		}
+
+		Kvs.QueryRequest queryRequest = call.getRequestBuilder().getQueryRequest();
+		if (queryRequest.getBackground()) {
+			return false; // Background queries send back a single response.
+		}
+
+		if (queryRequest.getStatement().getMaxRecords() < 10) {
+			return false; // Records returned in responses is small.
+		}
+
+		if (!queryRequest.getStatement().getFunctionName().isEmpty()) {
+			return false; // Is an aggregation statement.
+		}
+
+		if (queryRequest.hasQueryPolicy() && queryRequest.getQueryPolicy().getShortQuery()) {
+			return false; // Is a short query.
+		}
+
+		return true;
 	}
 }
