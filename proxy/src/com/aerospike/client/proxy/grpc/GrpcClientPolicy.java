@@ -281,7 +281,7 @@ public class GrpcClientPolicy {
 
 			if (grpcStreamSelector == null) {
 				grpcStreamSelector =
-						new DefaultGrpcStreamSelector(maxConcurrentStreamsPerChannel, maxConcurrentRequestsPerStream);
+					new DefaultGrpcStreamSelector(maxConcurrentStreamsPerChannel, maxConcurrentRequestsPerStream, totalRequestsPerStream);
 			}
 
 			if (callOptions == null) {

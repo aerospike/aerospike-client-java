@@ -109,8 +109,7 @@ public class GrpcCallExecutor implements Closeable {
 		}
 
 		GrpcChannelExecutor executor =
-			grpcClientPolicy.grpcChannelSelector.select(channelExecutors,
-				call.getStreamingMethodDescriptor());
+			grpcClientPolicy.grpcChannelSelector.select(channelExecutors, call);
 
 		// TODO: In case of timeouts, lots of calls will end up filling the
 		//  wait queues and timeout once removed for execution from the wait

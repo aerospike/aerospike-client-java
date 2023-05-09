@@ -18,10 +18,6 @@ package com.aerospike.client.proxy.grpc;
 
 import java.util.List;
 
-import com.aerospike.proxy.client.Kvs;
-
-import io.grpc.MethodDescriptor;
-
 /**
  * A selector of streams within a channel to execute Aerospike proxy gRPC calls.
  */
@@ -30,13 +26,58 @@ public interface GrpcStreamSelector {
 	 * Select a stream for the gRPC method. All streams created by the
 	 * selector should be close when the selector is closed.
 	 *
-	 * @param streams          streams to select from.
-	 * @param methodDescriptor the method description of the request.
+	 * @param streams streams to select from.
+	 * @param call    the streaming call to be executed.
 	 * @return the selected stream, <code>null</code> when no stream is
 	 * selected.
 	 */
-	GrpcStream select(
-		List<GrpcStream> streams,
-		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor
-	);
+	SelectedStream select(List<GrpcStream> streams, GrpcStreamingCall call);
+
+
+	class SelectedStream {
+		/**
+		 * Wil be non-null only when a current stream is selected.
+		 */
+		private final GrpcStream stream;
+
+		// Following fields only applies when {@link #stream} is
+		// <code>null</code>
+
+		private final int maxConcurrentRequestsPerStream;
+		private final int totalRequestsPerStream;
+
+		/**
+		 * Create a new stream with the supplied parameters.
+		 */
+		public SelectedStream(int maxConcurrentRequestsPerStream, int totalRequestsPerStream) {
+			this.stream = null;
+			this.maxConcurrentRequestsPerStream = maxConcurrentRequestsPerStream;
+			this.totalRequestsPerStream = totalRequestsPerStream;
+		}
+
+		/**
+		 * Use an existing stream.
+		 */
+		public SelectedStream(GrpcStream stream) {
+			this.stream = stream;
+			this.maxConcurrentRequestsPerStream = 0;
+			this.totalRequestsPerStream = 0;
+		}
+
+		boolean useExistingStream() {
+			return stream != null;
+		}
+
+		public GrpcStream getStream() {
+			return stream;
+		}
+
+		public int getMaxConcurrentRequestsPerStream() {
+			return maxConcurrentRequestsPerStream;
+		}
+
+		public int getTotalRequestsPerStream() {
+			return totalRequestsPerStream;
+		}
+	}
 }

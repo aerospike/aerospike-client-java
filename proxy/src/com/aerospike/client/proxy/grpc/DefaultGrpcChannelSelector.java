@@ -40,16 +40,12 @@ public class DefaultGrpcChannelSelector implements GrpcChannelSelector {
 	}
 
 	@Override
-	public GrpcChannelExecutor select(
-		List<GrpcChannelExecutor> channels,
-		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor
-	) {
+	public GrpcChannelExecutor select(List<GrpcChannelExecutor> channels, GrpcStreamingCall call) {
 		// Sort by channel id. Leave original list as it is.
 		channels = new ArrayList<>(channels);
 		channels.sort(Comparator.comparingLong(GrpcChannelExecutor::getId));
 
-		// Select the first channel below the low watermark which has
-		// executed the least number of requests.
+		// Select the first channel below the low watermark.
 		for (GrpcChannelExecutor channel : channels) {
 			if (channel.getOngoingRequests() < requestsLowWaterMark) {
 				return channel;
