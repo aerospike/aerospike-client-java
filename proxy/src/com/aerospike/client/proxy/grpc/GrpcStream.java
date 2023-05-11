@@ -104,12 +104,10 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 	 */
 	private boolean isClosed = false;
 
-	// Stream statistics. These are only accessed from the event loop thread
+	// Stream statistics. These are only updated from the event loop thread
 	// assigned to this stream and its channel.
-	private long bytesSent;
-	private long bytesReceived;
-	private int requestsSent;
-	private int requestsCompleted;
+	private volatile int requestsSent;
+	private volatile int requestsCompleted;
 
 	public GrpcStream(
 		GrpcChannelExecutor channelExecutor,
@@ -152,10 +150,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		// Invoke callback.
 		int callId = aerospikeResponsePayload.getId();
 		GrpcStreamingCall call;
-
-		int payloadSize = aerospikeResponsePayload.getPayload().size();
-		bytesReceived += payloadSize;
-		channelExecutor.onPayloadReceived(payloadSize);
 
 		if (aerospikeResponsePayload.getHasNext()) {
 			call = executingCalls.get(callId);
@@ -250,22 +244,9 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		return id;
 	}
 
-	public long getBytesSent() {
-		return bytesSent;
-	}
-
-	public long getBytesReceived() {
-		return bytesReceived;
-	}
-
-	public int getRequestsSent() {
-		return requestsSent;
-	}
-
 	public int getRequestsCompleted() {
 		return requestsCompleted;
 	}
-
 
 	int getMaxConcurrentRequests() {
 		return maxConcurrentRequests;
@@ -304,9 +285,6 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 
 			Kvs.AerospikeRequestPayload.Builder requestBuilder = call.getRequestBuilder();
-
-			// Update stats.
-			bytesSent += requestBuilder.getPayload().size();
 
 			int requestId = requestsSent++;
 			requestBuilder
