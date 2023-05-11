@@ -223,6 +223,11 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 	@Override
 	public void onCompleted() {
+		if (!eventLoop.inEventLoop()) {
+			eventLoop.schedule(this::onCompleted, 0, TimeUnit.NANOSECONDS);
+			return;
+		}
+
 		abortExecutingCalls(new AerospikeException(ResultCode.SERVER_ERROR,
 			"stream completed before all responses have been received"));
 	}
