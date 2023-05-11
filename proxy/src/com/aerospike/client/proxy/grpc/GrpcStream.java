@@ -236,7 +236,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			"stream completed before all responses have been received"));
 	}
 
-	LinkedList<GrpcStreamingCall> getQueue() {
+	LinkedList<GrpcStreamingCall> getPendingCalls() {
 		return pendingCalls;
 	}
 

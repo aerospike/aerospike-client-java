@@ -482,13 +482,12 @@ public class GrpcChannelExecutor implements Runnable {
 			grpcClientPolicy.grpcStreamSelector.select(new ArrayList<>(streams.values()), call);
 
 		if (selectedStream.useExistingStream()) {
-			// TODO: what if add fails
 			selectedStream.getStream().enqueue(call);
 			return;
 		}
 
 		// Create new stream.
-		LinkedList<GrpcStreamingCall> queue = new LinkedList();
+		LinkedList<GrpcStreamingCall> queue = new LinkedList<GrpcStreamingCall>();
 		queue.add(call);
 
 		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue,
@@ -497,7 +496,7 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 	private void processClosedStream(GrpcStream grpcStream) {
-		if (!streams.containsKey(grpcStream.getId())) {
+		if (streams.remove(grpcStream.getId()) == null) {
 			// Should never happen.
 			// TODO: throw Exception.
 			return;
@@ -505,17 +504,9 @@ public class GrpcChannelExecutor implements Runnable {
 
 		streamsOpen--;
 		streamsClosed++;
-		streams.remove(grpcStream.getId());
 
-		if (grpcStream.getQueue().isEmpty()) {
-			// Do nothing.
-			return;
-		}
-
-		// Reuse same queue which has pending requests.
-		scheduleCallsOnNewStream(grpcStream.getMethodDescriptor(),
-			grpcStream.getQueue(), grpcStream.getMaxConcurrentRequests(),
-			grpcStream.getTotalRequestsToExecute());
+		// Schedule each of the pending calls.
+		grpcStream.getPendingCalls().forEach(this::scheduleCalls);
 	}
 
 	/**
