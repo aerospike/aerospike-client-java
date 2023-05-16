@@ -652,13 +652,13 @@ public abstract class Value {
 
 		@Override
 		public int write(byte[] buffer, int offset) {
-			Buffer.longToBytes(value, buffer, offset);
+			Buffer.longToBytes(value & 0xff, buffer, offset);
 			return 8;
 		}
 
 		@Override
 		public void pack(Packer packer) {
-			packer.packByte(value);
+			packer.packInt(value & 0xff);
 		}
 
 		@Override
@@ -674,12 +674,12 @@ public abstract class Value {
 
 		@Override
 		public LuaValue getLuaValue(LuaInstance instance) {
-			return LuaInteger.valueOf(value);
+			return LuaInteger.valueOf(value & 0xff);
 		}
 
 		@Override
 		public String toString() {
-			return Byte.toString(value);
+			return Integer.toString(value & 0xff);
 		}
 
 		@Override
@@ -691,17 +691,17 @@ public abstract class Value {
 
 		@Override
 		public int hashCode() {
-			return value;
+			return value & 0xff;
 		}
 
 		@Override
 		public int toInteger() {
-			return value;
+			return value & 0xff;
 		}
 
 		@Override
 		public long toLong() {
-			return value;
+			return value & 0xff;
 		}
 	}
 
