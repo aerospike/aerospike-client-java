@@ -148,14 +148,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 * The future to cancel the scheduled iteration of this executor.
 	 */
 	private ScheduledFuture<?> iterateFuture;
-	// These are only accessed from the event loop thread
-	// assigned to this channel
-	private volatile long bytesSent;
-	private volatile long bytesReceived;
-	private volatile long requestsSent;
-	private volatile long responsesReceived;
-	private volatile long streamsOpen;
-	private volatile long streamsClosed;
+
 	/**
 	 * Time when the channel executor saw an invalid token. If this field is
 	 * zero the token is valid.
@@ -472,10 +465,6 @@ public class GrpcChannelExecutor implements Runnable {
 			return;
 		}
 
-		// Update stats.
-		bytesSent += call.getRequestBuilder().getPayload().size();
-		requestsSent++;
-
 		// The stream will be close by the selector.
 		//noinspection resource
 		GrpcStreamSelector.SelectedStream selectedStream =
@@ -501,9 +490,6 @@ public class GrpcChannelExecutor implements Runnable {
 			// TODO: throw Exception.
 			return;
 		}
-
-		streamsOpen--;
-		streamsClosed++;
 
 		// Schedule each of the pending calls.
 		grpcStream.getPendingCalls().forEach(this::scheduleCalls);
@@ -564,11 +550,10 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 
 		GrpcStream stream = new GrpcStream(this, methodDescriptor,
-		pendingCalls, options, nextStreamId(), eventLoop,
+			pendingCalls, options, nextStreamId(), eventLoop,
 			maxConcurrentRequestsPerStream, totalRequestsPerStream);
 
 		streams.put(stream.getId(), stream);
-		streamsOpen++;
 	}
 
 	/**
@@ -652,34 +637,8 @@ public class GrpcChannelExecutor implements Runnable {
 		return ongoingRequests.get();
 	}
 
-
 	void onRequestCompleted() {
-		responsesReceived++;
 		ongoingRequests.getAndDecrement();
-	}
-
-	void onPayloadReceived(int size) {
-		bytesReceived += size;
-	}
-
-	public long getBytesSent() {
-		return bytesSent;
-	}
-
-	public long getBytesReceived() {
-		return bytesReceived;
-	}
-
-	public long getRequestsSent() {
-		return requestsSent;
-	}
-
-	public long getResponsesReceived() {
-		return responsesReceived;
-	}
-
-	public long getStreamsClosed() {
-		return streamsClosed;
 	}
 
 	public void onStreamClosed(GrpcStream grpcStream) {
@@ -692,10 +651,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 	public EventLoop getEventLoop() {
 		return eventLoop;
-	}
-
-	public long getStreamsOpen() {
-		return streamsOpen;
 	}
 
 	private static class ChannelAndEventLoop {
