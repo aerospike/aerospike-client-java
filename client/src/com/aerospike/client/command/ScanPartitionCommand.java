@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -96,8 +96,10 @@ public final class ScanPartitionCommand extends MultiCommand {
 			throw new AerospikeException.ScanTerminated();
 		}
 
-		callback.scanCallback(key, record);
-		tracker.setDigest(nodePartitions, key);
+		if (tracker.allowRecord()) {
+			callback.scanCallback(key, record);
+			tracker.setDigest(nodePartitions, key);
+		}
 		return true;
 	}
 }
