@@ -136,6 +136,17 @@ public class GrpcStreamingCall {
 	}
 
 	/**
+	 * Fail the call if it is not completed.
+	 *
+	 * @param throwable cause of failure.
+	 */
+	public void failIfNotComplete(Throwable throwable) {
+		if (!hasCompleted()) {
+			onError(throwable);
+		}
+	}
+
+	/**
 	 * @return <code>true</code> if this call has completed either because
 	 * {@link #onNext(Kvs.AerospikeResponsePayload)} or
 	 * {@link #onError(Throwable)} was invoked.

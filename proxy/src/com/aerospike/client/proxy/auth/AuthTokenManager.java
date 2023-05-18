@@ -26,8 +26,11 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.proxy.auth.credentials.BearerTokenCallCredentials;
 import com.aerospike.client.proxy.grpc.GrpcChannelProvider;
@@ -81,6 +84,14 @@ public class AuthTokenManager implements Closeable {
 	 * Count of consecutive errors while refreshing the token.
 	 */
 	private final AtomicInteger consecutiveRefreshErrors = new AtomicInteger(0);
+
+	/**
+	 * The error encountered when refreshing the token. It will be null when
+	 * {@link #consecutiveRefreshErrors} is zero.
+	 */
+	private final AtomicReference<Throwable> refreshError =
+		new AtomicReference<>(null);
+
 	private volatile AccessToken accessToken;
 	private volatile boolean fetchScheduled;
 	/**
@@ -138,7 +149,7 @@ public class AuthTokenManager implements Closeable {
 												"with TTL %d", accessToken.ttl));
 									}
 									unsafeScheduleNextRefresh();
-									consecutiveRefreshErrors.set(0);
+									clearRefreshErrors();
 								}
 								catch (Exception e) {
 									onFetchError(e);
@@ -163,8 +174,18 @@ public class AuthTokenManager implements Closeable {
 		}
 	}
 
-	private void onFetchError(Throwable t) {
+	private void clearRefreshErrors() {
+		consecutiveRefreshErrors.set(0);
+		refreshError.set(null);
+	}
+
+	private void updateRefreshErrors(Throwable t) {
 		consecutiveRefreshErrors.incrementAndGet();
+		refreshError.set(t);
+	}
+
+	private void onFetchError(Throwable t) {
+		updateRefreshErrors(t);
 		Log.error(t.getMessage());
 		unsafeScheduleNextRefresh();
 		isFetchingToken.set(false);
@@ -272,18 +293,36 @@ public class AuthTokenManager implements Closeable {
 		return refreshMinTime;
 	}
 
-	public boolean isTokenValid() {
+	private boolean isTokenValid() {
 		AccessToken token = accessToken;
-		return !isTokenRequired() || (token != null && System.currentTimeMillis() <= token.expiry);
+		return !isTokenRequired() || (token != null && !token.hasExpired());
+	}
+
+	public TokenStatus getTokenStatus() {
+		if (isTokenValid()) {
+			return new TokenStatus();
+		}
+
+		Throwable error = refreshError.get();
+		if (error != null) {
+			return new TokenStatus(error);
+		}
+
+		AccessToken token = accessToken;
+		if (token != null && token.hasExpired()) {
+			return new TokenStatus(new AerospikeException(ResultCode.NOT_AUTHENTICATED,
+				"token has expired"));
+		}
+
+		return new TokenStatus(new AerospikeException(ResultCode.NOT_AUTHENTICATED));
 	}
 
 	@Override
 	public void close() {
-		if (isClosed.get()) {
+		if (isClosed.getAndSet(true)) {
 			return;
 		}
 
-		isClosed.set(true);
 		// TODO copied from java.util.concurrent.ExecutorService#close available from Java 19.
 		boolean terminated = executor.isTerminated();
 		if (!terminated) {
@@ -309,6 +348,38 @@ public class AuthTokenManager implements Closeable {
 		}
 	}
 
+	public static class TokenStatus {
+		private final Throwable error;
+		private final Boolean valid;
+
+		public TokenStatus() {
+			this.valid = true;
+			this.error = null;
+		}
+
+		public TokenStatus(Throwable error) {
+			this.valid = false;
+			this.error = error;
+		}
+
+		/**
+		 * @return true iff the token is valid.
+		 */
+		public Boolean isValid() {
+			return valid;
+		}
+
+		/**
+		 * Get the token fetch error. Should be used only when {@link #isValid()}
+		 * returns false.
+		 *
+		 * @return the token fetch error.
+		 */
+		public Throwable getError() {
+			return error;
+		}
+	}
+
 	private static class AccessToken {
 		/**
 		 * Local token expiry timestamp in millis.
@@ -327,6 +398,10 @@ public class AuthTokenManager implements Closeable {
 			this.expiry = expiry;
 			this.ttl = ttl;
 			this.token = token;
+		}
+
+		public boolean hasExpired() {
+			return System.currentTimeMillis() > expiry;
 		}
 	}
 }
