@@ -60,7 +60,7 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 		List<GrpcStream> filteredStreams = streams.stream()
 			.filter(grpcStream ->
 				grpcStream.getMethodDescriptor().getFullMethodName()
-					.equals(fullMethodName)
+					.equals(fullMethodName) && grpcStream.canEnqueue()
 			)
 			.sorted(Comparator.comparingInt(GrpcStream::getId))
 			.collect(Collectors.toList());
@@ -80,8 +80,8 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 		// TODO What is the probability of this occurring? Should some streams
 		//  in a channel be reserved for rarely used API's?
 		if (filteredStreams.isEmpty()) {
-			// Create new stream.
-			return new SelectedStream(maxConcurrentRequestsPerStream, totalRequestsPerStream);
+			// No slots to create a new stream.
+			return null;
 		}
 
 		// Select stream with lowest percent of total requests executed.

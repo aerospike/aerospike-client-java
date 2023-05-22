@@ -25,7 +25,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
 import javax.annotation.Nullable;
 
 import com.aerospike.client.AerospikeException;
@@ -185,7 +184,7 @@ public class GrpcCallExecutor implements Closeable {
 		// Wait for all executors to terminate.
 		while (true) {
 			boolean allTerminated = executors.stream()
-				.allMatch(executor -> executor.isTerminated());
+				.allMatch(GrpcChannelExecutor::isTerminated);
 
 			if (allTerminated) {
 				return;
@@ -193,6 +192,7 @@ public class GrpcCallExecutor implements Closeable {
 
 			Log.debug("Waiting for executors to shutdown with closeTimeout=" + grpcClientPolicy.closeTimeout);
 			try {
+				//noinspection BusyWait
 				Thread.sleep(1000);
 			}
 			catch (Throwable t) {/* Ignore*/}

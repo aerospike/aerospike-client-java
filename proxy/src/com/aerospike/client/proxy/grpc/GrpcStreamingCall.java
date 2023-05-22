@@ -50,7 +50,8 @@ public class GrpcStreamingCall {
 
 	/**
 	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
-	 * be handed to the underlying gRPC sub system.
+	 * be handed to the underlying gRPC sub system. A value of zero indicates
+	 * that the call has no send deadline.
 	 */
 	private final long sendDeadlineNanos;
 
@@ -159,7 +160,7 @@ public class GrpcStreamingCall {
 	 * @return true if the send deadline has expired.
 	 */
 	public boolean hasSendDeadlineExpired() {
-		return (System.nanoTime() - sendDeadlineNanos) >= 0;
+		return sendDeadlineNanos > 0 && (System.nanoTime() - sendDeadlineNanos) >= 0;
 	}
 
 	public boolean hasExpiry() {

@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.proxy.grpc;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedList;
@@ -49,9 +47,13 @@ import io.netty.channel.EventLoop;
  *     executed on a single event loop</li>
  * </ul>
  * <p>
- * TODO: Should the stream be closed if it has been idle for some duration?
  */
-public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>, Closeable {
+public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> {
+	/**
+	 * Idle timeout after which the stream is closed, when no call are pending.
+	 */
+	private static final long IDLE_TIMEOUT = 30_000;
+
 	/**
 	 * Unique stream id in the channel.
 	 */
@@ -90,7 +92,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 	/**
 	 * Queued calls pending execution.
-	 *
+	 * <p>
 	 * <b>WARN</b> Ensure this is always accessed from the {@link #eventLoop}
 	 * thread.
 	 */
@@ -109,8 +111,29 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 	// Stream statistics. These are only updated from the event loop thread
 	// assigned to this stream and its channel.
+
+	/**
+	 * Number of requests sent on the gRPC stream. This is only updated from
+	 * the event loop thread assigned to this stream and its channel.
+	 */
 	private volatile int requestsSent;
+
+	/**
+	 * Number of requests completed. This is only updated from
+	 * the event loop thread assigned to this stream and its channel.
+	 */
 	private volatile int requestsCompleted;
+
+	/**
+	 * Timer started when this stream has no pending calls.
+	 * There may still be calls executing (in-flight).
+	 */
+	private volatile long streamIdleStartTime;
+
+	/**
+	 * Indicates if the gRPC stream has been half closed from this side.
+	 */
+	private boolean streamHalfClosed;
 
 	public GrpcStream(
 		GrpcChannelExecutor channelExecutor,
@@ -177,14 +200,7 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			}
 		}
 
-		// TODO can it ever be greater than?
-		if (requestsCompleted >= totalRequestsToExecute) {
-			// Complete this stream.
-			requestObserver.onCompleted();
-		}
-		else {
-			executeCall();
-		}
+		executePendingCalls();
 	}
 
 	private void abortCallAtServer(GrpcStreamingCall call, int callId) {
@@ -203,8 +219,23 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		isClosed = true;
 
 		for (GrpcStreamingCall call : executingCalls.values()) {
-			call.onError(throwable);
+			try {
+				call.onError(throwable);
+			}
+			catch (Exception e) {
+				Log.debug("Exception in invoking onError: " + e);
+			}
 		}
+
+		markClosed();
+	}
+
+	/**
+	 * Marks the stream as closed and moves pending calls nack to the channel
+	 * executor.
+	 */
+	private void markClosed() {
+		isClosed = true;
 
 		executingCalls.clear();
 
@@ -219,6 +250,21 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 			eventLoop.schedule(() -> onError(throwable), 0,
 				TimeUnit.NANOSECONDS);
 			return;
+		}
+
+		if (executingCalls.isEmpty()) {
+			// gRPC stream creation failed.
+			// Fail all pending calls, otherwise they will keep cycling
+			// through until a stream creation succeeds.
+			for (GrpcStreamingCall call : pendingCalls) {
+				try {
+					call.onError(throwable);
+				}
+				catch (Exception e) {
+					Log.debug("Exception in invoking onError: " + e);
+				}
+			}
+			pendingCalls.clear();
 		}
 
 		abortExecutingCalls(throwable);
@@ -273,8 +319,32 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		return getRequestsCompleted() + getOngoingRequests();
 	}
 
-	public void executeCall() {
+	public void executePendingCalls() {
 		if (isClosed) {
+			return;
+		}
+
+		if (pendingCalls.isEmpty()) {
+			if (streamIdleStartTime == 0) {
+				streamIdleStartTime = System.currentTimeMillis();
+			}
+
+			if (streamIdleStartTime + IDLE_TIMEOUT <= System.currentTimeMillis() && !streamHalfClosed) {
+				streamHalfClosed = true;
+				requestObserver.onCompleted();
+			}
+		}
+		else if (streamIdleStartTime != 0) {
+			streamIdleStartTime = 0;
+		}
+
+		if (streamHalfClosed) {
+			if (executingCalls.isEmpty()) {
+				// All executing calls are over.
+				markClosed();
+			}
+
+			// Should not push any new calls on this stream.
 			return;
 		}
 
@@ -288,10 +358,8 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 				iterator.remove(); // Remove from pending.
 			}
-			else if (requestsSent < totalRequestsToExecute &&
-				executingCalls.size() < maxConcurrentRequests) {
+			else if (executingCalls.size() < maxConcurrentRequests && requestsSent < totalRequestsToExecute) {
 				execute(call);
-
 				iterator.remove(); // Remove from pending.
 			}
 			else {
@@ -322,6 +390,12 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 			requestObserver.onNext(requestPayload);
 
+			if (requestsSent >= totalRequestsToExecute) {
+				// Complete this stream.
+				requestObserver.onCompleted();
+				streamHalfClosed = true;
+			}
+
 			if (call.hasExpiry()) {
 				// TODO: Is there a need for a more efficient implementation in
 				//  terms of the call cancellation.
@@ -346,18 +420,25 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 		// Cancel call.
 		call.onError(new AerospikeException.Timeout(call.getPolicy(), call.getIteration()));
 
-		// Abort long running calls at server.
+		// Abort long-running calls at server.
 		if (!call.isSingleResponse()) {
 			abortCallAtServer(call, callId);
 		}
 	}
 
+	boolean canEnqueue() {
+		return !isClosed && !streamHalfClosed && requestsSent < totalRequestsToExecute;
+	}
+
+	/**
+	 * Enqueue the call to this stream. Should only be invoked if
+	 * {@link #canEnqueue()} returned true.
+	 */
 	void enqueue(GrpcStreamingCall call) {
 		pendingCalls.add(call);
 	}
 
-	@Override
-	public void close() throws IOException {
+	public void closePendingCalls() {
 		pendingCalls.forEach(call -> {
 			try {
 				call.failIfNotComplete(ResultCode.CLIENT_ERROR);
@@ -380,9 +461,10 @@ public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload>,
 
 		executingCalls.clear();
 
-		// For hygiene close the stream as well.
+		// For hygiene complete the stream as well.
 		try {
 			requestObserver.onCompleted();
+			streamHalfClosed =true;
 		}
 		catch (Throwable t) {
 			// Ignore.
