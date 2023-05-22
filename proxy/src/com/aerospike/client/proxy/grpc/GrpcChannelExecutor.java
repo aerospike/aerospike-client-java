@@ -24,8 +24,8 @@ import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -122,8 +122,7 @@ public class GrpcChannelExecutor implements Runnable {
 	/**
 	 * Queue of closed streams.
 	 */
-	private final MpscUnboundedArrayQueue<GrpcStream> closedStreams =
-		new MpscUnboundedArrayQueue<>(32);
+	private final List<GrpcStream> closedStreams = new ArrayList<>(32);
 	/**
 	 * Map of stream id to streams.
 	 */
@@ -319,7 +318,7 @@ public class GrpcChannelExecutor implements Runnable {
 			grpcClientPolicy.connectTimeoutMillis);
 		builder.userAgent(AEROSPIKE_CLIENT_USER_AGENT);
 
-		// better to have a receive buffer predictor
+		// TODO: better to have a receive buffer predictor
 		//builder.withOption(ChannelOption.valueOf("receiveBufferSizePredictorFactory"), new AdaptiveReceiveBufferSizePredictorFactory(MIN_PACKET_SIZE, INITIAL_PACKET_SIZE, MAX_PACKET_SIZE))
 
 		//if the server is sending 1000 messages per sec, optimum write buffer watermarks will
@@ -349,6 +348,9 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 		catch (Exception e) {
 			// TODO: signal failure, close channel?
+			if (Log.debugEnabled()) {
+				Log.debug("Uncaught exception in " + this + ":" + e);
+			}
 		}
 	}
 
@@ -417,10 +419,11 @@ public class GrpcChannelExecutor implements Runnable {
 		pendingCalls.drain(this::scheduleCalls, drainLimit);
 
 		// Execute stream calls.
-		streams.values().forEach(GrpcStream::executeCall);
+		streams.values().forEach(GrpcStream::executePendingCalls);
 
 		// Process closed streams.
-		closedStreams.drain(this::processClosedStream, drainLimit);
+		closedStreams.forEach(this::processClosedStream);
+		closedStreams.clear();
 	}
 
 	/**
@@ -465,21 +468,28 @@ public class GrpcChannelExecutor implements Runnable {
 			return;
 		}
 
+		if (call.hasSendDeadlineExpired() || call.hasExpired()) {
+			call.onError(new AerospikeException.Timeout(call.getPolicy(),
+				call.getIteration()));
+			return;
+		}
+
 		// The stream will be close by the selector.
-		//noinspection resource
 		GrpcStreamSelector.SelectedStream selectedStream =
 			grpcClientPolicy.grpcStreamSelector.select(new ArrayList<>(streams.values()), call);
+
+		if (selectedStream == null) {
+			// Requeue
+			pendingCalls.add(call);
+			return;
+		}
 
 		if (selectedStream.useExistingStream()) {
 			selectedStream.getStream().enqueue(call);
 			return;
 		}
 
-		// Create new stream.
-		LinkedList<GrpcStreamingCall> queue = new LinkedList<GrpcStreamingCall>();
-		queue.add(call);
-
-		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), queue,
+		scheduleCallsOnNewStream(call.getStreamingMethodDescriptor(), call,
 			selectedStream.getMaxConcurrentRequestsPerStream(),
 			selectedStream.getTotalRequestsPerStream());
 	}
@@ -487,12 +497,11 @@ public class GrpcChannelExecutor implements Runnable {
 	private void processClosedStream(GrpcStream grpcStream) {
 		if (streams.remove(grpcStream.getId()) == null) {
 			// Should never happen.
-			// TODO: throw Exception.
 			return;
 		}
 
 		// Schedule each of the pending calls.
-		grpcStream.getPendingCalls().forEach(this::scheduleCalls);
+		pendingCalls.addAll(grpcStream.getPendingCalls());
 	}
 
 	/**
@@ -500,7 +509,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 */
 	private void scheduleCallsOnNewStream(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
-		LinkedList<GrpcStreamingCall> pendingCalls,
+		GrpcStreamingCall call,
 		int maxConcurrentRequestsPerStream, int totalRequestsPerStream
 	) {
 		if (maxConcurrentRequestsPerStream <= 0) { // Should never happen.
@@ -519,38 +528,15 @@ public class GrpcChannelExecutor implements Runnable {
 			catch (Exception e) {
 				AerospikeException aerospikeException =
 					new AerospikeException(ResultCode.NOT_AUTHENTICATED, e);
-				pendingCalls.forEach(call -> call.onError(aerospikeException));
+				call.onError(aerospikeException);
 				return;
 			}
 		}
 
-		// Error out all expired calls. When the proxy server is not
-		// reachable, the pendingCalls cycles between streams. The sequence
-		// of events are
-		// - a new stream is created with pendingCalls
-		// - asyncBidiStream creation on the new stream fails immediately,
-		// onError method on the new stream is invoked
-		// - the onError of the new stream calls GrpcChannelExecutor
-		// .onStreamClosed with the same pendingCalls
-		// - in the next call of GrpcChannelExecutor.processClosedStreams in
-		// an iteration the above steps repeat
-
-		Iterator<GrpcStreamingCall> iterator = pendingCalls.iterator();
-		while (iterator.hasNext()) {
-			GrpcStreamingCall call = iterator.next();
-			if (call.hasSendDeadlineExpired() || call.hasExpired()) {
-				call.onError(new AerospikeException.Timeout(call.getPolicy(),
-					call.getIteration()));
-				iterator.remove(); // Remove expired call from queue.
-			}
-		}
-
-		if (pendingCalls.isEmpty()) {
-			return;
-		}
-
+		LinkedList<GrpcStreamingCall> streamPendingCalls = new LinkedList<>();
+		streamPendingCalls.add(call);
 		GrpcStream stream = new GrpcStream(this, methodDescriptor,
-			pendingCalls, options, nextStreamId(), eventLoop,
+			streamPendingCalls, options, nextStreamId(), eventLoop,
 			maxConcurrentRequestsPerStream, totalRequestsPerStream);
 
 		streams.put(stream.getId(), stream);
@@ -602,7 +588,7 @@ public class GrpcChannelExecutor implements Runnable {
 		}
 		streams.values().forEach(stream -> {
 			try {
-				stream.close();
+				stream.closePendingCalls();
 			}
 			catch (Exception e) {
 				Log.error("Error closing stream " + stream + ": " + e.getMessage());

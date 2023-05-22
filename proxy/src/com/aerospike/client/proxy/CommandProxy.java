@@ -64,14 +64,16 @@ public abstract class CommandProxy {
 		}
 		else {
 			deadlineNanos = 0; // No total deadline.
-			sendTimeoutMillis = (policy.socketTimeout > 0)? policy.socketTimeout : 10_000;
+			sendTimeoutMillis = Math.max(policy.socketTimeout, 0);
 		}
 
 		executeCommand();
 	}
 
 	private void executeCommand() {
-		long sendDeadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis);
+		long sendDeadlineNanos =
+			(sendTimeoutMillis > 0) ?
+				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis) : 0;
 
 		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
 
