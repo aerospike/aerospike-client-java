@@ -243,7 +243,7 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
+			listener.onFailure(new AerospikeException.BatchRecords(records, ae));
 		}
 	}
 
