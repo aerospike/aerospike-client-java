@@ -21,10 +21,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Random;
 
-import com.aerospike.proxy.client.Kvs;
-
-import io.grpc.MethodDescriptor;
-
 /**
  * A default gRPC stream selector which selects channel by the low and high
  * water mark.

@@ -41,19 +41,19 @@ public abstract class CommandProxy {
 	private long deadlineNanos;
 	private int sendTimeoutMillis;
 	private int iteration = 1;
-	private final boolean isSingle;
+	private final int numExpectedResponses;
 	boolean inDoubt;
 
 	public CommandProxy(
 		MethodDescriptor<Kvs.AerospikeRequestPayload, Kvs.AerospikeResponsePayload> methodDescriptor,
 		GrpcCallExecutor executor,
 		Policy policy,
-		boolean isSingle
+		int numExpectedResponses
 	) {
 		this.methodDescriptor = methodDescriptor;
 		this.executor = executor;
 		this.policy = policy;
-		this.isSingle = isSingle;
+		this.numExpectedResponses = numExpectedResponses;
 	}
 
 	final void execute() {
@@ -64,19 +64,21 @@ public abstract class CommandProxy {
 		}
 		else {
 			deadlineNanos = 0; // No total deadline.
-			sendTimeoutMillis = (policy.socketTimeout > 0)? policy.socketTimeout : 10_000;
+			sendTimeoutMillis = Math.max(policy.socketTimeout, 0);
 		}
 
 		executeCommand();
 	}
 
 	private void executeCommand() {
-		long sendDeadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis);
+		long sendDeadlineNanos =
+			(sendTimeoutMillis > 0) ?
+				System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(sendTimeoutMillis) : 0;
 
 		Kvs.AerospikeRequestPayload.Builder builder = getRequestBuilder();
 
 		executor.execute(new GrpcStreamingCall(methodDescriptor, builder,
-			policy, iteration, deadlineNanos, sendDeadlineNanos, isSingle,
+			policy, iteration, deadlineNanos, sendDeadlineNanos, numExpectedResponses,
 			new StreamObserver<Kvs.AerospikeResponsePayload>() {
 				@Override
 				public void onNext(Kvs.AerospikeResponsePayload response) {

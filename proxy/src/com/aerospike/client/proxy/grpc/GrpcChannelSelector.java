@@ -18,10 +18,6 @@ package com.aerospike.client.proxy.grpc;
 
 import java.util.List;
 
-import com.aerospike.proxy.client.Kvs;
-
-import io.grpc.MethodDescriptor;
-
 /**
  * A selector of channels to execute Aerospike proxy gRPC calls.
  */

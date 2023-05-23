@@ -50,7 +50,8 @@ public class GrpcStreamingCall {
 
 	/**
 	 * The deadline in nanoseconds w.r.t System.nanoTime() for this call to
-	 * be handed to the underlying gRPC sub system.
+	 * be handed to the underlying gRPC sub system. A value of zero indicates
+	 * that the call has no send deadline.
 	 */
 	private final long sendDeadlineNanos;
 
@@ -65,10 +66,10 @@ public class GrpcStreamingCall {
 	private final int iteration;
 
 	/**
-	 * Does this call have single or multiple responses from the server? Calls
-	 * like batch, query, scan have multiple responses from the server.
+	 * Number of expected responses for this request. A negative value
+	 * indicates that the number of responses is unknown.
 	 */
-	private final boolean isSingleResponse;
+	private final int numExpectedResponses;
 
 	/**
 	 * Indicates if this call completed (successfully or unsuccessfully).
@@ -83,7 +84,7 @@ public class GrpcStreamingCall {
 	protected GrpcStreamingCall(GrpcStreamingCall other) {
 		this(other.methodDescriptor, other.requestBuilder, other.getPolicy(),
 			other.iteration, other.deadlineNanos, other.sendDeadlineNanos,
-			other.isSingleResponse, other.responseObserver);
+			other.numExpectedResponses, other.responseObserver);
 
 		completed = other.completed;
 		aborted = other.aborted;
@@ -97,7 +98,7 @@ public class GrpcStreamingCall {
 		int iteration,
 		long deadlineNanos,
 		long sendDeadlineNanos,
-		boolean isSingleResponse,
+		int numExpectedResponses,
 		StreamObserver<Kvs.AerospikeResponsePayload> responseObserver
 	) {
 		this.responseObserver = responseObserver;
@@ -107,7 +108,7 @@ public class GrpcStreamingCall {
 		this.policy = policy;
 		this.deadlineNanos = deadlineNanos;
 		this.sendDeadlineNanos = sendDeadlineNanos;
-		this.isSingleResponse = isSingleResponse;
+		this.numExpectedResponses = numExpectedResponses;
 	}
 
 	public void onNext(Kvs.AerospikeResponsePayload payload) {
@@ -170,7 +171,7 @@ public class GrpcStreamingCall {
 	 * @return true if the send deadline has expired.
 	 */
 	public boolean hasSendDeadlineExpired() {
-		return (System.nanoTime() - sendDeadlineNanos) >= 0;
+		return sendDeadlineNanos > 0 && (System.nanoTime() - sendDeadlineNanos) >= 0;
 	}
 
 	public boolean hasExpiry() {
@@ -207,6 +208,10 @@ public class GrpcStreamingCall {
 	}
 
 	public boolean isSingleResponse() {
-		return isSingleResponse;
+		return numExpectedResponses == 1;
+	}
+
+	public int getNumExpectedResponses() {
+		return numExpectedResponses;
 	}
 }

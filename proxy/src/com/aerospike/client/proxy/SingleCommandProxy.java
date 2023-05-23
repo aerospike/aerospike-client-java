@@ -30,7 +30,7 @@ public abstract class SingleCommandProxy extends CommandProxy {
 		GrpcCallExecutor executor,
 		Policy policy
 	) {
-		super(methodDescriptor, executor, policy, true);
+		super(methodDescriptor, executor, policy, 1);
 	}
 
 	void onResponse(Kvs.AerospikeResponsePayload response) {

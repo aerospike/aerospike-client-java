@@ -20,6 +20,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.aerospike.proxy.client.KVSGrpc;
 import com.aerospike.proxy.client.Kvs;
 import com.aerospike.proxy.client.QueryGrpc;
 import com.aerospike.proxy.client.ScanGrpc;
@@ -32,6 +33,12 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 	private final int maxConcurrentRequestsPerStream;
 	private final int totalRequestsPerStream;
 
+	/**
+	 * Streaming calls with less than these many responses will be
+	 * multiplexed on the same stream.
+	 */
+	private static final int LARGE_RESPONSE_CUTOFF = 10;
+
 	public DefaultGrpcStreamSelector(int maxConcurrentStreamsPerChannel, int maxConcurrentRequestsPerStream, int totalRequestsPerStream) {
 		this.maxConcurrentStreamsPerChannel = maxConcurrentStreamsPerChannel;
 		this.maxConcurrentRequestsPerStream = maxConcurrentRequestsPerStream;
@@ -43,8 +50,9 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 		final String fullMethodName =
 			call.getStreamingMethodDescriptor().getFullMethodName();
 
-		// Always use a dedicated new stream for a scan and a long query.
-		if (isScan(call) || isLongQuery(call)) {
+		// Always use a non-multiplexed new stream for a scan, long query, and
+		// a large batch.
+		if (isScan(call) || isLongQuery(call) || isLargeBatch(call)) {
 			return new SelectedStream(1, 1);
 		}
 
@@ -52,7 +60,7 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 		List<GrpcStream> filteredStreams = streams.stream()
 			.filter(grpcStream ->
 				grpcStream.getMethodDescriptor().getFullMethodName()
-					.equals(fullMethodName)
+					.equals(fullMethodName) && grpcStream.canEnqueue()
 			)
 			.sorted(Comparator.comparingInt(GrpcStream::getId))
 			.collect(Collectors.toList());
@@ -72,8 +80,8 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 		// TODO What is the probability of this occurring? Should some streams
 		//  in a channel be reserved for rarely used API's?
 		if (filteredStreams.isEmpty()) {
-			// Create new stream.
-			return new SelectedStream(maxConcurrentRequestsPerStream, totalRequestsPerStream);
+			// No slots to create a new stream.
+			return null;
 		}
 
 		// Select stream with lowest percent of total requests executed.
@@ -88,6 +96,23 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 			}
 		}
 		return new SelectedStream(selected);
+	}
+
+	private boolean isLargeBatch(GrpcStreamingCall call) {
+		String fullMethodName =
+			call.getStreamingMethodDescriptor().getFullMethodName();
+
+		String batchFullMethodName =
+			KVSGrpc.getBatchOperateMethod().getFullMethodName();
+		String batchStreamingFullMethodName =
+			KVSGrpc.getBatchOperateStreamingMethod().getFullMethodName();
+
+		if(!batchFullMethodName.equals(fullMethodName) &&
+			!batchStreamingFullMethodName.equals(fullMethodName)) {
+			return false; // Not a batch method.
+		}
+
+		return call.getNumExpectedResponses() < LARGE_RESPONSE_CUTOFF;
 	}
 
 	private boolean isScan(GrpcStreamingCall call) {
@@ -119,16 +144,16 @@ public class DefaultGrpcStreamSelector implements GrpcStreamSelector {
 			return false; // Background queries send back a single response.
 		}
 
-		if (queryRequest.getStatement().getMaxRecords() < 10) {
+		if (queryRequest.getStatement().getMaxRecords() < LARGE_RESPONSE_CUTOFF) {
 			return false; // Records returned in responses is small.
 		}
 
 		if (!queryRequest.getStatement().getFunctionName().isEmpty()) {
-			return false; // Is an aggregation statement.
+			return false; // Query is an aggregation statement.
 		}
 
 		if (queryRequest.hasQueryPolicy() && queryRequest.getQueryPolicy().getShortQuery()) {
-			return false; // Is a short query.
+			return false; // Query is a short query.
 		}
 
 		return true;

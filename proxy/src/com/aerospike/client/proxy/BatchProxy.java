@@ -66,7 +66,7 @@ public class BatchProxy {
 			BatchListListenerSync listener,
 			List<BatchRead> records
 		) {
-			super(executor, batchPolicy, true);
+			super(executor, batchPolicy, true, records.size());
 			this.listener = listener;
 			this.records = records;
 			this.status = true;
@@ -112,7 +112,7 @@ public class BatchProxy {
 			BatchListListener listener,
 			List<BatchRead> records
 		) {
-			super(executor, batchPolicy, true);
+			super(executor, batchPolicy, true, records.size());
 			this.listener = listener;
 			this.records = records;
 		}
@@ -156,7 +156,7 @@ public class BatchProxy {
 			BatchSequenceListener listener,
 			List<BatchRead> records
 		) {
-			super(executor, batchPolicy, true);
+			super(executor, batchPolicy, true, records.size());
 			this.listener = listener;
 			this.records = records;
 		}
@@ -213,7 +213,7 @@ public class BatchProxy {
 			int readAttr,
 			boolean isOperation
 		) {
-			super(executor, batchPolicy, isOperation);
+			super(executor, batchPolicy, isOperation, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 			this.binNames = binNames;
@@ -264,7 +264,7 @@ public class BatchProxy {
 			int readAttr,
 			boolean isOperation
 		) {
-			super(executor, batchPolicy, isOperation);
+			super(executor, batchPolicy, isOperation, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 			this.binNames = binNames;
@@ -318,7 +318,7 @@ public class BatchProxy {
 			ExistsArrayListener listener,
 			Key[] keys
 		) {
-			super(executor, batchPolicy, false);
+			super(executor, batchPolicy, false, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 			this.existsArray = new boolean[keys.length];
@@ -360,7 +360,7 @@ public class BatchProxy {
 			ExistsSequenceListener listener,
 			Key[] keys
 		) {
-			super(executor, batchPolicy, false);
+			super(executor, batchPolicy, false, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 		}
@@ -406,7 +406,7 @@ public class BatchProxy {
 			BatchOperateListListener listener,
 			List<BatchRecord> records
 		) {
-			super(executor, batchPolicy, true);
+			super(executor, batchPolicy, true, records.size());
 			this.listener = listener;
 			this.records = records;
 			this.status = true;
@@ -466,7 +466,7 @@ public class BatchProxy {
 			BatchRecordSequenceListener listener,
 			List<BatchRecord> records
 		) {
-			super(executor, batchPolicy, true);
+			super(executor, batchPolicy, true, records.size());
 			this.listener = listener;
 			this.records = records;
 		}
@@ -536,7 +536,7 @@ public class BatchProxy {
 			BatchRecordArrayListener listener,
 			BatchAttr attr
 		) {
-			super(executor, batchPolicy, ops != null);
+			super(executor, batchPolicy, ops != null, keys.length);
 			this.keys = keys;
 			this.ops = ops;
 			this.listener = listener;
@@ -593,7 +593,7 @@ public class BatchProxy {
 			BatchRecordSequenceListener listener,
 			BatchAttr attr
 		) {
-			super(executor, batchPolicy, ops != null);
+			super(executor, batchPolicy, ops != null, keys.length);
 			this.keys = keys;
 			this.ops = ops;
 			this.listener = listener;
@@ -656,7 +656,7 @@ public class BatchProxy {
 			byte[] argBytes,
 			BatchAttr attr
 		) {
-			super(executor, batchPolicy, false);
+			super(executor, batchPolicy, false, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 			this.packageName = packageName;
@@ -734,7 +734,7 @@ public class BatchProxy {
 			byte[] argBytes,
 			BatchAttr attr
 		) {
-			super(executor, batchPolicy, false);
+			super(executor, batchPolicy, false, keys.length);
 			this.listener = listener;
 			this.keys = keys;
 			this.packageName = packageName;
@@ -794,8 +794,13 @@ public class BatchProxy {
 		final BatchPolicy batchPolicy;
 		final boolean isOperation;
 
-		public BaseCommand(GrpcCallExecutor executor, BatchPolicy batchPolicy, boolean isOperation) {
-			super(KVSGrpc.getBatchOperateStreamingMethod(), executor, batchPolicy, false);
+		public BaseCommand(
+			GrpcCallExecutor executor,
+			BatchPolicy batchPolicy,
+			boolean isOperation,
+			int numExpectedResponses
+		) {
+			super(KVSGrpc.getBatchOperateStreamingMethod(), executor, batchPolicy, numExpectedResponses);
 			this.batchPolicy = batchPolicy;
 			this.isOperation = isOperation;
 		}
