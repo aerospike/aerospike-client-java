@@ -170,28 +170,40 @@
           <artifactId>maven-javadoc-plugin</artifactId>
           <version>${maven-javadoc-plugin.version}</version>
         </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-source-plugin</artifactId>
+          <executions>
+            <execution>
+              <id>attach-sources</id>
+              <goals>
+                <goal>jar</goal>
+              </goals>
+            </execution>
+          </executions>
+        </plugin>
       </plugins>
     </pluginManagement>
   </build>
 
   <repositories>
     <repository>
-      <id>oss-sonatype</id>
-      <url>${oss.sonatype.url}</url>
+      <id>snapshots</id>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
     </repository>
   </repositories>
 
   <distributionManagement>
-    <!-- For now releases are in github packages -->
     <repository>
-      <id>github-packages</id>
-      <url>${github.packages.url}</url>
+      <id>central</id>
+      <name>clients-maven-prod-local</name>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-prod-local</url>
     </repository>
 
-    <!-- For now snapshots are in maven central snapshots -->
     <snapshotRepository>
-      <id>oss-sonatype</id>
-      <url>${oss.sonatype.url}</url>
+      <id>snapshots</id>
+      <name>clients-maven-dev-local</name>
+      <url>https://aerospike.jfrog.io/artifactory/clients-maven-dev-local</url>
     </snapshotRepository>
   </distributionManagement>
 
