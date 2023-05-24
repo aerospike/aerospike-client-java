@@ -410,9 +410,13 @@ public class GrpcChannelExecutor implements Runnable {
 	}
 
 	private void executeCalls() {
-		if (authTokenManager != null && !authTokenManager.isTokenValid()) {
-			expireOrDrainOnInvalidToken();
-			return;
+		if (authTokenManager != null) {
+			AuthTokenManager.TokenStatus tokenStatus =
+				authTokenManager.getTokenStatus();
+			if (!tokenStatus.isValid()) {
+				expireOrDrainOnInvalidToken(tokenStatus.getError());
+				return;
+			}
 		}
 
 		// Schedule pending calls onto streams.
@@ -430,7 +434,7 @@ public class GrpcChannelExecutor implements Runnable {
 	 * Expire queued calls and drain queue if required when we have an invalid
 	 * auth token.
 	 */
-	private void expireOrDrainOnInvalidToken() {
+	private void expireOrDrainOnInvalidToken(Throwable tokenError) {
 		assert authTokenManager != null;
 
 		if (tokenInvalidStartTime == 0) {
@@ -443,8 +447,7 @@ public class GrpcChannelExecutor implements Runnable {
 		pendingCalls.forEach(call -> {
 			if (!call.hasCompleted() &&
 				(call.hasSendDeadlineExpired() || call.hasExpired())) {
-				call.onError(new AerospikeException.Timeout(call.getPolicy(),
-					call.getIteration()));
+				call.onError(tokenError);
 			}
 		});
 
@@ -455,7 +458,7 @@ public class GrpcChannelExecutor implements Runnable {
 			tokenInvalidStartTime = 0;
 			// It's been too long without a valid access token. Drain and
 			// report all queued calls as failed.
-			pendingCalls.drain(call -> call.failIfNotComplete(ResultCode.NOT_AUTHENTICATED));
+			pendingCalls.drain(call -> call.failIfNotComplete(tokenError));
 		}
 	}
 
