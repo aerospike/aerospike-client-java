@@ -46,6 +46,7 @@ import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 
 import io.grpc.CallOptions;
+import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
 import io.grpc.NameResolver;
@@ -174,17 +175,40 @@ public class GrpcChannelExecutor implements Runnable {
 			this.grpcClientPolicy.maxConcurrentStreamsPerChannel * grpcClientPolicy.maxConcurrentRequestsPerStream;
 		this.authTokenManager = authTokenManager;
 		this.id = executorIdIndex.getAndIncrement();
+
 		ChannelAndEventLoop channelAndEventLoop =
 			createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
 				, channelTypeAndEventLoop.getChannelType(), hosts);
 		this.channel = channelAndEventLoop.managedChannel;
-		channelState = new AtomicReference<>(ChannelState.READY);
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
-		ScheduledFuture<?> future =
+		// Force the channel to pre-create an underlying HTTP/2 connection
+		// before the first gRPC request is scheduled on the channel. This is
+		// to reduce latency on the first gRPC request on this channel.
+		try {
+			final boolean requestConnection = true;
+			this.channel.getState(requestConnection);
+		}
+		catch (Throwable t) {
+			Log.debug("Failed to get channel state: " + t);
+		}
+
+		this.channelState = new AtomicReference<>(ChannelState.READY);
+
+		this.iterateFuture =
 			channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
 				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
-		setScheduledFuture(future);
+	}
+
+	@Nullable
+	public ConnectivityState getConnectivityState() {
+		try {
+			return channel.getState(false);
+		}
+		catch (Throwable t) {
+			Log.debug("Failed to get channel state: " + t);
+			return null;
+		}
 	}
 
 	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
@@ -606,11 +630,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private int nextStreamId() {
 		return streamIdIndex.getAndIncrement();
-	}
-
-
-	private void setScheduledFuture(ScheduledFuture<?> future) {
-		this.iterateFuture = future;
 	}
 
 	@Override

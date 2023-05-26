@@ -34,6 +34,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
 import com.aerospike.proxy.client.Kvs;
 
+import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
@@ -94,13 +95,29 @@ public class GrpcCallExecutor implements Closeable {
 									controlChannelTypeAndEventLoop, authTokenManager,
 									hosts)
 					).collect(Collectors.toList());
+
+			// Wait for connectTimeoutMillis for the channel to establish an
+			// underlying HTTP/2 connection to the server.
+			waitForChannelsToConnect(this.channelExecutors,
+				grpcClientPolicy.connectTimeoutMillis);
 		}
 		catch (Exception e) {
 			throw new AerospikeException(ResultCode.SERVER_ERROR, e);
 		}
 	}
 
-    public void execute(GrpcStreamingCall call) {
+	private void waitForChannelsToConnect(List<GrpcChannelExecutor> channelExecutors, int connectTimeoutMillis) {
+		long startTime = System.nanoTime();
+		long waitTime = TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis);
+		while (System.nanoTime() - startTime < waitTime) {
+			if (channelExecutors.stream()
+				.allMatch(channel -> channel.getConnectivityState() == ConnectivityState.READY)) {
+				return;
+			}
+		}
+	}
+
+	public void execute(GrpcStreamingCall call) {
 		if (totalQueueSize.sum() > maxQueueSize) {
 			call.onError(new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
 				"Maximum queue " + maxQueueSize + " size exceeded"));
