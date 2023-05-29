@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
@@ -32,10 +33,12 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
+import com.aerospike.proxy.client.AboutGrpc;
 import com.aerospike.proxy.client.Kvs;
 
-import io.grpc.ConnectivityState;
+import io.grpc.Deadline;
 import io.grpc.ManagedChannel;
+import io.grpc.stub.StreamObserver;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
@@ -96,24 +99,49 @@ public class GrpcCallExecutor implements Closeable {
 									hosts)
 					).collect(Collectors.toList());
 
-			// Wait for connectTimeoutMillis for the channel to establish an
-			// underlying HTTP/2 connection to the server.
-			waitForChannelsToConnect(this.channelExecutors,
-				grpcClientPolicy.connectTimeoutMillis);
+			// Warm up the channels with a "About" gRPC call.
+			warmupChannels(this.channelExecutors, grpcClientPolicy.connectTimeoutMillis);
 		}
 		catch (Exception e) {
 			throw new AerospikeException(ResultCode.SERVER_ERROR, e);
 		}
 	}
 
-	private void waitForChannelsToConnect(List<GrpcChannelExecutor> channelExecutors, int connectTimeoutMillis) {
-		long startTime = System.nanoTime();
-		long waitTime = TimeUnit.MILLISECONDS.toNanos(connectTimeoutMillis);
-		while (System.nanoTime() - startTime < waitTime) {
-			if (channelExecutors.stream()
-				.allMatch(channel -> channel.getConnectivityState() == ConnectivityState.READY)) {
-				return;
-			}
+	/**
+	 * Warmup the channels with a call to the About gRPC endpoint.
+	 */
+	private void warmupChannels(List<GrpcChannelExecutor> channelExecutors,
+								int connectTimeoutMillis) {
+		final CountDownLatch doneSignal =
+			new CountDownLatch(channelExecutors.size());
+
+		channelExecutors.forEach(executor -> {
+			ManagedChannel channel = executor.getChannel();
+			AboutGrpc.newStub(channel)
+				.withDeadline(Deadline.after(connectTimeoutMillis, TimeUnit.MILLISECONDS))
+				.get(Kvs.AboutRequest.newBuilder().build(), new StreamObserver<Kvs.AboutResponse>() {
+					@Override
+					public void onNext(Kvs.AboutResponse value) {
+						doneSignal.countDown();
+					}
+
+					@Override
+					public void onError(Throwable t) {
+						Log.debug("About call in warmup failed: " + t);
+						doneSignal.countDown();
+					}
+
+					@Override
+					public void onCompleted() {
+					}
+				});
+		});
+
+		try {
+			//noinspection ResultOfMethodCallIgnored
+			doneSignal.await(connectTimeoutMillis, TimeUnit.MILLISECONDS);
+		}
+		catch (Throwable ignore) {
 		}
 	}
 
