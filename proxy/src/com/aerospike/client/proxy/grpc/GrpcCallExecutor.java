@@ -138,7 +138,6 @@ public class GrpcCallExecutor implements Closeable {
 		});
 
 		try {
-			//noinspection ResultOfMethodCallIgnored
 			doneSignal.await(connectTimeoutMillis, TimeUnit.MILLISECONDS);
 		}
 		catch (Throwable ignore) {

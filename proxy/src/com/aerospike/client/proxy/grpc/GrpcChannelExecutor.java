@@ -182,33 +182,11 @@ public class GrpcChannelExecutor implements Runnable {
 		this.channel = channelAndEventLoop.managedChannel;
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
-		// Force the channel to pre-create an underlying HTTP/2 connection
-		// before the first gRPC request is scheduled on the channel. This is
-		// to reduce latency on the first gRPC request on this channel.
-		try {
-			final boolean requestConnection = true;
-			this.channel.getState(requestConnection);
-		}
-		catch (Throwable t) {
-			Log.debug("Failed to get channel state: " + t);
-		}
-
 		this.channelState = new AtomicReference<>(ChannelState.READY);
 
 		this.iterateFuture =
 			channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
 				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
-	}
-
-	@Nullable
-	public ConnectivityState getConnectivityState() {
-		try {
-			return channel.getState(false);
-		}
-		catch (Throwable t) {
-			Log.debug("Failed to get channel state: " + t);
-			return null;
-		}
 	}
 
 	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
