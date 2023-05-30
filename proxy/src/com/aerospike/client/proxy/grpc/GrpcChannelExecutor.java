@@ -46,7 +46,6 @@ import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
 
 import io.grpc.CallOptions;
-import io.grpc.ConnectivityState;
 import io.grpc.ManagedChannel;
 import io.grpc.MethodDescriptor;
 import io.grpc.NameResolver;
