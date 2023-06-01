@@ -3700,9 +3700,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			info = new Info(conn, command);
 			node.putConnection(conn);
 		}
-		catch (RuntimeException re) {
+		catch (Throwable e) {
 			node.closeConnection(conn);
-			throw re;
+			throw e;
 		}
 		return info.getValue();
 	}
@@ -3749,7 +3749,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				code = Integer.parseInt(list[1]);
 			}
 		}
-		catch (Exception ex) {
+		catch (Throwable e) {
 		}
 
 		if (code == 0) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -245,7 +245,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				conn = new NioConnection(node.getAddress());
 				node.connectionOpened(eventLoop.index);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				node.decrAsyncConnection(eventLoop.index);
 				throw e;
 			}
@@ -272,7 +272,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			eventState.errors++;
 			onNetworkError(new AerospikeException.Connection(ioe), true);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Fail without retry on unknown errors.
 			eventState.errors++;
 			fail();
@@ -338,7 +338,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		catch (IOException ioe) {
 			onNetworkError(new AerospikeException.Connection(ioe), false);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			onApplicationError(new AerospikeException(e));
 		}
 	}
@@ -790,7 +790,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		try {
 			command.onSuccess();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			Log.error("onSuccess() error: " + Util.getErrorMessage(e));
 		}
 
@@ -934,7 +934,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			ae.setInDoubt(command.isWrite(), command.commandSentCounter);
 			command.onFailure(ae);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			Log.error("onFailure() error: " + Util.getErrorMessage(e));
 		}
 	}

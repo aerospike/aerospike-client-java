@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -359,7 +359,7 @@ public class Cluster implements Runnable, Closeable {
 			try {
 				forceSingleNode();
 			}
-			catch (RuntimeException e) {
+			catch (Throwable e) {
 				close();
 				throw e;
 			}
@@ -382,7 +382,7 @@ public class Cluster implements Runnable, Closeable {
 		try {
 			node = nv.seedNode(this, seed, null);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException("Seed " + seed + " failed: " + e.getMessage(), e);
 		}
 
@@ -499,7 +499,7 @@ public class Cluster implements Runnable, Closeable {
 			try {
 				tend(false, false);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				if (Log.warnEnabled()) {
 					Log.warn("Cluster tend failed: " + Util.getErrorMessage(e));
 				}
@@ -598,7 +598,7 @@ public class Cluster implements Runnable, Closeable {
 									node.balanceAsyncConnections(eventLoop);
 								}
 							}
-							catch (Exception e) {
+							catch (Throwable e) {
 								if (Log.warnEnabled()) {
 									Log.warn("balanceAsyncConnections failed: " + Util.getErrorMessage(e));
 								}
@@ -622,7 +622,7 @@ public class Cluster implements Runnable, Closeable {
 	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
 		// Must copy array reference for copy on write semantics to work.
 		Host[] seedArray = seeds;
-		Exception[] exceptions = null;
+		Throwable[] exceptions = null;
 		NodeValidator nv = new NodeValidator();
 
 		for (int i = 0; i < seedArray.length; i++) {
@@ -636,7 +636,7 @@ public class Cluster implements Runnable, Closeable {
 					return true;
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				peers.fail(seed);
 
 				if (seed.tlsName != null && tlsPolicy == null) {
@@ -678,7 +678,7 @@ public class Cluster implements Runnable, Closeable {
 				sb.append(seedArray[i]);
 				sb.append(' ');
 
-				Exception ex = exceptions == null ? null : exceptions[i];
+				Throwable ex = exceptions == null ? null : exceptions[i];
 
 				if (ex != null) {
 					sb.append(ex.getMessage());

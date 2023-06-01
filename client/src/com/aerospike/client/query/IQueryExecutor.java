@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,6 +17,6 @@
 package com.aerospike.client.query;
 
 public interface IQueryExecutor {
-	void stopThreads(Exception cause);
+	void stopThreads(Throwable cause);
 	void checkForException();
 }

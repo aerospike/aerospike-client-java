@@ -41,7 +41,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private final List<QueryThread> threads;
 	private final AtomicInteger completedCount;
 	private final AtomicBoolean done;
-	private volatile Exception exception;
+	private volatile Throwable exception;
 	private int maxConcurrentThreads;
 	private boolean threadsComplete;
 
@@ -68,7 +68,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		try {
 			execute();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			stopThreads(e);
 		}
 	}
@@ -178,7 +178,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	}
 
 	@Override
-	public final void stopThreads(Exception cause) {
+	public final void stopThreads(Throwable cause) {
 		// There is no need to stop threads if all threads have already completed.
 		if (done.compareAndSet(false, true)) {
 			exception = cause;
@@ -233,7 +233,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				}
 				threadCompleted();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Terminate other query threads.
 				stopThreads(e);
 			}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -41,7 +41,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 		try {
 			socketChannel = SocketChannel.open();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Connection("SocketChannel open error: " + e.getMessage());
 		}
 
@@ -59,7 +59,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 
 			socketChannel.connect(address);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			close();
 			throw new AerospikeException.Connection("SocketChannel init error: " + e.getMessage());
 		}
@@ -132,7 +132,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 			// Expect socket buffer to be empty.
 			return socketChannel.read(byteBuffer) == 0;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			return false;
 		}
 	}
@@ -154,7 +154,7 @@ public final class NioConnection extends AsyncConnection implements Closeable {
 		try {
 			socketChannel.close();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			if (Log.debugEnabled()) {
 				Log.debug("Error closing socket: " + Util.getErrorMessage(e));
 			}

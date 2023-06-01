@@ -144,13 +144,6 @@ public abstract class SyncCommand extends Command {
 					}
 					isClientTimeout = true;
 				}
-				catch (RuntimeException re) {
-					// All runtime exceptions are considered fatal.  Do not retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					// Log.info("Throw RuntimeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					node.closeConnection(conn);
-					throw re;
-				}
 				catch (SocketTimeoutException ste) {
 					// Full timeout has been reached.
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
@@ -163,6 +156,13 @@ public abstract class SyncCommand extends Command {
 					node.closeConnection(conn);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
+				}
+				catch (Throwable e) {
+					// All remaining exceptions are considered fatal.  Do not retry.
+					// Close socket to flush out possible garbage.  Do not put back in pool.
+					// Log.info("Throw Throwable: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					node.closeConnection(conn);
+					throw e;
 				}
 			}
 			catch (Connection.ReadTimeout crt) {

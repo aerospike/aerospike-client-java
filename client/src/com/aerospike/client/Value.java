@@ -1288,7 +1288,7 @@ public abstract class Value {
 				}
 				return bstream.toByteArray();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				throw new AerospikeException.Serialize(e);
 			}
 		}

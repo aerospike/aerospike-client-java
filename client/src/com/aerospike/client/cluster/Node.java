@@ -183,7 +183,7 @@ public class Node implements Closeable {
 								eventLoop, cluster, node, minSize, maxConcurrent, monitor, eventLoopCount
 							);
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							if (Log.warnEnabled()) {
 								Log.warn("AsyncConnectorExecutor failed: " + Util.getErrorMessage(e));
 							}
@@ -256,7 +256,7 @@ public class Node implements Closeable {
 			}
 			failures = 0;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			peers.genChanged = true;
 			refreshFailed(e);
 		}
@@ -455,7 +455,7 @@ public class Node implements Closeable {
 						nodeValidated = true;
 						break;
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						peers.fail(host);
 
 						if (Log.warnEnabled()) {
@@ -475,7 +475,7 @@ public class Node implements Closeable {
 			}
 			peers.refreshCount++;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
@@ -519,7 +519,7 @@ public class Node implements Closeable {
 			}
 			partitionGeneration = parser.getGeneration();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
@@ -539,12 +539,12 @@ public class Node implements Closeable {
 			rebalanceGeneration = parser.getGeneration();
 			racks = parser.getRacks();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
 
-	private final void refreshFailed(Exception e) {
+	private final void refreshFailed(Throwable e) {
 		failures++;
 
 		if (! tendConnection.isClosed()) {
@@ -565,7 +565,7 @@ public class Node implements Closeable {
 			try {
 				conn = createConnection(pool);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Failing to create min connections is not considered fatal.
 				// Log failure and return.
 				if (Log.debugEnabled()) {
@@ -606,7 +606,7 @@ public class Node implements Closeable {
 					closeConnectionOnError(conn);
 					throw ae;
 				}
-				catch (Exception e) {
+				catch (Throwable e) {
 					closeConnectionOnError(conn);
 					throw new AerospikeException(e);
 				}
@@ -675,7 +675,7 @@ public class Node implements Closeable {
 						conn.setTimeout(socketTimeout);
 						return conn;
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						// Set timeout failed. Something is probably wrong with timeout
 						// value itself, so don't empty queue retrying.  Just get out.
 						closeConnection(conn);
@@ -706,9 +706,9 @@ public class Node implements Closeable {
 
 					connsOpened.getAndIncrement();
 				}
-				catch (RuntimeException re) {
+				catch (Throwable e) {
 					pool.total.getAndDecrement();
-					throw re;
+					throw e;
 				}
 
 				if (cluster.authEnabled) {
@@ -737,10 +737,6 @@ public class Node implements Closeable {
 							}
 							throw crt;
 						}
-						catch (RuntimeException re) {
-							closeConnection(conn);
-							throw re;
-						}
 						catch (SocketTimeoutException ste) {
 							closeConnection(conn);
 							// This is really a socket write timeout, but the calling
@@ -752,6 +748,10 @@ public class Node implements Closeable {
 							closeConnection(conn);
 							throw new AerospikeException.Connection(ioe);
 						}
+						catch (Throwable e) {
+							closeConnection(conn);
+							throw e;
+						}
 					}
 				}
 
@@ -760,7 +760,7 @@ public class Node implements Closeable {
 					try {
 						conn.setTimeout(socketTimeout);
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						closeConnection(conn);
 						throw new AerospikeException.Connection(e);
 					}

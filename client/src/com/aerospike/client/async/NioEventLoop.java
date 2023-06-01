@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -169,7 +169,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 		try {
 			super.timer.start();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			if (Log.warnEnabled()) {
 				Log.warn("Event loop timer start error: " + Util.getErrorMessage(e));
 			}
@@ -183,7 +183,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 			catch (CloseException ce) {
 				break;
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				if (Log.warnEnabled()) {
 					Log.warn("Event loop error: " + Util.getErrorMessage(e));
 				}
@@ -281,7 +281,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 				cmd.executeCommandFromDelayQueue();
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			Log.error("Unexpected async error: " + Util.getErrorMessage(e));
 		}
 		finally {
@@ -293,7 +293,7 @@ public final class NioEventLoop extends EventLoopBase implements Runnable {
 		try {
 			selector.close();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 		}
 	}
 

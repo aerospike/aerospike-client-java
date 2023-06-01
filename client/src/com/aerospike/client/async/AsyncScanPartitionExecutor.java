@@ -90,7 +90,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 						catch (AerospikeException ae) {
 							onFailure(ae);
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							onFailure(new AerospikeException(e));
 						}
 					}
@@ -104,7 +104,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		catch (AerospikeException ae) {
 			onFailure(ae);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			onFailure(new AerospikeException(e));
 		}
 	}

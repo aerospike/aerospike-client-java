@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -76,7 +76,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackList(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -138,7 +138,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackMap(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -244,7 +244,7 @@ public abstract class Unpacker<T> {
 					val = getJavaBlob(oistream.readObject());
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				throw new AerospikeException.Serialize(e);
 			}
 			break;
@@ -477,7 +477,7 @@ public abstract class Unpacker<T> {
 			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 			return unpacker.unpackObject();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
