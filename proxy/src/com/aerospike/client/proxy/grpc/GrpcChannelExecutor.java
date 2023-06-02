@@ -175,17 +175,18 @@ public class GrpcChannelExecutor implements Runnable {
 			this.grpcClientPolicy.maxConcurrentStreamsPerChannel * grpcClientPolicy.maxConcurrentRequestsPerStream;
 		this.authTokenManager = authTokenManager;
 		this.id = executorIdIndex.getAndIncrement();
+
 		ChannelAndEventLoop channelAndEventLoop =
 			createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
 				, channelTypeAndEventLoop.getChannelType(), hosts);
 		this.channel = channelAndEventLoop.managedChannel;
-		channelState = new AtomicReference<>(ChannelState.READY);
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
-		ScheduledFuture<?> future =
+		this.channelState = new AtomicReference<>(ChannelState.READY);
+
+		this.iterateFuture =
 			channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
 				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
-		setScheduledFuture(future);
 	}
 
 	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
@@ -624,11 +625,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private int nextStreamId() {
 		return streamIdIndex.getAndIncrement();
-	}
-
-
-	private void setScheduledFuture(ScheduledFuture<?> future) {
-		this.iterateFuture = future;
 	}
 
 	@Override
