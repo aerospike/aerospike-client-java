@@ -1222,6 +1222,18 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
+	public final int getThreadsInUse() {
+		if (threadPool instanceof ThreadPoolExecutor) {
+			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
+			return tpe.getActiveCount();
+		}
+		return 0;
+	}
+
+	public final int getRecoverCount() {
+		return recoverCount.get();
+	}
+
 	public final void interruptTendSleep() {
 		// Interrupt tendThread's sleep(), so node refreshes will be performed sooner.
 		tendThread.interrupt();

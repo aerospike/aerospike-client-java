@@ -41,6 +41,7 @@ import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
 import com.aerospike.client.command.SyncCommand;
+import com.aerospike.client.util.MetricsWriter.Metrics;
 import com.aerospike.client.util.Util;
 
 /**
@@ -1018,6 +1019,11 @@ public class Node implements Closeable {
 			closed += pool.closed;
 		}
 		return new ConnectionStats(inUse, inPool, opened, closed);
+	}
+
+	public final Metrics getMetrics() {
+		// TODO: Populate node metrics.
+		return null;
 	}
 
 	public final void incrErrorCount() {
