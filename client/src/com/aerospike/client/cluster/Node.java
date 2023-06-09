@@ -25,6 +25,7 @@ import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
@@ -41,7 +42,9 @@ import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
 import com.aerospike.client.command.SyncCommand;
-import com.aerospike.client.util.MetricsWriter.Metrics;
+import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.metrics.Metrics;
+import com.aerospike.client.policy.MetricsPolicy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -72,6 +75,7 @@ public class Node implements Closeable {
 	private byte[] sessionToken;
 	private long sessionExpiration;
 	private volatile Map<String,Integer> racks;
+	private volatile Metrics metrics;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
 	private final AtomicInteger errorCount;
@@ -114,6 +118,10 @@ public class Node implements Closeable {
 		this.rebalanceChanged = cluster.rackAware;
 		this.racks = cluster.rackAware ? new HashMap<String,Integer>() : null;
 		this.active = true;
+
+		if (cluster.metricsEnabled) {
+			this.metrics = new Metrics(cluster.metricsPolicy);
+		}
 
 		// Create sync connection pools.
 		connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -210,11 +218,7 @@ public class Node implements Closeable {
 
 		try {
 			if (tendConnection.isClosed()) {
-				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, null) :
-					new Connection(address, cluster.connectTimeout, this, null);
-
-				connsOpened.getAndIncrement();
+				tendConnection = createConnection(null, cluster.connectTimeout);
 
 				if (cluster.authEnabled) {
 					byte[] token = sessionToken;
@@ -587,12 +591,7 @@ public class Node implements Closeable {
 	}
 
 	private Connection createConnection(Pool pool) {
-		// Create sync connection.
-		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, pool) :
-				new Connection(address, cluster.connectTimeout, this, pool);
-
-		connsOpened.getAndIncrement();
+		Connection conn = createConnection(pool, cluster.connectTimeout);
 
 		if (cluster.authEnabled) {
 			byte[] token = sessionToken;
@@ -613,6 +612,30 @@ public class Node implements Closeable {
 				}
 			}
 		}
+		return conn;
+	}
+
+	private Connection createConnection(Pool pool, int timeout) {
+		// Create sync connection.
+		Connection conn;
+
+		if (cluster.metricsEnabled) {
+			long begin = System.nanoTime();
+
+			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
+				new Connection(address, timeout, this, pool);
+
+			long elapsed = System.nanoTime() - begin;
+			metrics.addLatency(LatencyType.CONN, TimeUnit.NANOSECONDS.toMillis(elapsed));
+		}
+		else {
+			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
+				new Connection(address, timeout, this, pool);
+		}
+
+		connsOpened.getAndIncrement();
 		return conn;
 	}
 
@@ -701,11 +724,7 @@ public class Node implements Closeable {
 				}
 
 				try {
-					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
-						new Connection(address, timeout, this, pool);
-
-					connsOpened.getAndIncrement();
+					conn = createConnection(pool, timeout);
 				}
 				catch (Throwable e) {
 					pool.total.getAndDecrement();
@@ -1021,9 +1040,24 @@ public class Node implements Closeable {
 		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
 
+	public final void enableMetrics(MetricsPolicy policy) {
+		metrics = new Metrics(policy);
+	}
+
 	public final Metrics getMetrics() {
-		// TODO: Populate node metrics.
-		return null;
+		return metrics;
+	}
+
+	public final void addError() {
+		metrics.addError();
+	}
+
+	public final void addTimeout() {
+		metrics.addTimeout();
+	}
+
+	public final void addLatency(int type, long elapsed) {
+		metrics.addLatency(type, elapsed);
 	}
 
 	public final void incrErrorCount() {

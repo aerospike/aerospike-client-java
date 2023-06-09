@@ -28,6 +28,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
@@ -191,6 +192,11 @@ public class ReadCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
+	}
+
+	@Override
+	protected int getLatencyType() {
+		return LatencyType.READ;
 	}
 
 	protected void handleNotFound(int resultCode) {

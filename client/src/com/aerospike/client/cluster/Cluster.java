@@ -47,8 +47,10 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.ClusterStatsListener;
+import com.aerospike.client.metrics.MetricsWriter;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.MetricsPolicy;
 import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.ThreadLocalData;
@@ -191,6 +193,11 @@ public class Cluster implements Runnable, Closeable {
 	public boolean hasPartitionQuery;
 
 	private boolean asyncComplete;
+
+	public boolean metricsEnabled;
+	private int metricsInterval;
+	MetricsPolicy metricsPolicy;
+	private volatile MetricsWriter metricsWriter;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
@@ -617,6 +624,11 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		processRecoverQueue();
+
+		if (metricsEnabled && (tendCount % metricsInterval) == 0) {
+			MetricsWriter writer = metricsWriter;
+			writer.writeCluster(this);
+		}
 	}
 
 	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {
@@ -869,6 +881,17 @@ public class Cluster implements Runnable, Closeable {
 				// Log.debug("Remove alias " + alias);
 				aliases.remove(alias);
 			}
+
+			if (metricsEnabled) {
+				// Flush node metrics before removal.
+				try {
+					MetricsWriter writer = metricsWriter;
+					writer.writeNode(node);
+				}
+				catch (Throwable e) {
+					Log.warn("Write metrics failed on " + node + ": " + Util.getErrorMessage(e));
+				}
+			}
 			node.close();
 		}
 
@@ -1043,6 +1066,34 @@ public class Cluster implements Runnable, Closeable {
 			if (cs == last) {
 				break;
 			}
+		}
+	}
+
+	public void EnableMetrics(MetricsPolicy policy) {
+		if (metricsEnabled) {
+			MetricsWriter writer = metricsWriter;
+			writer.close(this);
+		}
+
+		this.metricsPolicy = policy;
+
+		Node[] nodeArray = nodes;
+
+		for (Node node : nodeArray) {
+			node.enableMetrics(policy);
+		}
+
+		metricsWriter = new MetricsWriter(policy);
+		metricsInterval = policy.reportInterval;
+		metricsEnabled = true;
+	}
+
+	public void disableMetrics() {
+		if (metricsEnabled) {
+			metricsEnabled = false;
+
+			MetricsWriter writer = metricsWriter;
+			writer.close(this);
 		}
 	}
 
@@ -1344,6 +1395,13 @@ public class Cluster implements Runnable, Closeable {
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.
 			threadPool.shutdown();
+		}
+
+		try {
+			disableMetrics();
+		}
+		catch (Throwable e) {
+			Log.warn("DisableMetrics failed: " + Util.getErrorMessage(e));
 		}
 
 		if (eventLoops == null) {

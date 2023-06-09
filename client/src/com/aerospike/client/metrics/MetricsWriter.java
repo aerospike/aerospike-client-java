@@ -14,14 +14,13 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.util;
+package com.aerospike.client.metrics;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.management.Attribute;
 import javax.management.AttributeList;
@@ -37,6 +36,7 @@ import com.aerospike.client.cluster.ConnectionStats;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.NodeStats;
 import com.aerospike.client.policy.MetricsPolicy;
+import com.aerospike.client.util.Util;
 
 public final class MetricsWriter {
 	private static final SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
@@ -65,7 +65,7 @@ public final class MetricsWriter {
 	private void writeHeader() {
 		sb.setLength(0);
 		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
-		sb.append(" header cluster cpu mem threadExpandCount threadsInUse compPortInUse node nodeName connInUse connInPool connOpened connClosed errors timeouts");
+		sb.append(" header cluster cpu mem threadsInUse recoverCount invalidNodeCount eventloops processSize queueSize node nodeName nodeAddress nodePort connInUse connInPool connOpened connClosed errors timeouts");
 		LatencyManager.printHeader(sb, latencyColumns, latencyShift);
 		writeLine(sb);
 	}
@@ -239,57 +239,6 @@ public final class MetricsWriter {
 		}
 		catch (Exception e) {
 			return 0.0;
-		}
-	}
-
-	public static final class LatencyType {
-		public static final int CONN = 0;
-		public static final int WRITE = 1;
-		public static final int READ = 2;
-		public static final int BATCH = 3;
-		public static final int QUERY = 4;
-		public static final int NONE = 5;
-	}
-
-	public static final class Metrics {
-		private LatencyManager[] latency;
-		private AtomicInteger errors = new AtomicInteger();
-		private AtomicInteger timeouts = new AtomicInteger();
-
-		public Metrics(MetricsPolicy policy) {
-			int latencyColumns = policy.latencyColumns;
-			int latencyShift = policy.latencyShift;
-
-			latency = new LatencyManager[LatencyType.NONE];
-			latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
-			latency[LatencyType.WRITE] = new LatencyManager(latencyColumns, latencyShift);
-			latency[LatencyType.READ] = new LatencyManager(latencyColumns, latencyShift);
-			latency[LatencyType.BATCH] = new LatencyManager(latencyColumns, latencyShift);
-			latency[LatencyType.QUERY] = new LatencyManager(latencyColumns, latencyShift);
-		}
-
-		public void addLatency(int type, long elapsed) {
-			latency[type].add(elapsed);
-		}
-
-		public LatencyManager get(int type) {
-			return latency[type];
-		}
-
-		public void addError() {
-			errors.getAndIncrement();
-		}
-
-		public void addTimeout() {
-			timeouts.getAndIncrement();
-		}
-
-		public int resetError() {
-			return errors.getAndSet(0);
-		}
-
-		public int resetTimeout() {
-			return timeouts.getAndSet(0);
 		}
 	}
 }
