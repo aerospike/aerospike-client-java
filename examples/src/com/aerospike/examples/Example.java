@@ -22,6 +22,7 @@ import java.util.List;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.MetricsPolicy;
 
 public abstract class Example {
 
@@ -46,6 +47,11 @@ public abstract class Example {
 
 		try {
 			params.setServerSpecific(client);
+
+            MetricsPolicy sp = new MetricsPolicy();
+            sp.reportPath = "/Users/bnichols/metrics/metrics.txt";
+            sp.reportInterval = 1;
+            client.enableMetrics(sp);
 
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);

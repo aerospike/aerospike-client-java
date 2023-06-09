@@ -94,6 +94,7 @@ import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.policy.MetricsPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
@@ -456,6 +457,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Cluster getCluster() {
 		return cluster;
+	}
+
+	/**
+	 * Enable periodic cluster and node latency statistics.
+	 */
+	public final void enableMetrics(MetricsPolicy policy) {
+		cluster.enableMetrics(policy);
+	}
+
+	/**
+	 * Disable periodic cluster and node latency statistics.
+	 */
+	public final void disableMetrics() {
+		cluster.disableMetrics();
 	}
 
 	//-------------------------------------------------------

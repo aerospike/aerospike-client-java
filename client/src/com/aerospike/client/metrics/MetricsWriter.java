@@ -112,7 +112,7 @@ public final class MetricsWriter {
 		int invalidNodeCount = cluster.getInvalidNodeCount();
 
 		sb.setLength(0);
-		sb.append(Calendar.getInstance().getTime());
+		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
 		sb.append(" cluster ");
 		sb.append((int)cpu);
 		sb.append(' ');

@@ -1069,7 +1069,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	public void EnableMetrics(MetricsPolicy policy) {
+	public void enableMetrics(MetricsPolicy policy) {
 		if (metricsEnabled) {
 			MetricsWriter writer = metricsWriter;
 			writer.close(this);
