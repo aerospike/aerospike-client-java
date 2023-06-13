@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.aerospike.client.policy.MetricsPolicy;
 
 public final class Metrics {
-	private LatencyManager[] latency;
+	private LatencyBuckets[] latency;
 	private AtomicInteger errors = new AtomicInteger();
 	private AtomicInteger timeouts = new AtomicInteger();
 
@@ -29,19 +29,19 @@ public final class Metrics {
 		int latencyColumns = policy.latencyColumns;
 		int latencyShift = policy.latencyShift;
 
-		latency = new LatencyManager[LatencyType.NONE];
-		latency[LatencyType.CONN] = new LatencyManager(latencyColumns, latencyShift);
-		latency[LatencyType.WRITE] = new LatencyManager(latencyColumns, latencyShift);
-		latency[LatencyType.READ] = new LatencyManager(latencyColumns, latencyShift);
-		latency[LatencyType.BATCH] = new LatencyManager(latencyColumns, latencyShift);
-		latency[LatencyType.QUERY] = new LatencyManager(latencyColumns, latencyShift);
+		latency = new LatencyBuckets[LatencyType.NONE];
+		latency[LatencyType.CONN] = new LatencyBuckets(latencyColumns, latencyShift);
+		latency[LatencyType.WRITE] = new LatencyBuckets(latencyColumns, latencyShift);
+		latency[LatencyType.READ] = new LatencyBuckets(latencyColumns, latencyShift);
+		latency[LatencyType.BATCH] = new LatencyBuckets(latencyColumns, latencyShift);
+		latency[LatencyType.QUERY] = new LatencyBuckets(latencyColumns, latencyShift);
 	}
 
 	public void addLatency(int type, long elapsed) {
 		latency[type].add(elapsed);
 	}
 
-	public LatencyManager get(int type) {
+	public LatencyBuckets get(int type) {
 		return latency[type];
 	}
 

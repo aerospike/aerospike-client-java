@@ -16,18 +16,13 @@
  */
 package com.aerospike.client.metrics;
 
-import java.text.DecimalFormat;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.cluster.Node;
-
-public final class LatencyManager {
-    private static final DecimalFormat PercentFormat = new DecimalFormat("0.00");
-
+public final class LatencyBuckets {
     private final Bucket[] buckets;
 	private final int latencyShift;
 
-	public LatencyManager(int latencyColumns, int latencyShift) {
+	public LatencyBuckets(int latencyColumns, int latencyShift) {
 		this.latencyShift = latencyShift;
 		buckets = new Bucket[latencyColumns];
 
@@ -55,6 +50,7 @@ public final class LatencyManager {
 		return lastBucket;
 	}
 
+/*
 	public static void printHeader(StringBuilder sb, int latencyColumns, int latencyShift) {
 		sb.append(" latency <=1ms >1ms");
 
@@ -66,6 +62,7 @@ public final class LatencyManager {
 			sb.append(s);
 		}
 	}
+*/
 
 	/**
 	 * Print latency percents for specified cumulative ranges.
@@ -74,7 +71,8 @@ public final class LatencyManager {
 	 * It is not a good idea to add extra locks just to measure performance since that actually
 	 * affects performance.  Fortunately, the values will even out over time (ie. no double counting).
 	 */
-	public boolean printResults(Node node, StringBuilder sb, String type) {
+/*
+	public boolean printBucketsCumulative(StringBuilder sb, String type) {
 		// Capture snapshot and make buckets cumulative.
 		int[] array = new int[buckets.length];
 		int sum = 0;
@@ -101,77 +99,74 @@ public final class LatencyManager {
 		sb.append(' ');
 		sb.append(type);
 
-		double sumDouble = (double)sum;
-		int limit = 1;
-
-		printColumn(sb, limit, sumDouble, array[0]);
-		printColumn(sb, limit, sumDouble, array[1]);
-
-		for (int i = 2; i < array.length; i++) {
-			limit <<= latencyShift;
-			printColumn(sb, limit, sumDouble, array[i]);
+		for (int val : array) {
+			printColumn(sb, val);
 		}
 		return true;
 	}
+*/
 
-	public String printSummary(StringBuilder sb, String prefix) {
+	/**
+	 * Print latency bucket counts. The results are raw and not cumulative.
+	 * This function is not absolutely accurate for a given time slice because this method
+	 * is not synchronized with the add() method.  Some values will slip into the next iteration.
+	 * It is not a good idea to add extra locks just to measure performance since that actually
+	 * affects performance.  Fortunately, the values will even out over time (ie. no double counting).
+	 */
+	public boolean printBuckets(StringBuilder sb, String type, boolean comma) {
 		int[] array = new int[buckets.length];
 		int sum = 0;
 		int count;
 
-		for (int i = buckets.length - 1; i >= 1; i--) {
-			count = buckets[i].sum;
-			array[i] = count + sum;
+		for (int i = 0; i < buckets.length; i++) {
+			count = buckets[i].reset();
+			array[i] = count;
 			sum += count;
 		}
 
-		// The first bucket (<=1ms) does not need a cumulative adjustment.
-		count = buckets[0].sum;
-		array[0] = count;
-		sum += count;
-
-		// Print cumulative results.
-		sb.setLength(0);
-		sb.append(prefix);
-		int spaces = 6 - prefix.length();
-
-		for (int j = 0; j < spaces; j++) {
-			sb.append(' ');
+		if (sum == 0) {
+			// Skip over results that do not contain data.
+			return comma;
 		}
 
-		double sumDouble = (double)sum;
-		int limit = 1;
-
-		printColumn(sb, limit, sumDouble, array[0]);
-		printColumn(sb, limit, sumDouble, array[1]);
-
-		for (int i = 2; i < array.length; i++) {
-			limit <<= latencyShift;
-			printColumn(sb, limit, sumDouble, array[i]);
+		if (comma) {
+			sb.append(',');
 		}
-		return sb.toString();
+		else {
+			comma = true;
+		}
+
+		sb.append(type);
+		sb.append('[');
+
+		boolean sep = false;
+
+		for (int val : array) {
+			if (sep) {
+				sb.append(',');
+			}
+			else {
+				sep = true;
+			}
+			printColumn(sb, val);
+		}
+		sb.append(']');
+		return comma;
 	}
 
-	private void printColumn(StringBuilder sb, int limit, double sum, int count) {
-		sb.append(' ');
-		double percent = (count > 0) ? (double)count * 100.0 / sum : 0.0;
-		sb.append(PercentFormat.format(percent));
-		sb.append(":");
+	private void printColumn(StringBuilder sb, int count) {
 		sb.append(count);
 	}
 
 	private static final class Bucket {
 		AtomicInteger count = new AtomicInteger();
-		public int sum = 0;
 
 		public void increment() {
 			count.getAndIncrement();
 		}
 
 		public int reset() {
-			int c = count.getAndSet(0);
-		    sum += c;
-		    return c;
+			return count.getAndSet(0);
 		}
 	}
 }

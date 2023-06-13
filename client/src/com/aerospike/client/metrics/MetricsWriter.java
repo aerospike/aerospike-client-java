@@ -28,6 +28,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectName;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventLoops;
@@ -50,7 +51,7 @@ public final class MetricsWriter {
 	public MetricsWriter(MetricsPolicy policy) {
 		latencyColumns = policy.latencyColumns;
 		latencyShift = policy.latencyShift;
-		sb = new StringBuilder(512);
+		sb = new StringBuilder(8192);
 
 		try {
 			writer = new FileWriter(policy.reportPath, true);
@@ -65,8 +66,12 @@ public final class MetricsWriter {
 	private void writeHeader() {
 		sb.setLength(0);
 		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
-		sb.append(" header cluster cpu mem threadsInUse recoverCount invalidNodeCount eventloops processSize queueSize node nodeName nodeAddress nodePort connInUse connInPool connOpened connClosed errors timeouts");
-		LatencyManager.printHeader(sb, latencyColumns, latencyShift);
+		sb.append(" header cluster[cpu,mem,threadsInUse,recoverCount,invalidNodeCount,eventloop[],node[]] eventloop[processSize,queueSize] node[name,address,port,connInUse,connInPool,connOpened,connClosed,errors,timeouts,latency[]]");
+		sb.append(" latency[");
+		sb.append(latencyColumns);
+		sb.append(',');
+		sb.append(latencyShift);
+		sb.append(']');
 		writeLine(sb);
 	}
 
@@ -113,25 +118,33 @@ public final class MetricsWriter {
 
 		sb.setLength(0);
 		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
-		sb.append(" cluster ");
+		sb.append(" cluster[");
 		sb.append((int)cpu);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(mem);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(threadsInUse);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(recoverCount);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(invalidNodeCount);
-		sb.append(" [");
+		sb.append(",[");
 
 		EventLoops loops = cluster.eventLoops;
 
 		if (loops != null) {
 			EventLoop[] array = loops.getArray();
+			boolean comma = false;
 
 			for (int i = 0; i < array.length; i++) {
 				EventLoop e = array[i];
+
+				if (comma) {
+					sb.append(',');
+				}
+				else {
+					comma = true;
+				}
 				sb.append('[');
 				sb.append(e.getProcessSize());
 				sb.append(',');
@@ -139,17 +152,22 @@ public final class MetricsWriter {
 				sb.append(']');
 			}
 		}
-		sb.append(']');
-		write(sb);
+		sb.append("],[");
 
 		Node[] nodes = cluster.getNodes();
+		boolean comma = false;
 
-		for (Node node : nodes)
-		{
-			sb.setLength(0);
+		for (Node node : nodes) {
+			if (comma) {
+				sb.append(',');
+			}
+			else {
+				comma = true;
+			}
 			write(node);
 		}
-		writeLine();
+		sb.append("]]");
+		writeLine(sb);
 	}
 
 	private void write(Node node) {
@@ -158,36 +176,44 @@ public final class MetricsWriter {
 		Metrics metrics = node.getMetrics();
 		int errors = metrics.resetError();
 		int timeouts = metrics.resetTimeout();
+		Host host = node.getHost();
 
-		sb.append(" node ");
-		sb.append(node);
-		sb.append(' ');
+		sb.append('[');
+		sb.append(node.getName());
+		sb.append(',');
+		sb.append(host.name);
+		sb.append(',');
+		sb.append(host.port);
+		sb.append(',');
 		sb.append(cs.inUse);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(cs.inPool);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(cs.opened);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(cs.closed);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(errors);
-		sb.append(' ');
+		sb.append(',');
 		sb.append(timeouts);
-		write(sb);
+		sb.append(",[");
 
-		WriteLatency(node, metrics.get(LatencyType.CONN), "conn");
-		WriteLatency(node, metrics.get(LatencyType.WRITE), "write");
-		WriteLatency(node, metrics.get(LatencyType.READ), "read");
-		WriteLatency(node, metrics.get(LatencyType.BATCH), "batch");
-		WriteLatency(node, metrics.get(LatencyType.QUERY), "query");
+		boolean comma = false;
+
+		comma = writeLatency(metrics.get(LatencyType.CONN), "conn", comma);
+		comma = writeLatency(metrics.get(LatencyType.WRITE), "write", comma);
+		comma = writeLatency(metrics.get(LatencyType.READ), "read", comma);
+		comma = writeLatency(metrics.get(LatencyType.BATCH), "batch", comma);
+		comma = writeLatency(metrics.get(LatencyType.QUERY), "query", comma);
+
+		sb.append("]]");
 	}
 
-	private void WriteLatency(Node node, LatencyManager lm, String type) {
-		if (lm.printResults(node, sb, type)) {
-			write(sb);
-		}
+	private boolean writeLatency(LatencyBuckets lm, String type, boolean comma) {
+		return lm.printBuckets(sb, type, comma);
 	}
 
+/*
 	private void write(StringBuilder sb) {
 		try {
 			writer.write(sb.toString());
@@ -196,6 +222,7 @@ public final class MetricsWriter {
 			throw new AerospikeException(ioe);
 		}
 	}
+*/
 
 	private void writeLine(StringBuilder sb) {
 		try {
