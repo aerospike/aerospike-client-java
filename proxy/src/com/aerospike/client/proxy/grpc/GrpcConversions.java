@@ -16,7 +16,9 @@
  */
 package com.aerospike.client.proxy.grpc;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Operation;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -30,10 +32,16 @@ import com.aerospike.client.util.Packer;
 import com.aerospike.proxy.client.Kvs;
 import com.google.protobuf.ByteString;
 
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
+
 /**
  * Conversions from native client objects to Grpc objects.
  */
 public class GrpcConversions {
+	private static final String ERROR_MESSAGE_SEPARATOR = " -> ";
+	public static final int MAX_ERR_MSG_LENGTH = 10 * 1024;
+
 	public static void setRequestPolicy(
 		Policy policy,
 		Kvs.AerospikeRequestPayload.Builder requestBuilder
@@ -305,5 +313,108 @@ public class GrpcConversions {
 		queryPolicyBuilder.setDurableDelete(writePolicy.durableDelete);
 		queryPolicyBuilder.setXdr(writePolicy.xdr);
 		return queryPolicyBuilder.build();
+	}
+
+	public static AerospikeException toAerospike(StatusRuntimeException sre,
+												 Policy policy, int iteration) {
+		Status.Code code = sre.getStatus().getCode();
+		int resultCode = ResultCode.CLIENT_ERROR;
+		switch (code) {
+			case CANCELLED:
+			case UNKNOWN:
+			case NOT_FOUND:
+			case ALREADY_EXISTS:
+			case FAILED_PRECONDITION:
+			case OUT_OF_RANGE:
+			case UNIMPLEMENTED:
+			case INTERNAL:
+				resultCode = ResultCode.CLIENT_ERROR;
+				break;
+
+			case ABORTED:
+			case DATA_LOSS:
+				resultCode = ResultCode.SERVER_ERROR;
+				break;
+
+			case INVALID_ARGUMENT:
+				resultCode = ResultCode.SERIALIZE_ERROR;
+				break;
+
+			case DEADLINE_EXCEEDED:
+				return new AerospikeException.Timeout(policy, iteration);
+
+			case PERMISSION_DENIED:
+				resultCode = ResultCode.FAIL_FORBIDDEN;
+				break;
+
+			case RESOURCE_EXHAUSTED:
+				resultCode = ResultCode.QUOTA_EXCEEDED;
+				break;
+
+			case UNAUTHENTICATED:
+				resultCode = ResultCode.NOT_AUTHENTICATED;
+				break;
+
+			case UNAVAILABLE:
+				resultCode = ResultCode.SERVER_NOT_AVAILABLE;
+				break;
+		}
+
+		return new AerospikeException(resultCode, getDisplayMessage(sre, MAX_ERR_MSG_LENGTH), sre);
+	}
+
+	/**
+	 * Get the error message to display restricting it to some length.
+	 */
+	public static String getDisplayMessage(Throwable e, int maxMsgLength) {
+		if (maxMsgLength <= 0) {
+			return "";
+		}
+
+		String errorMessage = getMessage(e);
+		Throwable rootCause = e.getCause();
+		while (rootCause != null) {
+			String current = getMessage(rootCause);
+			errorMessage = (errorMessage.isEmpty()) ? current
+				: errorMessage + ERROR_MESSAGE_SEPARATOR + current;
+			rootCause = rootCause.getCause();
+		}
+
+		return take(errorMessage, maxMsgLength);
+	}
+
+	/**
+	 * Take at most first `n` characters from the string.
+	 *
+	 * @param s input string
+	 * @param n number of characters to take.
+	 * @return the string that is at most `n` characters in length.
+	 */
+	private static String take(String s, int n) {
+		int trimLength = Math.min(n, s.length());
+		if (trimLength <= 0) {
+			return "";
+		}
+		return s.substring(0, trimLength);
+	}
+
+	/**
+	 * Get error message for [e].
+	 */
+	private static String getMessage(Throwable e) {
+		if (e == null) {
+			return "";
+		}
+
+		String errorMessage = e.getMessage() != null ? e.getMessage() : "";
+
+		errorMessage = errorMessage.split("\\r?\\n|\\r")[0];
+		if (errorMessage.trim().isEmpty()) {
+			return e.getClass().getName();
+		}
+		else {
+			return String.format("%s - %s", e.getClass().getName(),
+				errorMessage);
+		}
 	}
 }

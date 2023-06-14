@@ -51,6 +51,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 public class GrpcCallExecutor implements Closeable {
 	private static final int QUEUE_SIZE_UPPER_BOUND = 100 * 1024;
+	public static final int MIN_WARMUP_TIMEOUT = 5_000;
 	private final List<GrpcChannelExecutor> channelExecutors;
 	private final List<GrpcChannelExecutor> controlChannelExecutors;
 	private final GrpcClientPolicy grpcClientPolicy;
@@ -118,7 +119,8 @@ public class GrpcCallExecutor implements Closeable {
 		channelExecutors.forEach(executor -> {
 			ManagedChannel channel = executor.getChannel();
 			AboutGrpc.newStub(channel)
-				.withDeadline(Deadline.after(connectTimeoutMillis, TimeUnit.MILLISECONDS))
+				.withDeadline(Deadline.after(Math.max(MIN_WARMUP_TIMEOUT,
+					connectTimeoutMillis), TimeUnit.MILLISECONDS))
 				.get(Kvs.AboutRequest.newBuilder().build(), new StreamObserver<Kvs.AboutResponse>() {
 					@Override
 					public void onNext(Kvs.AboutResponse value) {
@@ -127,7 +129,10 @@ public class GrpcCallExecutor implements Closeable {
 
 					@Override
 					public void onError(Throwable t) {
-						Log.debug("About call in warmup failed: " + t);
+						Exception exception = new Exception("About call in warmup " +
+							"failed: ", t);
+						Log.debug(GrpcConversions.getDisplayMessage(exception
+							, GrpcConversions.MAX_ERR_MSG_LENGTH));
 						doneSignal.countDown();
 					}
 

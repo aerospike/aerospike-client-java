@@ -34,6 +34,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.proxy.auth.credentials.BearerTokenCallCredentials;
 import com.aerospike.client.proxy.grpc.GrpcChannelProvider;
+import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.proxy.client.Auth;
 import com.aerospike.proxy.client.AuthServiceGrpc;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -186,7 +187,8 @@ public class AuthTokenManager implements Closeable {
 
 	private void onFetchError(Throwable t) {
 		updateRefreshErrors(t);
-		Log.error(t.getMessage());
+		Exception e = new Exception("Error fetching access token", t);
+		Log.error(GrpcConversions.getDisplayMessage(e, GrpcConversions.MAX_ERR_MSG_LENGTH));
 		unsafeScheduleNextRefresh();
 		isFetchingToken.set(false);
 	}

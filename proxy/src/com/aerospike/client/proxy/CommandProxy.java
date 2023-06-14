@@ -24,6 +24,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.proxy.grpc.GrpcCallExecutor;
+import com.aerospike.client.proxy.grpc.GrpcConversions;
 import com.aerospike.client.proxy.grpc.GrpcStreamingCall;
 import com.aerospike.client.util.Util;
 import com.aerospike.proxy.client.Kvs;
@@ -155,7 +156,7 @@ public abstract class CommandProxy {
 						return;
 					}
 				}
-				ae = toAerospikeException(sre, code);
+				ae = GrpcConversions.toAerospike(sre, policy, iteration);
 			}
 			else {
 				ae = new AerospikeException(ResultCode.CLIENT_ERROR, t);
@@ -169,46 +170,6 @@ public abstract class CommandProxy {
 		}
 
 		notifyFailure(ae);
-	}
-
-	private AerospikeException toAerospikeException(StatusRuntimeException sre, Status.Code code) {
-		switch (code) {
-			case CANCELLED:
-			case UNKNOWN:
-			case NOT_FOUND:
-			case ALREADY_EXISTS:
-			case FAILED_PRECONDITION:
-			case OUT_OF_RANGE:
-			case UNIMPLEMENTED:
-			case INTERNAL:
-				return new AerospikeException(ResultCode.CLIENT_ERROR, "gRPC status code=" + code, sre);
-
-			case ABORTED:
-			case DATA_LOSS:
-				return new AerospikeException(ResultCode.SERVER_ERROR, "gRPC status " +
-					"code=" + code, sre);
-
-			case INVALID_ARGUMENT:
-				return new AerospikeException(ResultCode.SERIALIZE_ERROR, sre);
-
-			case DEADLINE_EXCEEDED:
-				return new AerospikeException.Timeout(policy, iteration);
-
-			case PERMISSION_DENIED:
-				return new AerospikeException(ResultCode.FAIL_FORBIDDEN, sre);
-
-			case RESOURCE_EXHAUSTED:
-				return new AerospikeException(ResultCode.QUOTA_EXCEEDED, sre);
-
-			case UNAUTHENTICATED:
-				return new AerospikeException(ResultCode.NOT_AUTHENTICATED, sre);
-
-			case UNAVAILABLE:
-				return new AerospikeException(ResultCode.SERVER_NOT_AVAILABLE, sre);
-
-			default:
-				return new AerospikeException("gRPC code " + code, sre);
-		}
 	}
 
 	final void notifyFailure(AerospikeException ae) {
