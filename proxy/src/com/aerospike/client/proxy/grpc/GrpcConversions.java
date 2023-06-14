@@ -315,8 +315,7 @@ public class GrpcConversions {
 		return queryPolicyBuilder.build();
 	}
 
-	public static AerospikeException toAerospike(StatusRuntimeException sre,
-												 Policy policy, int iteration) {
+	public static AerospikeException toAerospike(StatusRuntimeException sre, Policy policy, int iteration) {
 		Status.Code code = sre.getStatus().getCode();
 		int resultCode = ResultCode.CLIENT_ERROR;
 		switch (code) {
