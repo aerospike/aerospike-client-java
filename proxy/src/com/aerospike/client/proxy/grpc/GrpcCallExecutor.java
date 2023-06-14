@@ -20,6 +20,7 @@ import java.io.Closeable;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.LongAdder;
@@ -32,9 +33,12 @@ import com.aerospike.client.Host;
 import com.aerospike.client.Log;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.proxy.auth.AuthTokenManager;
+import com.aerospike.proxy.client.AboutGrpc;
 import com.aerospike.proxy.client.Kvs;
 
+import io.grpc.Deadline;
 import io.grpc.ManagedChannel;
+import io.grpc.stub.StreamObserver;
 import io.netty.channel.Channel;
 import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
@@ -47,6 +51,7 @@ import io.netty.util.concurrent.DefaultThreadFactory;
 
 public class GrpcCallExecutor implements Closeable {
 	private static final int QUEUE_SIZE_UPPER_BOUND = 100 * 1024;
+	public static final int MIN_WARMUP_TIMEOUT = 5_000;
 	private final List<GrpcChannelExecutor> channelExecutors;
 	private final List<GrpcChannelExecutor> controlChannelExecutors;
 	private final GrpcClientPolicy grpcClientPolicy;
@@ -94,13 +99,57 @@ public class GrpcCallExecutor implements Closeable {
 									controlChannelTypeAndEventLoop, authTokenManager,
 									hosts)
 					).collect(Collectors.toList());
+
+			// Warm up the channels with a "About" gRPC call.
+			warmupChannels(this.channelExecutors, grpcClientPolicy.connectTimeoutMillis);
 		}
 		catch (Exception e) {
 			throw new AerospikeException(ResultCode.SERVER_ERROR, e);
 		}
 	}
 
-    public void execute(GrpcStreamingCall call) {
+	/**
+	 * Warmup the channels with a call to the About gRPC endpoint.
+	 */
+	private void warmupChannels(List<GrpcChannelExecutor> channelExecutors,
+								int connectTimeoutMillis) {
+		final CountDownLatch doneSignal =
+			new CountDownLatch(channelExecutors.size());
+
+		channelExecutors.forEach(executor -> {
+			ManagedChannel channel = executor.getChannel();
+			AboutGrpc.newStub(channel)
+				.withDeadline(Deadline.after(Math.max(MIN_WARMUP_TIMEOUT,
+					connectTimeoutMillis), TimeUnit.MILLISECONDS))
+				.get(Kvs.AboutRequest.newBuilder().build(), new StreamObserver<Kvs.AboutResponse>() {
+					@Override
+					public void onNext(Kvs.AboutResponse value) {
+						doneSignal.countDown();
+					}
+
+					@Override
+					public void onError(Throwable t) {
+						Exception exception = new Exception("About call in warmup " +
+							"failed: ", t);
+						Log.debug(GrpcConversions.getDisplayMessage(exception
+							, GrpcConversions.MAX_ERR_MSG_LENGTH));
+						doneSignal.countDown();
+					}
+
+					@Override
+					public void onCompleted() {
+					}
+				});
+		});
+
+		try {
+			doneSignal.await(connectTimeoutMillis, TimeUnit.MILLISECONDS);
+		}
+		catch (Throwable ignore) {
+		}
+	}
+
+	public void execute(GrpcStreamingCall call) {
 		if (totalQueueSize.sum() > maxQueueSize) {
 			call.onError(new AerospikeException(ResultCode.NO_MORE_CONNECTIONS,
 				"Maximum queue " + maxQueueSize + " size exceeded"));
@@ -231,7 +280,9 @@ public class GrpcCallExecutor implements Closeable {
 
 		@Override
 		public void onNext(Kvs.AerospikeResponsePayload payload) {
-			totalQueueSize.decrement();
+			if (!payload.getHasNext()) {
+				totalQueueSize.decrement();
+			}
 			super.onNext(payload);
 		}
 

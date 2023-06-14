@@ -23,6 +23,7 @@ import java.net.SocketAddress;
 import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -174,17 +175,18 @@ public class GrpcChannelExecutor implements Runnable {
 			this.grpcClientPolicy.maxConcurrentStreamsPerChannel * grpcClientPolicy.maxConcurrentRequestsPerStream;
 		this.authTokenManager = authTokenManager;
 		this.id = executorIdIndex.getAndIncrement();
+
 		ChannelAndEventLoop channelAndEventLoop =
 			createGrpcChannel(channelTypeAndEventLoop.getEventLoop()
 				, channelTypeAndEventLoop.getChannelType(), hosts);
 		this.channel = channelAndEventLoop.managedChannel;
-		channelState = new AtomicReference<>(ChannelState.READY);
 		this.eventLoop = channelAndEventLoop.eventLoop;
 
-		ScheduledFuture<?> future =
+		this.channelState = new AtomicReference<>(ChannelState.READY);
+
+		this.iterateFuture =
 			channelAndEventLoop.eventLoop.scheduleAtFixedRate(this, 0,
 				ITERATION_DELAY_MICROS, TimeUnit.MICROSECONDS);
-		setScheduledFuture(future);
 	}
 
 	private static SslContext getSslContext(TlsPolicy tlsPolicy) {
@@ -192,7 +194,8 @@ public class GrpcChannelExecutor implements Runnable {
 			SslContextBuilder sslContextBuilder = GrpcSslContexts.forClient();
 			Field field = sslContextBuilder.getClass().getDeclaredField("apn");
 			field.setAccessible(true);
-			ApplicationProtocolConfig apn = (ApplicationProtocolConfig)field.get(sslContextBuilder);
+			ApplicationProtocolConfig applicationProtocolConfig = (ApplicationProtocolConfig)field.get(sslContextBuilder);
+
 			if (tlsPolicy.context != null) {
 				CipherSuiteFilter csf = (tlsPolicy.ciphers != null) ? (iterable, list, set) -> {
 					if (tlsPolicy.ciphers != null) {
@@ -200,10 +203,26 @@ public class GrpcChannelExecutor implements Runnable {
 					}
 					return tlsPolicy.context.getSupportedSSLParameters().getCipherSuites();
 				} : IdentityCipherSuiteFilter.INSTANCE;
+
+				// Enforce ALPN in case NPN_AND_ALPN is the supported protocol.
+				// JdkSslContext fails with an exception when the protocol is
+				// NPN_AND_ALPN.
+				ApplicationProtocolConfig apn = applicationProtocolConfig;
+				if (applicationProtocolConfig.protocol() == ApplicationProtocolConfig.Protocol.NPN_AND_ALPN) {
+					// Constructor copied verbatim from package-private field
+					// io.grpc.netty.GrpcSslContexts.ALPN
+					apn = new ApplicationProtocolConfig(
+						ApplicationProtocolConfig.Protocol.ALPN,
+						ApplicationProtocolConfig.SelectorFailureBehavior.NO_ADVERTISE,
+						ApplicationProtocolConfig.SelectedListenerFailureBehavior.ACCEPT,
+						Collections.singletonList("h2"));
+				}
+
 				return new JdkSslContext(tlsPolicy.context, true, null, csf, apn, ClientAuth.NONE, null, false);
 			}
+
 			SslContextBuilder builder = SslContextBuilder.forClient();
-			builder.applicationProtocolConfig(apn);
+			builder.applicationProtocolConfig(applicationProtocolConfig);
 			if (tlsPolicy.protocols != null) {
 				builder.protocols(tlsPolicy.protocols);
 			}
@@ -606,11 +625,6 @@ public class GrpcChannelExecutor implements Runnable {
 
 	private int nextStreamId() {
 		return streamIdIndex.getAndIncrement();
-	}
-
-
-	private void setScheduledFuture(ScheduledFuture<?> future) {
-		this.iterateFuture = future;
 	}
 
 	@Override
