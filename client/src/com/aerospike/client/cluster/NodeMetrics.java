@@ -14,31 +14,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.metrics;
+package com.aerospike.client.cluster;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.policy.MetricsPolicy;
+import com.aerospike.client.policy.StatsPolicy;
 
-public final class Metrics {
-	private LatencyBuckets[] latency;
-	private AtomicInteger errors = new AtomicInteger();
-	private AtomicInteger timeouts = new AtomicInteger();
+public final class NodeMetrics {
+	private final LatencyBuckets[] latency;
+	private final AtomicInteger errors = new AtomicInteger();
+	private final AtomicInteger timeouts = new AtomicInteger();
 
-	public Metrics(MetricsPolicy policy) {
+	public NodeMetrics(StatsPolicy policy) {
 		int latencyColumns = policy.latencyColumns;
 		int latencyShift = policy.latencyShift;
+		int max = LatencyType.getMax();
 
-		latency = new LatencyBuckets[LatencyType.NONE];
-		latency[LatencyType.CONN] = new LatencyBuckets(latencyColumns, latencyShift);
-		latency[LatencyType.WRITE] = new LatencyBuckets(latencyColumns, latencyShift);
-		latency[LatencyType.READ] = new LatencyBuckets(latencyColumns, latencyShift);
-		latency[LatencyType.BATCH] = new LatencyBuckets(latencyColumns, latencyShift);
-		latency[LatencyType.QUERY] = new LatencyBuckets(latencyColumns, latencyShift);
+		latency = new LatencyBuckets[max];
+
+		for (int i = 0; i < max; i++) {
+			latency[i] = new LatencyBuckets(latencyColumns, latencyShift);
+		}
 	}
 
-	public void addLatency(int type, long elapsed) {
-		latency[type].add(elapsed);
+	public void addLatency(LatencyType type, long elapsed) {
+		latency[type.ordinal()].add(elapsed);
 	}
 
 	public LatencyBuckets get(int type) {

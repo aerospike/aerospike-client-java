@@ -14,13 +14,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.metrics;
+package com.aerospike.client.cluster;
 
-public final class LatencyType {
-	public static final int CONN = 0;
-	public static final int WRITE = 1;
-	public static final int READ = 2;
-	public static final int BATCH = 3;
-	public static final int QUERY = 4;
-	public static final int NONE = 5;
+public enum LatencyType {
+	CONN,
+	WRITE,
+	READ,
+	BATCH,
+	QUERY,
+	NONE;
+
+	public static int getMax() {
+		return LatencyType.NONE.ordinal();
+	}
+
+	private static String[] TypeStrings = new String[] {
+		"conn",
+		"write",
+		"read",
+		"batch",
+		"query",
+		"none"
+	};
+
+	public static String getString(int i) {
+		return TypeStrings[i];
+	}
 }

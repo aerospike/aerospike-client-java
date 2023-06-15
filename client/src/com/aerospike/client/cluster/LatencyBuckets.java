@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.metrics;
+package com.aerospike.client.cluster;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -105,6 +105,24 @@ public final class LatencyBuckets {
 		return true;
 	}
 */
+
+	public int[] resetBuckets() {
+		int[] array = new int[buckets.length];
+
+		int sum = 0;
+		int count;
+
+		for (int i = 0; i < buckets.length; i++) {
+			count = buckets[i].reset();
+			array[i] = count;
+			sum += count;
+		}
+
+		if (sum == 0) {
+			return null;
+		}
+		return array;
+	}
 
 	/**
 	 * Print latency bucket counts. The results are raw and not cumulative.

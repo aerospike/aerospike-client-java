@@ -47,10 +47,10 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.ClusterStatsListener;
-import com.aerospike.client.metrics.MetricsWriter;
+import com.aerospike.client.listener.StatsListener;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.policy.MetricsPolicy;
+import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.policy.TCPKeepAlive;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.ThreadLocalData;
@@ -194,10 +194,9 @@ public class Cluster implements Runnable, Closeable {
 
 	private boolean asyncComplete;
 
-	public boolean metricsEnabled;
-	private int metricsInterval;
-	MetricsPolicy metricsPolicy;
-	private volatile MetricsWriter metricsWriter;
+	public boolean statsEnabled;
+	StatsPolicy statsPolicy;
+	private volatile StatsListener statsListener;
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
@@ -625,9 +624,9 @@ public class Cluster implements Runnable, Closeable {
 
 		processRecoverQueue();
 
-		if (metricsEnabled && (tendCount % metricsInterval) == 0) {
-			MetricsWriter writer = metricsWriter;
-			writer.writeCluster(this);
+		if (statsEnabled && (tendCount % statsPolicy.interval) == 0) {
+			ClusterStats stats = getExtendedStats();
+			statsListener.onStats(stats);
 		}
 	}
 
@@ -882,11 +881,11 @@ public class Cluster implements Runnable, Closeable {
 				aliases.remove(alias);
 			}
 
-			if (metricsEnabled) {
+			if (statsEnabled) {
 				// Flush node metrics before removal.
 				try {
-					MetricsWriter writer = metricsWriter;
-					writer.writeNode(node);
+					NodeStats stats = new NodeStats(node, node.getMetrics());
+					statsListener.onNodeClose(stats);
 				}
 				catch (Throwable e) {
 					Log.warn("Write metrics failed on " + node + ": " + Util.getErrorMessage(e));
@@ -1069,32 +1068,64 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	public void enableMetrics(MetricsPolicy policy) {
-		if (metricsEnabled) {
-			MetricsWriter writer = metricsWriter;
-			writer.close(this);
+	public final void enableStats(StatsPolicy policy) {
+		if (statsEnabled) {
+			ClusterStats stats = getExtendedStats();
+			this.statsListener.onDisable(stats);
 		}
 
-		this.metricsPolicy = policy;
+		StatsListener listener = policy.listener;
+
+		if (listener == null) {
+			listener = new StatsWriter(policy.reportDir);
+		}
+
+		this.statsListener = listener;
+		this.statsPolicy = policy;
 
 		Node[] nodeArray = nodes;
 
 		for (Node node : nodeArray) {
-			node.enableMetrics(policy);
+			node.enableStats(policy);
 		}
 
-		metricsWriter = new MetricsWriter(policy);
-		metricsInterval = policy.reportInterval;
-		metricsEnabled = true;
+		listener.onEnable(policy);
+		statsEnabled = true;
 	}
 
-	public void disableMetrics() {
-		if (metricsEnabled) {
-			metricsEnabled = false;
+	public final void disableStats() {
+		if (statsEnabled) {
+			statsEnabled = false;
 
-			MetricsWriter writer = metricsWriter;
-			writer.close(this);
+			ClusterStats stats = getExtendedStats();
+			statsListener.onDisable(stats);
 		}
+	}
+
+	public final ClusterStats getExtendedStats() {
+		final Node[] nodeArray = nodes;
+		NodeStats[] nodeStats = new NodeStats[nodeArray.length];
+		int count = 0;
+
+		for (Node node : nodeArray) {
+			nodeStats[count++] = new NodeStats(node, node.getMetrics());
+		}
+
+		int threadsInUse = getThreadsInUse();
+
+		EventLoopStats[] eventLoopStats = null;
+
+		if (eventLoops != null) {
+			// The eventloop might be less accurate because cross-thread references are made
+			// without a lock for the eventloop queue sizes.
+			EventLoop[] eventLoopArray = eventLoops.getArray();
+			eventLoopStats = new EventLoopStats[eventLoopArray.length];
+
+			for (int i = 0; i < eventLoopArray.length; i++) {
+				eventLoopStats[i] = new EventLoopStats(eventLoopArray[i]);
+			}
+		}
+		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
 	}
 
 	public final ClusterStats getStats() {
@@ -1107,12 +1138,7 @@ public class Cluster implements Runnable, Closeable {
 			nodeStats[count++] = new NodeStats(node);
 		}
 
-		int threadsInUse = 0;
-
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			threadsInUse = tpe.getActiveCount();
-		}
+		int threadsInUse = getThreadsInUse();
 
 		// Get async statistics.
 		EventLoopStats[] eventLoopStats = null;
@@ -1195,12 +1221,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[count++] = new NodeStats(node);
 			}
 
-			int threadsInUse = 0;
-
-			if (threadPool instanceof ThreadPoolExecutor) {
-				ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-				threadsInUse = tpe.getActiveCount();
-			}
+			int threadsInUse = getThreadsInUse();
 
 			if (eventLoops == null) {
 				try {
@@ -1398,7 +1419,7 @@ public class Cluster implements Runnable, Closeable {
 		}
 
 		try {
-			disableMetrics();
+			disableStats();
 		}
 		catch (Throwable e) {
 			Log.warn("DisableMetrics failed: " + Util.getErrorMessage(e));

@@ -23,6 +23,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.lang.management.ManagementFactory;
 import java.math.BigInteger;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
@@ -30,6 +31,11 @@ import java.net.URL;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
+import javax.management.Attribute;
+import javax.management.AttributeList;
+import javax.management.MBeanServer;
+import javax.management.ObjectName;
 
 import com.aerospike.client.AerospikeException;
 
@@ -210,5 +216,34 @@ public final class Util {
 	public static boolean toBoolean(Object obj) {
 		// The server always returns booleans as longs, so get long and convert.
 		return (toLong(obj) != 0) ? true : false;
+	}
+
+	/**
+	 * Return cpu usage percent of this process.
+	 */
+	public static double getProcessCpuLoad() {
+		try {
+			MBeanServer mbs = ManagementFactory.getPlatformMBeanServer();
+			ObjectName name = ObjectName.getInstance("java.lang:type=OperatingSystem");
+			AttributeList list = mbs.getAttributes(name, new String[]{ "ProcessCpuLoad" });
+
+			if (list.isEmpty()) {
+				return 0.0;
+			}
+
+			Attribute att = (Attribute)list.get(0);
+			Double value = (Double)att.getValue();
+
+			// usually takes a couple of seconds before we get real values
+			if (value == -1.0) {
+				return 0.0;
+			}
+
+			// returns a percentage value with 1 decimal point precision
+			return ((int)(value * 1000) / 10.0);
+		}
+		catch (Throwable e) {
+			return 0.0;
+		}
 	}
 }

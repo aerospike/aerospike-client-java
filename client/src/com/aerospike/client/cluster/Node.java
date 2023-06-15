@@ -42,9 +42,7 @@ import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
 import com.aerospike.client.command.SyncCommand;
-import com.aerospike.client.metrics.LatencyType;
-import com.aerospike.client.metrics.Metrics;
-import com.aerospike.client.policy.MetricsPolicy;
+import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.util.Util;
 
 /**
@@ -75,7 +73,7 @@ public class Node implements Closeable {
 	private byte[] sessionToken;
 	private long sessionExpiration;
 	private volatile Map<String,Integer> racks;
-	private volatile Metrics metrics;
+	private volatile NodeMetrics metrics;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
 	private final AtomicInteger errorCount;
@@ -119,8 +117,8 @@ public class Node implements Closeable {
 		this.racks = cluster.rackAware ? new HashMap<String,Integer>() : null;
 		this.active = true;
 
-		if (cluster.metricsEnabled) {
-			this.metrics = new Metrics(cluster.metricsPolicy);
+		if (cluster.statsEnabled) {
+			this.metrics = new NodeMetrics(cluster.statsPolicy);
 		}
 
 		// Create sync connection pools.
@@ -619,7 +617,7 @@ public class Node implements Closeable {
 		// Create sync connection.
 		Connection conn;
 
-		if (cluster.metricsEnabled) {
+		if (cluster.statsEnabled) {
 			long begin = System.nanoTime();
 
 			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -1018,33 +1016,35 @@ public class Node implements Closeable {
 		int opened = 0;
 		int closed = 0;
 
-		for (AsyncPool pool : asyncConnectionPools) {
-			// Warning: cross-thread references are made without a lock
-			// for pool's queue, opened and closed.
-			int tmp =  pool.queue.size();
+		if (asyncConnectionPools != null) {
+			for (AsyncPool pool : asyncConnectionPools) {
+				// Warning: cross-thread references are made without a lock
+				// for pool's queue, opened and closed.
+				int tmp =  pool.queue.size();
 
-			// Timing issues may cause values to go negative. Adjust.
-			if (tmp < 0) {
-				tmp = 0;
-			}
-			inPool += tmp;
-			tmp = pool.total - tmp;
+				// Timing issues may cause values to go negative. Adjust.
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inPool += tmp;
+				tmp = pool.total - tmp;
 
-			if (tmp < 0) {
-				tmp = 0;
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inUse += tmp;
+				opened += pool.opened;
+				closed += pool.closed;
 			}
-			inUse += tmp;
-			opened += pool.opened;
-			closed += pool.closed;
 		}
 		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
 
-	public final void enableMetrics(MetricsPolicy policy) {
-		metrics = new Metrics(policy);
+	public final void enableStats(StatsPolicy policy) {
+		metrics = new NodeMetrics(policy);
 	}
 
-	public final Metrics getMetrics() {
+	public final NodeMetrics getMetrics() {
 		return metrics;
 	}
 
@@ -1056,7 +1056,7 @@ public class Node implements Closeable {
 		metrics.addTimeout();
 	}
 
-	public final void addLatency(int type, long elapsed) {
+	public final void addLatency(LatencyType type, long elapsed) {
 		metrics.addLatency(type, elapsed);
 	}
 

@@ -26,9 +26,9 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 public class ReadCommand extends SyncCommand {
@@ -195,7 +195,7 @@ public class ReadCommand extends SyncCommand {
 	}
 
 	@Override
-	protected int getLatencyType() {
+	protected LatencyType getLatencyType() {
 		return LatencyType.READ;
 	}
 

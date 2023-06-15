@@ -51,10 +51,10 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.InfoPolicy;
-import com.aerospike.client.policy.MetricsPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -132,6 +132,16 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException.InvalidNode;
 
 	/**
+	 * Enable periodic cluster and node latency statistics.
+	 */
+	public void enableStats(StatsPolicy policy);
+
+	/**
+	 * Disable periodic cluster and node latency statistics.
+	 */
+	public void disableStats();
+
+	/**
 	 * Return operating cluster statistics.
 	 */
 	public ClusterStats getClusterStats();
@@ -140,16 +150,6 @@ public interface IAerospikeClient extends Closeable {
 	 * Return operating cluster.
 	 */
 	public Cluster getCluster();
-
-	/**
-	 * Enable periodic cluster and node latency statistics.
-	 */
-	public void enableMetrics(MetricsPolicy policy);
-
-	/**
-	 * Disable periodic cluster and node latency statistics.
-	 */
-	public void disableMetrics();
 
 	//-------------------------------------------------------
 	// Write Record Operations

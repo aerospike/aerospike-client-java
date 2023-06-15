@@ -26,7 +26,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
@@ -612,7 +612,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected int getLatencyType() {
+		protected LatencyType getLatencyType() {
 			return LatencyType.BATCH;
 		}
 

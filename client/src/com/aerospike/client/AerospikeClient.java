@@ -94,10 +94,10 @@ import com.aerospike.client.policy.BatchUDFPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
-import com.aerospike.client.policy.MetricsPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -439,14 +439,36 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Return operating cluster statistics.
+	 * Enable extended periodic cluster and node latency statistics.
+	 */
+	public final void enableStats(StatsPolicy policy) {
+		cluster.enableStats(policy);
+	}
+
+	/**
+	 * Disable extended periodic cluster and node latency statistics.
+	 */
+	public final void disableStats() {
+		cluster.disableStats();
+	}
+
+	/**
+	 * Return extended cluster statistics snapshot. This method requires that
+	 * {@link AerospikeClient#enableStats(StatsPolicy)} has already been called.
+	 */
+	public final ClusterStats getExtendedStats() {
+		return cluster.getExtendedStats();
+	}
+
+	/**
+	 * Return operating cluster statistics snapshot.
 	 */
 	public final ClusterStats getClusterStats() {
 		return cluster.getStats();
 	}
 
 	/**
-	 * Asynchronously return operating cluster statistics.
+	 * Asynchronously return operating cluster statistics snapshot.
 	 */
 	public final void getClusterStats(ClusterStatsListener listener) {
 		cluster.getStats(listener);
@@ -457,20 +479,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Cluster getCluster() {
 		return cluster;
-	}
-
-	/**
-	 * Enable periodic cluster and node latency statistics.
-	 */
-	public final void enableMetrics(MetricsPolicy policy) {
-		cluster.enableMetrics(policy);
-	}
-
-	/**
-	 * Disable periodic cluster and node latency statistics.
-	 */
-	public final void disableMetrics() {
-		cluster.disableMetrics();
 	}
 
 	//-------------------------------------------------------

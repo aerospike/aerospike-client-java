@@ -21,7 +21,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ScanCallback;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
@@ -105,7 +105,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 	}
 
 	@Override
-	protected int getLatencyType() {
+	protected LatencyType getLatencyType() {
 		return LatencyType.QUERY;
 	}
 }

@@ -16,22 +16,36 @@
  */
 package com.aerospike.client.policy;
 
+import com.aerospike.client.listener.StatsListener;
+
 /**
- * Client metrics configuration.
+ * Client periodic statistics configuration.
  */
-public final class MetricsPolicy {
+public final class StatsPolicy {
 	/**
-	 * File path to append cluster metrics and latency histograms.
+	 * Listener that handles statistics notification events. The default listener implementation
+	 * writes the statistics snapshot to a file which will later be read and forwarded to
+	 * OpenTelemetry by a separate offline application.
+	 * <p>
+	 * The listener could be overriden to send the statistics snapshot directly to OpenTelemetry.
 	 */
-	public String reportPath;
+	public StatsListener listener;
 
 	/**
-	 * Number of cluster tend iterations between metrics log messages. One tend iteration is defined as
-	 * {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all nodes.
+	 * Directory path to write statistics logs for listeners that write logs.
+	 * <p>
+	 * Default: <current directory>
+	 */
+	public String reportDir = ".";
+
+	/**
+	 * Number of cluster tend iterations between statistics notification events. One tend iteration
+	 * is defined as {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all
+	 * nodes.
 	 * <p>
 	 * Default: 30
 	 */
-	public int reportInterval = 30;
+	public int interval = 30;
 
 	/**
 	 * Number of elapsed time range buckets in latency histograms.
@@ -56,9 +70,10 @@ public final class MetricsPolicy {
 	/**
 	 * Copy constructor.
 	 */
-	public MetricsPolicy(MetricsPolicy other) {
-		this.reportPath = other.reportPath;
-		this.reportInterval = other.reportInterval;
+	public StatsPolicy(StatsPolicy other) {
+		this.listener = other.listener;
+		this.reportDir = other.reportDir;
+		this.interval = other.interval;
 		this.latencyColumns = other.latencyColumns;
 		this.latencyShift = other.latencyShift;
 	}
@@ -66,6 +81,6 @@ public final class MetricsPolicy {
 	/**
 	 * Default constructor.
 	 */
-	public MetricsPolicy() {
+	public StatsPolicy() {
 	}
 }

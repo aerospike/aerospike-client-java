@@ -25,8 +25,8 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.ConnectionRecover;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
@@ -69,7 +69,7 @@ public abstract class SyncCommand extends Command {
 		Node node;
 		AerospikeException exception = null;
 		long begin = 0;
-		int latencyType = cluster.metricsEnabled? getLatencyType() : LatencyType.NONE;
+		LatencyType latencyType = cluster.statsEnabled? getLatencyType() : LatencyType.NONE;
 		boolean isClientTimeout;
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
@@ -273,13 +273,13 @@ public abstract class SyncCommand extends Command {
 		throw exception;
 	}
 
-	private void addTimeout(Node node, int latencyType) {
+	private void addTimeout(Node node, LatencyType latencyType) {
 		if (latencyType != LatencyType.NONE) {
 			node.addTimeout();
 		}
 	}
 
-	private void addError(Node node, int latencyType) {
+	private void addError(Node node, LatencyType latencyType) {
 		if (latencyType != LatencyType.NONE) {
 			node.addError();
 		}
@@ -328,5 +328,5 @@ public abstract class SyncCommand extends Command {
 	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 	protected abstract boolean prepareRetry(boolean timeout);
-	protected abstract int getLatencyType();
+	protected abstract LatencyType getLatencyType();
 }
