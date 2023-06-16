@@ -21,6 +21,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Date;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -31,7 +32,8 @@ import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.util.Util;
 
 public final class StatsWriter implements StatsListener {
-	private static final SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final SimpleDateFormat FilenameFormat = new SimpleDateFormat("yyyyMMddHHmmss");
+	private static final SimpleDateFormat TimestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
 	private final String dir;
 	private final StringBuilder sb;
@@ -45,8 +47,10 @@ public final class StatsWriter implements StatsListener {
 
 	@Override
 	public void onEnable(StatsPolicy policy) {
+		Date now = Calendar.getInstance().getTime();
+
 		try {
-			String path = dir + File.separator + "stats.txt";
+			String path = dir + File.separator + "stats" + FilenameFormat.format(now) + ".txt";
 			writer = new FileWriter(path, true);
 		}
 		catch (IOException ioe) {
@@ -54,8 +58,8 @@ public final class StatsWriter implements StatsListener {
 		}
 
 		sb.setLength(0);
-		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
-		sb.append(" header cluster[cpu,mem,threadsInUse,recoverCount,invalidNodeCount,eventloop[],node[]] eventloop[processSize,queueSize] node[name,address,port,connInUse,connInPool,connOpened,connClosed,errors,timeouts,latency[]]");
+		sb.append(TimestampFormat.format(now));
+		sb.append(" header 1 cluster[cpu,mem,threadsInUse,recoverCount,invalidNodeCount,eventloop[],node[]] eventloop[processSize,queueSize] node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]] conn[inUse,inPool,opened,closed]");
 		sb.append(" latency[");
 		sb.append(policy.latencyColumns);
 		sb.append(',');
@@ -80,7 +84,7 @@ public final class StatsWriter implements StatsListener {
 		synchronized(this) {
 			if (enabled) {
 				sb.setLength(0);
-				sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
+				sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 				sb.append(" node");
 				writeNode(stats);
 				writeLine(sb);
@@ -109,7 +113,7 @@ public final class StatsWriter implements StatsListener {
 		long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
 		sb.setLength(0);
-		sb.append(SimpleDateFormat.format(Calendar.getInstance().getTime()));
+		sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 		sb.append(" cluster[");
 		sb.append((int)cpu);
 		sb.append(',');
