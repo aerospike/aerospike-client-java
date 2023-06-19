@@ -196,7 +196,7 @@ public final class StatsWriter implements StatsListener {
 				sb.append('[');
 
 				for (int j = 0; j < buckets.length; j++) {
-					if (i > 0) {
+					if (j > 0) {
 						sb.append(',');
 					}
 					sb.append(buckets[j]);
