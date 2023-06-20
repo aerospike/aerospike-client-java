@@ -176,6 +176,11 @@
 
   <repositories>
     <repository>
+      <id>snapshots_private</id>
+      <name>aerospike-maven-dev</name>
+      <url>https://aerospike.jfrog.io/artifactory/aerospike-maven-dev</url>
+    </repository>
+    <repository>
       <id>oss-sonatype</id>
       <url>${oss.sonatype.url}</url>
     </repository>
