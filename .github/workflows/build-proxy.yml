@@ -1,0 +1,30 @@
+name: Build and upload proxy client to JFrog
+
+on:
+  push:
+    branches:
+      - stage
+      # TODO: remove this once proxy branch is removed
+      - proxy
+  # TODO: remove this once we verify that this workflow works
+  pull_request:
+    branches:
+      - proxy
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout Java client
+      uses: actions/checkout@v2
+
+    - name: Set up settings.xml for Maven
+      uses: s4u/maven-settings-action@v2.8.0
+      with:
+        servers: '[{"id": "snapshots_private", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
+
+    - name: Build Java client
+      run: mvn install
+
+    - name: Upload to JFrog
+      run: mvn deploy
