@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -313,6 +313,10 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void udf() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestFilterExp.udf");
+			return;
+		}
 		WritePolicy policy = new WritePolicy();
 		policy.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(1)));
 
@@ -333,6 +337,10 @@ public class TestFilterExp extends TestSync {
 
 	@Test
 	public void udfExcept() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestFilterExp.udfExcept");
+			return;
+		}
 		WritePolicy policy = new WritePolicy();
 		policy.filterExp = Exp.build(Exp.eq(Exp.intBin(binA), Exp.val(1)));
 		policy.failOnFilteredOut = true;
