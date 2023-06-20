@@ -6,10 +6,6 @@ on:
       - stage
       # TODO: remove this once proxy branch is removed
       - proxy
-  # TODO: remove this once we verify that this workflow works
-  pull_request:
-    branches:
-      - proxy
 
 jobs:
   build:
