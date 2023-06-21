@@ -188,10 +188,11 @@
       <url>${github.packages.url}</url>
     </repository>
 
-    <!-- For now snapshots are in maven central snapshots -->
+    <!-- Upload snapshots to internal JFrog maven repo -->
     <snapshotRepository>
-      <id>oss-sonatype</id>
-      <url>${oss.sonatype.url}</url>
+      <id>snapshots_private</id>
+      <name>aerospike-maven-dev</name>
+      <url>https://aerospike.jfrog.io/artifactory/aerospike-maven-dev</url>
     </snapshotRepository>
   </distributionManagement>
 
