@@ -50,10 +50,10 @@ public class ClientPolicy {
 	public String password;
 
 	/**
-	 * Expected cluster name.  If populated, the clusterName must match the cluster-name field
-	 * in the service section in each server configuration.  This ensures that the specified
-	 * seed nodes belong to the expected cluster on startup.  If not, the client will refuse
-	 * to add the node to the client's view of the cluster.
+	 * Expected cluster name. If populated and {@link #validateClusterName} is true, the clusterName
+	 * must match the cluster-name field in the service section in each server configuration. This
+	 * ensures that the specified seed nodes belong to the expected cluster on startup.  If not,
+	 * the client will refuse to add the node to the client's view of the cluster.
 	 * <p>
 	 * Default: null
 	 */
@@ -226,6 +226,16 @@ public class ClientPolicy {
 	 * Default: true
 	 */
 	public boolean failIfNotConnected = true;
+
+	/**
+	 * When validateClusterName is true and {@link #clusterName} is populated, verify that
+	 * clusterName matches the cluster-name field in the service section in each server
+	 * configuration. This ensures that the specified seed nodes belong to the expected cluster on
+	 * startup. If not, the client will refuse to add the node to the client's view of the cluster.
+	 * <p>
+	 * Default: true
+	 */
+	public boolean validateClusterName = true;
 
 	/**
 	 * Default read policy that is used when read command's policy is null.
@@ -417,6 +427,7 @@ public class ClientPolicy {
 		this.errorRateWindow = other.errorRateWindow;
 		this.tendInterval = other.tendInterval;
 		this.failIfNotConnected = other.failIfNotConnected;
+		this.validateClusterName = other.validateClusterName;
 		this.readPolicyDefault = new Policy(other.readPolicyDefault);
 		this.writePolicyDefault = new WritePolicy(other.writePolicyDefault);
 		this.scanPolicyDefault = new ScanPolicy(other.scanPolicyDefault);

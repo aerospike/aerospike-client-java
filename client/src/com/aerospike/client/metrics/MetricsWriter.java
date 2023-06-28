@@ -70,15 +70,19 @@ public final class MetricsWriter implements MetricsListener {
 			throw new AerospikeException(ioe);
 		}
 
-		// TODO: Write clusterId or clusterName?
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(now));
-		sb.append(" header 1 cluster[cpu,mem,threadsInUse,recoverCount,invalidNodeCount,eventloop[],node[]] eventloop[processSize,queueSize] node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]] conn[inUse,inPool,opened,closed]");
-		sb.append(" latency[");
+		sb.append(" header(1)");
+		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,eventloop[],node[]]");
+		sb.append(" eventloop[processSize,queueSize]");
+		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+		sb.append(" conn[inUse,inPool,opened,closed]");
+		sb.append(" latency(");
 		sb.append(policy.latencyColumns);
 		sb.append(',');
 		sb.append(policy.latencyShift);
-		sb.append(']');
+		sb.append(')');
+		sb.append("[type[l1,l2,l3...]]");
 		writeLine(sb);
 
 		enabled = true;
@@ -132,21 +136,29 @@ public final class MetricsWriter implements MetricsListener {
 	}
 
 	private void writeCluster(Cluster cluster) {
+		String clusterName = cluster.getClusterName();
+
+		if (clusterName == null) {
+			clusterName = "";
+		}
+
 		double cpu = Util.getProcessCpuLoad();
 		long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 		sb.append(" cluster[");
-		sb.append((int)cpu);                   // Current cpu usage. Can't be cumulative.
+		sb.append(clusterName);
 		sb.append(',');
-		sb.append(mem);						   // Current mem usage. Can't be cumulative.
+		sb.append((int)cpu);
 		sb.append(',');
-		sb.append(cluster.getThreadsInUse());  // Current threads-in-use. Can't be cumulative.
+		sb.append(mem);
 		sb.append(',');
-		sb.append(cluster.getRecoverCount());  // Connection recovery queue size. Can't be cumulative.
+		sb.append(cluster.getThreadsInUse());
 		sb.append(',');
-		sb.append(cluster.getInvalidNodeCount());  // Count of add node failures.  Can be cumulative. TODO: change
+		sb.append(cluster.getRecoverQueueSize());
+		sb.append(',');
+		sb.append(cluster.getInvalidNodeCount());
 		sb.append(",[");
 
 		EventLoop[] eventLoops = cluster.getEventLoopArray();
@@ -160,9 +172,9 @@ public final class MetricsWriter implements MetricsListener {
 				}
 
 				sb.append('[');
-				sb.append(el.getProcessSize()); // Current in-process queue size. This can't be cumulative.
+				sb.append(el.getProcessSize());
 				sb.append(',');
-				sb.append(el.getQueueSize());   // Current delay queue size. This can't be cumulative.
+				sb.append(el.getQueueSize());
 				sb.append(']');
 			}
 		}
@@ -201,9 +213,9 @@ public final class MetricsWriter implements MetricsListener {
 
 		NodeMetrics nm = node.getMetrics();
 
-		sb.append(nm.getErrors());  // Transaction attempt errors. Can be multiple attempts per transaction. Can be cumulative.
+		sb.append(nm.getErrors());   // Cumulative. Not reset on each interval.
 		sb.append(',');
-		sb.append(nm.getTimeouts()); // Transaction timeouts errors. Can be multiple timeouts per transaction. Can be cumulative.
+		sb.append(nm.getTimeouts()); // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
 		int max = LatencyType.getMax();
@@ -223,7 +235,7 @@ public final class MetricsWriter implements MetricsListener {
 				if (j > 0) {
 					sb.append(',');
 				}
-				sb.append(buckets.getBucket(j));  // Latency bucket.  Can be cumulative.
+				sb.append(buckets.getBucket(j)); // Cumulative. Not reset on each interval.
 			}
 			sb.append(']');
 		}
@@ -231,13 +243,13 @@ public final class MetricsWriter implements MetricsListener {
 	}
 
 	private void writeConn(ConnectionStats cs) {
-		sb.append(cs.inUse);  // Current connections in-use. Can't be cumulative.
+		sb.append(cs.inUse);
 		sb.append(',');
-		sb.append(cs.inPool); // Current connections in-pool. Can't be cumulative.
+		sb.append(cs.inPool);
 		sb.append(',');
-		sb.append(cs.opened); // Total opened connections. Can be cumulative.
+		sb.append(cs.opened); // Cumulative. Not reset on each interval.
 		sb.append(',');
-		sb.append(cs.closed); // Total closed connections. Can be cumulative.
+		sb.append(cs.closed); // Cumulative. Not reset on each interval.
 	}
 
 	private void writeLine(StringBuilder sb) {

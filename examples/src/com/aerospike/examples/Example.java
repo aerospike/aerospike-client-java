@@ -37,6 +37,8 @@ public abstract class Example {
 		policy.password = params.password;
 		policy.authMode = params.authMode;
 		policy.tlsPolicy = params.tlsPolicy;
+		policy.clusterName = "mycluster";
+		policy.validateClusterName = false;
 
 		params.policy = policy.readPolicyDefault;
 		params.writePolicy = policy.writePolicyDefault;

@@ -187,6 +187,9 @@ public class Cluster implements Runnable, Closeable {
 	// Request server rack ids.
 	final boolean rackAware;
 
+	// Verify clusterName if populated.
+	public final boolean validateClusterName;
+
 	// Is authentication enabled
 	public final boolean authEnabled;
 
@@ -201,6 +204,7 @@ public class Cluster implements Runnable, Closeable {
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
+		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
 
@@ -1271,18 +1275,6 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
-	public final int getThreadsInUse() {
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			return tpe.getActiveCount();
-		}
-		return 0;
-	}
-
-	public final int getRecoverCount() {
-		return recoverCount.get();
-	}
-
 	public final void interruptTendSleep() {
 		// Interrupt tendThread's sleep(), so node refreshes will be performed sooner.
 		tendThread.interrupt();
@@ -1357,6 +1349,17 @@ public class Cluster implements Runnable, Closeable {
 		return threadPool;
 	}
 
+	/**
+	 * Return cluster name.
+	 */
+	public String getClusterName() {
+		return clusterName;
+	}
+
+	public boolean validateClusterName() {
+		return validateClusterName && clusterName != null && clusterName.length() > 0;
+	}
+
 	public final byte[] getUser() {
 		return user;
 	}
@@ -1371,6 +1374,30 @@ public class Cluster implements Runnable, Closeable {
 
 	public final boolean isActive() {
 		return tendValid;
+	}
+
+	/**
+	 * Return thread pool active thread count. This thread pool is used in sync batch/query/scan
+	 * commands.
+	 */
+	public final int getThreadsInUse() {
+		if (threadPool instanceof ThreadPoolExecutor) {
+			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
+			return tpe.getActiveCount();
+		}
+		return 0;
+	}
+
+	/**
+	 * Return connection recoverQueue size. The queue contains connections that have timed out and
+	 * need to be drained before returning the connection to a connection pool. The recoverQueue
+	 * is only used when {@link com.aerospike.client.policy.Policy#timeoutDelay} is true.
+	 * <p>
+	 * Since recoverQueue is a linked list where the size() calculation is expensive, a separate
+	 * counter is used to track recoverQueue.size().
+	 */
+	public final int getRecoverQueueSize() {
+		return recoverCount.get();
 	}
 
 	/**

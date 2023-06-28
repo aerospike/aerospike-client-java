@@ -213,9 +213,9 @@ public final class NodeValidator {
 			commands.add("partition-generation");
 			commands.add("features");
 
-			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
+			boolean validateCluster = cluster.validateClusterName();
 
-			if (hasClusterName) {
+			if (validateCluster) {
 				commands.add("cluster-name");
 			}
 
@@ -248,7 +248,7 @@ public final class NodeValidator {
 			validatePartitionGeneration(map);
 			setFeatures(map);
 
-			if (hasClusterName) {
+			if (validateCluster) {
 				validateClusterName(cluster, map);
 			}
 
