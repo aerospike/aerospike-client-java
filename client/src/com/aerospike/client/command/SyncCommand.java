@@ -69,7 +69,7 @@ public abstract class SyncCommand extends Command {
 		Node node;
 		AerospikeException exception = null;
 		long begin = 0;
-		LatencyType latencyType = cluster.statsEnabled? getLatencyType() : LatencyType.NONE;
+		LatencyType latencyType = cluster.metricsEnabled? getLatencyType() : LatencyType.NONE;
 		boolean isClientTimeout;
 
 		// Execute command until successful, timed out or maximum iterations have been reached.

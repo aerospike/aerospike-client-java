@@ -14,18 +14,25 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.cluster;
+package com.aerospike.client.metrics;
 
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
-import com.aerospike.client.policy.StatsPolicy;
+import com.aerospike.client.cluster.LatencyType;
 
+/**
+ * Optional extended node metrics. Used when extended metrics is enabled
+ * (See {@link com.aerospike.client.AerospikeClient#enableMetrics(MetricsPolicy)}).
+ */
 public final class NodeMetrics {
 	private final LatencyBuckets[] latency;
-	private final AtomicInteger errors = new AtomicInteger();
-	private final AtomicInteger timeouts = new AtomicInteger();
+	private final AtomicLong errors = new AtomicLong();
+	private final AtomicLong timeouts = new AtomicLong();
 
-	public NodeMetrics(StatsPolicy policy) {
+	/**
+	 * Initialize extended node metrics.
+	 */
+	public NodeMetrics(MetricsPolicy policy) {
 		int latencyColumns = policy.latencyColumns;
 		int latencyShift = policy.latencyShift;
 		int max = LatencyType.getMax();
@@ -37,27 +44,48 @@ public final class NodeMetrics {
 		}
 	}
 
+	/**
+	 * Get latency buckets given type and increment count of the bucket corresponding to the
+	 * elapsed time in milliseconds.
+	 */
 	public void addLatency(LatencyType type, long elapsed) {
 		latency[type.ordinal()].add(elapsed);
 	}
 
-	public LatencyBuckets get(int type) {
+	/**
+	 * Return latency buckets given type.
+	 */
+	public LatencyBuckets getLatencyBuckets(int type) {
 		return latency[type];
 	}
 
+	/**
+	 * Increment transaction error count. If the error is retryable, multiple errors per
+	 * transaction may occur.
+	 */
 	public void addError() {
 		errors.getAndIncrement();
 	}
 
+	/**
+	 * Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
+	 * multiple timeouts per transaction may occur.
+	 */
 	public void addTimeout() {
 		timeouts.getAndIncrement();
 	}
 
-	public int resetError() {
-		return errors.getAndSet(0);
+	/**
+	 * Return transaction error count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getErrors() {
+		return errors.get();
 	}
 
-	public int resetTimeout() {
-		return timeouts.getAndSet(0);
+	/**
+	 * Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getTimeouts() {
+		return timeouts.get();
 	}
 }

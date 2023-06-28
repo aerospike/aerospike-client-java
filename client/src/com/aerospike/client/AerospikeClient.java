@@ -87,6 +87,7 @@ import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -97,7 +98,6 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
-import com.aerospike.client.policy.StatsPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -439,25 +439,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Enable extended periodic cluster and node latency statistics.
+	 * Enable extended periodic cluster and node latency metrics.
 	 */
-	public final void enableStats(StatsPolicy policy) {
-		cluster.enableStats(policy);
+	public final void enableMetrics(MetricsPolicy policy) {
+		cluster.enableMetrics(policy);
 	}
 
 	/**
-	 * Disable extended periodic cluster and node latency statistics.
+	 * Disable extended periodic cluster and node latency metrics.
 	 */
-	public final void disableStats() {
-		cluster.disableStats();
-	}
-
-	/**
-	 * Return extended cluster statistics snapshot. This method requires that
-	 * {@link AerospikeClient#enableStats(StatsPolicy)} has already been called.
-	 */
-	public final ClusterStats getExtendedStats() {
-		return cluster.getExtendedStats();
+	public final void disableMetrics() {
+		cluster.disableMetrics();
 	}
 
 	/**

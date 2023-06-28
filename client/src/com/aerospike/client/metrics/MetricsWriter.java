@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.cluster;
+package com.aerospike.client.metrics;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -26,12 +26,18 @@ import java.util.Date;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
-import com.aerospike.client.async.EventLoopStats;
-import com.aerospike.client.listener.StatsListener;
-import com.aerospike.client.policy.StatsPolicy;
+import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.ConnectionStats;
+import com.aerospike.client.cluster.LatencyType;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 
-public final class StatsWriter implements StatsListener {
+/**
+ * Default metrics listener. This implementation writes periodic metrics snapshots to a file which
+ * will later be read and forwarded to OpenTelemetry by a separate offline application.
+ */
+public final class MetricsWriter implements MetricsListener {
 	private static final SimpleDateFormat FilenameFormat = new SimpleDateFormat("yyyyMMddHHmmss");
 	private static final SimpleDateFormat TimestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
@@ -40,23 +46,31 @@ public final class StatsWriter implements StatsListener {
 	private FileWriter writer;
 	private boolean enabled;
 
-	public StatsWriter(String dir) {
+	/**
+	 * Initialize metrics writer.
+	 */
+	public MetricsWriter(String dir) {
 		this.dir = dir;
 		this.sb = new StringBuilder(8192);
 	}
 
+	/**
+	 * Open timestamped metrics file in append mode and write header indicating what metrics will
+	 * be stored.
+	 */
 	@Override
-	public void onEnable(StatsPolicy policy) {
+	public void onEnable(Cluster cluster, MetricsPolicy policy) {
 		Date now = Calendar.getInstance().getTime();
 
 		try {
-			String path = dir + File.separator + "stats" + FilenameFormat.format(now) + ".txt";
+			String path = dir + File.separator + "metrics" + FilenameFormat.format(now) + ".txt";
 			writer = new FileWriter(path, true);
 		}
 		catch (IOException ioe) {
 			throw new AerospikeException(ioe);
 		}
 
+		// TODO: Write clusterId or clusterName?
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(now));
 		sb.append(" header 1 cluster[cpu,mem,threadsInUse,recoverCount,invalidNodeCount,eventloop[],node[]] eventloop[processSize,queueSize] node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]] conn[inUse,inPool,opened,closed]");
@@ -70,35 +84,44 @@ public final class StatsWriter implements StatsListener {
 		enabled = true;
 	}
 
+	/**
+	 * Write cluster metrics snapshot to file.
+	 */
 	@Override
-	public void onStats(ClusterStats stats) {
+	public void onSnapshot(Cluster cluster) {
 		synchronized(this) {
 			if (enabled) {
-				writeCluster(stats);
+				writeCluster(cluster);
 			}
 		}
 	}
 
+	/**
+	 * Write final node metrics snapshot on node that will be closed.
+	 */
 	@Override
-	public void onNodeClose(NodeStats stats) {
+	public void onNodeClose(Node node) {
 		synchronized(this) {
 			if (enabled) {
 				sb.setLength(0);
 				sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 				sb.append(" node");
-				writeNode(stats);
+				writeNode(node);
 				writeLine(sb);
 			}
 		}
 	}
 
+	/**
+	 * Write final cluster metrics snapshot to file and then close the file.
+	 */
 	@Override
-	public void onDisable(ClusterStats stats) {
+	public void onDisable(Cluster cluster) {
 		synchronized(this) {
 			if (enabled) {
 				try {
 					enabled = false;
-					writeCluster(stats);
+					writeCluster(cluster);
 					writer.close();
 				}
 				catch (Throwable e) {
@@ -108,47 +131,47 @@ public final class StatsWriter implements StatsListener {
 		}
 	}
 
-	private void writeCluster(ClusterStats stats) {
+	private void writeCluster(Cluster cluster) {
 		double cpu = Util.getProcessCpuLoad();
 		long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 		sb.append(" cluster[");
-		sb.append((int)cpu);
+		sb.append((int)cpu);                   // Current cpu usage. Can't be cumulative.
 		sb.append(',');
-		sb.append(mem);
+		sb.append(mem);						   // Current mem usage. Can't be cumulative.
 		sb.append(',');
-		sb.append(stats.threadsInUse);
+		sb.append(cluster.getThreadsInUse());  // Current threads-in-use. Can't be cumulative.
 		sb.append(',');
-		sb.append(stats.recoverQueueSize);
+		sb.append(cluster.getRecoverCount());  // Connection recovery queue size. Can't be cumulative.
 		sb.append(',');
-		sb.append(stats.invalidNodeCount);
+		sb.append(cluster.getInvalidNodeCount());  // Count of add node failures.  Can be cumulative. TODO: change
 		sb.append(",[");
 
-		EventLoopStats[] eventLoops = stats.eventLoops;
+		EventLoop[] eventLoops = cluster.getEventLoopArray();
 
 		if (eventLoops != null) {
 			for (int i = 0; i < eventLoops.length; i++) {
-				EventLoopStats els = eventLoops[i];
+				EventLoop el = eventLoops[i];
 
 				if (i > 0) {
 					sb.append(',');
 				}
 
 				sb.append('[');
-				sb.append(els.processSize);
+				sb.append(el.getProcessSize()); // Current in-process queue size. This can't be cumulative.
 				sb.append(',');
-				sb.append(els.queueSize);
+				sb.append(el.getQueueSize());   // Current delay queue size. This can't be cumulative.
 				sb.append(']');
 			}
 		}
 		sb.append("],[");
 
-		NodeStats[] nodes = stats.nodes;
+		Node[] nodes = cluster.getNodes();
 
 		for (int i = 0; i < nodes.length; i++) {
-			NodeStats node = nodes[i];
+			Node node = nodes[i];
 
 			if (i > 0) {
 				sb.append(',');
@@ -159,63 +182,62 @@ public final class StatsWriter implements StatsListener {
 		writeLine(sb);
 	}
 
-	private void writeNode(NodeStats ns) {
-		Node node = ns.node;
-		Host host = node.getHost();
-
+	private void writeNode(Node node) {
 		sb.append('[');
 		sb.append(node.getName());
 		sb.append(',');
+
+		Host host = node.getHost();
+
 		sb.append(host.name);
 		sb.append(',');
 		sb.append(host.port);
-		writeConn(ns.sync);
-		writeConn(ns.async);
 		sb.append(',');
-		sb.append(ns.errors);
+
+		writeConn(node.getConnectionStats());
 		sb.append(',');
-		sb.append(ns.timeouts);
+		writeConn(node.getAsyncConnectionStats());
+		sb.append(',');
+
+		NodeMetrics nm = node.getMetrics();
+
+		sb.append(nm.getErrors());  // Transaction attempt errors. Can be multiple attempts per transaction. Can be cumulative.
+		sb.append(',');
+		sb.append(nm.getTimeouts()); // Transaction timeouts errors. Can be multiple timeouts per transaction. Can be cumulative.
 		sb.append(",[");
 
-		int[][] latency = ns.latency;
 		int max = LatencyType.getMax();
-		boolean comma = false;
 
 		for (int i = 0; i < max; i++) {
-			int[] buckets = latency[i];
+			if (i > 0) {
+				sb.append(',');
+			}
 
-			if (buckets != null) {
-				if (comma) {
+			sb.append(LatencyType.getString(i));
+			sb.append('[');
+
+			LatencyBuckets buckets = nm.getLatencyBuckets(i);
+			int bucketMax = buckets.getMax();
+
+			for (int j = 0; j < bucketMax; j++) {
+				if (j > 0) {
 					sb.append(',');
 				}
-				else {
-					comma = true;
-				}
-
-				sb.append(LatencyType.getString(i));
-				sb.append('[');
-
-				for (int j = 0; j < buckets.length; j++) {
-					if (j > 0) {
-						sb.append(',');
-					}
-					sb.append(buckets[j]);
-				}
-				sb.append(']');
+				sb.append(buckets.getBucket(j));  // Latency bucket.  Can be cumulative.
 			}
+			sb.append(']');
 		}
 		sb.append("]]");
 	}
 
 	private void writeConn(ConnectionStats cs) {
+		sb.append(cs.inUse);  // Current connections in-use. Can't be cumulative.
 		sb.append(',');
-		sb.append(cs.inUse);
+		sb.append(cs.inPool); // Current connections in-pool. Can't be cumulative.
 		sb.append(',');
-		sb.append(cs.inPool);
+		sb.append(cs.opened); // Total opened connections. Can be cumulative.
 		sb.append(',');
-		sb.append(cs.opened);
-		sb.append(',');
-		sb.append(cs.closed);
+		sb.append(cs.closed); // Total closed connections. Can be cumulative.
 	}
 
 	private void writeLine(StringBuilder sb) {

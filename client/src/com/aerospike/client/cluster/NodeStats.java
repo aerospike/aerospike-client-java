@@ -36,54 +36,11 @@ public final class NodeStats {
 	public ConnectionStats async;
 
 	/**
-	 * Transaction latency buckets for this time interval. First array dimension is LatencyType.
-	 * Second array dimension is latency buckets. Latency buckets will be null if no buckets were
-	 * populated during the time interval.
-	 * <p>
-	 * Latency is only populated when extended statistics is enabled.
-	 */
-	public final int[][] latency;
-
-	/**
-	 * Transaction errors that occurred in this time interval.
-	 * Only populated when extended statistics is enabled.
-	 */
-	public final int errors;
-
-	/**
-	 * Transaction timeouts that occurred in this time interval.
-	 * Only populated when extended statistics is enabled.
-	 */
-	public final int timeouts;
-
-	/**
 	 * Node statistics constructor.
 	 */
 	public NodeStats(Node node) {
 		this.node = node;
 		this.sync = node.getConnectionStats();
-		this.latency = null;
-		this.errors = 0;
-		this.timeouts = 0;
-	}
-
-	/**
-	 * Node extended statistics constructor.
-	 */
-	public NodeStats(Node node, NodeMetrics nodeMetrics) {
-		this.node = node;
-		this.sync = node.getConnectionStats();
-		this.async = node.getAsyncConnectionStats();
-		this.errors = nodeMetrics.resetError();
-		this.timeouts = nodeMetrics.resetTimeout();
-
-		int max = LatencyType.getMax();
-		this.latency = new int[max][];
-
-		for (int i = 0; i < max; i++) {
-			LatencyBuckets buckets = nodeMetrics.get(i);
-			this.latency[i] = buckets.resetBuckets();
-		}
 	}
 
 	/**

@@ -14,25 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.listener;
+package com.aerospike.client.metrics;
 
-import com.aerospike.client.cluster.ClusterStats;
-import com.aerospike.client.cluster.NodeStats;
-import com.aerospike.client.policy.StatsPolicy;
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 
 /**
- * Client periodic statistics configuration.
+ * Client metrics listener.
  */
-public interface StatsListener {
+public interface MetricsListener {
 	/**
-	 * Periodic notification of metrics snapshot. The default listener implementation writes the
-	 * metrics snapshot to a file which will later be read and forwarded to OpenTelemetry by a
-	 * separate offline application.
-	 * <p>
-	 * The listener could be overriden to send the metrics snapshot directly to OpenTelemetry.
+	 * Periodic extended metrics has been enabled for the given cluster.
 	 */
-	public void onEnable(StatsPolicy policy);
-	public void onStats(ClusterStats stats);
-	public void onNodeClose(NodeStats stats);
-	public void onDisable(ClusterStats stats);
+	public void onEnable(Cluster cluster, MetricsPolicy policy);
+
+	/**
+	 * A metrics snapshot has been requested for the given cluster.
+	 */
+	public void onSnapshot(Cluster cluster);
+
+	/**
+	 * A node is being dropped from the cluster.
+	 */
+	public void onNodeClose(Node node);
+
+	/**
+	 * Periodic extended metrics has been disabled for the given cluster.
+	 */
+	public void onDisable(Cluster cluster);
 }

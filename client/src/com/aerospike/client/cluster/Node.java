@@ -42,7 +42,8 @@ import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
 import com.aerospike.client.command.SyncCommand;
-import com.aerospike.client.policy.StatsPolicy;
+import com.aerospike.client.metrics.MetricsPolicy;
+import com.aerospike.client.metrics.NodeMetrics;
 import com.aerospike.client.util.Util;
 
 /**
@@ -117,8 +118,8 @@ public class Node implements Closeable {
 		this.racks = cluster.rackAware ? new HashMap<String,Integer>() : null;
 		this.active = true;
 
-		if (cluster.statsEnabled) {
-			this.metrics = new NodeMetrics(cluster.statsPolicy);
+		if (cluster.metricsEnabled) {
+			this.metrics = new NodeMetrics(cluster.metricsPolicy);
 		}
 
 		// Create sync connection pools.
@@ -617,7 +618,7 @@ public class Node implements Closeable {
 		// Create sync connection.
 		Connection conn;
 
-		if (cluster.statsEnabled) {
+		if (cluster.metricsEnabled) {
 			long begin = System.nanoTime();
 
 			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
@@ -1040,7 +1041,7 @@ public class Node implements Closeable {
 		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
 
-	public final void enableStats(StatsPolicy policy) {
+	public final void enableMetrics(MetricsPolicy policy) {
 		metrics = new NodeMetrics(policy);
 	}
 

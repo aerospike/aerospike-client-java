@@ -14,32 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.policy;
+package com.aerospike.client.metrics;
 
-import com.aerospike.client.listener.StatsListener;
+import com.aerospike.client.policy.ClientPolicy;
 
 /**
- * Client periodic statistics configuration.
+ * Client periodic metrics configuration.
  */
-public final class StatsPolicy {
+public final class MetricsPolicy {
 	/**
-	 * Listener that handles statistics notification events. The default listener implementation
-	 * writes the statistics snapshot to a file which will later be read and forwarded to
+	 * Listener that handles metrics notification events. The default listener implementation
+	 * writes the metrics snapshot to a file which will later be read and forwarded to
 	 * OpenTelemetry by a separate offline application.
 	 * <p>
-	 * The listener could be overriden to send the statistics snapshot directly to OpenTelemetry.
+	 * The listener could be overriden to send the metrics snapshot directly to OpenTelemetry.
 	 */
-	public StatsListener listener;
+	public MetricsListener listener;
 
 	/**
-	 * Directory path to write statistics logs for listeners that write logs.
+	 * Directory path to write metrics logs for listeners that write logs.
 	 * <p>
 	 * Default: <current directory>
 	 */
 	public String reportDir = ".";
 
 	/**
-	 * Number of cluster tend iterations between statistics notification events. One tend iteration
+	 * Number of cluster tend iterations between metrics notification events. One tend iteration
 	 * is defined as {@link ClientPolicy#tendInterval} (default 1 second) plus the time to tend all
 	 * nodes.
 	 * <p>
@@ -56,13 +56,14 @@ public final class StatsPolicy {
 
 	/**
 	 * Power of 2 multiple between each range bucket in latency histograms starting at column 3. The bucket units
-	 * are in milliseconds. The first 2 buckets are "<=1ms" and ">1ms".
-	 * <p>
-	 * For example, latencyColumns=5 and latencyShift=3 produces the following histogram buckets:
+	 * are in milliseconds. The first 2 buckets are "<=1ms" and ">1ms". Examples:
 	 * <pre>{@code
+	 * // latencyColumns=5 latencyShift=3
 	 * <=1ms >1ms >8ms >64ms >512ms
+	 *
+	 * // latencyColumns=7 latencyShift=2
+	 * <=1ms >1ms >4ms >16ms >64ms >256ms >1024ms
 	 * }</pre>
-	 * <p>
 	 * Default: 3
 	 */
 	public int latencyShift = 3;
@@ -70,7 +71,7 @@ public final class StatsPolicy {
 	/**
 	 * Copy constructor.
 	 */
-	public StatsPolicy(StatsPolicy other) {
+	public MetricsPolicy(MetricsPolicy other) {
 		this.listener = other.listener;
 		this.reportDir = other.reportDir;
 		this.interval = other.interval;
@@ -81,6 +82,6 @@ public final class StatsPolicy {
 	/**
 	 * Default constructor.
 	 */
-	public StatsPolicy() {
+	public MetricsPolicy() {
 	}
 }
