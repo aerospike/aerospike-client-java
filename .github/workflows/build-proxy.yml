@@ -28,7 +28,8 @@ jobs:
         servers: '[{"id": "snapshots_private", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
 
     - name: Trigger test workflow remotely (uses DBaaS dev environment)
-      run: Aerospike-DBaaS/integration-tests/.github/workflows/test-client-dev.yml@main
+      # TODO: use new_jars only for testing
+      run: Aerospike-DBaaS/integration-tests/.github/workflows/test-client-dev.yml@new_jars
 
     # Only push to JFrog once the PR has been merged
     # We assume that the PR branch has already passed testing and is a viable release candidate
