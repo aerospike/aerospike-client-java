@@ -34,4 +34,4 @@ jobs:
     # We assume that the PR branch has already passed testing and is a viable release candidate
     - name: Upload to JFrog
       run: mvn deploy
-      if: ${{ github.event_name == "push" }}
+      if: ${{ github.event_name == 'push' }}
