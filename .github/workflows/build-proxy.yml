@@ -22,5 +22,8 @@ jobs:
       with:
         servers: '[{"id": "snapshots_private", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
 
+    - name: Trigger test workflow remotely (uses DBaaS dev environment)
+      run: Aerospike-DBaaS/integration-tests/.github/workflows/test-client-dev.yml@main
+
     - name: Upload to JFrog
       run: mvn deploy
