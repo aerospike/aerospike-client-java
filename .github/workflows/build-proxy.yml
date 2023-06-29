@@ -14,13 +14,13 @@ jobs:
     - name: Checkout Java client
       uses: actions/checkout@v2
 
+    - name: Build Java client
+      run: mvn install
+
     - name: Set up settings.xml for Maven
       uses: s4u/maven-settings-action@v2.8.0
       with:
         servers: '[{"id": "snapshots_private", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
-
-    - name: Build Java client
-      run: mvn install
 
     - name: Upload to JFrog
       run: mvn deploy
