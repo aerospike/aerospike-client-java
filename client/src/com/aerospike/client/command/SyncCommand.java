@@ -252,12 +252,15 @@ public abstract class SyncCommand extends Command {
 
 			if (! prepareRetry(isClientTimeout || exception.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 				// Batch may be retried in separate commands.
-				if (retryBatch(cluster, node, latencyType, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
+				if (retryBatch(cluster, latencyType, socketTimeout, totalTimeout, deadline, iteration, commandSentCounter)) {
 					// Batch was retried in separate commands.  Complete this command.
 					return;
 				}
 			}
-			addRetry(node, latencyType);
+
+			if (latencyType != LatencyType.NONE) {
+				cluster.addRetry();
+			}
 		}
 
 		// Retries have been exhausted.  Throw last exception.
@@ -286,12 +289,6 @@ public abstract class SyncCommand extends Command {
 		}
 	}
 
-	private void addRetry(Node node, LatencyType latencyType) {
-		if (latencyType != LatencyType.NONE) {
-			node.addRetry();
-		}
-	}
-
 	public void resetDeadline(long startTime) {
 		long elapsed = System.nanoTime() - startTime;
 		deadline += elapsed;
@@ -314,7 +311,6 @@ public abstract class SyncCommand extends Command {
 
 	protected boolean retryBatch(
 		Cluster cluster,
-		Node node,
 		LatencyType latencyType,
 		int socketTimeout,
 		int totalTimeout,

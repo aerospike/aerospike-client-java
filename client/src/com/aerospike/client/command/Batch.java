@@ -27,7 +27,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.LatencyType;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
@@ -546,7 +545,6 @@ public final class Batch {
 		@Override
 		protected boolean retryBatch(
 			Cluster cluster,
-			Node node,
 			LatencyType latencyType,
 			int socketTimeout,
 			int totalTimeout,
@@ -579,7 +577,7 @@ public final class Batch {
 
 				try {
 					if (latencyType != LatencyType.NONE) {
-						node.addRetry();
+						cluster.addRetry();
 					}
 					command.executeCommand();
 				}

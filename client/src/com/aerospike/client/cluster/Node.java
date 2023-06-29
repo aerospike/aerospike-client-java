@@ -1057,10 +1057,6 @@ public class Node implements Closeable {
 		metrics.addTimeout();
 	}
 
-	public final void addRetry() {
-		metrics.addRetry();
-	}
-
 	public final void addLatency(LatencyType type, long elapsed) {
 		metrics.addLatency(type, elapsed);
 	}

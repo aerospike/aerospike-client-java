@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
@@ -201,6 +202,7 @@ public class Cluster implements Runnable, Closeable {
 	public boolean metricsEnabled;
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
+	private final AtomicLong retries = new AtomicLong();
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
@@ -1374,6 +1376,20 @@ public class Cluster implements Runnable, Closeable {
 
 	public final boolean isActive() {
 		return tendValid;
+	}
+
+	/**
+	 * Increment transaction retry count. There can be multiple retries for a single transaction.
+	 */
+	public void addRetry() {
+		retries.getAndIncrement();
+	}
+
+	/**
+	 * Return transaction retry count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getRetries() {
+		return retries.get();
 	}
 
 	/**

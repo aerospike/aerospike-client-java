@@ -73,9 +73,9 @@ public final class MetricsWriter implements MetricsListener {
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(now));
 		sb.append(" header(1)");
-		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,eventloop[],node[]]");
+		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,retries,eventloop[],node[]]");
 		sb.append(" eventloop[processSize,queueSize]");
-		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,retries,latency[]]");
+		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 		sb.append(" conn[inUse,inPool,opened,closed]");
 		sb.append(" latency(");
 		sb.append(policy.latencyColumns);
@@ -159,6 +159,8 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(cluster.getRecoverQueueSize());
 		sb.append(',');
 		sb.append(cluster.getInvalidNodeCount());
+		sb.append(',');
+		sb.append(cluster.getRetries());  // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
 		EventLoop[] eventLoops = cluster.getEventLoopArray();
@@ -216,8 +218,6 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(nm.getErrors());   // Cumulative. Not reset on each interval.
 		sb.append(',');
 		sb.append(nm.getTimeouts()); // Cumulative. Not reset on each interval.
-		sb.append(',');
-		sb.append(nm.getRetries());  // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
 		int max = LatencyType.getMax();
