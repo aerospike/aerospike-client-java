@@ -28,6 +28,7 @@ public final class NodeMetrics {
 	private final LatencyBuckets[] latency;
 	private final AtomicLong errors = new AtomicLong();
 	private final AtomicLong timeouts = new AtomicLong();
+	private final AtomicLong retries = new AtomicLong();
 
 	/**
 	 * Initialize extended node metrics.
@@ -76,6 +77,13 @@ public final class NodeMetrics {
 	}
 
 	/**
+	 * Increment transaction retry count.
+	 */
+	public void addRetry() {
+		retries.getAndIncrement();
+	}
+
+	/**
 	 * Return transaction error count. The value is cumulative and not reset per metrics interval.
 	 */
 	public long getErrors() {
@@ -87,5 +95,12 @@ public final class NodeMetrics {
 	 */
 	public long getTimeouts() {
 		return timeouts.get();
+	}
+
+	/**
+	 * Return transaction retry count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getRetries() {
+		return retries.get();
 	}
 }

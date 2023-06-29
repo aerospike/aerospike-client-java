@@ -75,7 +75,7 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(" header(1)");
 		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,eventloop[],node[]]");
 		sb.append(" eventloop[processSize,queueSize]");
-		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,retries,latency[]]");
 		sb.append(" conn[inUse,inPool,opened,closed]");
 		sb.append(" latency(");
 		sb.append(policy.latencyColumns);
@@ -216,6 +216,8 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(nm.getErrors());   // Cumulative. Not reset on each interval.
 		sb.append(',');
 		sb.append(nm.getTimeouts()); // Cumulative. Not reset on each interval.
+		sb.append(',');
+		sb.append(nm.getRetries());  // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
 		int max = LatencyType.getMax();
