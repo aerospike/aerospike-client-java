@@ -6,6 +6,11 @@ on:
       - stage
       # TODO: remove this once proxy branch is removed
       - proxy
+  pull_request:
+    branches:
+      # TODO: remove this once proxy branch is removed
+      - proxy
+      - stage
 
 jobs:
   build:
@@ -25,5 +30,8 @@ jobs:
     - name: Trigger test workflow remotely (uses DBaaS dev environment)
       run: Aerospike-DBaaS/integration-tests/.github/workflows/test-client-dev.yml@main
 
+    # Only push to JFrog once the PR has been merged
+    # We assume that the PR branch has already passed testing and is a viable release candidate
     - name: Upload to JFrog
       run: mvn deploy
+      if: ${{ github.event_name == "push" }}
