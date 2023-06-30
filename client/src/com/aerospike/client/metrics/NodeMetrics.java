@@ -45,8 +45,7 @@ public final class NodeMetrics {
 	}
 
 	/**
-	 * Get latency buckets given type and increment count of the bucket corresponding to the
-	 * elapsed time in milliseconds.
+	 * Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 	 */
 	public void addLatency(LatencyType type, long elapsed) {
 		latency[type.ordinal()].add(elapsed);

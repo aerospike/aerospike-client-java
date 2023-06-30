@@ -1057,6 +1057,9 @@ public class Node implements Closeable {
 		metrics.addTimeout();
 	}
 
+	/**
+	 * Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+	 */
 	public final void addLatency(LatencyType type, long elapsed) {
 		metrics.addLatency(type, elapsed);
 	}

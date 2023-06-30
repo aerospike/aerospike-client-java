@@ -23,6 +23,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * Latency bucket counts are cumulative and not reset on each metrics snapshot interval.
  */
 public final class LatencyBuckets {
+	private static final long NS_TO_MS = 1000000;
+
 	private final AtomicLong[] buckets;
 	private final int latencyShift;
 
@@ -57,20 +59,27 @@ public final class LatencyBuckets {
 	}
 
 	/**
-	 * Increment count of bucket corresponding to the elapsed time in milliseconds.
+	 * Increment count of bucket corresponding to the elapsed time in nanoseconds.
 	 */
 	public void add(long elapsed) {
 		int index = getIndex(elapsed);
 		buckets[index].getAndIncrement();
 	}
 
-	private int getIndex(long elapsed) {
-		int e = (int)Math.ceil(elapsed);
+	private int getIndex(long elapsedNanos) {
+		// Convert nanoseconds to milliseconds.
+		long elapsed = elapsedNanos / NS_TO_MS;
+
+		// Round up elapsed to nearest millisecond.
+		if ((elapsedNanos - (elapsed * NS_TO_MS)) > 0) {
+			elapsed++;
+		}
+
 		int lastBucket = buckets.length - 1;
-		int limit = 1;
+		long limit = 1;
 
 		for (int i = 0; i < lastBucket; i++) {
-			if (e <= limit) {
+			if (elapsed <= limit) {
 				return i;
 			}
 			limit <<= latencyShift;
