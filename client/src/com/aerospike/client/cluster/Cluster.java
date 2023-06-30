@@ -202,7 +202,8 @@ public class Cluster implements Runnable, Closeable {
 	public boolean metricsEnabled;
 	MetricsPolicy metricsPolicy;
 	private volatile MetricsListener metricsListener;
-	private final AtomicLong retries = new AtomicLong();
+	private final AtomicLong retryCount = new AtomicLong();
+	private final AtomicLong tranCount = new AtomicLong();
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
@@ -1379,17 +1380,33 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	/**
+	 * Increment transaction count when metrics are enabled.
+	 */
+	public final void addTran() {
+		if (metricsEnabled) {
+			tranCount.getAndIncrement();
+		}
+	}
+
+	/**
+	 * Return transaction count. The value is cumulative and not reset per metrics interval.
+	 */
+	public final long getTranCount() {
+		return tranCount.get();
+	}
+
+	/**
 	 * Increment transaction retry count. There can be multiple retries for a single transaction.
 	 */
-	public void addRetry() {
-		retries.getAndIncrement();
+	public final void addRetry() {
+		retryCount.getAndIncrement();
 	}
 
 	/**
 	 * Return transaction retry count. The value is cumulative and not reset per metrics interval.
 	 */
-	public long getRetries() {
-		return retries.get();
+	public final long getRetryCount() {
+		return retryCount.get();
 	}
 
 	/**

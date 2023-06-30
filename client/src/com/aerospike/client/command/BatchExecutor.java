@@ -28,6 +28,8 @@ import com.aerospike.client.policy.BatchPolicy;
 public final class BatchExecutor {
 
 	public static void execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+		cluster.addTran();
+
 		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchCommand command : commands) {

@@ -39,6 +39,7 @@ public final class DeleteCommand extends SyncCommand {
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
+		cluster.addTran();
 	}
 
 	@Override

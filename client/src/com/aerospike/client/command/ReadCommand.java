@@ -44,6 +44,7 @@ public class ReadCommand extends SyncCommand {
 		this.binNames = null;
 		this.partition = Partition.read(cluster, policy, key);
 		this.isOperation = false;
+		cluster.addTran();
 	}
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
@@ -52,6 +53,7 @@ public class ReadCommand extends SyncCommand {
 		this.binNames = binNames;
 		this.partition = Partition.read(cluster, policy, key);
 		this.isOperation = false;
+		cluster.addTran();
 	}
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, boolean isOperation) {
@@ -60,6 +62,7 @@ public class ReadCommand extends SyncCommand {
 		this.binNames = null;
 		this.partition = partition;
 		this.isOperation = isOperation;
+		cluster.addTran();
 	}
 
 	@Override

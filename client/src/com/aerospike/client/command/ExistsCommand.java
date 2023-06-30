@@ -37,6 +37,7 @@ public final class ExistsCommand extends SyncCommand {
 		super(cluster, policy);
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);
+		cluster.addTran();
 	}
 
 	@Override

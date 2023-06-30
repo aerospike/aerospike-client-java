@@ -44,6 +44,7 @@ public final class WriteCommand extends SyncCommand {
 		this.partition = Partition.write(cluster, writePolicy, key);
 		this.bins = bins;
 		this.operation = operation;
+		cluster.addTran();
 	}
 
 	@Override
