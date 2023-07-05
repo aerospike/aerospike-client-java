@@ -297,6 +297,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			GrpcClientPolicy grpcClientPolicy = toGrpcClientPolicy(policy);
 			executor = new GrpcCallExecutor(grpcClientPolicy, authTokenManager, hosts);
 			channelProvider.setCallExecutor(executor);
+
+			// Warmup after the call executor in the channel provider has
+			// been set. The channel provider is used to fetch auth tokens
+			// required for the warm up calls.
+			executor.warmupChannels();
 		}
 		catch (Throwable e) {
 			if(authTokenManager != null) {

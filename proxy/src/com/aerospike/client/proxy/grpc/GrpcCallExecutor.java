@@ -99,9 +99,6 @@ public class GrpcCallExecutor implements Closeable {
 									controlChannelTypeAndEventLoop, authTokenManager,
 									hosts)
 					).collect(Collectors.toList());
-
-			// Warm up the channels with a "About" gRPC call.
-			warmupChannels(this.channelExecutors, grpcClientPolicy.connectTimeoutMillis);
 		}
 		catch (Exception e) {
 			throw new AerospikeException(ResultCode.SERVER_ERROR, e);
@@ -111,16 +108,16 @@ public class GrpcCallExecutor implements Closeable {
 	/**
 	 * Warmup the channels with a call to the About gRPC endpoint.
 	 */
-	private void warmupChannels(List<GrpcChannelExecutor> channelExecutors,
-								int connectTimeoutMillis) {
+	public void warmupChannels() {
 		final CountDownLatch doneSignal =
 			new CountDownLatch(channelExecutors.size());
+		final int timeoutMillis = Math.max(MIN_WARMUP_TIMEOUT,
+			grpcClientPolicy.connectTimeoutMillis);
 
 		channelExecutors.forEach(executor -> {
 			ManagedChannel channel = executor.getChannel();
 			AboutGrpc.newStub(channel)
-				.withDeadline(Deadline.after(Math.max(MIN_WARMUP_TIMEOUT,
-					connectTimeoutMillis), TimeUnit.MILLISECONDS))
+				.withDeadline(Deadline.after(timeoutMillis, TimeUnit.MILLISECONDS))
 				.get(Kvs.AboutRequest.newBuilder().build(), new StreamObserver<Kvs.AboutResponse>() {
 					@Override
 					public void onNext(Kvs.AboutResponse value) {
@@ -143,7 +140,7 @@ public class GrpcCallExecutor implements Closeable {
 		});
 
 		try {
-			doneSignal.await(connectTimeoutMillis, TimeUnit.MILLISECONDS);
+			doneSignal.await(timeoutMillis, TimeUnit.MILLISECONDS);
 		}
 		catch (Throwable ignore) {
 		}
