@@ -204,6 +204,7 @@ public class Cluster implements Runnable, Closeable {
 	private volatile MetricsListener metricsListener;
 	private final AtomicLong retryCount = new AtomicLong();
 	private final AtomicLong tranCount = new AtomicLong();
+	private final AtomicLong delayQueueTimeoutCount = new AtomicLong();
 
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
@@ -1399,7 +1400,18 @@ public class Cluster implements Runnable, Closeable {
 	 * Increment transaction retry count. There can be multiple retries for a single transaction.
 	 */
 	public final void addRetry() {
-		retryCount.getAndIncrement();
+		if (metricsEnabled) {
+			retryCount.getAndIncrement();
+		}
+	}
+
+	/**
+	 * Add transaction retry count. There can be multiple retries for a single transaction.
+	 */
+	public final void addRetries(int count) {
+		if (metricsEnabled) {
+			retryCount.getAndAdd(count);
+		}
 	}
 
 	/**
@@ -1407,6 +1419,20 @@ public class Cluster implements Runnable, Closeable {
 	 */
 	public final long getRetryCount() {
 		return retryCount.get();
+	}
+
+	/**
+	 * Increment async delay queue timeout count.
+	 */
+	public final void addDelayQueueTimeout() {
+		delayQueueTimeoutCount.getAndIncrement();
+	}
+
+	/**
+	 * Increment async delay queue timeout count.
+	 */
+	public final long getDelayQueueTimeoutCount() {
+		return delayQueueTimeoutCount.get();
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,6 +27,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
@@ -1409,6 +1410,11 @@ public final class AsyncBatch {
 		}
 
 		@Override
+		protected LatencyType getLatencyType() {
+			return LatencyType.BATCH;
+		}
+
+		@Override
 		protected boolean prepareRetry(boolean timeout) {
 			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
 				// Perform regular retry to same node.
@@ -1432,6 +1438,8 @@ public final class AsyncBatch {
 				// Go through normal retry.
 				return false;
 			}
+
+			parent.cluster.addRetries(batchNodes.size());
 
 			AsyncBatchCommand[] cmds = new AsyncBatchCommand[batchNodes.size()];
 			int count = 0;

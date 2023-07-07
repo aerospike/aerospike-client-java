@@ -545,7 +545,6 @@ public final class Batch {
 		@Override
 		protected boolean retryBatch(
 			Cluster cluster,
-			LatencyType latencyType,
 			int socketTimeout,
 			int totalTimeout,
 			long deadline,
@@ -576,9 +575,7 @@ public final class Batch {
 				command.deadline = deadline;
 
 				try {
-					if (latencyType != LatencyType.NONE) {
-						cluster.addRetry();
-					}
+					cluster.addRetry();
 					command.executeCommand();
 				}
 				catch (AerospikeException ae) {

@@ -73,7 +73,7 @@ public final class MetricsWriter implements MetricsListener {
 		sb.setLength(0);
 		sb.append(TimestampFormat.format(now));
 		sb.append(" header(1)");
-		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,eventloop[],node[]]");
+		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
 		sb.append(" eventloop[processSize,queueSize]");
 		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
 		sb.append(" conn[inUse,inPool,opened,closed]");
@@ -163,6 +163,8 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(cluster.getTranCount());  // Cumulative. Not reset on each interval.
 		sb.append(',');
 		sb.append(cluster.getRetryCount()); // Cumulative. Not reset on each interval.
+		sb.append(',');
+		sb.append(cluster.getDelayQueueTimeoutCount()); // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
 		EventLoop[] eventLoops = cluster.getEventLoopArray();

@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
@@ -51,6 +52,11 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 		this.taskId = taskId;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
 	}
 
 	@Override
