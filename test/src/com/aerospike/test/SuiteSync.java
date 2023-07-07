@@ -121,10 +121,7 @@ public class SuiteSync {
 		Args args = Args.Instance;
 
 		ClientPolicy policy = new ClientPolicy();
-		policy.user = args.user;
-		policy.password = args.password;
-		policy.authMode = args.authMode;
-		policy.tlsPolicy = args.tlsPolicy;
+		args.setClientPolicy(policy);
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 

@@ -115,11 +115,8 @@ public class SuiteAsync {
 
 		try {
 			ClientPolicy policy = new ClientPolicy();
+			args.setClientPolicy(policy);
 			policy.eventLoops = eventLoops;
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.authMode = args.authMode;
-			policy.tlsPolicy = args.tlsPolicy;
 
 			Host[] hosts = Host.parseHosts(args.host, args.port);
 

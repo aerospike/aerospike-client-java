@@ -35,6 +35,7 @@ import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.AuthMode;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -50,6 +51,8 @@ public class Args {
 	public String set;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
+	public int socketTimeout = 30000;
+	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
 	public boolean singleBin;
@@ -112,6 +115,15 @@ public class Args {
 			options.addOption("elt", "eventLoopType", true,
 					"Use specified event loop type for async examples\n" +
 					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+					);
+
+			options.addOption("st", "socketTimeout", true,
+					"Set read and write socketTimeout in milliseconds\n" +
+					"for single record and batch commands."
+					);
+			options.addOption("tt", "totalTimeout", true,
+					"Set read and write totalTimeout in milliseconds\n" +
+					"for single record and batch commands."
 					);
 
 			options.addOption("proxy", false, "Use proxy client.");
@@ -190,6 +202,14 @@ public class Args {
 				}
 			}
 
+			if (cl.hasOption("socketTimeout")) {
+				socketTimeout = Integer.parseInt(cl.getOptionValue("socketTimeout"));;
+			}
+
+			if (cl.hasOption("totalTimeout")) {
+				totalTimeout = Integer.parseInt(cl.getOptionValue("totalTimeout"));;
+			}
+
 			if (cl.hasOption("proxy")) {
 				useProxyClient = true;
 			}
@@ -208,6 +228,21 @@ public class Args {
 		catch (Exception ex) {
 			throw new AerospikeException("Failed to parse args: " + argString);
 		}
+	}
+
+	public void setClientPolicy(ClientPolicy p) {
+		p.user = user;
+		p.password = password;
+		p.authMode = authMode;
+		p.tlsPolicy = tlsPolicy;
+		p.readPolicyDefault.socketTimeout = socketTimeout;
+		p.readPolicyDefault.totalTimeout = totalTimeout;
+		p.writePolicyDefault.socketTimeout = socketTimeout;
+		p.writePolicyDefault.totalTimeout = totalTimeout;
+		p.batchPolicyDefault.socketTimeout = socketTimeout;
+		p.batchPolicyDefault.totalTimeout = totalTimeout;
+		p.batchParentPolicyWriteDefault.socketTimeout = socketTimeout;
+		p.batchParentPolicyWriteDefault.totalTimeout = totalTimeout;
 	}
 
 	private static void logUsage(Options options) {
@@ -252,7 +287,7 @@ public class Args {
 				host, port, namespace));
 		}
 
-		singleBin = parseBoolean(namespaceTokens, "single-bin");
+		//singleBin = parseBoolean(namespaceTokens, "single-bin");
 
 		int nsup = parseInt(namespaceTokens, "nsup-period");
 

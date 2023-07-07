@@ -357,6 +357,10 @@ public class GrpcConversions {
 			case UNAVAILABLE:
 				resultCode = ResultCode.SERVER_NOT_AVAILABLE;
 				break;
+
+			case OK:
+				resultCode = ResultCode.OK;
+				break;
 		}
 
 		return new AerospikeException(resultCode, getDisplayMessage(sre, MAX_ERR_MSG_LENGTH), sre);
