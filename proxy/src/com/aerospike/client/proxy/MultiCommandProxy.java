@@ -69,17 +69,17 @@ public abstract class MultiCommandProxy extends CommandProxy {
 
 		switch (resultCode) {
 			case ResultCode.OK:
+				if (parseKey) {
+					key = parser.parseKey(bVal);
+				}
+				else {
+					parser.skipKey();
+				}
 				if (parser.opCount == 0) {
 					// Bin data was not returned.
 					record = new Record(null, parser.generation, parser.expiration);
 				}
 				else {
-					if (parseKey) {
-						key = parser.parseKey(bVal);
-					}
-					else {
-						parser.skipKey();
-					}
 					record = parser.parseRecord(isOperation);
 				}
 				break;
@@ -107,7 +107,7 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		return new RecordProxy(resultCode, key, record, bVal);
 	}
 
-	protected void handleNotFound(int resultCode) {
+	protected void handleNotFound(@SuppressWarnings("unused") int resultCode) {
 		// Do nothing in default case. Record will be null.
 	}
 

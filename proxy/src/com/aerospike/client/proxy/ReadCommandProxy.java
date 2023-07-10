@@ -87,12 +87,12 @@ public class ReadCommandProxy extends SingleCommandProxy {
 
 		switch (resultCode) {
 			case ResultCode.OK:
+				parser.skipKey();
 				if (parser.opCount == 0) {
 					// Bin data was not returned.
 					record = new Record(null, parser.generation, parser.expiration);
 				}
 				else {
-					parser.skipKey();
 					record = parser.parseRecord(isOperation);
 				}
 				break;
