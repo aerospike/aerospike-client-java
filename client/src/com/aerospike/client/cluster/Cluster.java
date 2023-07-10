@@ -1145,7 +1145,7 @@ public class Cluster implements Runnable, Closeable {
 					for (int i = 0; i < nodeArray.length; i++) {
 						nodeStats[i].async = nodeArray[i].getAsyncConnectionStats();
 					}
-					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get());
 				}
 			}
 
@@ -1192,7 +1192,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
 			}
 		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get());
 	}
 
 	public final void getStats(ClusterStatsListener listener) {
@@ -1210,7 +1210,7 @@ public class Cluster implements Runnable, Closeable {
 
 			if (eventLoops == null) {
 				try {
-					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount));
+					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get()));
 				}
 				catch (Throwable e) {
 				}
@@ -1255,7 +1255,7 @@ public class Cluster implements Runnable, Closeable {
 							}
 
 							try {
-								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount));
+								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount, retryCount.get()));
 							}
 							catch (Throwable e) {
 							}
@@ -1400,18 +1400,14 @@ public class Cluster implements Runnable, Closeable {
 	 * Increment transaction retry count. There can be multiple retries for a single transaction.
 	 */
 	public final void addRetry() {
-		if (metricsEnabled) {
-			retryCount.getAndIncrement();
-		}
+		retryCount.getAndIncrement();
 	}
 
 	/**
 	 * Add transaction retry count. There can be multiple retries for a single transaction.
 	 */
 	public final void addRetries(int count) {
-		if (metricsEnabled) {
-			retryCount.getAndAdd(count);
-		}
+		retryCount.getAndAdd(count);
 	}
 
 	/**
