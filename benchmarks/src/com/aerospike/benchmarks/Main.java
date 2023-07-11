@@ -48,6 +48,7 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.BatchStatus;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.CommitLevel;
@@ -1151,6 +1152,12 @@ public class Main implements Log.Callback {
 				AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
 
 				try {
+					// TODO: Remove this before merging to stage.
+					MetricsPolicy sp = new MetricsPolicy();
+					sp.reportDir = "/Users/bnichols/metrics";
+					sp.interval = 1;
+					client.enableMetrics(sp);
+
 					if (initialize) {
 						doAsyncInserts(client);
 					}
@@ -1171,6 +1178,12 @@ public class Main implements Log.Callback {
 			AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
 
 			try {
+				// TODO: Remove this before merging to stage.
+	            MetricsPolicy sp = new MetricsPolicy();
+	            sp.reportDir = "/Users/bnichols/metrics";
+	            sp.interval = 1;
+	            client.enableMetrics(sp);
+
 				if (initialize) {
 					doInserts(client);
 				}

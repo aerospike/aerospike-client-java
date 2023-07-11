@@ -631,11 +631,11 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		processRecoverQueue();
-
 		if (metricsEnabled && (tendCount % metricsPolicy.interval) == 0) {
 			metricsListener.onSnapshot(this);
 		}
+
+		processRecoverQueue();
 	}
 
 	private final boolean seedNode(Peers peers, boolean failIfNotConnected) {

@@ -261,6 +261,7 @@ public final class MetricsWriter implements MetricsListener {
 		try {
 			sb.append(System.lineSeparator());
 			writer.write(sb.toString());
+			writer.flush();
 		}
 		catch (IOException ioe) {
 			throw new AerospikeException(ioe);
