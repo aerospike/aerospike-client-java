@@ -627,7 +627,7 @@ public class Cluster implements Runnable, Closeable {
 		// Reset connection error window for all nodes every connErrorWindow tend iterations.
 		if (maxErrorRate > 0 && tendCount % errorRateWindow == 0) {
 			for (Node node : nodes) {
-				node.resetErrorCount();
+				node.resetErrorRate();
 			}
 		}
 
@@ -1123,8 +1123,6 @@ public class Cluster implements Runnable, Closeable {
 			nodeStats[count++] = new NodeStats(node);
 		}
 
-		int threadsInUse = getThreadsInUse();
-
 		// Get async statistics.
 		EventLoopStats[] eventLoopStats = null;
 
@@ -1145,7 +1143,7 @@ public class Cluster implements Runnable, Closeable {
 					for (int i = 0; i < nodeArray.length; i++) {
 						nodeStats[i].async = nodeArray[i].getAsyncConnectionStats();
 					}
-					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get());
+					return new ClusterStats(this, nodeStats, eventLoopStats);
 				}
 			}
 
@@ -1192,7 +1190,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
 			}
 		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get());
+		return new ClusterStats(this, nodeStats, eventLoopStats);
 	}
 
 	public final void getStats(ClusterStatsListener listener) {
@@ -1206,11 +1204,9 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[count++] = new NodeStats(node);
 			}
 
-			int threadsInUse = getThreadsInUse();
-
 			if (eventLoops == null) {
 				try {
-					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount, retryCount.get()));
+					listener.onSuccess(new ClusterStats(this, nodeStats, null));
 				}
 				catch (Throwable e) {
 				}
@@ -1222,7 +1218,7 @@ public class Cluster implements Runnable, Closeable {
 			final EventLoopStats[] loopStats = new EventLoopStats[eventLoopArray.length];
 			final ConnectionStats[][] connStats = new ConnectionStats[nodeArray.length][eventLoopArray.length];
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventLoopArray.length);
-			final int threadCount = threadsInUse;
+			final Cluster cluster = this;
 
 			for (EventLoop eventLoop : eventLoopArray) {
 				Runnable fetch = new Runnable() {
@@ -1255,7 +1251,7 @@ public class Cluster implements Runnable, Closeable {
 							}
 
 							try {
-								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount, retryCount.get()));
+								listener.onSuccess(new ClusterStats(cluster, nodeStats, loopStats));
 							}
 							catch (Throwable e) {
 							}

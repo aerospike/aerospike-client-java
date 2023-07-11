@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -77,7 +78,9 @@ public class Node implements Closeable {
 	private volatile NodeMetrics metrics;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
-	private final AtomicInteger errorCount;
+	private final AtomicInteger errorRateCount;
+	private final AtomicLong errorCount;
+	private final AtomicLong timeoutCount;
 	protected int connectionIter;
 	private int peersGeneration;
 	int partitionGeneration;
@@ -109,7 +112,9 @@ public class Node implements Closeable {
 		this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
-		this.errorCount = new AtomicInteger(0);
+		this.errorRateCount = new AtomicInteger(0);
+		this.errorCount = new AtomicLong(0);
+		this.timeoutCount = new AtomicLong(0);
 		this.peersGeneration = -1;
 		this.partitionGeneration = -1;
 		this.rebalanceGeneration = -1;
@@ -338,7 +343,7 @@ public class Node implements Closeable {
 		try {
 			// Reset error rate.
 			if (cluster.maxErrorRate > 0) {
-				resetErrorCount();
+				resetErrorRate();
 			}
 
 			// Login when user authentication is enabled.
@@ -843,7 +848,7 @@ public class Node implements Closeable {
 	 */
 	public final void closeConnectionOnError(Connection conn) {
 		connsClosed.getAndIncrement();
-		incrErrorCount();
+		incrErrorRate();
 		conn.close();
 	}
 
@@ -862,7 +867,7 @@ public class Node implements Closeable {
 			if (excess > 0) {
 				pool.closeIdle(this, excess);
 			}
-			else if (excess < 0 && errorCountWithinLimit()) {
+			else if (excess < 0 && errorRateWithinLimit()) {
 				createConnections(pool, -excess);
 			}
 		}
@@ -954,7 +959,7 @@ public class Node implements Closeable {
 	 * Close async connection on error.
 	 */
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
-		incrErrorCount();
+		incrErrorRate();
 		asyncConnectionPools[index].connectionClosed();
 		conn.close();
 	}
@@ -968,7 +973,7 @@ public class Node implements Closeable {
 	}
 
 	public final void decrAsyncConnection(int index) {
-		incrErrorCount();
+		incrErrorRate();
 		asyncConnectionPools[index].total--;
 	}
 
@@ -985,7 +990,7 @@ public class Node implements Closeable {
 		if (excess > 0) {
 			closeIdleAsyncConnections(pool, excess);
 		}
-		else if (excess < 0 && errorCountWithinLimit()) {
+		else if (excess < 0 && errorRateWithinLimit()) {
 			// Create connection requests sequentially because they will be done in the
 			// background and there is no immediate need for them to complete.
 			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 1, null, null);
@@ -1049,14 +1054,6 @@ public class Node implements Closeable {
 		return metrics;
 	}
 
-	public final void addError() {
-		metrics.addError();
-	}
-
-	public final void addTimeout() {
-		metrics.addTimeout();
-	}
-
 	/**
 	 * Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
 	 */
@@ -1064,24 +1061,54 @@ public class Node implements Closeable {
 		metrics.addLatency(type, elapsed);
 	}
 
-	public final void incrErrorCount() {
+	public final void incrErrorRate() {
 		if (cluster.maxErrorRate > 0) {
-			errorCount.getAndIncrement();
+			errorRateCount.getAndIncrement();
 		}
 	}
 
-	public final void resetErrorCount() {
-		errorCount.set(0);
+	public final void resetErrorRate() {
+		errorRateCount.set(0);
 	}
 
-	public final boolean errorCountWithinLimit() {
-		return cluster.maxErrorRate <= 0 || errorCount.get() <= cluster.maxErrorRate;
+	public final boolean errorRateWithinLimit() {
+		return cluster.maxErrorRate <= 0 || errorRateCount.get() <= cluster.maxErrorRate;
 	}
 
 	public final void validateErrorCount() {
-		if (! errorCountWithinLimit()) {
+		if (! errorRateWithinLimit()) {
 			throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
 		}
+	}
+
+	/**
+	 * Increment transaction error count. If the error is retryable, multiple errors per
+	 * transaction may occur.
+	 */
+	public void addError() {
+		errorCount.getAndIncrement();
+	}
+
+	/**
+	 * Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
+	 * multiple timeouts per transaction may occur.
+	 */
+	public void addTimeout() {
+		timeoutCount.getAndIncrement();
+	}
+
+	/**
+	 * Return transaction error count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getErrorCount() {
+		return errorCount.get();
+	}
+
+	/**
+	 * Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getTimeoutCount() {
+		return timeoutCount.get();
 	}
 
 	/**

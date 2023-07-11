@@ -217,13 +217,12 @@ public final class MetricsWriter implements MetricsListener {
 		writeConn(node.getAsyncConnectionStats());
 		sb.append(',');
 
-		NodeMetrics nm = node.getMetrics();
-
-		sb.append(nm.getErrors());   // Cumulative. Not reset on each interval.
+		sb.append(node.getErrorCount());   // Cumulative. Not reset on each interval.
 		sb.append(',');
-		sb.append(nm.getTimeouts()); // Cumulative. Not reset on each interval.
+		sb.append(node.getTimeoutCount()); // Cumulative. Not reset on each interval.
 		sb.append(",[");
 
+		NodeMetrics nm = node.getMetrics();
 		int max = LatencyType.getMax();
 
 		for (int i = 0; i < max; i++) {

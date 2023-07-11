@@ -57,19 +57,16 @@ public final class ClusterStats {
 	 * Cluster statistics constructor.
 	 */
 	public ClusterStats(
+		Cluster cluster,
 		NodeStats[] nodes,
-		EventLoopStats[] eventLoops,
-		int threadsInUse,
-		int recoverQueueSize,
-		int invalidNodeCount,
-		long retryCount
+		EventLoopStats[] eventLoops
 	) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
-		this.threadsInUse = threadsInUse;
-		this.recoverQueueSize = recoverQueueSize;
-		this.invalidNodeCount = invalidNodeCount;
-		this.retryCount = retryCount;
+		this.threadsInUse = cluster.getThreadsInUse();
+		this.recoverQueueSize = cluster.getRecoverQueueSize();
+		this.invalidNodeCount = cluster.getInvalidNodeCount();
+		this.retryCount = cluster.getRetryCount();
 	}
 
 	/**

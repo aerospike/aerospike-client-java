@@ -723,7 +723,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		addTimeout();
+		node.addTimeout();
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -773,7 +773,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		addTimeout();
+		node.addTimeout();
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -835,7 +835,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
-		addTimeout();
+		node.addTimeout();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 
@@ -850,7 +850,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		addError();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
-		node.incrErrorCount();
+		node.incrErrorRate();
 		retry(ae, false);
 	}
 
@@ -970,15 +970,9 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 	}
 
-	private void addTimeout() {
-		if (latencyType != LatencyType.NONE) {
-			node.addTimeout();
-		}
-	}
-
 	private void addError() {
 		// Some errors can occur before the node is assigned.
-		if (latencyType != LatencyType.NONE && node != null) {
+		if (node != null) {
 			node.addError();
 		}
 	}

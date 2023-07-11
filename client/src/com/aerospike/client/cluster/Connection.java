@@ -83,7 +83,7 @@ public final class Connection implements Closeable {
 				socket.close();
 
 				if (node != null) {
-					node.incrErrorCount();
+					node.incrErrorRate();
 				}
 				throw e;
 			}
@@ -156,7 +156,7 @@ public final class Connection implements Closeable {
 				socket.close();
 
 				if (node != null) {
-					node.incrErrorCount();
+					node.incrErrorRate();
 				}
 				throw e;
 			}

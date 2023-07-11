@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.metrics;
 
-import java.util.concurrent.atomic.AtomicLong;
-
 import com.aerospike.client.cluster.LatencyType;
 
 /**
@@ -26,8 +24,6 @@ import com.aerospike.client.cluster.LatencyType;
  */
 public final class NodeMetrics {
 	private final LatencyBuckets[] latency;
-	private final AtomicLong errors = new AtomicLong();
-	private final AtomicLong timeouts = new AtomicLong();
 
 	/**
 	 * Initialize extended node metrics.
@@ -56,35 +52,5 @@ public final class NodeMetrics {
 	 */
 	public LatencyBuckets getLatencyBuckets(int type) {
 		return latency[type];
-	}
-
-	/**
-	 * Increment transaction error count. If the error is retryable, multiple errors per
-	 * transaction may occur.
-	 */
-	public void addError() {
-		errors.getAndIncrement();
-	}
-
-	/**
-	 * Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
-	 * multiple timeouts per transaction may occur.
-	 */
-	public void addTimeout() {
-		timeouts.getAndIncrement();
-	}
-
-	/**
-	 * Return transaction error count. The value is cumulative and not reset per metrics interval.
-	 */
-	public long getErrors() {
-		return errors.get();
-	}
-
-	/**
-	 * Return transaction timeout count. The value is cumulative and not reset per metrics interval.
-	 */
-	public long getTimeouts() {
-		return timeouts.get();
 	}
 }

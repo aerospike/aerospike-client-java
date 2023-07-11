@@ -791,7 +791,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		addTimeout();
+		node.addTimeout();
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -841,7 +841,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		// Increment node's timeout counter.
-		addTimeout();
+		node.addTimeout();
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -930,7 +930,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 	}
 
 	private void onServerTimeout() {
-		addTimeout();
+		node.addTimeout();
 		retryServerError(new AerospikeException.Timeout(command.policy, false));
 	}
 
@@ -946,7 +946,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		try {
 			putConnection();
-			node.incrErrorCount();
+			node.incrErrorRate();
 			retry(ae, false);
 		}
 		catch (Throwable e) {
@@ -1087,15 +1087,9 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 	}
 
-	private void addTimeout() {
-		if (latencyType != LatencyType.NONE) {
-			node.addTimeout();
-		}
-	}
-
 	private void addError() {
 		// Some errors can occur before the node is assigned.
-		if (latencyType != LatencyType.NONE && node != null) {
+		if (node != null) {
 			node.addError();
 		}
 	}
