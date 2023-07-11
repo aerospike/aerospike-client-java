@@ -64,6 +64,11 @@ public final class QueryPartitionCommand extends MultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected final void writeBuffer() {
 		setQuery(cluster, policy, statement, taskId, false, nodePartitions);
 	}
@@ -102,10 +107,5 @@ public final class QueryPartitionCommand extends MultiCommand {
 			tracker.setLast(nodePartitions, key, bval.val);
 		}
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.QUERY;
 	}
 }

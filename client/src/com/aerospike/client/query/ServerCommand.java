@@ -40,6 +40,11 @@ public final class ServerCommand extends MultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected final void writeBuffer() {
 		setQuery(cluster, policy, statement, taskId, true, null);
 	}
@@ -67,10 +72,5 @@ public final class ServerCommand extends MultiCommand {
 			throw new AerospikeException.QueryTerminated();
 		}
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.QUERY;
 	}
 }

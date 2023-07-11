@@ -41,6 +41,11 @@ public final class OperateCommand extends ReadCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return args.hasWrite ? LatencyType.WRITE : LatencyType.READ;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setOperate(args.writePolicy, key, args);
 	}
@@ -63,10 +68,5 @@ public final class OperateCommand extends ReadCommand {
 			partition.prepareRetryRead(timeout);
 		}
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return args.hasWrite ? LatencyType.WRITE : LatencyType.READ;
 	}
 }

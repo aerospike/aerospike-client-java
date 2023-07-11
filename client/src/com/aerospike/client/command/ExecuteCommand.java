@@ -57,6 +57,11 @@ public final class ExecuteCommand extends ReadCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.WRITE;
+	}
+
+	@Override
 	protected void writeBuffer() throws AerospikeException {
 		setUdf(writePolicy, key, packageName, functionName, args);
 	}
@@ -70,10 +75,5 @@ public final class ExecuteCommand extends ReadCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryWrite(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 }

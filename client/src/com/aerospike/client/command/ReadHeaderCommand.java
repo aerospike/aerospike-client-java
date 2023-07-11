@@ -47,6 +47,11 @@ public class ReadHeaderCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setReadHeader(policy, key);
 	}
@@ -84,11 +89,6 @@ public class ReadHeaderCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	public Record getRecord() {

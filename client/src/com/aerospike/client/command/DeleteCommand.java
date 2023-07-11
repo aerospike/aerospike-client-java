@@ -53,6 +53,11 @@ public final class DeleteCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.WRITE;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setDelete(writePolicy, key);
 	}
@@ -90,11 +95,6 @@ public final class DeleteCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryWrite(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 
 	public boolean existed() {

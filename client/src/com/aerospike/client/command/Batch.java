@@ -528,6 +528,11 @@ public final class Batch {
 		}
 
 		@Override
+		protected LatencyType getLatencyType() {
+			return LatencyType.BATCH;
+		}
+
+		@Override
 		protected boolean prepareRetry(boolean timeout) {
 			if (! ((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
 				   (parent == null || ! parent.isDone()))) {
@@ -610,11 +615,6 @@ public final class Batch {
 				}
 			}
 			return true;
-		}
-
-		@Override
-		protected LatencyType getLatencyType() {
-			return LatencyType.BATCH;
 		}
 
 		protected void setInDoubt(boolean inDoubt) {

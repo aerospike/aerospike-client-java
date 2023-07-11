@@ -58,6 +58,11 @@ public final class WriteCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.WRITE;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setWrite(writePolicy, operation, key, bins);
 	}
@@ -88,10 +93,5 @@ public final class WriteCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryWrite(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 }

@@ -69,6 +69,11 @@ public final class ScanPartitionCommand extends MultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setScan(cluster, scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
 	}
@@ -102,10 +107,5 @@ public final class ScanPartitionCommand extends MultiCommand {
 			tracker.setDigest(nodePartitions, key);
 		}
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.QUERY;
 	}
 }

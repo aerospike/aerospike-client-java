@@ -46,6 +46,11 @@ public final class ExistsCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setExists(policy, key);
 	}
@@ -83,11 +88,6 @@ public final class ExistsCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	public boolean exists() {

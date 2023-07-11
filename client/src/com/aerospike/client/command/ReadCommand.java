@@ -71,6 +71,11 @@ public class ReadCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setRead(policy, key, binNames);
 	}
@@ -195,11 +200,6 @@ public class ReadCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	protected void handleNotFound(int resultCode) {

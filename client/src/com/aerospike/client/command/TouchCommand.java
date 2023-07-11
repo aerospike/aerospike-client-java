@@ -52,6 +52,11 @@ public final class TouchCommand extends SyncCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.WRITE;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setTouch(writePolicy, key);
 	}
@@ -82,10 +87,5 @@ public final class TouchCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryWrite(timeout);
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 }

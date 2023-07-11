@@ -56,6 +56,11 @@ public final class QueryAggregateCommand extends MultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected final void writeBuffer() throws AerospikeException {
 		setQuery(cluster, policy, statement, taskId, false, null);
 	}
@@ -115,10 +120,5 @@ public final class QueryAggregateCommand extends MultiCommand {
 			}
 		}
 		return true;
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.QUERY;
 	}
 }
