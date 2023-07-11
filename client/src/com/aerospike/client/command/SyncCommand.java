@@ -315,8 +315,8 @@ public abstract class SyncCommand extends Command {
 	}
 
 	protected abstract Node getNode();
+	protected abstract LatencyType getLatencyType();
 	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 	protected abstract boolean prepareRetry(boolean timeout);
-	protected abstract LatencyType getLatencyType();
 }
