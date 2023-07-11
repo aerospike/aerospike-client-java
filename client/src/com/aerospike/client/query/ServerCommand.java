@@ -71,6 +71,6 @@ public final class ServerCommand extends MultiCommand {
 
 	@Override
 	protected LatencyType getLatencyType() {
-		return LatencyType.NONE;
+		return LatencyType.QUERY;
 	}
 }

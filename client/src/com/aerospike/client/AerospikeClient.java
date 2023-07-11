@@ -2721,6 +2721,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 
+		cluster.addTran();
+
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
 		Executor executor = new Executor(cluster, nodes.length);
@@ -2757,6 +2759,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (operations.length > 0) {
 			statement.setOperations(operations);
 		}
+
+		cluster.addTran();
 
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
