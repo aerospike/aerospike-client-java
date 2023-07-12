@@ -29,6 +29,7 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
@@ -113,6 +114,12 @@ public class SuiteAsync {
 			client = new AerospikeClient(policy, hosts);
 
 			try {
+				// TODO: Remove this before merging to stage.
+	            MetricsPolicy sp = new MetricsPolicy();
+	            sp.reportDir = "/Users/bnichols/metrics/async";
+	            sp.interval = 1;
+	            client.enableMetrics(sp);
+
 				args.setServerSpecific(client);
 			}
 			catch (RuntimeException re) {

@@ -234,7 +234,7 @@ public class Args {
 				host, port, namespace));
 		}
 
-		singleBin = parseBoolean(namespaceTokens, "single-bin");
+		//singleBin = parseBoolean(namespaceTokens, "single-bin");
 
 		int nsup = parseInt(namespaceTokens, "nsup-period");
 

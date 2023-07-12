@@ -24,6 +24,7 @@ import org.junit.runners.Suite;
 import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
@@ -129,6 +130,12 @@ public class SuiteSync {
 		client = new AerospikeClient(policy, hosts);
 
 		try {
+			// TODO: Remove this before merging to stage.
+            MetricsPolicy sp = new MetricsPolicy();
+            sp.reportDir = "/Users/bnichols/metrics/sync";
+            sp.interval = 1;
+            client.enableMetrics(sp);
+
 			args.setServerSpecific(client);
 		}
 		catch (RuntimeException re) {

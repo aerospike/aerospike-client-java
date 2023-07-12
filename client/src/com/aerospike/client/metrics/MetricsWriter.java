@@ -19,6 +19,8 @@ package com.aerospike.client.metrics;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
@@ -63,7 +65,9 @@ public final class MetricsWriter implements MetricsListener {
 		Date now = Calendar.getInstance().getTime();
 
 		try {
-			String path = dir + File.separator + "metrics" + FilenameFormat.format(now) + ".txt";
+			Files.createDirectories(Paths.get(dir));
+
+			String path = dir + File.separator + "metrics-" + FilenameFormat.format(now) + ".log";
 			writer = new FileWriter(path, true);
 		}
 		catch (IOException ioe) {
