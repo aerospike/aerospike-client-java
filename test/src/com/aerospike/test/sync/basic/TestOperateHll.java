@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -217,6 +217,11 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateHLLInit() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateHll.operateHLLInit");
+			return;
+		}
+
 		client.delete(null, key);
 
 		for (ArrayList<Integer> desc : legalDescriptions) {
@@ -330,6 +335,11 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateHLLAddInit() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateHll.operateHLLAddInit");
+			return;
+		}
+
 		for (ArrayList<Integer> desc : legalDescriptions) {
 			assertAddInit(desc.get(0), desc.get(1));
 		}
@@ -727,6 +737,11 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void getPut() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateHll.getPut");
+			return;
+		}
+
 		for (ArrayList<Integer> desc : legalDescriptions) {
 			int nIndexBits = desc.get(0);
 			int nMinhashBits = desc.get(1);
@@ -826,6 +841,11 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateSimilarity() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateHll.operateSimilarity");
+			return;
+		}
+
 		double[] overlaps = new double[] {0.0001, 0.001, 0.01, 0.1, 0.5};
 
 		for (double overlap : overlaps) {
@@ -864,6 +884,11 @@ public class TestOperateHll extends TestSync {
 
 	@Test
 	public void operateEmptySimilarity() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateHll.operateEmptySimilarity");
+			return;
+		}
+
 		for (ArrayList<Integer> desc : legalDescriptions) {
 			int nIndexBits = desc.get(0);
 			int nMinhashBits = desc.get(1);

@@ -710,6 +710,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSetEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitSetEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -727,6 +732,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitLShiftEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitLShiftEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -758,6 +768,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitRShiftEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitRShiftEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		BitPolicy partial_policy = new BitPolicy(BitWriteFlags.PARTIAL);
 		int bin_sz = 15;
@@ -806,6 +821,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAndEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitAndEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -823,6 +843,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitNotEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitNotEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -854,6 +879,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitAddEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitAddEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
@@ -871,6 +901,11 @@ public class TestOperateBit extends TestSync {
 
 	@Test
 	public void operateBitSubEx() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestOperateBit.operateBitSubEx");
+			return;
+		}
+
 		BitPolicy policy = new BitPolicy();
 		int bin_sz = 15;
 		int bin_bit_sz = bin_sz * 8;
