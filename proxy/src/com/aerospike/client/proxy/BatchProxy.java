@@ -98,6 +98,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(ae);
 		}
 	}
@@ -142,6 +147,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(ae);
 		}
 	}
@@ -187,6 +197,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(ae);
 		}
 	}
@@ -452,6 +467,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(ae);
 		}
 	}
@@ -512,6 +532,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(ae);
 		}
 	}
@@ -712,6 +737,11 @@ public class BatchProxy {
 
 		@Override
 		void onFailure(AerospikeException ae) {
+			for (BatchRecord record : records) {
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = record.hasWrite && inDoubt;
+				}
+			}
 			listener.onFailure(records, ae);
 		}
 	}
