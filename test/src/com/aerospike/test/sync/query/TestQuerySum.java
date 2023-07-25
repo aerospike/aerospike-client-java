@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,7 +43,7 @@ import com.aerospike.test.sync.TestSync;
 public class TestQuerySum extends TestSync {
 	private static final String indexName = "aggindex";
 	private static final String keyPrefix = "aggkey";
-	private static final String binName = args.getBinName("aggbin");
+	private static final String binName = "aggbin";
 	private static final int size = 10;
 
 	@BeforeClass

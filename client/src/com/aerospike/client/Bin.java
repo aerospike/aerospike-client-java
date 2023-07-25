@@ -39,7 +39,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and string value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -51,7 +50,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and byte array value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -63,7 +61,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name, byte array value and particle type.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 * For internal use only.
 	 *
 	 * @param name		bin name, current limit is 15 characters
@@ -77,7 +74,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and byte array segment value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		byte array value
@@ -91,7 +87,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and byte value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -104,7 +99,6 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and short value.
 	 * The server will convert all shorts to longs.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -117,7 +111,6 @@ public final class Bin {
 	/**
 	 * Constructor, specifying bin name and integer value.
 	 * The server will convert all integers to longs.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -129,7 +122,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and long value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -141,8 +133,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and double value.
-	 * <p>
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -154,8 +144,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and float value.
-	 * <p>
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -167,7 +155,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and boolean value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 * Either a boolean or integer bin is sent to the server, depending
 	 * on configuration {@link com.aerospike.client.Value#UseBoolBin}.
 	 *
@@ -181,14 +168,6 @@ public final class Bin {
 
 	/**
 	 * Create bin with a list value.  The list value will be serialized as a server list type.
-	 * <p>
-	 * If connecting to Aerospike 2 servers, use the following instead:
-	 * <pre>
-	 * {@code
-	 * Bin bin = new Bin(name, (Object)list);
-	 * }
-	 * </pre>
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -200,7 +179,6 @@ public final class Bin {
 
 	/**
 	 * Create bin with a map value.  The map value will be serialized as a server map type.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -212,7 +190,6 @@ public final class Bin {
 
 	/**
 	 * Create bin with a sorted map value.  The map value will be serialized as a server ordered map type.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -228,7 +205,6 @@ public final class Bin {
 	 * Use {@link Bin#Bin(String, SortedMap)} if the map is sorted (like TreeMap).
 	 * <p>
 	 * Create bin with a map value and order.  The map value will be serialized as a server map type.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value, pass in a {@link java.util.SortedMap} instance if map order is sorted.
@@ -242,8 +218,7 @@ public final class Bin {
 
 	/**
 	 * Create a map bin from a list of key/value entries.  The value will be serialized as a
-	 * server map type with specified mapOrder.  For servers configured as "single-bin", enter
-	 * a null or empty name.
+	 * server map type with specified mapOrder.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		list of key/value entries already in desired sorted order
@@ -256,7 +231,6 @@ public final class Bin {
 
 	/**
 	 * Constructor, specifying bin name and value.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 * @param value		bin value
@@ -274,7 +248,6 @@ public final class Bin {
 	 * To disable this constructor, set {@link com.aerospike.client.Value#DisableSerializer} to true.
 	 *
 	 * @param name		bin name, current limit is 15 characters.
-	 * 					For servers configured as "single-bin", enter a null or empty name.
 	 * @param value		bin value
 	 */
 	public Bin(String name, Object value) {
@@ -290,7 +263,6 @@ public final class Bin {
 	 * To disable this method, set {@link com.aerospike.client.Value#DisableSerializer} to true.
 	 *
 	 * @param name		bin name, current limit is 15 characters.
-	 * 					For servers configured as "single-bin", enter a null or empty name.
 	 * @param value		bin value
 	 */
 	public static Bin asBlob(String name, Object value) {
@@ -299,7 +271,6 @@ public final class Bin {
 
 	/**
 	 * Create bin with a null value. This is useful for bin deletions within a record.
-	 * For servers configured as "single-bin", enter a null or empty name.
 	 *
 	 * @param name		bin name, current limit is 15 characters
 	 */

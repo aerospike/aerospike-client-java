@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -59,7 +59,7 @@ public class Serialize extends Example {
 			array[i] = i * i;
 		}
 
-		Bin bin = new Bin(params.getBinName("serialbin"), array);
+		Bin bin = new Bin("serialbin", array);
 
 		// Do a test that pushes this complex object through the serializer
 		console.info("Write array using serializer.");
@@ -116,7 +116,7 @@ public class Serialize extends Example {
 		list.add("string2");
 		list.add("string3");
 
-		Bin bin = new Bin(params.getBinName("serialbin"), (Object)list);
+		Bin bin = new Bin("serialbin", (Object)list);
 
 		console.info("Write list using serializer.");
 		client.put(params.writePolicy, key, bin);
@@ -184,7 +184,7 @@ public class Serialize extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("complexbin"), new Value.BlobValue(list));
+		Bin bin = new Bin("complexbin", new Value.BlobValue(list));
 
 		console.info("Write complex object using serializer.");
 		client.put(params.writePolicy, key, bin);

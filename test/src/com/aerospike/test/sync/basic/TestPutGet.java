@@ -30,24 +30,14 @@ import com.aerospike.test.sync.TestSync;
 public class TestPutGet extends TestSync {
 	@Test
 	public void putGet() {
-		if (args.singleBin) {
-			Key key = new Key(args.namespace, args.set, "putgetkey");
-			Bin bin = new Bin("", "value");
+		Key key = new Key(args.namespace, args.set, "putgetkey");
+		Bin bin1 = new Bin("bin1", "value1");
+		Bin bin2 = new Bin("bin2", "value2");
 
-			client.put(null, key, bin);
-			Record record = client.get(null, key);
-			assertBinEqual(key, record, bin);
-		}
-		else {
-			Key key = new Key(args.namespace, args.set, "putgetkey");
-			Bin bin1 = new Bin("bin1", "value1");
-			Bin bin2 = new Bin("bin2", "value2");
-
-			client.put(null, key, bin1, bin2);
-			Record record = client.get(null, key);
-			assertBinEqual(key, record, bin1);
-			assertBinEqual(key, record, bin2);
-		}
+		client.put(null, key, bin1, bin2);
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, bin1);
+		assertBinEqual(key, record, bin2);
 	}
 
 	@Test

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,7 +44,7 @@ public class QuerySum extends Example {
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "aggindex";
 		String keyPrefix = "aggkey";
-		String binName = params.getBinName("aggbin");
+		String binName = "aggbin";
 		int size = 10;
 
 		register(client, params);

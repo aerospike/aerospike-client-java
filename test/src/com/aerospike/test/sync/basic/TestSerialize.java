@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.test.sync.basic;
 
-import static org.junit.Assert.fail;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -33,7 +33,7 @@ import com.aerospike.client.Value;
 import com.aerospike.test.sync.TestSync;
 
 public class TestSerialize extends TestSync {
-	private static final String binName = args.getBinName("serialbin");
+	private static final String binName = "serialbin";
 
 	@Test
 	public void serializeArray() {
@@ -140,7 +140,7 @@ public class TestSerialize extends TestSync {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(args.getBinName("complexbin"), new Value.BlobValue(list));
+		Bin bin = new Bin("complexbin", new Value.BlobValue(list));
 
 		client.put(null, key, bin);
 

@@ -52,7 +52,6 @@ public class Args {
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public boolean enterprise;
 	public boolean hasTtl;
-	public boolean singleBin;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -234,8 +233,6 @@ public class Args {
 				host, port, namespace));
 		}
 
-		//singleBin = parseBoolean(namespaceTokens, "single-bin");
-
 		int nsup = parseInt(namespaceTokens, "nsup-period");
 
 		if (nsup == 0) {
@@ -272,10 +269,5 @@ public class Args {
 		}
 
 		return namespaceTokens.substring(begin, end);
-	}
-
-	public String getBinName(String name) {
-		// Single bin servers don't need a bin name.
-		return singleBin ? "" : name;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -47,7 +47,7 @@ public class TestQueryCollection extends TestSync {
 	private static final String keyPrefix = "qkey";
 	private static final String mapKeyPrefix = "mkey";
 	private static final String mapValuePrefix = "qvalue";
-	private static final String binName = args.getBinName("map_bin");
+	private static final String binName = "map_bin";
 	private static final int size = 20;
 
 	@BeforeClass

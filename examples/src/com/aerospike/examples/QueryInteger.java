@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,7 +43,7 @@ public class QueryInteger extends Example {
 	public void runExample(AerospikeClient client, Parameters params) throws Exception {
 		String indexName = "queryindexint";
 		String keyPrefix = "querykeyint";
-		String binName = params.getBinName("querybinint");
+		String binName = "querybinint";
 		int size = 50;
 
 		createIndex(client, params, indexName, binName);

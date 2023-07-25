@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -49,7 +49,7 @@ public class TestListMap extends TestSync {
 		list.add("string2");
 		list.add("string3");
 
-		Bin bin = new Bin(args.getBinName("listbin1"), list);
+		Bin bin = new Bin("listbin1", list);
 		client.put(null, key, bin);
 
 		Record record = client.get(null, key, bin.name);
@@ -76,7 +76,7 @@ public class TestListMap extends TestSync {
 		list.add(blob);
 		list.add(Value.getAsGeoJSON(geopoint));
 
-		Bin bin = new Bin(args.getBinName("listbin2"), list);
+		Bin bin = new Bin("listbin2", list);
 		client.put(null, key, bin);
 
 		Record record = client.get(null, key, bin.name);
@@ -100,7 +100,7 @@ public class TestListMap extends TestSync {
 		map.put("key2", "loooooooooooooooooooooooooongerstring2");
 		map.put("key3", "string3");
 
-		Bin bin = new Bin(args.getBinName("mapbin1"), map);
+		Bin bin = new Bin("mapbin1", map);
 		client.put(null, key, bin);
 
 		Record record = client.get(null, key, bin.name);
@@ -132,7 +132,7 @@ public class TestListMap extends TestSync {
 		map.put("key5", true);
 		map.put("key6", false);
 
-		Bin bin = new Bin(args.getBinName("mapbin2"), map);
+		Bin bin = new Bin("mapbin2", map);
 		client.put(null, key, bin);
 
 		Record record = client.get(null, key, bin.name);
@@ -177,7 +177,7 @@ public class TestListMap extends TestSync {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(args.getBinName("listmapbin"), list);
+		Bin bin = new Bin("listmapbin", list);
 		client.put(null, key, bin);
 
 		Record record = client.get(null, key, bin.name);
