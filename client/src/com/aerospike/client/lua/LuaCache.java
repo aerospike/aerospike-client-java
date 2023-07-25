@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -62,7 +62,7 @@ public final class LuaCache {
 				prototype = compile(packageName, is);
 				Packages.put(packageName, prototype);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				throw new AerospikeException("Failed to read file: " + source.getAbsolutePath());
 			}
 		}
@@ -80,7 +80,7 @@ public final class LuaCache {
 				prototype = compile(packageName, is);
 				Packages.put(packageName, prototype);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				throw new AerospikeException("Failed to read resource: " + resourcePath);
 			}
 		}
@@ -93,7 +93,7 @@ public final class LuaCache {
 
 			return LuaC.instance.compile(bis, packageName);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException("Failed to compile: " + packageName);
 		}
 	}

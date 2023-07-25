@@ -14,9 +14,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.cluster;
 
-public interface IQueryExecutor {
-	void stopThreads(Throwable cause);
-	void checkForException();
+public enum LatencyType {
+	CONN,
+	WRITE,
+	READ,
+	BATCH,
+	QUERY,
+	NONE;
+
+	public static int getMax() {
+		return LatencyType.NONE.ordinal();
+	}
+
+	private static String[] TypeStrings = new String[] {
+		"conn",
+		"write",
+		"read",
+		"batch",
+		"query",
+		"none"
+	};
+
+	public static String getString(int i) {
+		return TypeStrings[i];
+	}
 }

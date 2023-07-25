@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -100,7 +100,7 @@ public final class ConnectionRecover {
 			conn.updateLastUsed();
 			conn.setTimeout(1);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			//System.out.println("" + tranId + " init failed: " + e.getMessage());
 			abort();
 		}
@@ -148,7 +148,7 @@ public final class ConnectionRecover {
 			// Put back on queue for later draining.
 			return false;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Forcibly close connection.
 			//System.out.println("" + tranId + " socket error:");
 			//e.printStackTrace();

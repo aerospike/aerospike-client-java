@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -78,12 +78,12 @@ public final class Connection implements Closeable {
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.
 				socket.close();
 
 				if (node != null) {
-					node.incrErrorCount();
+					node.incrErrorRate();
 				}
 				throw e;
 			}
@@ -91,7 +91,7 @@ public final class Connection implements Closeable {
 		catch (AerospikeException ae) {
 			throw ae;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Connection(e);
 		}
 	}
@@ -151,12 +151,12 @@ public final class Connection implements Closeable {
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.
 				socket.close();
 
 				if (node != null) {
-					node.incrErrorCount();
+					node.incrErrorRate();
 				}
 				throw e;
 			}
@@ -164,7 +164,7 @@ public final class Connection implements Closeable {
 		catch (AerospikeException ae) {
 			throw ae;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Connection(e);
 		}
 	}
@@ -319,7 +319,7 @@ public final class Connection implements Closeable {
 			out.close();
 			socket.close();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			if (Log.debugEnabled()) {
 				Log.debug("Error closing socket: " + Util.getErrorMessage(e));
 			}

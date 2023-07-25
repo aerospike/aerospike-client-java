@@ -14,9 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.query;
+package com.aerospike.client.metrics;
 
-public interface IQueryExecutor {
-	void stopThreads(Throwable cause);
-	void checkForException();
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
+
+/**
+ * Client metrics listener.
+ */
+public interface MetricsListener {
+	/**
+	 * Periodic extended metrics has been enabled for the given cluster.
+	 */
+	public void onEnable(Cluster cluster, MetricsPolicy policy);
+
+	/**
+	 * A metrics snapshot has been requested for the given cluster.
+	 */
+	public void onSnapshot(Cluster cluster);
+
+	/**
+	 * A node is being dropped from the cluster.
+	 */
+	public void onNodeClose(Node node);
+
+	/**
+	 * Periodic extended metrics has been disabled for the given cluster.
+	 */
+	public void onDisable(Cluster cluster);
 }

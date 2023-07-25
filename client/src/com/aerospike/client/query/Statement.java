@@ -229,14 +229,16 @@ public final class Statement {
 	}
 
 	/**
-	 * Set operations to be performed on query/execute.
+	 * Set operations to be performed on a background query
+	 * {@link com.aerospike.client.AerospikeClient#execute(com.aerospike.client.policy.WritePolicy, Statement, Operation...)}
+	 * A foreground query that returns records to the client will silently ignore these operations.
 	 */
 	public void setOperations(Operation[] operations) {
 		this.operations = operations;
 	}
 
 	/**
-	 * Return operations to be performed on query/execute.
+	 * Return operations to be performed on a background query.
 	 */
 	public Operation[] getOperations() {
 		return this.operations;

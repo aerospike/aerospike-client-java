@@ -25,6 +25,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.ConnectionRecover;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.util.ThreadLocalData;
@@ -67,6 +68,8 @@ public abstract class SyncCommand extends Command {
 		//final long tranId = TranCounter.getAndIncrement();
 		Node node;
 		AerospikeException exception = null;
+		long begin = 0;
+		LatencyType latencyType = cluster.metricsEnabled? getLatencyType() : LatencyType.NONE;
 		boolean isClientTimeout;
 
 		// Execute command until successful, timed out or maximum iterations have been reached.
@@ -89,6 +92,11 @@ public abstract class SyncCommand extends Command {
 
 			try {
 				node.validateErrorCount();
+
+				if (latencyType != LatencyType.NONE) {
+					begin = System.nanoTime();
+				}
+
 				Connection conn = node.getConnection(this, policy.connectTimeout, socketTimeout, policy.timeoutDelay);
 
 				try {
@@ -104,6 +112,11 @@ public abstract class SyncCommand extends Command {
 
 					// Put connection back in pool.
 					node.putConnection(conn);
+
+					if (latencyType != LatencyType.NONE) {
+						long elapsed = System.nanoTime() - begin;
+						node.addLatency(latencyType, elapsed);
+					}
 
 					// Command has completed successfully.  Exit method.
 					return;
@@ -123,15 +136,18 @@ public abstract class SyncCommand extends Command {
 						// Log.info("Server timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 						exception = new AerospikeException.Timeout(policy, false);
 						isClientTimeout = false;
-						node.incrErrorCount();
+						node.incrErrorRate();
+						node.addTimeout();
 					}
 					else if (ae.getResultCode() == ResultCode.DEVICE_OVERLOAD) {
 						// Add to circuit breaker error count and retry.
 						exception = ae;
 						isClientTimeout = false;
-						node.incrErrorCount();
+						node.incrErrorRate();
+						node.addError();
 					}
 					else {
+						node.addError();
 						throw ae;
 					}
 				}
@@ -143,19 +159,14 @@ public abstract class SyncCommand extends Command {
 						node.closeConnection(conn);
 					}
 					isClientTimeout = true;
-				}
-				catch (RuntimeException re) {
-					// All runtime exceptions are considered fatal.  Do not retry.
-					// Close socket to flush out possible garbage.  Do not put back in pool.
-					// Log.info("Throw RuntimeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
-					node.closeConnection(conn);
-					throw re;
+					node.addTimeout();
 				}
 				catch (SocketTimeoutException ste) {
 					// Full timeout has been reached.
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					isClientTimeout = true;
+					node.addTimeout();
 				}
 				catch (IOException ioe) {
 					// IO errors are considered temporary anomalies.  Retry.
@@ -163,31 +174,48 @@ public abstract class SyncCommand extends Command {
 					node.closeConnection(conn);
 					exception = new AerospikeException.Connection(ioe);
 					isClientTimeout = false;
+					node.addError();
+				}
+				catch (Throwable e) {
+					// All remaining exceptions are considered fatal.  Do not retry.
+					// Close socket to flush out possible garbage.  Do not put back in pool.
+					// Log.info("Throw Throwable: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
+					node.closeConnection(conn);
+					node.addError();
+					throw e;
 				}
 			}
 			catch (Connection.ReadTimeout crt) {
 				// Connection already handled.
 				isClientTimeout = true;
+				node.addTimeout();
 			}
 			catch (AerospikeException.Connection ce) {
 				// Socket connection error has occurred. Retry.
 				// Log.info("Connection error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 				exception = ce;
 				isClientTimeout = false;
+				node.addError();
 			}
 			catch (AerospikeException.Backoff be) {
 				// Node is in backoff state. Retry, hopefully on another node.
 				// Log.info("Backoff error: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 				exception = be;
 				isClientTimeout = false;
+				node.addError();
 			}
 			catch (AerospikeException ae) {
 				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
+				node.addError();
 				ae.setNode(node);
 				ae.setPolicy(policy);
 				ae.setIteration(iteration);
 				ae.setInDoubt(isWrite(), commandSentCounter);
 				throw ae;
+			}
+			catch (Throwable e) {
+				node.addError();
+				throw e;
 			}
 
 			// Check maxRetries.
@@ -229,6 +257,8 @@ public abstract class SyncCommand extends Command {
 					return;
 				}
 			}
+
+			cluster.addRetry();
 		}
 
 		// Retries have been exhausted.  Throw last exception.
@@ -285,6 +315,7 @@ public abstract class SyncCommand extends Command {
 	}
 
 	protected abstract Node getNode();
+	protected abstract LatencyType getLatencyType();
 	protected abstract void writeBuffer();
 	protected abstract void parseResult(Connection conn) throws AerospikeException, IOException;
 	protected abstract boolean prepareRetry(boolean timeout);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.QueryPolicy;
@@ -43,6 +44,11 @@ public final class AsyncQuery extends AsyncMultiCommand {
 		this.listener = listener;
 		this.statement = statement;
 		this.taskId = taskId;
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
 	}
 
 	@Override

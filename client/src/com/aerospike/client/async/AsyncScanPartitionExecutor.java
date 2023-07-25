@@ -53,6 +53,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.binNames = binNames;
 		this.tracker = tracker;
 
+		cluster.addTran();
 		tracker.setSleepBetweenRetries(0);
 		scanPartitions();
 	}
@@ -90,7 +91,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 						catch (AerospikeException ae) {
 							onFailure(ae);
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							onFailure(new AerospikeException(e));
 						}
 					}
@@ -104,7 +105,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		catch (AerospikeException ae) {
 			onFailure(ae);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			onFailure(new AerospikeException(e));
 		}
 	}

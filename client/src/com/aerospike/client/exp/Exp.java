@@ -474,7 +474,8 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create map value.
+	 * Create map value. For ordered maps, pass in a TreeMap or a map that implements the SortedMap
+	 * interface. For unordered maps, pass in a HashMap.
 	 */
 	public static Exp val(Map<?,?> map) {
 		return new MapVal(map);

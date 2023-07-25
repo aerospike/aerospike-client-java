@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.policy.ScanPolicy;
@@ -60,6 +61,11 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected void writeBuffer() {
 		setScan(parent.cluster, scanPolicy, namespace, setName, binNames, taskId, nodePartitions);
 	}
@@ -83,8 +89,11 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		}
 
 		Record record = parseRecord();
-		listener.onRecord(key, record);
-		tracker.setDigest(nodePartitions, key);
+
+		if (tracker.allowRecord()) {
+			listener.onRecord(key, record);
+			tracker.setDigest(nodePartitions, key);
+		}
 	}
 
 	@Override

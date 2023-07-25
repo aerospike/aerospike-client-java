@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -476,7 +476,7 @@ public class AdminCommand {
 			conn.updateLastUsed();
 			node.putConnection(conn);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// All IO exceptions are considered fatal.  Do not retry.
 			// Close socket to flush out possible garbage.  Do not put back in pool.
 			node.closeConnection(conn);
@@ -503,7 +503,7 @@ public class AdminCommand {
 			status = readBlocks(conn);
 			node.putConnection(conn);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Garbage may be in socket.  Do not put back into pool.
 			node.closeConnection(conn);
 			throw new AerospikeException(e);

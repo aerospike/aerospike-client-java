@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,17 +36,31 @@ public final class NodeStats {
 	public ConnectionStats async;
 
 	/**
+	 * Transaction error count since node was initialized. If the error is retryable, multiple errors per
+	 * transaction may occur.
+	 */
+	public final long errorCount;
+
+	/**
+	 * Transaction timeout count since node was initialized. If the timeout is retryable (ie socketTimeout),
+	 * multiple timeouts per transaction may occur.
+	 */
+	public final long timeoutCount;
+
+	/**
 	 * Node statistics constructor.
 	 */
 	public NodeStats(Node node) {
 		this.node = node;
 		this.sync = node.getConnectionStats();
+		this.errorCount = node.getErrorCount();
+		this.timeoutCount = node.getTimeoutCount();
 	}
 
 	/**
 	 * Convert statistics to string.
 	 */
 	public String toString() {
-		return node + " sync(" + sync + ") async(" + async + ')';
+		return node + " sync(" + sync + ") async(" + async + ") " + errorCount + ',' + timeoutCount;
 	}
 }

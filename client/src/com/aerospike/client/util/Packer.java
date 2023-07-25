@@ -44,7 +44,7 @@ public final class Packer {
 			packer.packValueArray(val);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -55,7 +55,7 @@ public final class Packer {
 			packer.packList(val);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -66,7 +66,7 @@ public final class Packer {
 			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -77,7 +77,7 @@ public final class Packer {
 			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}

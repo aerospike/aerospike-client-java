@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,7 @@ import com.aerospike.client.cluster.Cluster;
 public final class Executor {
 	private final List<ExecutorThread> threads;
 	private final ExecutorService threadPool;
-	private volatile Exception exception;
+	private volatile Throwable exception;
 	private final AtomicBoolean done;
 	private final AtomicInteger completedCount;
 	private int maxConcurrentThreads;
@@ -86,7 +86,7 @@ public final class Executor {
 		}
 	}
 
-	private void stopThreads(Exception cause) {
+	private void stopThreads(Throwable cause) {
 		// Ensure executor succeeds or fails exactly once.
 		if (done.compareAndSet(false, true)) {
 			exception = cause;
@@ -132,7 +132,7 @@ public final class Executor {
 				}
 				threadCompleted();
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Terminate other scan threads.
 				stopThreads(e);
 			}

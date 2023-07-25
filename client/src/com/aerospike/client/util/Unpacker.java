@@ -74,7 +74,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackList(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -136,7 +136,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackMap(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -459,7 +459,7 @@ public abstract class Unpacker<T> {
 			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 			return unpacker.unpackObject();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}

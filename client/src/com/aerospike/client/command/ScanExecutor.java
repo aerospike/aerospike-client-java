@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,6 +37,8 @@ public final class ScanExecutor {
 		ScanCallback callback,
 		PartitionTracker tracker
 	) {
+		cluster.addTran();
+
 		while (true) {
 			long taskId = RandomShift.instance().nextLong();
 

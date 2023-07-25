@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,6 +36,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 		this.hasResultCode = hasResultCode;
+		cluster.addTran();
 	}
 
 	public void execute(AsyncBatchCommand[] cmds) {

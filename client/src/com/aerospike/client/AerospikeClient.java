@@ -87,6 +87,7 @@ import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -434,14 +435,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Return operating cluster statistics.
+	 * Enable extended periodic cluster and node latency metrics.
+	 */
+	public final void enableMetrics(MetricsPolicy policy) {
+		cluster.enableMetrics(policy);
+	}
+
+	/**
+	 * Disable extended periodic cluster and node latency metrics.
+	 */
+	public final void disableMetrics() {
+		cluster.disableMetrics();
+	}
+
+	/**
+	 * Return operating cluster statistics snapshot.
 	 */
 	public final ClusterStats getClusterStats() {
 		return cluster.getStats();
 	}
 
 	/**
-	 * Asynchronously return operating cluster statistics.
+	 * Asynchronously return operating cluster statistics snapshot.
 	 */
 	public final void getClusterStats(ClusterStatsListener listener) {
 		cluster.getStats(listener);
@@ -1835,7 +1850,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		OperateArgs args = new OperateArgs(cluster, policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
-		AsyncOperate command = new AsyncOperate(listener, key, args);
+		AsyncOperate command = new AsyncOperate(cluster, listener, key, args);
 		eventLoop.execute(cluster, command);
 	}
 
@@ -2702,6 +2717,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 		statement.setAggregateFunction(packageName, functionName, functionArgs);
 
+		cluster.addTran();
+
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
 		Executor executor = new Executor(cluster, nodes.length);
@@ -2738,6 +2755,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (operations.length > 0) {
 			statement.setOperations(operations);
 		}
+
+		cluster.addTran();
 
 		long taskId = statement.prepareTaskId();
 		Node[] nodes = cluster.validateNodes();
@@ -3696,9 +3715,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			info = new Info(conn, command);
 			node.putConnection(conn);
 		}
-		catch (RuntimeException re) {
+		catch (Throwable e) {
 			node.closeConnection(conn);
-			throw re;
+			throw e;
 		}
 		return info.getValue();
 	}
@@ -3745,7 +3764,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				code = Integer.parseInt(list[1]);
 			}
 		}
-		catch (Exception ex) {
+		catch (Throwable e) {
 		}
 
 		if (code == 0) {

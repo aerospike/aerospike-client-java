@@ -48,7 +48,7 @@ public abstract class Value {
 	 * versions less than 5.6 which do not support boolean bins. Can set to true for
 	 * server 5.6+.
 	 */
-	public static boolean UseBoolBin = false;
+	public static boolean UseBoolBin = true;
 
 	/**
 	 * Should the client return a map when {@link com.aerospike.client.cdt.MapReturnType#KEY_VALUE}
