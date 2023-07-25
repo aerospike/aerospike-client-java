@@ -50,7 +50,7 @@ public abstract class Value {
 	 * versions less than 5.6 which do not support boolean bins. Can set to true for
 	 * server 5.6+.
 	 */
-	public static boolean UseBoolBin = false;
+	public static boolean UseBoolBin = true;
 
 	/**
 	 * Should default object serializer be disabled. If true, an exception will be thrown when
