@@ -162,7 +162,7 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(',');
 		sb.append(cluster.getRecoverQueueSize());
 		sb.append(',');
-		sb.append(cluster.getInvalidNodeCount());
+		sb.append(cluster.getInvalidNodeCount()); // Cumulative. Not reset on each interval.
 		sb.append(',');
 		sb.append(cluster.getTranCount());  // Cumulative. Not reset on each interval.
 		sb.append(',');

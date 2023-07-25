@@ -579,7 +579,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		invalidNodeCount = peers.getInvalidCount();
+		invalidNodeCount += peers.getInvalidCount();
 
 		// Refresh partition map when necessary.
 		for (Node node : nodes) {
