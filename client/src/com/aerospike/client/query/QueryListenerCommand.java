@@ -20,6 +20,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.Policy;
@@ -60,6 +61,11 @@ public final class QueryListenerCommand extends MultiCommand {
 				throw ae;
 			}
 		}
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
 	}
 
 	@Override

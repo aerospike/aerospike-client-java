@@ -26,6 +26,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
@@ -527,6 +528,11 @@ public final class Batch {
 		}
 
 		@Override
+		protected LatencyType getLatencyType() {
+			return LatencyType.BATCH;
+		}
+
+		@Override
 		protected boolean prepareRetry(boolean timeout) {
 			if (! ((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
 				   (parent == null || ! parent.isDone()))) {
@@ -574,6 +580,7 @@ public final class Batch {
 				command.deadline = deadline;
 
 				try {
+					cluster.addRetry();
 					command.executeCommand();
 				}
 				catch (AerospikeException ae) {

@@ -21,6 +21,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
@@ -43,20 +44,27 @@ public class AsyncRead extends AsyncCommand {
 		this.binNames = binNames;
 		this.isOperation = false;
 		this.partition = Partition.read(cluster, policy, key);
+		cluster.addTran();
 	}
 
-	public AsyncRead(RecordListener listener, Policy policy, Key key, Partition partition, boolean isOperation) {
+	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, Partition partition, boolean isOperation) {
 		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;
 		this.isOperation = isOperation;
 		this.partition = partition;
+		cluster.addTran();
 	}
 
 	@Override
 	Node getNode(Cluster cluster) {
 		return partition.getNodeRead(cluster);
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
 	}
 
 	@Override

@@ -27,6 +27,7 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.util.Util;
@@ -42,6 +43,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	Node node;
 	NioConnection conn;
 	ByteBuffer byteBuffer;
+	final LatencyType latencyType;
+	long begin;
 	long totalDeadline;
 	int state;
 	int iteration;
@@ -57,6 +60,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.timeoutTask = new HashedWheelTimeout(this);
 		command.bufferQueue = eventLoop.bufferQueue;
 		hasTotalTimeout = command.totalTimeout > 0;
+		latencyType = cluster.metricsEnabled? command.getLatencyType() : LatencyType.NONE;
 
 		if (eventLoop.thread == Thread.currentThread() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
@@ -80,6 +84,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.eventState = other.eventState;
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
+		this.latencyType = other.latencyType;
 		this.iteration = other.iteration;
 		this.hasTotalTimeout = other.hasTotalTimeout;
 		this.usingSocketTimeout = other.usingSocketTimeout;
@@ -222,6 +227,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		try {
 			node = command.getNode(cluster);
 			node.validateErrorCount();
+
+			if (latencyType != LatencyType.NONE) {
+				begin = System.nanoTime();
+			}
+
 			byteBuffer = eventLoop.getByteBuffer();
 			conn = (NioConnection)node.getAsyncConnection(eventLoop.index, byteBuffer);
 
@@ -712,6 +722,9 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			return;
 		}
 
+		// Increment node's timeout counter.
+		node.addTimeout();
+
 		// Recover connection when possible.
 		recoverConnection();
 
@@ -742,6 +755,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			}
 		}
 
+		cluster.addRetry();
 		executeCommand(deadline, TimeoutState.TIMEOUT);
 	}
 
@@ -750,10 +764,16 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 		if (state == AsyncCommand.DELAY_QUEUE) {
 			// Command timed out in delay queue.
+			if (latencyType != LatencyType.NONE) {
+				cluster.addDelayQueueTimeout();
+			}
 			closeFromDelayQueue();
 			notifyFailure(ae);
 			return;
 		}
+
+		// Increment node's timeout counter.
+		node.addTimeout();
 
 		// Recover connection when possible.
 		recoverConnection();
@@ -787,6 +807,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	protected final void finish() {
 		complete();
 
+		if (latencyType != LatencyType.NONE) {
+			long elapsed = System.nanoTime() - begin;
+			node.addLatency(latencyType, elapsed);
+		}
+
 		try {
 			command.onSuccess();
 		}
@@ -801,6 +826,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
+		addError();
 		closeConnection();
 		retry(ae, queueCommand);
 	}
@@ -809,6 +835,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
+		node.addTimeout();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
 
@@ -820,9 +847,10 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
+		addError();
 		conn.unregister();
 		node.putAsyncConnection(conn, eventLoop.index);
-		node.incrErrorCount();
+		node.incrErrorRate();
 		retry(ae, false);
 	}
 
@@ -905,6 +933,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			}
 		}
 
+		cluster.addRetry();
 		executeCommand(deadline, TimeoutState.RETRY);
 	}
 
@@ -912,6 +941,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		if (state == AsyncCommand.COMPLETE) {
 			return;
 		}
+
+		addError();
 
 		if (ae.keepConnection()) {
 			// Put connection back in pool.
@@ -936,6 +967,13 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 		catch (Throwable e) {
 			Log.error("onFailure() error: " + Util.getErrorMessage(e));
+		}
+	}
+
+	private void addError() {
+		// Some errors can occur before the node is assigned.
+		if (node != null) {
+			node.addError();
 		}
 	}
 

@@ -53,6 +53,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.binNames = binNames;
 		this.tracker = tracker;
 
+		cluster.addTran();
 		tracker.setSleepBetweenRetries(0);
 		scanPartitions();
 	}

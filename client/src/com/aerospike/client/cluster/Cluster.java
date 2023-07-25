@@ -30,6 +30,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
 import com.aerospike.client.AerospikeException;
@@ -47,6 +48,9 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.cluster.Node.AsyncPool;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.listener.ClusterStatsListener;
+import com.aerospike.client.metrics.MetricsListener;
+import com.aerospike.client.metrics.MetricsPolicy;
+import com.aerospike.client.metrics.MetricsWriter;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TCPKeepAlive;
@@ -184,6 +188,9 @@ public class Cluster implements Runnable, Closeable {
 	// Request server rack ids.
 	final boolean rackAware;
 
+	// Verify clusterName if populated.
+	public final boolean validateClusterName;
+
 	// Is authentication enabled
 	public final boolean authEnabled;
 
@@ -192,8 +199,16 @@ public class Cluster implements Runnable, Closeable {
 
 	private boolean asyncComplete;
 
+	public boolean metricsEnabled;
+	MetricsPolicy metricsPolicy;
+	private volatile MetricsListener metricsListener;
+	private final AtomicLong retryCount = new AtomicLong();
+	private final AtomicLong tranCount = new AtomicLong();
+	private final AtomicLong delayQueueTimeoutCount = new AtomicLong();
+
 	public Cluster(ClientPolicy policy, Host[] hosts) {
 		this.clusterName = policy.clusterName;
+		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
 		this.authMode = policy.authMode;
 
@@ -564,7 +579,7 @@ public class Cluster implements Runnable, Closeable {
 			}
 		}
 
-		invalidNodeCount = peers.getInvalidCount();
+		invalidNodeCount += peers.getInvalidCount();
 
 		// Refresh partition map when necessary.
 		for (Node node : nodes) {
@@ -612,8 +627,12 @@ public class Cluster implements Runnable, Closeable {
 		// Reset connection error window for all nodes every connErrorWindow tend iterations.
 		if (maxErrorRate > 0 && tendCount % errorRateWindow == 0) {
 			for (Node node : nodes) {
-				node.resetErrorCount();
+				node.resetErrorRate();
 			}
+		}
+
+		if (metricsEnabled && (tendCount % metricsPolicy.interval) == 0) {
+			metricsListener.onSnapshot(this);
 		}
 
 		processRecoverQueue();
@@ -869,6 +888,16 @@ public class Cluster implements Runnable, Closeable {
 				// Log.debug("Remove alias " + alias);
 				aliases.remove(alias);
 			}
+
+			if (metricsEnabled) {
+				// Flush node metrics before removal.
+				try {
+					metricsListener.onNodeClose(node);
+				}
+				catch (Throwable e) {
+					Log.warn("Write metrics failed on " + node + ": " + Util.getErrorMessage(e));
+				}
+			}
 			node.close();
 		}
 
@@ -1046,6 +1075,44 @@ public class Cluster implements Runnable, Closeable {
 		}
 	}
 
+	public final void enableMetrics(MetricsPolicy policy) {
+		if (metricsEnabled) {
+			this.metricsListener.onDisable(this);
+		}
+
+		MetricsListener listener = policy.listener;
+
+		if (listener == null) {
+			listener = new MetricsWriter(policy.reportDir);
+		}
+
+		this.metricsListener = listener;
+		this.metricsPolicy = policy;
+
+		Node[] nodeArray = nodes;
+
+		for (Node node : nodeArray) {
+			node.enableMetrics(policy);
+		}
+
+		listener.onEnable(this, policy);
+		metricsEnabled = true;
+	}
+
+	public final void disableMetrics() {
+		if (metricsEnabled) {
+			metricsEnabled = false;
+			metricsListener.onDisable(this);
+		}
+	}
+
+	public EventLoop[] getEventLoopArray() {
+		if (eventLoops == null) {
+			return null;
+		}
+		return eventLoops.getArray();
+	}
+
 	public final ClusterStats getStats() {
 		// Get sync statistics.
 		final Node[] nodeArray = nodes;
@@ -1054,13 +1121,6 @@ public class Cluster implements Runnable, Closeable {
 
 		for (Node node : nodeArray) {
 			nodeStats[count++] = new NodeStats(node);
-		}
-
-		int threadsInUse = 0;
-
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			threadsInUse = tpe.getActiveCount();
 		}
 
 		// Get async statistics.
@@ -1083,7 +1143,7 @@ public class Cluster implements Runnable, Closeable {
 					for (int i = 0; i < nodeArray.length; i++) {
 						nodeStats[i].async = nodeArray[i].getAsyncConnectionStats();
 					}
-					return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+					return new ClusterStats(this, nodeStats, eventLoopStats);
 				}
 			}
 
@@ -1130,7 +1190,7 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[i].async = new ConnectionStats(inUse, inPool, opened, closed);
 			}
 		}
-		return new ClusterStats(nodeStats, eventLoopStats, threadsInUse, recoverCount.get(), invalidNodeCount);
+		return new ClusterStats(this, nodeStats, eventLoopStats);
 	}
 
 	public final void getStats(ClusterStatsListener listener) {
@@ -1144,16 +1204,9 @@ public class Cluster implements Runnable, Closeable {
 				nodeStats[count++] = new NodeStats(node);
 			}
 
-			int threadsInUse = 0;
-
-			if (threadPool instanceof ThreadPoolExecutor) {
-				ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-				threadsInUse = tpe.getActiveCount();
-			}
-
 			if (eventLoops == null) {
 				try {
-					listener.onSuccess(new ClusterStats(nodeStats, null, threadsInUse, recoverCount.get(), invalidNodeCount));
+					listener.onSuccess(new ClusterStats(this, nodeStats, null));
 				}
 				catch (Throwable e) {
 				}
@@ -1165,7 +1218,7 @@ public class Cluster implements Runnable, Closeable {
 			final EventLoopStats[] loopStats = new EventLoopStats[eventLoopArray.length];
 			final ConnectionStats[][] connStats = new ConnectionStats[nodeArray.length][eventLoopArray.length];
 			final AtomicInteger eventLoopCount = new AtomicInteger(eventLoopArray.length);
-			final int threadCount = threadsInUse;
+			final Cluster cluster = this;
 
 			for (EventLoop eventLoop : eventLoopArray) {
 				Runnable fetch = new Runnable() {
@@ -1198,7 +1251,7 @@ public class Cluster implements Runnable, Closeable {
 							}
 
 							try {
-								listener.onSuccess(new ClusterStats(nodeStats, loopStats, threadCount, recoverCount.get(), invalidNodeCount));
+								listener.onSuccess(new ClusterStats(cluster, nodeStats, loopStats));
 							}
 							catch (Throwable e) {
 							}
@@ -1296,6 +1349,17 @@ public class Cluster implements Runnable, Closeable {
 		return threadPool;
 	}
 
+	/**
+	 * Return cluster name.
+	 */
+	public String getClusterName() {
+		return clusterName;
+	}
+
+	public boolean validateClusterName() {
+		return validateClusterName && clusterName != null && clusterName.length() > 0;
+	}
+
 	public final byte[] getUser() {
 		return user;
 	}
@@ -1310,6 +1374,81 @@ public class Cluster implements Runnable, Closeable {
 
 	public final boolean isActive() {
 		return tendValid;
+	}
+
+	/**
+	 * Increment transaction count when metrics are enabled.
+	 */
+	public final void addTran() {
+		if (metricsEnabled) {
+			tranCount.getAndIncrement();
+		}
+	}
+
+	/**
+	 * Return transaction count. The value is cumulative and not reset per metrics interval.
+	 */
+	public final long getTranCount() {
+		return tranCount.get();
+	}
+
+	/**
+	 * Increment transaction retry count. There can be multiple retries for a single transaction.
+	 */
+	public final void addRetry() {
+		retryCount.getAndIncrement();
+	}
+
+	/**
+	 * Add transaction retry count. There can be multiple retries for a single transaction.
+	 */
+	public final void addRetries(int count) {
+		retryCount.getAndAdd(count);
+	}
+
+	/**
+	 * Return transaction retry count. The value is cumulative and not reset per metrics interval.
+	 */
+	public final long getRetryCount() {
+		return retryCount.get();
+	}
+
+	/**
+	 * Increment async delay queue timeout count.
+	 */
+	public final void addDelayQueueTimeout() {
+		delayQueueTimeoutCount.getAndIncrement();
+	}
+
+	/**
+	 * Increment async delay queue timeout count.
+	 */
+	public final long getDelayQueueTimeoutCount() {
+		return delayQueueTimeoutCount.get();
+	}
+
+	/**
+	 * Return thread pool active thread count. This thread pool is used in sync batch/query/scan
+	 * commands.
+	 */
+	public final int getThreadsInUse() {
+		if (threadPool instanceof ThreadPoolExecutor) {
+			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
+			return tpe.getActiveCount();
+		}
+		return 0;
+	}
+
+	/**
+	 * Return connection recoverQueue size. The queue contains connections that have timed out and
+	 * need to be drained before returning the connection to a connection pool. The recoverQueue
+	 * is only used when {@link com.aerospike.client.policy.Policy#timeoutDelay} is true.
+	 * <p>
+	 * Since recoverQueue is a linked list where the size() calculation is expensive, a separate
+	 * counter is used to track recoverQueue.size().
+	 */
+	public final int getRecoverQueueSize() {
+		return recoverCount.get();
 	}
 
 	/**
@@ -1332,6 +1471,13 @@ public class Cluster implements Runnable, Closeable {
 		if (! sharedThreadPool) {
 			// Shutdown synchronous thread pool.
 			threadPool.shutdown();
+		}
+
+		try {
+			disableMetrics();
+		}
+		catch (Throwable e) {
+			Log.warn("DisableMetrics failed: " + Util.getErrorMessage(e));
 		}
 
 		if (eventLoops == null) {

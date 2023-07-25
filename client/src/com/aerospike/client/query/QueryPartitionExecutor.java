@@ -61,6 +61,9 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		this.threads = new ArrayList<QueryThread>(nodeCapacity);
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
+
+		cluster.addTran();
+
 		threadPool.execute(this);
 	}
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,6 +34,7 @@ import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -45,6 +46,7 @@ import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -131,9 +133,24 @@ public interface IAerospikeClient extends Closeable {
 		throws AerospikeException.InvalidNode;
 
 	/**
-	 * Return operating cluster statistics.
+	 * Enable extended periodic cluster and node latency metrics.
+	 */
+	public void enableMetrics(MetricsPolicy policy);
+
+	/**
+	 * Disable extended periodic cluster and node latency metrics.
+	 */
+	public void disableMetrics();
+
+	/**
+	 * Return operating cluster statistics snapshot.
 	 */
 	public ClusterStats getClusterStats();
+
+	/**
+	 * Asynchronously return operating cluster statistics snapshot.
+	 */
+	public void getClusterStats(ClusterStatsListener listener);
 
 	/**
 	 * Return operating cluster.
