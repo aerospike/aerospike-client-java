@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -68,9 +66,6 @@ public final class Buffer {
 
 		case ParticleType.BLOB:
 			return Arrays.copyOfRange(buf, offset, offset+len);
-
-		case ParticleType.JBLOB:
-			return Buffer.bytesToObject(buf, offset, len);
 
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
@@ -295,25 +290,6 @@ public final class Buffer {
 			sb.append(String.format("%02x", buf[i]));
 		}
 		return sb.toString();
-	}
-
-	public static Object bytesToObject(byte[] buf, int offset, int length) {
-		if (length <= 0) {
-			return null;
-		}
-
-		if (Value.DisableDeserializer) {
-			throw new AerospikeException.Serialize("Object deserializer has been disabled");
-		}
-
-		try (ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length)) {
-			try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
-				return oistream.readObject();
-			}
-		}
-		catch (Throwable e) {
-			throw new AerospikeException.Serialize(e);
-		}
 	}
 
 	public static Value bytesToLongValue(byte[] buf, int offset, int len) {

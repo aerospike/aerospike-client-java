@@ -27,7 +27,6 @@ import java.util.UUID;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
-import com.aerospike.client.Value.BlobValue;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -206,13 +205,6 @@ public final class Packer {
 		packByteArray(b, offset, length);
 	}
 
-	public void packBlob(Object val) {
-		byte[] bytes = BlobValue.serialize(val);
-		packByteArrayBegin(bytes.length + 1);
-		packByte(ParticleType.JBLOB);
-		packByteArray(bytes, 0, bytes.length);
-	}
-
 	public void packGeoJSON(String val) {
 		byte[] buffer = Buffer.stringToUtf8(val);
 		packByteArrayBegin(buffer.length + 1);
@@ -323,7 +315,7 @@ public final class Packer {
 			return;
 		}
 
-		packBlob(obj);
+		throw new AerospikeException("Unsupported type: " + obj.getClass().getName());
 	}
 
 	public void packByteBuffer(ByteBuffer bb) {

@@ -28,6 +28,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
@@ -71,7 +72,7 @@ public class TestAdd extends TestSync {
 		// Delete record if it already exists.
 		client.delete(null, key);
 
-		Bin bin = new Bin(binName, (Long)null);
+		Bin bin = new Bin(binName, Value.get((Object)null));
 
 		AerospikeException ae = assertThrows(AerospikeException.class, new ThrowingRunnable() {
 			public void run() {

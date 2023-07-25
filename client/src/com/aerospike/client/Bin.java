@@ -241,35 +241,6 @@ public final class Bin {
 	}
 
 	/**
-	 * Create bin with an object value. This is the slowest of the Bin constructors because the type
-	 * must be determined using multiple "instanceof" checks. If the object type is unrecognized,
-	 * the default java serializer is used.
-	 * <p>
-	 * To disable this constructor, set {@link com.aerospike.client.Value#DisableSerializer} to true.
-	 *
-	 * @param name		bin name, current limit is 15 characters.
-	 * @param value		bin value
-	 */
-	public Bin(String name, Object value) {
-		this.name = name;
-		this.value = Value.get(value);
-	}
-
-	/**
-	 * Create bin with a blob value.  The value will be java serialized.
-	 * This method is faster than the bin object constructor because the blob is converted
-	 * directly instead of using multiple "instanceof" type checks with a blob default.
-	 * <p>
-	 * To disable this method, set {@link com.aerospike.client.Value#DisableSerializer} to true.
-	 *
-	 * @param name		bin name, current limit is 15 characters.
-	 * @param value		bin value
-	 */
-	public static Bin asBlob(String name, Object value) {
-		return new Bin(name, Value.getAsBlob(value));
-	}
-
-	/**
 	 * Create bin with a null value. This is useful for bin deletions within a record.
 	 *
 	 * @param name		bin name, current limit is 15 characters
