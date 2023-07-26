@@ -19,6 +19,7 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
@@ -27,7 +28,7 @@ public final class AsyncOperate extends AsyncRead {
 	private final OperateArgs args;
 
 	public AsyncOperate(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
-		super(listener, args.writePolicy, key, args.getPartition(cluster, key), true);
+		super(cluster, listener, args.writePolicy, key, args.getPartition(cluster, key), true);
 		this.args = args;
 	}
 
@@ -39,6 +40,11 @@ public final class AsyncOperate extends AsyncRead {
 	@Override
 	protected Node getNode(Cluster cluster) {
 		return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return args.hasWrite ? LatencyType.WRITE : LatencyType.READ;
 	}
 
 	@Override

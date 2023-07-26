@@ -49,7 +49,7 @@ public abstract class Example {
 			new AerospikeClient(policy, hosts);
 
 		try {
-			params.setServerSpecific(client);
+			//params.setServerSpecific(client);
 
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);

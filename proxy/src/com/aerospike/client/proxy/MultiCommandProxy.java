@@ -107,7 +107,7 @@ public abstract class MultiCommandProxy extends CommandProxy {
 		return new RecordProxy(resultCode, key, record, bVal);
 	}
 
-	protected void handleNotFound(@SuppressWarnings("unused") int resultCode) {
+	protected void handleNotFound(int resultCode) {
 		// Do nothing in default case. Record will be null.
 	}
 

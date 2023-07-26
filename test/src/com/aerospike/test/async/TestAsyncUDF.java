@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,7 +37,7 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.task.RegisterTask;
 
 public class TestAsyncUDF extends TestAsync {
-	private static final String binName = args.getBinName("audfbin1");
+	private static final String binName = "audfbin1";
 
 	@BeforeClass
 	public static void prepare() {

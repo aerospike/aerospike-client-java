@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -27,7 +27,7 @@ public class TestAppend extends TestSync {
 	@Test
 	public void append() {
 		Key key = new Key(args.namespace, args.set, "appendkey");
-		String binName = args.getBinName("appendbin");
+		String binName = "appendbin";
 
 		// Delete record if it already exists.
 		client.delete(null, key);
@@ -45,7 +45,7 @@ public class TestAppend extends TestSync {
 	@Test
 	public void prepend() {
 		Key key = new Key(args.namespace, args.set, "prependkey");
-		String binName = args.getBinName("prependbin");
+		String binName = "prependbin";
 
 		// Delete record if it already exists.
 		client.delete(null, key);

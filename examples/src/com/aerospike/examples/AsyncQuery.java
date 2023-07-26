@@ -43,7 +43,7 @@ public class AsyncQuery extends AsyncExample {
 	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
-		String binName = params.getBinName("asqbin");
+		String binName = "asqbin";
 		int size = 50;
 
 		// Proxy client does not support createIndex(), so must assume

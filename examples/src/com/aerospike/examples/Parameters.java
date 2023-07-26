@@ -16,12 +16,7 @@
  */
 package com.aerospike.examples;
 
-import java.util.Map;
-
-import com.aerospike.client.IAerospikeClient;
-import com.aerospike.client.Info;
 import com.aerospike.client.async.EventLoopType;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.TlsPolicy;
@@ -45,7 +40,6 @@ public class Parameters {
 	int maxCommandsInProcess;
 	int maxCommandsInQueue;
 	boolean useProxyClient;
-	boolean singleBin;
 
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {
 		this.host = host;
@@ -61,18 +55,14 @@ public class Parameters {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
-	protected void setServerSpecific(IAerospikeClient client) throws Exception {
-		if (useProxyClient) {
-			// Proxy client does not support querying nodes directly for their configuration.
-			return;
-		}
-
+	/*
+	protected void setServerSpecific(AerospikeClient client) throws Exception {
 		Node node = client.getNodes()[0];
 		String featuresFilter = "features";
 		String namespaceFilter = "namespace/" + namespace;
 		Map<String,String> tokens = Info.request(null, node, featuresFilter, namespaceFilter);
 
-		/* Client requires server 4.9+, so all these features are supported.
+		// Client requires server 4.9+, so all these features are supported.
 		String features = tokens.get(featuresFilter);
 		hasGeo = false;
 		hasUdf = false;
@@ -97,7 +87,6 @@ public class Parameters {
 				}
 			}
 		}
-		*/
 
 		String namespaceTokens = tokens.get(namespaceFilter);
 
@@ -106,10 +95,10 @@ public class Parameters {
 				"Failed to get namespace info: host=%s port=%d namespace=%s",
 				host, port, namespace));
 		}
-
-		singleBin = parseBoolean(namespaceTokens, "single-bin");
 	}
+	*/
 
+	/*
 	private static boolean parseBoolean(String namespaceTokens, String name) {
 		String search = name + '=';
 		int begin = namespaceTokens.indexOf(search);
@@ -128,19 +117,13 @@ public class Parameters {
 		String value = namespaceTokens.substring(begin, end);
 		return Boolean.parseBoolean(value);
 	}
+	*/
 
 	@Override
 	public String toString() {
 		return "Parameters: host=" + host +
 				" port=" + port +
 				" ns=" + namespace +
-				" set=" + set +
-				" single-bin=" + singleBin;
-	}
-
-	public String getBinName(String name)
-	{
-		// Single bin servers don't need a bin name.
-		return singleBin ? "" : name;
+				" set=" + set;
 	}
 }

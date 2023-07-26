@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -66,7 +66,7 @@ public class UserDefinedFunction extends Example {
 
 	private void writeUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey1");
-		Bin bin = new Bin(params.getBinName("udfbin1"), "string value");
+		Bin bin = new Bin("udfbin1", "string value");
 
 		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
 
@@ -85,7 +85,7 @@ public class UserDefinedFunction extends Example {
 
 	private void writeIfGenerationNotChanged(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey2");
-		Bin bin = new Bin(params.getBinName("udfbin2"), "string value");
+		Bin bin = new Bin("udfbin2", "string value");
 
 		// Seed record.
 		client.put(params.writePolicy, key, bin);
@@ -177,7 +177,7 @@ public class UserDefinedFunction extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		String binName = params.getBinName("udfbin5");
+		String binName = "udfbin5";
 
 		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get(list));
 
@@ -196,7 +196,7 @@ public class UserDefinedFunction extends Example {
 
 	private void appendListUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey5");
-		String binName = params.getBinName("udfbin5");
+		String binName = "udfbin5";
 		String value = "appended value";
 
 		client.execute(params.writePolicy, key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
@@ -230,7 +230,7 @@ public class UserDefinedFunction extends Example {
 
 	private void writeBlobUsingUdf(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "udfkey6");
-		String binName = params.getBinName("udfbin6");
+		String binName = "udfbin6";
 
 		// Create packed blob using standard java tools.
 		byte[] blob;

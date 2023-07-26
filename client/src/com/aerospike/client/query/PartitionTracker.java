@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -44,6 +45,7 @@ public final class PartitionTracker {
 	private final Replica replica;
 	private List<NodePartitions> nodePartitionsList;
 	private List<AerospikeException> exceptions;
+	private AtomicLong recordCount;
 	private long maxRecords;
 	private int sleepBetweenRetries;
 	public int socketTimeout;
@@ -272,20 +274,31 @@ public final class PartitionTracker {
 			partitionFilter.retry = true;
 		}
 
+		recordCount = null;
+
 		if (maxRecords > 0) {
-			// Distribute maxRecords across nodes.
-			if (maxRecords < nodeSize) {
-				// Only include nodes that have at least 1 record requested.
-				nodeSize = (int)maxRecords;
-				list = list.subList(0, nodeSize);
+			if (maxRecords >= nodeSize) {
+				// Distribute maxRecords across nodes.
+				long max = maxRecords / nodeSize;
+				int rem = (int)(maxRecords - (max * nodeSize));
+
+				for (int i = 0; i < nodeSize; i++) {
+					NodePartitions np = list.get(i);
+					np.recordMax = i < rem ? max + 1 : max;
+				}
 			}
+			else {
+				// If maxRecords < nodeSize, the scan/query could consistently return 0 records even
+				// when some records are still available in nodes that were not included in the
+				// maxRecords distribution. Therefore, ensure each node receives at least one max record
+				// allocation and filter out excess records when receiving records from the server.
+				for (int i = 0; i < nodeSize; i++) {
+					NodePartitions np = list.get(i);
+					np.recordMax = 1;
+				}
 
-			long max = maxRecords / nodeSize;
-			int rem = (int)(maxRecords - (max * nodeSize));
-
-			for (int i = 0; i < nodeSize; i++) {
-				NodePartitions np = list.get(i);
-				np.recordMax = i < rem ? max + 1 : max;
+				// Track records returned for this iteration.
+				recordCount = new AtomicLong();
 			}
 		}
 		nodePartitionsList = list;
@@ -358,16 +371,20 @@ public final class PartitionTracker {
 		nodePartitions.recordCount++;
 	}
 
+	public boolean allowRecord() {
+		return recordCount == null || recordCount.incrementAndGet() <= maxRecords;
+	}
+
 	public boolean isComplete(Cluster cluster, Policy policy) {
 		return isComplete(cluster.hasPartitionQuery, policy, nodePartitionsList);
 	}
 
 	public boolean isComplete(boolean hasPartitionQuery, Policy policy, List<NodePartitions> nodePartitionsList) {
-		long recordCount = 0;
+		long recCount = 0;
 		int partsUnavailable = 0;
 
 		for (NodePartitions np : nodePartitionsList) {
-			recordCount += np.recordCount;
+			recCount += np.recordCount;
 			partsUnavailable += np.partsUnavailable;
 
 			//System.out.println("Node " + np.node + " partsFull=" + np.partsFull.size() +
@@ -427,14 +444,14 @@ public final class PartitionTracker {
 						// Set global retry to false because only specific node partitions
 						// should be retried.
 						partitionFilter.retry = false;
-						partitionFilter.done = recordCount == 0;
+						partitionFilter.done = recCount == 0;
 					}
 				}
 			}
 			return true;
 		}
 
-		if (maxRecords > 0 && recordCount >= maxRecords) {
+		if (maxRecords > 0 && recCount >= maxRecords) {
 			return true;
 		}
 
@@ -491,7 +508,7 @@ public final class PartitionTracker {
 
 		// Prepare for next iteration.
 		if (maxRecords > 0) {
-			maxRecords -= recordCount;
+			maxRecords -= recCount;
 		}
 		iteration++;
 		return false;

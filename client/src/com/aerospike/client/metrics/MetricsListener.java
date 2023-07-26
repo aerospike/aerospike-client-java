@@ -14,20 +14,32 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.command;
+package com.aerospike.client.metrics;
+
+import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Node;
 
 /**
- * Server particle types.
+ * Client metrics listener.
  */
-public final class ParticleType {
-	public static final int NULL = 0;
-	public static final int INTEGER = 1;
-	public static final int DOUBLE = 2;
-	public static final int STRING = 3;
-	public static final int BLOB = 4;
-	public static final int BOOL = 17;
-	public static final int HLL = 18;
-	public static final int MAP = 19;
-	public static final int LIST = 20;
-	public static final int GEOJSON = 23;
+public interface MetricsListener {
+	/**
+	 * Periodic extended metrics has been enabled for the given cluster.
+	 */
+	public void onEnable(Cluster cluster, MetricsPolicy policy);
+
+	/**
+	 * A metrics snapshot has been requested for the given cluster.
+	 */
+	public void onSnapshot(Cluster cluster);
+
+	/**
+	 * A node is being dropped from the cluster.
+	 */
+	public void onNodeClose(Node node);
+
+	/**
+	 * Periodic extended metrics has been disabled for the given cluster.
+	 */
+	public void onDisable(Cluster cluster);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,12 +32,7 @@ public class PutGet extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		if (params.singleBin) {
-			runSingleBinTest(client, params);
-		}
-		else {
-			runMultiBinTest(client, params);
-		}
+		runMultiBinTest(client, params);
 		runGetHeaderTest(client, params);
 	}
 
@@ -65,30 +60,6 @@ public class PutGet extends Example {
 
 		validateBin(key, bin1, record);
 		validateBin(key, bin2, record);
-	}
-
-	/**
-	 * Execute put and get on a server configured as single-bin.
-	 */
-	private void runSingleBinTest(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "putgetkey");
-		Bin bin = new Bin("", "value");
-
-		console.info("Single Bin Put: namespace=%s set=%s key=%s value=%s",
-			key.namespace, key.setName, key.userKey, bin.value);
-
-		client.put(params.writePolicy, key, bin);
-
-		console.info("Single Bin Get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);
-
-		Record record = client.get(params.policy, key);
-
-		if (record == null) {
-			throw new Exception(String.format(
-				"Failed to get: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey));
-		}
-
-		validateBin(key, bin, record);
 	}
 
 	private void validateBin(Key key, Bin bin, Record record) {

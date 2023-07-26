@@ -48,7 +48,6 @@ import com.aerospike.test.sync.basic.TestOperateMap;
 import com.aerospike.test.sync.basic.TestPutGet;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
-import com.aerospike.test.sync.basic.TestSerialize;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestUDF;
@@ -91,7 +90,6 @@ import com.aerospike.test.util.Args;
 	TestPutGet.class,
 	TestReplace.class,
 	TestScan.class,
-	TestSerialize.class,
 	TestServerInfo.class,
 	TestTouch.class,
 	TestUDF.class,

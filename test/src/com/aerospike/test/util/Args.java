@@ -55,7 +55,6 @@ public class Args {
 	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
-	public boolean singleBin;
 	public boolean useProxyClient;
 
 	public Args() {
@@ -287,8 +286,6 @@ public class Args {
 				host, port, namespace));
 		}
 
-		//singleBin = parseBoolean(namespaceTokens, "single-bin");
-
 		int nsup = parseInt(namespaceTokens, "nsup-period");
 
 		if (nsup == 0) {
@@ -325,10 +322,5 @@ public class Args {
 		}
 
 		return namespaceTokens.substring(begin, end);
-	}
-
-	public String getBinName(String name) {
-		// Single bin servers don't need a bin name.
-		return singleBin ? "" : name;
 	}
 }

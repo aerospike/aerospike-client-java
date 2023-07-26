@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -64,10 +64,10 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			// writes to a result set.
 			threadPool.execute(this);
 		}
-		catch (RuntimeException re) {
+		catch (Throwable e) {
 			// Put the lua instance back if thread creation fails.
 			LuaCache.putInstance(lua);
-			throw re;
+			throw e;
 		}
 	}
 
@@ -90,7 +90,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			}
 			lua.call("apply_stream", args);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			super.stopThreads(e);
 		}
 		finally {

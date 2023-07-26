@@ -113,7 +113,7 @@ public abstract class AsyncExample {
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
-				params.setServerSpecific(client);
+				//params.setServerSpecific(client);
 
 				for (String exampleName : examples) {
 					runExample(exampleName, client, eventLoop, params, console);

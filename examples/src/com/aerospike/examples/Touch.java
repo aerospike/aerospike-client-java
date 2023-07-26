@@ -34,7 +34,7 @@ public class Touch extends Example {
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "touchkey");
-		Bin bin = new Bin(params.getBinName("touchbin"), "touchvalue");
+		Bin bin = new Bin("touchbin", "touchvalue");
 
 		console.info("Create record with 2 second expiration.");
 		WritePolicy writePolicy = new WritePolicy();

@@ -34,7 +34,7 @@ public final class QueryValidate {
 		try {
 			return Long.parseLong(result, 16);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + result);
 		}
 	}

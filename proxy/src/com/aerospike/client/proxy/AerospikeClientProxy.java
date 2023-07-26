@@ -64,6 +64,7 @@ import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.ClusterStatsListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.listener.ExistsArrayListener;
@@ -75,6 +76,7 @@ import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -439,8 +441,29 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	/**
 	 * Not supported in proxy client.
 	 */
+	public final void enableMetrics(MetricsPolicy policy) {
+		throw new AerospikeException(NotSupported + "enableMetrics");
+	}
+
+	/**
+	 * Not supported in proxy client.
+	 */
+	public final void disableMetrics() {
+		throw new AerospikeException(NotSupported + "disableMetrics");
+	}
+
+	/**
+	 * Not supported in proxy client.
+	 */
 	@Override
 	public ClusterStats getClusterStats() {
+		throw new AerospikeException(NotSupported + "getClusterStats");
+	}
+
+	/**
+	 * Not supported in proxy client.
+	 */
+	public final void getClusterStats(ClusterStatsListener listener) {
 		throw new AerospikeException(NotSupported + "getClusterStats");
 	}
 

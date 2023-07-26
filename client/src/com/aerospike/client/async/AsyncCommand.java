@@ -22,6 +22,7 @@ import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -190,6 +191,7 @@ public abstract class AsyncCommand extends Command {
 	}
 
 	abstract Node getNode(Cluster cluster);
+	abstract LatencyType getLatencyType();
 	abstract void writeBuffer();
 	abstract boolean parseResult();
 	abstract boolean prepareRetry(boolean timeout);

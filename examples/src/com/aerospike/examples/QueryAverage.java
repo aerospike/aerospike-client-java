@@ -45,7 +45,7 @@ public class QueryAverage extends Example {
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
-		String binName = params.getBinName("l2");
+		String binName = "l2";
 		int size = 10;
 
 		// Proxy client does not support register() nor createIndex(), so must assume

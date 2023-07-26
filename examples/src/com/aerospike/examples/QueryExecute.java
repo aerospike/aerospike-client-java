@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -46,8 +46,8 @@ public class QueryExecute extends Example {
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "qeindex1";
 		String keyPrefix = "qekey";
-		String binName1 = params.getBinName("qebin1");
-		String binName2 = params.getBinName("qebin2");
+		String binName1 = "qebin1";
+		String binName2 = "qebin2";
 		int size = 10;
 
 		register(client, params);

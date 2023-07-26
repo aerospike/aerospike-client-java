@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,8 +44,8 @@ public class QueryRegionFilter extends Example {
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
-		String binName1 = params.getBinName("filterloc");
-		String binName2 = params.getBinName("filteramenity");
+		String binName1 = "filterloc";
+		String binName2 = "filteramenity";
 		int size = 20;
 
 		register(client, params);

@@ -37,7 +37,7 @@ public class TestTouch extends TestSync {
 		}
 
 		Key key = new Key(args.namespace, args.set, "touchkey");
-		Bin bin = new Bin(args.getBinName("touchbin"), "touchvalue");
+		Bin bin = new Bin("touchbin", "touchvalue");
 
 		WritePolicy writePolicy = new WritePolicy();
 		writePolicy.expiration = 2;

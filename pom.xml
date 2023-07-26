@@ -5,7 +5,7 @@
   <groupId>com.aerospike</groupId>
   <artifactId>aerospike-parent</artifactId>
   <name>aerospike-parent</name>
-  <version>6.1.9-SNAPSHOT</version>
+  <version>6.1.11-SNAPSHOT</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
 
@@ -100,7 +100,7 @@
         <groupId>io.netty.incubator</groupId>
         <artifactId>netty-incubator-transport-native-io_uring</artifactId>
         <classifier>linux-x86_64</classifier>
-        <version>0.0.16.Final</version>
+        <version>0.0.21.Final</version>
       </dependency>
 
       <dependency>

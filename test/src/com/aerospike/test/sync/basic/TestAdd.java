@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,6 +28,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.util.Version;
 import com.aerospike.test.sync.TestSync;
 
@@ -35,7 +36,7 @@ public class TestAdd extends TestSync {
 	@Test
 	public void add() {
 		Key key = new Key(args.namespace, args.set, "addkey");
-		String binName = args.getBinName("addbin");
+		String binName = "addbin";
 
 		// Delete record if it already exists.
 		client.delete(null, key);
@@ -68,12 +69,12 @@ public class TestAdd extends TestSync {
 		}
 
 		Key key = new Key(args.namespace, args.set, "addkey");
-		String binName = args.getBinName("addbin");
+		String binName = "addbin";
 
 		// Delete record if it already exists.
 		client.delete(null, key);
 
-		Bin bin = new Bin(binName, (Long)null);
+		Bin bin = new Bin(binName, Value.get((Object)null));
 
 		AerospikeException ae = assertThrows(AerospikeException.class, new ThrowingRunnable() {
 			public void run() {

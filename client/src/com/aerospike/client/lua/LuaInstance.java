@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -170,10 +170,6 @@ public final class LuaInstance {
 			byte[] blob = new byte[len];
 			System.arraycopy(buf, offset, blob, 0, len);
 			return new LuaBytes(this, blob);
-
-		case ParticleType.JBLOB:
-			Object object = Buffer.bytesToObject(buf, offset, len);
-			return new LuaJavaBlob(object);
 
 		case ParticleType.LIST: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);

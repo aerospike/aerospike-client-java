@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,6 +28,8 @@ import com.aerospike.client.policy.BatchPolicy;
 public final class BatchExecutor {
 
 	public static void execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+		cluster.addTran();
+
 		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (BatchCommand command : commands) {
@@ -56,6 +58,16 @@ public final class BatchExecutor {
 
 					if (!policy.respondAllKeys) {
 						throw re;
+					}
+				}
+				catch (Throwable e) {
+					if (! command.splitRetry) {
+						command.setInDoubt(true);
+					}
+					status.setException(new RuntimeException(e));
+
+					if (!policy.respondAllKeys) {
+						throw e;
 					}
 				}
 			}

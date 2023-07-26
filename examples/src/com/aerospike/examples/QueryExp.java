@@ -47,7 +47,7 @@ public class QueryExp extends Example {
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "predidx";
-		String binName = params.getBinName("idxbin");
+		String binName = "idxbin";
 		int size = 50;
 
 		if (!params.useProxyClient) {
