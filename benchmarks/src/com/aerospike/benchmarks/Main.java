@@ -33,7 +33,6 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -58,7 +57,7 @@ import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.proxy.AerospikeClientProxy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
@@ -1178,9 +1177,7 @@ public class Main implements Log.Callback {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
 
-				IAerospikeClient client = useProxyClient?
-					new AerospikeClientProxy(clientPolicy, hosts) :
-					new AerospikeClient(clientPolicy, hosts);
+				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, hosts, useProxyClient);
 
 				try {
 					if (initialize) {
@@ -1200,9 +1197,7 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			IAerospikeClient client = useProxyClient?
-				new AerospikeClientProxy(clientPolicy, hosts) :
-				new AerospikeClient(clientPolicy, hosts);
+			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, hosts, useProxyClient);
 
 			try {
 				if (initialize) {

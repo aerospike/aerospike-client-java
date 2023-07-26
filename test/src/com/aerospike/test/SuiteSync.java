@@ -21,12 +21,11 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.proxy.AerospikeClientProxy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
@@ -123,9 +122,7 @@ public class SuiteSync {
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
-		client = args.useProxyClient?
-			new AerospikeClientProxy(policy, hosts) :
-			new AerospikeClient(policy, hosts);
+		client = AerospikeClientFactory.getClient(policy, hosts, args.useProxyClient);
 
 		try {
 			args.setServerSpecific(client);

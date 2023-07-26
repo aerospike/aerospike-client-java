@@ -14,27 +14,26 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-
 package com.aerospike.client.proxy;
 
-import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.AerospikeClient;
-import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
+import com.aerospike.client.policy.ClientPolicy;
 
-/** AerospikeClientFactory
+/**
  * Factory class AerospikeClientFactory will generate either a native client or a proxy client,
  * based on whether isProxy is true or false.  You can use this factory class in conjunction with your own
  * logic to select native or proxy to create an application that can automatically work with both the
  * native and proxy-based versions of Aerospike.
  */
 public class AerospikeClientFactory {
-    /** getClient()
-     * Returns either a native Aerospike client or a proxy client, based on parameter.
+    /**
+     * Return either a native Aerospike client or a proxy client, based on isProxy.
      *
      * @param clientPolicy              clientPolicy to pass to Client constructor
      * @param hosts                     Host array to pass to Client constructor
-     * @param isProxy                   If true, return an AerospikeClientProxy - otherwise return AerospikeClient
+     * @param isProxy                   If true, return AerospikeClientProxy - otherwise return AerospikeClient
      * @return IAerospikeClient
      */
     public static IAerospikeClient getClient(ClientPolicy clientPolicy, Host[] hosts, boolean isProxy) {

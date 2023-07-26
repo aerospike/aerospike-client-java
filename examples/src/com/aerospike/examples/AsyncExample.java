@@ -19,7 +19,6 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.async.EventLoop;
@@ -31,7 +30,7 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.proxy.AerospikeClientProxy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
@@ -107,9 +106,7 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			IAerospikeClient client = params.useProxyClient?
-				new AerospikeClientProxy(policy, hosts) :
-				new AerospikeClient(policy, hosts);
+			IAerospikeClient client = AerospikeClientFactory.getClient(policy, hosts, params.useProxyClient);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);

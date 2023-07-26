@@ -21,7 +21,6 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
@@ -32,7 +31,7 @@ import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
-import com.aerospike.client.proxy.AerospikeClientProxy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
@@ -122,9 +121,7 @@ public class SuiteAsync {
 
 			eventLoop = eventLoops.get(0);
 
-			client = args.useProxyClient?
-				new AerospikeClientProxy(policy, hosts) :
-				new AerospikeClient(policy, hosts);
+			client = AerospikeClientFactory.getClient(policy, hosts, args.useProxyClient);
 
 			try {
 				args.setServerSpecific(client);
