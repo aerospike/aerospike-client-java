@@ -43,8 +43,7 @@ public abstract class Example {
 
 		Host[] hosts = Host.parseHosts(params.host, params.port);
 
-		AerospikeClientFactory cf = new AerospikeClientFactory();
-		IAerospikeClient client = cf.getClient(policy, hosts, params.useProxyClient);
+		IAerospikeClient client = AerospikeClientFactory.getClient(policy, hosts, params.useProxyClient);
 
 		try {
 			//params.setServerSpecific(client);

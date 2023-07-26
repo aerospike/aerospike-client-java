@@ -37,7 +37,7 @@ public class AerospikeClientFactory {
      * @param isProxy                   If true, return an AerospikeClientProxy - otherwise return AerospikeClient
      * @return IAerospikeClient
      */
-    public IAerospikeClient getClient(ClientPolicy clientPolicy, Host[] hosts, Boolean isProxy) {
+    public static IAerospikeClient getClient(ClientPolicy clientPolicy, Host[] hosts, boolean isProxy) {
         if (isProxy) {
             return new AerospikeClientProxy(clientPolicy, hosts);
         }
