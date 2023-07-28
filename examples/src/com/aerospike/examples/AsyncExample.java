@@ -106,7 +106,7 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			IAerospikeClient client = AerospikeClientFactory.getClient(policy, hosts, params.useProxyClient);
+			IAerospikeClient client = AerospikeClientFactory.getClient(policy, params.useProxyClient, hosts);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);

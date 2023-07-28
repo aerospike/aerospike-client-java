@@ -121,7 +121,7 @@ public class SuiteAsync {
 
 			eventLoop = eventLoops.get(0);
 
-			client = AerospikeClientFactory.getClient(policy, hosts, args.useProxyClient);
+			client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
 
 			try {
 				args.setServerSpecific(client);

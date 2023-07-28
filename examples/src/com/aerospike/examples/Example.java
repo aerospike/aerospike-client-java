@@ -19,10 +19,10 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 
 public abstract class Example {
 
@@ -43,7 +43,7 @@ public abstract class Example {
 
 		Host[] hosts = Host.parseHosts(params.host, params.port);
 
-		IAerospikeClient client = AerospikeClientFactory.getClient(policy, hosts, params.useProxyClient);
+		IAerospikeClient client = AerospikeClientFactory.getClient(policy, params.useProxyClient, hosts);
 
 		try {
 			//params.setServerSpecific(client);

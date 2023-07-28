@@ -122,7 +122,7 @@ public class SuiteSync {
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
-		client = AerospikeClientFactory.getClient(policy, hosts, args.useProxyClient);
+		client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
 
 		try {
 			args.setServerSpecific(client);

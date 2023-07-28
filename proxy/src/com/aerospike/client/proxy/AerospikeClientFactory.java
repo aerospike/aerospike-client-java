@@ -23,20 +23,19 @@ import com.aerospike.client.policy.ClientPolicy;
 
 /**
  * Factory class AerospikeClientFactory will generate either a native client or a proxy client,
- * based on whether isProxy is true or false.  You can use this factory class in conjunction with your own
- * logic to select native or proxy to create an application that can automatically work with both the
- * native and proxy-based versions of Aerospike.
+ * based on whether isProxy is true or false. This allows an application to work with either
+ * Aerospike native servers or proxy servers used in the database-as-a-service offering (dbaas).
  */
 public class AerospikeClientFactory {
     /**
      * Return either a native Aerospike client or a proxy client, based on isProxy.
      *
-     * @param clientPolicy              clientPolicy to pass to Client constructor
-     * @param hosts                     Host array to pass to Client constructor
-     * @param isProxy                   If true, return AerospikeClientProxy - otherwise return AerospikeClient
+     * @param clientPolicy			client configuration parameters, pass in null for defaults
+     * @param isProxy				if true, return AerospikeClientProxy, otherwise return AerospikeClient
+     * @param hosts					array of server hosts that the client can connect
      * @return IAerospikeClient
      */
-    public static IAerospikeClient getClient(ClientPolicy clientPolicy, Host[] hosts, boolean isProxy) {
+    public static IAerospikeClient getClient(ClientPolicy clientPolicy, boolean isProxy, Host... hosts) {
         if (isProxy) {
             return new AerospikeClientProxy(clientPolicy, hosts);
         }

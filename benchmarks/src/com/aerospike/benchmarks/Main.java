@@ -1177,7 +1177,7 @@ public class Main implements Log.Callback {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
 
-				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, hosts, useProxyClient);
+				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 				try {
 					if (initialize) {
@@ -1197,7 +1197,7 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, hosts, useProxyClient);
+			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 			try {
 				if (initialize) {
