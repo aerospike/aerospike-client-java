@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,15 +21,17 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.async.TestAsyncBatch;
 import com.aerospike.test.async.TestAsyncOperate;
 import com.aerospike.test.async.TestAsyncPutGet;
@@ -39,6 +41,7 @@ import com.aerospike.test.async.TestAsyncUDF;
 import com.aerospike.test.util.Args;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -54,7 +57,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 	TestAsyncUDF.class
 })
 public class SuiteAsync {
-	public static AerospikeClient client = null;
+	public static IAerospikeClient client = null;
 	public static EventLoops eventLoops = null;
 	public static EventLoop eventLoop = null;
 
@@ -66,6 +69,16 @@ public class SuiteAsync {
 		Args args = Args.Instance;
 
 		EventPolicy eventPolicy = new EventPolicy();
+
+		if (args.useProxyClient && args.eventLoopType == EventLoopType.DIRECT_NIO) {
+			// Proxy client requires netty event loops.
+			if (Epoll.isAvailable()) {
+				args.eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
+			else {
+				args.eventLoopType = EventLoopType.NETTY_NIO;
+			}
+		}
 
 		switch (args.eventLoopType) {
 			default:
@@ -101,16 +114,14 @@ public class SuiteAsync {
 
 		try {
 			ClientPolicy policy = new ClientPolicy();
+			args.setClientPolicy(policy);
 			policy.eventLoops = eventLoops;
-			policy.user = args.user;
-			policy.password = args.password;
-			policy.authMode = args.authMode;
-			policy.tlsPolicy = args.tlsPolicy;
 
 			Host[] hosts = Host.parseHosts(args.host, args.port);
 
 			eventLoop = eventLoops.get(0);
-			client = new AerospikeClient(policy, hosts);
+
+			client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
 
 			try {
 				args.setServerSpecific(client);

@@ -39,6 +39,7 @@ public class Parameters {
 	EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	int maxCommandsInProcess;
 	int maxCommandsInQueue;
+	boolean useProxyClient;
 
 	protected Parameters(TlsPolicy policy, String host, int port, String user, String password, AuthMode authMode, String namespace, String set) {
 		this.host = host;

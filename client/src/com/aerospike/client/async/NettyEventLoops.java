@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,9 +25,14 @@ import com.aerospike.client.AerospikeException;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollSocketChannel;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
+import io.netty.channel.kqueue.KQueueSocketChannel;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
+import io.netty.incubator.channel.uring.IOUringSocketChannel;
 import io.netty.util.concurrent.EventExecutor;
 
 /**
@@ -132,6 +137,26 @@ public final class NettyEventLoops implements EventLoops {
 		}
 
 		throw new AerospikeException("Unexpected EventLoopGroup");
+	}
+
+	/**
+	 * Return SocketChannel class to use in NettyChannelBuilder.
+	 */
+	public Class<? extends SocketChannel> getSocketChannelClass() {
+		switch (eventLoopType) {
+		default:
+		case NETTY_NIO:
+			return NioSocketChannel.class;
+
+		case NETTY_EPOLL:
+			return EpollSocketChannel.class;
+
+		case NETTY_KQUEUE:
+			return KQueueSocketChannel.class;
+
+		case NETTY_IOURING:
+			return IOUringSocketChannel.class;
+		}
 	}
 
 	/**

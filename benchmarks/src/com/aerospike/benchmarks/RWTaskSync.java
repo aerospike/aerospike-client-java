@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,8 +16,8 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
@@ -31,9 +31,9 @@ import com.aerospike.client.util.Util;
  */
 public class RWTaskSync extends RWTask implements Runnable {
 
-	private final AerospikeClient client;
+	private final IAerospikeClient client;
 
-	public RWTaskSync(AerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
+	public RWTaskSync(IAerospikeClient client, Arguments args, CounterStore counters, long keyStart, long keyCount) {
 		super(args, counters, keyStart, keyCount);
 		this.client = client;
 	}

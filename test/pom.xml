@@ -25,6 +25,11 @@
     </dependency>
 
     <dependency>
+      <groupId>com.aerospike</groupId>
+      <artifactId>aerospike-proxy-client</artifactId>
+    </dependency>
+
+    <dependency>
       <groupId>io.netty</groupId>
       <artifactId>netty-transport</artifactId>
     </dependency>
@@ -57,13 +62,13 @@
       <artifactId>commons-cli</artifactId>
     </dependency>
 
-    <dependency> 
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
-    
+
   <build>
     <testSourceDirectory>${project.basedir}/src</testSourceDirectory>
     <testResources>
@@ -86,10 +91,10 @@
         <executions>
           <execution>
             <id>make-my-jar-with-dependencies</id>
-              <phase>package</phase>
-              <goals>
-                <goal>single</goal>
-              </goals>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -103,7 +108,7 @@
           </includes>
         </configuration>
       </plugin>
-    </plugins>      
+    </plugins>
   </build>
 
 </project>

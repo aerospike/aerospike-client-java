@@ -280,15 +280,6 @@ public abstract class SyncCommand extends Command {
 		deadline += elapsed;
 	}
 
-	@Override
-	protected void sizeBuffer() {
-		dataBuffer = ThreadLocalData.getBuffer();
-
-		if (dataOffset > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
-		}
-	}
-
 	protected void sizeBuffer(int size) {
 		if (size > dataBuffer.length) {
 			dataBuffer = ThreadLocalData.resizeBuffer(size);

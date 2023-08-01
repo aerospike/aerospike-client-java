@@ -28,7 +28,7 @@ public final class AsyncOperate extends AsyncRead {
 	private final OperateArgs args;
 
 	public AsyncOperate(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
-		super(cluster, listener, args.writePolicy, key, args.partition, true);
+		super(cluster, listener, args.writePolicy, key, args.getPartition(cluster, key), true);
 		this.args = args;
 	}
 

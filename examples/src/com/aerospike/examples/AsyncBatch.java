@@ -19,10 +19,10 @@ package com.aerospike.examples;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.Record;
@@ -38,7 +38,7 @@ import com.aerospike.client.util.Util;
 
 public class AsyncBatch extends AsyncExample {
 
-	private AerospikeClient client;
+	private IAerospikeClient client;
 	private EventLoop eventLoop;
 	private final String keyPrefix = "batchkey";
 	private final String valuePrefix = "batchvalue";
@@ -50,7 +50,7 @@ public class AsyncBatch extends AsyncExample {
 	 * Asynchronous batch examples.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		this.client = client;
 		this.eventLoop = eventLoop;
 		this.binName = "batchbin";

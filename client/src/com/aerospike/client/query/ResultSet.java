@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,7 +29,7 @@ import com.aerospike.client.Log;
  * Multiple threads will retrieve results from the server nodes and put these results on the queue.
  * The single user thread consumes these results from the queue.
  */
-public final class ResultSet implements Iterable<Object>, Closeable {
+public class ResultSet implements Iterable<Object>, Closeable {
 	public static final Object END = new Object();
 
 	private final QueryAggregateExecutor executor;
@@ -45,6 +45,14 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 		this.queue = new ArrayBlockingQueue<Object>(capacity);
 	}
 
+	/**
+	 * For internal use only.
+	 */
+	protected ResultSet() {
+		this.executor = null;
+		this.queue = null;
+	}
+
 	//-------------------------------------------------------
 	// Result traversal methods
 	//-------------------------------------------------------
@@ -53,10 +61,10 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	 * Retrieve next result.  This method will block until a result is retrieved
 	 * or the query is cancelled.
 	 *
-	 * @return	whether result exists - if false, no more results are available
+	 * @return whether result exists - if false, no more results are available
 	 */
-	public final boolean next() throws AerospikeException {
-		if (! valid) {
+	public boolean next() throws AerospikeException {
+		if (!valid) {
 			executor.checkForException();
 			return false;
 		}
@@ -84,7 +92,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Close query.
 	 */
-	public final void close() {
+	public void close() {
 		valid = false;
 
 		// Check if more results are available.
@@ -109,7 +117,7 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Get result.
 	 */
-	public final Object getObject() {
+	public Object getObject() {
 		return row;
 	}
 
@@ -120,8 +128,8 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Put object on the queue.
 	 */
-	public final boolean put(Object object) {
-		if (! valid) {
+	public boolean put(Object object) {
+		if (!valid) {
 			return false;
 		}
 
@@ -146,13 +154,13 @@ public final class ResultSet implements Iterable<Object>, Closeable {
 	/**
 	 * Abort retrieval with end token.
 	 */
-	protected final void abort() {
+	protected void abort() {
 		valid = false;
 		queue.clear();
 
 		// Send end command to transaction thread.
 		// It's critical that the end offer succeeds.
-		while (! queue.offer(END)) {
+		while (!queue.offer(END)) {
 			// Queue must be full. Remove one item to make room.
 			if (queue.poll() == null) {
 				// Can't offer or poll.  Nothing further can be done.

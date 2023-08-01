@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,8 +50,9 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.util.ThreadLocalData;
 
-public abstract class Command {
+public class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_SHORT_QUERY		= (1 << 2); // Short query.
@@ -611,9 +612,12 @@ public abstract class Command {
 	//--------------------------------------------------
 
 	public final void setBatchOperate(BatchPolicy policy, List<? extends BatchRecord> records, BatchNode batch) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final BatchRecordIterNative iter = new BatchRecordIterNative(records, batch);
+		setBatchOperate(policy, iter);
+	}
+
+	public final void setBatchOperate(BatchPolicy policy, KeyIter<BatchRecord> iter) {
+		BatchRecord record;
 		BatchRecord prev = null;
 
 		begin();
@@ -626,8 +630,7 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		for (int i = 0; i < max; i++) {
-			final BatchRecord record = records.get(offsets[i]);
+		while ((record = iter.next()) != null) {
 			final Key key = record.key;
 
 			dataOffset += key.digest.length + 4;
@@ -661,19 +664,18 @@ public abstract class Command {
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 
 		BatchAttr attr = new BatchAttr();
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			final int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((record = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			final BatchRecord record = records.get(index);
 			final Key key = record.key;
 			final byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
@@ -776,10 +778,17 @@ public abstract class Command {
 		Operation[] ops,
 		BatchAttr attr
 	) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchOperate(policy, iter, binNames, ops, attr);
+	}
 
+	public final void setBatchOperate(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		String[] binNames,
+		Operation[] ops,
+		BatchAttr attr
+	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
@@ -792,11 +801,10 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		Key key;
 		Key prev = null;
 
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-
+		while ((key = iter.next()) != null) {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
@@ -848,17 +856,16 @@ public abstract class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((key = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			Key key = keys[index];
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
@@ -901,10 +908,18 @@ public abstract class Command {
 		byte[] argBytes,
 		BatchAttr attr
 	) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchUDF(policy, iter, packageName, functionName, argBytes, attr);
+	}
 
+	public final void setBatchUDF(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		String packageName,
+		String functionName,
+		byte[] argBytes,
+		BatchAttr attr
+	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
@@ -917,11 +932,10 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		Key key;
 		Key prev = null;
 
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-
+		while ((key = iter.next()) != null) {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
@@ -955,17 +969,16 @@ public abstract class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((key = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			Key key = keys[index];
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
@@ -1547,6 +1560,16 @@ public abstract class Command {
 	//--------------------------------------------------
 
 	private final int estimateKeySize(Policy policy, Key key) {
+		int fieldCount = estimateKeySize(key);
+
+		if (policy.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
+		return fieldCount;
+	}
+
+	protected final int estimateKeySize(Key key) {
 		int fieldCount = 0;
 
 		if (key.namespace != null) {
@@ -1561,11 +1584,6 @@ public abstract class Command {
 
 		dataOffset += key.digest.length + FIELD_HEADER_SIZE;
 		fieldCount++;
-
-		if (policy.sendKey) {
-			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
-			fieldCount++;
-		}
 		return fieldCount;
 	}
 
@@ -1853,6 +1871,14 @@ public abstract class Command {
 	}
 
 	private final void writeKey(Policy policy, Key key) {
+		writeKey(key);
+
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+	}
+
+	protected final void writeKey(Key key) {
 		// Write key into buffer.
 		if (key.namespace != null) {
 			writeField(key.namespace, FieldType.NAMESPACE);
@@ -1863,10 +1889,6 @@ public abstract class Command {
 		}
 
 		writeField(key.digest, FieldType.DIGEST_RIPE);
-
-		if (policy.sendKey) {
-			writeField(key.userKey, FieldType.KEY);
-		}
 	}
 
 	private final int writeReadOnlyOperations(Operation[] ops, int readAttr) {
@@ -1988,11 +2010,11 @@ public abstract class Command {
 		writeFieldHeader(size, FieldType.FILTER_EXP);
 	}
 
-	private final void begin() {
+	protected final void begin() {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private final void end() {
+	protected final void end() {
 		// Write total size of message which is the current offset.
 		long proto = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(proto, dataBuffer, 0);
@@ -2023,7 +2045,13 @@ public abstract class Command {
 		}
 	}
 
-	protected abstract void sizeBuffer();
+	protected void sizeBuffer() {
+		dataBuffer = ThreadLocalData.getBuffer();
+
+		if (dataOffset > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
+		}
+	}
 
 	//--------------------------------------------------
 	// Response Parsing
@@ -2132,7 +2160,80 @@ public abstract class Command {
 		return isWrite && commandSentCounter > 1;
 	}
 
-	private static class OpResults extends ArrayList<Object> {
+	public static class OpResults extends ArrayList<Object> {
 		private static final long serialVersionUID = 1L;
+	}
+
+	public interface KeyIter<T> {
+		int size();
+		T next();
+		int offset();
+		void reset();
+	}
+
+	private static class BatchRecordIterNative extends BaseIterNative<BatchRecord> {
+		private final List<? extends BatchRecord> records;
+
+		public BatchRecordIterNative(List<? extends BatchRecord> records, BatchNode batch) {
+			super(batch);
+			this.records = records;
+		}
+
+		@Override
+		public BatchRecord get(int offset) {
+			return records.get(offset);
+		}
+	}
+
+	private static class KeyIterNative extends BaseIterNative<Key> {
+		private final Key[] keys;
+
+		public KeyIterNative(Key[] keys, BatchNode batch) {
+			super(batch);
+			this.keys = keys;
+		}
+
+		@Override
+		public Key get(int offset) {
+			return keys[offset];
+		}
+	}
+
+	private static abstract class BaseIterNative<T> implements KeyIter<T> {
+		private final int size;
+		private final int[] offsets;
+		private int offset;
+		private int index;
+
+		public BaseIterNative(BatchNode batch) {
+			this.size = batch.offsetsSize;
+			this.offsets = batch.offsets;
+		}
+
+		@Override
+		public int size() {
+			return size;
+		}
+
+		@Override
+		public T next() {
+			if (index >= size) {
+				return null;
+			}
+			offset = offsets[index++];
+			return get(offset);
+		}
+
+		abstract T get(int offset);
+
+		@Override
+		public int offset() {
+			return offset;
+		}
+
+		@Override
+		public void reset() {
+			index = 0;
+		}
 	}
 }

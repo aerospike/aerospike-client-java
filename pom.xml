@@ -8,12 +8,12 @@
   <version>6.1.11</version>
   <packaging>pom</packaging>
   <url>https://github.com/aerospike/aerospike-client-java</url>
-  
+
   <organization>
     <name>Aerospike Inc.</name>
     <url>https://www.aerospike.com</url>
   </organization>
-  
+
   <licenses>
     <license>
       <name>The Apache License, Version 2.0</name>
@@ -23,6 +23,7 @@
 
   <modules>
     <module>client</module>
+    <module>proxy</module>
     <module>examples</module>
     <module>benchmarks</module>
     <module>test</module>
@@ -39,6 +40,8 @@
     <maven-javadoc-plugin.version>3.2.0</maven-javadoc-plugin.version>
 
     <netty.version>4.1.94.Final</netty.version>
+    <netty.tcnative.version>2.0.61.Final</netty.tcnative.version>
+    <grpc.version>1.56.1</grpc.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
     <commons-cli.version>1.5.0</commons-cli.version>
@@ -50,6 +53,12 @@
       <dependency>
         <groupId>com.aerospike</groupId>
         <artifactId>aerospike-client</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.aerospike</groupId>
+        <artifactId>aerospike-proxy-client</artifactId>
         <version>${project.version}</version>
       </dependency>
 
@@ -99,6 +108,12 @@
       </dependency>
 
       <dependency>
+        <groupId>io.netty</groupId>
+        <artifactId>netty-tcnative-boringssl-static</artifactId>
+        <version>${netty.tcnative.version}</version>
+      </dependency>
+
+      <dependency>
         <groupId>org.luaj</groupId>
         <artifactId>luaj-jse</artifactId>
         <version>${luaj-jse.version}</version>
@@ -122,6 +137,13 @@
         <version>${junit.version}</version>
         <scope>test</scope>
       </dependency>
+
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-netty</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+
     </dependencies>
   </dependencyManagement>
 
@@ -150,4 +172,14 @@
     </pluginManagement>
   </build>
 
+  <!-- Enable this section when new grpc stub changes need to be 
+       tested in development.
+  <repositories>
+    <repository>
+      <id>oss-sonatype</id>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+    </repository>
+  </repositories>
+  -->
+  
 </project>

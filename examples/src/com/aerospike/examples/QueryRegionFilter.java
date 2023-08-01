@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -41,7 +41,7 @@ public class QueryRegionFilter extends Example {
 	 * Perform region query using a Geo index with an aggregation filter.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
 		String binName1 = "filterloc";
@@ -55,14 +55,14 @@ public class QueryRegionFilter extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/geo_filter_example.lua",
 											"geo_filter_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -87,7 +87,7 @@ public class QueryRegionFilter extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName1,
@@ -122,7 +122,7 @@ public class QueryRegionFilter extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName1,

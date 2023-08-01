@@ -18,8 +18,8 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
@@ -33,7 +33,7 @@ public class DeleteBin extends Example {
 	 * Drop a bin from a record.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Write multi-bin record.");
 		Key key = new Key(params.namespace, params.set, "delbinkey");
 		String binName1 = "bin1";

@@ -19,9 +19,10 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.async.EventLoop;
+import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
@@ -29,8 +30,11 @@ import com.aerospike.client.async.NioEventLoops;
 import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
+import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -44,6 +48,16 @@ public abstract class AsyncExample {
 		EventPolicy eventPolicy = new EventPolicy();
 		eventPolicy.maxCommandsInProcess = params.maxCommandsInProcess;
 		eventPolicy.maxCommandsInQueue = params.maxCommandsInQueue;
+
+		if (params.useProxyClient && params.eventLoopType == EventLoopType.DIRECT_NIO) {
+			// Proxy client requires netty event loops.
+			if (Epoll.isAvailable()) {
+				params.eventLoopType = EventLoopType.NETTY_EPOLL;
+			}
+			else {
+				params.eventLoopType = EventLoopType.NETTY_NIO;
+			}
+		}
 
 		EventLoops eventLoops;
 
@@ -92,7 +106,7 @@ public abstract class AsyncExample {
 
 			Host[] hosts = Host.parseHosts(params.host, params.port);
 
-			AerospikeClient client = new AerospikeClient(policy, hosts);
+			IAerospikeClient client = AerospikeClientFactory.getClient(policy, params.useProxyClient, hosts);
 
 			try {
 				EventLoop eventLoop = eventLoops.get(0);
@@ -101,6 +115,11 @@ public abstract class AsyncExample {
 				for (String exampleName : examples) {
 					runExample(exampleName, client, eventLoop, params, console);
 				}
+
+				// TODO: Remove sleep after adding functionality to wait until async commands complete.
+				System.out.println("Sleep 2 seconds");
+				Util.sleep(2000);
+				System.out.println("Sleep end");
 			}
 			finally {
 				client.close();
@@ -114,7 +133,7 @@ public abstract class AsyncExample {
 	/**
 	 * Run asynchronous client example.
 	 */
-	public static void runExample(String exampleName, AerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
+	public static void runExample(String exampleName, IAerospikeClient client, EventLoop eventLoop, Parameters params, Console console) throws Exception {
 		String fullName = "com.aerospike.examples." + exampleName;
 		Class<?> cls = Class.forName(fullName);
 
@@ -123,8 +142,8 @@ public abstract class AsyncExample {
 			AsyncExample example = (AsyncExample)ctor.newInstance();
 			example.console = console;
 			example.params = params;
-			example.writePolicy = client.writePolicyDefault;
-			example.policy = client.readPolicyDefault;
+			example.writePolicy = client.getWritePolicyDefault();
+			example.policy = client.getReadPolicyDefault();
 			example.run(client, eventLoop);
 		}
 		else {
@@ -138,7 +157,7 @@ public abstract class AsyncExample {
 	protected Policy policy;
 	private boolean completed;
 
-	public void run(AerospikeClient client, EventLoop eventLoop) {
+	public void run(IAerospikeClient client, EventLoop eventLoop) {
 		// Most async examples no longer wait for completion, so
 		// these examples are run in parallel with intertwined log
 		// messages.  It's done that way because most applications
@@ -169,5 +188,5 @@ public abstract class AsyncExample {
 		super.notify();
 	}
 
-	public abstract void runExample(AerospikeClient client, EventLoop eventLoop);
+	public abstract void runExample(IAerospikeClient client, EventLoop eventLoop);
 }

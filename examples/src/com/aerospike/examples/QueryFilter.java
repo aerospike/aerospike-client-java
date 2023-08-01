@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -44,7 +44,7 @@ public class QueryFilter extends Example {
 	 * user defined function.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "profileindex";
 		String keyPrefix = "profilekey";
 		String binName = "name";
@@ -56,13 +56,13 @@ public class QueryFilter extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/filter_example.lua", "filter_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -85,7 +85,7 @@ public class QueryFilter extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName
@@ -96,7 +96,7 @@ public class QueryFilter extends Example {
 	}
 
 	private void writeRecord(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String userKey,
 		String name,
@@ -113,7 +113,7 @@ public class QueryFilter extends Example {
 
 	@SuppressWarnings("unchecked")
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName

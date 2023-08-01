@@ -190,6 +190,13 @@ public class AerospikeException extends RuntimeException {
 	}
 
 	/**
+	 * Sets the inDoubt value to inDoubt.
+	 */
+	public void setInDoubt(boolean inDoubt) {
+		this.inDoubt = inDoubt;
+	}
+
+	/**
 	 * Exception thrown when database request expires before completing.
 	 */
 	public static final class Timeout extends AerospikeException {

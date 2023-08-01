@@ -12,3 +12,4 @@ apidocs
 *.jar
 *.iml
 .idea/
+dependency-reduced-pom.xml

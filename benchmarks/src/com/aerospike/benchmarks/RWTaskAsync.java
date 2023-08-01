@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.benchmarks;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.Value;
@@ -31,7 +31,7 @@ import com.aerospike.client.util.RandomShift;
 
 public final class RWTaskAsync extends RWTask {
 
-	private final AerospikeClient client;
+	private final IAerospikeClient client;
 	private final EventLoop eventLoop;
 	private final RandomShift random;
 	private final WriteListener writeListener;
@@ -41,7 +41,7 @@ public final class RWTaskAsync extends RWTask {
 	private final boolean useLatency;
 
 	public RWTaskAsync(
-		AerospikeClient client,
+		IAerospikeClient client,
 		EventLoop eventLoop,
 		Arguments args,
 		CounterStore counters,

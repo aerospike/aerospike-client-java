@@ -16,8 +16,8 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
@@ -31,7 +31,7 @@ public class PutGet extends Example {
 	 * Write and read a bin value.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		runMultiBinTest(client, params);
 		runGetHeaderTest(client, params);
 	}
@@ -39,7 +39,7 @@ public class PutGet extends Example {
 	/**
 	 * Execute put and get on a server configured as multi-bin.  This is the server default.
 	 */
-	private void runMultiBinTest(AerospikeClient client, Parameters params) throws Exception {
+	private void runMultiBinTest(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "putgetkey");
 		Bin bin1 = new Bin("bin1", "value1");
 		Bin bin2 = new Bin("bin2", "value2");
@@ -78,7 +78,7 @@ public class PutGet extends Example {
 	/**
 	 * Read record header data.
 	 */
-	private void runGetHeaderTest(AerospikeClient client, Parameters params) throws Exception {
+	private void runGetHeaderTest(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "putgetkey");
 
 		console.info("Get record header: namespace=%s set=%s key=%s", key.namespace, key.setName, key.userKey);

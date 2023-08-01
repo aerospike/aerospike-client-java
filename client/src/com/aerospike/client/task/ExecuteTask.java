@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,9 +24,9 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.Statement;
 
 /**
- * Task used to poll for long running server execute job completion.
+ * Task used to poll for long-running server execute job completion.
  */
-public final class ExecuteTask extends Task {
+public class ExecuteTask extends Task {
 	private final long taskId;
 	private final boolean scan;
 
@@ -34,9 +34,25 @@ public final class ExecuteTask extends Task {
 	 * Initialize task with fields needed to query server nodes.
 	 */
 	public ExecuteTask(Cluster cluster, Policy policy, Statement statement, long taskId) {
+		this(cluster, policy, taskId, statement.isScan());
+	}
+
+	/**
+	 * Initialize task with fields needed to query server nodes.
+	 */
+	public ExecuteTask(Cluster cluster, Policy policy, long taskId, boolean isScan) {
 		super(cluster, policy);
 		this.taskId = taskId;
-		this.scan = statement.isScan();
+		this.scan = isScan;
+	}
+
+	/**
+	 * Initialize task with fields needed to query server nodes.
+	 */
+	protected ExecuteTask(long taskId, boolean isScan) {
+		super(null, new Policy());
+		this.taskId = taskId;
+		this.scan = isScan;
 	}
 
 	/**

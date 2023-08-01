@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -210,12 +210,16 @@ public final class Filter {
 	private final Value end;
 
 	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx) {
+		this(name, colType, valType, begin, end, (ctx != null && ctx.length > 0) ? Pack.pack(ctx) : null);
+	}
+
+	Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx) {
 		this.name = name;
 		this.colType = colType;
 		this.valType = valType;
 		this.begin = begin;
 		this.end = end;
-		this.packedCtx = (ctx != null && ctx.length > 0)? Pack.pack(ctx) : null;
+		this.packedCtx = packedCtx;
 	}
 
 	/**
@@ -259,6 +263,46 @@ public final class Filter {
 	 */
 	public IndexCollectionType getCollectionType() {
 		return colType;
+	}
+
+	/**
+	 * Filter name.
+	 * For internal use only.
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * Index collection type.
+	 * For internal use only.
+	 */
+	public IndexCollectionType getColType() {
+		return colType;
+	}
+
+	/**
+	 * Filter begin value.
+	 * For internal use only.
+	 */
+	public Value getBegin() {
+		return begin;
+	}
+
+	/**
+	 * Filter begin value.
+	 * For internal use only.
+	 */
+	public Value getEnd() {
+		return end;
+	}
+
+	/**
+	 * Filter Value type.
+	 * For internal use only.
+	 */
+	public int getValType() {
+		return valType;
 	}
 
 	/**

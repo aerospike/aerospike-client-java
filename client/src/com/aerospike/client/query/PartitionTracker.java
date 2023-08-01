@@ -54,24 +54,34 @@ public final class PartitionTracker {
 	private long deadline;
 
 	public PartitionTracker(ScanPolicy policy, Node[] nodes) {
-		this((Policy)policy, nodes);
+		this((Policy)policy, nodes.length);
+		setMaxRecords(policy.maxRecords);
+	}
+
+	public PartitionTracker(ScanPolicy policy, int nodeCapacity) {
+		this((Policy)policy, nodeCapacity);
 		setMaxRecords(policy.maxRecords);
 	}
 
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes) {
-		this((Policy)policy, nodes);
+		this((Policy)policy, nodes.length);
 		setMaxRecords(policy, stmt);
 	}
 
-	private PartitionTracker(Policy policy, Node[] nodes) {
+	public PartitionTracker(QueryPolicy policy, Statement stmt, int nodeCapacity) {
+		this((Policy)policy, nodeCapacity);
+		setMaxRecords(policy, stmt);
+	}
+
+	private PartitionTracker(Policy policy, int nodeCapacity) {
 		this.partitionBegin = 0;
-		this.nodeCapacity = nodes.length;
+		this.nodeCapacity = nodeCapacity;
 		this.nodeFilter = null;
 		this.partitionFilter = null;
 		this.replica = policy.replica;
 
 		// Create initial partition capacity for each node as average + 25%.
-		int ppn = Node.PARTITIONS / nodes.length;
+		int ppn = Node.PARTITIONS / nodeCapacity;
 		ppn += ppn >>> 2;
 		this.partitionsCapacity = ppn;
 		this.partitions = initPartitions(Node.PARTITIONS, null);
@@ -103,17 +113,30 @@ public final class PartitionTracker {
 		this((Policy)policy, nodes, filter, policy.maxRecords);
 	}
 
+	public PartitionTracker(ScanPolicy policy, int nodeCapacity, PartitionFilter filter) {
+		this((Policy)policy, nodeCapacity, filter, policy.maxRecords);
+	}
+
 	public PartitionTracker(QueryPolicy policy, Statement stmt, Node[] nodes, PartitionFilter filter) {
-		this((Policy)policy, nodes, filter, (stmt.maxRecords > 0)? stmt.maxRecords : policy.maxRecords);
+		this((Policy)policy, nodes, filter, (stmt.maxRecords > 0) ? stmt.maxRecords : policy.maxRecords);
+	}
+
+	public PartitionTracker(QueryPolicy policy, Statement stmt, int nodeCapacity, PartitionFilter filter) {
+		this((Policy)policy, nodeCapacity, filter, (stmt.maxRecords > 0) ?
+			stmt.maxRecords : policy.maxRecords);
 	}
 
 	private PartitionTracker(Policy policy, Node[] nodes, PartitionFilter filter, long maxRecords) {
+		this(policy, nodes.length, filter, maxRecords);
+	}
+
+	private PartitionTracker(Policy policy, int nodeCapacity, PartitionFilter filter, long maxRecords) {
 		// Validate here instead of initial PartitionFilter constructor because total number of
 		// cluster partitions may change on the server and PartitionFilter will never have access
 		// to Cluster instance.  Use fixed number of partitions for now.
-		if (! (filter.begin >= 0 && filter.begin < Node.PARTITIONS)) {
+		if (!(filter.begin >= 0 && filter.begin < Node.PARTITIONS)) {
 			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Invalid partition begin " + filter.begin +
-				". Valid range: 0-" + (Node.PARTITIONS-1));
+				". Valid range: 0-" + (Node.PARTITIONS - 1));
 		}
 
 		if (filter.count <= 0) {
@@ -127,7 +150,7 @@ public final class PartitionTracker {
 
 		setMaxRecords(maxRecords);
 		this.partitionBegin = filter.begin;
-		this.nodeCapacity = nodes.length;
+		this.nodeCapacity = nodeCapacity;
 		this.nodeFilter = null;
 		this.partitionsCapacity = filter.count;
 		this.replica = policy.replica;
@@ -299,10 +322,45 @@ public final class PartitionTracker {
 		nodePartitions.partsUnavailable++;
 	}
 
+	/**
+	 * Update the last seen digest for a partition.
+	 * Internal use only.
+	 *
+	 * @param partitionId partition id
+	 * @param digest      the last seen digest.
+	 */
+	void setDigest(int partitionId, byte[] digest) {
+		for (PartitionStatus ps : partitions) {
+			if (ps.id == partitionId) {
+				ps.digest = digest;
+			}
+		}
+	}
+
 	public void setDigest(NodePartitions nodePartitions, Key key) {
 		int partitionId = Partition.getPartitionId(key.digest);
 		partitions[partitionId - partitionBegin].digest = key.digest;
 		nodePartitions.recordCount++;
+	}
+
+	/**
+	 * Update the last seen value for a partition.
+	 * Internal use only.
+	 *
+	 * @param partitionId partition id
+	 * @param digest      the record digest
+	 * @param bval        the last seen value.
+	 * @param retry       indicates if this partition should be retried.
+	 */
+	void setLast(int partitionId, byte[] digest, long bval, boolean retry) {
+		int pIndex = partitionId - partitionBegin;
+		if (pIndex < partitions.length) {
+			PartitionStatus ps = partitions[pIndex];
+			assert ps.id == partitionId;
+			ps.bval = bval;
+			ps.digest = digest;
+			ps.retry = retry;
+		}
 	}
 
 	public void setLast(NodePartitions nodePartitions, Key key, long bval) {
@@ -318,6 +376,10 @@ public final class PartitionTracker {
 	}
 
 	public boolean isComplete(Cluster cluster, Policy policy) {
+		return isComplete(cluster.hasPartitionQuery, policy, nodePartitionsList);
+	}
+
+	public boolean isComplete(boolean hasPartitionQuery, Policy policy, List<NodePartitions> nodePartitionsList) {
 		long recCount = 0;
 		int partsUnavailable = 0;
 
@@ -333,6 +395,7 @@ public final class PartitionTracker {
 		if (partsUnavailable == 0) {
 			if (maxRecords == 0) {
 				if (partitionFilter != null) {
+					partitionFilter.retry = false;
 					partitionFilter.done = true;
 				}
 			}
@@ -347,7 +410,7 @@ public final class PartitionTracker {
 				}
 			}
 			else {
-				if (cluster.hasPartitionQuery) {
+				if (hasPartitionQuery) {
 					// Server version >= 6.0 will return all records for each node up to
 					// that node's max. If node's record count reached max, there still
 					// may be records available for that node.

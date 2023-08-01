@@ -27,14 +27,15 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Info;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.AuthMode;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -50,8 +51,11 @@ public class Args {
 	public String set;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
+	public int socketTimeout = 30000;
+	public int totalTimeout = 1000;
 	public boolean enterprise;
 	public boolean hasTtl;
+	public boolean useProxyClient;
 
 	public Args() {
 		host = "127.0.0.1";
@@ -112,6 +116,16 @@ public class Args {
 					"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
 					);
 
+			options.addOption("st", "socketTimeout", true,
+					"Set read and write socketTimeout in milliseconds\n" +
+					"for single record and batch commands."
+					);
+			options.addOption("tt", "totalTimeout", true,
+					"Set read and write totalTimeout in milliseconds\n" +
+					"for single record and batch commands."
+					);
+
+			options.addOption("proxy", false, "Use proxy client.");
 			options.addOption("d", "debug", false, "Run in debug mode.");
 			options.addOption("u", "usage", false, "Print usage.");
 
@@ -187,6 +201,25 @@ public class Args {
 				}
 			}
 
+			if (cl.hasOption("socketTimeout")) {
+				socketTimeout = Integer.parseInt(cl.getOptionValue("socketTimeout"));;
+			}
+
+			if (cl.hasOption("totalTimeout")) {
+				totalTimeout = Integer.parseInt(cl.getOptionValue("totalTimeout"));;
+			}
+
+			if (cl.hasOption("proxy")) {
+				useProxyClient = true;
+			}
+
+			// If the Aerospike server's default port (3000) is used and the proxy client is used,
+			// Reset the port to the proxy server's default port (4000).
+			if (port == 3000 && useProxyClient) {
+				System.out.println("Change proxy server port to 4000");
+				port = 4000;
+			}
+
 			if (cl.hasOption("d")) {
 				Log.setLevel(Level.DEBUG);
 			}
@@ -194,6 +227,21 @@ public class Args {
 		catch (Exception ex) {
 			throw new AerospikeException("Failed to parse args: " + argString);
 		}
+	}
+
+	public void setClientPolicy(ClientPolicy p) {
+		p.user = user;
+		p.password = password;
+		p.authMode = authMode;
+		p.tlsPolicy = tlsPolicy;
+		p.readPolicyDefault.socketTimeout = socketTimeout;
+		p.readPolicyDefault.totalTimeout = totalTimeout;
+		p.writePolicyDefault.socketTimeout = socketTimeout;
+		p.writePolicyDefault.totalTimeout = totalTimeout;
+		p.batchPolicyDefault.socketTimeout = socketTimeout;
+		p.batchPolicyDefault.totalTimeout = totalTimeout;
+		p.batchParentPolicyWriteDefault.socketTimeout = socketTimeout;
+		p.batchParentPolicyWriteDefault.totalTimeout = totalTimeout;
 	}
 
 	private static void logUsage(Options options) {
@@ -208,7 +256,12 @@ public class Args {
 	/**
 	 * Some database calls need to know how the server is configured.
 	 */
-	public void setServerSpecific(AerospikeClient client) {
+	public void setServerSpecific(IAerospikeClient client) {
+		if (useProxyClient) {
+			// Proxy client does not support querying nodes directly for their configuration.
+			return;
+		}
+
 		Node node = client.getNodes()[0];
 		String editionFilter = "edition";
 		String namespaceFilter = "namespace/" + namespace;

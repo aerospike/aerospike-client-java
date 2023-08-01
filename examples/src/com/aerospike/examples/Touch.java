@@ -16,10 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.WritePolicy;
 
@@ -33,7 +32,7 @@ public class Touch extends Example {
 	 * Demonstrate touch command.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "touchkey");
 		Bin bin = new Bin("touchbin", "touchvalue");
 
@@ -44,24 +43,12 @@ public class Touch extends Example {
 
 		console.info("Touch same record with 5 second expiration.");
 		writePolicy.expiration = 5;
-		Record record = client.operate(writePolicy, key, Operation.touch(), Operation.getHeader());
-
-		if (record == null) {
-			throw new Exception(String.format(
-				"Failed to get: namespace=%s set=%s key=%s bin=%s value=%s",
-				key.namespace, key.setName, key.userKey, bin.name, null));
-		}
-
-		if (record.expiration == 0) {
-			throw new Exception(String.format(
-				"Failed to get record expiration: namespace=%s set=%s key=%s",
-				key.namespace, key.setName, key.userKey));
-		}
+		client.touch(writePolicy, key);
 
 		console.info("Sleep 3 seconds.");
 		Thread.sleep(3000);
 
-		record = client.get(params.policy, key, bin.name);
+		Record record = client.get(params.policy, key, bin.name);
 
 		if (record == null) {
 			throw new Exception(String.format(
@@ -73,9 +60,9 @@ public class Touch extends Example {
 		console.info("Sleep 4 seconds.");
 		Thread.sleep(4000);
 
-		record = client.get(params.policy, key, bin.name);
+		boolean exists = client.exists(params.policy, key);
 
-		if (record == null) {
+		if (! exists) {
 			console.info("Success. Record expired as expected.");
 		}
 		else {

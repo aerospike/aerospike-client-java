@@ -26,7 +26,7 @@ public final class OperateCommand extends ReadCommand {
 	private final OperateArgs args;
 
 	public OperateCommand(Cluster cluster, Key key, OperateArgs args) {
-		super(cluster, args.writePolicy, key, args.partition, true);
+		super(cluster, args.writePolicy, key, args.getPartition(cluster, key), true);
 		this.args = args;
 	}
 

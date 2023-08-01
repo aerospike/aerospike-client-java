@@ -120,7 +120,7 @@ public abstract class AsyncCommand extends Command {
 		return buffer;
 	}
 
-	private final byte[] resizeBuffer(byte[] buffer, int size) {
+	private byte[] resizeBuffer(byte[] buffer, int size) {
 		if (size > MAX_BUFFER_SIZE) {
 			// Put original buffer back in pool.
 			putBuffer(buffer);
@@ -143,7 +143,7 @@ public abstract class AsyncCommand extends Command {
 		}
 	}
 
-	final boolean parseCommandResult() {
+	boolean parseCommandResult() {
 		if (compressed) {
 			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
 			byte[] buf = new byte[usize];
