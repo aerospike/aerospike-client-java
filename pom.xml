@@ -174,19 +174,14 @@
     </pluginManagement>
   </build>
 
+  <!-- Enable this section when new grpc stub changes need to be 
+       tested in development.
   <repositories>
     <repository>
       <id>oss-sonatype</id>
-      <url>${oss.sonatype.url}</url>
+      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
     </repository>
   </repositories>
-
-  <distributionManagement>
-    <!-- For now releases are in github packages -->
-    <repository>
-      <id>github-packages</id>
-      <url>${github.packages.url}</url>
-    </repository>
-  </distributionManagement>
+  -->
 
 </project>
