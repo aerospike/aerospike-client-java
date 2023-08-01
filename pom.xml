@@ -187,13 +187,6 @@
       <id>github-packages</id>
       <url>${github.packages.url}</url>
     </repository>
-
-    <!-- Upload snapshots to internal JFrog maven repo -->
-    <snapshotRepository>
-      <id>snapshots_private</id>
-      <name>aerospike-maven-dev</name>
-      <url>https://aerospike.jfrog.io/artifactory/aerospike-maven-dev</url>
-    </snapshotRepository>
   </distributionManagement>
 
 </project>

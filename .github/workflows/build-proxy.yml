@@ -4,8 +4,7 @@ on:
   push:
     branches:
       - stage
-      # TODO: remove this once proxy branch is removed
-      - proxy
+      # TODO: snapshots_private has been removed from base parent pom.xml.  Need to add workflow code to write snapshots_private to local pipeline pom.xml (this workflow will not work until that is done)
 
 jobs:
   build:
