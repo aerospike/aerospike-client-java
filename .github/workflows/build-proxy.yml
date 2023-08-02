@@ -18,6 +18,29 @@ jobs:
       with:
         servers: '[{"id": "snapshots_private", "username": "${{ secrets.JFROG_USERNAME }}", "password": "${{ secrets.JFROG_MAVEN_TOKEN }}"}]'
 
+    # Using a different settings.xml Github Action because the one above
+    # doesn't support editing profiles
+    - name: Add internal JFrog repo to pom.xml
+      uses: whelk-io/maven-settings-xml-action@v20
+      with:
+        profiles: >
+          [
+            {
+              "id": "snapshot_repositories",
+              "repositories": {
+                "repository": {
+                  "id": "snapshots_private",
+                  "name": "Aerospike private JFrog repo"
+                  "url": "${{ secrets.JFROG_MAVEN_REPO_URL }}"
+                }
+              }
+            }
+          ]
+        active_profiles: >
+          [
+            "snapshot_repositories"
+          ]
+
     - name: Build Java client
       run: mvn install
 
