@@ -46,7 +46,6 @@ import io.netty.channel.EventLoop;
  *     <li>have the channel and streams associated with the channel be
  *     executed on a single event loop</li>
  * </ul>
- * <p>
  */
 public class GrpcStream implements StreamObserver<Kvs.AerospikeResponsePayload> {
 	/**

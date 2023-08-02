@@ -102,6 +102,29 @@
           </execution>
         </executions>
       </plugin>
+
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-javadoc-plugin</artifactId>
+        <configuration>
+          <source>8</source>
+          <doclint>none</doclint>
+          <reportOutputDirectory>${basedir}</reportOutputDirectory>
+          <doctitle>Aerospike Java Proxy Client</doctitle>
+          <show>public</show>
+          <splitindex>true</splitindex>
+          <bottom>Copyright &#169; 2012&#x2013;{currentYear} Aerospike, Inc. All rights reserved.</bottom>
+          <sourcepath>${basedir}/src</sourcepath>
+          <sourceFileIncludes>
+            <include>com/aerospike/client/proxy/AerospikeClientFactory.java</include>
+            <include>com/aerospike/client/proxy/AerospikeClientProxy.java</include>
+            <include>com/aerospike/client/proxy/RecordProxy.java</include>
+            <include>com/aerospike/client/proxy/RecordSequenceRecordSet.java</include>
+            <include>com/aerospike/client/proxy/ResultSetProxy.java</include>
+          </sourceFileIncludes>
+        </configuration>
+      </plugin>
+
     </plugins>
   </build>
 </project>

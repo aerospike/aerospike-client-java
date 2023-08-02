@@ -86,8 +86,8 @@ public class GrpcClientPolicy {
 	 * like Aerospike get, put, operate, etc to improve latency and throughput.
 	 * <code>maxConcurrentRequestsPerStream</code> specifies the number of
 	 * concurrent requests that can be sent on a single unary call based stream.
-	 * <p/>
-	 * <bold>NOTE</bold> This policy does not apply to queries, scans, etc.
+	 * <p>
+	 * NOTE: This policy does not apply to queries, scans, etc.
 	 */
 	public final int maxConcurrentRequestsPerStream;
 
@@ -106,8 +106,8 @@ public class GrpcClientPolicy {
 	 * servers, but it will send all requests on a HTTP/2 stream to a single
 	 * gRPC Aerospike proxy server. This policy ensures that the requests are
 	 * evenly load balanced across the gRPC Aerospike proxy servers.
-	 * <p/>
-	 * <bold>NOTE</bold> This policy does not apply to queries, scans, etc.
+	 * <p>
+	 * NOTE: This policy does not apply to queries, scans, etc.
 	 */
 	public final int totalRequestsPerStream;
 
@@ -141,8 +141,7 @@ public class GrpcClientPolicy {
 	/**
 	 * The TLS policy to connect to the gRPC Aerospike proxy server.
 	 * <p>
-	 * <bold>NOTE</bold> The channel (connection) will  be non-encrypted if
-	 * this policy is <code>null</code>.
+	 * NOTE: The channel (connection) will  be non-encrypted if this policy is <code>null</code>.
 	 */
 	@Nullable
 	public final TlsPolicy tlsPolicy;
