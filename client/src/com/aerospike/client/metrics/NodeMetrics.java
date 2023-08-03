@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.metrics;
 
-import com.aerospike.client.cluster.LatencyType;
-
 /**
  * Optional extended node metrics. Used when extended metrics is enabled
  * (See {@link com.aerospike.client.AerospikeClient#enableMetrics(MetricsPolicy)}).

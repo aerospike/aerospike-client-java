@@ -19,8 +19,8 @@ package com.aerospike.client.command;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
+import com.aerospike.client.metrics.LatencyType;
 
 public final class OperateCommand extends ReadCommand {
 	private final OperateArgs args;

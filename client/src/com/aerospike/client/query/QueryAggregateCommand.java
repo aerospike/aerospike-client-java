@@ -23,11 +23,11 @@ import org.luaj.vm2.LuaValue;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.lua.LuaInstance;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryAggregateCommand extends MultiCommand {

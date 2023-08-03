@@ -27,7 +27,7 @@ public final class MetricsPolicy {
 	 * writes the metrics snapshot to a file which will later be read and forwarded to
 	 * OpenTelemetry by a separate offline application.
 	 * <p>
-	 * The listener could be overriden to send the metrics snapshot directly to OpenTelemetry.
+	 * The listener could be overridden to send the metrics snapshot directly to OpenTelemetry.
 	 */
 	public MetricsListener listener;
 

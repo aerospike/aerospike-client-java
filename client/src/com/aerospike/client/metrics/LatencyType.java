@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.cluster;
+package com.aerospike.client.metrics;
 
 public enum LatencyType {
 	CONN,

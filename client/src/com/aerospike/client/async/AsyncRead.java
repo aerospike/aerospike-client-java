@@ -21,12 +21,12 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 public class AsyncRead extends AsyncCommand {

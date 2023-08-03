@@ -19,9 +19,9 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.Statement;
 

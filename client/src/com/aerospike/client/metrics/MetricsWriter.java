@@ -31,7 +31,6 @@ import com.aerospike.client.Log;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ConnectionStats;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.util.Util;
 

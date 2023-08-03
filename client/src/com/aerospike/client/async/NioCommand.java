@@ -27,9 +27,9 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.async.HashedWheelTimer.HashedWheelTimeout;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.util.Util;
 
 public final class NioCommand implements INioCommand, Runnable, TimerTask {

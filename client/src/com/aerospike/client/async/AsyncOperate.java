@@ -19,10 +19,10 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.LatencyType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.metrics.LatencyType;
 
 public final class AsyncOperate extends AsyncRead {
 	private final OperateArgs args;
