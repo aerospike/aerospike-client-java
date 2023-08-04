@@ -66,12 +66,12 @@ public final class MetricsWriter implements MetricsListener {
 	 */
 	@Override
 	public void onEnable(Cluster cluster, MetricsPolicy policy) {
-		if (policy.reportLimit != 0 && policy.reportLimit < MinFileSize) {
-			throw new AerospikeException("MetricsPolicy.reportMaxSize " + policy.reportLimit +
+		if (policy.reportSizeLimit != 0 && policy.reportSizeLimit < MinFileSize) {
+			throw new AerospikeException("MetricsPolicy.reportMaxSize " + policy.reportSizeLimit +
 				" must be at least " + MinFileSize);
 		}
 
-		this.maxSize = policy.reportLimit;
+		this.maxSize = policy.reportSizeLimit;
 		this.latencyColumns = policy.latencyColumns;
 		this.latencyShift = policy.latencyShift;
 
