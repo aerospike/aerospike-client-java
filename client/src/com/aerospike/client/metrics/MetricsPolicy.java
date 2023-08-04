@@ -32,11 +32,24 @@ public final class MetricsPolicy {
 	public MetricsListener listener;
 
 	/**
-	 * Directory path to write metrics logs for listeners that write logs.
+	 * Directory path to write metrics log files for listeners that write logs.
 	 * <p>
 	 * Default: <current directory>
 	 */
 	public String reportDir = ".";
+
+	/**
+	 * Metrics file size soft limit in bytes for listeners that write logs.
+	 * <p>
+	 * When reportSizeLimit is reached or exceeded, the current metrics file is closed and a new
+	 * metrics file is created with a new timestamp. If reportSizeLimit is zero, the metrics file
+	 * size is unbounded and the file will only be closed when
+	 * {@link com.aerospike.client.AerospikeClient#disableMetrics()} or
+	 * {@link com.aerospike.client.AerospikeClient#close()} is called.
+	 * <p>
+	 * Default: 0
+	 */
+	public long reportSizeLimit = 0;
 
 	/**
 	 * Number of cluster tend iterations between metrics notification events. One tend iteration
@@ -74,6 +87,7 @@ public final class MetricsPolicy {
 	public MetricsPolicy(MetricsPolicy other) {
 		this.listener = other.listener;
 		this.reportDir = other.reportDir;
+		this.reportSizeLimit = other.reportSizeLimit;
 		this.interval = other.interval;
 		this.latencyColumns = other.latencyColumns;
 		this.latencyShift = other.latencyShift;

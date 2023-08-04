@@ -41,10 +41,15 @@ import com.aerospike.client.util.Util;
 public final class MetricsWriter implements MetricsListener {
 	private static final SimpleDateFormat FilenameFormat = new SimpleDateFormat("yyyyMMddHHmmss");
 	private static final SimpleDateFormat TimestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final int MinFileSize = 1000000;
 
 	private final String dir;
 	private final StringBuilder sb;
 	private FileWriter writer;
+	private long size;
+	private long maxSize;
+	private int latencyColumns;
+	private int latencyShift;
 	private boolean enabled;
 
 	/**
@@ -61,32 +66,22 @@ public final class MetricsWriter implements MetricsListener {
 	 */
 	@Override
 	public void onEnable(Cluster cluster, MetricsPolicy policy) {
-		Date now = Calendar.getInstance().getTime();
+		if (policy.reportSizeLimit != 0 && policy.reportSizeLimit < MinFileSize) {
+			throw new AerospikeException("MetricsPolicy.reportSizeLimit " + policy.reportSizeLimit +
+				" must be at least " + MinFileSize);
+		}
+
+		this.maxSize = policy.reportSizeLimit;
+		this.latencyColumns = policy.latencyColumns;
+		this.latencyShift = policy.latencyShift;
 
 		try {
 			Files.createDirectories(Paths.get(dir));
-
-			String path = dir + File.separator + "metrics-" + FilenameFormat.format(now) + ".log";
-			writer = new FileWriter(path, true);
+			open();
 		}
 		catch (IOException ioe) {
 			throw new AerospikeException(ioe);
 		}
-
-		sb.setLength(0);
-		sb.append(TimestampFormat.format(now));
-		sb.append(" header(1)");
-		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
-		sb.append(" eventloop[processSize,queueSize]");
-		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
-		sb.append(" conn[inUse,inPool,opened,closed]");
-		sb.append(" latency(");
-		sb.append(policy.latencyColumns);
-		sb.append(',');
-		sb.append(policy.latencyShift);
-		sb.append(')');
-		sb.append("[type[l1,l2,l3...]]");
-		writeLine(sb);
 
 		enabled = true;
 	}
@@ -114,7 +109,7 @@ public final class MetricsWriter implements MetricsListener {
 				sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
 				sb.append(" node");
 				writeNode(node);
-				writeLine(sb);
+				writeLine();
 			}
 		}
 	}
@@ -136,6 +131,29 @@ public final class MetricsWriter implements MetricsListener {
 				}
 			}
 		}
+	}
+
+	private void open() throws IOException {
+		Date now = Calendar.getInstance().getTime();
+		String path = dir + File.separator + "metrics-" + FilenameFormat.format(now) + ".log";
+		writer = new FileWriter(path, true);
+		size = 0;
+
+		// Must use separate StringBuilder instance to avoid conflicting with metrics detail write.
+		sb.setLength(0);
+		sb.append(TimestampFormat.format(now));
+		sb.append(" header(1)");
+		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
+		sb.append(" eventloop[processSize,queueSize]");
+		sb.append(" node[name,address,port,syncConn,asyncConn,errors,timeouts,latency[]]");
+		sb.append(" conn[inUse,inPool,opened,closed]");
+		sb.append(" latency(");
+		sb.append(latencyColumns);
+		sb.append(',');
+		sb.append(latencyShift);
+		sb.append(')');
+		sb.append("[type[l1,l2,l3...]]");
+		writeLine();
 	}
 
 	private void writeCluster(Cluster cluster) {
@@ -200,7 +218,7 @@ public final class MetricsWriter implements MetricsListener {
 			writeNode(node);
 		}
 		sb.append("]]");
-		writeLine(sb);
+		writeLine();
 	}
 
 	private void writeNode(Node node) {
@@ -260,13 +278,29 @@ public final class MetricsWriter implements MetricsListener {
 		sb.append(cs.closed); // Cumulative. Not reset on each interval.
 	}
 
-	private void writeLine(StringBuilder sb) {
+	private void writeLine() {
 		try {
 			sb.append(System.lineSeparator());
 			writer.write(sb.toString());
+			size += sb.length();
 			writer.flush();
+
+			if (maxSize > 0 && size >= maxSize) {
+				writer.close();
+
+				// This call is recursive since open() calls writeLine() to write the header.
+				open();
+			}
 		}
 		catch (IOException ioe) {
+			enabled = false;
+
+			try {
+				writer.close();
+			}
+			catch (Throwable t) {
+			}
+
 			throw new AerospikeException(ioe);
 		}
 	}
