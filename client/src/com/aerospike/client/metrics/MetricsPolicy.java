@@ -42,7 +42,7 @@ public final class MetricsPolicy {
 	 * Metrics file size soft limit in bytes for listeners that write logs.
 	 * <p>
 	 * When reportSizeLimit is reached or exceeded, the current metrics file is closed and a new
-	 * metrics file is created with a new timestamp. If reportSizeLimit is zero, the matrics file
+	 * metrics file is created with a new timestamp. If reportSizeLimit is zero, the metrics file
 	 * size is unbounded and the file will only be closed when
 	 * {@link com.aerospike.client.AerospikeClient#disableMetrics()} or
 	 * {@link com.aerospike.client.AerospikeClient#close()} is called.
