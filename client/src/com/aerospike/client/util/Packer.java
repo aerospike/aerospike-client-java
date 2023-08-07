@@ -16,9 +16,6 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +23,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
@@ -191,21 +189,7 @@ public final class Packer {
 	}
 
 	public void packBlob(Object val) throws AerospikeException {
-		ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-
-		try {
-			ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-			ostream.writeObject(val);
-			ostream.close();
-		}
-		catch (IOException ioe) {
-			throw new AerospikeException.Serialize(ioe);
-		}
-
-		byte[] bytes = bstream.toByteArray();
-        packByteArrayBegin(bytes.length + 1);
-    	packByte(ParticleType.JBLOB);
-    	packByteArray(bytes, 0, bytes.length);
+		throw new AerospikeException(ResultCode.SERIALIZE_ERROR, "Object serializer has been disabled");
 	}
 
 	public void packGeoJSON(String val) {
