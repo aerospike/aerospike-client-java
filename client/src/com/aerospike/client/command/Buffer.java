@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -302,18 +300,7 @@ public final class Buffer {
 			return null;
 		}
 
-		if (Value.DisableDeserializer) {
-			throw new AerospikeException.Serialize("Object deserializer has been disabled");
-		}
-
-		try (ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length)) {
-			try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
-				return oistream.readObject();
-			}
-		}
-		catch (Throwable e) {
-			throw new AerospikeException.Serialize(e);
-		}
+		throw new AerospikeException.Serialize("Object deserializer has been disabled");
 	}
 
 	public static Value bytesToLongValue(byte[] buf, int offset, int len) {

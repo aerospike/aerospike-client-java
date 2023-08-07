@@ -16,8 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -1278,19 +1276,7 @@ public abstract class Value {
 		}
 
 		public static byte[] serialize(Object val) {
-			if (DisableSerializer) {
-				throw new AerospikeException("Object serializer has been disabled");
-			}
-
-			try (ByteArrayOutputStream bstream = new ByteArrayOutputStream()) {
-				try (ObjectOutputStream ostream = new ObjectOutputStream(bstream)) {
-					ostream.writeObject(val);
-				}
-				return bstream.toByteArray();
-			}
-			catch (Throwable e) {
-				throw new AerospikeException.Serialize(e);
-			}
+			throw new AerospikeException("Object serializer has been disabled");
 		}
 
 		@Override
