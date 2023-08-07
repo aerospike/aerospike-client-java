@@ -16,8 +16,6 @@
  */
 package com.aerospike.client;
 
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.List;
@@ -1153,17 +1151,7 @@ public abstract class Value {
 
 		@Override
 		public int estimateSize() throws AerospikeException.Serialize {
-			try {
-				ByteArrayOutputStream bstream = new ByteArrayOutputStream();
-				ObjectOutputStream ostream = new ObjectOutputStream(bstream);
-				ostream.writeObject(object);
-				ostream.close();
-				bytes = bstream.toByteArray();
-				return bytes.length;
-			}
-			catch (Exception e) {
-				throw new AerospikeException.Serialize(e);
-			}
+			throw new AerospikeException(ResultCode.SERIALIZE_ERROR, "Object serializer has been disabled");
 		}
 
 		@Override

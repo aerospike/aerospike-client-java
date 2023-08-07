@@ -16,9 +16,7 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -30,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -235,10 +234,7 @@ public abstract class Unpacker<T> {
 			break;
 
 		case ParticleType.JBLOB:
-			ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count);
-			ObjectInputStream oistream = new ObjectInputStream(bastream);
-			val = getJavaBlob(oistream.readObject());
-			break;
+			throw new AerospikeException(ResultCode.SERIALIZE_ERROR, "Object deserializer has been disabled");
 
 		case ParticleType.GEOJSON:
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
