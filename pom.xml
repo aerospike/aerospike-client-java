@@ -23,9 +23,7 @@
 
   <modules>
     <module>client</module>
-    <module>examples</module>
-    <module>benchmarks</module>
-    <module>test</module>
+    <module>blobfinder</module>
   </modules>
 
   <properties>

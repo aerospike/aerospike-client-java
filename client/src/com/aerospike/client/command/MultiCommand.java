@@ -21,6 +21,7 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -266,6 +267,14 @@ public abstract class MultiCommand extends SyncCommand {
 		}
 
 		return parseRecord(opCount, generation, expiration, isOperation);
+	}
+
+	protected final Record parseRecord(Key key) {
+		if (opCount <= 0) {
+			return new Record(null, generation, expiration);
+		}
+
+		return parseRecord(key, opCount, generation, expiration, isOperation);
 	}
 
 	public void stop() {

@@ -8,10 +8,10 @@
     <artifactId>aerospike-parent</artifactId>
     <version>6.1.11</version>
   </parent>
-  <artifactId>aerospike-client</artifactId>
+  <artifactId>aerospike-blob-finder</artifactId>
   <packaging>jar</packaging>
 
-  <name>aerospike-client</name>
+  <name>aerospike-blob-finder</name>
 
   <dependencies>
     <dependency>

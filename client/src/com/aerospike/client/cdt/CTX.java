@@ -136,7 +136,7 @@ public final class CTX {
 	 * Deserialize bytes to context array.
 	 */
 	public static CTX[] fromBytes(byte[] bytes) {
-		List<?> list = (List<?>)Unpacker.unpackObjectList(bytes, 0, bytes.length);
+		List<?> list = (List<?>)Unpacker.unpackObjectList(null, "", bytes, 0, bytes.length);
 		int max = list.size();
 		CTX[] ctx = new CTX[max / 2];
 		int i = 0;

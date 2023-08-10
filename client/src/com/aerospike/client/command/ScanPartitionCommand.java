@@ -90,7 +90,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			throw new AerospikeException(resultCode);
 		}
 
-		Record record = parseRecord();
+		Record record = parseRecord(key);
 
 		if (! valid) {
 			throw new AerospikeException.ScanTerminated();

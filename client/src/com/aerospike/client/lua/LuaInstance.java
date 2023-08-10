@@ -172,8 +172,10 @@ public final class LuaInstance {
 			return new LuaBytes(this, blob);
 
 		case ParticleType.JBLOB:
-			Object object = Buffer.bytesToObject(buf, offset, len);
-			return new LuaJavaBlob(object);
+			// Scan will not call this code, so just return nil.
+			return LuaValue.NIL;
+			//Object object = Buffer.bytesToObject(buf, offset, len);
+			//return new LuaJavaBlob(object);
 
 		case ParticleType.LIST: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
