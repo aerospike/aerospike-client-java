@@ -46,7 +46,6 @@ public abstract class Unpacker<T> {
 	int javaBlobs;
 	int csharpBlobs;
 	int pythonBlobs;
-	int rubyBlobs;
 
 	public Unpacker(byte[] buffer, int offset, int length) {
 		this.buffer = buffer;
@@ -250,11 +249,6 @@ public abstract class Unpacker<T> {
 		case ParticleType.PYTHON_BLOB:
 			val = null;
 			pythonBlobs++;
-			break;
-
-		case ParticleType.RUBY_BLOB:
-			val = null;
-			rubyBlobs++;
 			break;
 
 			/*
@@ -486,9 +480,9 @@ public abstract class Unpacker<T> {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		Object obj = unpacker.unpackList();
 
-		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0 || unpacker.rubyBlobs > 0) {
+		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0) {
 			BlobFinder.INSTANCE.writeListMap(key, binName, "list",
-				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs, unpacker.rubyBlobs);
+				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs);
 		}
 		return obj;
 	}
@@ -497,9 +491,9 @@ public abstract class Unpacker<T> {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 		Object obj = unpacker.unpackMap();
 
-		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0 || unpacker.rubyBlobs > 0) {
+		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0) {
 			BlobFinder.INSTANCE.writeListMap(key, binName, "map",
-				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs, unpacker.rubyBlobs);
+				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs);
 		}
 		return obj;
 	}

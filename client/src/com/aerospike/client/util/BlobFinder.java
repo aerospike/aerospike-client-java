@@ -51,14 +51,13 @@ public final class BlobFinder implements ScanCallback {
 	 * <namespace>,<set>,<key hex digest>,<bin name>,<bin type>
 	 *
 	 * List/Map bins (list and map entries can contain blobs):
-	 * <namespace>,<set>,<key hex digest>,<bin name>,<bin type>,<jblobs>,<cblobs>,<pblobs>,<rblobs>
+	 * <namespace>,<set>,<key hex digest>,<bin name>,<bin type>,<jblobs>,<cblobs>,<pblobs>
 	 *
-	 * bin type: jblob | cblob | pblob | rblob | list | map
+	 * bin type: jblob | cblob | pblob | list | map
 	 *
 	 * jblobs: count of java blobs in the list or map entries
 	 * cblobs: count of C# blobs in the list or map entries
 	 * pblobs: count of python blobs in the list or map entries
-	 * rblobs: count of ruby blobs in the list or map entries
 	 * }</pre>
 	 *
 	 * @param client		Aerospike client instance
@@ -82,7 +81,6 @@ public final class BlobFinder implements ScanCallback {
 	private long javaBlobs;
 	private long csharpBlobs;
 	private long pythonBlobs;
-	private long rubyBlobs;
 
 	private BlobFinder(IAerospikeClient client, String path, long displayRecs) throws IOException {
 		this.client = client;
@@ -139,8 +137,7 @@ public final class BlobFinder implements ScanCallback {
 		System.out.println("recs=" + recCount +
 			" jblobs=" + javaBlobs +
 			" cblobs=" + csharpBlobs +
-			" pblobs=" + pythonBlobs +
-			" rblobs=" + rubyBlobs
+			" pblobs=" + pythonBlobs
 			);
 	}
 
@@ -153,7 +150,6 @@ public final class BlobFinder implements ScanCallback {
 	 * 					7: Java blob
 	 * 					8: C# blob
 	 * 					9: Python blob
-	 * 					10: Ruby blob
 	 */
 	public void writeBin(Key key, String binName, int type) {
 		String btype = null;
@@ -172,11 +168,6 @@ public final class BlobFinder implements ScanCallback {
 		case ParticleType.PYTHON_BLOB:
 			btype = "pblob";
 			this.pythonBlobs++;
-			break;
-
-		case ParticleType.RUBY_BLOB:
-			btype = "rblob";
-			this.rubyBlobs++;
 			break;
 		}
 
@@ -206,7 +197,6 @@ public final class BlobFinder implements ScanCallback {
 	 * @param javaCount		count of java blobs in list or map bin.
 	 * @param csharpCount	count of csharp blobs in list or map bin.
 	 * @param pythonCount	count of python blobs in list or map bin.
-	 * @param rubyCount		count of ruby blobs in list or map bin.
 	 */
 	public void writeListMap (
 		Key key,
@@ -214,13 +204,11 @@ public final class BlobFinder implements ScanCallback {
 		String type,
 		int javaBlobs,
 		int csharpBlobs,
-		int pythonBlobs,
-		int rubyBlobs
+		int pythonBlobs
 	) {
 		this.javaBlobs += javaBlobs;
 		this.csharpBlobs += csharpBlobs;
 		this.pythonBlobs += pythonBlobs;
-		this.rubyBlobs += rubyBlobs;
 
 		if (sb == null) {
 			return;
@@ -242,8 +230,6 @@ public final class BlobFinder implements ScanCallback {
 		sb.append(csharpBlobs);
 		sb.append(',');
 		sb.append(pythonBlobs);
-		sb.append(',');
-		sb.append(rubyBlobs);
 		writeLine();
 	}
 

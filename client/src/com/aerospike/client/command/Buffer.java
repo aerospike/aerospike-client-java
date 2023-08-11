@@ -81,7 +81,6 @@ public final class Buffer {
 		case ParticleType.JBLOB:
 		case ParticleType.CSHARP_BLOB:
 		case ParticleType.PYTHON_BLOB:
-		case ParticleType.RUBY_BLOB:
 			//return Buffer.bytesToObject(buf, offset, len);
 			BlobFinder.INSTANCE.writeBin(key, binName, type);
 			return null;
