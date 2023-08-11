@@ -16,9 +16,7 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -30,6 +28,7 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -44,6 +43,9 @@ public abstract class Unpacker<T> {
 	private final byte[] buffer;
 	private int offset;
 	private final int length;
+	int javaBlobs;
+	int csharpBlobs;
+	int pythonBlobs;
 
 	public Unpacker(byte[] buffer, int offset, int length) {
 		this.buffer = buffer;
@@ -235,11 +237,26 @@ public abstract class Unpacker<T> {
 			break;
 
 		case ParticleType.JBLOB:
+			val = null;
+			javaBlobs++;
+			break;
+
+		case ParticleType.CSHARP_BLOB:
+			val = null;
+			csharpBlobs++;
+			break;
+
+		case ParticleType.PYTHON_BLOB:
+			val = null;
+			pythonBlobs++;
+			break;
+/*
+		case ParticleType.JBLOB:
 			ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count);
 			ObjectInputStream oistream = new ObjectInputStream(bastream);
 			val = getJavaBlob(oistream.readObject());
 			break;
-
+*/
 		case ParticleType.GEOJSON:
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
 			break;
@@ -450,16 +467,28 @@ public abstract class Unpacker<T> {
 	protected abstract T getBoolean(boolean value);
 	protected abstract T getGeoJSON(String value);
 
-	public static Object unpackObjectList(byte[] buffer, int offset, int length) throws AerospikeException {
+	public static Object unpackObjectList(Key key, String binName, byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
-		return unpacker.unpackList();
+		Object obj = unpacker.unpackList();
+
+		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0) {
+			BlobFinder.INSTANCE.writeListMap(key, binName, "list",
+				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs);
+		}
+		return obj;
 	}
 
-	public static Object unpackObjectMap(byte[] buffer, int offset, int length) throws AerospikeException {
+	public static Object unpackObjectMap(Key key, String binName, byte[] buffer, int offset, int length) throws AerospikeException {
 		ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
-		return unpacker.unpackMap();
-	}
+		Object obj = unpacker.unpackMap();
 
+		if (unpacker.javaBlobs > 0 || unpacker.csharpBlobs > 0 || unpacker.pythonBlobs > 0) {
+			BlobFinder.INSTANCE.writeListMap(key, binName, "map",
+				unpacker.javaBlobs, unpacker.csharpBlobs, unpacker.pythonBlobs);
+		}
+		return obj;
+	}
+/*
 	public static Object unpackObject(byte[] buffer, int offset, int length) throws AerospikeException {
 		try {
 			if (length <= 0) {
@@ -472,7 +501,7 @@ public abstract class Unpacker<T> {
     		throw new AerospikeException.Serialize(e);
 		}
 	}
-
+*/
 	public static final class ObjectUnpacker extends Unpacker<Object> {
 
 		public ObjectUnpacker(byte[] buffer, int offset, int length) {

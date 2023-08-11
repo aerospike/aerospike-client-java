@@ -266,6 +266,11 @@ public abstract class MultiCommand extends SyncCommand {
 	}
 
 	protected final Record parseRecord() {
+		// This method is not called by sync scan, so set key to null.
+		return parseRecord(null);
+	}
+
+	protected final Record parseRecord(Key key) {
 		if (opCount <= 0) {
 		    return new Record(null, generation, expiration);
 		}
@@ -280,7 +285,7 @@ public abstract class MultiCommand extends SyncCommand {
 			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-	        Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+	        Object value = Buffer.bytesToParticle(key, name, particleType, dataBuffer, dataOffset, particleBytesSize);
 	        dataOffset += particleBytesSize;
 			bins.put(name, value);
 	    }

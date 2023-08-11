@@ -63,7 +63,7 @@ public final class ScanCommand extends MultiCommand {
 
 	@Override
 	protected void parseRow(Key key) {
-		Record record = parseRecord();
+		Record record = parseRecord(key);
 
 		if (! valid) {
 			throw new AerospikeException.ScanTerminated();

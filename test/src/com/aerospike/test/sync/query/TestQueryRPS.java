@@ -81,7 +81,7 @@ public class TestQueryRPS extends TestSync {
 
 		n_records = records_per_node * client.getNodes().length;
 
-		client.truncate(null, args.namespace, args.set, null);
+		//client.truncate(null, args.namespace, args.set, null);
 
 		for (int i = 1; i <= n_records; i++) {
 			Key key = new Key(args.namespace, args.set, keyPrefix + i);

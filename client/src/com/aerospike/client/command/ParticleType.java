@@ -29,8 +29,8 @@ public final class ParticleType {
 	//public static final int TIMESTAMP = 5;
 	//public static final int DIGEST = 6;
 	public static final int JBLOB = 7;
-	//public static final int CSHARP_BLOB = 8;
-	//public static final int PYTHON_BLOB = 9;
+	public static final int CSHARP_BLOB = 8;
+	public static final int PYTHON_BLOB = 9;
 	//public static final int RUBY_BLOB = 10;
 	//public static final int PHP_BLOB = 11;
 	//public static final int ERLANG_BLOB = 12;

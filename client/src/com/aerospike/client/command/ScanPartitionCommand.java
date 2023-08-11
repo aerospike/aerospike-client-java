@@ -80,7 +80,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 		}
 		tracker.setDigest(nodePartitions, key);
 
-		Record record = parseRecord();
+		Record record = parseRecord(key);
 
 		if (! valid) {
 			throw new AerospikeException.ScanTerminated();
