@@ -23,10 +23,7 @@
 
   <modules>
     <module>client</module>
-    <module>examples</module>
-    <module>benchmarks</module>
-    <module>servlets</module>
-    <module>test</module>
+    <module>blobfinder</module>
   </modules>
 
   <properties>

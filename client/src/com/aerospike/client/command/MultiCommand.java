@@ -278,6 +278,14 @@ public abstract class MultiCommand extends SyncCommand {
 		return parseRecord(opCount, generation, expiration, isOperation);
 	}
 
+	protected final Record parseRecord(Key key) {
+		if (opCount <= 0) {
+			return new Record(null, generation, expiration);
+		}
+
+		return parseRecord(key, opCount, generation, expiration, isOperation);
+	}
+
 	public void stop() {
 		valid = false;
 	}

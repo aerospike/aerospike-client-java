@@ -1495,6 +1495,17 @@ public abstract class Command {
 		int expiration,
 		boolean isOperation
 	)  {
+		// This method is not called by sync scan, so set key to null.
+		return parseRecord(null, opCount, generation, expiration, isOperation);
+	}
+
+	protected final Record parseRecord(
+		Key key,
+		int opCount,
+		int generation,
+		int expiration,
+		boolean isOperation
+	)  {
 		Map<String,Object> bins = new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {
@@ -1505,7 +1516,7 @@ public abstract class Command {
 			dataOffset += 4 + 4 + nameSize;
 
 			int particleBytesSize = opSize - (4 + nameSize);
-			Object value = Buffer.bytesToParticle(particleType, dataBuffer, dataOffset, particleBytesSize);
+			Object value = Buffer.bytesToParticle(key, name, particleType, dataBuffer, dataOffset, particleBytesSize);
 			dataOffset += particleBytesSize;
 
 			if (isOperation) {

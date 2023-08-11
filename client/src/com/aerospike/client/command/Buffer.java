@@ -23,7 +23,9 @@ import java.math.BigInteger;
 import java.util.Arrays;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Value;
+import com.aerospike.client.util.BlobFinder;
 import com.aerospike.client.util.Unpacker;
 
 public final class Buffer {
@@ -49,10 +51,16 @@ public final class Buffer {
 		}
 	}
 
-	public static Object bytesToParticle(int type, byte[] buf, int offset, int len)
+	public static Object bytesToParticle(int type, byte[] buf, int offset, int len) {
+		// Not called by scan, so return null.
+		return null;
+	}
+
+	public static Object bytesToParticle(Key key, String binName, int type, byte[] buf, int offset, int len)
 		throws AerospikeException {
 
 		switch (type) {
+		/*
 		case ParticleType.STRING:
 			return Buffer.utf8ToString(buf, offset, len);
 
@@ -67,21 +75,28 @@ public final class Buffer {
 
 		case ParticleType.BLOB:
 			return Arrays.copyOfRange(buf, offset, offset+len);
+		*/
 
 		case ParticleType.JBLOB:
-			return Buffer.bytesToObject(buf, offset, len);
+		case ParticleType.CSHARP_BLOB:
+		case ParticleType.PYTHON_BLOB:
+			//return Buffer.bytesToObject(buf, offset, len);
+			BlobFinder.INSTANCE.writeBin(key, binName, type);
+			return null;
 
+		/*
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
 
 		case ParticleType.HLL:
 			return Buffer.bytesToHLL(buf, offset, len);
+		*/
 
 		case ParticleType.LIST:
-			return Unpacker.unpackObjectList(buf, offset, len);
+			return Unpacker.unpackObjectList(key, binName, buf, offset, len);
 
 		case ParticleType.MAP:
-			return Unpacker.unpackObjectMap(buf, offset, len);
+			return Unpacker.unpackObjectMap(key, binName, buf, offset, len);
 
 		default:
 			return null;
