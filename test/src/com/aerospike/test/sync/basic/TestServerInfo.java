@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public class TestServerInfo extends TestSync {
 				LogNameValueTokens(entry.getValue());
 			}
 			else {
-				if (! (key.equals("services-alumni") || key.equals("services") || key.equals("dcs"))) {
+				if (! (key.equals("services-alumni") || key.equals("services") || key.equals("dcs") || key.equals("build_ee_sha"))) {
 					assertNotNull(entry.getValue());
 				}
 			}
