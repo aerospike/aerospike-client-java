@@ -1,17 +1,30 @@
-Aerospike Java Client Library
+Aerospike Blob Finder Package
 =============================
 
-This project contains the files necessary to build the Java client library 
-interface to Aerospike database servers. 
+This package is designed exlusively to detect language specific blobs in an
+Aerospike database. It uses specialized AerospikeClient code that appears
+like a client, but does not behave like a client. Examples, benchmarks and 
+test are disabled.
 
-AerospikeClient now supports synchronous and asynchronous methods. Asynchronous 
-methods can utilize either Netty event loops or direct NIO event loops.
+Build instructions:
 
-The Netty library artifacts (netty-transport and netty-handler) are declared optional.
-If your application's build file (pom.xml) declares these Netty library artifacts as 
-dependencies, then the Netty libraries will be included in your application's jar.
-Otherwise, you application's jar will not include any Netty code.
+    mvn clean
+    mvn package
 
-The source code can be imported into your IDE and/or built using Maven.
+Display command line options:
 
-    mvn install
+    ./blobfinder -u
+
+Example run command:
+
+    ./blobfinder -h localhost -o blobs.dat 
+
+Example run command using TLS:
+
+    # First, setup truststore 
+    ./blobfinder -Djavax.net.ssl.trustStore=truststore -Djavax.net.ssl.trustStorePassword=truststorepass -h "localhost:tlsname:4333" -U myuser -P mypass -tls -o blobs.dat
+
+Example run command using TLS with mutual authentication:
+
+    # First, setup truststore and keystore (for mutual authentication).
+    ./blobfinder -Djavax.net.ssl.trustStore=truststore -Djavax.net.ssl.trustStorePassword=truststorepass -Djavax.net.ssl.keyStore=keystore -Djavax.net.ssl.keyStorePassword=keystorepass -h localhost -U myuser -P -tls -o blobs.dat

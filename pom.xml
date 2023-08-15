@@ -23,7 +23,6 @@
 
   <modules>
     <module>client</module>
-    <module>blobfinder</module>
   </modules>
 
   <properties>

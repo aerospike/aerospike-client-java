@@ -25,7 +25,7 @@ import java.util.Arrays;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
-import com.aerospike.client.util.BlobFinder;
+import com.aerospike.client.blob.BlobFinder;
 import com.aerospike.client.util.Unpacker;
 import com.aerospike.client.util.Utf8;
 
