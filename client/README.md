@@ -27,4 +27,4 @@ Example run command using TLS:
 Example run command using TLS with mutual authentication:
 
     # First, setup truststore and keystore (for mutual authentication).
-    ./blobfinder -Djavax.net.ssl.trustStore=truststore -Djavax.net.ssl.trustStorePassword=truststorepass -Djavax.net.ssl.keyStore=keystore -Djavax.net.ssl.keyStorePassword=keystorepass -h localhost -U myuser -P -tls -o blobs.dat
+    ./blobfinder -Djavax.net.ssl.trustStore=truststore -Djavax.net.ssl.trustStorePassword=truststorepass -Djavax.net.ssl.keyStore=keystore -Djavax.net.ssl.keyStorePassword=keystorepass -h localhost -U myuser -P mypass -tls -o blobs.dat
