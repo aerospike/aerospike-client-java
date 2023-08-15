@@ -8,7 +8,8 @@ test are disabled.
 
 Build instructions:
 
+    cd client
     mvn clean
     mvn package
 
-See [blobfinder](blobfinder/README.md) for example code to run the blob finder.
+See [blobfinder client](client/README.md) for run instructions.

@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.util;
+package com.aerospike.client.blob;
 
 import java.io.FileWriter;
 import java.io.IOException;
@@ -22,7 +22,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Host;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
@@ -31,6 +33,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
+import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 
 /**
@@ -60,35 +63,51 @@ public final class BlobFinder implements ScanCallback {
 	 * pblobs: count of python blobs in the list or map entries
 	 * }</pre>
 	 *
-	 * @param client		Aerospike client instance
-	 * @param path			optional file path. If not null, write all bins that contain language
-	 * 						specific blobs.
-	 * @param displayRecs	display running blob totals after records returned counter reaches this
-	 * 						value. Minimum value is 100000 (display blob totals after each group of
-	 * 						100000 records). Final blob totals are always displayed on completion.
+	 * @param bfp		BlobFinder configuration variables.
 	 */
-	public static void run(IAerospikeClient client, String path, long displayRecs) throws IOException {
-		INSTANCE = new BlobFinder(client, path, displayRecs);
-		INSTANCE.run();
+	public static void run(BlobFinderPolicy bfp) {
+		ClientPolicy cp = new ClientPolicy();
+		cp.user = bfp.user;
+		cp.password = bfp.password;
+		cp.authMode = bfp.authMode;
+		cp.tlsPolicy = bfp.tlsPolicy;
+
+		Host[] hosts = Host.parseHosts(bfp.host, bfp.port);
+
+		AerospikeClient client = new AerospikeClient(cp, hosts);
+
+		try {
+			INSTANCE = new BlobFinder(client, bfp);
+			INSTANCE.run();
+		}
+		finally {
+			client.close();
+		}
 	}
 
+	private final BlobFinderPolicy bfp;
 	private final IAerospikeClient client;
 	private final StringBuilder sb;
 	private final FileWriter writer;
-	private final long displayRecs;
 	private String namespace;
 	private long recCount;
 	private long javaBlobs;
 	private long csharpBlobs;
 	private long pythonBlobs;
 
-	private BlobFinder(IAerospikeClient client, String path, long displayRecs) throws IOException {
+	public BlobFinder(IAerospikeClient client, BlobFinderPolicy bfp) {
 		this.client = client;
-		this.displayRecs = (displayRecs < 100000) ? 100000 : displayRecs;
+		this.bfp = bfp;
 
-		if (path != null) {
+		if (bfp.outputFile != null) {
 			this.sb = new StringBuilder(8192);
-			this.writer = new FileWriter(path, false);
+
+			try {
+				this.writer = new FileWriter(bfp.outputFile, false);
+			}
+			catch (IOException ioe) {
+				throw new AerospikeException(ioe);
+			}
 		}
 		else {
 			this.sb = null;
@@ -96,7 +115,7 @@ public final class BlobFinder implements ScanCallback {
 		}
 	}
 
-	private void run() throws IOException {
+	public void run() {
 		Cluster cluster = client.getCluster();
 
 		HashMap<String,Partitions> pmap = cluster.partitionMap;
@@ -110,6 +129,8 @@ public final class BlobFinder implements ScanCallback {
 		// Set concurrentNodes to false, so atomics are not required in the scan callback.
 		ScanPolicy policy = new ScanPolicy();
 		policy.concurrentNodes = false;
+		policy.recordsPerSecond = bfp.recordsPerSecond;
+		policy.socketTimeout = bfp.socketTimeout;
 
 		for (String ns : namespaces) {
 			this.namespace = ns;
@@ -120,7 +141,12 @@ public final class BlobFinder implements ScanCallback {
 		displayRunningTotal();
 
 		if (sb != null) {
-			writer.close();
+			try {
+				writer.close();
+			}
+			catch (IOException ioe) {
+				throw new AerospikeException(ioe);
+			}
 		}
 	}
 
@@ -128,7 +154,7 @@ public final class BlobFinder implements ScanCallback {
 	public void scanCallback(Key key, Record record) {
 		recCount++;
 
-		if (recCount % displayRecs == 0) {
+		if (recCount % bfp.displayAfterRecs == 0) {
 			displayRunningTotal();
 		}
 	}

@@ -30,6 +30,7 @@ import java.util.TreeMap;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.Value;
+import com.aerospike.client.blob.BlobFinder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
 

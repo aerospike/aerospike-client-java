@@ -1,0 +1,13 @@
+#!/bin/bash
+
+for i in $*
+do
+  if [[ $i == -D* ]]
+  then
+    def="$def $i"
+  else
+    arg="$arg $i"
+  fi
+done
+
+java $def -jar target/aerospike-blob-finder-*-jar-with-dependencies.jar $arg
