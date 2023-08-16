@@ -232,11 +232,13 @@ public abstract class Unpacker<T> {
 			val = getString(Buffer.utf8ToString(buffer, offset, count));
 			break;
 
-		case ParticleType.JBLOB:
-			throw new AerospikeException.Serialize("Object deserializer has been disabled");
-
 		case ParticleType.GEOJSON:
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
+			break;
+
+		case ParticleType.JBLOB:
+			// Java deserialization is no longer allowed, so return java serialized blob as byte[].
+			val = getBlob(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;
 
 		default:
