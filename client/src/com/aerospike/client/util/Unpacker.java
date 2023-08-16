@@ -28,7 +28,6 @@ import java.util.Map.Entry;
 import java.util.TreeMap;
 
 import com.aerospike.client.AerospikeException;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -233,11 +232,13 @@ public abstract class Unpacker<T> {
 			val = getString(Buffer.utf8ToString(buffer, offset, count));
 			break;
 
-		case ParticleType.JBLOB:
-			throw new AerospikeException(ResultCode.SERIALIZE_ERROR, "Object deserializer has been disabled");
-
 		case ParticleType.GEOJSON:
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
+			break;
+
+		case ParticleType.JBLOB:
+			// Java deserialization is no longer allowed, so return java serialized blob as byte[].
+			val = getBlob(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;
 
 		default:
