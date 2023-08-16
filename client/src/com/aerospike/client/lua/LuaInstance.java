@@ -163,14 +163,18 @@ public final class LuaInstance {
 		case ParticleType.DOUBLE:
 			return LuaDouble.valueOf(Buffer.bytesToDouble(buf, offset));
 
-		case ParticleType.BLOB:
-	        byte[] blob = new byte[len];
-	        System.arraycopy(buf, offset, blob, 0, len);
+		case ParticleType.BLOB: {
+			byte[] blob = new byte[len];
+			System.arraycopy(buf, offset, blob, 0, len);
 			return new LuaBytes(this, blob);
+		}
 
-		case ParticleType.JBLOB:
-			Object object = Buffer.bytesToObject(buf, offset, len);
-			return new LuaJavaBlob(object);
+		case ParticleType.JBLOB: {
+			// Java deserialization is no longer allowed, so return java serialized blob as LuaBytes.
+			byte[] blob = new byte[len];
+			System.arraycopy(buf, offset, blob, 0, len);
+			return new LuaBytes(this, blob);
+		}
 
 		case ParticleType.LIST: {
 			LuaUnpacker unpacker = new LuaUnpacker(this, buf, offset, len);
