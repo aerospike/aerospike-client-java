@@ -236,6 +236,11 @@ public abstract class Unpacker<T> {
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
 			break;
 
+		case ParticleType.JBLOB:
+			// Java deserialization is no longer allowed, so return java serialized blob as byte[].
+			val = getBlob(Arrays.copyOfRange(buffer, offset, offset + count));
+			break;
+
 		default:
 			val = getBlob(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;

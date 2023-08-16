@@ -25,6 +25,7 @@ public final class ParticleType {
 	public static final int DOUBLE = 2;
 	public static final int STRING = 3;
 	public static final int BLOB = 4;
+	public static final int JBLOB = 7;
 	public static final int BOOL = 17;
 	public static final int HLL = 18;
 	public static final int MAP = 19;

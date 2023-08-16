@@ -67,6 +67,17 @@ public final class Buffer {
 		case ParticleType.BLOB:
 			return Arrays.copyOfRange(buf, offset, offset+len);
 
+		case ParticleType.JBLOB:
+			// Java deserialization is no longer allowed, so return java serialized blob as a byte[].
+			// The user can deserialize the byte[] from the record bin using the following code:
+			//
+			// try (ByteArrayInputStream bastream = new ByteArrayInputStream(bytes, 0, len)) {
+			//     try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
+			//         return oistream.readObject();
+			//     }
+			// }
+			return Arrays.copyOfRange(buf, offset, offset+len);
+
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
 
