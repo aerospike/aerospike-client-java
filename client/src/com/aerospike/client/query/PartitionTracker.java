@@ -458,7 +458,9 @@ public final class PartitionTracker {
 		// Check if limits have been reached.
 		if (iteration > policy.maxRetries) {
 			if (exceptions == null || exceptions.size() <= 0) {
-				AerospikeException ae = new AerospikeException(ResultCode.MAX_RETRIES_EXCEEDED);
+				// The only retryable errors that are not added to the exceptions list is
+				// PARTITION_UNAVAILABLE.
+				AerospikeException ae = new AerospikeException(ResultCode.PARTITION_UNAVAILABLE);
 				ae.setPolicy(policy);
 				ae.setIteration(iteration);
 				throw ae;
