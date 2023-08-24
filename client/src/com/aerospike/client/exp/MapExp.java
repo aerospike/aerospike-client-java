@@ -34,6 +34,14 @@ import com.aerospike.client.util.Packer;
  * when the map is nested within a list. In that case, a list is returned for the
  * map modify expression.
  * <p>
+ * Valid map key types are:
+ * <ul>
+ * <li>String</li>
+ * <li>Integer</li>
+ * <li>byte[]</li>
+ * <li>List</li>
+ * </ul>
+ * <p>
  * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
  * for both unordered and ordered maps.  The rank is the sorted index of the value component.
  * Map supports negative indexing for index and rank.

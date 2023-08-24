@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,13 @@ import com.aerospike.client.util.Packer;
 
 /**
  * Map bin operations. Create map operations used by the client operate command.
- * The default unique key map is unordered.
+ * The default unique key map is unordered. Valid map key types are:
+ * <ul>
+ * <li>String</li>
+ * <li>Integer</li>
+ * <li>byte[]</li>
+ * <li>List</li>
+ * </ul>
  * <p>
  * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
  * for both unordered and ordered maps.  The rank is the sorted index of the value component.
