@@ -54,6 +54,7 @@ import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchExecutor;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
+import com.aerospike.client.command.BatchSingle;
 import com.aerospike.client.command.BatchStatus;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
@@ -61,6 +62,7 @@ import com.aerospike.client.command.DeleteCommand;
 import com.aerospike.client.command.ExecuteCommand;
 import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
+import com.aerospike.client.command.IBatchCommand;
 import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
@@ -752,26 +754,40 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			deletePolicy = batchDeletePolicyDefault;
 		}
 
-		BatchAttr attr = new BatchAttr();
-		attr.setDelete(deletePolicy);
-
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
-			records[i] = new BatchRecord(keys[i], attr.hasWrite);
+			records[i] = new BatchRecord(keys[i], true);
 		}
 
+		BatchStatus status = new BatchStatus(true);
+
 		try {
-			BatchStatus status = new BatchStatus(true);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (keys.length <= cluster.getNodeCount()) {
+				// Use single record protocol.
+				WritePolicy writePolicy = new WritePolicy(batchPolicy, deletePolicy);
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.OperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.Delete(cluster, writePolicy, keys[i], records[i], status);
+				}
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
+			else {
+				// Use batch protocol.
+				BatchAttr attr = new BatchAttr();
+				attr.setDelete(deletePolicy);
 
-			BatchExecutor.execute(cluster, batchPolicy, commands, status);
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
+
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.OperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+				}
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
+			}
 			return new BatchResults(records, status.getStatus());
 		}
 		catch (Throwable e) {

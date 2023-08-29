@@ -990,6 +990,10 @@ public class Cluster implements Runnable, Closeable {
 		throw new AerospikeException.InvalidNode("Cluster is empty");
 	}
 
+	public final int getNodeCount() {
+		return nodes.length;
+	}
+
 	public final Node[] getNodes() {
 		// Must copy array reference for copy on write semantics to work.
 		Node[] nodeArray = nodes;
