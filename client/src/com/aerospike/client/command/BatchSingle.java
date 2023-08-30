@@ -28,6 +28,7 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class BatchSingle {
@@ -40,8 +41,8 @@ public final class BatchSingle {
 		public Delete(Cluster cluster, WritePolicy writePolicy, Key key, BatchRecord record, BatchStatus status) {
 			super(cluster, writePolicy, status);
 			this.writePolicy = writePolicy;
-			this.record = record;
 			this.key = key;
+			this.record = record;
 			this.partition = Partition.write(cluster, writePolicy, key);
 		}
 
@@ -93,17 +94,58 @@ public final class BatchSingle {
 		}
 	}
 
+	public static final class Exists extends BaseCommand {
+		private final Key key;
+		private final Partition partition;
+		private final boolean[] existsArray;
+		private final int index;
+
+		public Exists(Cluster cluster, Policy policy, Key key, boolean[] existsArray, int index, BatchStatus status) {
+			super(cluster, policy, status);
+			this.key = key;
+			this.existsArray = existsArray;
+			this.index = index;
+			this.partition = Partition.read(cluster, policy, key);
+		}
+
+		@Override
+		protected Node getNode() {
+			return partition.getNodeRead(cluster);
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setExists(policy, key);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			// Read header.
+			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+			conn.updateLastUsed();
+
+			int resultCode = dataBuffer[13] & 0xFF;
+			existsArray[index] = resultCode == 0;
+		}
+
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			partition.prepareRetryRead(timeout);
+			return true;
+		}
+	}
+
 	public static abstract class BaseCommand extends SyncCommand implements IBatchCommand {
 		BatchExecutor parent;
 		BatchStatus status;
 
 		public BaseCommand(
 			Cluster cluster,
-			WritePolicy writePolicy,
+			Policy policy,
 			BatchStatus status
 
 		) {
-			super(cluster, writePolicy);
+			super(cluster, policy);
 			this.status = status;
 		}
 
