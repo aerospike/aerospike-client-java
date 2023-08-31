@@ -230,11 +230,9 @@ public final class ListExp {
 
 	/**
 	 * Create expression that removes list item identified by index.
-	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
-	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByIndex(int returnType, Exp index, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_INDEX, returnType, index, ctx);
+	public static Exp removeByIndex(Exp index, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_INDEX, ListReturnType.NONE, index, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -260,11 +258,9 @@ public final class ListExp {
 
 	/**
 	 * Create expression that removes list item identified by rank.
-	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
-	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByRank(int returnType, Exp rank, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_RANK, returnType, rank, ctx);
+	public static Exp removeByRank(Exp rank, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_RANK, ListReturnType.NONE, rank, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 

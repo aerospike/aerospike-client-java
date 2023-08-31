@@ -17,8 +17,10 @@
 
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeMap;
 
@@ -27,7 +29,12 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.exp.Exp;
+import com.aerospike.client.exp.ExpOperation;
+import com.aerospike.client.exp.ExpReadFlags;
+import com.aerospike.client.exp.Expression;
+import com.aerospike.client.exp.MapExp;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.test.sync.TestSync;
 
@@ -57,5 +64,30 @@ public class TestMapExp extends TestSync {
 		if (!(m instanceof TreeMap)) {
 			fail("Map not instance of TreeMap");
 		}
+	}
+
+	@Test
+	public void invertedMapExp() {
+		HashMap<String,Integer> map = new HashMap<>();
+		map.put("a", 1);
+		map.put("b", 2);
+		map.put("c", 2);
+		map.put("d", 3);
+
+		Key key = new Key(args.namespace, args.set, "ime");
+		Bin bin = new Bin("m", map);
+
+		client.put(null, key, bin);
+
+		// Use INVERTED to return map with entries removed where value != 2.
+		Expression e = Exp.build(MapExp.removeByValue(MapReturnType.INVERTED, Exp.val(2), Exp.mapBin(bin.name)));
+
+		Record rec = client.operate(null, key, ExpOperation.read(bin.name, e, ExpReadFlags.DEFAULT));
+		assertRecordFound(key, rec);
+
+		Map<?,?> m = rec.getMap(bin.name);
+		assertEquals(2L, m.size());
+		assertEquals(2L, m.get("b"));
+		assertEquals(2L, m.get("c"));
 	}
 }
