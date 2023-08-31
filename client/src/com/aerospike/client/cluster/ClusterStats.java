@@ -44,12 +44,12 @@ public final class ClusterStats {
 	public final int recoverQueueSize;
 
 	/**
-	 * Count of add node failures in the most recent cluster tend iteration.
+	 * Count of add node failures since the client was started.
 	 */
 	public final int invalidNodeCount;
 
 	/**
-	 * Count of transaction retries since cluster was started.
+	 * Count of transaction retries since the client was started.
 	 */
 	public final long retryCount;
 

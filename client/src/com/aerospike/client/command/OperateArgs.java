@@ -34,7 +34,6 @@ public final class OperateArgs {
 		WritePolicy policy,
 		WritePolicy writeDefault,
 		WritePolicy readDefault,
-		Key key,
 		Operation[] operations
 	) {
 		this.operations = operations;

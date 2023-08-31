@@ -990,8 +990,8 @@ public class Cluster implements Runnable, Closeable {
 		throw new AerospikeException.InvalidNode("Cluster is empty");
 	}
 
-	public final int getNodeCount() {
-		return nodes.length;
+	public final boolean useBatchProtocol(int length) {
+		return length > nodes.length;
 	}
 
 	public final Node[] getNodes() {

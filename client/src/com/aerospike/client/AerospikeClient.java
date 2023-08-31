@@ -763,19 +763,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchStatus status = new BatchStatus(true);
 
 		try {
-			if (keys.length <= cluster.getNodeCount()) {
-				// Use single record protocol.
-				WritePolicy writePolicy = new WritePolicy(batchPolicy, deletePolicy);
-				IBatchCommand[] commands = new IBatchCommand[keys.length];
-				int count = 0;
-
-				for (int i = 0; i < keys.length; i++) {
-					commands[count++] = new BatchSingle.Delete(cluster, writePolicy, keys[i], records[i], status);
-				}
-				BatchExecutor.execute(cluster, batchPolicy, commands, status);
-			}
-			else {
-				// Use batch protocol.
+			if (cluster.useBatchProtocol(keys.length)) {
 				BatchAttr attr = new BatchAttr();
 				attr.setDelete(deletePolicy);
 
@@ -785,6 +773,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (BatchNode batchNode : batchNodes) {
 					commands[count++] = new Batch.OperateArrayCommand(cluster, batchNode, batchPolicy, keys, null, records, attr, status);
+				}
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
+			}
+			else {
+				WritePolicy writePolicy = new WritePolicy(batchPolicy, deletePolicy);
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.Delete(cluster, writePolicy, keys[i], records[i], status);
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
@@ -1067,24 +1065,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchStatus status = new BatchStatus(false);
 
 		try {
-			if (keys.length <= cluster.getNodeCount()) {
-				// Use single record protocol.
-				IBatchCommand[] commands = new IBatchCommand[keys.length];
-				int count = 0;
-
-				for (int i = 0; i < keys.length; i++) {
-					commands[count++] = new BatchSingle.Exists(cluster, policy, keys[i], existsArray, i, status);
-				}
-				BatchExecutor.execute(cluster, policy, commands, status);
-			}
-			else {
-				// Use batch protocol.
+			if (cluster.useBatchProtocol(keys.length)) {
 				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
 				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
 				int count = 0;
 
 				for (BatchNode batchNode : batchNodes) {
 					commands[count++] = new Batch.ExistsArrayCommand(cluster, batchNode, policy, keys, existsArray, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
+			}
+			else {
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.Exists(cluster, policy, keys[i], existsArray, i, status);
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -1428,17 +1424,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Record[] records = new Record[keys.length];
+		BatchStatus status = new BatchStatus(false);
 
 		try {
-			BatchStatus status = new BatchStatus(false);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (cluster.useBatchProtocol(keys.length)) {
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
 			}
-			BatchExecutor.execute(cluster, policy, commands, status);
+			else {
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.Read(cluster, policy, keys[i], null, records, i, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
+			}
 			return records;
 		}
 		catch (Throwable e) {
@@ -1532,17 +1539,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Record[] records = new Record[keys.length];
+		BatchStatus status = new BatchStatus(false);
 
 		try {
-			BatchStatus status = new BatchStatus(false);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (cluster.useBatchProtocol(keys.length)) {
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
 			}
-			BatchExecutor.execute(cluster, policy, commands, status);
+			else {
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.Read(cluster, policy, keys[i], binNames, records, i, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
+			}
 			return records;
 		}
 		catch (Throwable e) {
@@ -1638,17 +1656,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Record[] records = new Record[keys.length];
+		BatchStatus status = new BatchStatus(false);
 
 		try {
-			BatchStatus status = new BatchStatus(false);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (cluster.useBatchProtocol(keys.length)) {
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, ops, records, Command.INFO1_READ, true, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
 			}
-			BatchExecutor.execute(cluster, policy, commands, status);
+			else {
+				WritePolicy wp = (policy != null)? new WritePolicy(policy) : null;
+				OperateArgs args = new OperateArgs(wp, writePolicyDefault, operatePolicyReadDefault, ops);
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.OperateRecord(cluster, keys[i], args, records, i, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
+			}
 			return records;
 		}
 		catch (Throwable e) {
@@ -1743,17 +1774,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		Record[] records = new Record[keys.length];
+		BatchStatus status = new BatchStatus(false);
 
 		try {
-			BatchStatus status = new BatchStatus(false);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (cluster.useBatchProtocol(keys.length)) {
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_NOBINDATA, false, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
 			}
-			BatchExecutor.execute(cluster, policy, commands, status);
+			else {
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
+
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.ReadHeader(cluster, policy, keys[i], records, i, status);
+				}
+				BatchExecutor.execute(cluster, policy, commands, status);
+			}
 			return records;
 		}
 		catch (Throwable e) {
@@ -1846,7 +1888,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
-		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 		OperateCommand command = new OperateCommand(cluster, key, args);
 		command.execute();
 		return command.getRecord();
@@ -1878,7 +1920,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			eventLoop = cluster.eventLoops.next();
 		}
 
-		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 		AsyncOperate command = new AsyncOperate(cluster, listener, key, args);
 		eventLoop.execute(cluster, command);
 	}
@@ -2046,17 +2088,30 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			records[i] = new BatchRecord(keys[i], attr.hasWrite);
 		}
 
+		BatchStatus status = new BatchStatus(true);
+
 		try {
-			BatchStatus status = new BatchStatus(true);
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
-			BatchCommand[] commands = new BatchCommand[batchNodes.size()];
-			int count = 0;
+			if (cluster.useBatchProtocol(keys.length)) {
+				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
+				BatchCommand[] commands = new BatchCommand[batchNodes.size()];
+				int count = 0;
 
-			for (BatchNode batchNode : batchNodes) {
-				commands[count++] = new Batch.OperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+				for (BatchNode batchNode : batchNodes) {
+					commands[count++] = new Batch.OperateArrayCommand(cluster, batchNode, batchPolicy, keys, ops, records, attr, status);
+				}
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
+			else {
+				WritePolicy wp = new WritePolicy(batchPolicy, writePolicy);
+				OperateArgs args = new OperateArgs(wp, writePolicyDefault, operatePolicyReadDefault, ops);
+				IBatchCommand[] commands = new IBatchCommand[keys.length];
+				int count = 0;
 
-			BatchExecutor.execute(cluster, batchPolicy, commands, status);
+				for (int i = 0; i < keys.length; i++) {
+					commands[count++] = new BatchSingle.OperateBatchRecord(cluster, keys[i], args, records[i], status);
+				}
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
+			}
 			return new BatchResults(records, status.getStatus());
 		}
 		catch (Throwable e) {

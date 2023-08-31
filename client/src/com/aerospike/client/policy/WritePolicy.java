@@ -132,6 +132,21 @@ public final class WritePolicy extends Policy {
 	}
 
 	/**
+	 * Copy write policy for batch write.
+	 */
+	public WritePolicy(Policy other, BatchWritePolicy wp) {
+		super(other);
+		this.filterExp = wp.filterExp != null ? wp.filterExp : other.filterExp;
+		this.recordExistsAction= wp.recordExistsAction;
+		this.commitLevel = wp.commitLevel;
+		this.generationPolicy = wp.generationPolicy;
+		this.generation = wp.generation;
+		this.expiration = wp.expiration;
+		this.durableDelete = wp.durableDelete;
+		this.sendKey = wp.sendKey;
+	}
+
+	/**
 	 * Copy write policy for batch delete.
 	 */
 	public WritePolicy(Policy other, BatchDeletePolicy dp) {
