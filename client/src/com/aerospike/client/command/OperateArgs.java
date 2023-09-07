@@ -20,6 +20,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateArgs {
@@ -119,6 +120,15 @@ public final class OperateArgs {
 		}
 		else {
 			return Partition.read(cluster, writePolicy, key);
+		}
+	}
+
+	public Partition getPartition(Partitions partitions, Key key) {
+		if (hasWrite) {
+			return Partition.write(partitions, writePolicy, key);
+		}
+		else {
+			return Partition.read(partitions, writePolicy, key);
 		}
 	}
 }

@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.command;
 
+import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -26,10 +27,10 @@ import com.aerospike.client.policy.BatchPolicy;
 
 public final class BatchExecutor {
 
-	public static void execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
+	public static void execute(Cluster cluster, BatchPolicy policy, List<IBatchCommand> commands, BatchStatus status) {
 		cluster.addTran();
 
-		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
+		if (policy.maxConcurrentThreads == 1 || commands.size() <= 1) {
 			// Run batch requests sequentially in same thread.
 			for (IBatchCommand command : commands) {
 				try {
@@ -75,24 +76,24 @@ public final class BatchExecutor {
 	private final ExecutorService threadPool;
 	private final AtomicBoolean done;
 	private final AtomicInteger completedCount;
-	private final IBatchCommand[] commands;
+	private final List<IBatchCommand> commands;
 	private final int maxConcurrentThreads;
 	private boolean completed;
 
-	private BatchExecutor(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
+	private BatchExecutor(Cluster cluster, BatchPolicy policy, List<IBatchCommand> commands, BatchStatus status) {
 		this.commands = commands;
 		this.status = status;
 		this.threadPool = cluster.getThreadPool();
 		this.done = new AtomicBoolean();
 		this.completedCount = new AtomicInteger();
-		this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.length)?
-									commands.length : policy.maxConcurrentThreads;
+		this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.size())?
+									commands.size() : policy.maxConcurrentThreads;
 	}
 
 	void execute() {
 		// Start threads.
 		for (int i = 0; i < maxConcurrentThreads; i++) {
-			IBatchCommand cmd = commands[i];
+			IBatchCommand cmd = commands.get(i);
 			cmd.setParent(this);
 			threadPool.execute(cmd);
 		}
@@ -108,13 +109,13 @@ public final class BatchExecutor {
 	void onComplete() {
 		int finished = completedCount.incrementAndGet();
 
-		if (finished < commands.length) {
+		if (finished < commands.size()) {
 			int nextThread = finished + maxConcurrentThreads - 1;
 
 			// Determine if a new thread needs to be started.
-			if (nextThread < commands.length && ! done.get()) {
+			if (nextThread < commands.size() && ! done.get()) {
 				// Start new thread.
-				IBatchCommand cmd = commands[nextThread];
+				IBatchCommand cmd = commands.get(nextThread);
 				cmd.setParent(this);
 				threadPool.execute(cmd);
 			}

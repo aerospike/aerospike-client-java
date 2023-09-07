@@ -28,6 +28,17 @@ import com.aerospike.client.query.PartitionStatus;
 
 public final class Partition {
 
+	public static Partitions getPartitions(Cluster cluster, Key key) {
+		// Must copy hashmap reference for copy on write semantics to work.
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(key.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
+		}
+		return partitions;
+	}
+
 	public static Partition write(Cluster cluster, Policy policy, Key key) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
@@ -40,6 +51,10 @@ public final class Partition {
 		return new Partition(partitions, key, policy.replica, null, false);
 	}
 
+	public static Partition write(Partitions p, Policy policy, Key key) {
+		return new Partition(p, key, policy.replica, null, false);
+	}
+
 	public static Partition read(Cluster cluster, Policy policy, Key key) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
@@ -49,6 +64,10 @@ public final class Partition {
 			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
 		}
 
+		return read(partitions, policy, key);
+	}
+
+	public static Partition read(Partitions partitions, Policy policy, Key key) {
 		Replica replica;
 		boolean linearize;
 

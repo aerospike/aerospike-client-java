@@ -29,6 +29,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
@@ -39,11 +40,11 @@ public final class BatchSingle {
 		private final Partition partition;
 		private final BatchRecord record;
 
-		public Delete(Cluster cluster, WritePolicy writePolicy, BatchRecord record, BatchStatus status) {
+		public Delete(Cluster cluster, WritePolicy writePolicy, BatchRecord record, BatchStatus status, Partitions partitions) {
 			super(cluster, writePolicy, status);
 			this.writePolicy = writePolicy;
 			this.record = record;
-			this.partition = Partition.write(cluster, writePolicy, record.key);
+			this.partition = Partition.write(partitions, writePolicy, record.key);
 		}
 
 		@Override
@@ -109,7 +110,8 @@ public final class BatchSingle {
 			String functionName,
 			Value[] args,
 			BatchRecord record,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
 			super(cluster, writePolicy, status);
 			this.writePolicy = writePolicy;
@@ -117,7 +119,7 @@ public final class BatchSingle {
 			this.functionName = functionName;
 			this.args = args;
 			this.record = record;
-			this.partition = Partition.write(cluster, writePolicy, record.key);
+			this.partition = Partition.write(partitions, writePolicy, record.key);
 		}
 
 		@Override
@@ -140,7 +142,19 @@ public final class BatchSingle {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(true));
+				record.setRecord(rp.parseRecord(false));
+			}
+			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = rp.parseRecord(false);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = rp.resultCode;
+					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
+					status.setRowError();
+				}
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
@@ -168,12 +182,20 @@ public final class BatchSingle {
 		private final boolean[] existsArray;
 		private final int index;
 
-		public Exists(Cluster cluster, Policy policy, Key key, boolean[] existsArray, int index, BatchStatus status) {
+		public Exists(
+			Cluster cluster,
+			Policy policy,
+			Key key,
+			boolean[] existsArray,
+			int index,
+			BatchStatus status,
+			Partitions partitions
+		) {
 			super(cluster, policy, status);
 			this.key = key;
 			this.existsArray = existsArray;
 			this.index = index;
-			this.partition = Partition.read(cluster, policy, key);
+			this.partition = Partition.read(partitions, policy, key);
 		}
 
 		@Override
@@ -209,12 +231,20 @@ public final class BatchSingle {
 		private final Record[] records;
 		private final int index;
 
-		public ReadHeader(Cluster cluster, Policy policy, Key key, Record[] records, int index, BatchStatus status) {
+		public ReadHeader(
+			Cluster cluster,
+			Policy policy,
+			Key key,
+			Record[] records,
+			int index,
+			BatchStatus status,
+			Partitions partitions
+		) {
 			super(cluster, policy, status);
 			this.key = key;
 			this.records = records;
 			this.index = index;
-			this.partition = Partition.read(cluster, policy, key);
+			this.partition = Partition.read(partitions, policy, key);
 		}
 
 		@Override
@@ -264,7 +294,8 @@ public final class BatchSingle {
 			String[] binNames,
 			Record[] records,
 			int index,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
 			super(cluster, policy, status);
 			this.key = key;
@@ -272,7 +303,7 @@ public final class BatchSingle {
 			this.records = records;
 			this.index = index;
 			this.isOperation = false;
-			this.partition = Partition.read(cluster, policy, key);
+			this.partition = Partition.read(partitions, policy, key);
 		}
 
 		public Read(
@@ -328,11 +359,12 @@ public final class BatchSingle {
 			Cluster cluster,
 			Policy policy,
 			BatchRead record,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
 			super(cluster, policy, status);
 			this.record = record;
-			this.partition = Partition.read(cluster, policy, record.key);
+			this.partition = Partition.read(partitions, policy, record.key);
 		}
 
 		@Override
@@ -379,9 +411,10 @@ public final class BatchSingle {
 			OperateArgs args,
 			Record[] records,
 			int index,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
-			super(cluster, args.writePolicy, key, args.getPartition(cluster, key), true, records, index, status);
+			super(cluster, args.writePolicy, key, args.getPartition(partitions, key), true, records, index, status);
 			this.args = args;
 		}
 
@@ -421,12 +454,13 @@ public final class BatchSingle {
 			Cluster cluster,
 			OperateArgs args,
 			BatchRecord record,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
 			super(cluster, args.writePolicy, status);
 			this.args = args;
 			this.record = record;
-			this.partition = args.getPartition(cluster, record.key);
+			this.partition = args.getPartition(partitions, record.key);
 		}
 
 		@Override
@@ -486,12 +520,13 @@ public final class BatchSingle {
 			Policy policy,
 			OperateArgsRead args,
 			BatchRead record,
-			BatchStatus status
+			BatchStatus status,
+			Partitions partitions
 		) {
 			super(cluster, policy, status);
 			this.args = args;
 			this.record = record;
-			this.partition = Partition.read(cluster, policy, record.key);
+			this.partition = Partition.read(partitions, policy, record.key);
 		}
 
 		@Override
