@@ -17,8 +17,6 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
@@ -82,118 +80,32 @@ public class ReadCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+		RecordParser rp = new RecordParser(conn, dataBuffer);
 
-		long sz = Buffer.bytesToLong(dataBuffer, 0);
-		int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
-
-		if (receiveSize <= 0) {
-			throw new AerospikeException("Invalid receive size: " + receiveSize);
-		}
-
-		/*
-		byte version = (byte) (((int)(sz >> 56)) & 0xff);
-		if (version != MSG_VERSION) {
-			if (Log.debugEnabled()) {
-				Log.debug("read header: incorrect version.");
-			}
-		}
-
-		if (type != MSG_TYPE) {
-			if (Log.debugEnabled()) {
-				Log.debug("read header: incorrect message type, aborting receive");
-			}
-		}
-
-		if (headerLength != MSG_REMAINING_HEADER_SIZE) {
-			if (Log.debugEnabled()) {
-				Log.debug("read header: unexpected header size, aborting");
-			}
-		}*/
-
-		// Read remaining message bytes.
-		sizeBuffer(receiveSize);
-		conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
-		conn.updateLastUsed();
-
-		long type = (sz >> 48) & 0xff;
-
-		if (type == Command.AS_MSG_TYPE) {
-			dataOffset = 5;
-		}
-		else if (type == Command.MSG_TYPE_COMPRESSED) {
-			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
-			byte[] buf = new byte[usize];
-
-			Inflater inf = new Inflater();
-			try {
-				inf.setInput(dataBuffer, 8, receiveSize - 8);
-				int rsize;
-
-				try {
-					rsize = inf.inflate(buf);
-				}
-				catch (DataFormatException dfe) {
-					throw new AerospikeException.Serialize(dfe);
-				}
-
-				if (rsize != usize) {
-					throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
-				}
-
-				dataBuffer = buf;
-				dataOffset = 13;
-			} finally {
-				inf.end();
-			}
-		}
-		else {
-			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
-		}
-
-		int resultCode = dataBuffer[dataOffset] & 0xFF;
-		dataOffset++;
-		int generation = Buffer.bytesToInt(dataBuffer, dataOffset);
-		dataOffset += 4;
-		int expiration = Buffer.bytesToInt(dataBuffer, dataOffset);
-		dataOffset += 8;
-		int fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset);
-		dataOffset += 2;
-		int opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
-		dataOffset += 2;
-
-		if (resultCode == 0) {
-			if (opCount == 0) {
-				// Bin data was not returned.
-				record = new Record(null, generation, expiration);
-				return;
-			}
-			skipKey(fieldCount);
-			record = parseRecord(opCount, generation, expiration, isOperation);
+		if (rp.resultCode == ResultCode.OK) {
+			this.record = rp.parseRecord(isOperation);
 			return;
 		}
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			handleNotFound(resultCode);
+		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			handleNotFound(rp.resultCode);
 			return;
 		}
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(rp.resultCode);
 			}
 			return;
 		}
 
-		if (resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			skipKey(fieldCount);
-			record = parseRecord(opCount, generation, expiration, isOperation);
-			handleUdfError(resultCode);
+		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			this.record = rp.parseRecord(isOperation);
+			handleUdfError(rp.resultCode);
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override

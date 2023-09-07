@@ -17,14 +17,14 @@
 package com.aerospike.client.command;
 
 import java.io.IOException;
-import java.util.zip.DataFormatException;
-import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -36,16 +36,14 @@ import com.aerospike.client.policy.WritePolicy;
 public final class BatchSingle {
 	public static final class Delete extends BaseCommand {
 		private final WritePolicy writePolicy;
-		private final Key key;
 		private final Partition partition;
 		private final BatchRecord record;
 
-		public Delete(Cluster cluster, WritePolicy writePolicy, Key key, BatchRecord record, BatchStatus status) {
+		public Delete(Cluster cluster, WritePolicy writePolicy, BatchRecord record, BatchStatus status) {
 			super(cluster, writePolicy, status);
 			this.writePolicy = writePolicy;
-			this.key = key;
 			this.record = record;
-			this.partition = Partition.write(cluster, writePolicy, key);
+			this.partition = Partition.write(cluster, writePolicy, record.key);
 		}
 
 		@Override
@@ -60,7 +58,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setDelete(writePolicy, key);
+			setDelete(writePolicy, record.key);
 		}
 
 		@Override
@@ -78,6 +76,74 @@ public final class BatchSingle {
 			}
 			else {
 				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				status.setRowError();
+			}
+		}
+
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			partition.prepareRetryWrite(timeout);
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
+	public static final class UDF extends BaseCommand {
+		private final WritePolicy writePolicy;
+		private final Partition partition;
+		private final String packageName;
+		private final String functionName;
+		private final Value[] args;
+		private final BatchRecord record;
+
+		public UDF(
+			Cluster cluster,
+			WritePolicy writePolicy,
+			String packageName,
+			String functionName,
+			Value[] args,
+			BatchRecord record,
+			BatchStatus status
+		) {
+			super(cluster, writePolicy, status);
+			this.writePolicy = writePolicy;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.args = args;
+			this.record = record;
+			this.partition = Partition.write(cluster, writePolicy, record.key);
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return true;
+		}
+
+		@Override
+		protected Node getNode() {
+			return partition.getNodeWrite(cluster);
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setUdf(writePolicy, record.key, packageName, functionName, args);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				status.setRowError();
 			}
 		}
@@ -240,79 +306,60 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			// Read header.
-			conn.readFully(dataBuffer, 8, Command.STATE_READ_HEADER);
+			RecordParser rp = new RecordParser(conn, dataBuffer);
 
-			long sz = Buffer.bytesToLong(dataBuffer, 0);
-			int receiveSize = (int)(sz & 0xFFFFFFFFFFFFL);
-
-			if (receiveSize <= 0) {
-				throw new AerospikeException("Invalid receive size: " + receiveSize);
+			if (rp.resultCode == ResultCode.OK) {
+				records[index] = rp.parseRecord(isOperation);
 			}
+		}
 
-			// Read remaining message bytes.
-			sizeBuffer(receiveSize);
-			conn.readFully(dataBuffer, receiveSize, Command.STATE_READ_DETAIL);
-			conn.updateLastUsed();
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			partition.prepareRetryRead(timeout);
+			return true;
+		}
+	}
 
-			long type = (sz >> 48) & 0xff;
+	public static class ReadRecord extends BaseCommand {
+		protected final Partition partition;
+		private final BatchRead record;
 
-			if (type == Command.AS_MSG_TYPE) {
-				dataOffset = 5;
-			}
-			else if (type == Command.MSG_TYPE_COMPRESSED) {
-				int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
-				byte[] buf = new byte[usize];
+		public ReadRecord(
+			Cluster cluster,
+			Policy policy,
+			BatchRead record,
+			BatchStatus status
+		) {
+			super(cluster, policy, status);
+			this.record = record;
+			this.partition = Partition.read(cluster, policy, record.key);
+		}
 
-				Inflater inf = new Inflater();
-				try {
-					inf.setInput(dataBuffer, 8, receiveSize - 8);
-					int rsize;
+		@Override
+		protected Node getNode() {
+			return partition.getNodeRead(cluster);
+		}
 
-					try {
-						rsize = inf.inflate(buf);
-					}
-					catch (DataFormatException dfe) {
-						throw new AerospikeException.Serialize(dfe);
-					}
-
-					if (rsize != usize) {
-						throw new AerospikeException("Decompressed size " + rsize + " is not expected " + usize);
-					}
-
-					dataBuffer = buf;
-					dataOffset = 13;
-				} finally {
-					inf.end();
-				}
+		@Override
+		protected void writeBuffer() {
+			if (record.readAllBins || record.binNames != null) {
+				setRead(policy, record.key, record.binNames);
 			}
 			else {
-				throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
+				setReadHeader(policy, record.key);
 			}
+		}
 
-			int resultCode = dataBuffer[dataOffset] & 0xFF;
-			dataOffset++;
-			int generation = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-			int expiration = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 8;
-			int fieldCount = Buffer.bytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
-			int opCount = Buffer.bytesToShort(dataBuffer, dataOffset);
-			dataOffset += 2;
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
 
-			if (resultCode == 0) {
-				Record record;
-
-				if (opCount <= 0) {
-					// Bin data was not returned.
-					record = new Record(null, generation, expiration);
-				}
-				else {
-					skipKey(fieldCount);
-					record = parseRecord(opCount, generation, expiration, isOperation);
-				}
-				records[index] = record;
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
+			}
+			else {
+				record.setError(rp.resultCode, false);
+				status.setRowError();
 			}
 		}
 
@@ -366,23 +413,20 @@ public final class BatchSingle {
 	}
 
 	public static final class OperateBatchRecord extends BaseCommand {
-		private final Key key;
 		private final Partition partition;
 		private final OperateArgs args;
 		private final BatchRecord record;
 
 		public OperateBatchRecord(
 			Cluster cluster,
-			Key key,
 			OperateArgs args,
 			BatchRecord record,
 			BatchStatus status
 		) {
 			super(cluster, args.writePolicy, status);
-			this.key = key;
 			this.args = args;
 			this.record = record;
-			this.partition = args.getPartition(cluster, key);
+			this.partition = args.getPartition(cluster, record.key);
 		}
 
 		@Override
@@ -397,42 +441,20 @@ public final class BatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setOperate(args.writePolicy, key, args);
+			setOperate(args.writePolicy, record.key, args);
 		}
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			// TODO: Add SyncCommand parseRecord() which includes compression support like read.
-/*
-			// Read header.
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
+			RecordParser rp = new RecordParser(conn, dataBuffer);
 
-			int resultCode = dataBuffer[13] & 0xFF;
-
-			if (resultCode == ResultCode.OK) {
-				int generation = Buffer.bytesToInt(dataBuffer, 14);
-				int expiration = Buffer.bytesToInt(dataBuffer, 18);
-				int opCount = Buffer.bytesToInt(dataBuffer, 18);
-				Record r = parseRecord(opCount, generation, expiration, isOperation);
-				record.setRecord(r);
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
 			}
 			else {
-				record.setError(resultCode, Command.batchInDoubt(args.hasWrite, commandSentCounter));
+				record.setError(rp.resultCode, Command.batchInDoubt(args.hasWrite, commandSentCounter));
 				status.setRowError();
 			}
-
-
-			int generation = Buffer.bytesToInt(dataBuffer, 14);
-			int expiration = Buffer.bytesToInt(dataBuffer, 18);
-
-			if (resultCode == ResultCode.OK || resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-				record.setRecord(new Record(null, generation, expiration));
-			}
-			else {
-				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
-				status.setRowError();
-			}*/
 		}
 
 		@Override
@@ -451,6 +473,59 @@ public final class BatchSingle {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
 			}
+		}
+	}
+
+	public static final class OperateBatchRead extends BaseCommand {
+		private final Partition partition;
+		private final OperateArgsRead args;
+		private final BatchRead record;
+
+		public OperateBatchRead(
+			Cluster cluster,
+			Policy policy,
+			OperateArgsRead args,
+			BatchRead record,
+			BatchStatus status
+		) {
+			super(cluster, policy, status);
+			this.args = args;
+			this.record = record;
+			this.partition = Partition.read(cluster, policy, record.key);
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return false;
+		}
+
+		@Override
+		protected Node getNode() {
+			return partition.getNodeRead(cluster);
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setOperateRead(policy, record.key, args);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
+			}
+			else {
+				record.setError(rp.resultCode, false);
+				status.setRowError();
+			}
+		}
+
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			partition.prepareRetryRead(timeout);
+			return true;
 		}
 	}
 

@@ -298,6 +298,30 @@ public class Command {
 	// Operate
 	//--------------------------------------------------
 
+	public final void setOperateRead(Policy policy, Key key, OperateArgsRead args) {
+		begin();
+		int fieldCount = estimateKeySize(policy, key);
+
+		if (policy.filterExp != null) {
+			dataOffset += policy.filterExp.size();
+			fieldCount++;
+		}
+		dataOffset += args.size;
+		sizeBuffer();
+
+		writeHeaderRead(policy, serverTimeout, args.readAttr, 0, fieldCount, args.operations.length);
+		writeKey(policy, key);
+
+		if (policy.filterExp != null) {
+			policy.filterExp.write(this);
+		}
+
+		for (Operation operation : args.operations) {
+			writeOperation(operation);
+		}
+		end();
+	}
+
 	public final void setOperate(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);

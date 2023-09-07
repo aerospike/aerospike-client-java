@@ -238,6 +238,25 @@ public class Policy {
 	}
 
 	/**
+	 * Copy read policy for batch read.
+	 */
+	public Policy(Policy other, BatchReadPolicy rp) {
+		this.readModeAP = rp.readModeAP;
+		this.readModeSC = rp.readModeSC;
+		this.replica = other.replica;
+		this.filterExp = rp.filterExp != null ? rp.filterExp : other.filterExp;
+		this.connectTimeout = other.connectTimeout;
+		this.socketTimeout = other.socketTimeout;
+		this.totalTimeout = other.totalTimeout;
+		this.timeoutDelay = other.timeoutDelay;
+		this.maxRetries = other.maxRetries;
+		this.sleepBetweenRetries = other.sleepBetweenRetries;
+		this.sendKey = other.sendKey;
+		this.compress = other.compress;
+		this.failOnFilteredOut = other.failOnFilteredOut;
+	}
+
+	/**
 	 * Default constructor.
 	 */
 	public Policy() {

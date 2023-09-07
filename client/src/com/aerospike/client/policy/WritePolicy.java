@@ -160,6 +160,18 @@ public final class WritePolicy extends Policy {
 	}
 
 	/**
+	 * Copy write policy for batch UDF.
+	 */
+	public WritePolicy(Policy other, BatchUDFPolicy up) {
+		super(other);
+		this.filterExp = up.filterExp != null ? up.filterExp : other.filterExp;
+		this.commitLevel = up.commitLevel;
+		this.expiration = up.expiration;
+		this.durableDelete = up.durableDelete;
+		this.sendKey = up.sendKey;
+	}
+
+	/**
 	 * Default constructor.
 	 */
 	public WritePolicy() {
