@@ -37,6 +37,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -284,6 +285,89 @@ public class Command {
 		}
 	}
 
+	public final void setRead(Policy policy, BatchRead br) {
+		begin();
+
+		BatchReadPolicy rp = br.policy;
+		BatchAttr attr = new BatchAttr();
+		Expression exp;
+		int opCount;
+
+		if (rp != null) {
+			attr.setRead(rp);
+			exp = (rp.filterExp != null) ? rp.filterExp : policy.filterExp;
+		}
+		else {
+			attr.setRead(policy);
+			exp = policy.filterExp;
+		}
+
+		if (br.binNames != null) {
+			opCount = br.binNames.length;
+
+			for (String binName : br.binNames) {
+				estimateOperationSize(binName);
+			}
+		}
+		else if (br.ops != null) {
+			attr.adjustRead(br.ops);
+			opCount = br.ops.length;
+
+			for (Operation op : br.ops) {
+				if (op.type.isWrite) {
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+				}
+				estimateOperationSize(op);
+			}
+		}
+		else {
+			attr.adjustRead(br.readAllBins);
+			opCount = 0;
+		}
+
+		int fieldCount = estimateKeyAttrSize(br.key, attr, exp);
+
+		sizeBuffer();
+		writeKeyAttr(br.key, attr, exp, fieldCount, opCount);
+
+		if (br.binNames != null) {
+			for (String binName : br.binNames) {
+				writeOperation(binName, Operation.Type.READ);
+			}
+		}
+		else if (br.ops != null) {
+			for (Operation op : br.ops) {
+				writeOperation(op);
+			}
+		}
+		end();
+	}
+
+	public final void setRead(Policy policy, Key key, Operation[] ops) {
+		begin();
+
+		BatchAttr attr = new BatchAttr();
+		attr.setRead(policy);
+		attr.adjustRead(ops);
+
+		int fieldCount = estimateKeyAttrSize(key, attr, policy.filterExp);
+
+		for (Operation op : ops) {
+			if (op.type.isWrite) {
+                throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+			}
+			estimateOperationSize(op);
+		}
+
+		sizeBuffer();
+		writeKeyAttr(key, attr, policy.filterExp, fieldCount, ops.length);
+
+		for (Operation op : ops) {
+			writeOperation(op);
+		}
+		end();
+	}
+
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
@@ -306,30 +390,6 @@ public class Command {
 	//--------------------------------------------------
 	// Operate
 	//--------------------------------------------------
-
-	public final void setOperateRead(Policy policy, Key key, OperateArgsRead args) {
-		begin();
-		int fieldCount = estimateKeySize(policy, key);
-
-		if (policy.filterExp != null) {
-			dataOffset += policy.filterExp.size();
-			fieldCount++;
-		}
-		dataOffset += args.size;
-		sizeBuffer();
-
-		writeHeaderRead(policy, serverTimeout, args.readAttr, 0, fieldCount, args.operations.length);
-		writeKey(policy, key);
-
-		if (policy.filterExp != null) {
-			policy.filterExp.write(this);
-		}
-
-		for (Operation operation : args.operations) {
-			writeOperation(operation);
-		}
-		end();
-	}
 
 	public final void setOperate(WritePolicy policy, Key key, OperateArgs args) {
 		begin();
@@ -857,9 +917,10 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
+		Expression exp = getBatchExpression(policy, attr);
 
-		if (attr.filterExp != null) {
-			dataOffset += attr.filterExp.size();
+		if (exp != null) {
+			dataOffset += exp.size();
 			fieldCount++;
 		}
 
@@ -913,8 +974,8 @@ public class Command {
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
 
-		if (attr.filterExp != null) {
-			attr.filterExp.write(this);
+		if (exp != null) {
+			exp.write(this);
 		}
 
 		int fieldSizeOffset = dataOffset;

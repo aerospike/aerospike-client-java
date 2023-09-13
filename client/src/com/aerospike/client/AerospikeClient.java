@@ -65,7 +65,6 @@ import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.IBatchCommand;
 import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.OperateArgsRead;
 import com.aerospike.client.command.OperateCommand;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
@@ -1366,19 +1365,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					status.batchKeyError(ae);
 					continue;
 				}
-
-				Policy p = (br.policy != null)? new Policy(policy, br.policy) : policy;
-
-				if (br.binNames != null) {
-					commands.add(new BatchSingle.ReadRecord(cluster, p, br, status, partitions));
-				}
-				else if (br.ops != null) {
-					OperateArgsRead args = new OperateArgsRead(br.ops);
-					commands.add(new BatchSingle.OperateBatchRead(cluster, p, args, br, status, partitions));
-				}
-				else {
-					commands.add(new BatchSingle.ReadRecord(cluster, p, br, status, partitions));
-				}
+				commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, partitions));
 			}
 			BatchExecutor.execute(cluster, policy, commands, status);
 		}
@@ -1735,7 +1722,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
 			else {
-				OperateArgsRead args = new OperateArgsRead(ops);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (int i = 0; i < keys.length; i++) {
@@ -1749,7 +1735,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateRecord(cluster, policy, keys[i], args, records, i, status, partitions));
+					commands.add(new BatchSingle.OperateRecord(cluster, policy, keys[i], ops, records, i, status, partitions));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -2064,18 +2050,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				switch (record.getType()) {
 					case BATCH_READ: {
 						BatchRead br = (BatchRead)record;
-						Policy p = (br.policy != null)? new Policy(policy, br.policy) : policy;
-
-						if (br.binNames != null) {
-							commands.add(new BatchSingle.ReadRecord(cluster, p, br, status, partitions));
-						}
-						else if (br.ops != null) {
-							OperateArgsRead args = new OperateArgsRead(br.ops);
-							commands.add(new BatchSingle.OperateBatchRead(cluster, p, args, br, status, partitions));
-						}
-						else {
-							commands.add(new BatchSingle.ReadRecord(cluster, p, br, status, partitions));
-						}
+						commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, partitions));
 						break;
 					}
 

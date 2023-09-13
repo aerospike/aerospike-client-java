@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
@@ -267,7 +268,6 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			// Read header.
 			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
 			conn.updateLastUsed();
 
@@ -310,12 +310,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			if (record.readAllBins || record.binNames != null) {
-				setRead(policy, record.key, record.binNames);
-			}
-			else {
-				setReadHeader(policy, record.key);
-			}
+			setRead(policy, record);
 		}
 
 		@Override
@@ -411,25 +406,25 @@ public final class BatchSingle {
 	}
 
 	public static final class OperateRecord extends Read {
-		private final OperateArgsRead args;
+		private final Operation[] ops;
 
 		public OperateRecord(
 			Cluster cluster,
 			BatchPolicy policy,
 			Key key,
-			OperateArgsRead args,
+			Operation[] ops,
 			Record[] records,
 			int index,
 			BatchStatus status,
 			Partitions partitions
 		) {
 			super(cluster, policy, key, Partition.read(partitions, policy, key), true, records, index, status);
-			this.args = args;
+			this.ops = ops;
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setOperateRead(policy, key, args);
+			setRead(policy, key, ops);
 		}
 	}
 
@@ -499,55 +494,6 @@ public final class BatchSingle {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
 			}
-		}
-	}
-
-	public static final class OperateBatchRead extends BaseCommand {
-		private final Partition partition;
-		private final OperateArgsRead args;
-		private final BatchRead record;
-
-		public OperateBatchRead(
-			Cluster cluster,
-			Policy policy,
-			OperateArgsRead args,
-			BatchRead record,
-			BatchStatus status,
-			Partitions partitions
-		) {
-			super(cluster, policy, status);
-			this.args = args;
-			this.record = record;
-			this.partition = Partition.read(partitions, policy, record.key);
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeRead(cluster);
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setOperateRead(policy, record.key, args);
-		}
-
-		@Override
-		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-
-			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(true));
-			}
-			else {
-				record.setError(rp.resultCode, false);
-				status.setRowError();
-			}
-		}
-
-		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryRead(timeout);
-			return true;
 		}
 	}
 
