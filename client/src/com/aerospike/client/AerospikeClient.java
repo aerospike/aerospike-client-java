@@ -762,7 +762,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
-			records[i] = new BatchRecord(keys[i], true);
+			records[i] = new BatchRecord(keys[i], attr.hasWrite);
 		}
 
 		BatchStatus status = new BatchStatus(true);
