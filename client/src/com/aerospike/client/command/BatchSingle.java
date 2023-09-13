@@ -405,10 +405,10 @@ public final class BatchSingle {
 		}
 	}
 
-	public static final class OperateRecord extends Read {
+	public static final class Operate extends Read {
 		private final Operation[] ops;
 
-		public OperateRecord(
+		public Operate(
 			Cluster cluster,
 			BatchPolicy policy,
 			Key key,

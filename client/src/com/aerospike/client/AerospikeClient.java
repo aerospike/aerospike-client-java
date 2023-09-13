@@ -1735,7 +1735,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateRecord(cluster, policy, keys[i], ops, records, i, status, partitions));
+					commands.add(new BatchSingle.Operate(cluster, policy, keys[i], ops, records, i, status, partitions));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
