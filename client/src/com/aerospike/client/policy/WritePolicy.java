@@ -132,46 +132,6 @@ public final class WritePolicy extends Policy {
 	}
 
 	/**
-	 * Copy write policy for batch write.
-	 */
-	public WritePolicy(Policy other, BatchWritePolicy wp) {
-		super(other);
-		this.filterExp = wp.filterExp != null ? wp.filterExp : other.filterExp;
-		this.recordExistsAction= wp.recordExistsAction;
-		this.commitLevel = wp.commitLevel;
-		this.generationPolicy = wp.generationPolicy;
-		this.generation = wp.generation;
-		this.expiration = wp.expiration;
-		this.durableDelete = wp.durableDelete;
-		this.sendKey = wp.sendKey;
-	}
-
-	/**
-	 * Copy write policy for batch delete.
-	 */
-	public WritePolicy(Policy other, BatchDeletePolicy dp) {
-		super(other);
-		this.filterExp = dp.filterExp != null ? dp.filterExp : other.filterExp;
-		this.commitLevel = dp.commitLevel;
-		this.generationPolicy = dp.generationPolicy;
-		this.generation = dp.generation;
-		this.durableDelete = dp.durableDelete;
-		this.sendKey = dp.sendKey;
-	}
-
-	/**
-	 * Copy write policy for batch UDF.
-	 */
-	public WritePolicy(Policy other, BatchUDFPolicy up) {
-		super(other);
-		this.filterExp = up.filterExp != null ? up.filterExp : other.filterExp;
-		this.commitLevel = up.commitLevel;
-		this.expiration = up.expiration;
-		this.durableDelete = up.durableDelete;
-		this.sendKey = up.sendKey;
-	}
-
-	/**
 	 * Default constructor.
 	 */
 	public WritePolicy() {

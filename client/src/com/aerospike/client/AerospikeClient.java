@@ -756,6 +756,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			deletePolicy = batchDeletePolicyDefault;
 		}
 
+		BatchAttr attr = new BatchAttr();
+		attr.setDelete(deletePolicy);
+
 		BatchRecord[] records = new BatchRecord[keys.length];
 
 		for (int i = 0; i < keys.length; i++) {
@@ -766,8 +769,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		try {
 			if (cluster.useBatchProtocol(keys.length)) {
-				BatchAttr attr = new BatchAttr();
-				attr.setDelete(deletePolicy);
 
 				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
 				List<IBatchCommand> commands = new ArrayList<>(batchNodes.size());
@@ -778,8 +779,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
 			else {
-
-				WritePolicy writePolicy = new WritePolicy(batchPolicy, deletePolicy);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
@@ -793,7 +792,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Delete(cluster, writePolicy, record, status, partitions));
+					commands.add(new BatchSingle.Delete(cluster, batchPolicy, attr, record, status, partitions));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
@@ -1736,8 +1735,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
 			else {
-				WritePolicy wp = (policy != null)? new WritePolicy(policy) : null;
-				OperateArgs args = new OperateArgs(wp, writePolicyDefault, operatePolicyReadDefault, ops);
+				OperateArgsRead args = new OperateArgsRead(ops);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (int i = 0; i < keys.length; i++) {
@@ -1751,7 +1749,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateRecord(cluster, keys[i], args, records, i, status, partitions));
+					commands.add(new BatchSingle.OperateRecord(cluster, policy, keys[i], args, records, i, status, partitions));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -2083,26 +2081,46 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
-						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : batchWritePolicyDefault;
-						WritePolicy wp = new WritePolicy(policy, bwp);
-						OperateArgs args = new OperateArgs(wp, writePolicyDefault, operatePolicyReadDefault, bw.ops);
-						commands.add(new BatchSingle.OperateBatchRecord(cluster, args, record, status, partitions));
+						BatchAttr attr = new BatchAttr();
+
+						if (bw.policy != null) {
+							attr.setWrite(bw.policy);
+						}
+						else {
+							attr.setWrite(policy);
+						}
+						attr.adjustWrite(bw.ops);
+
+						OperateArgs args = new OperateArgs(null, writePolicyDefault, operatePolicyReadDefault, bw.ops);
+						commands.add(new BatchSingle.OperateBatchRecord(cluster, policy, args, attr, record, status, partitions));
 						break;
 					}
 
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
-						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : batchUDFPolicyDefault;
-						WritePolicy wp = new WritePolicy(policy, bup);
-						commands.add(new BatchSingle.UDF(cluster, wp, bu.packageName, bu.functionName, bu.functionArgs, bu, status, partitions));
+						BatchAttr attr = new BatchAttr();
+
+						if (bu.policy != null) {
+							attr.setUDF(bu.policy);
+						}
+						else {
+							attr.setUDF(policy);
+						}
+						commands.add(new BatchSingle.UDF(cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, status, partitions));
 						break;
 					}
 
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
-						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : batchDeletePolicyDefault;
-						WritePolicy writePolicy = new WritePolicy(policy, bdp);
-						commands.add(new BatchSingle.Delete(cluster, writePolicy, record, status, partitions));
+						BatchAttr attr = new BatchAttr();
+
+						if (bd.policy != null) {
+							attr.setDelete(bd.policy);
+						}
+						else {
+							attr.setDelete(policy);
+						}
+						commands.add(new BatchSingle.Delete(cluster, policy, attr, record, status, partitions));
 						break;
 					}
 				}
@@ -2247,8 +2265,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
 			else {
-				WritePolicy wp = new WritePolicy(batchPolicy, writePolicy);
-				OperateArgs args = new OperateArgs(wp, writePolicyDefault, operatePolicyReadDefault, ops);
+				OperateArgs args = new OperateArgs(null, writePolicyDefault, operatePolicyReadDefault, ops);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
@@ -2262,7 +2279,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateBatchRecord(cluster, args, record, status, partitions));
+					commands.add(new BatchSingle.OperateBatchRecord(cluster, batchPolicy, args, attr, record, status, partitions));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
@@ -2804,7 +2821,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
 			else {
-				WritePolicy wp = new WritePolicy(batchPolicy, udfPolicy);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
@@ -2818,7 +2834,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.UDF(cluster, wp, packageName, functionName, functionArgs, record, status, partitions));
+					commands.add(new BatchSingle.UDF(cluster, batchPolicy, packageName, functionName, functionArgs, attr, record, status, partitions));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}

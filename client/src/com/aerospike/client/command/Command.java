@@ -184,6 +184,15 @@ public class Command {
 		end();
 	}
 
+	public void setDelete(Policy policy, Key key, BatchAttr attr) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, 0);
+		end();
+	}
+
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
@@ -347,6 +356,22 @@ public class Command {
 		compress(policy);
 	}
 
+	public final void setOperate(Policy policy, BatchAttr attr, Key key, OperateArgs args) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+
+		dataOffset += args.size;
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, args.operations.length);
+
+		for (Operation operation : args.operations) {
+			writeOperation(operation);
+		}
+		end();
+		compress(policy);
+	}
+
 	//--------------------------------------------------
 	// UDF
 	//--------------------------------------------------
@@ -371,6 +396,22 @@ public class Command {
 			policy.filterExp.write(this);
 		}
 
+		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
+		writeField(functionName, FieldType.UDF_FUNCTION);
+		writeField(argBytes, FieldType.UDF_ARGLIST);
+		end();
+		compress(policy);
+	}
+
+	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, Value[] args) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+		byte[] argBytes = Packer.pack(args);
+		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
+
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, 0);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -816,10 +857,9 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		Expression exp = getBatchExpression(policy, attr);
 
-		if (exp != null) {
-			dataOffset += exp.size();
+		if (attr.filterExp != null) {
+			dataOffset += attr.filterExp.size();
 			fieldCount++;
 		}
 
@@ -873,8 +913,8 @@ public class Command {
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
 
-		if (exp != null) {
-			exp.write(this);
+		if (attr.filterExp != null) {
+			attr.filterExp.write(this);
 		}
 
 		int fieldSizeOffset = dataOffset;
@@ -1583,6 +1623,21 @@ public class Command {
 	// Command Sizing
 	//--------------------------------------------------
 
+	private final int estimateKeyAttrSize(Key key, BatchAttr attr, Expression filterExp) {
+		int fieldCount = estimateKeySize(key);
+
+		if (attr.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
+
+		if (filterExp != null) {
+			dataOffset += filterExp.size();
+			fieldCount++;
+		}
+		return fieldCount;
+	}
+
 	private final int estimateKeySize(Policy policy, Key key) {
 		int fieldCount = estimateKeySize(key);
 
@@ -1892,6 +1947,35 @@ public class Command {
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
+	}
+
+	/**
+	 * Header write for batch single commands.
+	 */
+	private final void writeKeyAttr(Key key, BatchAttr attr, Expression filterExp, int fieldCount, int operationCount) {
+		// Write all header data except total size which must be written last.
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)attr.readAttr;
+		dataBuffer[10] = (byte)attr.writeAttr;
+		dataBuffer[11] = (byte)attr.infoAttr;
+		dataBuffer[12] = 0; // unused
+		dataBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(attr.generation, dataBuffer, 14);
+		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
+
+		if (attr.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+
+		if (filterExp != null) {
+			filterExp.write(this);
+		}
 	}
 
 	private final void writeKey(Policy policy, Key key) {
