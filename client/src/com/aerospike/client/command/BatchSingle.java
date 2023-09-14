@@ -280,7 +280,7 @@ public final class BatchSingle {
 	}
 
 	public static final class OperateBatchRecord extends BaseCommand {
-		private final OperateArgs args;
+		private final Operation[] ops;
 		private final BatchAttr attr;
 		private final BatchRecord record;
 		private final Partition partition;
@@ -288,32 +288,34 @@ public final class BatchSingle {
 		public OperateBatchRecord(
 			Cluster cluster,
 			BatchPolicy policy,
-			OperateArgs args,
+			Operation[] ops,
 			BatchAttr attr,
 			BatchRecord record,
 			BatchStatus status,
 			Partitions partitions
 		) {
 			super(cluster, policy, status);
-			this.args = args;
+			this.ops = ops;
 			this.attr = attr;
 			this.record = record;
-			this.partition = args.getPartition(partitions, policy, record.key);
+			this.partition = attr.hasWrite?
+				Partition.write(partitions, policy, record.key) :
+				Partition.read(partitions, policy, record.key);
 		}
 
 		@Override
 		protected boolean isWrite() {
-			return args.hasWrite;
+			return attr.hasWrite;
 		}
 
 		@Override
 		protected Node getNode() {
-			return args.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
+			return attr.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
 		}
 
 		@Override
 		protected void writeBuffer() {
-			setOperate(policy, attr, record.key, args);
+			setOperate(policy, attr, record.key, ops);
 		}
 
 		@Override
@@ -324,14 +326,14 @@ public final class BatchSingle {
 				record.setRecord(rp.parseRecord(true));
 			}
 			else {
-				record.setError(rp.resultCode, Command.batchInDoubt(args.hasWrite, commandSentCounter));
+				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
 				status.setRowError();
 			}
 		}
 
 		@Override
 		protected boolean prepareRetry(boolean timeout) {
-			if (args.hasWrite) {
+			if (attr.hasWrite) {
 				partition.prepareRetryWrite(timeout);
 			}
 			else {

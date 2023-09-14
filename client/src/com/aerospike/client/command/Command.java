@@ -416,17 +416,17 @@ public class Command {
 		compress(policy);
 	}
 
-	public final void setOperate(Policy policy, BatchAttr attr, Key key, OperateArgs args) {
+	public final void setOperate(Policy policy, BatchAttr attr, Key key, Operation[] ops) {
 		begin();
 		Expression exp = getBatchExpression(policy, attr);
 		int fieldCount = estimateKeyAttrSize(key, attr, exp);
 
-		dataOffset += args.size;
+		dataOffset += attr.opSize;
 		sizeBuffer();
-		writeKeyAttr(key, attr, exp, fieldCount, args.operations.length);
+		writeKeyAttr(key, attr, exp, fieldCount, ops.length);
 
-		for (Operation operation : args.operations) {
-			writeOperation(operation);
+		for (Operation op : ops) {
+			writeOperation(op);
 		}
 		end();
 		compress(policy);

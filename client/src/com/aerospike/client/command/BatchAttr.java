@@ -33,6 +33,7 @@ public final class BatchAttr {
 	public int writeAttr;
 	public int infoAttr;
 	public int expiration;
+	public int opSize;
 	public short generation;
 	public boolean hasWrite;
 	public boolean sendKey;
@@ -342,5 +343,15 @@ public final class BatchAttr {
 		if (dp.commitLevel == CommitLevel.COMMIT_MASTER) {
 			infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
+	}
+
+	public void setOpSize(Operation[] ops) {
+		int dataOffset = 0;
+
+		for (Operation op : ops) {
+			dataOffset += Buffer.estimateSizeUtf8(op.binName) + Command.OPERATION_HEADER_SIZE;
+			dataOffset += op.value.estimateSize();
+		}
+		opSize = dataOffset;
 	}
 }

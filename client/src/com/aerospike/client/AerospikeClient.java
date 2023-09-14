@@ -2064,9 +2064,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 							attr.setWrite(policy);
 						}
 						attr.adjustWrite(bw.ops);
-
-						OperateArgs args = new OperateArgs(null, writePolicyDefault, operatePolicyReadDefault, bw.ops);
-						commands.add(new BatchSingle.OperateBatchRecord(cluster, policy, args, attr, record, status, partitions));
+						attr.setOpSize(bw.ops);
+						commands.add(new BatchSingle.OperateBatchRecord(cluster, policy, bw.ops, attr, record, status, partitions));
 						break;
 					}
 
@@ -2239,7 +2238,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
 			else {
-				OperateArgs args = new OperateArgs(null, writePolicyDefault, operatePolicyReadDefault, ops);
+				attr.setOpSize(ops);
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
@@ -2253,7 +2252,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateBatchRecord(cluster, batchPolicy, args, attr, record, status, partitions));
+					commands.add(new BatchSingle.OperateBatchRecord(cluster, batchPolicy, ops, attr, record, status, partitions));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
