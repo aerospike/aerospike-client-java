@@ -768,7 +768,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		try {
 			if (cluster.useBatchProtocol(keys.length)) {
-
 				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, status);
 				List<IBatchCommand> commands = new ArrayList<>(batchNodes.size());
 
