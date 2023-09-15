@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -73,9 +73,9 @@ public final class PartitionParser extends Info {
 
 	private void parseReplicasAll(Node node, String command) throws AerospikeException {
 		// Use low-level info methods and parse byte array directly for maximum performance.
-		// Receive format: replicas-all\t
+		// Receive format: replicas\t
 		//                 <ns1>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;
-		//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...;\n
+		//                 <ns2>:[regime],<count>,<base 64 encoded bitmap1>,<base 64 encoded bitmap2>...\n
 		parseName(command);
 
 		int begin = offset;
@@ -148,7 +148,7 @@ public final class PartitionParser extends Info {
 					while (offset < length) {
 						byte b = buffer[offset];
 
-						if (b == ',' || b == ';') {
+						if (b == ',' || b == ';' || b == '\n') {
 							break;
 						}
 						offset++;
