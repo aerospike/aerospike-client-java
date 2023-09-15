@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,12 +16,12 @@
  */
 package com.aerospike.client.util;
 
-import com.aerospike.client.Value;
-import com.aerospike.client.command.Buffer;
-
-import javax.xml.bind.DatatypeConverter;
+import java.util.Base64;
 
 import org.bouncycastle.crypto.digests.RIPEMD160Digest;
+
+import com.aerospike.client.Value;
+import com.aerospike.client.command.Buffer;
 
 public final class Crypto {
 	/**
@@ -50,13 +50,16 @@ public final class Crypto {
 	 * Decode base64 bytes into a byte array.
 	 */
 	public static byte[] decodeBase64(byte[] src, int off, int len) {
-		return DatatypeConverter.parseBase64Binary(new String(src, off, len));
+		Base64.Decoder decoder = Base64.getDecoder();
+		return decoder.decode(new String(src, off, len));
 	}
 
 	/**
 	 * Encode bytes into a base64 encoded string.
 	 */
 	public static String encodeBase64(byte[] src) {
-		return DatatypeConverter.printBase64Binary(src);
+		Base64.Encoder encoder = Base64.getEncoder();
+		return encoder.encodeToString(src);
 	}
 }
+
