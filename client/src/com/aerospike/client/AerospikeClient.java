@@ -1808,11 +1808,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The server executes operations in the same order as the operations array.
 	 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
 	 * MapOperation) can be performed in same call.
+	 * <p>
+	 * Operation results are stored with their associated bin name in the returned record.
+	 * The bin's result type will be a list when multiple operations occur on the same bin.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
 	 * @param operations			database operations to perform
-	 * @return						record if there is a read in the operations list
+	 * @return						record results
 	 * @throws AerospikeException	if command fails
 	 */
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
@@ -1834,6 +1837,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * The server executes operations in the same order as the operations array.
 	 * Both scalar bin operations (Operation) and CDT bin operations (ListOperation,
 	 * MapOperation) can be performed in same call.
+	 * <p>
+	 * Operation results are stored with their associated bin name in the returned record.
+	 * The bin's result type will be a list when multiple operations occur on the same bin.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
