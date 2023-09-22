@@ -614,6 +614,36 @@ public class TestQueryFilterExp extends TestSync {
 	}
 
 	@Test
+	public void queryRecordSize() {
+		int begin = 1;
+		int end = 10;
+
+		Statement stmt = new Statement();
+		stmt.setNamespace(args.namespace);
+		stmt.setSetName(setName);
+		stmt.setFilter(Filter.range(binName, begin, end));
+
+		// This just tests that the expression was sent correctly
+		// because all record sizes are effectively allowed.
+		QueryPolicy policy = new QueryPolicy();
+		policy.filterExp = Exp.build(Exp.ge(Exp.recordSize(), Exp.val(0)));
+
+		RecordSet rs = client.query(policy, stmt);
+
+		try {
+			int count = 0;
+
+			while (rs.next()) {
+				count++;
+			}
+			assertEquals(10, count);
+		}
+		finally {
+			rs.close();
+		}
+	}
+
+	@Test
 	public void queryDeviceSize() {
 		int begin = 1;
 		int end = 10;
