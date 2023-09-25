@@ -40,10 +40,6 @@ public final class Partition {
 		return new Partition(partitions, key, policy.replica, null, false);
 	}
 
-	public static Partition write(Partitions p, Policy policy, Key key) {
-		return new Partition(p, key, policy.replica, null, false);
-	}
-
 	public static Partition read(Cluster cluster, Policy policy, Key key) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
