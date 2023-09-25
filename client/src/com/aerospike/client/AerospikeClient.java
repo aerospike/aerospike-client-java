@@ -49,7 +49,6 @@ import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.command.Batch;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchExecutor;
@@ -780,17 +779,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, record.key);
+						node = Partition.getInitialNodeWrite(cluster, batchPolicy, record.key);
 					}
 					catch (AerospikeException ae) {
 						record.setError(ae.resultCode, false);
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Delete(cluster, batchPolicy, attr, record, status, partitions));
+					commands.add(new BatchSingle.Delete(cluster, batchPolicy, attr, record, status, node));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
@@ -1087,16 +1086,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (int i = 0; i < keys.length; i++) {
 					Key key = keys[i];
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, key);
+						node = Partition.getInitialNodeRead(cluster, policy, key);
 					}
 					catch (AerospikeException ae) {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Exists(cluster, policy, keys[i], existsArray, i, status, partitions));
+					commands.add(new BatchSingle.Exists(cluster, policy, keys[i], existsArray, i, status, node));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -1354,17 +1353,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			List<IBatchCommand> commands = new ArrayList<>(records.size());
 
 			for (BatchRead br : records) {
-				Partitions partitions;
+				Node node;
 
 				try {
-					partitions = Partition.getPartitions(cluster, br.key);
+					node = Partition.getInitialNodeRead(cluster, policy, br.key);
 				}
 				catch (AerospikeException ae) {
 					br.setError(ae.resultCode, false);
 					status.batchKeyError(ae);
 					continue;
 				}
-				commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, partitions));
+				commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, node));
 			}
 			BatchExecutor.execute(cluster, policy, commands, status);
 		}
@@ -1477,16 +1476,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (int i = 0; i < keys.length; i++) {
 					Key key = keys[i];
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, key);
+						node = Partition.getInitialNodeRead(cluster, policy, key);
 					}
 					catch (AerospikeException ae) {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Read(cluster, policy, keys[i], null, records, i, status, partitions));
+					commands.add(new BatchSingle.Read(cluster, policy, keys[i], null, records, i, status, node, false));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -1600,16 +1599,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (int i = 0; i < keys.length; i++) {
 					Key key = keys[i];
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, key);
+						node = Partition.getInitialNodeRead(cluster, policy, key);
 					}
 					catch (AerospikeException ae) {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Read(cluster, policy, keys[i], binNames, records, i, status, partitions));
+					commands.add(new BatchSingle.Read(cluster, policy, keys[i], binNames, records, i, status, node, false));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -1725,16 +1724,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (int i = 0; i < keys.length; i++) {
 					Key key = keys[i];
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, key);
+						node = Partition.getInitialNodeRead(cluster, policy, key);
 					}
 					catch (AerospikeException ae) {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.Operate(cluster, policy, keys[i], ops, records, i, status, partitions));
+					commands.add(new BatchSingle.OperateRead(cluster, policy, keys[i], ops, records, i, status, node));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -1849,16 +1848,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 				for (int i = 0; i < keys.length; i++) {
 					Key key = keys[i];
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, key);
+						node = Partition.getInitialNodeRead(cluster, policy, key);
 					}
 					catch (AerospikeException ae) {
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.ReadHeader(cluster, policy, keys[i], records, i, status, partitions));
+					commands.add(new BatchSingle.ReadHeader(cluster, policy, keys[i], records, i, status, node));
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
@@ -2041,67 +2040,69 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			List<IBatchCommand> commands = new ArrayList<>(records.size());
 
 			for (BatchRecord record : records) {
-				Partitions partitions;
-
 				try {
-					partitions = Partition.getPartitions(cluster, record.key);
+					Node node;
+
+					switch (record.getType()) {
+						case BATCH_READ: {
+							BatchRead br = (BatchRead)record;
+							node = Partition.getInitialNodeRead(cluster, policy, br.key);
+							commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, node));
+							break;
+						}
+
+						case BATCH_WRITE: {
+							BatchWrite bw = (BatchWrite)record;
+							BatchAttr attr = new BatchAttr();
+
+							if (bw.policy != null) {
+								attr.setWrite(bw.policy);
+							}
+							else {
+								attr.setWrite(policy);
+							}
+							attr.adjustWrite(bw.ops);
+							attr.setOpSize(bw.ops);
+							node = Partition.getInitialNodeWrite(cluster, policy, bw.key);
+							commands.add(new BatchSingle.OperateBatchRecord(cluster, policy, bw.ops, attr, record, status, node));
+							break;
+						}
+
+						case BATCH_UDF: {
+							BatchUDF bu = (BatchUDF)record;
+							BatchAttr attr = new BatchAttr();
+
+							if (bu.policy != null) {
+								attr.setUDF(bu.policy);
+							}
+							else {
+								attr.setUDF(policy);
+							}
+							node = Partition.getInitialNodeWrite(cluster, policy, bu.key);
+							commands.add(new BatchSingle.UDF(cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, status, node));
+							break;
+						}
+
+						case BATCH_DELETE: {
+							BatchDelete bd = (BatchDelete)record;
+							BatchAttr attr = new BatchAttr();
+
+							if (bd.policy != null) {
+								attr.setDelete(bd.policy);
+							}
+							else {
+								attr.setDelete(policy);
+							}
+							node = Partition.getInitialNodeWrite(cluster, policy, bd.key);
+							commands.add(new BatchSingle.Delete(cluster, policy, attr, record, status, node));
+							break;
+						}
+					}
 				}
 				catch (AerospikeException ae) {
 					record.setError(ae.resultCode, false);
 					status.batchKeyError(ae);
 					continue;
-				}
-
-				switch (record.getType()) {
-					case BATCH_READ: {
-						BatchRead br = (BatchRead)record;
-						commands.add(new BatchSingle.ReadRecord(cluster, policy, br, status, partitions));
-						break;
-					}
-
-					case BATCH_WRITE: {
-						BatchWrite bw = (BatchWrite)record;
-						BatchAttr attr = new BatchAttr();
-
-						if (bw.policy != null) {
-							attr.setWrite(bw.policy);
-						}
-						else {
-							attr.setWrite(policy);
-						}
-						attr.adjustWrite(bw.ops);
-						attr.setOpSize(bw.ops);
-						commands.add(new BatchSingle.OperateBatchRecord(cluster, policy, bw.ops, attr, record, status, partitions));
-						break;
-					}
-
-					case BATCH_UDF: {
-						BatchUDF bu = (BatchUDF)record;
-						BatchAttr attr = new BatchAttr();
-
-						if (bu.policy != null) {
-							attr.setUDF(bu.policy);
-						}
-						else {
-							attr.setUDF(policy);
-						}
-						commands.add(new BatchSingle.UDF(cluster, policy, bu.packageName, bu.functionName, bu.functionArgs, attr, record, status, partitions));
-						break;
-					}
-
-					case BATCH_DELETE: {
-						BatchDelete bd = (BatchDelete)record;
-						BatchAttr attr = new BatchAttr();
-
-						if (bd.policy != null) {
-							attr.setDelete(bd.policy);
-						}
-						else {
-							attr.setDelete(policy);
-						}
-						commands.add(new BatchSingle.Delete(cluster, policy, attr, record, status, partitions));
-						break;
-					}
 				}
 			}
 			BatchExecutor.execute(cluster, policy, commands, status);
@@ -2248,17 +2249,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, record.key);
+						if (attr.hasWrite) {
+							node = Partition.getInitialNodeWrite(cluster, batchPolicy, record.key);
+						}
+						else {
+							node = Partition.getInitialNodeRead(cluster, batchPolicy, record.key);
+						}
 					}
 					catch (AerospikeException ae) {
 						record.setError(ae.resultCode, false);
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.OperateBatchRecord(cluster, batchPolicy, ops, attr, record, status, partitions));
+					commands.add(new BatchSingle.OperateBatchRecord(cluster, batchPolicy, ops, attr, record, status, node));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}
@@ -2803,17 +2809,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				List<IBatchCommand> commands = new ArrayList<>(keys.length);
 
 				for (BatchRecord record : records) {
-					Partitions partitions;
+					Node node;
 
 					try {
-						partitions = Partition.getPartitions(cluster, record.key);
+						node = Partition.getInitialNodeWrite(cluster, batchPolicy, record.key);
 					}
 					catch (AerospikeException ae) {
 						record.setError(ae.resultCode, false);
 						status.batchKeyError(ae);
 						continue;
 					}
-					commands.add(new BatchSingle.UDF(cluster, batchPolicy, packageName, functionName, functionArgs, attr, record, status, partitions));
+					commands.add(new BatchSingle.UDF(cluster, batchPolicy, packageName, functionName, functionArgs, attr, record, status, node));
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
 			}

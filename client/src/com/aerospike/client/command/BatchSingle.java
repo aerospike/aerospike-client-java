@@ -30,16 +30,15 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.cluster.Partitions;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 
 public final class BatchSingle {
-	public static final class Operate extends Read {
+	public static final class OperateRead extends Read {
 		private final Operation[] ops;
 
-		public Operate(
+		public OperateRead(
 			Cluster cluster,
 			BatchPolicy policy,
 			Key key,
@@ -47,9 +46,9 @@ public final class BatchSingle {
 			Record[] records,
 			int index,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, key, Partition.read(partitions, policy, key), true, records, index, status);
+			super(cluster, policy, key, null, records, index, status, node, true);
 			this.ops = ops;
 		}
 
@@ -61,7 +60,6 @@ public final class BatchSingle {
 
 	public static class Read extends BaseCommand {
 		protected final Key key;
-		protected final Partition partition;
 		private final String[] binNames;
 		private final Record[] records;
 		private final int index;
@@ -75,39 +73,15 @@ public final class BatchSingle {
 			Record[] records,
 			int index,
 			BatchStatus status,
-			Partitions partitions
+			Node node,
+			boolean isOperation
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, key, node, false);
 			this.key = key;
 			this.binNames = binNames;
 			this.records = records;
 			this.index = index;
-			this.isOperation = false;
-			this.partition = Partition.read(partitions, policy, key);
-		}
-
-		public Read(
-			Cluster cluster,
-			Policy policy,
-			Key key,
-			Partition partition,
-			boolean isOperation,
-			Record[] records,
-			int index,
-			BatchStatus status
-		) {
-			super(cluster, policy, status);
-			this.key = key;
-			this.partition = partition;
-			this.binNames = null;
-			this.records = records;
-			this.index = index;
 			this.isOperation = isOperation;
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeRead(cluster);
 		}
 
 		@Override
@@ -123,17 +97,10 @@ public final class BatchSingle {
 				records[index] = rp.parseRecord(isOperation);
 			}
 		}
-
-		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryRead(timeout);
-			return true;
-		}
 	}
 
 	public static final class ReadHeader extends BaseCommand {
 		private final Key key;
-		private final Partition partition;
 		private final Record[] records;
 		private final int index;
 
@@ -144,18 +111,12 @@ public final class BatchSingle {
 			Record[] records,
 			int index,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, key, node, false);
 			this.key = key;
 			this.records = records;
 			this.index = index;
-			this.partition = Partition.read(partitions, policy, key);
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeRead(cluster);
 		}
 
 		@Override
@@ -176,16 +137,9 @@ public final class BatchSingle {
 				records[index] = new Record(null, generation, expiration);
 			}
 		}
-
-		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryRead(timeout);
-			return true;
-		}
 	}
 
 	public static class ReadRecord extends BaseCommand {
-		protected final Partition partition;
 		private final BatchRead record;
 
 		public ReadRecord(
@@ -193,16 +147,10 @@ public final class BatchSingle {
 			Policy policy,
 			BatchRead record,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, record.key, node, false);
 			this.record = record;
-			this.partition = Partition.read(partitions, policy, record.key);
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeRead(cluster);
 		}
 
 		@Override
@@ -222,17 +170,10 @@ public final class BatchSingle {
 				status.setRowError();
 			}
 		}
-
-		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryRead(timeout);
-			return true;
-		}
 	}
 
 	public static final class Exists extends BaseCommand {
 		private final Key key;
-		private final Partition partition;
 		private final boolean[] existsArray;
 		private final int index;
 
@@ -243,18 +184,12 @@ public final class BatchSingle {
 			boolean[] existsArray,
 			int index,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, key, node, false);
 			this.key = key;
 			this.existsArray = existsArray;
 			this.index = index;
-			this.partition = Partition.read(partitions, policy, key);
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeRead(cluster);
 		}
 
 		@Override
@@ -271,19 +206,12 @@ public final class BatchSingle {
 			int resultCode = dataBuffer[13] & 0xFF;
 			existsArray[index] = resultCode == 0;
 		}
-
-		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryRead(timeout);
-			return true;
-		}
 	}
 
 	public static final class OperateBatchRecord extends BaseCommand {
 		private final Operation[] ops;
 		private final BatchAttr attr;
 		private final BatchRecord record;
-		private final Partition partition;
 
 		public OperateBatchRecord(
 			Cluster cluster,
@@ -292,25 +220,12 @@ public final class BatchSingle {
 			BatchAttr attr,
 			BatchRecord record,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, record.key, node, attr.hasWrite);
 			this.ops = ops;
 			this.attr = attr;
 			this.record = record;
-			this.partition = attr.hasWrite?
-				Partition.write(partitions, policy, record.key) :
-				Partition.read(partitions, policy, record.key);
-		}
-
-		@Override
-		protected boolean isWrite() {
-			return attr.hasWrite;
-		}
-
-		@Override
-		protected Node getNode() {
-			return attr.hasWrite ? partition.getNodeWrite(cluster) : partition.getNodeRead(cluster);
 		}
 
 		@Override
@@ -332,17 +247,6 @@ public final class BatchSingle {
 		}
 
 		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			if (attr.hasWrite) {
-				partition.prepareRetryWrite(timeout);
-			}
-			else {
-				partition.prepareRetryRead(timeout);
-			}
-			return true;
-		}
-
-		@Override
 		public void setInDoubt() {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
@@ -353,7 +257,6 @@ public final class BatchSingle {
 	public static final class Delete extends BaseCommand {
 		private final BatchAttr attr;
 		private final BatchRecord record;
-		private final Partition partition;
 
 		public Delete(
 			Cluster cluster,
@@ -361,22 +264,11 @@ public final class BatchSingle {
 			BatchAttr attr,
 			BatchRecord record,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, record.key, node, true);
 			this.attr = attr;
 			this.record = record;
-			this.partition = Partition.write(partitions, policy, record.key);
-		}
-
-		@Override
-		protected boolean isWrite() {
-			return true;
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeWrite(cluster);
 		}
 
 		@Override
@@ -404,12 +296,6 @@ public final class BatchSingle {
 		}
 
 		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryWrite(timeout);
-			return true;
-		}
-
-		@Override
 		public void setInDoubt() {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
@@ -423,7 +309,6 @@ public final class BatchSingle {
 		private final Value[] args;
 		private final BatchAttr attr;
 		private final BatchRecord record;
-		private final Partition partition;
 
 		public UDF(
 			Cluster cluster,
@@ -434,25 +319,14 @@ public final class BatchSingle {
 			BatchAttr attr,
 			BatchRecord record,
 			BatchStatus status,
-			Partitions partitions
+			Node node
 		) {
-			super(cluster, policy, status);
+			super(cluster, policy, status, record.key, node, true);
 			this.packageName = packageName;
 			this.functionName = functionName;
 			this.args = args;
 			this.attr = attr;
 			this.record = record;
-			this.partition = Partition.write(partitions, policy, record.key);
-		}
-
-		@Override
-		protected boolean isWrite() {
-			return true;
-		}
-
-		@Override
-		protected Node getNode() {
-			return partition.getNodeWrite(cluster);
 		}
 
 		@Override
@@ -486,12 +360,6 @@ public final class BatchSingle {
 		}
 
 		@Override
-		protected boolean prepareRetry(boolean timeout) {
-			partition.prepareRetryWrite(timeout);
-			return true;
-		}
-
-		@Override
 		public void setInDoubt() {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
@@ -502,15 +370,24 @@ public final class BatchSingle {
 	public static abstract class BaseCommand extends SyncCommand implements IBatchCommand {
 		BatchExecutor parent;
 		BatchStatus status;
+		Key key;
+		Node node;
+		int sequence;
+		boolean hasWrite;
 
 		public BaseCommand(
 			Cluster cluster,
 			Policy policy,
-			BatchStatus status
-
+			BatchStatus status,
+			Key key,
+			Node node,
+			boolean hasWrite
 		) {
 			super(cluster, policy);
 			this.status = status;
+			this.key = key;
+			this.node = node;
+			this.hasWrite = hasWrite;
 		}
 
 		public void setParent(BatchExecutor parent) {
@@ -542,8 +419,39 @@ public final class BatchSingle {
 		}
 
 		@Override
+		protected boolean isWrite() {
+			return hasWrite;
+		}
+
+		@Override
+		protected Node getNode() {
+			return node;
+		}
+
+		@Override
 		protected LatencyType getLatencyType() {
 			return LatencyType.BATCH;
+		}
+
+		@Override
+		protected boolean prepareRetry(boolean timeout) {
+			if (hasWrite) {
+				Partition p = Partition.write(cluster, policy, key);
+				p.sequence = sequence;
+				p.prevNode = node;
+				p.prepareRetryWrite(timeout);
+				node = p.getNodeWrite(cluster);
+				sequence = p.sequence;
+			}
+			else {
+				Partition p = Partition.read(cluster, policy, key);
+				p.sequence = sequence;
+				p.prevNode = node;
+				p.prepareRetryRead(timeout);
+				node = p.getNodeRead(cluster);
+				sequence = p.sequence;
+			}
+			return true;
 		}
 
 		public void setInDoubt() {

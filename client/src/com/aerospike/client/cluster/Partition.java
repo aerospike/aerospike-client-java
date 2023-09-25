@@ -28,17 +28,6 @@ import com.aerospike.client.query.PartitionStatus;
 
 public final class Partition {
 
-	public static Partitions getPartitions(Cluster cluster, Key key) {
-		// Must copy hashmap reference for copy on write semantics to work.
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(key.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
-		}
-		return partitions;
-	}
-
 	public static Partition write(Cluster cluster, Policy policy, Key key) {
 		// Must copy hashmap reference for copy on write semantics to work.
 		HashMap<String,Partitions> map = cluster.partitionMap;
@@ -64,10 +53,6 @@ public final class Partition {
 			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
 		}
 
-		return read(partitions, policy, key);
-	}
-
-	public static Partition read(Partitions partitions, Policy policy, Key key) {
 		Replica replica;
 		boolean linearize;
 
@@ -107,6 +92,47 @@ public final class Partition {
 		default:
 			return policy.replica;
 		}
+	}
+
+	public static Node getInitialNodeWrite(
+		Cluster cluster,
+		Policy policy,
+		Key key
+	) {
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(key.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
+		}
+
+		Partition p = new Partition(partitions, key, policy.replica, null, false);
+		return p.getNodeWrite(cluster);
+	}
+
+	public static Node getInitialNodeRead(
+		Cluster cluster,
+		Policy policy,
+		Key key
+	) {
+		HashMap<String,Partitions> map = cluster.partitionMap;
+		Partitions partitions = map.get(key.namespace);
+
+		if (partitions == null) {
+			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
+		}
+
+		Replica replica;
+
+		if (partitions.scMode) {
+			replica = Partition.getReplicaSC(policy);
+		}
+		else {
+			replica = policy.replica;
+		}
+
+		Partition p = new Partition(partitions, key, replica, null, false);
+		return p.getNodeRead(cluster);
 	}
 
 	public static Node getNodeBatchWrite(
@@ -158,9 +184,9 @@ public final class Partition {
 	private Partitions partitions;
 	private final String namespace;
 	private final Replica replica;
-	private Node prevNode;
+	public Node prevNode;
 	private int partitionId;
-	private int sequence;
+	public int sequence;
 	private final boolean linearize;
 
 	private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, boolean linearize) {
