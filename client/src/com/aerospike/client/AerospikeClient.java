@@ -1462,6 +1462,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchStatus status = new BatchStatus(false);
 
 		try {
+			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
+			List<IBatchCommand> commands = new ArrayList<>(batchNodes.size());
+
+			for (BatchNode batchNode : batchNodes) {
+				if (batchNode.offsetsSize != 1) {
+					commands.add(new Batch.GetArrayCommand(cluster, batchNode, policy, keys, null, null, records, Command.INFO1_READ | Command.INFO1_GET_ALL, false, status));
+				}
+				else {
+					int i = batchNode.offsets[0];
+					commands.add(new BatchSingle.Read(cluster, policy, keys[i], null, records, i, status, batchNode.node, false));
+				}
+			}
+			BatchExecutor.execute(cluster, policy, commands, status);
+			/*
 			if (cluster.useBatchProtocol(keys.length)) {
 				List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, status);
 				List<IBatchCommand> commands = new ArrayList<>(batchNodes.size());
@@ -1489,6 +1503,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				}
 				BatchExecutor.execute(cluster, policy, commands, status);
 			}
+			*/
 			return records;
 		}
 		catch (Throwable e) {
