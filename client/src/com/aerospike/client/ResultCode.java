@@ -52,7 +52,7 @@ public final class ResultCode {
 	public static final int ASYNC_QUEUE_FULL = -9;
 
 	/**
-	 * Server is not accepting requests.
+	 * Connection to server failed.
 	 */
 	public static final int SERVER_NOT_AVAILABLE = -8;
 
@@ -475,7 +475,7 @@ public final class ResultCode {
 			return "Async delay queue is full";
 
 		case SERVER_NOT_AVAILABLE:
-			return "Server not available";
+			return "Connection to server failed";
 
 		case NO_MORE_CONNECTIONS:
 			return "No more available connections";
