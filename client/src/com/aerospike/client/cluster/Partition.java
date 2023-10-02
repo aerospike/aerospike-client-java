@@ -90,47 +90,6 @@ public final class Partition {
 		}
 	}
 
-	public static Node getInitialNodeWrite(
-		Cluster cluster,
-		Policy policy,
-		Key key
-	) {
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(key.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
-		}
-
-		Partition p = new Partition(partitions, key, policy.replica, null, false);
-		return p.getNodeWrite(cluster);
-	}
-
-	public static Node getInitialNodeRead(
-		Cluster cluster,
-		Policy policy,
-		Key key
-	) {
-		HashMap<String,Partitions> map = cluster.partitionMap;
-		Partitions partitions = map.get(key.namespace);
-
-		if (partitions == null) {
-			throw new AerospikeException.InvalidNamespace(key.namespace, map.size());
-		}
-
-		Replica replica;
-
-		if (partitions.scMode) {
-			replica = Partition.getReplicaSC(policy);
-		}
-		else {
-			replica = policy.replica;
-		}
-
-		Partition p = new Partition(partitions, key, replica, null, false);
-		return p.getNodeRead(cluster);
-	}
-
 	public static Node getNodeBatchWrite(
 		Cluster cluster,
 		Key key,
