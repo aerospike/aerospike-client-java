@@ -30,6 +30,7 @@ import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.AsyncBatch;
 import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordArrayExecutor;
+import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequenceExecutor;
 import com.aerospike.client.async.AsyncBatchSingle;
 import com.aerospike.client.async.AsyncCommand;
 import com.aerospike.client.async.AsyncDelete;
@@ -848,7 +849,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		for (BatchNode batchNode : batchNodes) {
 			if (batchNode.offsetsSize == 1) {
 				int i = batchNode.offsets[0];
-				commands[count++] = new AsyncBatchSingle.Delete(executor, cluster, batchPolicy, attr, records[i], batchNode.node);
+				commands[count++] = new AsyncBatchSingle.DeleteArray(executor, cluster, batchPolicy, attr, records[i], batchNode.node);
 			}
 			else {
 				commands[count++] = new AsyncBatch.OperateRecordArrayCommand(executor, batchNode, batchPolicy, keys, null, records, attr);
@@ -903,7 +904,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(deletePolicy);
 
-		new AsyncBatch.OperateRecordSequenceExecutor(eventLoop, cluster, batchPolicy, listener, keys, null, attr);
+		boolean[] sent = new boolean[keys.length];
+		BatchRecordSequenceExecutor executor = new BatchRecordSequenceExecutor(eventLoop, cluster, listener, sent);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.DeleteSequence(executor, cluster, batchPolicy, listener, keys[i], attr, batchNode.node, i);
+			}
+			else {
+				commands[count++] = new AsyncBatch.OperateRecordSequenceCommand(executor, batchNode, batchPolicy, keys, null, sent, listener, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	/**

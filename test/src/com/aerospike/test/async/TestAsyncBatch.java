@@ -63,6 +63,7 @@ public class TestAsyncBatch extends TestAsync {
 	private static final int Size = 8;
 	private static Key[] sendKeys;
 	private static Key[] deleteKeys;
+	private static Key[] deleteKeysSequence;
 
 	@BeforeClass
 	public static void initialize() {
@@ -76,6 +77,10 @@ public class TestAsyncBatch extends TestAsync {
 		deleteKeys[0] = new Key(args.namespace, args.set, 10000);
 		deleteKeys[1] = new Key(args.namespace, args.set, 10001);
 
+		deleteKeysSequence = new Key[2];
+		deleteKeysSequence[0] = new Key(args.namespace, args.set, 11000);
+		deleteKeysSequence[1] = new Key(args.namespace, args.set, 11001);
+
 		AsyncMonitor monitor = new AsyncMonitor();
 
 		WriteListener listener = new WriteListener() {
@@ -84,7 +89,7 @@ public class TestAsyncBatch extends TestAsync {
 			public void onSuccess(final Key key) {
 				// Use non-atomic increment because all writes are performed
 				// in the same event loop thread.
-				if (++count == Size + 3) {
+				if (++count == Size + 5) {
 					monitor.notifyComplete();
 				}
 			}
@@ -139,6 +144,8 @@ public class TestAsyncBatch extends TestAsync {
 		client.put(eventLoop, listener, policy, deleteKeys[0], new Bin(BinName, 10000));
 		client.put(eventLoop, listener, policy, deleteKeys[1], new Bin(BinName, 10001));
 		client.put(eventLoop, listener, policy, new Key(args.namespace, args.set, 10002), new Bin(BinName, 10002));
+		client.put(eventLoop, listener, policy, deleteKeysSequence[0], new Bin(BinName, 11000));
+		client.put(eventLoop, listener, policy, deleteKeysSequence[1], new Bin(BinName, 11001));
 
 		monitor.waitTillComplete();
 	}
@@ -615,6 +622,53 @@ public class TestAsyncBatch extends TestAsync {
 				notifyComplete();
 			}
 		}, null, deleteKeys);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchDeleteSequence() {
+		// Ensure keys exists
+		client.exists(eventLoop, new ExistsArrayListener() {
+			public void onSuccess(Key[] keys, boolean[] exists) {
+				assertEquals(true, exists[0]);
+				assertEquals(true, exists[1]);
+
+				// Delete keys
+				client.delete(eventLoop, new BatchRecordSequenceListener() {
+					public void onRecord(BatchRecord record, int index) {
+						assertEquals(ResultCode.OK, record.resultCode);
+						assertTrue(index <= 1);
+					}
+
+					public void onSuccess() {
+						// Ensure keys do not exist
+						client.exists(eventLoop, new ExistsArrayListener() {
+							public void onSuccess(Key[] keys, boolean[] exists) {
+								assertEquals(false, exists[0]);
+								assertEquals(false, exists[1]);
+								notifyComplete();
+							}
+
+							public void onFailure(AerospikeException e) {
+								setError(e);
+								notifyComplete();
+							}
+						}, null, deleteKeysSequence);
+					}
+
+					public void onFailure(AerospikeException e) {
+						setError(e);
+						notifyComplete();
+					}
+				}, null, null, keys);
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, deleteKeysSequence);
 
 		waitTillComplete();
 	}

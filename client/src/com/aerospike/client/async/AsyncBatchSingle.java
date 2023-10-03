@@ -21,22 +21,24 @@ import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequenceExecutor;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 
 public final class AsyncBatchSingle {
-	public static final class Delete extends AsyncBaseCommand {
+	public static final class DeleteArray extends AsyncBaseCommand {
 		private final BatchAttr attr;
 		private final BatchRecord record;
 
-		public Delete(
+		public DeleteArray(
 			AsyncBatchExecutor parent,
 			Cluster cluster,
 			BatchPolicy policy,
@@ -76,6 +78,67 @@ public final class AsyncBatchSingle {
 		public void setInDoubt() {
 			if (record.resultCode == ResultCode.NO_RESPONSE) {
 				record.inDoubt = true;
+			}
+		}
+	}
+
+	public static final class DeleteSequence extends AsyncBaseCommand {
+		private final BatchRecordSequenceExecutor executor;
+		private final BatchRecordSequenceListener listener;
+		private final Key key;
+		private final BatchAttr attr;
+		private final int index;
+
+		public DeleteSequence(
+			BatchRecordSequenceExecutor parent,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchRecordSequenceListener listener,
+			Key key,
+			BatchAttr attr,
+			Node node,
+			int index
+		) {
+			super(parent, cluster, policy, key, node, true);
+			this.executor = parent;
+			this.listener = listener;
+			this.key = key;
+			this.attr = attr;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setDelete(policy, key, attr);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			validateHeaderSize();
+
+			int resultCode = dataBuffer[5] & 0xFF;
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+
+			BatchRecord record;
+
+			if (resultCode == 0) {
+				record = new BatchRecord(key, new Record(null, generation, expiration), true);
+			}
+			else {
+				record = new BatchRecord(key, null, resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				parent.setRowError();
+			}
+			executor.setSent(index);
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (! executor.exchangeSent(index)) {
+				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, true);
+				AsyncBatch.onRecord(listener, record, index);
 			}
 		}
 	}

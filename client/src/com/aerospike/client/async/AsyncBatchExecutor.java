@@ -23,6 +23,7 @@ import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.BatchRecordSequenceListener;
 
 public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	public static final class BatchRecordArrayExecutor extends AsyncBatchExecutor {
@@ -46,6 +47,49 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 
 		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(records, ae);
+		}
+	}
+
+	public static final class BatchRecordSequenceExecutor extends AsyncBatchExecutor {
+		private final BatchRecordSequenceListener listener;
+		private final boolean[] sent;
+
+		public BatchRecordSequenceExecutor(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchRecordSequenceListener listener,
+			boolean[] sent
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+			this.sent = sent;
+		}
+
+		public void setSent(int index) {
+			sent[index] = true;
+		}
+
+		public boolean exchangeSent(int index) {
+			boolean prev = sent[index];
+			sent[index] = true;
+			return prev;
+		}
+
+		@Override
+		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
+			sent[index] = true;
+			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
+			AsyncBatch.onRecord(listener, record, index);
+		}
+
+		@Override
+		protected void onSuccess() {
+			listener.onSuccess();
+		}
+
+		@Override
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
 		}
 	}
 

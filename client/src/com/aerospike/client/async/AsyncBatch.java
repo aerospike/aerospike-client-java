@@ -1027,7 +1027,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class OperateRecordSequenceCommand extends AsyncBatchCommand {
+	public static final class OperateRecordSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final Operation[] ops;
 		private final boolean[] sent;
@@ -1473,7 +1473,7 @@ public final class AsyncBatch {
 		abstract List<BatchNode> generateBatchNodes();
 	}
 
-	private static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
+	public static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
 		try {
 			listener.onRecord(record, index);
 		}
