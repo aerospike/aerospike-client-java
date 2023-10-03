@@ -71,6 +71,13 @@ public final class Record {
 	}
 
 	/**
+	 * Get bin value as byte[].
+	 */
+	public byte[] getBytes(String name) {
+		return (byte[])getValue(name);
+	}
+
+	/**
 	 * Get bin value as double.
 	 */
 	public double getDouble(String name) {
