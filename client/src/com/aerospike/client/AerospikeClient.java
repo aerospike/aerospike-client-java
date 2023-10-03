@@ -29,6 +29,9 @@ import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
 import com.aerospike.client.async.AsyncBatch;
+import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordArrayExecutor;
+import com.aerospike.client.async.AsyncBatchSingle;
+import com.aerospike.client.async.AsyncCommand;
 import com.aerospike.client.async.AsyncDelete;
 import com.aerospike.client.async.AsyncExecute;
 import com.aerospike.client.async.AsyncExists;
@@ -834,7 +837,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(deletePolicy);
 
-		new AsyncBatch.OperateRecordArrayExecutor(eventLoop, cluster, batchPolicy, listener, keys, null, attr);
+		BatchRecord[] records = new BatchRecord[keys.length];
+
+		for (int i = 0; i < keys.length; i++) {
+			records[i] = new BatchRecord(keys[i], attr.hasWrite);
+		}
+
+		BatchRecordArrayExecutor executor = new BatchRecordArrayExecutor(eventLoop, cluster, listener, records);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.Delete(executor, cluster, batchPolicy, attr, records[i], batchNode.node);
+			}
+			else {
+				commands[count++] = new AsyncBatch.OperateRecordArrayCommand(executor, batchNode, batchPolicy, keys, null, records, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	/**

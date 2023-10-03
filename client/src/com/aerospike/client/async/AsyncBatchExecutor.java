@@ -17,16 +17,42 @@
 package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
+import com.aerospike.client.listener.BatchRecordArrayListener;
 
 public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
+	public static final class BatchRecordArrayExecutor extends AsyncBatchExecutor {
+		private final BatchRecordArrayListener listener;
+		private final BatchRecord[] records;
+
+		public BatchRecordArrayExecutor(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchRecordArrayListener listener,
+			BatchRecord[] records
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+			this.records = records;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess(records, getStatus());
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(records, ae);
+		}
+	}
+
 	final EventLoop eventLoop;
 	final Cluster cluster;
 	private AerospikeException exception;
-	private AsyncBatchCommand[] commands;
+	private AsyncCommand[] commands;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
 	private final boolean hasResultCode;
 	boolean done;
@@ -39,31 +65,31 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		cluster.addTran();
 	}
 
-	public void execute(AsyncBatchCommand[] cmds) {
+	public void execute(AsyncCommand[] cmds) {
 		this.commands = cmds;
 
-		for (AsyncBatchCommand cmd : cmds) {
+		for (AsyncCommand cmd : cmds) {
 			eventLoop.execute(cluster, cmd);
 		}
 	}
 
 	public void executeBatchRetry(AsyncBatchCommand[] cmds, AsyncBatchCommand orig, Runnable other, long deadline) {
 		// Create new commands array.
-		AsyncBatchCommand[] target = new AsyncBatchCommand[commands.length + cmds.length - 1];
+		AsyncCommand[] target = new AsyncCommand[commands.length + cmds.length - 1];
 		int count = 0;
 
-		for (AsyncBatchCommand cmd : commands) {
+		for (AsyncCommand cmd : commands) {
 			if (cmd != orig) {
 				target[count++] = cmd;
 			}
 		}
 
-		for (AsyncBatchCommand cmd : cmds) {
+		for (AsyncCommand cmd : cmds) {
 			target[count++] = cmd;
 		}
 		commands = target;
 
-		for (AsyncBatchCommand cmd : cmds) {
+		for (AsyncCommand cmd : cmds) {
 			eventLoop.executeBatchRetry(other, cmd, deadline);
 		}
 	}

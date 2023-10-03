@@ -903,7 +903,7 @@ public final class AsyncBatch {
 		}
 	}
 
-	private static final class OperateRecordArrayCommand extends AsyncBatchCommand {
+	public static final class OperateRecordArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final Operation[] ops;
 		private final BatchRecord[] records;
