@@ -116,14 +116,21 @@ public final class BlobFinder implements ScanCallback {
 	}
 
 	public void run() {
-		Cluster cluster = client.getCluster();
+		List<String> namespaces;
 
-		HashMap<String,Partitions> pmap = cluster.partitionMap;
+		if (bfp.namespace != null) {
+			namespaces = new ArrayList<>(1);
+			namespaces.add(bfp.namespace);
+		}
+		else {
+			Cluster cluster = client.getCluster();
+			HashMap<String,Partitions> pmap = cluster.partitionMap;
 
-		List<String> namespaces = new ArrayList<String>(pmap.size());
+			namespaces = new ArrayList<>(pmap.size());
 
-		for (String ns : pmap.keySet()) {
-			namespaces.add(ns);
+			for (String ns : pmap.keySet()) {
+				namespaces.add(ns);
+			}
 		}
 
 		// Set concurrentNodes to false, so atomics are not required in the scan callback.

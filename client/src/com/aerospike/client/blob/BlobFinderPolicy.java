@@ -76,6 +76,11 @@ public final class BlobFinderPolicy {
 	public TlsPolicy tlsPolicy;
 
 	/**
+	 * Run on a specific namespace. If null, all namespaces will be examined.
+	 */
+	public String namespace;
+
+	/**
 	 * Optional file path. If not null, write all bins that contain language specific blobs.
 	 * <p>
 	 * Default: null
@@ -178,6 +183,8 @@ public final class BlobFinderPolicy {
 			str = cl.getOptionValue("socketTimeout", "30000");
 			socketTimeout = Integer.parseInt(str);
 		}
+
+		namespace = cl.getOptionValue("namespace", null);
 	}
 
 	/**

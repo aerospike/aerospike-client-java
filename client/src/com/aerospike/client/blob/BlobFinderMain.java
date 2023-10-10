@@ -96,6 +96,10 @@ public final class BlobFinderMain {
 					"Default: 30000"
 					);
 
+			options.addOption("n", "namespace", true,
+					"Run on a specific namespace. If not specified, all namespaces will be examined."
+					);
+
 			CommandLineParser parser = new DefaultParser();
 			CommandLine cl = parser.parse(options, args, false);
 
