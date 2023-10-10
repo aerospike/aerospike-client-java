@@ -63,23 +63,23 @@ public final class MetricsPolicy {
 	/**
 	 * Number of elapsed time range buckets in latency histograms.
 	 * <p>
-	 * Default: 5
+	 * Default: 7
 	 */
-	public int latencyColumns = 5;
+	public int latencyColumns = 7;
 
 	/**
 	 * Power of 2 multiple between each range bucket in latency histograms starting at column 3. The bucket units
 	 * are in milliseconds. The first 2 buckets are "<=1ms" and ">1ms". Examples:
 	 * <pre>{@code
+	 * // latencyColumns=7 latencyShift=1
+	 * <=1ms >1ms >2ms >4ms >8ms >16ms >32ms
+	 *
 	 * // latencyColumns=5 latencyShift=3
 	 * <=1ms >1ms >8ms >64ms >512ms
-	 *
-	 * // latencyColumns=7 latencyShift=2
-	 * <=1ms >1ms >4ms >16ms >64ms >256ms >1024ms
 	 * }</pre>
-	 * Default: 3
+	 * Default: 1
 	 */
-	public int latencyShift = 3;
+	public int latencyShift = 1;
 
 	/**
 	 * Copy constructor.
