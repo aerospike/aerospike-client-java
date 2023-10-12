@@ -16,6 +16,8 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.Set;
+
 import com.aerospike.client.Bin;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.BatchPolicy;
@@ -40,6 +42,7 @@ public class Arguments {
 	public int readMultiBinPct;
 	public int writeMultiBinPct;
 	public int throughput;
+	public Set<Integer> partitionIds;
 	public long transactionLimit;
 	public boolean reportNotFound;
 	public boolean debug;
