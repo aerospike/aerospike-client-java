@@ -248,7 +248,7 @@ public class TestOperateMap extends TestSync {
 		assertEquals(4, list.size());
 
 		record = client.operate(null, key,
-				MapOperation.setMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT), binName),
+				MapOperation.setMapPolicy(new MapPolicy(MapOrder.KEY_ORDERED, MapWriteFlags.DEFAULT, true), binName),
 				MapOperation.getByKeyRange(binName, Value.get(3), Value.get(5), MapReturnType.COUNT),
 				MapOperation.getByKeyRange(binName, Value.get(-5), Value.get(2), MapReturnType.KEY_VALUE),
 				MapOperation.getByIndexRange(binName, 0, 10, MapReturnType.KEY_VALUE)

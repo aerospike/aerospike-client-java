@@ -52,6 +52,7 @@ import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
+import com.aerospike.test.sync.query.TestQueryBlob;
 import com.aerospike.test.sync.query.TestQueryCollection;
 import com.aerospike.test.sync.query.TestQueryContext;
 import com.aerospike.test.sync.query.TestQueryExecute;
@@ -94,6 +95,7 @@ import com.aerospike.test.util.Args;
 	TestUDF.class,
 	TestIndex.class,
 	TestQueryAverage.class,
+	TestQueryBlob.class,
 	TestQueryCollection.class,
 	TestQueryContext.class,
 	TestQueryExecute.class,

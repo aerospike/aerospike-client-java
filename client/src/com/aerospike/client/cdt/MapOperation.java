@@ -116,9 +116,40 @@ public class MapOperation {
 	public static Operation create(String binName, MapOrder order, CTX... ctx) {
 		// If context not defined, the set order for top-level bin map.
 		if (ctx == null || ctx.length == 0) {
-			return setMapPolicy(new MapPolicy(order, 0), binName);
+			byte[] bytes = Pack.pack(MapOperation.SET_TYPE, order.attributes, ctx);
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 		}
 
+		Packer packer = new Packer();
+		CDT.init(packer, ctx, SET_TYPE, 1, order.flag);
+		packer.packInt(order.attributes);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
+	}
+
+	/**
+	 * Create map create operation.
+	 * Server creates map at given context level.
+	 *
+	 * @param binName		bin name
+	 * @param order			map order
+	 * @param persistIndex	if true, persist map index. A map index improves lookup performance,
+	 * 						but requires more storage. A map index can be created for a top-level
+	 * 						ordered map only. Nested and unordered map indexes are not supported.
+	 * @param ctx			optional path to nested map. If not defined, the top-level map is used.
+	 */
+	public static Operation create(String binName, MapOrder order, boolean persistIndex, CTX... ctx) {
+		// If context not defined, the set order for top-level bin map.
+		if (ctx == null || ctx.length == 0) {
+			int attr = order.attributes;
+
+			if (persistIndex) {
+				attr |= 0x10;
+			}
+			byte[] bytes = Pack.pack(MapOperation.SET_TYPE, attr, ctx);
+			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		}
+
+		// Create nested map. persistIndex does not apply here, so ignore it.
 		Packer packer = new Packer();
 		CDT.init(packer, ctx, SET_TYPE, 1, order.flag);
 		packer.packInt(order.attributes);
@@ -132,7 +163,13 @@ public class MapOperation {
 	 * The required map policy attributes can be changed after the map is created.
 	 */
 	public static Operation setMapPolicy(MapPolicy policy, String binName, CTX... ctx) {
-		byte[] bytes = Pack.pack(MapOperation.SET_TYPE, policy.attributes, ctx);
+		int attr = policy.attributes;
+
+		// Remove persistIndex flag for nested maps.
+		if (ctx != null && ctx.length != 0 && (attr & 0x10) != 0) {
+			attr &= ~0x10;
+		}
+		byte[] bytes = Pack.pack(MapOperation.SET_TYPE, attr, ctx);
 		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 

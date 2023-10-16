@@ -57,6 +57,20 @@ public final class Filter {
 	}
 
 	/**
+	 * Create blob equality filter for query.
+	 * Requires server version 7.0+.
+	 *
+	 * @param name			bin name
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter equal(String name, byte[] value, CTX... ctx) {
+		Value val = Value.get(value);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val, ctx);
+	}
+
+	/**
 	 * Create contains number filter for query on collection index.
 	 *
 	 * @param name			bin name
