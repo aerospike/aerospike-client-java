@@ -21,6 +21,7 @@ import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequence;
@@ -34,6 +35,7 @@ import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
@@ -95,7 +97,6 @@ public final class AsyncBatchSingle {
 	public static final class DeleteSequence extends AsyncBaseCommand {
 		private final BatchRecordSequence parent;
 		private final BatchRecordSequenceListener listener;
-		private final Key key;
 		private final BatchAttr attr;
 		private final int index;
 
@@ -112,7 +113,6 @@ public final class AsyncBatchSingle {
 			super(executor, cluster, policy, key, node, true);
 			this.parent = executor;
 			this.listener = listener;
-			this.key = key;
 			this.attr = attr;
 			this.index = index;
 		}
@@ -198,7 +198,6 @@ public final class AsyncBatchSingle {
 
 	public static final class ExistsSequence extends AsyncBaseCommand {
 		private final ExistsSequenceListener listener;
-		private final Key key;
 
 		public ExistsSequence(
 			AsyncBatchExecutor executor,
@@ -210,7 +209,6 @@ public final class AsyncBatchSingle {
 		) {
 			super(executor, cluster, policy, key, node, false);
 			this.listener = listener;
-			this.key = key;
 		}
 
 		@Override
@@ -313,6 +311,207 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, false);
 			}
 			listener.onRecord(record);
+			return true;
+		}
+	}
+
+	public static final class OperateGet extends Get {
+		private final Operation[] ops;
+
+		public OperateGet(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			Operation[] ops,
+			Record[] records,
+			Node node,
+			int index
+		) {
+			super(executor, cluster, policy, key, null, records, node, index, true);
+			this.ops = ops;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, key, ops);
+		}
+	}
+
+	public static class Get extends AsyncBaseCommand {
+		private final String[] binNames;
+		private final Record[] records;
+		private final int index;
+		private final boolean isOperation;
+
+		public Get(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			String[] binNames,
+			Record[] records,
+			Node node,
+			int index,
+			boolean isOperation
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.binNames = binNames;
+			this.records = records;
+			this.index = index;
+			this.isOperation = isOperation;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, key, binNames);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			validateHeaderSize();
+
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				records[index] = rp.parseRecord(isOperation);
+			}
+			return true;
+		}
+	}
+
+	public static final class OperateGetSequence extends GetSequence {
+		private final Operation[] ops;
+
+		public OperateGetSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			RecordSequenceListener listener,
+			Key key,
+			Operation[] ops,
+			Node node
+		) {
+			super(executor, cluster, policy, listener, key, null, node, true);
+			this.ops = ops;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, key, ops);
+		}
+	}
+
+	public static class GetSequence extends AsyncBaseCommand {
+		private final RecordSequenceListener listener;
+		private final String[] binNames;
+		private final boolean isOperation;
+
+		public GetSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			RecordSequenceListener listener,
+			Key key,
+			String[] binNames,
+			Node node,
+			boolean isOperation
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.listener = listener;
+			this.binNames = binNames;
+			this.isOperation = isOperation;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, key, binNames);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			validateHeaderSize();
+
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				Record record = rp.parseRecord(isOperation);
+				listener.onRecord(key, record);
+			}
+			else {
+				listener.onRecord(key, null);
+			}
+			return true;
+		}
+	}
+
+	public static class ReadHeader extends AsyncBaseCommand {
+		private final Record[] records;
+		private final int index;
+
+		public ReadHeader(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			Record[] records,
+			Node node,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.records = records;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setReadHeader(policy, key);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			validateHeaderSize();
+
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				records[index] = rp.parseRecord(false);
+			}
+			return true;
+		}
+	}
+
+	public static class ReadHeaderSequence extends AsyncBaseCommand {
+		private final RecordSequenceListener listener;
+
+		public ReadHeaderSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			RecordSequenceListener listener,
+			Key key,
+			Node node
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.listener = listener;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setReadHeader(policy, key);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				Record record = rp.parseRecord(false);
+				listener.onRecord(key, record);
+			}
+			else {
+				listener.onRecord(key, null);
+			}
 			return true;
 		}
 	}

@@ -223,6 +223,36 @@ public class TestAsyncBatch extends TestAsync {
 	}
 
 	@Test
+	public void asyncBatchGetArrayBinName() throws Exception {
+		client.get(eventLoop, new RecordArrayListener() {
+			public void onSuccess(Key[] keys, Record[] records) {
+				if (assertEquals(Size, records.length)) {
+					for (int i = 0; i < records.length; i++) {
+						if (i != 5) {
+							if (! assertBinEqual(keys[i], records[i], BinName, ValuePrefix + (i + 1))) {
+								break;
+							}
+						}
+						else {
+							if (! assertBinEqual(keys[i], records[i], BinName, i + 1)) {
+								break;
+							}
+						}
+					}
+				}
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, sendKeys, BinName);
+
+		waitTillComplete();
+	}
+
+	@Test
 	public void asyncBatchGetSequence() throws Exception {
 		client.get(eventLoop, new RecordSequenceListener() {
 			public void onRecord(Key key, Record record) {
@@ -241,6 +271,29 @@ public class TestAsyncBatch extends TestAsync {
 				notifyComplete();
 			}
 		}, null, sendKeys);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchGetSequenceBinName() throws Exception {
+		client.get(eventLoop, new RecordSequenceListener() {
+			public void onRecord(Key key, Record record) {
+				if (assertRecordFound(key, record))  {
+					Object value = record.getValue(BinName);
+					assertNotNull(value);
+				}
+			}
+
+			public void onSuccess() {
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, sendKeys, BinName);
 
 		waitTillComplete();
 	}
@@ -272,6 +325,60 @@ public class TestAsyncBatch extends TestAsync {
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
+			}
+		}, null, sendKeys);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchGetHeadersSeq() throws Exception {
+		client.getHeader(eventLoop, new RecordSequenceListener() {
+			int count;
+
+			public void onRecord(Key key, Record record) {
+				count++;
+
+				int index = getKeyIndex(key);
+
+				if (!assertTrue(index >= 0)) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertRecordFound(sendKeys[index], record)) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertGreaterThanZero(record.generation)) {
+					notifyComplete();
+					return;
+				}
+
+				if (args.hasTtl && !assertGreaterThanZero(record.expiration)) {
+					notifyComplete();
+					return;
+				}
+			}
+
+			public void onSuccess() {
+				assertEquals(Size, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+
+			private int getKeyIndex(Key key) {
+				for (int i = 0; i < sendKeys.length; i++) {
+					if (key == sendKeys[i]) {
+						return i;
+					}
+				}
+				return -1;
 			}
 		}, null, sendKeys);
 
@@ -477,6 +584,62 @@ public class TestAsyncBatch extends TestAsync {
 			public void onFailure(AerospikeException e) {
 				setError(e);
 				notifyComplete();
+			}
+		}, null, sendKeys,
+			ListOperation.size(ListBin),
+			ListOperation.getByIndex(ListBin, -1, ListReturnType.VALUE)
+		);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchListReadOperateSeq() throws Exception {
+		client.get(eventLoop, new RecordSequenceListener() {
+			int count;
+
+			public void onRecord(Key key, Record record) {
+				count++;
+
+				int index = getKeyIndex(key);
+
+				if (!assertTrue(index >= 0)) {
+					notifyComplete();
+					return;
+				}
+
+				List<?> results = record.getList(ListBin);
+				long size = (Long)results.get(0);
+				long val = (Long)results.get(1);
+
+				if (! assertEquals(index + 1, size)) {
+					notifyComplete();
+					return;
+				}
+
+				if (! assertEquals(index * (index + 1), val)) {
+					notifyComplete();
+					return;
+				}
+			}
+
+			public void onSuccess() {
+				assertEquals(Size, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+
+			private int getKeyIndex(Key key) {
+				for (int i = 0; i < sendKeys.length; i++) {
+					if (key == sendKeys[i]) {
+						return i;
+					}
+				}
+				return -1;
 			}
 		}, null, sendKeys,
 			ListOperation.size(ListBin),

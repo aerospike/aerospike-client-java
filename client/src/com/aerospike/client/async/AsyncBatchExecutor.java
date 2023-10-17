@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
@@ -31,6 +32,8 @@ import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
+import com.aerospike.client.listener.RecordArrayListener;
+import com.aerospike.client.listener.RecordSequenceListener;
 
 public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	public static final class BatchRecordArray extends AsyncBatchExecutor {
@@ -188,6 +191,56 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 			listener.onSuccess();
 		}
 
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class GetArray extends AsyncBatchExecutor {
+		private final RecordArrayListener listener;
+		private final Key[] keys;
+		private final Record[] records;
+
+		public GetArray(
+			EventLoop eventLoop,
+			Cluster cluster,
+			RecordArrayListener listener,
+			Key[] keys,
+			Record[] records
+		) {
+			super(eventLoop, cluster, false);
+			this.listener = listener;
+			this.keys = keys;
+			this.records = records;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess(keys, records);
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(new AerospikeException.BatchRecords(records, ae));
+		}
+	}
+
+	public static final class GetSequence extends AsyncBatchExecutor {
+		private final RecordSequenceListener listener;
+
+		public GetSequence(
+			EventLoop eventLoop,
+			Cluster cluster,
+			RecordSequenceListener listener
+		) {
+			super(eventLoop, cluster, false);
+			this.listener = listener;
+		}
+
+		@Override
+		protected void onSuccess() {
+			listener.onSuccess();
+		}
+
+		@Override
 		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}

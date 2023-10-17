@@ -36,7 +36,6 @@ import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
-import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
@@ -157,49 +156,7 @@ public final class AsyncBatch {
 	// GetArray
 	//-------------------------------------------------------
 
-	public static final class GetArrayExecutor extends AsyncBatchExecutor {
-		private final RecordArrayListener listener;
-		private final Key[] keys;
-		private final Record[] recordArray;
-
-		public GetArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			RecordArrayListener listener,
-			Key[] keys,
-			String[] binNames,
-			Operation[] ops,
-			int readAttr,
-			boolean isOperation
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-			this.keys = keys;
-			this.recordArray = new Record[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetArrayCommand(this, batchNode, policy, keys, binNames, ops, recordArray, readAttr, isOperation);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(keys, recordArray);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(new AerospikeException.BatchRecords(recordArray, ae));
-		}
-	}
-
-	private static final class GetArrayCommand extends AsyncBatchCommand {
+	public static final class GetArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Operation[] ops;
@@ -260,47 +217,7 @@ public final class AsyncBatch {
 	// GetSequence
 	//-------------------------------------------------------
 
-	public static final class GetSequenceExecutor extends AsyncBatchExecutor {
-		private final RecordSequenceListener listener;
-
-		public GetSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			RecordSequenceListener listener,
-			Key[] keys,
-			String[] binNames,
-			Operation[] ops,
-			int readAttr,
-			boolean isOperation
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetSequenceCommand(this, batchNode, policy, keys, binNames, ops, listener, readAttr, isOperation);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		@Override
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		@Override
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class GetSequenceCommand extends AsyncBatchCommand {
+	public static final class GetSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Operation[] ops;
