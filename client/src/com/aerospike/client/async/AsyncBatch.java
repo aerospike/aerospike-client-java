@@ -31,12 +31,10 @@ import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
-import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
@@ -51,43 +49,7 @@ public final class AsyncBatch {
 	// ReadList
 	//-------------------------------------------------------
 
-	public static final class ReadListExecutor extends AsyncBatchExecutor {
-		private final BatchListListener listener;
-		private final List<BatchRead> records;
-
-		public ReadListExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchListListener listener,
-			List<BatchRead> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ReadListCommand(this, batchNode, policy, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(records);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ReadListCommand extends AsyncBatchCommand {
+	public static final class ReadListCommand extends AsyncBatchCommand {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(
@@ -139,41 +101,7 @@ public final class AsyncBatch {
 	// ReadSequence
 	//-------------------------------------------------------
 
-	public static final class ReadSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchSequenceListener listener;
-
-		public ReadSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchSequenceListener listener,
-			List<BatchRead> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ReadSequenceCommand(this, batchNode, policy, listener, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ReadSequenceCommand extends AsyncBatchCommand {
+	public static final class ReadSequenceCommand extends AsyncBatchCommand {
 		private final BatchSequenceListener listener;
 		private final List<BatchRead> records;
 
@@ -439,45 +367,7 @@ public final class AsyncBatch {
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public static final class ExistsArrayExecutor extends AsyncBatchExecutor {
-		private final ExistsArrayListener listener;
-		private final Key[] keys;
-		private final boolean[] existsArray;
-
-		public ExistsArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsArrayListener listener
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-			this.keys = keys;
-			this.existsArray = new boolean[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ExistsArrayCommand(this, batchNode, policy, keys, existsArray);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(keys, existsArray);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(new AerospikeException.BatchExists(existsArray, ae));
-		}
-	}
-
-	private static final class ExistsArrayCommand extends AsyncBatchCommand {
+	public static final class ExistsArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
@@ -530,41 +420,7 @@ public final class AsyncBatch {
 	// ExistsSequence
 	//-------------------------------------------------------
 
-	public static final class ExistsSequenceExecutor extends AsyncBatchExecutor {
-		private final ExistsSequenceListener listener;
-
-		public ExistsSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsSequenceListener listener
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ExistsSequenceCommand(this, batchNode, policy, keys, listener);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ExistsSequenceCommand extends AsyncBatchCommand {
+	public static final class ExistsSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
 

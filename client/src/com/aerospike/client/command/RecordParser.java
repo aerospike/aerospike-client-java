@@ -37,6 +37,9 @@ public final class RecordParser {
 	public final int opCount;
 	public int dataOffset;
 
+	/**
+	 * Sync record parser.
+	 */
 	public RecordParser(Connection conn, byte[] buffer) throws IOException {
 		// Read header.
 		conn.readFully(buffer, 8, Command.STATE_READ_HEADER);
@@ -112,6 +115,24 @@ public final class RecordParser {
 			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 		}
 
+		this.resultCode = buffer[offset] & 0xFF;
+		offset++;
+		this.generation = Buffer.bytesToInt(buffer, offset);
+		offset += 4;
+		this.expiration = Buffer.bytesToInt(buffer, offset);
+		offset += 8;
+		this.fieldCount = Buffer.bytesToShort(buffer, offset);
+		offset += 2;
+		this.opCount = Buffer.bytesToShort(buffer, offset);
+		offset += 2;
+		this.dataOffset = offset;
+		this.dataBuffer = buffer;
+	}
+
+	/**
+	 * Async record parser.
+	 */
+	public RecordParser(byte[] buffer, int offset) {
 		this.resultCode = buffer[offset] & 0xFF;
 		offset++;
 		this.generation = Buffer.bytesToInt(buffer, offset);

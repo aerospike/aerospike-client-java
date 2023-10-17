@@ -44,6 +44,7 @@ import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
+import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.listener.RecordArrayListener;
@@ -342,6 +343,106 @@ public class TestAsyncBatch extends TestAsync {
 					}
 				}
 
+				assertEquals(8, found);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException e) {
+				setError(e);
+				notifyComplete();
+			}
+		}, null, records);
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchReadComplexSeq() throws Exception {
+		Expression exp = Exp.build(Exp.mul(Exp.intBin(BinName), Exp.val(8)));
+		Operation[] ops = Operation.array(ExpOperation.read(BinName, exp, ExpReadFlags.DEFAULT));
+
+		String[] bins = new String[] {BinName};
+
+		Key[] keys = new Key[9];
+		keys[0] = new Key(args.namespace, args.set, KeyPrefix + 1);
+		keys[1] = new Key(args.namespace, args.set, KeyPrefix + 2);
+		keys[2] = new Key(args.namespace, args.set, KeyPrefix + 3);
+		keys[3] = new Key(args.namespace, args.set, KeyPrefix + 4);
+		keys[4] = new Key(args.namespace, args.set, KeyPrefix + 5);
+		keys[5] = new Key(args.namespace, args.set, KeyPrefix + 6);
+		keys[6] = new Key(args.namespace, args.set, KeyPrefix + 7);
+		keys[7] = new Key(args.namespace, args.set, KeyPrefix + 8);
+		keys[8] = new Key(args.namespace, args.set, "keynotfound");
+
+		List<BatchRead> records = new ArrayList<BatchRead>();
+		records.add(new BatchRead(keys[0], bins));
+		records.add(new BatchRead(keys[1], true));
+		records.add(new BatchRead(keys[2], true));
+		records.add(new BatchRead(keys[3], false));
+		records.add(new BatchRead(keys[4], true));
+		records.add(new BatchRead(keys[5], ops));
+		records.add(new BatchRead(keys[6], bins));
+
+		// This record should be found, but the requested bin will not be found.
+		records.add(new BatchRead(keys[7], new String[] {"binnotfound"}));
+
+		// This record should not be found.
+		records.add(new BatchRead(keys[8], bins));
+
+		// Execute batch.
+		client.get(eventLoop, new BatchSequenceListener() {
+			private int found;
+
+			public void onRecord(BatchRead record) {
+				Record rec = record.record;
+
+				if (rec != null) {
+					found++;
+
+					int index = getKeyIndex(record.key);
+
+					if (!assertTrue(index >= 0)) {
+						notifyComplete();
+						return;
+					}
+
+					if (index != 3 && index != 5 && index <= 6) {
+						Object value = rec.getValue(BinName);
+
+						if (!assertEquals(ValuePrefix + (index+1), value)) {
+							notifyComplete();
+							return;
+						}
+					}
+					else if (index == 5) {
+						int value = rec.getInt(BinName);
+
+						if (!assertEquals(48, value)) {
+							notifyComplete();
+							return;
+						}
+					}
+					else {
+						Object value = rec.getValue(BinName);
+
+						if (!assertNull(value)) {
+							notifyComplete();
+							return;
+						}
+					}
+				}
+			}
+
+			private int getKeyIndex(Key key) {
+				for (int i = 0; i < keys.length; i++) {
+					if (key == keys[i]) {
+						return i;
+					}
+				}
+				return -1;
+			}
+
+			public void onSuccess() {
 				assertEquals(8, found);
 				notifyComplete();
 			}

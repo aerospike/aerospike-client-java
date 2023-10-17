@@ -17,36 +17,46 @@
 package com.aerospike.client.async;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
+import com.aerospike.client.Log;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequenceExecutor;
+import com.aerospike.client.async.AsyncBatchExecutor.BatchRecordSequence;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
+import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.ExistsSequenceListener;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.util.Util;
 
 public final class AsyncBatchSingle {
+	//-------------------------------------------------------
+	// Delete
+	//-------------------------------------------------------
+
 	public static final class DeleteArray extends AsyncBaseCommand {
 		private final BatchAttr attr;
 		private final BatchRecord record;
 
 		public DeleteArray(
-			AsyncBatchExecutor parent,
+			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
 			BatchAttr attr,
 			BatchRecord record,
 			Node node
 		) {
-			super(parent, cluster, policy, record.key, node, true);
+			super(executor, cluster, policy, record.key, node, true);
 			this.attr = attr;
 			this.record = record;
 		}
@@ -69,7 +79,7 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
-				parent.setRowError();
+				executor.setRowError();
 			}
 			return true;
 		}
@@ -83,14 +93,14 @@ public final class AsyncBatchSingle {
 	}
 
 	public static final class DeleteSequence extends AsyncBaseCommand {
-		private final BatchRecordSequenceExecutor executor;
+		private final BatchRecordSequence parent;
 		private final BatchRecordSequenceListener listener;
 		private final Key key;
 		private final BatchAttr attr;
 		private final int index;
 
 		public DeleteSequence(
-			BatchRecordSequenceExecutor parent,
+			BatchRecordSequence executor,
 			Cluster cluster,
 			BatchPolicy policy,
 			BatchRecordSequenceListener listener,
@@ -99,8 +109,8 @@ public final class AsyncBatchSingle {
 			Node node,
 			int index
 		) {
-			super(parent, cluster, policy, key, node, true);
-			this.executor = parent;
+			super(executor, cluster, policy, key, node, true);
+			this.parent = executor;
 			this.listener = listener;
 			this.key = key;
 			this.attr = attr;
@@ -127,19 +137,183 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				record = new BatchRecord(key, null, resultCode, Command.batchInDoubt(true, commandSentCounter), true);
-				parent.setRowError();
+				executor.setRowError();
 			}
-			executor.setSent(index);
+			parent.setSent(index);
 			AsyncBatch.onRecord(listener, record, index);
 			return true;
 		}
 
 		@Override
 		public void setInDoubt() {
-			if (! executor.exchangeSent(index)) {
+			if (! parent.exchangeSent(index)) {
 				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, true);
 				AsyncBatch.onRecord(listener, record, index);
 			}
+		}
+	}
+
+	//-------------------------------------------------------
+	// Exists
+	//-------------------------------------------------------
+
+	public static final class ExistsArray extends AsyncBaseCommand {
+		private final boolean[] existsArray;
+		private final int index;
+
+		public ExistsArray(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			Node node,
+			boolean[] existsArray,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.existsArray = existsArray;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setExists(policy, key);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			validateHeaderSize();
+
+			int resultCode = dataBuffer[5] & 0xFF;
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
+
+			if (opCount > 0) {
+				throw new AerospikeException.Parse("Received bins that were not requested!");
+			}
+
+			existsArray[index] = resultCode == 0;
+			return true;
+		}
+	}
+
+	public static final class ExistsSequence extends AsyncBaseCommand {
+		private final ExistsSequenceListener listener;
+		private final Key key;
+
+		public ExistsSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			ExistsSequenceListener listener,
+			Key key,
+			Node node
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.listener = listener;
+			this.key = key;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setExists(policy, key);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			validateHeaderSize();
+
+			int resultCode = dataBuffer[5] & 0xFF;
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
+
+			if (opCount > 0) {
+				throw new AerospikeException.Parse("Received bins that were not requested!");
+			}
+
+			try {
+				listener.onExists(key, resultCode == 0);
+			}
+			catch (Throwable e) {
+				Log.error("Unexpected exception from onExists(): " + Util.getErrorMessage(e));
+			}
+			return true;
+		}
+	}
+
+	//-------------------------------------------------------
+	// Read Record
+	//-------------------------------------------------------
+
+	public static final class ReadRecord extends AsyncBaseCommand {
+		private final BatchRead record;
+
+		public ReadRecord(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchRead record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, false);
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, record);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			validateHeaderSize();
+
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(record.ops != null));
+			}
+			else {
+				record.setError(rp.resultCode, false);
+			}
+			return true;
+		}
+	}
+
+	public static final class ReadSequence extends AsyncBaseCommand {
+		private final BatchSequenceListener listener;
+		private final BatchRead record;
+
+		public ReadSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchSequenceListener listener,
+			BatchRead record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, false);
+			this.listener = listener;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setRead(policy, record);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			validateHeaderSize();
+
+			RecordParser rp = new RecordParser(dataBuffer, 5);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(record.ops != null));
+			}
+			else {
+				record.setError(rp.resultCode, false);
+			}
+			listener.onRecord(record);
+			return true;
 		}
 	}
 
@@ -148,7 +322,7 @@ public final class AsyncBatchSingle {
 	//-------------------------------------------------------
 
 	static abstract class AsyncBaseCommand extends AsyncCommand {
-		final AsyncBatchExecutor parent;
+		final AsyncBatchExecutor executor;
 		final Cluster cluster;
 		final Key key;
 		Node node;
@@ -156,7 +330,7 @@ public final class AsyncBatchSingle {
 		final boolean hasWrite;
 
 		public AsyncBaseCommand(
-			AsyncBatchExecutor parent,
+			AsyncBatchExecutor executor,
 			Cluster cluster,
 			Policy policy,
 			Key key,
@@ -164,7 +338,7 @@ public final class AsyncBatchSingle {
 			boolean hasWrite
 		) {
 			super(policy, true);
-			this.parent = parent;
+			this.executor = executor;
 			this.cluster = cluster;
 			this.key = key;
 			this.node = node;
@@ -209,7 +383,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected void onSuccess() {
-			parent.childSuccess();
+			executor.childSuccess();
 		}
 
 		@Override
@@ -217,7 +391,7 @@ public final class AsyncBatchSingle {
 			if (e.getInDoubt()) {
 				setInDoubt();
 			}
-			parent.childFailure(e);
+			executor.childFailure(e);
 		}
 
 		public void setInDoubt() {

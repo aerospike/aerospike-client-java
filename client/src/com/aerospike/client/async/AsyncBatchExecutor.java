@@ -16,21 +16,28 @@
  */
 package com.aerospike.client.async;
 
+import java.util.List;
+
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.Key;
 import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
+import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
+import com.aerospike.client.listener.BatchSequenceListener;
+import com.aerospike.client.listener.ExistsArrayListener;
+import com.aerospike.client.listener.ExistsSequenceListener;
 
 public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
-	public static final class BatchRecordArrayExecutor extends AsyncBatchExecutor {
+	public static final class BatchRecordArray extends AsyncBatchExecutor {
 		private final BatchRecordArrayListener listener;
 		private final BatchRecord[] records;
 
-		public BatchRecordArrayExecutor(
+		public BatchRecordArray(
 			EventLoop eventLoop,
 			Cluster cluster,
 			BatchRecordArrayListener listener,
@@ -50,11 +57,11 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		}
 	}
 
-	public static final class BatchRecordSequenceExecutor extends AsyncBatchExecutor {
+	public static final class BatchRecordSequence extends AsyncBatchExecutor {
 		private final BatchRecordSequenceListener listener;
 		private final boolean[] sent;
 
-		public BatchRecordSequenceExecutor(
+		public BatchRecordSequence(
 			EventLoop eventLoop,
 			Cluster cluster,
 			BatchRecordSequenceListener listener,
@@ -88,6 +95,99 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		}
 
 		@Override
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class ExistsArray extends AsyncBatchExecutor {
+		private final ExistsArrayListener listener;
+		private final Key[] keys;
+		private final boolean[] existsArray;
+
+		public ExistsArray(
+			EventLoop eventLoop,
+			Cluster cluster,
+			ExistsArrayListener listener,
+			Key[] keys,
+			boolean[] existsArray
+		) {
+			super(eventLoop, cluster, false);
+			this.listener = listener;
+			this.keys = keys;
+			this.existsArray = existsArray;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess(keys, existsArray);
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(new AerospikeException.BatchExists(existsArray, ae));
+		}
+	}
+
+	public static final class ExistsSequence extends AsyncBatchExecutor {
+		private final ExistsSequenceListener listener;
+
+		public ExistsSequence(
+			EventLoop eventLoop,
+			Cluster cluster,
+			ExistsSequenceListener listener
+		) {
+			super(eventLoop, cluster, false);
+			this.listener = listener;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess();
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class ReadList extends AsyncBatchExecutor {
+		private final BatchListListener listener;
+		private final List<BatchRead> records;
+
+		public ReadList(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchListListener listener,
+			List<BatchRead> records
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+			this.records = records;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess(records);
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class ReadSequence extends AsyncBatchExecutor {
+		private final BatchSequenceListener listener;
+
+		public ReadSequence(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchSequenceListener listener
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess();
+		}
+
 		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
