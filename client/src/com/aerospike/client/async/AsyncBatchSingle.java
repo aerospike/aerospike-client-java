@@ -19,6 +19,8 @@ package com.aerospike.client.async;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
+import com.aerospike.client.BatchUDF;
+import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
@@ -43,253 +45,75 @@ import com.aerospike.client.util.Util;
 
 public final class AsyncBatchSingle {
 	//-------------------------------------------------------
-	// Delete
+	// Read
 	//-------------------------------------------------------
 
-	public static final class DeleteArray extends AsyncBaseCommand {
-		private final BatchAttr attr;
-		private final BatchRecord record;
+	public static final class ReadGetSequence extends Read {
+		private final BatchSequenceListener listener;
 
-		public DeleteArray(
-			AsyncBatchExecutor executor,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchAttr attr,
-			BatchRecord record,
-			Node node
-		) {
-			super(executor, cluster, policy, record.key, node, true);
-			this.attr = attr;
-			this.record = record;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setDelete(policy, record.key, attr);
-		}
-
-		@Override
-		protected boolean parseResult() {
-			validateHeaderSize();
-
-			int resultCode = dataBuffer[5] & 0xFF;
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
-
-			if (resultCode == 0) {
-				record.setRecord(new Record(null, generation, expiration));
-			}
-			else {
-				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
-				executor.setRowError();
-			}
-			return true;
-		}
-
-		@Override
-		public void setInDoubt() {
-			if (record.resultCode == ResultCode.NO_RESPONSE) {
-				record.inDoubt = true;
-			}
-		}
-	}
-
-	public static final class DeleteSequence extends AsyncBaseCommand {
-		private final BatchRecordSequence parent;
-		private final BatchRecordSequenceListener listener;
-		private final BatchAttr attr;
-		private final int index;
-
-		public DeleteSequence(
-			BatchRecordSequence executor,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key key,
-			BatchAttr attr,
-			Node node,
-			int index
-		) {
-			super(executor, cluster, policy, key, node, true);
-			this.parent = executor;
-			this.listener = listener;
-			this.attr = attr;
-			this.index = index;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setDelete(policy, key, attr);
-		}
-
-		@Override
-		protected boolean parseResult() {
-			validateHeaderSize();
-
-			int resultCode = dataBuffer[5] & 0xFF;
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
-
-			BatchRecord record;
-
-			if (resultCode == 0) {
-				record = new BatchRecord(key, new Record(null, generation, expiration), true);
-			}
-			else {
-				record = new BatchRecord(key, null, resultCode, Command.batchInDoubt(true, commandSentCounter), true);
-				executor.setRowError();
-			}
-			parent.setSent(index);
-			AsyncBatch.onRecord(listener, record, index);
-			return true;
-		}
-
-		@Override
-		public void setInDoubt() {
-			if (! parent.exchangeSent(index)) {
-				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, true);
-				AsyncBatch.onRecord(listener, record, index);
-			}
-		}
-	}
-
-	//-------------------------------------------------------
-	// Exists
-	//-------------------------------------------------------
-
-	public static final class ExistsArray extends AsyncBaseCommand {
-		private final boolean[] existsArray;
-		private final int index;
-
-		public ExistsArray(
-			AsyncBatchExecutor executor,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key key,
-			Node node,
-			boolean[] existsArray,
-			int index
-		) {
-			super(executor, cluster, policy, key, node, false);
-			this.existsArray = existsArray;
-			this.index = index;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setExists(policy, key);
-		}
-
-		@Override
-		protected boolean parseResult() {
-			validateHeaderSize();
-
-			int resultCode = dataBuffer[5] & 0xFF;
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
-			existsArray[index] = resultCode == 0;
-			return true;
-		}
-	}
-
-	public static final class ExistsSequence extends AsyncBaseCommand {
-		private final ExistsSequenceListener listener;
-
-		public ExistsSequence(
-			AsyncBatchExecutor executor,
-			Cluster cluster,
-			BatchPolicy policy,
-			ExistsSequenceListener listener,
-			Key key,
-			Node node
-		) {
-			super(executor, cluster, policy, key, node, false);
-			this.listener = listener;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setExists(policy, key);
-		}
-
-		@Override
-		protected boolean parseResult() {
-			validateHeaderSize();
-
-			int resultCode = dataBuffer[5] & 0xFF;
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
-
-			if (opCount > 0) {
-				throw new AerospikeException.Parse("Received bins that were not requested!");
-			}
-
-			try {
-				listener.onExists(key, resultCode == 0);
-			}
-			catch (Throwable e) {
-				Log.error("Unexpected exception from onExists(): " + Util.getErrorMessage(e));
-			}
-			return true;
-		}
-	}
-
-	//-------------------------------------------------------
-	// Read Record
-	//-------------------------------------------------------
-
-	public static final class ReadRecord extends AsyncBaseCommand {
-		private final BatchRead record;
-
-		public ReadRecord(
+		public ReadGetSequence(
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
 			BatchRead record,
-			Node node
+			Node node,
+			BatchSequenceListener listener
 		) {
-			super(executor, cluster, policy, record.key, node, false);
-			this.record = record;
-		}
-
-		@Override
-		protected void writeBuffer() {
-			setRead(policy, record);
+			super(executor, cluster, policy, record, node);
+			this.listener = listener;
 		}
 
 		@Override
 		protected final boolean parseResult() {
-			validateHeaderSize();
+			super.parseResult();
 
-			RecordParser rp = new RecordParser(dataBuffer, 5);
-
-			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(record.ops != null));
+			try {
+				listener.onRecord(record);
 			}
-			else {
-				record.setError(rp.resultCode, false);
+			catch (Throwable e) {
+				Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
 			}
 			return true;
 		}
 	}
 
-	public static final class ReadSequence extends AsyncBaseCommand {
-		private final BatchSequenceListener listener;
-		private final BatchRead record;
+	public static final class ReadSequence extends Read {
+		private final BatchRecordSequenceListener listener;
+		private final int index;
 
 		public ReadSequence(
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
-			BatchSequenceListener listener,
+			BatchRead record,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, record, node);
+			this.listener = listener;
+			this.index = index;
+		}
+
+		@Override
+		protected boolean parseResult() {
+			super.parseResult();
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+	}
+
+	public static class Read extends AsyncBaseCommand {
+		final BatchRead record;
+
+		public Read(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
 			BatchRead record,
 			Node node
 		) {
 			super(executor, cluster, policy, record.key, node, false);
-			this.listener = listener;
 			this.record = record;
 		}
 
@@ -299,21 +123,23 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			validateHeaderSize();
-
-			RecordParser rp = new RecordParser(dataBuffer, 5);
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(record.ops != null));
 			}
 			else {
 				record.setError(rp.resultCode, false);
+				executor.setRowError();
 			}
-			listener.onRecord(record);
 			return true;
 		}
 	}
+
+	//-------------------------------------------------------
+	// Operate/Get
+	//-------------------------------------------------------
 
 	public static final class OperateGet extends Get {
 		private final Operation[] ops;
@@ -369,9 +195,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected final boolean parseResult() {
-			validateHeaderSize();
-
-			RecordParser rp = new RecordParser(dataBuffer, 5);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
@@ -430,9 +254,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected final boolean parseResult() {
-			validateHeaderSize();
-
-			RecordParser rp = new RecordParser(dataBuffer, 5);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
 			if (rp.resultCode == ResultCode.OK) {
 				Record record = rp.parseRecord(isOperation);
@@ -440,6 +262,49 @@ public final class AsyncBatchSingle {
 			}
 			else {
 				listener.onRecord(key, null);
+			}
+			return true;
+		}
+	}
+
+	//-------------------------------------------------------
+	// Read Header
+	//-------------------------------------------------------
+
+	public static class ReadHeaderSequence extends AsyncBaseCommand {
+		private final RecordSequenceListener listener;
+
+		public ReadHeaderSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			Node node,
+			RecordSequenceListener listener
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.listener = listener;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setReadHeader(policy, key);
+		}
+
+		@Override
+		protected final boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+			Record record = null;
+
+			if (rp.resultCode == ResultCode.OK) {
+				record = rp.parseRecord(false);
+			}
+
+			try {
+				listener.onRecord(key, record);
+			}
+			catch (Throwable e) {
+				Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
 			}
 			return true;
 		}
@@ -470,9 +335,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected final boolean parseResult() {
-			validateHeaderSize();
-
-			RecordParser rp = new RecordParser(dataBuffer, 5);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(false);
@@ -481,16 +344,20 @@ public final class AsyncBatchSingle {
 		}
 	}
 
-	public static class ReadHeaderSequence extends AsyncBaseCommand {
-		private final RecordSequenceListener listener;
+	//-------------------------------------------------------
+	// Exists
+	//-------------------------------------------------------
 
-		public ReadHeaderSequence(
+	public static final class ExistsSequence extends AsyncBaseCommand {
+		private final ExistsSequenceListener listener;
+
+		public ExistsSequence(
 			AsyncBatchExecutor executor,
 			Cluster cluster,
 			BatchPolicy policy,
-			RecordSequenceListener listener,
 			Key key,
-			Node node
+			Node node,
+			ExistsSequenceListener listener
 		) {
 			super(executor, cluster, policy, key, node, false);
 			this.listener = listener;
@@ -498,21 +365,367 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setReadHeader(policy, key);
+			setExists(policy, key);
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, 5);
+		protected boolean parseResult() {
+			int resultCode = dataBuffer[5] & 0xFF;
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
 
-			if (rp.resultCode == ResultCode.OK) {
-				Record record = rp.parseRecord(false);
-				listener.onRecord(key, record);
+			if (opCount > 0) {
+				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
-			else {
-				listener.onRecord(key, null);
+
+			try {
+				listener.onExists(key, resultCode == 0);
+			}
+			catch (Throwable e) {
+				Log.error("Unexpected exception from onExists(): " + Util.getErrorMessage(e));
 			}
 			return true;
+		}
+	}
+
+	public static final class Exists extends AsyncBaseCommand {
+		private final boolean[] existsArray;
+		private final int index;
+
+		public Exists(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			Node node,
+			boolean[] existsArray,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, false);
+			this.existsArray = existsArray;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setExists(policy, key);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			int resultCode = dataBuffer[5] & 0xFF;
+			int opCount = Buffer.bytesToShort(dataBuffer, 20);
+
+			if (opCount > 0) {
+				throw new AerospikeException.Parse("Received bins that were not requested!");
+			}
+
+			existsArray[index] = resultCode == 0;
+			return true;
+		}
+	}
+
+	//-------------------------------------------------------
+	// Write
+	//-------------------------------------------------------
+
+	public static final class WriteSequence extends Write {
+		private final BatchRecordSequenceListener listener;
+		private final int index;
+
+		public WriteSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchWrite record,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, attr, record, node);
+			this.listener = listener;
+			this.index = index;
+		}
+
+		@Override
+		protected boolean parseResult() {
+			super.parseResult();
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		// setInDoubt() is not overridden to call onRecord() because user already has access to full
+		// BatchRecord list and can examine each record for inDoubt when the exception occurs.
+	}
+
+	public static class Write extends AsyncBaseCommand {
+		private final BatchAttr attr;
+		final BatchWrite record;
+
+		public Write(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchWrite record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, true);
+			this.attr = attr;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setOperate(policy, attr, record.key, record.ops);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				executor.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
+	//-------------------------------------------------------
+	// UDF
+	//-------------------------------------------------------
+
+	public static final class UDFSequence extends UDF {
+		private final BatchRecordSequenceListener listener;
+		private final int index;
+
+		public UDFSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchUDF record,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, attr, record, node);
+			this.listener = listener;
+			this.index = index;
+		}
+
+		@Override
+		protected boolean parseResult() {
+			super.parseResult();
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		// setInDoubt() is not overridden to call onRecord() because user already has access to full
+		// BatchRecord list and can examine each record for inDoubt when the exception occurs.
+	}
+
+	public static class UDF extends AsyncBaseCommand {
+		private final BatchAttr attr;
+		final BatchUDF record;
+
+		public UDF(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchUDF record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, true);
+			this.attr = attr;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setUdf(policy, attr, record.key, record.packageName, record.functionName, record.functionArgs);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(false));
+			}
+			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = rp.parseRecord(false);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = rp.resultCode;
+					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
+					executor.setRowError();
+				}
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				executor.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
+	//-------------------------------------------------------
+	// Delete
+	//-------------------------------------------------------
+
+	public static final class DeleteSequenceSent extends AsyncBaseCommand {
+		private final BatchRecordSequence parent;
+		private final BatchRecordSequenceListener listener;
+		private final BatchAttr attr;
+		private final int index;
+
+		public DeleteSequenceSent(
+			BatchRecordSequence executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			BatchAttr attr,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, true);
+			this.parent = executor;
+			this.listener = listener;
+			this.attr = attr;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setDelete(policy, key, attr);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			int resultCode = dataBuffer[5] & 0xFF;
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+
+			BatchRecord record;
+
+			if (resultCode == 0) {
+				record = new BatchRecord(key, new Record(null, generation, expiration), true);
+			}
+			else {
+				record = new BatchRecord(key, null, resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				executor.setRowError();
+			}
+			parent.setSent(index);
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (! parent.exchangeSent(index)) {
+				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, true);
+				AsyncBatch.onRecord(listener, record, index);
+			}
+		}
+	}
+
+	public static final class DeleteSequence extends Delete {
+		private final BatchRecordSequenceListener listener;
+		private final int index;
+
+		public DeleteSequence(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchRecord record,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, attr, record, node);
+			this.listener = listener;
+			this.index = index;
+		}
+
+		@Override
+		protected boolean parseResult() {
+			super.parseResult();
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		// setInDoubt() is not overridden to call onRecord() because user already has access to full
+		// BatchRecord list and can examine each record for inDoubt when the exception occurs.
+	}
+
+	public static class Delete extends AsyncBaseCommand {
+		private final BatchAttr attr;
+		final BatchRecord record;
+
+		public Delete(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchRecord record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, true);
+			this.attr = attr;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setDelete(policy, record.key, attr);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			int resultCode = dataBuffer[5] & 0xFF;
+			int generation = Buffer.bytesToInt(dataBuffer, 6);
+			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+
+			if (resultCode == 0) {
+				record.setRecord(new Record(null, generation, expiration));
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				executor.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
 		}
 	}
 

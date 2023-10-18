@@ -132,7 +132,12 @@ public final class RecordParser {
 	/**
 	 * Async record parser.
 	 */
-	public RecordParser(byte[] buffer, int offset) {
+	public RecordParser(byte[] buffer, int offset, int receiveSize) {
+		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
+			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
+		}
+
+		offset += 5;
 		this.resultCode = buffer[offset] & 0xFF;
 		offset++;
 		this.generation = Buffer.bytesToInt(buffer, offset);

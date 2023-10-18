@@ -27,6 +27,7 @@ import com.aerospike.client.async.AsyncBatch.AsyncBatchCommand;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.listener.BatchListListener;
+import com.aerospike.client.listener.BatchOperateListListener;
 import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
@@ -241,6 +242,51 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		}
 
 		@Override
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class OperateList extends AsyncBatchExecutor {
+		private final BatchOperateListListener listener;
+		private final List<BatchRecord> records;
+
+		public OperateList(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchOperateListListener listener,
+			List<BatchRecord> records
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+			this.records = records;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess(records, getStatus());
+		}
+
+		protected void onFailure(AerospikeException ae) {
+			listener.onFailure(ae);
+		}
+	}
+
+	public static final class OperateSequence extends AsyncBatchExecutor {
+		private final BatchRecordSequenceListener listener;
+
+		public OperateSequence(
+			EventLoop eventLoop,
+			Cluster cluster,
+			BatchRecordSequenceListener listener
+		) {
+			super(eventLoop, cluster, true);
+			this.listener = listener;
+		}
+
+		protected void onSuccess() {
+			listener.onSuccess();
+		}
+
 		protected void onFailure(AerospikeException ae) {
 			listener.onFailure(ae);
 		}
