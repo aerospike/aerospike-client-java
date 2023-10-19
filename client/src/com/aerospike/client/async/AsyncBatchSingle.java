@@ -425,6 +425,114 @@ public final class AsyncBatchSingle {
 	}
 
 	//-------------------------------------------------------
+	// Operate
+	//-------------------------------------------------------
+
+	public static final class OperateSequence extends AsyncBaseCommand {
+		private final BatchRecordSequence parent;
+		private final BatchRecordSequenceListener listener;
+		private final BatchAttr attr;
+		private final Operation[] ops;
+		private final int index;
+
+		public OperateSequence(
+			BatchRecordSequence executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			BatchAttr attr,
+			Operation[] ops,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, attr.hasWrite);
+			this.parent = executor;
+			this.listener = listener;
+			this.attr = attr;
+			this.ops = ops;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setOperate(policy, attr, key, ops);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+			BatchRecord record;
+
+			if (rp.resultCode == 0) {
+				record = new BatchRecord(key, rp.parseRecord(true), attr.hasWrite);
+			}
+			else {
+				record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
+				executor.setRowError();
+			}
+			parent.setSent(index);
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (! parent.exchangeSent(index)) {
+				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, attr.hasWrite);
+				AsyncBatch.onRecord(listener, record, index);
+			}
+		}
+	}
+
+	public static final class Operate extends AsyncBaseCommand {
+		private final BatchAttr attr;
+		private final BatchRecord record;
+		private final Operation[] ops;
+
+		public Operate(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchRecord record,
+			Operation[] ops,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, attr.hasWrite);
+			this.attr = attr;
+			this.record = record;
+			this.ops = ops;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setOperate(policy, attr, record.key, ops);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(true));
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				executor.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
+	//-------------------------------------------------------
 	// Write
 	//-------------------------------------------------------
 

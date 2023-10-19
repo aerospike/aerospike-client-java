@@ -2569,7 +2569,27 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-		new AsyncBatch.OperateRecordArrayExecutor(eventLoop, cluster, batchPolicy, listener, keys, ops, attr);
+		BatchRecord[] records = new BatchRecord[keys.length];
+
+		for (int i = 0; i < keys.length; i++) {
+			records[i] = new BatchRecord(keys[i], attr.hasWrite);
+		}
+
+		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(eventLoop, cluster, listener, records);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.Operate(executor, cluster, batchPolicy, attr, records[i], ops, batchNode.node);
+			}
+			else {
+				commands[count++] = new AsyncBatch.OperateRecordArrayCommand(executor, batchNode, batchPolicy, keys, ops, records, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	/**
@@ -2621,7 +2641,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
-		new AsyncBatch.OperateRecordSequenceExecutor(eventLoop, cluster, batchPolicy, listener, keys, ops, attr);
+		boolean[] sent = new boolean[keys.length];
+		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(eventLoop, cluster, listener, sent);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.OperateSequence(executor, cluster, batchPolicy, keys[i], attr, ops, batchNode.node, listener, i);
+			}
+			else {
+				commands[count++] = new AsyncBatch.OperateRecordSequenceCommand(executor, batchNode, batchPolicy, keys, ops, sent, listener, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	//-------------------------------------------------------
