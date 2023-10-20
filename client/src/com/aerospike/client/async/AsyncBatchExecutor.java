@@ -292,6 +292,10 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 		}
 	}
 
+	//-------------------------------------------------------
+	// Base Executor
+	//-------------------------------------------------------
+
 	final EventLoop eventLoop;
 	final Cluster cluster;
 	private AerospikeException exception;
@@ -301,7 +305,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	boolean done;
 	boolean error;
 
-	public AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, boolean hasResultCode) {
+	private AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, boolean hasResultCode) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 		this.hasResultCode = hasResultCode;
