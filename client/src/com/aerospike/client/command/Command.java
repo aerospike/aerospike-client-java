@@ -464,10 +464,14 @@ public class Command {
 	}
 
 	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, Value[] args) {
+		byte[] argBytes = Packer.pack(args);
+		setUdf(policy, attr, key, packageName, functionName, argBytes);
+	}
+
+	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, byte[] argBytes) {
 		begin();
 		Expression exp = getBatchExpression(policy, attr);
 		int fieldCount = estimateKeyAttrSize(key, attr, exp);
-		byte[] argBytes = Packer.pack(args);
 		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
 
 		sizeBuffer();

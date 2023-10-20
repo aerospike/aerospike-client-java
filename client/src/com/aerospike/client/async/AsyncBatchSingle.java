@@ -700,6 +700,146 @@ public final class AsyncBatchSingle {
 		}
 	}
 
+	public static final class UDFSequenceCommand extends AsyncBaseCommand {
+		private final BatchRecordSequence parent;
+		private final BatchRecordSequenceListener listener;
+		private final BatchAttr attr;
+		private final String packageName;
+		private final String functionName;
+		private final byte[] argBytes;
+		private final int index;
+
+		public UDFSequenceCommand(
+			BatchRecordSequence executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			Key key,
+			BatchAttr attr,
+			String packageName,
+			String functionName,
+			byte[] argBytes,
+			Node node,
+			BatchRecordSequenceListener listener,
+			int index
+		) {
+			super(executor, cluster, policy, key, node, true);
+			this.parent = executor;
+			this.listener = listener;
+			this.attr = attr;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.argBytes = argBytes;
+			this.index = index;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setUdf(policy, attr, key, packageName, functionName, argBytes);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+			BatchRecord record;
+
+			if (rp.resultCode == ResultCode.OK) {
+				record = new BatchRecord(key, rp.parseRecord(true), attr.hasWrite);
+			}
+			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = rp.parseRecord(false);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record = new BatchRecord(key, r, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				}
+				else {
+					record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				}
+			}
+			else {
+				record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				executor.setRowError();
+			}
+			parent.setSent(index);
+			AsyncBatch.onRecord(listener, record, index);
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (! parent.exchangeSent(index)) {
+				BatchRecord record = new BatchRecord(key, null, ResultCode.NO_RESPONSE, true, true);
+				AsyncBatch.onRecord(listener, record, index);
+			}
+		}
+	}
+
+	public static class UDFCommand extends AsyncBaseCommand {
+		private final BatchAttr attr;
+		private final BatchRecord record;
+		private final String packageName;
+		private final String functionName;
+		private final byte[] argBytes;
+
+		public UDFCommand(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchAttr attr,
+			BatchRecord record,
+			String packageName,
+			String functionName,
+			byte[] argBytes,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, true);
+			this.attr = attr;
+			this.record = record;
+			this.packageName = packageName;
+			this.functionName = functionName;
+			this.argBytes = argBytes;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setUdf(policy, attr, key, packageName, functionName, argBytes);
+		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
+			if (rp.resultCode == ResultCode.OK) {
+				record.setRecord(rp.parseRecord(false));
+			}
+			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+				Record r = rp.parseRecord(false);
+				String m = r.getString("FAILURE");
+
+				if (m != null) {
+					// Need to store record because failure bin contains an error message.
+					record.record = r;
+					record.resultCode = rp.resultCode;
+					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
+					executor.setRowError();
+				}
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				executor.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
 	//-------------------------------------------------------
 	// Delete
 	//-------------------------------------------------------

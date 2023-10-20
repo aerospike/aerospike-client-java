@@ -97,7 +97,7 @@ public class TestAsyncUDF extends TestAsync {
 	public void asyncBatchUDF() {
 		Key[] keys = new Key[] {
 			new Key(args.namespace, args.set, 20000),
-			new Key(args.namespace, args.set, 20001)
+			new Key(args.namespace, args.set, 20003)
 		};
 
 		client.delete(null, null, keys);
@@ -121,6 +121,51 @@ public class TestAsyncUDF extends TestAsync {
 			}
 
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				setError(ae);
+				notifyComplete();
+			}
+		}, null, null, keys, "record_example", "writeBin", Value.get("B5"), Value.get("value5"));
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchUDFSeq() {
+		Key[] keys = new Key[] {
+			new Key(args.namespace, args.set, 20000),
+			new Key(args.namespace, args.set, 20003)
+		};
+
+		client.delete(null, null, keys);
+
+		client.execute(null, new BatchRecordSequenceListener() {
+			int count;
+
+			public void onRecord(BatchRecord record, int index) {
+				count++;
+
+				if (!assertTrue(index >= 0 && index <= 1)) {
+					notifyComplete();
+					return;
+				}
+
+				if (!assertTrue(record.resultCode == 0)) {
+					notifyComplete();
+					return;
+				}
+
+				if (!assertNotNull(record.record)) {
+					notifyComplete();
+					return;
+				}
+			}
+
+			public void onSuccess() {
+				assertEquals(2, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException ae) {
 				setError(ae);
 				notifyComplete();
 			}

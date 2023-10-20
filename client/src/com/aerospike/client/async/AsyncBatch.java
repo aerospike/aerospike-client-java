@@ -26,12 +26,10 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
@@ -720,50 +718,6 @@ public final class AsyncBatch {
 	// UDFArray
 	//-------------------------------------------------------
 
-	public static final class UDFArrayExecutor extends AsyncBatchExecutor {
-		private final BatchRecordArrayListener listener;
-		private final BatchRecord[] recordArray;
-
-		public UDFArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.recordArray = new BatchRecord[keys.length];
-
-			for (int i = 0; i < keys.length; i++) {
-				this.recordArray[i] = new BatchRecord(keys[i], attr.hasWrite);
-			}
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, recordArray, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new UDFArrayCommand(this, batchNode, policy, keys, packageName, functionName, argBytes, recordArray, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(recordArray, getStatus());
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(recordArray, ae);
-		}
-	}
-
 	public static final class UDFArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String packageName;
@@ -861,56 +815,7 @@ public final class AsyncBatch {
 	// UDFSequence
 	//-------------------------------------------------------
 
-	public static final class UDFSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchRecordSequenceListener listener;
-		private final boolean[] sent;
-
-		public UDFSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.sent = new boolean[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new UDFSequenceCommand(this, batchNode, policy, keys, packageName, functionName, argBytes, sent, listener, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		@Override
-		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
-			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
-			sent[index] = true;
-			AsyncBatch.onRecord(listener, record, index);
-		}
-
-		@Override
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		@Override
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class UDFSequenceCommand extends AsyncBatchCommand {
+	public static final class UDFSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String packageName;
 		private final String functionName;

@@ -3152,7 +3152,28 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(udfPolicy);
 
-		new AsyncBatch.UDFArrayExecutor(eventLoop, cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+		BatchRecord[] records = new BatchRecord[keys.length];
+
+		for (int i = 0; i < keys.length; i++) {
+			records[i] = new BatchRecord(keys[i], attr.hasWrite);
+		}
+
+		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(eventLoop, cluster, listener, records);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, records, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			System.out.println(batchNode.node.toString() + ' ' + batchNode.offsetsSize);
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.UDFCommand(executor, cluster, batchPolicy, attr, records[i], packageName, functionName, argBytes, batchNode.node);
+			}
+			else {
+				commands[count++] = new AsyncBatch.UDFArrayCommand(executor, batchNode, batchPolicy, keys, packageName, functionName, argBytes, records, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	/**
@@ -3210,7 +3231,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		BatchAttr attr = new BatchAttr();
 		attr.setUDF(udfPolicy);
 
-		new AsyncBatch.UDFSequenceExecutor(eventLoop, cluster, batchPolicy, listener, keys, packageName, functionName, argBytes, attr);
+		boolean[] sent = new boolean[keys.length];
+		AsyncBatchExecutor.BatchRecordSequence executor = new AsyncBatchExecutor.BatchRecordSequence(eventLoop, cluster, listener, sent);
+		List<BatchNode> batchNodes = BatchNodeList.generate(cluster, batchPolicy, keys, null, attr.hasWrite, executor);
+		AsyncCommand[] commands = new AsyncCommand[batchNodes.size()];
+		int count = 0;
+
+		for (BatchNode batchNode : batchNodes) {
+			if (batchNode.offsetsSize == 1) {
+				int i = batchNode.offsets[0];
+				commands[count++] = new AsyncBatchSingle.UDFSequenceCommand(executor, cluster, batchPolicy, keys[i], attr, packageName, functionName, argBytes, batchNode.node, listener, i);
+			}
+			else {
+				commands[count++] = new AsyncBatch.UDFSequenceCommand(executor, batchNode, batchPolicy, keys, packageName, functionName, argBytes, sent, listener, attr);
+			}
+		}
+		executor.execute(commands);
 	}
 
 	//----------------------------------------------------------
