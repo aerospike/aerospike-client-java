@@ -31,7 +31,6 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.BatchAttr;
-import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
@@ -255,14 +254,12 @@ public final class AsyncBatchSingle {
 		@Override
 		protected final boolean parseResult() {
 			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+			Record record = null;
 
 			if (rp.resultCode == ResultCode.OK) {
-				Record record = rp.parseRecord(isOperation);
-				listener.onRecord(key, record);
+				record = rp.parseRecord(isOperation);
 			}
-			else {
-				listener.onRecord(key, null);
-			}
+			AsyncBatch.onRecord(listener, key, record);
 			return true;
 		}
 	}
@@ -299,13 +296,7 @@ public final class AsyncBatchSingle {
 			if (rp.resultCode == ResultCode.OK) {
 				record = rp.parseRecord(false);
 			}
-
-			try {
-				listener.onRecord(key, record);
-			}
-			catch (Throwable e) {
-				Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
-			}
+			AsyncBatch.onRecord(listener, key, record);
 			return true;
 		}
 	}
@@ -370,15 +361,14 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			int resultCode = dataBuffer[5] & 0xFF;
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
-			if (opCount > 0) {
+			if (rp.opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
 			try {
-				listener.onExists(key, resultCode == 0);
+				listener.onExists(key, rp.resultCode == 0);
 			}
 			catch (Throwable e) {
 				Log.error("Unexpected exception from onExists(): " + Util.getErrorMessage(e));
@@ -412,14 +402,13 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			int resultCode = dataBuffer[5] & 0xFF;
-			int opCount = Buffer.bytesToShort(dataBuffer, 20);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
-			if (opCount > 0) {
+			if (rp.opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
-			existsArray[index] = resultCode == 0;
+			existsArray[index] = rp.resultCode == 0;
 			return true;
 		}
 	}
@@ -468,7 +457,8 @@ public final class AsyncBatchSingle {
 				record = new BatchRecord(key, rp.parseRecord(true), attr.hasWrite);
 			}
 			else {
-				record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
+				record = new BatchRecord(key, null, rp.resultCode,
+					Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 				executor.setRowError();
 			}
 			parent.setSent(index);
@@ -680,10 +670,10 @@ public final class AsyncBatchSingle {
 				if (m != null) {
 					// Need to store record because failure bin contains an error message.
 					record.record = r;
-					record.resultCode = rp.resultCode;
-					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
-					executor.setRowError();
 				}
+				record.resultCode = rp.resultCode;
+				record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
+				executor.setRowError();
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
@@ -756,6 +746,7 @@ public final class AsyncBatchSingle {
 				else {
 					record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
 				}
+				executor.setRowError();
 			}
 			else {
 				record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
@@ -820,10 +811,10 @@ public final class AsyncBatchSingle {
 				if (m != null) {
 					// Need to store record because failure bin contains an error message.
 					record.record = r;
-					record.resultCode = rp.resultCode;
-					record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
-					executor.setRowError();
 				}
+				record.resultCode = rp.resultCode;
+				record.inDoubt = Command.batchInDoubt(true, commandSentCounter);
+				executor.setRowError();
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
@@ -874,17 +865,14 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			int resultCode = dataBuffer[5] & 0xFF;
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
-
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 			BatchRecord record;
 
-			if (resultCode == 0) {
-				record = new BatchRecord(key, new Record(null, generation, expiration), true);
+			if (rp.resultCode == 0) {
+				record = new BatchRecord(key, new Record(null, rp.generation, rp.expiration), true);
 			}
 			else {
-				record = new BatchRecord(key, null, resultCode, Command.batchInDoubt(true, commandSentCounter), true);
+				record = new BatchRecord(key, null, rp.resultCode, Command.batchInDoubt(true, commandSentCounter), true);
 				executor.setRowError();
 			}
 			parent.setSent(index);
@@ -955,15 +943,13 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			int resultCode = dataBuffer[5] & 0xFF;
-			int generation = Buffer.bytesToInt(dataBuffer, 6);
-			int expiration = Buffer.bytesToInt(dataBuffer, 10);
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 
-			if (resultCode == 0) {
-				record.setRecord(new Record(null, generation, expiration));
+			if (rp.resultCode == 0) {
+				record.setRecord(new Record(null, rp.generation, rp.expiration));
 			}
 			else {
-				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
 			return true;

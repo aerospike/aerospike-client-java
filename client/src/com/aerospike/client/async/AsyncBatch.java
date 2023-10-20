@@ -991,6 +991,15 @@ public final class AsyncBatch {
 		abstract List<BatchNode> generateBatchNodes();
 	}
 
+	public static void onRecord(RecordSequenceListener listener, Key key, Record record) {
+		try {
+			listener.onRecord(key, record);
+		}
+		catch (Throwable e) {
+			Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
+		}
+	}
+
 	public static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
 		try {
 			listener.onRecord(record, index);
