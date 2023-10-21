@@ -249,7 +249,7 @@ public class AuthTokenManager implements Closeable {
 
 	private AccessToken parseToken(String token) throws IOException {
 		String claims = token.split("\\.")[1];
-		byte[] decodedClaims = Base64.getDecoder().decode(claims);
+		byte[] decodedClaims = Base64.getUrlDecoder().decode(claims);
 		@SuppressWarnings("unchecked")
 		Map<Object, Object> parsedClaims = objectMapper.readValue(decodedClaims, Map.class);
 		Object expiryToken = parsedClaims.get("exp");
