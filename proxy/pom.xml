@@ -22,7 +22,7 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-proxy-stub</artifactId>
-      <version>0.10.0</version>
+      <version>1.0.1</version>
     </dependency>
 
     <dependency>
