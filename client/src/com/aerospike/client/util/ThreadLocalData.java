@@ -60,13 +60,13 @@ public final class ThreadLocalData {
 			}*/
 
 			if (Log.debugEnabled()) {
-				Log.debug("Thread " + Thread.currentThread().threadId() + " allocate buffer on heap " + size);
+				Log.debug("Thread " + Thread.currentThread().getName() + " allocate buffer on heap " + size);
 			}
 			return new byte[size];
 		}
 
 		if (Log.debugEnabled()) {
-			Log.debug("Thread " + Thread.currentThread().threadId() + " resize buffer to " + size);
+			Log.debug("Thread " + Thread.currentThread().getName() + " resize buffer to " + size);
 		}
 		BufferThreadLocal.set(new byte[size]);
 		return BufferThreadLocal.get();

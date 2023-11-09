@@ -19,7 +19,6 @@ package com.aerospike.client.util;
 import static com.aerospike.client.Value.MapValue.getMapOrder;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -241,7 +240,8 @@ public final class Packer {
 			return;
 		}
 
-		if (obj instanceof Value value) {
+		if (obj instanceof Value) {
+			Value value = (Value)obj;
 			value.pack(this);
 			return;
 		}
