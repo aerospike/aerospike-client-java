@@ -1057,13 +1057,17 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private void processRecoverQueue() {
-		// Thread local can be used here because this method
-		// is only called from the cluster tend thread.
-		byte[] buf = ThreadLocalData.getBuffer();
+		byte[] buf = null;
 		ConnectionRecover last = recoverQueue.peekLast();
 		ConnectionRecover cs;
 
 		while ((cs = recoverQueue.pollFirst()) != null) {
+			if (buf == null) {
+				// Thread local can be used here because this method
+				// is only called from the cluster tend thread.
+				buf = ThreadLocalData.getBuffer();
+			}
+
 			if (cs.drain(buf)) {
 				recoverCount.getAndDecrement();
 			}
