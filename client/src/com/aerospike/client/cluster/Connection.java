@@ -358,6 +358,10 @@ public final class Connection implements Closeable {
 			}
 		}
 
+		if (bufferOrig != null) {
+			buffer = bufferOrig;
+			bufferOrig = null;
+		}
 		BufferPool.Instance.put(buffer);
 	}
 
