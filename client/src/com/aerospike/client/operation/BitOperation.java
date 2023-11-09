@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -399,37 +399,55 @@ public final class BitOperation {
 		boolean signed,
 		BitOverflowAction action
 	) {
-		Packer packer = new Packer();
-		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
-		// Pack.init(packer, ctx);
-		packer.packArrayBegin(6);
-		packer.packInt(command);
-		packer.packInt(bitOffset);
-		packer.packInt(bitSize);
-		packer.packLong(value);
-		packer.packInt(policy.flags);
-
 		int flags = action.flags;
 
 		if (signed) {
 			flags |= INT_FLAGS_SIGNED;
 		}
-		packer.packInt(flags);
-		return packer.toByteArray();
+
+		Packer packer = new Packer();
+
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.init(packer, ctx);
+			packer.packArrayBegin(6);
+			packer.packInt(command);
+			packer.packInt(bitOffset);
+			packer.packInt(bitSize);
+			packer.packLong(value);
+			packer.packInt(policy.flags);
+			packer.packInt(flags);
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
+		}
+		return packer.getBuffer();
 	}
 
 	private static byte[] packGetInt(int bitOffset, int bitSize, boolean signed) {
 		Packer packer = new Packer();
-		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
-		// Pack.init(packer, ctx);
-		packer.packArrayBegin(signed ? 4 : 3);
-		packer.packInt(GET_INT);
-		packer.packInt(bitOffset);
-		packer.packInt(bitSize);
 
-		if (signed) {
-			packer.packInt(INT_FLAGS_SIGNED);
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.init(packer, ctx);
+			packer.packArrayBegin(signed ? 4 : 3);
+			packer.packInt(GET_INT);
+			packer.packInt(bitOffset);
+			packer.packInt(bitSize);
+
+			if (signed) {
+				packer.packInt(INT_FLAGS_SIGNED);
+			}
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
 		}
-		return packer.toByteArray();
+		return packer.getBuffer();
 	}
 }

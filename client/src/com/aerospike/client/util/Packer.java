@@ -42,7 +42,9 @@ public final class Packer {
 		try {
 			Packer packer = new Packer();
 			packer.packValueArray(val);
-			return packer.toByteArray();
+			packer.createBuffer();
+			packer.packValueArray(val);
+			return packer.getBuffer();
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -53,7 +55,9 @@ public final class Packer {
 		try {
 			Packer packer = new Packer();
 			packer.packList(val);
-			return packer.toByteArray();
+			packer.createBuffer();
+			packer.packList(val);
+			return packer.getBuffer();
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -64,7 +68,9 @@ public final class Packer {
 		try {
 			Packer packer = new Packer();
 			packer.packMap(val, order);
-			return packer.toByteArray();
+			packer.createBuffer();
+			packer.packMap(val, order);
+			return packer.getBuffer();
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -75,7 +81,9 @@ public final class Packer {
 		try {
 			Packer packer = new Packer();
 			packer.packMap(val, order);
-			return packer.toByteArray();
+			packer.createBuffer();
+			packer.packMap(val, order);
+			return packer.getBuffer();
 		}
 		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
@@ -84,10 +92,9 @@ public final class Packer {
 
 	private byte[] buffer;
 	private int offset;
-	private ArrayList<BufferItem> bufferList;
 
 	public Packer() {
-		this.buffer = ThreadLocalData.getBuffer();
+		// Default to null buffer in estimate buffer size mode.
 	}
 
 	public void packValueArray(Value[] values) {
@@ -234,8 +241,7 @@ public final class Packer {
 			return;
 		}
 
-		if (obj instanceof Value) {
-			Value value = (Value)obj;
+		if (obj instanceof Value value) {
 			value.pack(this);
 			return;
 		}
@@ -411,8 +417,9 @@ public final class Packer {
 		int size = Buffer.estimateSizeUtf8(val);
 		packStringBegin(size);
 
-		if (offset + size > buffer.length) {
-			resize(size);
+		if (buffer == null) {
+			offset += size;
+			return;
 		}
 		offset += Buffer.stringToUtf8(val, buffer, offset);
 	}
@@ -421,8 +428,9 @@ public final class Packer {
 		int size = Buffer.estimateSizeUtf8(val) + 1;
 		packStringBegin(size);
 
-		if (offset + size > buffer.length) {
-			resize(size);
+		if (buffer == null) {
+			offset += size;
+			return;
 		}
 		buffer[offset++] = (byte)ParticleType.STRING;
 		offset += Buffer.stringToUtf8(val, buffer, offset);
@@ -444,16 +452,18 @@ public final class Packer {
 	}
 
 	public void packByteArray(byte[] src, int srcOffset, int srcLength) {
-	   	if (offset + srcLength > buffer.length) {
-			resize(srcLength);
+		if (buffer == null) {
+			offset += srcLength;
+			return;
 		}
  		System.arraycopy(src, srcOffset, buffer, offset, srcLength);
 		offset += srcLength;
 	}
 
 	public void packDouble(double val) {
-		if (offset + 9 > buffer.length) {
-			resize(9);
+		if (buffer == null) {
+			offset += 9;
+			return;
 		}
 		buffer[offset++] = (byte)0xcb;
 		Buffer.longToBytes(Double.doubleToLongBits(val), buffer, offset);
@@ -461,8 +471,9 @@ public final class Packer {
 	}
 
 	public void packFloat(float val) {
-		if (offset + 5 > buffer.length) {
-			resize(5);
+		if (buffer == null) {
+			offset += 5;
+			return;
 		}
 		buffer[offset++] = (byte)0xca;
 		Buffer.intToBytes(Float.floatToIntBits(val), buffer, offset);
@@ -470,8 +481,9 @@ public final class Packer {
 	}
 
 	private void packLong(int type, long val) {
-		if (offset + 9 > buffer.length) {
-			resize(9);
+		if (buffer == null) {
+			offset += 9;
+			return;
 		}
 		buffer[offset++] = (byte)type;
 		Buffer.longToBytes(val, buffer, offset);
@@ -479,8 +491,9 @@ public final class Packer {
 	}
 
 	private void packInt(int type, int val) {
-		if (offset + 5 > buffer.length) {
-			resize(5);
+		if (buffer == null) {
+			offset += 5;
+			return;
 		}
 		buffer[offset++] = (byte)type;
 		Buffer.intToBytes(val, buffer, offset);
@@ -488,34 +501,28 @@ public final class Packer {
 	}
 
 	private void packShort(int type, int val) {
-		if (offset + 3 > buffer.length) {
-			resize(3);
+		if (buffer == null) {
+			offset += 3;
+			return;
 		}
 		buffer[offset++] = (byte)type;
 		Buffer.shortToBytes(val, buffer, offset);
 		offset += 2;
 	}
 
-	public void packRawShort(int val) {
-		// WARNING. This method is not compatible with message pack standard.
-		if (offset + 2 > buffer.length) {
-			resize(2);
-		}
-		Buffer.shortToBytes(val, buffer, offset);
-		offset += 2;
-	}
-
 	private void packByte(int type, int val) {
-		if (offset + 2 > buffer.length) {
-			resize(2);
+		if (buffer == null) {
+			offset += 2;
+			return;
 		}
 		buffer[offset++] = (byte)type;
 		buffer[offset++] = (byte)val;
 	}
 
 	public void packBoolean(boolean val) {
-		if (offset + 1 > buffer.length) {
-			resize(1);
+		if (buffer == null) {
+			offset++;
+			return;
 		}
 
 		if (val) {
@@ -527,15 +534,17 @@ public final class Packer {
 	}
 
 	public void packNil() {
-		if (offset >= buffer.length) {
-			resize(1);
+		if (buffer == null) {
+			offset++;
+			return;
 		}
 		buffer[offset++] = (byte)0xc0;
 	}
 
 	public void packInfinity() {
-		if (offset + 3 > buffer.length) {
-			resize(3);
+		if (buffer == null) {
+			offset += 3;
+			return;
 		}
 		buffer[offset++] = (byte)0xd4;
 		buffer[offset++] = (byte)0xff;
@@ -543,8 +552,9 @@ public final class Packer {
 	}
 
 	public void packWildcard() {
-		if (offset + 3 > buffer.length) {
-			resize(3);
+		if (buffer == null) {
+			offset += 3;
+			return;
 		}
 		buffer[offset++] = (byte)0xd4;
 		buffer[offset++] = (byte)0xff;
@@ -552,56 +562,19 @@ public final class Packer {
 	}
 
 	public void packByte(int val) {
-		if (offset >= buffer.length) {
-			resize(1);
+		if (buffer == null) {
+			offset++;
+			return;
 		}
 		buffer[offset++] = (byte)val;
 	}
 
-	private void resize(int size) {
-		if (bufferList == null) {
-			bufferList = new ArrayList<BufferItem>();
-		}
-		bufferList.add(new BufferItem(buffer, offset));
-
-		if (size < buffer.length) {
-			size = buffer.length;
-		}
-		buffer = new byte[size];
+	public void createBuffer() {
+		buffer = new byte[offset];
 		offset = 0;
 	}
 
-	public byte[] toByteArray() {
-		if (bufferList != null) {
-			int size = offset;
-			for (BufferItem item : bufferList) {
-				size += item.length;
-			}
-
-			byte[] target = new byte[size];
-			size = 0;
-			for (BufferItem item : bufferList) {
-				System.arraycopy(item.buffer, 0, target, size, item.length);
-				size += item.length;
-			}
-
-			System.arraycopy(buffer, 0, target, size, offset);
-			return target;
-		}
-		else {
-			byte[] target = new byte[offset];
-			System.arraycopy(buffer, 0, target, 0, offset);
-			return target;
-		}
-	}
-
-	private static final class BufferItem {
-		private final byte[] buffer;
-		private final int length;
-
-		private BufferItem(byte[] buffer, int length) {
-			this.buffer = buffer;
-			this.length = length;
-		}
+	public byte[] getBuffer() {
+		return buffer;
 	}
 }

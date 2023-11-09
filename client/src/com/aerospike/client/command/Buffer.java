@@ -157,6 +157,16 @@ public final class Buffer {
 		return Utf8.encodedLength(s);
 	}
 
+	/**
+	 * Rough conservative estimate of the size needed to store the string in UTF-8.
+	 */
+	public static int estimateSizeUtf8Quick(String s) {
+		if (s == null) {
+			return 0;
+		}
+		return s.length() * 3;
+	}
+
 	public static byte[] stringToUtf8(String s) {
 		if (s == null || s.length() == 0) {
 			return new byte[0];

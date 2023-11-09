@@ -2219,11 +2219,6 @@ public class Command {
 	}
 
 	protected void sizeBuffer() {
-		dataBuffer = ThreadLocalData.getBuffer();
-
-		if (dataOffset > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
-		}
 	}
 
 	//--------------------------------------------------

@@ -40,6 +40,7 @@ import javax.security.auth.x500.X500Principal;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.TlsPolicy;
+import com.aerospike.client.util.BufferPool;
 import com.aerospike.client.util.Util;
 
 /**
@@ -50,6 +51,8 @@ public final class Connection implements Closeable {
 	private final InputStream in;
 	private final OutputStream out;
 	protected final Pool pool;
+	private byte[] buffer;
+	private byte[] bufferOrig;
 	private volatile long lastUsed;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
@@ -77,6 +80,7 @@ public final class Connection implements Closeable {
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
+				buffer = BufferPool.Instance.get();
 			}
 			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.
@@ -150,6 +154,7 @@ public final class Connection implements Closeable {
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
+				buffer = BufferPool.Instance.get();
 			}
 			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.
@@ -300,12 +305,40 @@ public final class Connection implements Closeable {
 		return in;
 	}
 
+	public byte[] sizeBuffer(int size) {
+		if (size <= buffer.length) {
+			return buffer;
+		}
+
+		if (size <= BufferPool.MaxSize) {
+			byte[] tmp = buffer;
+			buffer = BufferPool.Instance.get(size);
+			BufferPool.Instance.put(tmp);
+			return buffer;
+		}
+
+		buffer = new byte[size];
+
+		if (bufferOrig == null) {
+			bufferOrig = buffer;
+		}
+		return buffer;
+	}
+
 	public long getLastUsed() {
 		return lastUsed;
 	}
 
 	public void updateLastUsed() {
 		lastUsed = System.nanoTime();
+	}
+
+	public void refresh() {
+		if (bufferOrig != null) {
+			buffer = bufferOrig;
+			bufferOrig = null;
+		}
+		updateLastUsed();
 	}
 
 	/**
@@ -320,10 +353,12 @@ public final class Connection implements Closeable {
 			socket.close();
 		}
 		catch (Throwable e) {
-			if (Log.debugEnabled()) {
-				Log.debug("Error closing socket: " + Util.getErrorMessage(e));
+			if (Log.errorEnabled()) {
+				Log.error("Error closing socket: " + Util.getErrorMessage(e));
 			}
 		}
+
+		BufferPool.Instance.put(buffer);
 	}
 
 	public static final class ReadTimeout extends RuntimeException {

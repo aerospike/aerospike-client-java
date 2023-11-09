@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,22 +23,30 @@ import com.aerospike.client.util.Packer;
 public abstract class CDT {
 	protected static byte[] packRangeOperation(int command, int returnType, Value begin, Value end, CTX[] ctx) {
 		Packer packer = new Packer();
-		Pack.init(packer, ctx);
-		packer.packArrayBegin((end != null)? 4 : 3);
-		packer.packInt(command);
-		packer.packInt(returnType);
 
-		if (begin != null) {
-			begin.pack(packer);
-		}
-		else {
-			packer.packNil();
-		}
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			Pack.init(packer, ctx);
+			packer.packArrayBegin((end != null) ? 4 : 3);
+			packer.packInt(command);
+			packer.packInt(returnType);
 
-		if (end != null) {
-			end.pack(packer);
+			if (begin != null) {
+				begin.pack(packer);
+			} else {
+				packer.packNil();
+			}
+
+			if (end != null) {
+				end.pack(packer);
+			}
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
 		}
-		return packer.toByteArray();
+		return packer.getBuffer();
 	}
 
 	protected static void init(Packer packer, CTX[] ctx, int command, int count, int flag) {

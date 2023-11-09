@@ -26,8 +26,8 @@ import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.InfoPolicy;
+import com.aerospike.client.util.BufferPool;
 import com.aerospike.client.util.Crypto;
-import com.aerospike.client.util.ThreadLocalData;
 
 /**
  * Access server's info monitoring protocol.
@@ -328,14 +328,9 @@ public class Info {
 	 * @param command		command sent to server
 	 */
 	public Info(Connection conn, String command) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
+		int size = Buffer.estimateSizeUtf8Quick(command) + 9;
 
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if ((command.length() * 2 + 9) > buffer.length) {
-			offset = Buffer.estimateSizeUtf8(command) + 9;
-			resizeBuffer(offset);
-		}
+		buffer = conn.sizeBuffer(size);
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -354,25 +349,13 @@ public class Info {
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, String... commands) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-
-		// First, do quick conservative buffer size estimate.
-		offset = 8;
+		int size = 8;
 
 		for (String command : commands) {
-			offset += command.length() * 2 + 1;
+			size += Buffer.estimateSizeUtf8Quick(command) + 1;
 		}
 
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if (offset > buffer.length) {
-			offset = 8;
-
-			for (String command : commands) {
-				offset += Buffer.estimateSizeUtf8(command) + 1;
-			}
-			resizeBuffer(offset);
-		}
+		buffer = conn.sizeBuffer(size);
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -392,25 +375,13 @@ public class Info {
 	 * @param commands		commands sent to server
 	 */
 	public Info(Connection conn, List<String> commands) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
-
-		// First, do quick conservative buffer size estimate.
-		offset = 8;
+		int size = 8;
 
 		for (String command : commands) {
-			offset += command.length() * 2 + 1;
+			size += Buffer.estimateSizeUtf8Quick(command) + 1;
 		}
 
-		// If conservative estimate may be exceeded, get exact estimate
-		// to preserve memory and resize buffer.
-		if (offset > buffer.length) {
-			offset = 8;
-
-			for (String command : commands) {
-				offset += Buffer.estimateSizeUtf8(command) + 1;
-			}
-			resizeBuffer(offset);
-		}
+		buffer = conn.sizeBuffer(size);
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -429,7 +400,7 @@ public class Info {
 	 * @param conn			connection to server node
 	 */
 	public Info(Connection conn) throws AerospikeException {
-		buffer = ThreadLocalData.getBuffer();
+		buffer = conn.sizeBuffer(8);
 		offset = 8;  // Skip size field.
 		sendCommand(conn);
 	}
@@ -461,20 +432,14 @@ public class Info {
 
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
-			resizeBuffer(length);
+			buffer = conn.sizeBuffer(length);
 			sb = new StringBuilder(length);
 			conn.readFully(buffer, length);
-			conn.updateLastUsed();
+			conn.refresh();
 			offset = 0;
 		}
 		catch (IOException ioe) {
 			throw new AerospikeException.Connection(ioe);
-		}
-	}
-
-	private void resizeBuffer(int size) {
-		if (size > buffer.length) {
-			buffer = ThreadLocalData.resizeBuffer(size);
 		}
 	}
 

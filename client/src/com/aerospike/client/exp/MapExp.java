@@ -128,36 +128,20 @@ public final class MapExp {
 	 * }</pre>
 	 */
 	public static Exp put(MapPolicy policy, Exp key, Exp value, Exp bin, CTX... ctx) {
-		Packer packer = new Packer();
+		byte[] bytes;
 
 		if (policy.flags != 0) {
-			Pack.init(packer, ctx);
-			packer.packArrayBegin(5);
-			packer.packInt(PUT);
-			key.pack(packer);
-			value.pack(packer);
-			packer.packInt(policy.attributes);
-			packer.packInt(policy.flags);
+			bytes = Pack.pack(PUT, key, value, policy.attributes, policy.flags, ctx);
 		}
 		else {
 			if (policy.itemCommand == REPLACE) {
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(3);
-				packer.packInt(policy.itemCommand);
-				key.pack(packer);
-				value.pack(packer);
+				bytes = Pack.pack(policy.itemCommand, key, value, ctx);
 			}
 			else {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(4);
-				packer.packInt(policy.itemCommand);
-				key.pack(packer);
-				value.pack(packer);
-				packer.packInt(policy.attributes);
+				bytes = Pack.pack(policy.itemCommand, key, value, policy.attributes, ctx);
 			}
 		}
-		byte[] bytes = packer.toByteArray();
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -165,33 +149,20 @@ public final class MapExp {
 	 * Create expression that writes each map item to a map bin.
 	 */
 	public static Exp putItems(MapPolicy policy, Exp map, Exp bin, CTX... ctx) {
-		Packer packer = new Packer();
+		byte[] bytes;
 
 		if (policy.flags != 0) {
-			Pack.init(packer, ctx);
-			packer.packArrayBegin(4);
-			packer.packInt(PUT_ITEMS);
-			map.pack(packer);
-			packer.packInt(policy.attributes);
-			packer.packInt(policy.flags);
+			bytes = Pack.pack(PUT_ITEMS, map, policy.attributes, policy.flags, ctx);
 		}
 		else {
 			if (policy.itemsCommand == REPLACE_ITEMS) {
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(2);
-				packer.packInt(policy.itemsCommand);
-				map.pack(packer);
+				bytes = Pack.pack(policy.itemsCommand, map, ctx);
 			}
 			else {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(3);
-				packer.packInt(policy.itemsCommand);
-				map.pack(packer);
-				packer.packInt(policy.attributes);
+				bytes = Pack.pack(policy.itemsCommand, map, policy.attributes, ctx);
 			}
 		}
-		byte[] bytes = packer.toByteArray();
 		return addWrite(bin, bytes, ctx);
 	}
 

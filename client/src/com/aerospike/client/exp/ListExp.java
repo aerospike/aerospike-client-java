@@ -510,22 +510,30 @@ public final class ListExp {
 
 	protected static byte[] packRangeOperation(int command, int returnType, Exp begin, Exp end, CTX[] ctx) {
 		Packer packer = new Packer();
-		Pack.init(packer, ctx);
-		packer.packArrayBegin((end != null)? 4 : 3);
-		packer.packInt(command);
-		packer.packInt(returnType);
 
-		if (begin != null) {
-			begin.pack(packer);
-		}
-		else {
-			packer.packNil();
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			Pack.init(packer, ctx);
+			packer.packArrayBegin((end != null) ? 4 : 3);
+			packer.packInt(command);
+			packer.packInt(returnType);
+
+			if (begin != null) {
+				begin.pack(packer);
+			} else {
+				packer.packNil();
+			}
+
+			if (end != null) {
+				end.pack(packer);
+			}
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
 		}
 
-		if (end != null) {
-			end.pack(packer);
-		}
-		return packer.toByteArray();
+		return packer.getBuffer();
 	}
-
 }
