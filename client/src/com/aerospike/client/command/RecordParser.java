@@ -26,7 +26,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
-import com.aerospike.client.util.ThreadLocalData;
 
 public final class RecordParser {
 	public final byte[] dataBuffer;

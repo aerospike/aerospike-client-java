@@ -264,7 +264,12 @@ public final class Statement {
 	 * Return taskId if set by user. Otherwise return a new taskId.
 	 */
 	public long prepareTaskId() {
-		return (taskId != 0)? taskId : RandomShift.instance().nextLong();
+		if (taskId != 0) {
+			return taskId;
+		}
+
+		RandomShift random = new RandomShift();
+		return random.nextLong();
 	}
 
 	/**

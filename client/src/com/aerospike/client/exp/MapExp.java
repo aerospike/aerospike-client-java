@@ -21,7 +21,6 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.MapPolicy;
 import com.aerospike.client.cdt.MapReturnType;
 import com.aerospike.client.util.Pack;
-import com.aerospike.client.util.Packer;
 
 /**
  * Map expression generator. See {@link com.aerospike.client.exp.Exp}.

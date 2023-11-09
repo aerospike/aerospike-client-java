@@ -39,7 +39,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	}
 
 	public void run() {
-		RandomShift random = RandomShift.instance();
+		RandomShift random = new RandomShift();
 
 		while (valid) {
 			runCommand(random);

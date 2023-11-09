@@ -28,7 +28,6 @@ import com.aerospike.client.cluster.ConnectionRecover;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {

@@ -51,7 +51,6 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
-import com.aerospike.client.util.ThreadLocalData;
 
 public class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.

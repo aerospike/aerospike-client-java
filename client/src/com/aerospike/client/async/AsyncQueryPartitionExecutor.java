@@ -26,13 +26,14 @@ import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.PartitionTracker;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.util.RandomShift;
+import com.aerospike.client.query.TaskGen;
 
 public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 	private final QueryPolicy policy;
 	private final RecordSequenceListener listener;
 	private final Statement statement;
 	private final PartitionTracker tracker;
+	private final TaskGen task;
 	private long taskId;
 
 	public AsyncQueryPartitionExecutor(
@@ -50,7 +51,8 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		this.tracker = tracker;
 
 		cluster.addTran();
-		taskId = statement.prepareTaskId();
+		task = new TaskGen(statement);
+		taskId = task.getId();
 		tracker.setSleepBetweenRetries(0);
 		queryPartitions();
 	}
@@ -82,7 +84,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 					public void run() {
 						try {
 							reset();
-							taskId = RandomShift.instance().nextLong();
+							taskId = task.nextId();
 							queryPartitions();
 						}
 						catch (AerospikeException ae) {
@@ -96,7 +98,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 			}
 			else {
 				reset();
-				taskId = RandomShift.instance().nextLong();
+				taskId = task.nextId();
 				queryPartitions();
 			}
 		}

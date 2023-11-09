@@ -59,7 +59,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 	}
 
 	private void scanPartitions() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = new RandomShift().nextLong();
 		List<NodePartitions> nodePartitionsList = tracker.assignPartitionsToNodes(cluster, namespace);
 
 		AsyncScanPartition[] tasks = new AsyncScanPartition[nodePartitionsList.size()];

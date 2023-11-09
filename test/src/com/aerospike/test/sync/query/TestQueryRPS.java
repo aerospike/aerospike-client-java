@@ -138,7 +138,7 @@ public class TestQueryRPS extends TestSync {
 
 	@Test
 	public void scan() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = new RandomShift().nextLong();
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
@@ -190,7 +190,7 @@ public class TestQueryRPS extends TestSync {
 
 	@Test
 	public void scanAggregation() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = new RandomShift().nextLong();
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
@@ -220,7 +220,7 @@ public class TestQueryRPS extends TestSync {
 	@Ignore
 	@Test
 	public void query() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = new RandomShift().nextLong();
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);
@@ -278,7 +278,7 @@ public class TestQueryRPS extends TestSync {
 	@Ignore
 	@Test
 	public void queryAggregation() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = new RandomShift().nextLong();
 
 		Statement stmt = new Statement();
 		stmt.setNamespace(args.namespace);

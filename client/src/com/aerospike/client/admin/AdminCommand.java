@@ -34,7 +34,6 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.AuthMode;
-import com.aerospike.client.util.ThreadLocalData;
 
 public class AdminCommand {
 	// Commands

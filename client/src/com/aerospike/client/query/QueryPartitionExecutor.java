@@ -27,7 +27,6 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
-import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
@@ -77,7 +76,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	}
 
 	private void execute() {
-		long taskId = statement.prepareTaskId();
+		TaskGen task = new TaskGen(statement);
+		long taskId = task.getId();
 
 		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
@@ -140,7 +140,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			exception = null;
 
 			// taskId must be reset on next pass to avoid server duplicate query detection.
-			taskId = RandomShift.instance().nextLong();
+			taskId = task.nextId();
 		}
 	}
 
