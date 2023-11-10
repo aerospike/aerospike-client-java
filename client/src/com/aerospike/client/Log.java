@@ -16,8 +16,9 @@
  */
 package com.aerospike.client;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 /**
  * Aerospike client logging facility. Logs can be filtered and message callbacks
@@ -182,11 +183,12 @@ public final class Log {
 	}
 
 	private static class Standard implements Log.Callback {
-		private static final SimpleDateFormat Formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+		private static final DateTimeFormatter Formatter =
+			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss z").withZone(ZoneId.systemDefault());
 
 		@Override
 		public void log(Level level, String message) {
-			System.out.println(Formatter.format(Calendar.getInstance().getTime()) + ' ' + level + ' ' + message);
+			System.out.println(LocalDateTime.now().format(Formatter) + ' ' + level + ' ' + message);
 		}
 	}
 }

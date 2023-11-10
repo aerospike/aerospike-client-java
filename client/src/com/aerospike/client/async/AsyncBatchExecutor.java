@@ -305,7 +305,10 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	boolean done;
 	boolean error;
 
-	private AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, boolean hasResultCode) {
+	/**
+	 * For internal use only.
+	 */
+	protected AsyncBatchExecutor(EventLoop eventLoop, Cluster cluster, boolean hasResultCode) {
 		this.eventLoop = eventLoop;
 		this.cluster = cluster;
 		this.hasResultCode = hasResultCode;

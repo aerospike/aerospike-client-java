@@ -202,6 +202,7 @@ public class BatchProxy {
 		private final String[] binNames;
 		private final Operation[] ops;
 		private final int readAttr;
+		private Exception exc;
 
 		public GetArrayCommand(
 			GrpcCallExecutor executor,
@@ -234,11 +235,19 @@ public class BatchProxy {
 			if (resultCode == ResultCode.OK) {
 				records[parser.batchIndex] = parseRecord(parser);
 			}
+			else if (resultCode == ResultCode.INVALID_NAMESPACE) {
+				exc = new AerospikeException.InvalidNamespace(keys[parser.batchIndex].namespace, 1);
+			}
 		}
 
 		@Override
 		void onSuccess() {
-			listener.onSuccess(keys, records);
+			if (exc == null) {
+				listener.onSuccess(keys, records);
+			}
+			else {
+				listener.onFailure(new AerospikeException.BatchRecords(records, exc));
+			}
 		}
 
 		@Override
@@ -311,6 +320,7 @@ public class BatchProxy {
 		private final ExistsArrayListener listener;
 		private final Key[] keys;
 		private final boolean[] existsArray;
+		private Exception exc;
 
 		public ExistsArrayCommand(
 			GrpcCallExecutor executor,
@@ -336,12 +346,23 @@ public class BatchProxy {
 			if (parser.opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
-			existsArray[parser.batchIndex] = resultCode == 0;
+
+			if (resultCode == 0) {
+				existsArray[parser.batchIndex] = true;
+			}
+			else if (resultCode == ResultCode.INVALID_NAMESPACE) {
+				exc = new AerospikeException.InvalidNamespace(keys[parser.batchIndex].namespace, 1);
+			}
 		}
 
 		@Override
 		void onSuccess() {
-			listener.onSuccess(keys, existsArray);
+			if (exc == null) {
+				listener.onSuccess(keys, existsArray);
+			}
+			else {
+				listener.onFailure(new AerospikeException.BatchExists(existsArray, exc));
+			}
 		}
 
 		@Override
