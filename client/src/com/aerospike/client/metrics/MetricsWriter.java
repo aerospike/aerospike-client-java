@@ -21,9 +21,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
-import java.util.Date;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -39,8 +38,8 @@ import com.aerospike.client.util.Util;
  * will later be read and forwarded to OpenTelemetry by a separate offline application.
  */
 public final class MetricsWriter implements MetricsListener {
-	private static final SimpleDateFormat FilenameFormat = new SimpleDateFormat("yyyyMMddHHmmss");
-	private static final SimpleDateFormat TimestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final DateTimeFormatter FilenameFormat = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+	private static final DateTimeFormatter TimestampFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 	private static final int MinFileSize = 1000000;
 
 	private final String dir;
@@ -106,7 +105,7 @@ public final class MetricsWriter implements MetricsListener {
 		synchronized(this) {
 			if (enabled) {
 				sb.setLength(0);
-				sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
+				sb.append(LocalDateTime.now().format(TimestampFormat));
 				sb.append(" node");
 				writeNode(node);
 				writeLine();
@@ -134,14 +133,14 @@ public final class MetricsWriter implements MetricsListener {
 	}
 
 	private void open() throws IOException {
-		Date now = Calendar.getInstance().getTime();
-		String path = dir + File.separator + "metrics-" + FilenameFormat.format(now) + ".log";
+		LocalDateTime now = LocalDateTime.now();
+		String path = dir + File.separator + "metrics-" + now.format(FilenameFormat) + ".log";
 		writer = new FileWriter(path, true);
 		size = 0;
 
 		// Must use separate StringBuilder instance to avoid conflicting with metrics detail write.
 		sb.setLength(0);
-		sb.append(TimestampFormat.format(now));
+		sb.append(now.format(TimestampFormat));
 		sb.append(" header(1)");
 		sb.append(" cluster[name,cpu,mem,threadsInUse,recoverQueueSize,invalidNodeCount,tranCount,retryCount,delayQueueTimeoutCount,eventloop[],node[]]");
 		sb.append(" eventloop[processSize,queueSize]");
@@ -167,7 +166,7 @@ public final class MetricsWriter implements MetricsListener {
 		long mem = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
 		sb.setLength(0);
-		sb.append(TimestampFormat.format(Calendar.getInstance().getTime()));
+		sb.append(LocalDateTime.now().format(TimestampFormat));
 		sb.append(" cluster[");
 		sb.append(clusterName);
 		sb.append(',');

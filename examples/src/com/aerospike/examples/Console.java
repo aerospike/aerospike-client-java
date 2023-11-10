@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,15 +16,15 @@
  */
 package com.aerospike.examples;
 
-import java.text.SimpleDateFormat;
-import java.util.Calendar;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
 
 public class Console implements Log.Callback {
 
-	private static final SimpleDateFormat Formatter = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss z");
+	private static final DateTimeFormatter TimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 
 	public Console() {
 		Log.setCallback(this);
@@ -59,7 +59,7 @@ public class Console implements Log.Callback {
 	}
 
 	public void write(Level level, String message) {
-		write(Formatter.format(Calendar.getInstance().getTime()) + ' ' + level + ' ' + message);
+		write(LocalDateTime.now().format(TimeFormatter) + ' ' + level + ' ' + message);
 	}
 
 	public void write(String format, Object... args) {
