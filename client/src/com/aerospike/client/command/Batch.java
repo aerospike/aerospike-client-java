@@ -17,6 +17,8 @@
 package com.aerospike.client.command;
 
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
@@ -473,7 +475,6 @@ public final class Batch {
 		final BatchNode batch;
 		final BatchPolicy batchPolicy;
 		final BatchStatus status;
-		BatchExecutor parent;
 		int sequenceAP;
 		int sequenceSC;
 		boolean splitRetry;
@@ -492,14 +493,14 @@ public final class Batch {
 		}
 
 		@Override
-		public void setParent(BatchExecutor parent) {
-			this.parent = parent;
-		}
-
-		@Override
 		public void run() {
 			try {
-				execute();
+				if (!splitRetry) {
+					execute();
+				}
+				else {
+					executeCommand();
+				}
 			}
 			catch (AerospikeException ae) {
 				if (ae.getInDoubt()) {
@@ -515,9 +516,6 @@ public final class Batch {
 				setInDoubt();
 				status.setException(new RuntimeException(e));
 			}
-			finally {
-				parent.onComplete();
-			}
 		}
 
 		@Override
@@ -527,8 +525,7 @@ public final class Batch {
 
 		@Override
 		protected boolean prepareRetry(boolean timeout) {
-			if (! ((batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK) &&
-				   (parent == null || ! parent.isDone()))) {
+			if (! (batchPolicy.replica == Replica.SEQUENCE || batchPolicy.replica == Replica.PREFER_RACK)) {
 				// Perform regular retry to same node.
 				return true;
 			}
@@ -560,47 +557,20 @@ public final class Batch {
 
 			splitRetry = true;
 
-			// Run batch requests sequentially in same thread.
-			for (BatchNode batchNode : batchNodes) {
-				BatchCommand command = createCommand(batchNode);
-				command.parent = parent;
-				command.sequenceAP = sequenceAP;
-				command.sequenceSC = sequenceSC;
-				command.socketTimeout = socketTimeout;
-				command.totalTimeout = totalTimeout;
-				command.iteration = iteration;
-				command.commandSentCounter = commandSentCounter;
-				command.deadline = deadline;
+			// Run batch retries in parallel using virtual threads.
+			try (ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);) {
+				for (BatchNode batchNode : batchNodes) {
+					BatchCommand command = createCommand(batchNode);
+					command.sequenceAP = sequenceAP;
+					command.sequenceSC = sequenceSC;
+					command.socketTimeout = socketTimeout;
+					command.totalTimeout = totalTimeout;
+					command.iteration = iteration;
+					command.commandSentCounter = commandSentCounter;
+					command.deadline = deadline;
 
-				try {
 					cluster.addRetry();
-					command.executeCommand();
-				}
-				catch (AerospikeException ae) {
-					if (ae.getInDoubt()) {
-						command.setInDoubt();
-					}
-					status.setException(ae);
-
-					if (!batchPolicy.respondAllKeys) {
-						throw ae;
-					}
-				}
-				catch (RuntimeException re) {
-					command.setInDoubt();
-					status.setException(re);
-
-					if (!batchPolicy.respondAllKeys) {
-						throw re;
-					}
-				}
-				catch (Throwable e) {
-					command.setInDoubt();
-					status.setException(new RuntimeException(e));
-
-					if (!batchPolicy.respondAllKeys) {
-						throw e;
-					}
+					es.execute(command);
 				}
 			}
 			return true;

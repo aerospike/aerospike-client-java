@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -319,39 +319,6 @@ public class ClientPolicy {
 	public Map<String,String> ipMap;
 
 	/**
-	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
-	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
-	 * performance because threads do not have to be created/destroyed for each command.
-	 * The default, null, indicates that the following daemon thread pool will be used:
-	 * <pre>
-	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-	 *     public final Thread newThread(Runnable runnable) {
-	 *			Thread thread = new Thread(runnable);
-	 *			thread.setDaemon(true);
-	 *			return thread;
-	 *		}
-	 *	});
-	 * </pre>
-	 * Daemon threads automatically terminate when the program terminates.
-	 * <p>
-	 * Default: null (use Executors.newCachedThreadPool)
-	 */
-	public ExecutorService threadPool;
-
-	/**
-	 * Is threadPool shared between other client instances or classes.  If threadPool is
-	 * not shared (default), threadPool will be shutdown when the client instance is closed.
-	 * <p>
-	 * If threadPool is shared, threadPool will not be shutdown when the client instance is
-	 * closed. This shared threadPool should be shutdown manually before the program
-	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is
-	 * constructed to use daemon threads.
-	 * <p>
-	 * Default: false
-	 */
-	public boolean sharedThreadPool;
-
-	/**
 	 * Should use "services-alternate" instead of "services" in info request during cluster
 	 * tending.  "services-alternate" returns server configured external IP addresses that client
 	 * uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
@@ -441,8 +408,6 @@ public class ClientPolicy {
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
-		this.threadPool = other.threadPool;
-		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
 		this.forceSingleNode = other.forceSingleNode;
 		this.rackAware = other.rackAware;

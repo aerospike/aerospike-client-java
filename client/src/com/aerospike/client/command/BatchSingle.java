@@ -368,7 +368,6 @@ public final class BatchSingle {
 	}
 
 	public static abstract class BaseCommand extends SyncCommand implements IBatchCommand {
-		BatchExecutor parent;
 		BatchStatus status;
 		Key key;
 		Node node;
@@ -390,10 +389,6 @@ public final class BatchSingle {
 			this.hasWrite = hasWrite;
 		}
 
-		public void setParent(BatchExecutor parent) {
-			this.parent = parent;
-		}
-
 		@Override
 		public void run() {
 			try {
@@ -412,9 +407,6 @@ public final class BatchSingle {
 			catch (Throwable e) {
 				setInDoubt();
 				status.setException(new RuntimeException(e));
-			}
-			finally {
-				parent.onComplete();
 			}
 		}
 
