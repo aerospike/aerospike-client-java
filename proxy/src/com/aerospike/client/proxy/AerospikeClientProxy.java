@@ -21,10 +21,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Properties;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchDelete;
@@ -54,7 +51,6 @@ import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.ClusterStats;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.ThreadDaemonFactory;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
@@ -140,38 +136,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	private static final int MIN_CONNECTIONS = 1;
 
-	/**
-	 * Is threadPool shared between other client instances or classes.  If threadPool is
-	 * not shared (default), threadPool will be shutdown when the client instance is closed.
-	 * <p>
-	 * If threadPool is shared, threadPool will not be shutdown when the client instance is
-	 * closed. This shared threadPool should be shutdown manually before the program
-	 * terminates.  Shutdown is recommended, but not absolutely required if threadPool is
-	 * constructed to use daemon threads.
-	 * <p>
-	 * Default: false
-	 */
-	private final boolean sharedThreadPool;
-
-	/**
-	 * Underlying thread pool used in synchronous batch, scan, and query commands. These commands
-	 * are often sent to multiple server nodes in parallel threads.  A thread pool improves
-	 * performance because threads do not have to be created/destroyed for each command.
-	 * The default, null, indicates that the following daemon thread pool will be used:
-	 * <pre>
-	 * threadPool = Executors.newCachedThreadPool(new ThreadFactory() {
-	 *     public final Thread newThread(Runnable runnable) {
-	 * 			Thread thread = new Thread(runnable);
-	 * 			thread.setDaemon(true);
-	 * 			return thread;
-	 *        }
-	 *    });
-	 * </pre>
-	 * Daemon threads automatically terminate when the program terminates.
-	 * <p>
-	 * Default: null (use Executors.newCachedThreadPool)
-	 */
-	private final ExecutorService threadPool;
+	// Thread factory used in synchronous batch, scan and query commands.
+	public final ThreadFactory threadFactory;
 
 	/**
 	 * Upper limit of proxy server connection.
@@ -265,14 +231,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy.timeout = 5000;
 		}
 
-		if (policy.threadPool == null) {
-			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
-		}
-		else {
-			threadPool = policy.threadPool;
-		}
-		sharedThreadPool = policy.sharedThreadPool;
-
+		this.threadFactory = Thread.ofVirtual().name("Aerospike-", 0L).factory();
 		this.readPolicyDefault = policy.readPolicyDefault;
 		this.writePolicyDefault = policy.writePolicyDefault;
 		this.scanPolicyDefault = policy.scanPolicyDefault;
@@ -398,11 +357,6 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		}
 		catch (Throwable e) {
 			Log.warn("Failed to close authTokenManager: " + Util.getErrorMessage(e));
-		}
-
-		if (! sharedThreadPool) {
-			// Shutdown synchronous thread pool.
-			threadPool.shutdown();
 		}
 	}
 
@@ -2332,7 +2286,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 		long taskId = statement.prepareTaskId();
 		QueryAggregateCommandProxy commandProxy = new QueryAggregateCommandProxy(
-			executor, threadPool, policy, statement, taskId);
+			executor, threadFactory, policy, statement, taskId);
 		commandProxy.execute();
 		return commandProxy.getResultSet();
 	}

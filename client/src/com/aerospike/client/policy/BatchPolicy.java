@@ -21,6 +21,12 @@ package com.aerospike.client.policy;
  */
 public final class BatchPolicy extends Policy {
 	/**
+	 * This field is ignored in virtual thread client. All batch node commands are always run in
+	 * parallel using virtual threads.
+	 */
+	public int maxConcurrentThreads = 1;
+
+	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
 	 * namespaces. If false, the batch will always be processed in separate service threads.
 	 * <p>
@@ -87,6 +93,7 @@ public final class BatchPolicy extends Policy {
 	 */
 	public BatchPolicy(BatchPolicy other) {
 		super(other);
+		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.allowInline = other.allowInline;
 		this.allowInlineSSD = other.allowInlineSSD;
 		this.respondAllKeys = other.respondAllKeys;
