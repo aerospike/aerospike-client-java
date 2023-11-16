@@ -103,6 +103,7 @@ public class Main implements Log.Callback {
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
 	private boolean useProxyClient;
+	private boolean useVirtualThreads;
 	private boolean asyncEnabled;
 	private boolean initialize;
 	private boolean batchShowNodes;
@@ -272,8 +273,11 @@ public class Main implements Log.Callback {
 				"Number of synchronous connection pools per node.  Default 1."
 				);
 		options.addOption("z", "threads", true,
-			"Set the number of threads the client will use to generate load. "
+			"Set the number of threads the client will use to generate load."
 			);
+		options.addOption("vt", "virtualThreads", true,
+			"Set the number of virtual threads the client will use to generate load."
+		);
 		options.addOption("latency", true,
 			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
 			"ycsb: Show the timings in ycsb format.\n" +
@@ -844,6 +848,15 @@ public class Main implements Log.Callback {
 			this.nThreads = 16;
 		}
 
+		if (line.hasOption("virtualThreads")) {
+			this.useVirtualThreads = true;
+			this.nThreads = Integer.parseInt(line.getOptionValue("virtualThreads"));
+
+			if (this.nThreads < 1) {
+				throw new Exception("Client virtual threads must be > 0");
+			}
+		}
+
 		if (line.hasOption("reportNotFound")) {
 			args.reportNotFound = true;
 		}
@@ -985,10 +998,12 @@ public class Main implements Log.Callback {
 			args.writePolicy.sendKey = true;
 		}
 
+		String threadType = useVirtualThreads ? "Virtual" : "OS";
+
 		System.out.println("Benchmark: " + this.hosts[0]
 			+ ", namespace: " + args.namespace
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
-			+ ", threads: " + this.nThreads
+			+ ", " + threadType + " threads: " + this.nThreads
 			+ ", workload: " + args.workload);
 
 		if (args.workload == Workload.READ_UPDATE || args.workload == Workload.READ_REPLACE) {
@@ -1217,7 +1232,7 @@ public class Main implements Log.Callback {
 	}
 
 	private void doInserts(IAerospikeClient client) throws Exception {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		ExecutorService es = getExecutorService();
 
 		// Create N insert tasks
 		long ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
@@ -1297,7 +1312,7 @@ public class Main implements Log.Callback {
 	}
 
 	private void doRWTest(IAerospikeClient client) throws Exception {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		ExecutorService es = getExecutorService();
 		RWTask[] tasks = new RWTask[this.nThreads];
 
 		for (int i = 0; i < this.nThreads; i++) {
@@ -1413,6 +1428,12 @@ public class Main implements Log.Callback {
 
 			Thread.sleep(1000);
 		}
+	}
+
+	private ExecutorService getExecutorService() {
+		return useVirtualThreads ?
+				Executors.newVirtualThreadPerTaskExecutor() :
+				Executors.newFixedThreadPool(this.nThreads);
 	}
 
 	private void showBatchNodes(IAerospikeClient client) {
