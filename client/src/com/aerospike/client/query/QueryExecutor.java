@@ -72,7 +72,7 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	protected final void startThreads() {
 		// Start virtual threads.
 		for (int i = 0; i < maxConcurrentNodes; i++) {
-			cluster.threadFactory.newThread(threads[i]);
+			cluster.threadFactory.newThread(threads[i]).start();
 		}
 	}
 

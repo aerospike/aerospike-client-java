@@ -64,7 +64,7 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 
 			// Start Lua virtual thread which reads from a queue, applies aggregate function and
 			// writes to a result set.
-			cluster.threadFactory.newThread(this);
+			cluster.threadFactory.newThread(this).start();
 		}
 		catch (Throwable e) {
 			// Put the lua instance back if thread creation fails.

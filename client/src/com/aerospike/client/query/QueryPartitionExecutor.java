@@ -60,7 +60,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		this.done = new AtomicBoolean();
 
 		cluster.addTran();
-		cluster.threadFactory.newThread(this);
+		cluster.threadFactory.newThread(this).start();
 	}
 
 	public void run() {
