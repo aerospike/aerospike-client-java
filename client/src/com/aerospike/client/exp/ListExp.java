@@ -303,9 +303,7 @@ public final class ListExp {
 	 *
 	 * <pre>{@code
 	 * // List bin "a" contains at least one item == "abc"
-	 * Exp.gt(
-	 *   ListExp.getByValue(ListReturnType.COUNT, Exp.val("abc"), Exp.listBin("a")),
-	 *   Exp.val(0))
+	 * ListExp.getByValue(ListReturnType.EXISTS, Exp.val("abc"), Exp.listBin("a"))
 	 * }</pre>
 	 *
 	 * @param returnType	metadata attributes to return. See {@link ListReturnType}
