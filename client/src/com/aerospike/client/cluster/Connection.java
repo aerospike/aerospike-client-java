@@ -61,6 +61,7 @@ public final class Connection implements Closeable {
 
 	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
+		this.buffer = BufferPool.Instance.get();
 
 		try {
 			socket = new Socket();
@@ -80,7 +81,6 @@ public final class Connection implements Closeable {
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
-				buffer = BufferPool.Instance.get();
 			}
 			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.
@@ -106,6 +106,7 @@ public final class Connection implements Closeable {
 
 	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
+		this.buffer = BufferPool.Instance.get();
 
 		try {
 			SSLSocketFactory sslsocketfactory = (policy.context != null) ?
@@ -154,7 +155,6 @@ public final class Connection implements Closeable {
 				in = socket.getInputStream();
 				out = socket.getOutputStream();
 				lastUsed = System.nanoTime();
-				buffer = BufferPool.Instance.get();
 			}
 			catch (Throwable e) {
 				// socket.close() will close input/output streams according to doc.

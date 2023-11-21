@@ -23,7 +23,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -1044,17 +1045,13 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private void processRecoverQueue() {
-		byte[] buf = null;
+		// Thread local can be used here because this method
+		// is only called from the cluster tend thread.
+		byte[] buf = ThreadLocalData.getBuffer();
 		ConnectionRecover last = recoverQueue.peekLast();
 		ConnectionRecover cs;
 
 		while ((cs = recoverQueue.pollFirst()) != null) {
-			if (buf == null) {
-				// Thread local can be used here because this method
-				// is only called from the cluster tend thread.
-				buf = ThreadLocalData.getBuffer();
-			}
-
 			if (cs.drain(buf)) {
 				recoverCount.getAndDecrement();
 			}

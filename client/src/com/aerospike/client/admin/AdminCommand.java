@@ -186,7 +186,7 @@ public class AdminCommand {
 
 	public static boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
 		throws IOException {
-		AdminCommand command = new AdminCommand(conn.sizeBuffer(256));
+		AdminCommand command = new AdminCommand(conn.sizeBuffer(4096));
 		return command.authenticateSession(cluster, conn, sessionToken);
 	}
 
