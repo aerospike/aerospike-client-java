@@ -40,13 +40,22 @@ import javax.security.auth.x500.X500Principal;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.TlsPolicy;
-import com.aerospike.client.util.BufferPool;
 import com.aerospike.client.util.Util;
 
 /**
  * Socket connection wrapper.
  */
 public final class Connection implements Closeable {
+	/**
+	 * Default buffer size.
+	 */
+	public static int DefaultBufferSize = 128 * 1024; // 128 KB
+
+	/**
+	 * Maximum buffer size.
+	 */
+	public static int MaxBufferSize = 128 * 1024; // 128 KB
+
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
@@ -61,7 +70,7 @@ public final class Connection implements Closeable {
 
 	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
-		this.buffer = BufferPool.Instance.get();
+		this.buffer = new byte[DefaultBufferSize];
 
 		try {
 			socket = new Socket();
@@ -106,7 +115,7 @@ public final class Connection implements Closeable {
 
 	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
-		this.buffer = BufferPool.Instance.get();
+		this.buffer = new byte[DefaultBufferSize];
 
 		try {
 			SSLSocketFactory sslsocketfactory = (policy.context != null) ?
@@ -310,18 +319,18 @@ public final class Connection implements Closeable {
 			return buffer;
 		}
 
-		if (size <= BufferPool.MaxSize) {
-			byte[] tmp = buffer;
-			buffer = BufferPool.Instance.get(size);
-			BufferPool.Instance.put(tmp);
+		if (size <= MaxBufferSize) {
+			buffer = new byte[size];
 			return buffer;
 		}
 
-		buffer = new byte[size];
-
+		// Store original buffer to make way for large buffer. The original buffer
+		// will be restored when the transaction completes (refresh()).
 		if (bufferOrig == null) {
 			bufferOrig = buffer;
 		}
+
+		buffer = new byte[size];
 		return buffer;
 	}
 
@@ -346,6 +355,8 @@ public final class Connection implements Closeable {
 	 */
 	public void close() {
 		lastUsed = 0;
+		buffer = null;
+		bufferOrig = null;
 
 		try {
 			in.close();
@@ -357,12 +368,6 @@ public final class Connection implements Closeable {
 				Log.error("Error closing socket: " + Util.getErrorMessage(e));
 			}
 		}
-
-		if (bufferOrig != null) {
-			buffer = bufferOrig;
-			bufferOrig = null;
-		}
-		BufferPool.Instance.put(buffer);
 	}
 
 	public static final class ReadTimeout extends RuntimeException {
