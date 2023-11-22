@@ -34,7 +34,6 @@ public abstract class SyncCommand extends Command {
 	// private static final AtomicLong TranCounter = new AtomicLong();
 	protected final Cluster cluster;
 	protected final Policy policy;
-	private Connection conn;
 	int iteration = 1;
 	int commandSentCounter;
 	long deadline;
@@ -97,7 +96,7 @@ public abstract class SyncCommand extends Command {
 					begin = System.nanoTime();
 				}
 
-				conn = node.getConnection(this, policy.connectTimeout, socketTimeout, policy.timeoutDelay);
+				Connection conn = node.getConnection(this, policy.connectTimeout, socketTimeout, policy.timeoutDelay);
 
 				try {
 					// Set command buffer.
