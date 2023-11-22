@@ -46,16 +46,6 @@ import com.aerospike.client.util.Util;
  * Socket connection wrapper.
  */
 public final class Connection implements Closeable {
-	/**
-	 * Default buffer size.
-	 */
-	public static int DefaultBufferSize = 128 * 1024; // 128 KB
-
-	/**
-	 * Maximum buffer size.
-	 */
-	public static int MaxBufferSize = 128 * 1024; // 128 KB
-
 	private final Socket socket;
 	private final InputStream in;
 	private final OutputStream out;
