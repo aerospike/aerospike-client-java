@@ -314,7 +314,7 @@ public class TestAsyncBatch extends TestAsync {
 							break;
 						}
 
-						if (args.hasTtl && !assertGreaterThanZero(record.expiration)) {
+						if (args.hasTtl && !assertValidExpiration(record.expiration)) {
 							break;
 						}
 					}
@@ -356,7 +356,7 @@ public class TestAsyncBatch extends TestAsync {
 					return;
 				}
 
-				if (args.hasTtl && !assertGreaterThanZero(record.expiration)) {
+				if (args.hasTtl && !assertValidExpiration(record.expiration)) {
 					notifyComplete();
 					return;
 				}
