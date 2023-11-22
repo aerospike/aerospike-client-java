@@ -66,7 +66,7 @@ public final class AsyncQueryValidate {
 			try {
 				clusterKey = Long.parseLong(result, 16);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Yes, even scans return QUERY_ABORTED.
 				listener.onFailure(new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + result));
 				return;
@@ -123,7 +123,7 @@ public final class AsyncQueryValidate {
 			try {
 				clusterKey = Long.parseLong(result, 16);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Yes, even scans return QUERY_ABORTED.
 				listener.onFailure(new AerospikeException(ResultCode.QUERY_ABORTED, "Cluster is in migration: " + result));
 				return;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,15 +21,15 @@ import static org.junit.Assert.fail;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.test.SuiteSync;
 import com.aerospike.test.util.TestBase;
 
 public class TestSync extends TestBase {
-	protected static AerospikeClient client = SuiteSync.client;
+	protected static IAerospikeClient client = SuiteSync.client;
 	private static boolean DestroyClient = false;
 
 	@BeforeClass

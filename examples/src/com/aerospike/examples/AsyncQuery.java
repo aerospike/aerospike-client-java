@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -40,22 +40,29 @@ public class AsyncQuery extends AsyncExample {
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		String indexName = "asqindex";
 		String keyPrefix = "asqkey";
-		String binName = params.getBinName("asqbin");
+		String binName = "asqbin";
 		int size = 50;
 
-		createIndex(client, indexName, binName);
+		// Proxy client does not support createIndex(), so must assume
+		// index already created to run this test.
+		if (! params.useProxyClient) {
+			createIndex(client, indexName, binName);
+		}
 		runQueryExample(client, eventLoop, keyPrefix, binName, size);
 
 		// Wait until query finishes before dropping index.
 		waitTillComplete();
-		client.dropIndex(policy, params.namespace, params.set, indexName);
+
+		// Do not drop index because after native client tests run, the proxy
+		// client tests need the index to exist.
+		//client.dropIndex(policy, params.namespace, params.set, indexName);
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		String indexName,
 		String binName
 	) {
@@ -77,7 +84,7 @@ public class AsyncQuery extends AsyncExample {
 	}
 
 	private void runQueryExample(
-		final AerospikeClient client,
+		final IAerospikeClient client,
 		final EventLoop eventLoop,
 		final String keyPrefix,
 		final String binName,
@@ -110,7 +117,7 @@ public class AsyncQuery extends AsyncExample {
 		}
 	}
 
-	private void runQuery(AerospikeClient client, EventLoop eventLoop, final String binName) {
+	private void runQuery(IAerospikeClient client, EventLoop eventLoop, final String binName) {
 		int begin = 26;
 		int end = 34;
 

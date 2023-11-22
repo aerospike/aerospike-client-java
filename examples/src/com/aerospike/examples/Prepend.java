@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,8 +16,8 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
@@ -31,9 +31,9 @@ public class Prepend extends Example {
 	 * Prepend string to an existing string.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "prependkey");
-		String binName = params.getBinName("prependbin");
+		String binName = "prependbin";
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);

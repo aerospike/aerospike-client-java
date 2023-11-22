@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>6.1.8</version>
+    <version>7.2.0</version>
   </parent>
   <artifactId>aerospike-client-test</artifactId>
   <packaging>jar</packaging>
@@ -22,6 +22,11 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-client</artifactId>
+    </dependency>
+
+    <dependency>
+      <groupId>com.aerospike</groupId>
+      <artifactId>aerospike-proxy-client</artifactId>
     </dependency>
 
     <dependency>
@@ -57,13 +62,13 @@
       <artifactId>commons-cli</artifactId>
     </dependency>
 
-    <dependency> 
+    <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
   </dependencies>
-    
+
   <build>
     <sourceDirectory>../client/src</sourceDirectory>
     <outputDirectory>../client/target</outputDirectory>
@@ -88,10 +93,10 @@
         <executions>
           <execution>
             <id>make-my-jar-with-dependencies</id>
-              <phase>package</phase>
-              <goals>
-                <goal>single</goal>
-              </goals>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
           </execution>
         </executions>
       </plugin>
@@ -154,7 +159,7 @@
           </includes>
         </configuration>
       </plugin>
-    </plugins>      
+    </plugins>
   </build>
 
 </project>

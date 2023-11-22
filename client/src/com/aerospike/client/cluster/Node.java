@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,7 +25,9 @@ import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
@@ -40,6 +42,10 @@ import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.EventState;
 import com.aerospike.client.async.Monitor;
 import com.aerospike.client.async.NettyConnection;
+import com.aerospike.client.command.SyncCommand;
+import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.metrics.MetricsPolicy;
+import com.aerospike.client.metrics.NodeMetrics;
 import com.aerospike.client.util.Util;
 
 /**
@@ -70,9 +76,12 @@ public class Node implements Closeable {
 	private byte[] sessionToken;
 	private long sessionExpiration;
 	private volatile Map<String,Integer> racks;
+	private volatile NodeMetrics metrics;
 	final AtomicInteger connsOpened;
 	final AtomicInteger connsClosed;
-	private final AtomicInteger errorCount;
+	private final AtomicInteger errorRateCount;
+	private final AtomicLong errorCount;
+	private final AtomicLong timeoutCount;
 	protected int connectionIter;
 	private int peersGeneration;
 	int partitionGeneration;
@@ -104,7 +113,9 @@ public class Node implements Closeable {
 		this.features = nv.features;
 		this.connsOpened = new AtomicInteger(1);
 		this.connsClosed = new AtomicInteger(0);
-		this.errorCount = new AtomicInteger(0);
+		this.errorRateCount = new AtomicInteger(0);
+		this.errorCount = new AtomicLong(0);
+		this.timeoutCount = new AtomicLong(0);
 		this.peersGeneration = -1;
 		this.partitionGeneration = -1;
 		this.rebalanceGeneration = -1;
@@ -112,6 +123,10 @@ public class Node implements Closeable {
 		this.rebalanceChanged = cluster.rackAware;
 		this.racks = cluster.rackAware ? new HashMap<String,Integer>() : null;
 		this.active = true;
+
+		if (cluster.metricsEnabled) {
+			this.metrics = new NodeMetrics(cluster.metricsPolicy);
+		}
 
 		// Create sync connection pools.
 		connectionPools = new Pool[cluster.connPoolsPerNode];
@@ -182,7 +197,7 @@ public class Node implements Closeable {
 								eventLoop, cluster, node, minSize, maxConcurrent, monitor, eventLoopCount
 							);
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							if (Log.warnEnabled()) {
 								Log.warn("AsyncConnectorExecutor failed: " + Util.getErrorMessage(e));
 							}
@@ -208,11 +223,7 @@ public class Node implements Closeable {
 
 		try {
 			if (tendConnection.isClosed()) {
-				tendConnection = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-					new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, null) :
-					new Connection(address, cluster.connectTimeout, this, null);
-
-				connsOpened.getAndIncrement();
+				tendConnection = createConnection(null, cluster.connectTimeout);
 
 				if (cluster.authEnabled) {
 					byte[] token = sessionToken;
@@ -255,7 +266,7 @@ public class Node implements Closeable {
 			}
 			failures = 0;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			peers.genChanged = true;
 			refreshFailed(e);
 		}
@@ -333,7 +344,7 @@ public class Node implements Closeable {
 		try {
 			// Reset error rate.
 			if (cluster.maxErrorRate > 0) {
-				resetErrorCount();
+				resetErrorRate();
 			}
 
 			// Login when user authentication is enabled.
@@ -454,7 +465,7 @@ public class Node implements Closeable {
 						nodeValidated = true;
 						break;
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						peers.fail(host);
 
 						if (Log.warnEnabled()) {
@@ -474,7 +485,7 @@ public class Node implements Closeable {
 			}
 			peers.refreshCount++;
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
@@ -518,7 +529,7 @@ public class Node implements Closeable {
 			}
 			partitionGeneration = parser.getGeneration();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
@@ -538,12 +549,12 @@ public class Node implements Closeable {
 			rebalanceGeneration = parser.getGeneration();
 			racks = parser.getRacks();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			refreshFailed(e);
 		}
 	}
 
-	private final void refreshFailed(Exception e) {
+	private final void refreshFailed(Throwable e) {
 		failures++;
 
 		if (! tendConnection.isClosed()) {
@@ -564,7 +575,7 @@ public class Node implements Closeable {
 			try {
 				conn = createConnection(pool);
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Failing to create min connections is not considered fatal.
 				// Log failure and return.
 				if (Log.debugEnabled()) {
@@ -585,12 +596,7 @@ public class Node implements Closeable {
 	}
 
 	private Connection createConnection(Pool pool) {
-		// Create sync connection.
-		Connection conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-				new Connection(cluster.tlsPolicy, host.tlsName, address, cluster.connectTimeout, this, pool) :
-				new Connection(address, cluster.connectTimeout, this, pool);
-
-		connsOpened.getAndIncrement();
+		Connection conn = createConnection(pool, cluster.connectTimeout);
 
 		if (cluster.authEnabled) {
 			byte[] token = sessionToken;
@@ -605,7 +611,7 @@ public class Node implements Closeable {
 					closeConnectionOnError(conn);
 					throw ae;
 				}
-				catch (Exception e) {
+				catch (Throwable e) {
 					closeConnectionOnError(conn);
 					throw new AerospikeException(e);
 				}
@@ -614,12 +620,36 @@ public class Node implements Closeable {
 		return conn;
 	}
 
+	private Connection createConnection(Pool pool, int timeout) {
+		// Create sync connection.
+		Connection conn;
+
+		if (cluster.metricsEnabled) {
+			long begin = System.nanoTime();
+
+			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
+				new Connection(address, timeout, this, pool);
+
+			long elapsed = System.nanoTime() - begin;
+			metrics.addLatency(LatencyType.CONN, TimeUnit.NANOSECONDS.toMillis(elapsed));
+		}
+		else {
+			conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
+				new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
+				new Connection(address, timeout, this, pool);
+		}
+
+		connsOpened.getAndIncrement();
+		return conn;
+	}
+
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
 	public final Connection getConnection(int timeoutMillis) {
 		try {
-			return getConnection(timeoutMillis, timeoutMillis, 0);
+			return getConnection(null, timeoutMillis, timeoutMillis, 0);
 		}
 		catch (Connection.ReadTimeout crt) {
 			throw new AerospikeException.Timeout(this, timeoutMillis, timeoutMillis, timeoutMillis);
@@ -631,7 +661,7 @@ public class Node implements Closeable {
 	 */
 	public final Connection getConnection(int connectTimeout, int socketTimeout) {
 		try {
-			return getConnection(connectTimeout, socketTimeout, 0);
+			return getConnection(null, connectTimeout, socketTimeout, 0);
 		}
 		catch (Connection.ReadTimeout crt) {
 			throw new AerospikeException.Timeout(this, connectTimeout, socketTimeout, socketTimeout);
@@ -641,7 +671,7 @@ public class Node implements Closeable {
 	/**
 	 * Get a socket connection from connection pool to the server node.
 	 */
-	public final Connection getConnection(int connectTimeout, int socketTimeout, int timeoutDelay) {
+	public final Connection getConnection(SyncCommand cmd, int connectTimeout, int socketTimeout, int timeoutDelay) {
 		int max = cluster.connPoolsPerNode;
 		int initialIndex;
 		boolean backward;
@@ -674,7 +704,7 @@ public class Node implements Closeable {
 						conn.setTimeout(socketTimeout);
 						return conn;
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						// Set timeout failed. Something is probably wrong with timeout
 						// value itself, so don't empty queue retrying.  Just get out.
 						closeConnection(conn);
@@ -686,18 +716,24 @@ public class Node implements Closeable {
 			else if (pool.total.getAndIncrement() < pool.capacity()) {
 				// Socket not found and queue has available slot.
 				// Create new connection.
-				int timeout = (connectTimeout > 0)? connectTimeout : socketTimeout;
+				long startTime;
+				int timeout;
+
+				if (connectTimeout > 0) {
+					timeout = connectTimeout;
+					startTime = System.nanoTime();
+				}
+				else {
+					timeout = socketTimeout;
+					startTime = 0;
+				}
 
 				try {
-					conn = (cluster.tlsPolicy != null && !cluster.tlsPolicy.forLoginOnly) ?
-						new Connection(cluster.tlsPolicy, host.tlsName, address, timeout, this, pool) :
-						new Connection(address, timeout, this, pool);
-
-					connsOpened.getAndIncrement();
+					conn = createConnection(pool, timeout);
 				}
-				catch (RuntimeException re) {
+				catch (Throwable e) {
 					pool.total.getAndDecrement();
-					throw re;
+					throw e;
 				}
 
 				if (cluster.authEnabled) {
@@ -726,10 +762,6 @@ public class Node implements Closeable {
 							}
 							throw crt;
 						}
-						catch (RuntimeException re) {
-							closeConnection(conn);
-							throw re;
-						}
 						catch (SocketTimeoutException ste) {
 							closeConnection(conn);
 							// This is really a socket write timeout, but the calling
@@ -741,6 +773,10 @@ public class Node implements Closeable {
 							closeConnection(conn);
 							throw new AerospikeException.Connection(ioe);
 						}
+						catch (Throwable e) {
+							closeConnection(conn);
+							throw e;
+						}
 					}
 				}
 
@@ -749,11 +785,17 @@ public class Node implements Closeable {
 					try {
 						conn.setTimeout(socketTimeout);
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						closeConnection(conn);
 						throw new AerospikeException.Connection(e);
 					}
 				}
+
+				if (connectTimeout > 0 && cmd != null) {
+					// Adjust deadline for socket connect time when connectTimeout defined.
+					cmd.resetDeadline(startTime);
+				}
+
 				return conn;
 			}
 			else {
@@ -807,7 +849,7 @@ public class Node implements Closeable {
 	 */
 	public final void closeConnectionOnError(Connection conn) {
 		connsClosed.getAndIncrement();
-		incrErrorCount();
+		incrErrorRate();
 		conn.close();
 	}
 
@@ -826,7 +868,7 @@ public class Node implements Closeable {
 			if (excess > 0) {
 				pool.closeIdle(this, excess);
 			}
-			else if (excess < 0 && errorCountWithinLimit()) {
+			else if (excess < 0 && errorRateWithinLimit()) {
 				createConnections(pool, -excess);
 			}
 		}
@@ -918,7 +960,7 @@ public class Node implements Closeable {
 	 * Close async connection on error.
 	 */
 	public final void closeAsyncConnection(AsyncConnection conn, int index) {
-		incrErrorCount();
+		incrErrorRate();
 		asyncConnectionPools[index].connectionClosed();
 		conn.close();
 	}
@@ -932,7 +974,7 @@ public class Node implements Closeable {
 	}
 
 	public final void decrAsyncConnection(int index) {
-		incrErrorCount();
+		incrErrorRate();
 		asyncConnectionPools[index].total--;
 	}
 
@@ -949,7 +991,7 @@ public class Node implements Closeable {
 		if (excess > 0) {
 			closeIdleAsyncConnections(pool, excess);
 		}
-		else if (excess < 0 && errorCountWithinLimit()) {
+		else if (excess < 0 && errorRateWithinLimit()) {
 			// Create connection requests sequentially because they will be done in the
 			// background and there is no immediate need for them to complete.
 			new AsyncConnectorExecutor(eventLoop, cluster, this, -excess, 1, null, null);
@@ -981,46 +1023,93 @@ public class Node implements Closeable {
 		int opened = 0;
 		int closed = 0;
 
-		for (AsyncPool pool : asyncConnectionPools) {
-			// Warning: cross-thread references are made without a lock
-			// for pool's queue, opened and closed.
-			int tmp =  pool.queue.size();
+		if (asyncConnectionPools != null) {
+			for (AsyncPool pool : asyncConnectionPools) {
+				// Warning: cross-thread references are made without a lock
+				// for pool's queue, opened and closed.
+				int tmp =  pool.queue.size();
 
-			// Timing issues may cause values to go negative. Adjust.
-			if (tmp < 0) {
-				tmp = 0;
-			}
-			inPool += tmp;
-			tmp = pool.total - tmp;
+				// Timing issues may cause values to go negative. Adjust.
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inPool += tmp;
+				tmp = pool.total - tmp;
 
-			if (tmp < 0) {
-				tmp = 0;
+				if (tmp < 0) {
+					tmp = 0;
+				}
+				inUse += tmp;
+				opened += pool.opened;
+				closed += pool.closed;
 			}
-			inUse += tmp;
-			opened += pool.opened;
-			closed += pool.closed;
 		}
 		return new ConnectionStats(inUse, inPool, opened, closed);
 	}
 
-	public final void incrErrorCount() {
+	public final void enableMetrics(MetricsPolicy policy) {
+		metrics = new NodeMetrics(policy);
+	}
+
+	public final NodeMetrics getMetrics() {
+		return metrics;
+	}
+
+	/**
+	 * Add elapsed time in nanoseconds to latency buckets corresponding to latency type.
+	 */
+	public final void addLatency(LatencyType type, long elapsed) {
+		metrics.addLatency(type, elapsed);
+	}
+
+	public final void incrErrorRate() {
 		if (cluster.maxErrorRate > 0) {
-			errorCount.getAndIncrement();
+			errorRateCount.getAndIncrement();
 		}
 	}
 
-	public final void resetErrorCount() {
-		errorCount.set(0);
+	public final void resetErrorRate() {
+		errorRateCount.set(0);
 	}
 
-	public final boolean errorCountWithinLimit() {
-		return cluster.maxErrorRate <= 0 || errorCount.get() <= cluster.maxErrorRate;
+	public final boolean errorRateWithinLimit() {
+		return cluster.maxErrorRate <= 0 || errorRateCount.get() <= cluster.maxErrorRate;
 	}
 
 	public final void validateErrorCount() {
-		if (! errorCountWithinLimit()) {
+		if (! errorRateWithinLimit()) {
 			throw new AerospikeException.Backoff(ResultCode.MAX_ERROR_RATE);
 		}
+	}
+
+	/**
+	 * Increment transaction error count. If the error is retryable, multiple errors per
+	 * transaction may occur.
+	 */
+	public void addError() {
+		errorCount.getAndIncrement();
+	}
+
+	/**
+	 * Increment transaction timeout count. If the timeout is retryable (ie socketTimeout),
+	 * multiple timeouts per transaction may occur.
+	 */
+	public void addTimeout() {
+		timeoutCount.getAndIncrement();
+	}
+
+	/**
+	 * Return transaction error count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getErrorCount() {
+		return errorCount.get();
+	}
+
+	/**
+	 * Return transaction timeout count. The value is cumulative and not reset per metrics interval.
+	 */
+	public long getTimeoutCount() {
+		return timeoutCount.get();
 	}
 
 	/**

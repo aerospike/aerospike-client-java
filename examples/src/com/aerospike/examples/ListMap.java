@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,8 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
@@ -37,7 +37,7 @@ public class ListMap extends Example {
 	 * Write List and Map objects directly instead of relying on java serializer.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		testListStrings(client, params);
 		testListComplex(client, params);
 		testMapStrings(client, params);
@@ -48,7 +48,7 @@ public class ListMap extends Example {
 	/**
 	 * Write/Read ArrayList<String> directly instead of relying on java serializer.
 	 */
-	private void testListStrings(AerospikeClient client, Parameters params) throws Exception {
+	private void testListStrings(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Read/Write ArrayList<String>");
 		Key key = new Key(params.namespace, params.set, "listkey1");
 		client.delete(params.writePolicy, key);
@@ -58,7 +58,7 @@ public class ListMap extends Example {
 		list.add("string2");
 		list.add("string3");
 
-		Bin bin = new Bin(params.getBinName("listbin1"), list);
+		Bin bin = new Bin("listbin1", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -75,7 +75,7 @@ public class ListMap extends Example {
 	/**
 	 * Write/Read ArrayList<Object> directly instead of relying on java serializer.
 	 */
-	private void testListComplex(AerospikeClient client, Parameters params) throws Exception {
+	private void testListComplex(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Read/Write ArrayList<Object>");
 		Key key = new Key(params.namespace, params.set, "listkey2");
 		client.delete(params.writePolicy, key);
@@ -86,7 +86,7 @@ public class ListMap extends Example {
 		list.add(2);
 		list.add(blob);
 
-		Bin bin = new Bin(params.getBinName("listbin2"), list);
+		Bin bin = new Bin("listbin2", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -104,7 +104,7 @@ public class ListMap extends Example {
 	/**
 	 * Write/Read HashMap<String,String> directly instead of relying on java serializer.
 	 */
-	private void testMapStrings(AerospikeClient client, Parameters params) throws Exception {
+	private void testMapStrings(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Read/Write HashMap<String,String>");
 		Key key = new Key(params.namespace, params.set, "mapkey1");
 		client.delete(params.writePolicy, key);
@@ -114,7 +114,7 @@ public class ListMap extends Example {
 		map.put("key2", "string2");
 		map.put("key3", "string3");
 
-		Bin bin = new Bin(params.getBinName("mapbin1"), map);
+		Bin bin = new Bin("mapbin1", map);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -131,7 +131,7 @@ public class ListMap extends Example {
 	/**
 	 * Write/Read HashMap<Object,Object> directly instead of relying on java serializer.
 	 */
-	private void testMapComplex(AerospikeClient client, Parameters params) throws Exception {
+	private void testMapComplex(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Read/Write HashMap<Object,Object>");
 		Key key = new Key(params.namespace, params.set, "mapkey2");
 		client.delete(params.writePolicy, key);
@@ -151,7 +151,7 @@ public class ListMap extends Example {
 		map.put("key5", true);
 		map.put("key6", false);
 
-		Bin bin = new Bin(params.getBinName("mapbin2"), map);
+		Bin bin = new Bin("mapbin2", map);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);
@@ -179,7 +179,7 @@ public class ListMap extends Example {
 	/**
 	 * Write/Read List/HashMap combination directly instead of relying on java serializer.
 	 */
-	private void testListMapCombined(AerospikeClient client, Parameters params) throws Exception {
+	private void testListMapCombined(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Read/Write List/HashMap");
 		Key key = new Key(params.namespace, params.set, "listmapkey");
 		client.delete(params.writePolicy, key);
@@ -201,7 +201,7 @@ public class ListMap extends Example {
 		list.add(inner);
 		list.add(innerMap);
 
-		Bin bin = new Bin(params.getBinName("listmapbin"), list);
+		Bin bin = new Bin("listmapbin", list);
 		client.put(params.writePolicy, key, bin);
 
 		Record record = client.get(params.policy, key, bin.name);

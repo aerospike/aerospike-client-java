@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.QueryPolicy;
 
 public final class QueryRecordCommand extends MultiCommand {
@@ -44,6 +45,11 @@ public final class QueryRecordCommand extends MultiCommand {
 		this.statement = statement;
 		this.taskId = taskId;
 		this.recordSet = recordSet;
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
 	}
 
 	@Override

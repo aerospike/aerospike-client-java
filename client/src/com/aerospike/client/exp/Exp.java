@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -260,9 +260,28 @@ public abstract class Exp {
 	}
 
 	/**
+	 * Create expression that returns the record size. This expression usually evaluates
+	 * quickly because record meta data is cached in memory.
+	 * <p>
+	 * Requires server version 7.0+. This expression replaces {@link #deviceSize()} and
+	 * {@link #memorySize()} since those older expressions are equivalent on server version 7.0+.
+	 *
+	 * <pre>{@code
+	 * // Record size >= 100 KB
+	 * Exp.ge(Exp.recordSize(), Exp.val(100 * 1024))
+	 * }</pre>
+	 */
+	public static Exp recordSize() {
+		return new Cmd(RECORD_SIZE);
+	}
+
+	/**
 	 * Create expression that returns record size on disk. If server storage-engine is
 	 * memory, then zero is returned. This expression usually evaluates quickly because
 	 * record meta data is cached in memory.
+	 * <p>
+	 * This expression should only be used for server versions less than 7.0. Use
+	 * {@link #recordSize()} for server version 7.0+.
 	 *
 	 * <pre>{@code
 	 * // Record device size >= 100 KB
@@ -278,7 +297,8 @@ public abstract class Exp {
 	 * not memory nor data-in-memory, then zero is returned. This expression usually evaluates
 	 * quickly because record meta data is cached in memory.
 	 * <p>
-	 * Requires server version 5.3.0+
+	 * Requires server version between 5.3 inclusive and 7.0 exclusive.
+	 * Use {@link #recordSize()} for server version 7.0+.
 	 *
 	 * <pre>{@code
 	 * // Record memory size >= 100 KB
@@ -474,7 +494,8 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create map value.
+	 * Create map value. For ordered maps, pass in a TreeMap or a map that implements the SortedMap
+	 * interface. For unordered maps, pass in a HashMap.
 	 */
 	public static Exp val(Map<?,?> map) {
 		return new MapVal(map);
@@ -485,6 +506,20 @@ public abstract class Exp {
 	 */
 	public static Exp nil() {
 		return new Nil();
+	}
+
+	/**
+	 * Create infinity value for use in CDT range expressions.
+	 */
+	public static Exp inf() {
+		return new Infinity();
+	}
+
+	/**
+	 * Create wildcard value for use in CDT expressions.
+	 */
+	public static Exp wildcard() {
+		return new Wildcard();
 	}
 
 	//--------------------------------------------------
@@ -1183,6 +1218,7 @@ public abstract class Exp {
 	private static final int KEY_EXISTS = 71;
 	private static final int IS_TOMBSTONE = 72;
 	private static final int MEMORY_SIZE = 73;
+	private static final int RECORD_SIZE = 74;
 	private static final int KEY = 80;
 	private static final int BIN = 81;
 	private static final int BIN_TYPE = 82;
@@ -1480,6 +1516,20 @@ public abstract class Exp {
 		@Override
 		public void pack(Packer packer) {
 			packer.packNil();
+		}
+	}
+
+	private static final class Infinity extends Exp {
+		@Override
+		public void pack(Packer packer) {
+			packer.packInfinity();
+		}
+	}
+
+	private static final class Wildcard extends Exp {
+		@Override
+		public void pack(Packer packer) {
+			packer.packWildcard();
 		}
 	}
 

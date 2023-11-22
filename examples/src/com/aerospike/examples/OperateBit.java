@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,8 +18,8 @@ package com.aerospike.examples;
 
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -36,16 +36,16 @@ public class OperateBit extends Example {
 	 * Perform operations on a blob bin.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		runSimpleExample(client, params);
 	}
 
 	/**
 	 * Simple example of bit functionality.
 	 */
-	public void runSimpleExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runSimpleExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key = new Key(params.namespace, params.set, "bitkey");
-		String binName = params.getBinName("bitbin");
+		String binName = "bitbin";
 
 		// Delete record if it already exists.
 		client.delete(params.writePolicy, key);

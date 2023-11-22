@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -58,7 +58,6 @@ public final class Record {
 
 	/**
 	 * Get bin value given bin name.
-	 * Enter empty string ("") for servers configured as single-bin.
 	 */
 	public Object getValue(String name) {
 		return (bins == null)? null : bins.get(name);
@@ -69,6 +68,13 @@ public final class Record {
 	 */
 	public String getString(String name) {
 		return (String)getValue(name);
+	}
+
+	/**
+	 * Get bin value as byte[].
+	 */
+	public byte[] getBytes(String name) {
+		return (byte[])getValue(name);
 	}
 
 	/**

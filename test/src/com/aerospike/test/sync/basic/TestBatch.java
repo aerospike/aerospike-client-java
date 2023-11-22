@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -64,7 +64,10 @@ public class TestBatch extends TestSync {
 	@BeforeClass
 	public static void writeRecords() {
 		WritePolicy policy = new WritePolicy();
-		policy.expiration = 2592000;
+
+		if (args.hasTtl) {
+			policy.expiration = 2592000;
+		}
 
 		for (int i = 1; i <= Size; i++) {
 			Key key = new Key(args.namespace, args.set, KeyPrefix + i);
@@ -155,7 +158,10 @@ public class TestBatch extends TestSync {
 
 			assertRecordFound(key, record);
 			assertNotEquals(0, record.generation);
-			assertNotEquals(0, record.expiration);
+
+			if (args.hasTtl) {
+				assertNotEquals(0, record.expiration);
+			}
 		}
 	}
 
@@ -376,6 +382,9 @@ public class TestBatch extends TestSync {
 		BatchRead batch = list.get(i);
 		assertRecordFound(batch.key, batch.record);
 		assertNotEquals(0, batch.record.generation);
-		assertNotEquals(0, batch.record.expiration);
+
+		if (args.hasTtl) {
+			assertNotEquals(0, batch.record.expiration);
+		}
 	}
 }

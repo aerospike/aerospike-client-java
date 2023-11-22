@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,6 +39,10 @@ public class TestScan extends TestSync implements ScanCallback {
 
 	@Test
 	public void scanSeries() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestScan.scanSeries");
+			return;
+		}
 		ScanPolicy policy = new ScanPolicy();
 		List<String> nodeList = client.getNodeNames();
 

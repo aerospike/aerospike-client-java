@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -45,9 +45,9 @@ import com.aerospike.test.sync.TestSync;
 public class TestQueryRPS extends TestSync {
 	private static final String indexName = "rpsindex";
 	private static final String keyPrefix = "rpskey";
-	private static final String binName1 = args.getBinName("rpsbin1");
-	private static final String binName2 = args.getBinName("rpsbin2");
-	private static final String binName3 = args.getBinName("rpsbin3");
+	private static final String binName1 = "rpsbin1";
+	private static final String binName2 = "rpsbin2";
+	private static final String binName3 = "rpsbin3";
 	private static final int records_per_node = 1000;
 	private static final int rps = 1000;
 	private static final int expected_duration = 1000 * records_per_node / rps;

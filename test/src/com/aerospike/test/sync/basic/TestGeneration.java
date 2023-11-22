@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ public class TestGeneration extends TestSync {
 	@Test
 	public void generation() {
 		Key key = new Key(args.namespace, args.set, "genkey");
-		String binName = args.getBinName("genbin");
+		String binName = "genbin";
 
 		// Delete record if it already exists.
 		client.delete(null, key);

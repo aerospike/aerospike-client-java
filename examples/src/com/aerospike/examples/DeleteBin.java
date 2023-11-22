@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,8 +18,8 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 
@@ -33,16 +33,11 @@ public class DeleteBin extends Example {
 	 * Drop a bin from a record.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
-		if (params.singleBin) {
-			console.info("Delete bin is not applicable to single bin servers.");
-			return;
-		}
-
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		console.info("Write multi-bin record.");
 		Key key = new Key(params.namespace, params.set, "delbinkey");
-		String binName1 = params.getBinName("bin1");
-		String binName2 = params.getBinName("bin2");
+		String binName1 = "bin1";
+		String binName2 = "bin2";
 		Bin bin1 = new Bin(binName1, "value1");
 		Bin bin2 = new Bin(binName2, "value2");
 		client.put(params.writePolicy, key, bin1, bin2);

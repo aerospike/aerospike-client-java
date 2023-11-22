@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -29,6 +29,11 @@ public enum IndexType {
 	 * String index.
 	 */
 	STRING,
+
+	/**
+	 * byte[] index. Requires server version 7.0+.
+	 */
+	BLOB,
 
 	/**
 	 * 2-dimensional spherical geospatial index.

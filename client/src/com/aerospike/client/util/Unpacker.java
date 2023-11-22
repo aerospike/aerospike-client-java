@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,7 @@
  */
 package com.aerospike.client.util;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.nio.ByteBuffer;
 import java.util.AbstractMap;
 import java.util.ArrayList;
@@ -76,7 +74,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackList(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -138,7 +136,7 @@ public abstract class Unpacker<T> {
 			}
 			return unpackMap(count);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -234,23 +232,13 @@ public abstract class Unpacker<T> {
 			val = getString(Buffer.utf8ToString(buffer, offset, count));
 			break;
 
-		case ParticleType.JBLOB:
-			if (Value.DisableDeserializer) {
-				throw new AerospikeException.Serialize("Object deserializer has been disabled");
-			}
-
-			try (ByteArrayInputStream bastream = new ByteArrayInputStream(buffer, offset, count)) {
-				try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
-					val = getJavaBlob(oistream.readObject());
-				}
-			}
-			catch (Exception e) {
-				throw new AerospikeException.Serialize(e);
-			}
-			break;
-
 		case ParticleType.GEOJSON:
 			val = getGeoJSON(Buffer.utf8ToString(buffer, offset, count));
+			break;
+
+		case ParticleType.JBLOB:
+			// Java deserialization is no longer allowed, so return java serialized blob as byte[].
+			val = getBlob(Arrays.copyOfRange(buffer, offset, offset + count));
 			break;
 
 		default:
@@ -451,7 +439,6 @@ public abstract class Unpacker<T> {
 
 	protected abstract T getMap(Map<T,T> value);
 	protected abstract T getList(List<T> value);
-	protected abstract T getJavaBlob(Object value);
 	protected abstract T getBlob(byte[] value);
 	protected abstract T getString(String value);
 	protected abstract T getLong(long value);
@@ -477,7 +464,7 @@ public abstract class Unpacker<T> {
 			ObjectUnpacker unpacker = new ObjectUnpacker(buffer, offset, length);
 			return unpacker.unpackObject();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -495,11 +482,6 @@ public abstract class Unpacker<T> {
 
 		@Override
 		protected Object getList(List<Object> value) {
-			return value;
-		}
-
-		@Override
-		protected Object getJavaBlob(Object value) {
 			return value;
 		}
 

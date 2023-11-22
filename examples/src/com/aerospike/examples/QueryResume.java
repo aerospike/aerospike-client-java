@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -42,12 +42,14 @@ public class QueryResume extends Example {
 	 * Terminate a query and then resume query later.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "qridx";
 		String binName = "bin";
 		String setName = "qr";
 
-		createIndex(client, params, setName, indexName, binName);
+		if (!params.useProxyClient) {
+			createIndex(client, params, setName, indexName, binName);
+		}
 		writeRecords(client, params, setName, binName, 200);
 
 		Statement stmt = new Statement();
@@ -98,7 +100,7 @@ public class QueryResume extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String setName,
 		String indexName,
@@ -121,7 +123,7 @@ public class QueryResume extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String setName,
 		String binName,

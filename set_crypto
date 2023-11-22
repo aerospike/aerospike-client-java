@@ -8,13 +8,15 @@ case "$1" in
 gnu)
   set -x
   cp client/crypto/gnu/Crypto.java client/src/com/aerospike/client/util
-  sed -i '' 's/org.bouncycastle/org.gnu/;s/bcprov-jdk15on/gnu-crypto/;s/1.69/2.0.1/' client/pom.xml
+  sed 's/org.bouncycastle/org.gnu/;s/bcprov-jdk15on/gnu-crypto/;s/1.69/2.0.1/' client/pom.xml > tmp.xml
+  mv tmp.xml client/pom.xml
   ;;
 
 bouncycastle)
   set -x
   cp client/crypto/bouncycastle/Crypto.java client/src/com/aerospike/client/util
-  sed -i '' 's/org.gnu/org.bouncycastle/;s/gnu-crypto/bcprov-jdk15on/;s/2.0.1/1.69/' client/pom.xml
+  sed 's/org.gnu/org.bouncycastle/;s/gnu-crypto/bcprov-jdk15on/;s/2.0.1/1.69/' client/pom.xml > tmp.xml
+  mv tmp.xml client/pom.xml
   ;;
 
 *)

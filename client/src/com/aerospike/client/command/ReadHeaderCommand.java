@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,6 +26,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 public class ReadHeaderCommand extends SyncCommand {
@@ -37,11 +38,17 @@ public class ReadHeaderCommand extends SyncCommand {
 		super(cluster, policy);
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);
+		cluster.addTran();
 	}
 
 	@Override
 	protected Node getNode() {
 		return partition.getNodeRead(cluster);
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
 	}
 
 	@Override

@@ -49,6 +49,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		this.statement = statement;
 		this.tracker = tracker;
 
+		cluster.addTran();
 		taskId = statement.prepareTaskId();
 		tracker.setSleepBetweenRetries(0);
 		queryPartitions();
@@ -87,7 +88,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 						catch (AerospikeException ae) {
 							onFailure(ae);
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							onFailure(new AerospikeException(e));
 						}
 					}
@@ -102,7 +103,7 @@ public final class AsyncQueryPartitionExecutor extends AsyncMultiExecutor {
 		catch (AerospikeException ae) {
 			onFailure(ae);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			onFailure(new AerospikeException(e));
 		}
 	}

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -41,11 +41,11 @@ public class QueryRegionFilter extends Example {
 	 * Perform region query using a Geo index with an aggregation filter.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "filterindexloc";
 		String keyPrefix = "filterkeyloc";
-		String binName1 = params.getBinName("filterloc");
-		String binName2 = params.getBinName("filteramenity");
+		String binName1 = "filterloc";
+		String binName2 = "filteramenity";
 		int size = 20;
 
 		register(client, params);
@@ -55,14 +55,14 @@ public class QueryRegionFilter extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/geo_filter_example.lua",
 											"geo_filter_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -87,7 +87,7 @@ public class QueryRegionFilter extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName1,
@@ -122,7 +122,7 @@ public class QueryRegionFilter extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName1,

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.exp;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListReturnType;
@@ -155,17 +156,21 @@ public final class ListExp {
 
 	/**
 	 * Create expression that removes list items identified by value.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByValue(Exp value, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_VALUE, ListReturnType.NONE, value, ctx);
+	public static Exp removeByValue(int returnType, Exp value, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_VALUE, returnType, value, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
 	/**
 	 * Create expression that removes list items identified by values.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByValueList(Exp values, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_LIST, ListReturnType.NONE, values, ctx);
+	public static Exp removeByValueList(int returnType, Exp values, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_LIST, returnType, values, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -173,14 +178,18 @@ public final class ListExp {
 	 * Create expression that removes list items identified by value range (valueBegin inclusive, valueEnd exclusive).
 	 * If valueBegin is null, the range is less than valueEnd. If valueEnd is null, the range is
 	 * greater than equal to valueBegin.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByValueRange(Exp valueBegin, Exp valueEnd, Exp bin, CTX... ctx) {
-		byte[] bytes = ListExp.packRangeOperation(REMOVE_BY_VALUE_INTERVAL, ListReturnType.NONE, valueBegin, valueEnd, ctx);
+	public static Exp removeByValueRange(int returnType, Exp valueBegin, Exp valueEnd, Exp bin, CTX... ctx) {
+		byte[] bytes = ListExp.packRangeOperation(REMOVE_BY_VALUE_INTERVAL, returnType, valueBegin, valueEnd, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
 	/**
 	 * Create expression that removes list items nearest to value and greater by relative rank.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 * <p>
 	 * Examples for ordered list [0,4,5,9,11,15]:
 	 * <ul>
@@ -193,13 +202,15 @@ public final class ListExp {
 	 * <li>(3,-3) = [0,4,5,9,11,15]</li>
 	 * </ul>
 	 */
-	public static Exp removeByValueRelativeRankRange(Exp value, Exp rank, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_REL_RANK_RANGE, ListReturnType.NONE, value, rank, ctx);
+	public static Exp removeByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
 	/**
 	 * Create expression that removes list items nearest to value and greater by relative rank with a count limit.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 * <p>
 	 * Examples for ordered list [0,4,5,9,11,15]:
 	 * <ul>
@@ -212,8 +223,8 @@ public final class ListExp {
 	 * <li>(3,-3,2) = []</li>
 	 * </ul>
 	 */
-	public static Exp removeByValueRelativeRankRange(Exp value, Exp rank, Exp count, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_REL_RANK_RANGE, ListReturnType.NONE, value, rank, count, ctx);
+	public static Exp removeByValueRelativeRankRange(int returnType, Exp value, Exp rank, Exp count, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_VALUE_REL_RANK_RANGE, returnType, value, rank, count, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -227,17 +238,21 @@ public final class ListExp {
 
 	/**
 	 * Create expression that removes list items starting at specified index to the end of list.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByIndexRange(Exp index, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_INDEX_RANGE, ListReturnType.NONE, index, ctx);
+	public static Exp removeByIndexRange(int returnType, Exp index, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_INDEX_RANGE, returnType, index, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
 	/**
 	 * Create expression that removes "count" list items starting at specified index.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByIndexRange(Exp index, Exp count, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_INDEX_RANGE, ListReturnType.NONE, index, count, ctx);
+	public static Exp removeByIndexRange(int returnType, Exp index, Exp count, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_INDEX_RANGE, returnType, index, count, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -251,17 +266,21 @@ public final class ListExp {
 
 	/**
 	 * Create expression that removes list items starting at specified rank to the last ranked item.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByRankRange(Exp rank, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_RANK_RANGE, ListReturnType.NONE, rank, ctx);
+	public static Exp removeByRankRange(int returnType, Exp rank, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_RANK_RANGE, returnType, rank, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
 	/**
 	 * Create expression that removes "count" list items starting at specified rank.
+	 * Valid returnType values are {@link com.aerospike.client.cdt.ListReturnType#NONE} or
+	 * {@link com.aerospike.client.cdt.ListReturnType#INVERTED}.
 	 */
-	public static Exp removeByRankRange(Exp rank, Exp count, Exp bin, CTX... ctx) {
-		byte[] bytes = Pack.pack(REMOVE_BY_RANK_RANGE, ListReturnType.NONE, rank, count, ctx);
+	public static Exp removeByRankRange(int returnType, Exp rank, Exp count, Exp bin, CTX... ctx) {
+		byte[] bytes = Pack.pack(REMOVE_BY_RANK_RANGE, returnType, rank, count, ctx);
 		return addWrite(bin, bytes, ctx);
 	}
 
@@ -463,11 +482,29 @@ public final class ListExp {
 	}
 
 	private static Exp.Type getValueType(int returnType) {
-		if ((returnType & ~ListReturnType.INVERTED) == ListReturnType.VALUE) {
+		int t = returnType & ~ListReturnType.INVERTED;
+
+		switch (t) {
+		case ListReturnType.INDEX:
+		case ListReturnType.REVERSE_INDEX:
+		case ListReturnType.RANK:
+		case ListReturnType.REVERSE_RANK:
+			// This method only called from expressions that can return multiple integers (ie list).
 			return Exp.Type.LIST;
-		}
-		else {
+
+		case ListReturnType.COUNT:
 			return Exp.Type.INT;
+
+		case ListReturnType.VALUE:
+			// This method only called from expressions that can return multiple objects (ie list).
+			return Exp.Type.LIST;
+
+		case ListReturnType.EXISTS:
+			return Exp.Type.BOOL;
+
+		default:
+		case ListReturnType.NONE:
+			throw new AerospikeException("Invalid ListReturnType: " + returnType);
 		}
 	}
 

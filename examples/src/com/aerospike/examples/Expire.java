@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,8 +16,8 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.WritePolicy;
@@ -32,16 +32,16 @@ public class Expire extends Example {
 	 * Demonstrate various record expiration settings.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		expireExample(client, params);
 	}
 
 	/**
 	 * Write and twice read an expiration record.
 	 */
-	private void expireExample(AerospikeClient client, Parameters params) throws Exception {
+	private void expireExample(IAerospikeClient client, Parameters params) throws Exception {
 		Key key  = new Key(params.namespace, params.set, "expirekey ");
-		Bin bin  = new Bin(params.getBinName("expirebin"), "expirevalue");
+		Bin bin  = new Bin("expirebin", "expirevalue");
 
 		console.info("Put: namespace=%s set=%s key=%s bin=%s value=%s expiration=2",
 			key.namespace, key.setName, key.userKey, bin.name, bin.value);

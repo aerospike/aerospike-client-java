@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,6 +25,7 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 /**
@@ -119,7 +120,7 @@ public abstract class AsyncCommand extends Command {
 		return buffer;
 	}
 
-	private final byte[] resizeBuffer(byte[] buffer, int size) {
+	private byte[] resizeBuffer(byte[] buffer, int size) {
 		if (size > MAX_BUFFER_SIZE) {
 			// Put original buffer back in pool.
 			putBuffer(buffer);
@@ -142,7 +143,7 @@ public abstract class AsyncCommand extends Command {
 		}
 	}
 
-	final boolean parseCommandResult() {
+	boolean parseCommandResult() {
 		if (compressed) {
 			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
 			byte[] buf = new byte[usize];
@@ -190,6 +191,7 @@ public abstract class AsyncCommand extends Command {
 	}
 
 	abstract Node getNode(Cluster cluster);
+	abstract LatencyType getLatencyType();
 	abstract void writeBuffer();
 	abstract boolean parseResult();
 	abstract boolean prepareRetry(boolean timeout);

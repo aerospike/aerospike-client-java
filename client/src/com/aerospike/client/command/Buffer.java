@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,8 +16,6 @@
  */
 package com.aerospike.client.command;
 
-import java.io.ByteArrayInputStream;
-import java.io.ObjectInputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -70,7 +68,15 @@ public final class Buffer {
 			return Arrays.copyOfRange(buf, offset, offset+len);
 
 		case ParticleType.JBLOB:
-			return Buffer.bytesToObject(buf, offset, len);
+			// Java deserialization is no longer allowed, so return java serialized blob as a byte[].
+			// The user can deserialize the byte[] from the record bin using the following code:
+			//
+			// try (ByteArrayInputStream bastream = new ByteArrayInputStream(bytes, 0, len)) {
+			//     try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
+			//         return oistream.readObject();
+			//     }
+			// }
+			return Arrays.copyOfRange(buf, offset, offset+len);
 
 		case ParticleType.GEOJSON:
 			return Buffer.bytesToGeoJSON(buf, offset, len);
@@ -295,25 +301,6 @@ public final class Buffer {
 			sb.append(String.format("%02x", buf[i]));
 		}
 		return sb.toString();
-	}
-
-	public static Object bytesToObject(byte[] buf, int offset, int length) {
-		if (length <= 0) {
-			return null;
-		}
-
-		if (Value.DisableDeserializer) {
-			throw new AerospikeException.Serialize("Object deserializer has been disabled");
-		}
-
-		try (ByteArrayInputStream bastream = new ByteArrayInputStream(buf, offset, length)) {
-			try (ObjectInputStream oistream = new ObjectInputStream(bastream)) {
-				return oistream.readObject();
-			}
-		}
-		catch (Exception e) {
-			throw new AerospikeException.Serialize(e);
-		}
 	}
 
 	public static Value bytesToLongValue(byte[] buf, int offset, int len) {

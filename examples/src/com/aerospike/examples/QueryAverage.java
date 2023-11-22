@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,9 +18,9 @@ package com.aerospike.examples;
 
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.ResultCode;
@@ -42,26 +42,33 @@ public class QueryAverage extends Example {
 	 * Create secondary index and query on it and apply aggregation user defined function.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "avgindex";
 		String keyPrefix = "avgkey";
-		String binName = params.getBinName("l2");
+		String binName = "l2";
 		int size = 10;
 
-		register(client, params);
-		createIndex(client, params, indexName, binName);
+		// Proxy client does not support register() nor createIndex(), so must assume
+		// there are already created to run this test.
+		if (! params.useProxyClient) {
+			register(client, params);
+			createIndex(client, params, indexName, binName);
+		}
 		writeRecords(client, params, keyPrefix, size);
 		runQuery(client, params, indexName, binName);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
+
+		// Do not drop index because after native client tests run, the proxy
+		// client tests need the index to exist.
+		//client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/average_example.lua", "average_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -84,7 +91,7 @@ public class QueryAverage extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		int size
@@ -101,7 +108,7 @@ public class QueryAverage extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName

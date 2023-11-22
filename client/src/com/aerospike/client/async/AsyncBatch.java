@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,20 +26,15 @@ import com.aerospike.client.Log;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
-import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
-import com.aerospike.client.listener.BatchListListener;
-import com.aerospike.client.listener.BatchOperateListListener;
-import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.BatchRecordSequenceListener;
 import com.aerospike.client.listener.BatchSequenceListener;
-import com.aerospike.client.listener.ExistsArrayListener;
 import com.aerospike.client.listener.ExistsSequenceListener;
-import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
@@ -50,43 +45,7 @@ public final class AsyncBatch {
 	// ReadList
 	//-------------------------------------------------------
 
-	public static final class ReadListExecutor extends AsyncBatchExecutor {
-		private final BatchListListener listener;
-		private final List<BatchRead> records;
-
-		public ReadListExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchListListener listener,
-			List<BatchRead> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ReadListCommand(this, batchNode, policy, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(records);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ReadListCommand extends AsyncBatchCommand {
+	public static final class ReadListCommand extends AsyncBatchCommand {
 		private final List<BatchRead> records;
 
 		public ReadListCommand(
@@ -138,41 +97,7 @@ public final class AsyncBatch {
 	// ReadSequence
 	//-------------------------------------------------------
 
-	public static final class ReadSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchSequenceListener listener;
-
-		public ReadSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchSequenceListener listener,
-			List<BatchRead> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ReadSequenceCommand(this, batchNode, policy, listener, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ReadSequenceCommand extends AsyncBatchCommand {
+	public static final class ReadSequenceCommand extends AsyncBatchCommand {
 		private final BatchSequenceListener listener;
 		private final List<BatchRead> records;
 
@@ -228,49 +153,7 @@ public final class AsyncBatch {
 	// GetArray
 	//-------------------------------------------------------
 
-	public static final class GetArrayExecutor extends AsyncBatchExecutor {
-		private final RecordArrayListener listener;
-		private final Key[] keys;
-		private final Record[] recordArray;
-
-		public GetArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			RecordArrayListener listener,
-			Key[] keys,
-			String[] binNames,
-			Operation[] ops,
-			int readAttr,
-			boolean isOperation
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-			this.keys = keys;
-			this.recordArray = new Record[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetArrayCommand(this, batchNode, policy, keys, binNames, ops, recordArray, readAttr, isOperation);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(keys, recordArray);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(new AerospikeException.BatchRecords(recordArray, ae));
-		}
-	}
-
-	private static final class GetArrayCommand extends AsyncBatchCommand {
+	public static final class GetArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Operation[] ops;
@@ -331,47 +214,7 @@ public final class AsyncBatch {
 	// GetSequence
 	//-------------------------------------------------------
 
-	public static final class GetSequenceExecutor extends AsyncBatchExecutor {
-		private final RecordSequenceListener listener;
-
-		public GetSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			RecordSequenceListener listener,
-			Key[] keys,
-			String[] binNames,
-			Operation[] ops,
-			int readAttr,
-			boolean isOperation
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new GetSequenceCommand(this, batchNode, policy, keys, binNames, ops, listener, readAttr, isOperation);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		@Override
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		@Override
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class GetSequenceCommand extends AsyncBatchCommand {
+	public static final class GetSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String[] binNames;
 		private final Operation[] ops;
@@ -438,45 +281,7 @@ public final class AsyncBatch {
 	// ExistsArray
 	//-------------------------------------------------------
 
-	public static final class ExistsArrayExecutor extends AsyncBatchExecutor {
-		private final ExistsArrayListener listener;
-		private final Key[] keys;
-		private final boolean[] existsArray;
-
-		public ExistsArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsArrayListener listener
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-			this.keys = keys;
-			this.existsArray = new boolean[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ExistsArrayCommand(this, batchNode, policy, keys, existsArray);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(keys, existsArray);
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(new AerospikeException.BatchExists(existsArray, ae));
-		}
-	}
-
-	private static final class ExistsArrayCommand extends AsyncBatchCommand {
+	public static final class ExistsArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final boolean[] existsArray;
 
@@ -529,41 +334,7 @@ public final class AsyncBatch {
 	// ExistsSequence
 	//-------------------------------------------------------
 
-	public static final class ExistsSequenceExecutor extends AsyncBatchExecutor {
-		private final ExistsSequenceListener listener;
-
-		public ExistsSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			Key[] keys,
-			ExistsSequenceListener listener
-		) {
-			super(eventLoop, cluster, false);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, false, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new ExistsSequenceCommand(this, batchNode, policy, keys, listener);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class ExistsSequenceCommand extends AsyncBatchCommand {
+	public static final class ExistsSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final ExistsSequenceListener listener;
 
@@ -617,43 +388,7 @@ public final class AsyncBatch {
 	// OperateList
 	//-------------------------------------------------------
 
-	public static final class OperateListExecutor extends AsyncBatchExecutor {
-		private final BatchOperateListListener listener;
-		private final List<BatchRecord> records;
-
-		public OperateListExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchOperateListListener listener,
-			List<BatchRecord> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.records = records;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new OperateListCommand(this, batchNode, policy, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(records, getStatus());
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class OperateListCommand extends AsyncBatchCommand {
+	public static final class OperateListCommand extends AsyncBatchCommand {
 		private final List<BatchRecord> records;
 
 		public OperateListCommand(
@@ -737,41 +472,7 @@ public final class AsyncBatch {
 	// OperateSequence
 	//-------------------------------------------------------
 
-	public static final class OperateSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchRecordSequenceListener listener;
-
-		public OperateSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			List<BatchRecord> records
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, records, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new OperateSequenceCommand(this, batchNode, policy, listener, records);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class OperateSequenceCommand extends AsyncBatchCommand {
+	public static final class OperateSequenceCommand extends AsyncBatchCommand {
 		private final BatchRecordSequenceListener listener;
 		private final List<BatchRecord> records;
 
@@ -860,49 +561,7 @@ public final class AsyncBatch {
 	// OperateRecordArray
 	//-------------------------------------------------------
 
-	public static final class OperateRecordArrayExecutor extends AsyncBatchExecutor {
-		private final BatchRecordArrayListener listener;
-		private final BatchRecord[] records;
-
-		public OperateRecordArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			Operation[] ops,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.records = new BatchRecord[keys.length];
-
-			for (int i = 0; i < keys.length; i++) {
-				this.records[i] = new BatchRecord(keys[i], attr.hasWrite);
-			}
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, records, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new OperateRecordArrayCommand(this, batchNode, policy, keys, ops, records, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(records, getStatus());
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(records, ae);
-		}
-	}
-
-	private static final class OperateRecordArrayCommand extends AsyncBatchCommand {
+	public static final class OperateRecordArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final Operation[] ops;
 		private final BatchRecord[] records;
@@ -979,54 +638,7 @@ public final class AsyncBatch {
 	// OperateRecordSequence
 	//-------------------------------------------------------
 
-	public static final class OperateRecordSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchRecordSequenceListener listener;
-		private final boolean[] sent;
-
-		public OperateRecordSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key[] keys,
-			Operation[] ops,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.sent = new boolean[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new OperateRecordSequenceCommand(this, batchNode, policy, keys, ops, sent, listener, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		@Override
-		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
-			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
-			sent[index] = true;
-			AsyncBatch.onRecord(listener, record, index);
-		}
-
-		@Override
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		@Override
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class OperateRecordSequenceCommand extends AsyncBatchCommand {
+	public static final class OperateRecordSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final Operation[] ops;
 		private final boolean[] sent;
@@ -1105,50 +717,6 @@ public final class AsyncBatch {
 	//-------------------------------------------------------
 	// UDFArray
 	//-------------------------------------------------------
-
-	public static final class UDFArrayExecutor extends AsyncBatchExecutor {
-		private final BatchRecordArrayListener listener;
-		private final BatchRecord[] recordArray;
-
-		public UDFArrayExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordArrayListener listener,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.recordArray = new BatchRecord[keys.length];
-
-			for (int i = 0; i < keys.length; i++) {
-				this.recordArray[i] = new BatchRecord(keys[i], attr.hasWrite);
-			}
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, recordArray, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new UDFArrayCommand(this, batchNode, policy, keys, packageName, functionName, argBytes, recordArray, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		protected void onSuccess() {
-			listener.onSuccess(recordArray, getStatus());
-		}
-
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(recordArray, ae);
-		}
-	}
 
 	public static final class UDFArrayCommand extends AsyncBatchCommand {
 		private final Key[] keys;
@@ -1247,56 +815,7 @@ public final class AsyncBatch {
 	// UDFSequence
 	//-------------------------------------------------------
 
-	public static final class UDFSequenceExecutor extends AsyncBatchExecutor {
-		private final BatchRecordSequenceListener listener;
-		private final boolean[] sent;
-
-		public UDFSequenceExecutor(
-			EventLoop eventLoop,
-			Cluster cluster,
-			BatchPolicy policy,
-			BatchRecordSequenceListener listener,
-			Key[] keys,
-			String packageName,
-			String functionName,
-			byte[] argBytes,
-			BatchAttr attr
-		) {
-			super(eventLoop, cluster, true);
-			this.listener = listener;
-			this.sent = new boolean[keys.length];
-
-			// Create commands.
-			List<BatchNode> batchNodes = BatchNodeList.generate(cluster, policy, keys, null, attr.hasWrite, this);
-			AsyncBatchCommand[] tasks = new AsyncBatchCommand[batchNodes.size()];
-			int count = 0;
-
-			for (BatchNode batchNode : batchNodes) {
-				tasks[count++] = new UDFSequenceCommand(this, batchNode, policy, keys, packageName, functionName, argBytes, sent, listener, attr);
-			}
-			// Dispatch commands to nodes.
-			execute(tasks);
-		}
-
-		@Override
-		public void batchKeyError(Key key, int index, AerospikeException ae, boolean inDoubt, boolean hasWrite) {
-			BatchRecord record = new BatchRecord(key, null, ae.getResultCode(), inDoubt, hasWrite);
-			sent[index] = true;
-			AsyncBatch.onRecord(listener, record, index);
-		}
-
-		@Override
-		protected void onSuccess() {
-			listener.onSuccess();
-		}
-
-		@Override
-		protected void onFailure(AerospikeException ae) {
-			listener.onFailure(ae);
-		}
-	}
-
-	private static final class UDFSequenceCommand extends AsyncBatchCommand {
+	public static final class UDFSequenceCommand extends AsyncBatchCommand {
 		private final Key[] keys;
 		private final String packageName;
 		private final String functionName;
@@ -1409,6 +928,11 @@ public final class AsyncBatch {
 		}
 
 		@Override
+		protected LatencyType getLatencyType() {
+			return LatencyType.BATCH;
+		}
+
+		@Override
 		protected boolean prepareRetry(boolean timeout) {
 			if (parent.done || ! (policy.replica == Replica.SEQUENCE || policy.replica == Replica.PREFER_RACK)) {
 				// Perform regular retry to same node.
@@ -1432,6 +956,8 @@ public final class AsyncBatch {
 				// Go through normal retry.
 				return false;
 			}
+
+			parent.cluster.addRetries(batchNodes.size());
 
 			AsyncBatchCommand[] cmds = new AsyncBatchCommand[batchNodes.size()];
 			int count = 0;
@@ -1465,7 +991,16 @@ public final class AsyncBatch {
 		abstract List<BatchNode> generateBatchNodes();
 	}
 
-	private static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
+	public static void onRecord(RecordSequenceListener listener, Key key, Record record) {
+		try {
+			listener.onRecord(key, record);
+		}
+		catch (Throwable e) {
+			Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
+		}
+	}
+
+	public static void onRecord(BatchRecordSequenceListener listener, BatchRecord record, int index) {
 		try {
 			listener.onRecord(record, index);
 		}

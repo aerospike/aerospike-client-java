@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -57,6 +57,20 @@ public final class Filter {
 	}
 
 	/**
+	 * Create blob equality filter for query.
+	 * Requires server version 7.0+.
+	 *
+	 * @param name			bin name
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter equal(String name, byte[] value, CTX... ctx) {
+		Value val = Value.get(value);
+		return new Filter(name, IndexCollectionType.DEFAULT, val.getType(), val, val, ctx);
+	}
+
+	/**
 	 * Create contains number filter for query on collection index.
 	 *
 	 * @param name			bin name
@@ -80,6 +94,20 @@ public final class Filter {
 	 * @return				filter instance
 	 */
 	public static Filter contains(String name, IndexCollectionType type, String value, CTX... ctx) {
+		Value val = Value.get(value);
+		return new Filter(name, type, val.getType(), val, val, ctx);
+	}
+
+	/**
+	 * Create contains byte[] filter for query on collection index.
+	 *
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter contains(String name, IndexCollectionType type, byte[] value, CTX... ctx) {
 		Value val = Value.get(value);
 		return new Filter(name, type, val.getType(), val, val, ctx);
 	}
@@ -210,12 +238,16 @@ public final class Filter {
 	private final Value end;
 
 	private Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, CTX[] ctx) {
+		this(name, colType, valType, begin, end, (ctx != null && ctx.length > 0) ? Pack.pack(ctx) : null);
+	}
+
+	Filter(String name, IndexCollectionType colType, int valType, Value begin, Value end, byte[] packedCtx) {
 		this.name = name;
 		this.colType = colType;
 		this.valType = valType;
 		this.begin = begin;
 		this.end = end;
-		this.packedCtx = (ctx != null && ctx.length > 0)? Pack.pack(ctx) : null;
+		this.packedCtx = packedCtx;
 	}
 
 	/**
@@ -259,6 +291,46 @@ public final class Filter {
 	 */
 	public IndexCollectionType getCollectionType() {
 		return colType;
+	}
+
+	/**
+	 * Filter name.
+	 * For internal use only.
+	 */
+	public String getName() {
+		return name;
+	}
+
+	/**
+	 * Index collection type.
+	 * For internal use only.
+	 */
+	public IndexCollectionType getColType() {
+		return colType;
+	}
+
+	/**
+	 * Filter begin value.
+	 * For internal use only.
+	 */
+	public Value getBegin() {
+		return begin;
+	}
+
+	/**
+	 * Filter begin value.
+	 * For internal use only.
+	 */
+	public Value getEnd() {
+		return end;
+	}
+
+	/**
+	 * Filter Value type.
+	 * For internal use only.
+	 */
+	public int getValType() {
+		return valType;
 	}
 
 	/**

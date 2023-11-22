@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,6 +26,7 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.RecordListener;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
 public class AsyncRead extends AsyncCommand {
@@ -43,20 +44,27 @@ public class AsyncRead extends AsyncCommand {
 		this.binNames = binNames;
 		this.isOperation = false;
 		this.partition = Partition.read(cluster, policy, key);
+		cluster.addTran();
 	}
 
-	public AsyncRead(RecordListener listener, Policy policy, Key key, Partition partition, boolean isOperation) {
+	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, Partition partition, boolean isOperation) {
 		super(policy, true);
 		this.listener = listener;
 		this.key = key;
 		this.binNames = null;
 		this.isOperation = isOperation;
 		this.partition = partition;
+		cluster.addTran();
 	}
 
 	@Override
 	Node getNode(Cluster cluster) {
 		return partition.getNodeRead(cluster);
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.READ;
 	}
 
 	@Override
@@ -133,7 +141,7 @@ public class AsyncRead extends AsyncCommand {
 			code = Integer.parseInt(list[2].trim());
 			message = list[0] + ':' + list[1] + ' ' + list[3];
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Use generic exception if parse error occurs.
 			throw new AerospikeException(resultCode, ret);
 		}

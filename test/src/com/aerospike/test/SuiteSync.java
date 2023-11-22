@@ -21,10 +21,11 @@ import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Log;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.test.sync.basic.TestAdd;
 import com.aerospike.test.sync.basic.TestAppend;
 import com.aerospike.test.sync.basic.TestBatch;
@@ -46,12 +47,12 @@ import com.aerospike.test.sync.basic.TestOperateMap;
 import com.aerospike.test.sync.basic.TestPutGet;
 import com.aerospike.test.sync.basic.TestReplace;
 import com.aerospike.test.sync.basic.TestScan;
-import com.aerospike.test.sync.basic.TestSerialize;
 import com.aerospike.test.sync.basic.TestServerInfo;
 import com.aerospike.test.sync.basic.TestTouch;
 import com.aerospike.test.sync.basic.TestUDF;
 import com.aerospike.test.sync.query.TestIndex;
 import com.aerospike.test.sync.query.TestQueryAverage;
+import com.aerospike.test.sync.query.TestQueryBlob;
 import com.aerospike.test.sync.query.TestQueryCollection;
 import com.aerospike.test.sync.query.TestQueryContext;
 import com.aerospike.test.sync.query.TestQueryExecute;
@@ -89,12 +90,12 @@ import com.aerospike.test.util.Args;
 	TestPutGet.class,
 	TestReplace.class,
 	TestScan.class,
-	TestSerialize.class,
 	TestServerInfo.class,
 	TestTouch.class,
 	TestUDF.class,
 	TestIndex.class,
 	TestQueryAverage.class,
+	TestQueryBlob.class,
 	TestQueryCollection.class,
 	TestQueryContext.class,
 	TestQueryExecute.class,
@@ -109,7 +110,7 @@ import com.aerospike.test.util.Args;
 	TestQuerySum.class
 })
 public class SuiteSync {
-	public static AerospikeClient client = null;
+	public static IAerospikeClient client = null;
 
 	@BeforeClass
 	public static void init() {
@@ -119,14 +120,11 @@ public class SuiteSync {
 		Args args = Args.Instance;
 
 		ClientPolicy policy = new ClientPolicy();
-		policy.user = args.user;
-		policy.password = args.password;
-		policy.authMode = args.authMode;
-		policy.tlsPolicy = args.tlsPolicy;
+		args.setClientPolicy(policy);
 
 		Host[] hosts = Host.parseHosts(args.host, args.port);
 
-		client = new AerospikeClient(policy, hosts);
+		client = AerospikeClientFactory.getClient(policy, args.useProxyClient, hosts);
 
 		try {
 			args.setServerSpecific(client);

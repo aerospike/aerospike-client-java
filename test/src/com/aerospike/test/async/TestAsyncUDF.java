@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,10 +37,14 @@ import com.aerospike.client.listener.ExecuteListener;
 import com.aerospike.client.task.RegisterTask;
 
 public class TestAsyncUDF extends TestAsync {
-	private static final String binName = args.getBinName("audfbin1");
+	private static final String binName = "audfbin1";
 
 	@BeforeClass
 	public static void prepare() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestAsyncUDF.prepare");
+			return;
+		}
 		RegisterTask rtask = client.register(null, TestAsyncUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		rtask.waitTillComplete();
 	}
@@ -93,7 +97,7 @@ public class TestAsyncUDF extends TestAsync {
 	public void asyncBatchUDF() {
 		Key[] keys = new Key[] {
 			new Key(args.namespace, args.set, 20000),
-			new Key(args.namespace, args.set, 20001)
+			new Key(args.namespace, args.set, 20003)
 		};
 
 		client.delete(null, null, keys);
@@ -117,6 +121,51 @@ public class TestAsyncUDF extends TestAsync {
 			}
 
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				setError(ae);
+				notifyComplete();
+			}
+		}, null, null, keys, "record_example", "writeBin", Value.get("B5"), Value.get("value5"));
+
+		waitTillComplete();
+	}
+
+	@Test
+	public void asyncBatchUDFSeq() {
+		Key[] keys = new Key[] {
+			new Key(args.namespace, args.set, 20000),
+			new Key(args.namespace, args.set, 20003)
+		};
+
+		client.delete(null, null, keys);
+
+		client.execute(null, new BatchRecordSequenceListener() {
+			int count;
+
+			public void onRecord(BatchRecord record, int index) {
+				count++;
+
+				if (!assertTrue(index >= 0 && index <= 1)) {
+					notifyComplete();
+					return;
+				}
+
+				if (!assertTrue(record.resultCode == 0)) {
+					notifyComplete();
+					return;
+				}
+
+				if (!assertNotNull(record.record)) {
+					notifyComplete();
+					return;
+				}
+			}
+
+			public void onSuccess() {
+				assertEquals(2, count);
+				notifyComplete();
+			}
+
+			public void onFailure(AerospikeException ae) {
 				setError(ae);
 				notifyComplete();
 			}

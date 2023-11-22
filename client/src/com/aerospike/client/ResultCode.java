@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -52,7 +52,7 @@ public final class ResultCode {
 	public static final int ASYNC_QUEUE_FULL = -9;
 
 	/**
-	 * Server is not accepting requests.
+	 * Connection to server failed.
 	 */
 	public static final int SERVER_NOT_AVAILABLE = -8;
 
@@ -148,8 +148,7 @@ public final class ResultCode {
 	public static final int PARTITION_UNAVAILABLE = 11;
 
 	/**
-	 * Operation is not supported with configured bin type (single-bin or
-	 * multi-bin).
+	 * Operation is not supported with configured bin type.
 	 */
 	public static final int BIN_TYPE_ERROR = 12;
 
@@ -476,7 +475,7 @@ public final class ResultCode {
 			return "Async delay queue is full";
 
 		case SERVER_NOT_AVAILABLE:
-			return "Server not available";
+			return "Connection to server failed";
 
 		case NO_MORE_CONNECTIONS:
 			return "No more available connections";

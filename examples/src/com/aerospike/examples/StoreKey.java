@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -40,10 +40,10 @@ public class StoreKey extends Example {
 	 * Store user key on server using WritePolicy.sendKey option.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "skindex";
 		String keyPrefix = "skkey";
-		String binName = params.getBinName("skbin");
+		String binName = "skbin";
 		int size = 10;
 
 		createIndex(client, params, indexName, binName);
@@ -53,7 +53,7 @@ public class StoreKey extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -76,7 +76,7 @@ public class StoreKey extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -94,7 +94,7 @@ public class StoreKey extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName

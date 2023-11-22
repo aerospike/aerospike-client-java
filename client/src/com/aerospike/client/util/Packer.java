@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,10 +23,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.UUID;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Value;
-import com.aerospike.client.Value.BlobValue;
 import com.aerospike.client.cdt.MapOrder;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.ParticleType;
@@ -44,7 +44,7 @@ public final class Packer {
 			packer.packValueArray(val);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -55,7 +55,7 @@ public final class Packer {
 			packer.packList(val);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -66,7 +66,7 @@ public final class Packer {
 			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -77,7 +77,7 @@ public final class Packer {
 			packer.packMap(val, order);
 			return packer.toByteArray();
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			throw new AerospikeException.Serialize(e);
 		}
 	}
@@ -205,13 +205,6 @@ public final class Packer {
 		packByteArray(b, offset, length);
 	}
 
-	public void packBlob(Object val) {
-		byte[] bytes = BlobValue.serialize(val);
-		packByteArrayBegin(bytes.length + 1);
-		packByte(ParticleType.JBLOB);
-		packByteArray(bytes, 0, bytes.length);
-	}
-
 	public void packGeoJSON(String val) {
 		byte[] buffer = Buffer.stringToUtf8(val);
 		packByteArrayBegin(buffer.length + 1);
@@ -242,38 +235,53 @@ public final class Packer {
 		}
 
 		if (obj instanceof Value) {
-			Value value = (Value) obj;
+			Value value = (Value)obj;
 			value.pack(this);
 			return;
 		}
 
 		if (obj instanceof byte[]) {
-			packParticleBytes((byte[]) obj);
+			packParticleBytes((byte[])obj);
 			return;
 		}
 
 		if (obj instanceof String) {
-			packParticleString((String) obj);
+			packParticleString((String)obj);
 			return;
 		}
 
 		if (obj instanceof Integer) {
-			packInt((Integer) obj);
+			packInt((Integer)obj);
 			return;
 		}
 
 		if (obj instanceof Long) {
-			packLong((Long) obj);
+			packLong((Long)obj);
+			return;
+		}
+
+		if (obj instanceof List<?>) {
+			packList((List<?>)obj);
+			return;
+		}
+
+		if (obj instanceof Map<?,?>) {
+			packMap((Map<?,?>)obj);
 			return;
 		}
 
 		if (obj instanceof Double) {
-			packDouble((Double) obj);
+			packDouble((Double)obj);
 			return;
 		}
 
 		if (obj instanceof Float) {
-			packFloat((Float) obj);
+			packFloat((Float)obj);
+			return;
+		}
+
+		if (obj instanceof Short) {
+			packInt((Short)obj);
 			return;
 		}
 
@@ -282,13 +290,23 @@ public final class Packer {
 			return;
 		}
 
-		if (obj instanceof List<?>) {
-			packList((List<?>) obj);
+		if (obj instanceof Byte) {
+			packInt(((Byte)obj) & 0xff);
 			return;
 		}
 
-		if (obj instanceof Map<?,?>) {
-			packMap((Map<?,?>) obj);
+		if (obj instanceof Character) {
+			packInt(((Character)obj).charValue());
+			return;
+		}
+
+		if (obj instanceof Enum) {
+			packString(obj.toString());
+			return;
+		}
+
+		if (obj instanceof UUID) {
+			packString(obj.toString());
 			return;
 		}
 
@@ -297,7 +315,7 @@ public final class Packer {
 			return;
 		}
 
-		packBlob(obj);
+		throw new AerospikeException("Unsupported type: " + obj.getClass().getName());
 	}
 
 	public void packByteBuffer(ByteBuffer bb) {

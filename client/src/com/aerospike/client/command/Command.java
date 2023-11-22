@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,6 +37,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
@@ -50,8 +51,9 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
+import com.aerospike.client.util.ThreadLocalData;
 
-public abstract class Command {
+public class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
 	public static final int INFO1_GET_ALL			= (1 << 1); // Get all bins.
 	public static final int INFO1_SHORT_QUERY		= (1 << 2); // Short query.
@@ -183,6 +185,15 @@ public abstract class Command {
 		end();
 	}
 
+	public void setDelete(Policy policy, Key key, BatchAttr attr) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, 0);
+		end();
+	}
+
 	public final void setTouch(WritePolicy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
@@ -274,6 +285,89 @@ public abstract class Command {
 		}
 	}
 
+	public final void setRead(Policy policy, BatchRead br) {
+		begin();
+
+		BatchReadPolicy rp = br.policy;
+		BatchAttr attr = new BatchAttr();
+		Expression exp;
+		int opCount;
+
+		if (rp != null) {
+			attr.setRead(rp);
+			exp = (rp.filterExp != null) ? rp.filterExp : policy.filterExp;
+		}
+		else {
+			attr.setRead(policy);
+			exp = policy.filterExp;
+		}
+
+		if (br.binNames != null) {
+			opCount = br.binNames.length;
+
+			for (String binName : br.binNames) {
+				estimateOperationSize(binName);
+			}
+		}
+		else if (br.ops != null) {
+			attr.adjustRead(br.ops);
+			opCount = br.ops.length;
+
+			for (Operation op : br.ops) {
+				if (op.type.isWrite) {
+					throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+				}
+				estimateOperationSize(op);
+			}
+		}
+		else {
+			attr.adjustRead(br.readAllBins);
+			opCount = 0;
+		}
+
+		int fieldCount = estimateKeyAttrSize(br.key, attr, exp);
+
+		sizeBuffer();
+		writeKeyAttr(br.key, attr, exp, fieldCount, opCount);
+
+		if (br.binNames != null) {
+			for (String binName : br.binNames) {
+				writeOperation(binName, Operation.Type.READ);
+			}
+		}
+		else if (br.ops != null) {
+			for (Operation op : br.ops) {
+				writeOperation(op);
+			}
+		}
+		end();
+	}
+
+	public final void setRead(Policy policy, Key key, Operation[] ops) {
+		begin();
+
+		BatchAttr attr = new BatchAttr();
+		attr.setRead(policy);
+		attr.adjustRead(ops);
+
+		int fieldCount = estimateKeyAttrSize(key, attr, policy.filterExp);
+
+		for (Operation op : ops) {
+			if (op.type.isWrite) {
+                throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in read");
+			}
+			estimateOperationSize(op);
+		}
+
+		sizeBuffer();
+		writeKeyAttr(key, attr, policy.filterExp, fieldCount, ops.length);
+
+		for (Operation op : ops) {
+			writeOperation(op);
+		}
+		end();
+	}
+
 	public final void setReadHeader(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
@@ -322,6 +416,22 @@ public abstract class Command {
 		compress(policy);
 	}
 
+	public final void setOperate(Policy policy, BatchAttr attr, Key key, Operation[] ops) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+
+		dataOffset += attr.opSize;
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, ops.length);
+
+		for (Operation op : ops) {
+			writeOperation(op);
+		}
+		end();
+		compress(policy);
+	}
+
 	//--------------------------------------------------
 	// UDF
 	//--------------------------------------------------
@@ -346,6 +456,26 @@ public abstract class Command {
 			policy.filterExp.write(this);
 		}
 
+		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
+		writeField(functionName, FieldType.UDF_FUNCTION);
+		writeField(argBytes, FieldType.UDF_ARGLIST);
+		end();
+		compress(policy);
+	}
+
+	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, Value[] args) {
+		byte[] argBytes = Packer.pack(args);
+		setUdf(policy, attr, key, packageName, functionName, argBytes);
+	}
+
+	public final void setUdf(Policy policy, BatchAttr attr, Key key, String packageName, String functionName, byte[] argBytes) {
+		begin();
+		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = estimateKeyAttrSize(key, attr, exp);
+		fieldCount += estimateUdfSize(packageName, functionName, argBytes);
+
+		sizeBuffer();
+		writeKeyAttr(key, attr, exp, fieldCount, 0);
 		writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 		writeField(functionName, FieldType.UDF_FUNCTION);
 		writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -611,9 +741,12 @@ public abstract class Command {
 	//--------------------------------------------------
 
 	public final void setBatchOperate(BatchPolicy policy, List<? extends BatchRecord> records, BatchNode batch) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final BatchRecordIterNative iter = new BatchRecordIterNative(records, batch);
+		setBatchOperate(policy, iter);
+	}
+
+	public final void setBatchOperate(BatchPolicy policy, KeyIter<BatchRecord> iter) {
+		BatchRecord record;
 		BatchRecord prev = null;
 
 		begin();
@@ -626,8 +759,7 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		for (int i = 0; i < max; i++) {
-			final BatchRecord record = records.get(offsets[i]);
+		while ((record = iter.next()) != null) {
 			final Key key = record.key;
 
 			dataOffset += key.digest.length + 4;
@@ -661,19 +793,18 @@ public abstract class Command {
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 
 		BatchAttr attr = new BatchAttr();
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			final int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((record = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			final BatchRecord record = records.get(index);
 			final Key key = record.key;
 			final byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
@@ -776,10 +907,17 @@ public abstract class Command {
 		Operation[] ops,
 		BatchAttr attr
 	) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchOperate(policy, iter, binNames, ops, attr);
+	}
 
+	public final void setBatchOperate(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		String[] binNames,
+		Operation[] ops,
+		BatchAttr attr
+	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
@@ -792,11 +930,10 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		Key key;
 		Key prev = null;
 
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-
+		while ((key = iter.next()) != null) {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
@@ -848,17 +985,16 @@ public abstract class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((key = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			Key key = keys[index];
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
@@ -901,10 +1037,18 @@ public abstract class Command {
 		byte[] argBytes,
 		BatchAttr attr
 	) {
-		// Estimate full row size
-		final int[] offsets = batch.offsets;
-		final int max = batch.offsetsSize;
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchUDF(policy, iter, packageName, functionName, argBytes, attr);
+	}
 
+	public final void setBatchUDF(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		String packageName,
+		String functionName,
+		byte[] argBytes,
+		BatchAttr attr
+	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
@@ -917,11 +1061,10 @@ public abstract class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		Key key;
 		Key prev = null;
 
-		for (int i = 0; i < max; i++) {
-			Key key = keys[offsets[i]];
-
+		while ((key = iter.next()) != null) {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
@@ -955,17 +1098,16 @@ public abstract class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
+		iter.reset();
 
-		for (int i = 0; i < max; i++) {
-			int index = offsets[i];
-			Buffer.intToBytes(index, dataBuffer, dataOffset);
+		while ((key = iter.next()) != null) {
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			Key key = keys[index];
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
@@ -1546,7 +1688,32 @@ public abstract class Command {
 	// Command Sizing
 	//--------------------------------------------------
 
+	private final int estimateKeyAttrSize(Key key, BatchAttr attr, Expression filterExp) {
+		int fieldCount = estimateKeySize(key);
+
+		if (attr.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
+
+		if (filterExp != null) {
+			dataOffset += filterExp.size();
+			fieldCount++;
+		}
+		return fieldCount;
+	}
+
 	private final int estimateKeySize(Policy policy, Key key) {
+		int fieldCount = estimateKeySize(key);
+
+		if (policy.sendKey) {
+			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
+			fieldCount++;
+		}
+		return fieldCount;
+	}
+
+	protected final int estimateKeySize(Key key) {
 		int fieldCount = 0;
 
 		if (key.namespace != null) {
@@ -1561,11 +1728,6 @@ public abstract class Command {
 
 		dataOffset += key.digest.length + FIELD_HEADER_SIZE;
 		fieldCount++;
-
-		if (policy.sendKey) {
-			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
-			fieldCount++;
-		}
 		return fieldCount;
 	}
 
@@ -1852,7 +2014,44 @@ public abstract class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
+	/**
+	 * Header write for batch single commands.
+	 */
+	private final void writeKeyAttr(Key key, BatchAttr attr, Expression filterExp, int fieldCount, int operationCount) {
+		// Write all header data except total size which must be written last.
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)attr.readAttr;
+		dataBuffer[10] = (byte)attr.writeAttr;
+		dataBuffer[11] = (byte)attr.infoAttr;
+		dataBuffer[12] = 0; // unused
+		dataBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(attr.generation, dataBuffer, 14);
+		Buffer.intToBytes(attr.expiration, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(operationCount, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
+
+		if (attr.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+
+		if (filterExp != null) {
+			filterExp.write(this);
+		}
+	}
+
 	private final void writeKey(Policy policy, Key key) {
+		writeKey(key);
+
+		if (policy.sendKey) {
+			writeField(key.userKey, FieldType.KEY);
+		}
+	}
+
+	protected final void writeKey(Key key) {
 		// Write key into buffer.
 		if (key.namespace != null) {
 			writeField(key.namespace, FieldType.NAMESPACE);
@@ -1863,10 +2062,6 @@ public abstract class Command {
 		}
 
 		writeField(key.digest, FieldType.DIGEST_RIPE);
-
-		if (policy.sendKey) {
-			writeField(key.userKey, FieldType.KEY);
-		}
 	}
 
 	private final int writeReadOnlyOperations(Operation[] ops, int readAttr) {
@@ -1988,11 +2183,11 @@ public abstract class Command {
 		writeFieldHeader(size, FieldType.FILTER_EXP);
 	}
 
-	private final void begin() {
+	protected final void begin() {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private final void end() {
+	protected final void end() {
 		// Write total size of message which is the current offset.
 		long proto = (dataOffset - 8) | (CL_MSG_VERSION << 56) | (AS_MSG_TYPE << 48);
 		Buffer.longToBytes(proto, dataBuffer, 0);
@@ -2023,7 +2218,13 @@ public abstract class Command {
 		}
 	}
 
-	protected abstract void sizeBuffer();
+	protected void sizeBuffer() {
+		dataBuffer = ThreadLocalData.getBuffer();
+
+		if (dataOffset > dataBuffer.length) {
+			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
+		}
+	}
 
 	//--------------------------------------------------
 	// Response Parsing
@@ -2132,7 +2333,80 @@ public abstract class Command {
 		return isWrite && commandSentCounter > 1;
 	}
 
-	private static class OpResults extends ArrayList<Object> {
+	public static class OpResults extends ArrayList<Object> {
 		private static final long serialVersionUID = 1L;
+	}
+
+	public interface KeyIter<T> {
+		int size();
+		T next();
+		int offset();
+		void reset();
+	}
+
+	private static class BatchRecordIterNative extends BaseIterNative<BatchRecord> {
+		private final List<? extends BatchRecord> records;
+
+		public BatchRecordIterNative(List<? extends BatchRecord> records, BatchNode batch) {
+			super(batch);
+			this.records = records;
+		}
+
+		@Override
+		public BatchRecord get(int offset) {
+			return records.get(offset);
+		}
+	}
+
+	private static class KeyIterNative extends BaseIterNative<Key> {
+		private final Key[] keys;
+
+		public KeyIterNative(Key[] keys, BatchNode batch) {
+			super(batch);
+			this.keys = keys;
+		}
+
+		@Override
+		public Key get(int offset) {
+			return keys[offset];
+		}
+	}
+
+	private static abstract class BaseIterNative<T> implements KeyIter<T> {
+		private final int size;
+		private final int[] offsets;
+		private int offset;
+		private int index;
+
+		public BaseIterNative(BatchNode batch) {
+			this.size = batch.offsetsSize;
+			this.offsets = batch.offsets;
+		}
+
+		@Override
+		public int size() {
+			return size;
+		}
+
+		@Override
+		public T next() {
+			if (index >= size) {
+				return null;
+			}
+			offset = offsets[index++];
+			return get(offset);
+		}
+
+		abstract T get(int offset);
+
+		@Override
+		public int offset() {
+			return offset;
+		}
+
+		@Override
+		public void reset() {
+			index = 0;
+		}
 	}
 }

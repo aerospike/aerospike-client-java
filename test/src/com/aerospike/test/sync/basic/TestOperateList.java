@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -490,6 +490,7 @@ public class TestOperateList extends TestSync {
 				ListOperation.setOrder(binName, ListOrder.ORDERED),
 				ListOperation.getByValue(binName, Value.get(3), ListReturnType.INDEX),
 				ListOperation.getByValueRange(binName, Value.get(-1), Value.get(3), ListReturnType.COUNT),
+				ListOperation.getByValueRange(binName, Value.get(-1), Value.get(3), ListReturnType.EXISTS),
 				ListOperation.getByValueList(binName, valueList, ListReturnType.RANK),
 				ListOperation.getByIndex(binName, 3, ListReturnType.VALUE),
 				ListOperation.getByIndexRange(binName, -2, 2, ListReturnType.VALUE),
@@ -508,6 +509,9 @@ public class TestOperateList extends TestSync {
 
 		val = (Long)results.get(i++);
 		assertEquals(2L, val);
+
+		boolean b = (Boolean)results.get(i++);
+		assertTrue(b);
 
 		list = (List<?>)results.get(i++);
 		assertEquals(2L, list.size());

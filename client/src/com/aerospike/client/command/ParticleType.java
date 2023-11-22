@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,23 +17,15 @@
 package com.aerospike.client.command;
 
 /**
- * Bin type for byte[] values.
+ * Server particle types.
  */
 public final class ParticleType {
-	// Server particle types. Unsupported types are commented out.
 	public static final int NULL = 0;
 	public static final int INTEGER = 1;
 	public static final int DOUBLE = 2;
 	public static final int STRING = 3;
 	public static final int BLOB = 4;
-	//public static final int TIMESTAMP = 5;
-	//public static final int DIGEST = 6;
 	public static final int JBLOB = 7;
-	//public static final int CSHARP_BLOB = 8;
-	//public static final int PYTHON_BLOB = 9;
-	//public static final int RUBY_BLOB = 10;
-	//public static final int PHP_BLOB = 11;
-	//public static final int ERLANG_BLOB = 12;
 	public static final int BOOL = 17;
 	public static final int HLL = 18;
 	public static final int MAP = 19;

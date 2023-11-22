@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,13 +19,13 @@ package com.aerospike.examples;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.BatchDelete;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchResults;
 import com.aerospike.client.BatchWrite;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
@@ -56,7 +56,7 @@ public class BatchOperate extends Example {
 	}
 
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) {
+	public void runExample(IAerospikeClient client, Parameters params) {
 		writeRecords(client, params);
 		batchReadOperate(client, params);
 		batchReadOperateComplex(client, params);
@@ -66,7 +66,7 @@ public class BatchOperate extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params
 	) {
 		for (int i = 1; i <= RecordCount; i++) {
@@ -91,7 +91,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Perform read operation expressions in one batch.
 	 */
-	private void batchReadOperate(AerospikeClient client, Parameters params) {
+	private void batchReadOperate(IAerospikeClient client, Parameters params) {
 		console.info("batchReadOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
@@ -112,7 +112,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Read results using varying read operations in one batch.
 	 */
-	private void batchReadOperateComplex(AerospikeClient client, Parameters params) {
+	private void batchReadOperateComplex(IAerospikeClient client, Parameters params) {
 		console.info("batchReadOperateComplex");
 		Expression exp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));
 		Expression exp2 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2)));
@@ -157,7 +157,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Perform list read operations in one batch.
 	 */
-	private void batchListReadOperate(AerospikeClient client, Parameters params) {
+	private void batchListReadOperate(IAerospikeClient client, Parameters params) {
 		console.info("batchListReadOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
@@ -194,7 +194,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Perform list read/write operations in one batch.
 	 */
-	private void batchListWriteOperate(AerospikeClient client, Parameters params) {
+	private void batchListWriteOperate(IAerospikeClient client, Parameters params) {
 		console.info("batchListWriteOperate");
 		Key[] keys = new Key[RecordCount];
 		for (int i = 0; i < RecordCount; i++) {
@@ -228,7 +228,7 @@ public class BatchOperate extends Example {
 	/**
 	 * Read/Write records using varying operations in one batch.
 	 */
-	private void batchWriteOperateComplex(AerospikeClient client, Parameters params) {
+	private void batchWriteOperateComplex(IAerospikeClient client, Parameters params) {
 		console.info("batchWriteOperateComplex");
 		Expression wexp1 = Exp.build(Exp.add(Exp.intBin(BinName1), Exp.intBin(BinName2), Exp.val(1000)));
 		Expression rexp1 = Exp.build(Exp.mul(Exp.intBin(BinName1), Exp.intBin(BinName2)));

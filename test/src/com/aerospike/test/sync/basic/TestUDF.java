@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,6 +48,10 @@ import com.aerospike.test.sync.TestSync;
 public class TestUDF extends TestSync {
 	@BeforeClass
 	public static void register() {
+		if (args.useProxyClient) {
+			System.out.println("Skip TestUDF.register");
+			return;
+		}
 		RegisterTask task = client.register(null, TestUDF.class.getClassLoader(), "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
@@ -55,7 +59,7 @@ public class TestUDF extends TestSync {
 	@Test
 	public void writeUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey1");
-		Bin bin = new Bin(args.getBinName("udfbin1"), "string value");
+		Bin bin = new Bin("udfbin1", "string value");
 
 		client.execute(null, key, "record_example", "writeBin", Value.get(bin.name), bin.value);
 
@@ -66,7 +70,7 @@ public class TestUDF extends TestSync {
 	@Test
 	public void writeIfGenerationNotChanged() {
 		Key key = new Key(args.namespace, args.set, "udfkey2");
-		Bin bin = new Bin(args.getBinName("udfbin2"), "string value");
+		Bin bin = new Bin("udfbin2", "string value");
 
 		// Seed record.
 		client.put(null, key, bin);
@@ -138,7 +142,7 @@ public class TestUDF extends TestSync {
 		list.add(inner);
 		list.add(innerMap);
 
-		String binName = args.getBinName("udfbin5");
+		String binName = "udfbin5";
 
 		client.execute(null, key, "record_example", "writeBin", Value.get(binName), Value.get(list));
 
@@ -150,7 +154,7 @@ public class TestUDF extends TestSync {
 	@Test
 	public void appendListUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey5");
-		String binName = args.getBinName("udfbin5");
+		String binName = "udfbin5";
 		String value = "appended value";
 
 		client.execute(null, key, "record_example", "appendListBin", Value.get(binName), Value.get(value));
@@ -179,7 +183,7 @@ public class TestUDF extends TestSync {
 	@Test
 	public void writeBlobUsingUdf() {
 		Key key = new Key(args.namespace, args.set, "udfkey6");
-		String binName = args.getBinName("udfbin6");
+		String binName = "udfbin6";
 
 		// Create packed blob using standard java tools.
 		ByteArrayOutputStream baos = new ByteArrayOutputStream();

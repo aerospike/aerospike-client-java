@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,6 +24,7 @@ import com.aerospike.client.Key;
 import com.aerospike.client.command.Buffer;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.Replica;
+import com.aerospike.client.query.PartitionStatus;
 
 public final class Partition {
 
@@ -135,12 +136,12 @@ public final class Partition {
 		return p.getNodeRead(cluster);
 	}
 
-	private final Partitions partitions;
+	private Partitions partitions;
 	private final String namespace;
 	private final Replica replica;
-	private Node prevNode;
-	private final int partitionId;
-	private int sequence;
+	public Node prevNode;
+	private int partitionId;
+	public int sequence;
 	private final boolean linearize;
 
 	private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, boolean linearize) {
@@ -152,10 +153,29 @@ public final class Partition {
 		this.partitionId = getPartitionId(key.digest);
 	}
 
+	public Partition(String namespace, Replica replica) {
+		this.namespace = namespace;
+		this.replica = replica;
+		this.linearize = false;
+	}
+
 	public static int getPartitionId(byte[] digest) {
 		// CAN'T USE MOD directly - mod will give negative numbers.
 		// First AND makes positive and negative correctly, then mod.
 		return (Buffer.littleBytesToInt(digest, 0) & 0xFFFF) % Node.PARTITIONS;
+	}
+
+	public Node getNodeQuery(Cluster cluster, Partitions partitions, PartitionStatus ps) {
+		this.partitions = partitions;
+		this.partitionId = ps.id;
+		this.sequence = ps.sequence;
+		this.prevNode = ps.node;
+
+		Node node = getNodeRead(cluster);
+		ps.node = node;
+		ps.sequence = this.sequence;
+		ps.retry = false;
+		return node;
 	}
 
 	public Node getNodeRead(Cluster cluster) {

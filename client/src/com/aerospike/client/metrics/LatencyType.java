@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -14,17 +14,30 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.lua;
+package com.aerospike.client.metrics;
 
-import org.luaj.vm2.LuaUserdata;
+public enum LatencyType {
+	CONN,
+	WRITE,
+	READ,
+	BATCH,
+	QUERY,
+	NONE;
 
-public final class LuaJavaBlob extends LuaUserdata implements LuaData {
-
-	public LuaJavaBlob(Object object) {
-		super(object);
+	public static int getMax() {
+		return LatencyType.NONE.ordinal();
 	}
 
-	public Object luaToObject() {
-		return m_instance;
+	private static String[] TypeStrings = new String[] {
+		"conn",
+		"write",
+		"read",
+		"batch",
+		"query",
+		"none"
+	};
+
+	public static String getString(int i) {
+		return TypeStrings[i];
 	}
 }

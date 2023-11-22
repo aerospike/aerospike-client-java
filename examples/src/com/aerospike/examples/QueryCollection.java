@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,9 +19,9 @@ package com.aerospike.examples;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
@@ -43,12 +43,12 @@ public class QueryCollection extends Example {
 	 * Query records using a map index.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "mapkey_index";
 		String keyPrefix = "qkey";
 		String mapKeyPrefix = "mkey";
 		String mapValuePrefix = "qvalue";
-		String binName = params.getBinName("map_bin");
+		String binName = "map_bin";
 		int size = 20;
 
 		// create collection index on mapKey
@@ -61,7 +61,7 @@ public class QueryCollection extends Example {
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -84,7 +84,7 @@ public class QueryCollection extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName,
@@ -115,7 +115,7 @@ public class QueryCollection extends Example {
 	}
 
 	private void runQuery(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName,

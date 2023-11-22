@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class ExecuteCommand extends ReadCommand {
@@ -53,6 +54,11 @@ public final class ExecuteCommand extends ReadCommand {
 	@Override
 	protected Node getNode() {
 		return partition.getNodeWrite(cluster);
+	}
+
+	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.WRITE;
 	}
 
 	@Override

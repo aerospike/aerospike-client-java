@@ -34,6 +34,8 @@ public final class QueryListenerExecutor {
 		QueryListener listener,
 		PartitionTracker tracker
 	) {
+		cluster.addTran();
+
 		long taskId = statement.prepareTaskId();
 
 		while (true) {

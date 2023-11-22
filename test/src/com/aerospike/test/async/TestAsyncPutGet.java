@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,9 +21,9 @@ import java.net.ConnectException;
 
 import org.junit.Test;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.listener.RecordListener;
@@ -32,7 +32,7 @@ import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 
 public class TestAsyncPutGet extends TestAsync {
-	private static final String binName = args.getBinName("putgetbin");
+	private static final String binName = "putgetbin";
 
 	@Test
 	public void asyncPutGetInline() {
@@ -79,13 +79,13 @@ public class TestAsyncPutGet extends TestAsync {
 	}
 
 	private class WriteHandler implements WriteListener {
-		private final AerospikeClient client;
+		private final IAerospikeClient client;
 		private final WritePolicy policy;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public WriteHandler(AerospikeClient client, WritePolicy policy, Key key, Bin bin) {
+		public WriteHandler(IAerospikeClient client, WritePolicy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;
@@ -127,13 +127,13 @@ public class TestAsyncPutGet extends TestAsync {
 	}
 
 	private class ReadHandler implements RecordListener {
-		private final AerospikeClient client;
+		private final IAerospikeClient client;
 		private final Policy policy;
 		private final Key key;
 		private final Bin bin;
 		private int failCount = 0;
 
-		public ReadHandler(AerospikeClient client, Policy policy, Key key, Bin bin) {
+		public ReadHandler(IAerospikeClient client, Policy policy, Key key, Bin bin) {
 			this.client = client;
 			this.policy = policy;
 			this.key = key;

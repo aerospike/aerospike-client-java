@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.MultiCommand;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 
@@ -63,6 +64,11 @@ public final class QueryPartitionCommand extends MultiCommand {
 	}
 
 	@Override
+	protected LatencyType getLatencyType() {
+		return LatencyType.QUERY;
+	}
+
+	@Override
 	protected final void writeBuffer() {
 		setQuery(cluster, policy, statement, taskId, false, nodePartitions);
 	}
@@ -92,12 +98,14 @@ public final class QueryPartitionCommand extends MultiCommand {
 			throw new AerospikeException.QueryTerminated();
 		}
 
-		if (! recordSet.put(new KeyRecord(key, record))) {
-			stop();
-			throw new AerospikeException.QueryTerminated();
-		}
+		if (tracker.allowRecord()) {
+			if (! recordSet.put(new KeyRecord(key, record))) {
+				stop();
+				throw new AerospikeException.QueryTerminated();
+			}
 
-		tracker.setLast(nodePartitions, key, bval.val);
+			tracker.setLast(nodePartitions, key, bval.val);
+		}
 		return true;
 	}
 }

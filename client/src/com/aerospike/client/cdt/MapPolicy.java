@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -55,10 +55,34 @@ public final class MapPolicy {
 
 	/**
 	 * Create unique key map with specified order when map does not exist.
-	 * Use specified write flags {@link MapWriteFlags} when writing map items.
+	 *
+	 * @param order			map order
+	 * @param flags			map write flags. See {@link MapWriteFlags}.
 	 */
 	public MapPolicy(MapOrder order, int flags) {
 		this.attributes = order.attributes;
+		this.flags = flags;
+		this.itemCommand = MapWriteMode.UPDATE.itemCommand;
+		this.itemsCommand = MapWriteMode.UPDATE.itemsCommand;
+	}
+
+	/**
+	 * Create unique key map with specified order and persist index flag when map does not exist.
+	 *
+	 * @param order			map order
+	 * @param flags			map write flags. See {@link MapWriteFlags}.
+	 * @param persistIndex	if true, persist map index. A map index improves lookup performance,
+	 * 						but requires more storage. A map index can be created for a top-level
+	 * 						ordered map only. Nested and unordered map indexes are not supported.
+	 */
+	public MapPolicy(MapOrder order, int flags, boolean persistIndex) {
+		int attr = order.attributes;
+
+		if (persistIndex) {
+			attr |= 0x10;
+		}
+
+		this.attributes = attr;
 		this.flags = flags;
 		this.itemCommand = MapWriteMode.UPDATE.itemCommand;
 		this.itemsCommand = MapWriteMode.UPDATE.itemsCommand;

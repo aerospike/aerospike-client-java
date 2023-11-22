@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,6 +26,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
@@ -265,11 +266,7 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setInDoubt(boolean inDoubt) {
-			if (!inDoubt) {
-				return;
-			}
-
+		protected void inDoubt() {
 			for (int index : batch.offsets) {
 				BatchRecord record = records.get(index);
 
@@ -344,8 +341,8 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setInDoubt(boolean inDoubt) {
-			if (!inDoubt || !attr.hasWrite) {
+		protected void inDoubt() {
+			if (!attr.hasWrite) {
 				return;
 			}
 
@@ -353,7 +350,7 @@ public final class Batch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
 				}
 			}
 		}
@@ -443,8 +440,8 @@ public final class Batch {
 		}
 
 		@Override
-		protected void setInDoubt(boolean inDoubt) {
-			if (!inDoubt || !attr.hasWrite) {
+		protected void inDoubt() {
+			if (!attr.hasWrite) {
 				return;
 			}
 
@@ -452,7 +449,7 @@ public final class Batch {
 				BatchRecord record = records[index];
 
 				if (record.resultCode == ResultCode.NO_RESPONSE) {
-					record.inDoubt = inDoubt;
+					record.inDoubt = true;
 				}
 			}
 		}
@@ -472,7 +469,7 @@ public final class Batch {
 	// Batch Base Command
 	//-------------------------------------------------------
 
-	public static abstract class BatchCommand extends MultiCommand implements Runnable {
+	public static abstract class BatchCommand extends MultiCommand implements IBatchCommand {
 		final BatchNode batch;
 		final BatchPolicy batchPolicy;
 		final BatchStatus status;
@@ -495,29 +492,37 @@ public final class Batch {
 		}
 
 		@Override
+		public void setParent(BatchExecutor parent) {
+			this.parent = parent;
+		}
+
+		@Override
 		public void run() {
 			try {
 				execute();
 			}
 			catch (AerospikeException ae) {
-				// Set error/inDoubt for keys associated this batch command when
-				// the command was not retried and split. If a split retry occurred,
-				// those new subcommands have already set error/inDoubt on the affected
-				// subset of keys.
-				if (! splitRetry) {
-					setInDoubt(ae.getInDoubt());
+				if (ae.getInDoubt()) {
+					setInDoubt();
 				}
 				status.setException(ae);
 			}
 			catch (RuntimeException re) {
-				if (! splitRetry) {
-					setInDoubt(true);
-				}
+				setInDoubt();
 				status.setException(re);
+			}
+			catch (Throwable e) {
+				setInDoubt();
+				status.setException(new RuntimeException(e));
 			}
 			finally {
 				parent.onComplete();
 			}
+		}
+
+		@Override
+		protected LatencyType getLatencyType() {
+			return LatencyType.BATCH;
 		}
 
 		@Override
@@ -568,11 +573,12 @@ public final class Batch {
 				command.deadline = deadline;
 
 				try {
+					cluster.addRetry();
 					command.executeCommand();
 				}
 				catch (AerospikeException ae) {
-					if (! command.splitRetry) {
-						command.setInDoubt(ae.getInDoubt());
+					if (ae.getInDoubt()) {
+						command.setInDoubt();
 					}
 					status.setException(ae);
 
@@ -581,20 +587,37 @@ public final class Batch {
 					}
 				}
 				catch (RuntimeException re) {
-					if (! command.splitRetry) {
-						command.setInDoubt(true);
-					}
+					command.setInDoubt();
 					status.setException(re);
 
 					if (!batchPolicy.respondAllKeys) {
 						throw re;
 					}
 				}
+				catch (Throwable e) {
+					command.setInDoubt();
+					status.setException(new RuntimeException(e));
+
+					if (!batchPolicy.respondAllKeys) {
+						throw e;
+					}
+				}
 			}
 			return true;
 		}
 
-		protected void setInDoubt(boolean inDoubt) {
+		@Override
+		public void setInDoubt() {
+			// Set error/inDoubt for keys associated this batch command when
+			// the command was not retried and split. If a split retry occurred,
+			// those new subcommands have already set inDoubt on the affected
+			// subset of keys.
+			if (! splitRetry) {
+				inDoubt();
+			}
+		}
+
+		protected void inDoubt() {
 			// Do nothing by default. Batch writes will override this method.
 		}
 

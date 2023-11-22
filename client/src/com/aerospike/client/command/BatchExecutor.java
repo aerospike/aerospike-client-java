@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,25 +22,22 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.command.Batch.BatchCommand;
 import com.aerospike.client.policy.BatchPolicy;
 
 public final class BatchExecutor {
 
-	public static void execute(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+	public static void execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
+		cluster.addTran();
+
 		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
 			// Run batch requests sequentially in same thread.
-			for (BatchCommand command : commands) {
+			for (IBatchCommand command : commands) {
 				try {
 					command.execute();
 				}
 				catch (AerospikeException ae) {
-					// Set error/inDoubt for keys associated this batch command when
-					// the command was not retried and split. If a split retry occurred,
-					// those new subcommands have already set error/inDoubt on the affected
-					// subset of keys.
-					if (! command.splitRetry) {
-						command.setInDoubt(ae.getInDoubt());
+					if (ae.getInDoubt()) {
+						command.setInDoubt();
 					}
 					status.setException(ae);
 
@@ -49,13 +46,19 @@ public final class BatchExecutor {
 					}
 				}
 				catch (RuntimeException re) {
-					if (! command.splitRetry) {
-						command.setInDoubt(true);
-					}
+					command.setInDoubt();
 					status.setException(re);
 
 					if (!policy.respondAllKeys) {
 						throw re;
+					}
+				}
+				catch (Throwable e) {
+					command.setInDoubt();
+					status.setException(new RuntimeException(e));
+
+					if (!policy.respondAllKeys) {
+						throw e;
 					}
 				}
 			}
@@ -72,11 +75,11 @@ public final class BatchExecutor {
 	private final ExecutorService threadPool;
 	private final AtomicBoolean done;
 	private final AtomicInteger completedCount;
-	private final BatchCommand[] commands;
+	private final IBatchCommand[] commands;
 	private final int maxConcurrentThreads;
 	private boolean completed;
 
-	private BatchExecutor(Cluster cluster, BatchPolicy policy, BatchCommand[] commands, BatchStatus status) {
+	private BatchExecutor(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
 		this.commands = commands;
 		this.status = status;
 		this.threadPool = cluster.getThreadPool();
@@ -89,8 +92,8 @@ public final class BatchExecutor {
 	void execute() {
 		// Start threads.
 		for (int i = 0; i < maxConcurrentThreads; i++) {
-			BatchCommand cmd = commands[i];
-			cmd.parent = this;
+			IBatchCommand cmd = commands[i];
+			cmd.setParent(this);
 			threadPool.execute(cmd);
 		}
 
@@ -111,8 +114,8 @@ public final class BatchExecutor {
 			// Determine if a new thread needs to be started.
 			if (nextThread < commands.length && ! done.get()) {
 				// Start new thread.
-				BatchCommand cmd = commands[nextThread];
-				cmd.parent = this;
+				IBatchCommand cmd = commands[nextThread];
+				cmd.setParent(this);
 				threadPool.execute(cmd);
 			}
 		}

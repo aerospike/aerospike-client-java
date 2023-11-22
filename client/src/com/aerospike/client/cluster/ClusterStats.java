@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -44,25 +44,29 @@ public final class ClusterStats {
 	public final int recoverQueueSize;
 
 	/**
-	 * Count of add node failures in the most recent cluster tend iteration.
+	 * Count of add node failures since the client was started.
 	 */
 	public final int invalidNodeCount;
+
+	/**
+	 * Count of transaction retries since the client was started.
+	 */
+	public final long retryCount;
 
 	/**
 	 * Cluster statistics constructor.
 	 */
 	public ClusterStats(
+		Cluster cluster,
 		NodeStats[] nodes,
-		EventLoopStats[] eventLoops,
-		int threadsInUse,
-		int recoverQueueSize,
-		int invalidNodeCount
+		EventLoopStats[] eventLoops
 	) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
-		this.threadsInUse = threadsInUse;
-		this.recoverQueueSize = recoverQueueSize;
-		this.invalidNodeCount = invalidNodeCount;
+		this.threadsInUse = cluster.getThreadsInUse();
+		this.recoverQueueSize = cluster.getRecoverQueueSize();
+		this.invalidNodeCount = cluster.getInvalidNodeCount();
+		this.retryCount = cluster.getRetryCount();
 	}
 
 	/**
@@ -100,6 +104,8 @@ public final class ClusterStats {
 		sb.append("recoverQueueSize: " + recoverQueueSize);
 		sb.append(System.lineSeparator());
 		sb.append("invalidNodeCount: " + invalidNodeCount);
+		sb.append(System.lineSeparator());
+		sb.append("retryCount: " + retryCount);
 		return sb.toString();
 	}
 }

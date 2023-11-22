@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -47,7 +47,7 @@ public final class NodeValidator {
 	 * reference a single node.  If round robin DNS configuration is used, the seed host
 	 * may have several addresses that reference different nodes in the cluster.
 	 */
-	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Exception {
+	public Node seedNode(Cluster cluster, Host host, Peers peers) throws Throwable {
 		name = null;
 		aliases = null;
 		primaryHost = null;
@@ -58,7 +58,7 @@ public final class NodeValidator {
 		features = 0;
 
 		InetAddress[] addresses = getAddresses(host);
-		Exception exception = null;
+		Throwable exception = null;
 
 		for (InetAddress address : addresses) {
 			try {
@@ -75,7 +75,7 @@ public final class NodeValidator {
 					return node;
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Log exception and continue to next alias.
 				if (Log.debugEnabled()) {
 					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
@@ -107,7 +107,7 @@ public final class NodeValidator {
 			peers.refreshCount = 0;
 			node.refreshPeers(peers);
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			node.close();
 			throw e;
 		}
@@ -137,9 +137,9 @@ public final class NodeValidator {
 	/**
 	 * Verify that a host alias references a valid node.
 	 */
-	public void validateNode(Cluster cluster, Host host) throws Exception {
+	public void validateNode(Cluster cluster, Host host) throws Throwable {
 		InetAddress[] addresses = getAddresses(host);
-		Exception exception = null;
+		Throwable exception = null;
 
 		for (InetAddress address : addresses) {
 			try {
@@ -147,7 +147,7 @@ public final class NodeValidator {
 				setAliases(address, host.tlsName, host.port);
 				return;
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Log exception and continue to next alias.
 				if (Log.debugEnabled()) {
 					Log.debug("Address " + address + ' ' + host.port + " failed: " + Util.getErrorMessage(e));
@@ -213,9 +213,9 @@ public final class NodeValidator {
 			commands.add("partition-generation");
 			commands.add("features");
 
-			boolean hasClusterName = cluster.clusterName != null && cluster.clusterName.length() > 0;
+			boolean validateCluster = cluster.validateClusterName();
 
-			if (hasClusterName) {
+			if (validateCluster) {
 				commands.add("cluster-name");
 			}
 
@@ -248,7 +248,7 @@ public final class NodeValidator {
 			validatePartitionGeneration(map);
 			setFeatures(map);
 
-			if (hasClusterName) {
+			if (validateCluster) {
 				validateClusterName(cluster, map);
 			}
 
@@ -256,7 +256,7 @@ public final class NodeValidator {
 				setAddress(cluster, map, addressCommand, tlsName);
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			conn.close();
 			throw e;
 		}
@@ -277,7 +277,7 @@ public final class NodeValidator {
 		try {
 			gen = Integer.parseInt(genString);
 		}
-		catch (Exception ex) {
+		catch (Throwable e) {
 			throw new AerospikeException.InvalidNode("Node " + this.name + ' ' + this.primaryHost + " returned invalid partition-generation: " + genString);
 		}
 
@@ -316,7 +316,7 @@ public final class NodeValidator {
 				begin = end + 1;
 			}
 		}
-		catch (Exception e) {
+		catch (Throwable e) {
 			// Unexpected exception. Use defaults.
 		}
 
@@ -406,16 +406,16 @@ public final class NodeValidator {
 							this.primaryConn = conn;
 							return;
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							conn.close();
 						}
 					}
-					catch (Exception e) {
+					catch (Throwable e) {
 						// Try next address.
 					}
 				}
 			}
-			catch (Exception e) {
+			catch (Throwable e) {
 				// Try next host.
 			}
 		}
@@ -476,16 +476,16 @@ public final class NodeValidator {
 								}
 								return;  // Authenticated clear connection.
 							}
-							catch (Exception e) {
+							catch (Throwable e) {
 								clearConn.close();
 							}
 						}
-						catch (Exception e) {
+						catch (Throwable e) {
 							// Try next address.
 						}
 					}
 				}
-				catch (Exception e) {
+				catch (Throwable e) {
 					// Try next host.
 				}
 			}

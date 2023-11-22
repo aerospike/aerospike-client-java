@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Record;
@@ -43,11 +43,11 @@ public class QueryExecute extends Example {
 	 * Apply user defined function on records that match the query filter.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, Parameters params) throws Exception {
+	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		String indexName = "qeindex1";
 		String keyPrefix = "qekey";
-		String binName1 = params.getBinName("qebin1");
-		String binName2 = params.getBinName("qebin2");
+		String binName1 = "qebin1";
+		String binName2 = "qebin2";
 		int size = 10;
 
 		register(client, params);
@@ -58,13 +58,13 @@ public class QueryExecute extends Example {
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 	}
 
-	private void register(AerospikeClient client, Parameters params) throws Exception {
+	private void register(IAerospikeClient client, Parameters params) throws Exception {
 		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
 		task.waitTillComplete();
 	}
 
 	private void createIndex(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName
@@ -87,7 +87,7 @@ public class QueryExecute extends Example {
 	}
 
 	private void writeRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String keyPrefix,
 		String binName1,
@@ -103,7 +103,7 @@ public class QueryExecute extends Example {
 	}
 
 	private void runQueryExecute(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName1,
@@ -128,7 +128,7 @@ public class QueryExecute extends Example {
 	}
 
 	private void validateRecords(
-		AerospikeClient client,
+		IAerospikeClient client,
 		Parameters params,
 		String indexName,
 		String binName1,

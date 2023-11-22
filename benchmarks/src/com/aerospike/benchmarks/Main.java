@@ -33,8 +33,8 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Log;
 import com.aerospike.client.Log.Level;
@@ -57,9 +57,11 @@ import com.aerospike.client.policy.RecordExistsAction;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 import com.aerospike.client.util.Util;
 
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.epoll.Epoll;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.kqueue.KQueueEventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -98,6 +100,7 @@ public class Main implements Log.Callback {
 	private int nThreads;
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
+	private boolean useProxyClient;
 	private boolean asyncEnabled;
 	private boolean initialize;
 	private boolean batchShowNodes;
@@ -340,6 +343,8 @@ public class Main implements Log.Callback {
 				"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
 				);
 
+		options.addOption("proxy", false, "Use proxy client.");
+
 		options.addOption("upn", "udfPackageName", true, "Specify the package name where the udf function is located");
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
@@ -369,14 +374,18 @@ public class Main implements Log.Callback {
 			this.asyncEnabled = true;
 		}
 
+		if (line.hasOption("proxy")) {
+			this.useProxyClient = true;
+		}
+
 		args.readPolicy = clientPolicy.readPolicyDefault;
 		args.writePolicy = clientPolicy.writePolicyDefault;
 		args.batchPolicy = clientPolicy.batchPolicyDefault;
 
 		if (line.hasOption("e")) {
-			args.writePolicy.expiration =  Integer.parseInt(line.getOptionValue("e"));
+			args.writePolicy.expiration = Integer.parseInt(line.getOptionValue("e"));
 			if (args.writePolicy.expiration < -1) {
-				throw new Exception("Invalid expiration: "+ args.writePolicy.expiration + " It should be >= -1");
+				throw new Exception("Invalid expiration: " + args.writePolicy.expiration + " It should be >= -1");
 			}
 		}
 
@@ -385,6 +394,13 @@ public class Main implements Log.Callback {
 		}
 		else {
 			this.port = 3000;
+		}
+
+		// If the Aerospike server's default port (3000) is used and the proxy client is used,
+		// Reset the port to the proxy server's default port (4000).
+		if (port == 3000 && useProxyClient) {
+			System.out.println("Change proxy server port to 4000");
+			port = 4000;
 		}
 
 		if (line.hasOption("hosts")) {
@@ -508,7 +524,8 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("keys")) {
 			this.nKeys = Long.parseLong(line.getOptionValue("keys"));
-		} else {
+		}
+		else {
 			this.nKeys = 100000;
 		}
 
@@ -541,12 +558,13 @@ public class Main implements Log.Callback {
 				else if (keyType.equals("I")) {
 					if (Utils.isNumeric(keyList.get(0))) {
 						args.keyType = KeyType.INTEGER;
-					} else {
-						throw new Exception("Invalid keyType '"+keyType+"' Key type doesn't match with file content type.");
+					}
+					else {
+						throw new Exception("Invalid keyType '" + keyType + "' Key type doesn't match with file content type.");
 					}
 				}
 				else {
-					throw new Exception("Invalid keyType: "+keyType);
+					throw new Exception("Invalid keyType: " + keyType);
 				}
 			}
 			else {
@@ -565,7 +583,7 @@ public class Main implements Log.Callback {
 		if (line.hasOption("objectSpec")) {
 			String[] objectsArr = line.getOptionValue("objectSpec").split(",");
 			args.objectSpec = new DBObjectSpec[objectsArr.length];
-			for (int i=0; i<objectsArr.length; i++) {
+			for (int i = 0; i < objectsArr.length; i++) {
 				String[] objarr = objectsArr[i].split(":");
 				DBObjectSpec dbobj = new DBObjectSpec();
 				dbobj.type = objarr[0].charAt(0);
@@ -833,7 +851,7 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("batchSize")) {
-			args.batchSize =  Integer.parseInt(line.getOptionValue("batchSize"));
+			args.batchSize = Integer.parseInt(line.getOptionValue("batchSize"));
 		}
 
 		if (line.hasOption("batchThreads")) {
@@ -845,11 +863,11 @@ public class Main implements Log.Callback {
 		}
 
 		if (line.hasOption("asyncMaxCommands")) {
-			this.asyncMaxCommands =  Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
+			this.asyncMaxCommands = Integer.parseInt(line.getOptionValue("asyncMaxCommands"));
 		}
 
 		if (line.hasOption("eventLoops")) {
-			this.eventLoopSize =  Integer.parseInt(line.getOptionValue("eventLoops"));
+			this.eventLoopSize = Integer.parseInt(line.getOptionValue("eventLoops"));
 		}
 
 		if (line.hasOption("latency")) {
@@ -933,29 +951,29 @@ public class Main implements Log.Callback {
 			this.eventLoopType = EventLoopType.valueOf(line.getOptionValue("eventLoopType", "").toUpperCase());
 		}
 
-		if(line.hasOption("udfPackageName")){
+		if (line.hasOption("udfPackageName")) {
 			args.udfPackageName = line.getOptionValue("udfPackageName");
 		}
 
-		if(line.hasOption("udfFunctionName")){
-			if(args.udfPackageName == null){
+		if (line.hasOption("udfFunctionName")) {
+			if (args.udfPackageName == null) {
 				throw new Exception("Udf Package name missing");
 			}
 			args.udfFunctionName = line.getOptionValue("udfFunctionName");
 		}
 
-		if(line.hasOption("udfFunctionValues")){
+		if (line.hasOption("udfFunctionValues")) {
 			Object[] udfVals = line.getOptionValue("udfFunctionValues").split(",");
-			if(args.udfPackageName == null){
+			if (args.udfPackageName == null) {
 				throw new Exception("Udf Package name missing");
 			}
 
-			if(args.udfFunctionName == null){
+			if (args.udfFunctionName == null) {
 				throw new Exception("Udf Function name missing");
 			}
 			Value[] udfValues = new Value[udfVals.length];
 			int index = 0;
-			for(Object value : udfVals){
+			for (Object value : udfVals) {
 				udfValues[index++] = Value.get(value);
 			}
 			args.udfValues = udfValues;
@@ -1106,8 +1124,18 @@ public class Main implements Log.Callback {
 				eventPolicy.minTimeout = args.readPolicy.socketTimeout;
 			}
 
-			if (args.writePolicy.socketTimeout > 0 &&  args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
+			if (args.writePolicy.socketTimeout > 0 && args.writePolicy.socketTimeout < eventPolicy.minTimeout) {
 				eventPolicy.minTimeout = args.writePolicy.socketTimeout;
+			}
+
+			if (this.useProxyClient && this.eventLoopType == EventLoopType.DIRECT_NIO) {
+				// Proxy client requires netty event loops.
+				if (Epoll.isAvailable()) {
+					this.eventLoopType = EventLoopType.NETTY_EPOLL;
+				}
+				else {
+					this.eventLoopType = EventLoopType.NETTY_NIO;
+				}
 			}
 
 			switch (this.eventLoopType) {
@@ -1148,7 +1176,8 @@ public class Main implements Log.Callback {
 				if (clientPolicy.asyncMaxConnsPerNode < this.asyncMaxCommands) {
 					clientPolicy.asyncMaxConnsPerNode = this.asyncMaxCommands;
 				}
-				AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+
+				IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 				try {
 					if (initialize) {
@@ -1168,7 +1197,7 @@ public class Main implements Log.Callback {
 			}
 		}
 		else {
-			AerospikeClient client = new AerospikeClient(clientPolicy, hosts);
+			IAerospikeClient client = AerospikeClientFactory.getClient(clientPolicy, useProxyClient, hosts);
 
 			try {
 				if (initialize) {
@@ -1185,7 +1214,7 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void doInserts(AerospikeClient client) throws Exception {
+	private void doInserts(IAerospikeClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 
 		// Create N insert tasks
@@ -1194,7 +1223,7 @@ public class Main implements Log.Callback {
 		long rem = this.nKeys - (keysPerTask * ntasks);
 		long start = this.startKey;
 
-		for (long i = 0 ; i < ntasks; i++) {
+		for (long i = 0; i < ntasks; i++) {
 			long keyCount = (i < rem)? keysPerTask + 1 : keysPerTask;
 			InsertTaskSync it = new InsertTaskSync(client, args, counters, start, keyCount);
 			es.execute(it);
@@ -1205,7 +1234,7 @@ public class Main implements Log.Callback {
 		es.shutdownNow();
 	}
 
-	private void doAsyncInserts(AerospikeClient client) throws Exception {
+	private void doAsyncInserts(IAerospikeClient client) throws Exception {
 		// Generate asyncMaxCommand writes to seed the event loops.
 		// Then start a new command in each command callback.
 		// This effectively throttles new command generation, by only allowing
@@ -1240,7 +1269,7 @@ public class Main implements Log.Callback {
 		while (total < this.nKeys) {
 			long time = System.currentTimeMillis();
 
-			int	numWrites = this.counters.write.count.getAndSet(0);
+			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 			total += numWrites;
@@ -1265,11 +1294,11 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void doRWTest(AerospikeClient client) throws Exception {
+	private void doRWTest(IAerospikeClient client) throws Exception {
 		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
 		RWTask[] tasks = new RWTask[this.nThreads];
 
-		for (int i = 0 ; i < this.nThreads; i++) {
+		for (int i = 0; i < this.nThreads; i++) {
 			RWTaskSync rt = new RWTaskSync(client, args, counters, this.startKey, this.nKeys);
 			tasks[i] = rt;
 			es.execute(rt);
@@ -1279,7 +1308,7 @@ public class Main implements Log.Callback {
 		es.shutdown();
 	}
 
-	private void doAsyncRWTest(AerospikeClient client) throws Exception {
+	private void doAsyncRWTest(IAerospikeClient client) throws Exception {
 		// Generate asyncMaxCommand commands to seed the event loops.
 		// Then start a new command in each command callback.
 		// This effectively throttles new command generation, by only allowing
@@ -1313,11 +1342,11 @@ public class Main implements Log.Callback {
 		while (true) {
 			long time = System.currentTimeMillis();
 
-			int	numWrites = this.counters.write.count.getAndSet(0);
+			int numWrites = this.counters.write.count.getAndSet(0);
 			int timeoutWrites = this.counters.write.timeouts.getAndSet(0);
 			int errorWrites = this.counters.write.errors.getAndSet(0);
 
-			int	numReads = this.counters.read.count.getAndSet(0);
+			int numReads = this.counters.read.count.getAndSet(0);
 			int timeoutReads = this.counters.read.timeouts.getAndSet(0);
 			int errorReads = this.counters.read.errors.getAndSet(0);
 
@@ -1358,7 +1387,7 @@ public class Main implements Log.Callback {
 				}
 			}
 
-			if (args.transactionLimit > 0 ) {
+			if (args.transactionLimit > 0) {
 				transactionTotal += numWrites + timeoutWrites + errorWrites + numReads + timeoutReads + errorReads;
 
 				if (transactionTotal >= args.transactionLimit) {
@@ -1384,7 +1413,7 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private void showBatchNodes(AerospikeClient client) {
+	private void showBatchNodes(IAerospikeClient client) {
 		if (!batchShowNodes || args.batchSize <= 1) {
 			return;
 		}
@@ -1427,14 +1456,15 @@ public class Main implements Log.Callback {
 		private static final long serialVersionUID = 1L;
 	}
 
-	private static void printVersion()
-	{
+	private static void printVersion() {
 		final Properties properties = new Properties();
 		try {
 			properties.load(Main.class.getClassLoader().getResourceAsStream("project.properties"));
-		} catch (Exception e) {
+		}
+		catch (Exception e) {
 			System.out.println("None");
-		} finally {
+		}
+		finally {
 			System.out.println(properties.getProperty("name"));
 			System.out.println("Version " + properties.getProperty("version"));
 		}

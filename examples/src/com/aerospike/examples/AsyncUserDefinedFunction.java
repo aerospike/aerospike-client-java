@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Language;
 import com.aerospike.client.Value;
@@ -31,19 +31,25 @@ public class AsyncUserDefinedFunction extends AsyncExample {
 	 * Asynchronous query example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
-		register(client);
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
+		// Register is not supported in the proxy client. To run this example with the proxy client,
+		// first run example with native client (which supports register) and then run proxy client.
+		if (! params.useProxyClient) {
+			register(client);
+		}
 		writeUsingUdfAsync(client, eventLoop);
 	}
 
-	private void register(AerospikeClient client) {
-		RegisterTask task = client.register(params.policy, "udf/record_example.lua", "record_example.lua", Language.LUA);
+	private void register(IAerospikeClient client) {
+		String filename = "record_example.lua";
+		console.info("Register: " + filename);
+		RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
 		task.waitTillComplete();
 	}
 
-	private void writeUsingUdfAsync(final AerospikeClient client, final EventLoop eventLoop) {
+	private void writeUsingUdfAsync(final IAerospikeClient client, final EventLoop eventLoop) {
 		final Key key = new Key(params.namespace, params.set, "audfkey1");
-		final Bin bin = new Bin(params.getBinName("audfbin1"), "string value");
+		final Bin bin = new Bin("audfbin1", "string value");
 
 		console.info("Write with udf: namespace=%s set=%s key=%s value=%s", key.namespace, key.setName, key.userKey, bin.value);
 

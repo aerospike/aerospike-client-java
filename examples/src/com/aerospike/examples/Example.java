@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,9 +19,10 @@ package com.aerospike.examples;
 import java.lang.reflect.Constructor;
 import java.util.List;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.Host;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.proxy.AerospikeClientFactory;
 
 public abstract class Example {
 
@@ -42,10 +43,10 @@ public abstract class Example {
 
 		Host[] hosts = Host.parseHosts(params.host, params.port);
 
-		AerospikeClient client = new AerospikeClient(policy, hosts);
+		IAerospikeClient client = AerospikeClientFactory.getClient(policy, params.useProxyClient, hosts);
 
 		try {
-			params.setServerSpecific(client);
+			//params.setServerSpecific(client);
 
 			for (String exampleName : examples) {
 				runExample(exampleName, client, params, console);
@@ -59,7 +60,7 @@ public abstract class Example {
 	/**
 	 * Run client example.
 	 */
-	public static void runExample(String exampleName, AerospikeClient client, Parameters params, Console console) throws Exception {
+	public static void runExample(String exampleName, IAerospikeClient client, Parameters params, Console console) throws Exception {
 		String fullName = "com.aerospike.examples." + exampleName;
 		Class<?> cls = Class.forName(fullName);
 
@@ -79,11 +80,11 @@ public abstract class Example {
 		this.console = console;
 	}
 
-	public void run(AerospikeClient client, Parameters params) throws Exception {
+	public void run(IAerospikeClient client, Parameters params) throws Exception {
 		console.info(this.getClass().getSimpleName() + " Begin");
 		runExample(client, params);
 		console.info(this.getClass().getSimpleName() + " End");
 	}
 
-	public abstract void runExample(AerospikeClient client, Parameters params) throws Exception;
+	public abstract void runExample(IAerospikeClient client, Parameters params) throws Exception;
 }

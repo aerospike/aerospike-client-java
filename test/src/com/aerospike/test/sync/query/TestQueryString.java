@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -40,7 +40,7 @@ public class TestQueryString extends TestSync {
 	private static final String indexName = "queryindex";
 	private static final String keyPrefix = "querykey";
 	private static final String valuePrefix = "queryvalue";
-	private static final String binName = args.getBinName("querybin");
+	private static final String binName = "querybin";
 	private static int size = 5;
 
 	@BeforeClass

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -25,29 +26,21 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
 public class TestPutGet extends TestSync {
 	@Test
 	public void putGet() {
-		if (args.singleBin) {
-			Key key = new Key(args.namespace, args.set, "putgetkey");
-			Bin bin = new Bin("", "value");
+		Key key = new Key(args.namespace, args.set, "putgetkey");
+		Bin bin1 = new Bin("bin1", "value1");
+		Bin bin2 = new Bin("bin2", "value2");
 
-			client.put(null, key, bin);
-			Record record = client.get(null, key);
-			assertBinEqual(key, record, bin);
-		}
-		else {
-			Key key = new Key(args.namespace, args.set, "putgetkey");
-			Bin bin1 = new Bin("bin1", "value1");
-			Bin bin2 = new Bin("bin2", "value2");
-
-			client.put(null, key, bin1, bin2);
-			Record record = client.get(null, key);
-			assertBinEqual(key, record, bin1);
-			assertBinEqual(key, record, bin2);
-		}
+		client.put(null, key, bin1, bin2);
+		Record record = client.get(null, key);
+		assertBinEqual(key, record, bin1);
+		assertBinEqual(key, record, bin2);
 	}
 
 	@Test
@@ -82,5 +75,34 @@ public class TestPutGet extends TestSync {
 		assertFalse(b);
 		b = record.getBoolean(bin4.name);
 		assertTrue(b);
+	}
+
+	@Test
+	public void putGetCompress() {
+		Key key = new Key(args.namespace, args.set, "pgc");
+		byte[] bytes = new byte[2000];
+
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte)(i % 256);
+		}
+
+		Bin bin = new Bin("bb", bytes);
+
+		WritePolicy wp = new WritePolicy();
+		wp.compress = true;
+
+		client.put(wp, key, bin);
+
+		Policy p = new Policy();
+		p.compress = true;
+
+		Record record = client.get(p, key);
+		byte[] rcv = record.getBytes("bb");
+		assertEquals(2000, rcv.length);
+
+		for (int i = 0; i < rcv.length; i++) {
+			byte b = (byte)(i % 256);
+			assertEquals(b, rcv[i]);
+		}
 	}
 }

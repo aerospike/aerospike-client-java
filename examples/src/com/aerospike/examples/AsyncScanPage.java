@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,9 +16,9 @@
  */
 package com.aerospike.examples;
 
-import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
+import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.async.EventLoop;
@@ -37,7 +37,7 @@ public class AsyncScanPage extends AsyncExample {
 	 * Asynchronous scan example.
 	 */
 	@Override
-	public void runExample(AerospikeClient client, EventLoop eventLoop) {
+	public void runExample(IAerospikeClient client, EventLoop eventLoop) {
 		console.info("Write " + size + " records.");
 
 		WriteListener listener = new WriteListener() {
@@ -75,7 +75,7 @@ public class AsyncScanPage extends AsyncExample {
 		waitTillComplete();
 	}
 
-	private void runScan(AerospikeClient client, EventLoop eventLoop) {
+	private void runScan(IAerospikeClient client, EventLoop eventLoop) {
 		int pageSize = 30;
 
 		console.info("Scan max " + pageSize + " records.");
