@@ -60,8 +60,6 @@ public final class Connection implements Closeable {
 	private final InputStream in;
 	private final OutputStream out;
 	protected final Pool pool;
-	private byte[] buffer;
-	private byte[] bufferOrig;
 	private volatile long lastUsed;
 
 	public Connection(InetSocketAddress address, int timeoutMillis) throws AerospikeException.Connection {
@@ -70,7 +68,6 @@ public final class Connection implements Closeable {
 
 	public Connection(InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
-		this.buffer = new byte[DefaultBufferSize];
 
 		try {
 			socket = new Socket();
@@ -115,7 +112,6 @@ public final class Connection implements Closeable {
 
 	public Connection(TlsPolicy policy, String tlsName, InetSocketAddress address, int timeoutMillis, Node node, Pool pool) throws AerospikeException.Connection {
 		this.pool = pool;
-		this.buffer = new byte[DefaultBufferSize];
 
 		try {
 			SSLSocketFactory sslsocketfactory = (policy.context != null) ?
@@ -314,26 +310,6 @@ public final class Connection implements Closeable {
 		return in;
 	}
 
-	public byte[] sizeBuffer(int size) {
-		if (size <= buffer.length) {
-			return buffer;
-		}
-
-		if (size <= MaxBufferSize) {
-			buffer = new byte[size];
-			return buffer;
-		}
-
-		// Store original buffer to make way for large buffer. The original buffer
-		// will be restored when the transaction completes (refresh()).
-		if (bufferOrig == null) {
-			bufferOrig = buffer;
-		}
-
-		buffer = new byte[size];
-		return buffer;
-	}
-
 	public long getLastUsed() {
 		return lastUsed;
 	}
@@ -342,21 +318,11 @@ public final class Connection implements Closeable {
 		lastUsed = System.nanoTime();
 	}
 
-	public void refresh() {
-		if (bufferOrig != null) {
-			buffer = bufferOrig;
-			bufferOrig = null;
-		}
-		updateLastUsed();
-	}
-
 	/**
 	 * Close socket and associated streams.
 	 */
 	public void close() {
 		lastUsed = 0;
-		buffer = null;
-		bufferOrig = null;
 
 		try {
 			in.close();

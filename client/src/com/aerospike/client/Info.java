@@ -329,7 +329,7 @@ public class Info {
 	public Info(Connection conn, String command) throws AerospikeException {
 		int size = Buffer.estimateSizeUtf8Quick(command) + 9;
 
-		buffer = conn.sizeBuffer(size);
+		buffer = new byte[size];
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -354,7 +354,7 @@ public class Info {
 			size += Buffer.estimateSizeUtf8Quick(command) + 1;
 		}
 
-		buffer = conn.sizeBuffer(size);
+		buffer = new byte[size];
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -380,7 +380,7 @@ public class Info {
 			size += Buffer.estimateSizeUtf8Quick(command) + 1;
 		}
 
-		buffer = conn.sizeBuffer(size);
+		buffer = new byte[size];
 		offset = 8; // Skip size field.
 
 		// The command format is: <name1>\n<name2>\n...
@@ -399,7 +399,7 @@ public class Info {
 	 * @param conn			connection to server node
 	 */
 	public Info(Connection conn) throws AerospikeException {
-		buffer = conn.sizeBuffer(8);
+		buffer = new byte[8];
 		offset = 8;  // Skip size field.
 		sendCommand(conn);
 	}
@@ -431,10 +431,13 @@ public class Info {
 
 			size = Buffer.bytesToLong(buffer, 0);
 			length = (int)(size & 0xFFFFFFFFFFFFL);
-			buffer = conn.sizeBuffer(length);
+
+			if (length > buffer.length) {
+				buffer = new byte[length];
+			}
 			sb = new StringBuilder(length);
 			conn.readFully(buffer, length);
-			conn.refresh();
+			conn.updateLastUsed();
 			offset = 0;
 		}
 		catch (IOException ioe) {

@@ -72,11 +72,11 @@ public final class RecordParser {
 
 		// Read remaining message bytes.
 		if (receiveSize > buffer.length) {
-			buffer = conn.sizeBuffer(receiveSize);
+			buffer = new byte[receiveSize];
 		}
 
 		conn.readFully(buffer, receiveSize, Command.STATE_READ_DETAIL);
-		conn.refresh();
+		conn.updateLastUsed();
 
 		long type = (sz >> 48) & 0xff;
 		int offset;

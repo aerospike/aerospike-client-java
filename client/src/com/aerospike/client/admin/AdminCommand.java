@@ -99,7 +99,7 @@ public class AdminCommand {
 		public long sessionExpiration = 0;
 
 		public LoginCommand(Cluster cluster, Connection conn) throws IOException {
-			super(conn.sizeBuffer(4096));
+			super();
 
 			conn.setTimeout(cluster.loginTimeout);
 
@@ -186,7 +186,7 @@ public class AdminCommand {
 
 	public static boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
 		throws IOException {
-		AdminCommand command = new AdminCommand(conn.sizeBuffer(4096));
+		AdminCommand command = new AdminCommand();
 		return command.authenticateSession(cluster, conn, sessionToken);
 	}
 
@@ -523,10 +523,10 @@ public class AdminCommand {
 
 			if (receiveSize > 0) {
 				if (receiveSize > dataBuffer.length) {
-					dataBuffer = conn.sizeBuffer(receiveSize);
+					dataBuffer = new byte[receiveSize];
 				}
 				conn.readFully(dataBuffer, receiveSize);
-				conn.refresh();
+				conn.updateLastUsed();
 				status = parseBlock(receiveSize);
 			}
 		}

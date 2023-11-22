@@ -282,7 +282,7 @@ public abstract class SyncCommand extends Command {
 
 	@Override
 	protected void sizeBuffer() {
-		dataBuffer = conn.sizeBuffer(dataOffset);
+		dataBuffer = new byte[dataOffset];
 	}
 
 	protected boolean retryBatch(
