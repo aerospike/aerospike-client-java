@@ -39,8 +39,10 @@ public final class ScanExecutor {
 	) {
 		cluster.addTran();
 
+		RandomShift random = new RandomShift();
+
 		while (true) {
-			long taskId = new RandomShift().nextLong();
+			long taskId = random.nextLong();
 
 			try {
 				List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, namespace);
