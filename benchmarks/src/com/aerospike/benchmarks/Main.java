@@ -305,13 +305,6 @@ public class Main implements Log.Callback {
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
 
-		options.addOption("BT", "batchThreads", true,
-			"Maximum number of concurrent batch sub-threads for each batch command.\n" +
-			"1   : Run each batch node command sequentially.\n" +
-			"0   : Run all batch node commands in parallel.\n" +
-			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
-			);
-
 		options.addOption("BSN", "batchShowNodes", false,
 			"Print target nodes and count of keys directed at each node once on start of benchmarks."
 			);
@@ -869,10 +862,6 @@ public class Main implements Log.Callback {
 			args.batchSize = Integer.parseInt(line.getOptionValue("batchSize"));
 		}
 
-		if (line.hasOption("batchThreads")) {
-			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
-		}
-
 		if (line.hasOption("batchShowNodes")) {
 			this.batchShowNodes = true;
 		}
@@ -1068,8 +1057,7 @@ public class Main implements Log.Callback {
 		System.out.println("    commitLevel: " + args.writePolicy.commitLevel);
 
 		if (args.batchSize > 1) {
-			System.out.println("batch size: " + args.batchSize
-				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
+			System.out.println("batch size: " + args.batchSize);
 		}
 
 		if (this.asyncEnabled) {
@@ -1467,7 +1455,7 @@ public class Main implements Log.Callback {
 		String name = thread.getName();
 
 		if (name == null) {
-			name = Long.toString(thread.getId());
+			name = thread.getName();
 		}
 
 		System.out.println(LocalDateTime.now().format(TimeFormatter) + ' ' + level.toString() +

@@ -21,12 +21,6 @@ package com.aerospike.client.policy;
  */
 public final class BatchPolicy extends Policy {
 	/**
-	 * This field is ignored in virtual thread client. All batch node commands are always run in
-	 * parallel using virtual threads.
-	 */
-	public int maxConcurrentThreads = 1;
-
-	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
 	 * namespaces. If false, the batch will always be processed in separate service threads.
 	 * <p>
@@ -64,9 +58,6 @@ public final class BatchPolicy extends Policy {
 	 * If false, the server will stop the batch to its node on most key specific errors.
 	 * The exceptions are {@link com.aerospike.client.ResultCode#KEY_NOT_FOUND_ERROR} and
 	 * {@link com.aerospike.client.ResultCode#FILTERED_OUT} which never stop the batch.
-	 * The client will stop the entire batch on node specific errors for sync commands
-	 * that are run in sequence (maxConcurrentThreads == 1). The client will not stop
-	 * the entire batch for async commands or sync commands run in parallel.
 	 * <p>
 	 * Server versions &lt; 6.0 do not support this field and treat this value as false
 	 * for key specific errors.
@@ -93,7 +84,6 @@ public final class BatchPolicy extends Policy {
 	 */
 	public BatchPolicy(BatchPolicy other) {
 		super(other);
-		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.allowInline = other.allowInline;
 		this.allowInlineSSD = other.allowInlineSSD;
 		this.respondAllKeys = other.respondAllKeys;
