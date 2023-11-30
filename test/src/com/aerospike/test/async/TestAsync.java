@@ -143,6 +143,14 @@ public class TestAsync extends TestBase {
 		return true;
 	}
 
+	public boolean assertValidExpiration(long value) {
+		if (value < 0) {
+			monitor.setError(new Exception("Invalid expiration"));
+			return false;
+		}
+		return true;
+	}
+
 	public boolean assertNotNull(Object obj) {
 		if (obj == null) {
 			monitor.setError(new Exception("Object is null"));

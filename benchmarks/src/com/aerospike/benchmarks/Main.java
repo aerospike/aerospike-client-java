@@ -18,7 +18,10 @@ package com.aerospike.benchmarks;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.text.SimpleDateFormat;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashSet;
@@ -72,7 +75,7 @@ import io.netty.incubator.channel.uring.IOUringEventLoopGroup;
 
 public class Main implements Log.Callback {
 
-	private static final SimpleDateFormat SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+	private static final DateTimeFormatter TimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS");
 	public static List<String> keyList = null;
 
 	public static void main(String[] args) {
@@ -1307,8 +1310,8 @@ public class Main implements Log.Callback {
 
 			this.counters.periodBegin.set(time);
 
-			String date = SimpleDateFormat.format(new Date(time));
-			System.out.println(date.toString() + " write(count=" + total + " tps=" + numWrites +
+			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
+			System.out.println(dt.format(TimeFormatter) + " write(count=" + total + " tps=" + numWrites +
 				" timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 
 			if (this.counters.write.latency != null) {
@@ -1392,8 +1395,8 @@ public class Main implements Log.Callback {
 			}
 			this.counters.periodBegin.set(time);
 
-			String date = SimpleDateFormat.format(new Date(time));
-			System.out.print(date.toString());
+			LocalDateTime dt = Instant.ofEpochMilli(time).atZone(ZoneId.systemDefault()).toLocalDateTime();
+			System.out.print(dt.format(TimeFormatter));
 			System.out.print(" write(tps=" + numWrites + " timeouts=" + timeoutWrites + " errors=" + errorWrites + ")");
 			System.out.print(" read(tps=" + numReads + " timeouts=" + timeoutReads + " errors=" + errorReads);
 			if (this.counters.transaction.latency != null) {
@@ -1471,7 +1474,6 @@ public class Main implements Log.Callback {
 
 	@Override
 	public void log(Level level, String message) {
-		String date = SimpleDateFormat.format(new Date());
 		Thread thread = Thread.currentThread();
 		String name = thread.getName();
 
@@ -1479,7 +1481,7 @@ public class Main implements Log.Callback {
 			name = Long.toString(thread.getId());
 		}
 
-		System.out.println(date.toString() + ' ' + level.toString() +
+		System.out.println(LocalDateTime.now().format(TimeFormatter) + ' ' + level.toString() +
 			" Thread " + name + ' ' + message);
 	}
 

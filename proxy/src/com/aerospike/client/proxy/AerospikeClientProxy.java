@@ -1460,7 +1460,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	@Override
 	public void operate(EventLoop eventLoop, RecordListener listener, WritePolicy policy, Key key, Operation... operations) {
-		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, key, operations);
+		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 		OperateCommandProxy command = new OperateCommandProxy(executor, listener, args.writePolicy, key, args);
 		command.execute();
 	}

@@ -99,6 +99,20 @@ public final class Filter {
 	}
 
 	/**
+	 * Create contains byte[] filter for query on collection index.
+	 *
+	 * @param name			bin name
+	 * @param type			index collection type
+	 * @param value			filter value
+	 * @param ctx			optional context for elements within a CDT
+	 * @return				filter instance
+	 */
+	public static Filter contains(String name, IndexCollectionType type, byte[] value, CTX... ctx) {
+		Value val = Value.get(value);
+		return new Filter(name, type, val.getType(), val, val, ctx);
+	}
+
+	/**
 	 * Create range filter for query.
 	 * Range arguments must be longs or integers which can be cast to longs.
 	 * String ranges are not supported.

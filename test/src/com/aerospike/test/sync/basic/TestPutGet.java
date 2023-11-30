@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.test.sync.basic;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -25,6 +26,8 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.test.sync.TestSync;
 
 public class TestPutGet extends TestSync {
@@ -72,5 +75,34 @@ public class TestPutGet extends TestSync {
 		assertFalse(b);
 		b = record.getBoolean(bin4.name);
 		assertTrue(b);
+	}
+
+	@Test
+	public void putGetCompress() {
+		Key key = new Key(args.namespace, args.set, "pgc");
+		byte[] bytes = new byte[2000];
+
+		for (int i = 0; i < bytes.length; i++) {
+			bytes[i] = (byte)(i % 256);
+		}
+
+		Bin bin = new Bin("bb", bytes);
+
+		WritePolicy wp = new WritePolicy();
+		wp.compress = true;
+
+		client.put(wp, key, bin);
+
+		Policy p = new Policy();
+		p.compress = true;
+
+		Record record = client.get(p, key);
+		byte[] rcv = record.getBytes("bb");
+		assertEquals(2000, rcv.length);
+
+		for (int i = 0; i < rcv.length; i++) {
+			byte b = (byte)(i % 256);
+			assertEquals(b, rcv[i]);
+		}
 	}
 }

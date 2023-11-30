@@ -139,9 +139,9 @@ public final class Partition {
 	private Partitions partitions;
 	private final String namespace;
 	private final Replica replica;
-	private Node prevNode;
+	public Node prevNode;
 	private int partitionId;
-	private int sequence;
+	public int sequence;
 	private final boolean linearize;
 
 	private Partition(Partitions partitions, Key key, Replica replica, Node prevNode, boolean linearize) {

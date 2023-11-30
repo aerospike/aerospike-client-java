@@ -6,7 +6,7 @@
   <parent>
     <groupId>com.aerospike</groupId>
     <artifactId>aerospike-parent</artifactId>
-    <version>7.1.0</version>
+    <version>7.2.0</version>
   </parent>
   <artifactId>aerospike-proxy-client</artifactId>
   <packaging>jar</packaging>
@@ -22,7 +22,7 @@
     <dependency>
       <groupId>com.aerospike</groupId>
       <artifactId>aerospike-proxy-stub</artifactId>
-      <version>0.10.0</version>
+      <version>1.0.1</version>
     </dependency>
 
     <dependency>

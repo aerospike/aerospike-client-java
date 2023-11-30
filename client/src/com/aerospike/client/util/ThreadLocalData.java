@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -60,13 +60,13 @@ public final class ThreadLocalData {
 			}*/
 
 			if (Log.debugEnabled()) {
-				Log.debug("Thread " + Thread.currentThread().getId() + " allocate buffer on heap " + size);
+				Log.debug("Thread " + Thread.currentThread().getName() + " allocate buffer on heap " + size);
 			}
 			return new byte[size];
 		}
 
 		if (Log.debugEnabled()) {
-			Log.debug("Thread " + Thread.currentThread().getId() + " resize buffer to " + size);
+			Log.debug("Thread " + Thread.currentThread().getName() + " resize buffer to " + size);
 		}
 		BufferThreadLocal.set(new byte[size]);
 		return BufferThreadLocal.get();

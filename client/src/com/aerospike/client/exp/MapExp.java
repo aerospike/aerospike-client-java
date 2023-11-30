@@ -423,9 +423,7 @@ public final class MapExp {
 	 *
 	 * <pre>{@code
 	 * // Map bin "a" contains key "B"
-	 * Exp.gt(
-	 *   MapExp.getByKey(MapReturnType.COUNT, Exp.Type.INT, Exp.val("B"), Exp.mapBin("a")),
-	 *   Exp.val(0));
+	 * MapExp.getByKey(MapReturnType.EXISTS, Exp.Type.BOOL, Exp.val("B"), Exp.mapBin("a"))
 	 * }</pre>
 	 *
 	 * @param returnType	metadata attributes to return. See {@link MapReturnType}
@@ -504,9 +502,7 @@ public final class MapExp {
 	 *
 	 * <pre>{@code
 	 * // Map bin "a" contains value "BBB"
-	 * Exp.gt(
-	 *   MapExp.getByValue(MapReturnType.COUNT, Exp.val("BBB"), Exp.mapBin("a")),
-	 *   Exp.val(0))
+	 * MapExp.getByValue(MapReturnType.EXISTS, Exp.val("BBB"), Exp.mapBin("a"))
 	 * }</pre>
 	 *
 	 * @param returnType	metadata attributes to return. See {@link MapReturnType}

@@ -107,23 +107,25 @@ public class Arguments {
 			spec.size = Math.abs(spec.size / 8);
 			// ... relies on size being a multiple of 8, which it will be.
 			spec.rand_pct = Math.abs(spec.rand_pct);
-			long[] data = new long[spec.size];
+			byte[] bytes = new byte[spec.size * 8];
 			int idx = 0;
 			int rand_pct = spec.rand_pct;
 			if (rand_pct < 100) {
 				int n_zeros = (spec.size * (100 - rand_pct)) / 100;
 				int n_rands = spec.size - n_zeros;
 				for (int z = n_zeros; z != 0; z--) {
-					data[idx++] = 0;
+					idx = longToBytes(0, bytes, idx);
 				}
 				for (int r = n_rands; r != 0; r--) {
-					data[idx++] = random.nextLong();
+					long l = random.nextLong();
+					idx = longToBytes(l, bytes, idx);
 				}
 			}
 			while (idx < spec.size) {
-				data[idx++] = random.nextLong();
+				long l = random.nextLong();
+				idx = longToBytes(l, bytes, idx);
 			}
-			return Value.get(data);
+			return Value.get(bytes);
 
 		case 'D':
 			return Value.get(System.currentTimeMillis());
@@ -131,5 +133,13 @@ public class Arguments {
 		default:
 			return Value.getAsNull();
 		}
+	}
+
+	private static int longToBytes(long l, byte[] bytes, int offset) {
+		for (int i = offset + 7; i >= offset; i--) {
+			bytes[i] = (byte)(l & 0xFF);
+			l >>= 8;
+		}
+		return offset + 8;
 	}
 }
