@@ -98,7 +98,7 @@ public final class QueryListenerCommand extends MultiCommand {
 			throw new AerospikeException.QueryTerminated();
 		}
 
-		if (tracker.allowRecord()) {
+		if (tracker.allowRecord(nodePartitions)) {
 			listener.onRecord(key, record);
 			tracker.setLast(nodePartitions, key, bval.val);
 		}

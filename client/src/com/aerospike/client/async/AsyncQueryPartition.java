@@ -85,7 +85,7 @@ public final class AsyncQueryPartition extends AsyncMultiCommand {
 
 		Record record = parseRecord();
 
-		if (tracker.allowRecord()) {
+		if (tracker.allowRecord(nodePartitions)) {
 			listener.onRecord(key, record);
 			tracker.setLast(nodePartitions, key, bval.val);
 		}
