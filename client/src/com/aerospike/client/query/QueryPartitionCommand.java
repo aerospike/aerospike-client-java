@@ -98,7 +98,7 @@ public final class QueryPartitionCommand extends MultiCommand {
 			throw new AerospikeException.QueryTerminated();
 		}
 
-		if (tracker.allowRecord()) {
+		if (tracker.allowRecord(nodePartitions)) {
 			if (! recordSet.put(new KeyRecord(key, record))) {
 				stop();
 				throw new AerospikeException.QueryTerminated();

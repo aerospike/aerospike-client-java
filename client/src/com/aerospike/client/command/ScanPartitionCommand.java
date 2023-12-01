@@ -102,7 +102,7 @@ public final class ScanPartitionCommand extends MultiCommand {
 			throw new AerospikeException.ScanTerminated();
 		}
 
-		if (tracker.allowRecord()) {
+		if (tracker.allowRecord(nodePartitions)) {
 			callback.scanCallback(key, record);
 			tracker.setDigest(nodePartitions, key);
 		}

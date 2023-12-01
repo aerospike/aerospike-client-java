@@ -90,7 +90,7 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 
 		Record record = parseRecord();
 
-		if (tracker.allowRecord()) {
+		if (tracker.allowRecord(nodePartitions)) {
 			listener.onRecord(key, record);
 			tracker.setDigest(nodePartitions, key);
 		}
