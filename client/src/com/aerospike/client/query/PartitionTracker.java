@@ -371,8 +371,15 @@ public final class PartitionTracker {
 		nodePartitions.recordCount++;
 	}
 
-	public boolean allowRecord() {
-		return recordCount == null || recordCount.incrementAndGet() <= maxRecords;
+	public boolean allowRecord(NodePartitions nodePartitions) {
+		if (recordCount == null || recordCount.incrementAndGet() <= maxRecords) {
+			return true;
+		}
+
+		// Record was returned, but would exceed maxRecords.
+		// Discard record and increment disallowedCount.
+		nodePartitions.disallowedCount++;
+		return false;
 	}
 
 	public boolean isComplete(Cluster cluster, Policy policy) {
@@ -417,7 +424,7 @@ public final class PartitionTracker {
 					boolean done = true;
 
 					for (NodePartitions np : nodePartitionsList) {
-						if (np.recordCount >= np.recordMax) {
+						if (np.recordCount + np.disallowedCount >= np.recordMax) {
 							markRetry(np);
 							done = false;
 						}
@@ -435,7 +442,7 @@ public final class PartitionTracker {
 					// have more records for each node, so the node is only done if no
 					// records were retrieved for that node.
 					for (NodePartitions np : nodePartitionsList) {
-						if (np.recordCount > 0) {
+						if (np.recordCount + np.disallowedCount > 0) {
 							markRetry(np);
 						}
 					}
@@ -578,6 +585,7 @@ public final class PartitionTracker {
 		public final List<PartitionStatus> partsPartial;
 		public long recordCount;
 		public long recordMax;
+		public long disallowedCount;
 		public int partsUnavailable;
 
 		public NodePartitions(Node node, int capacity) {
