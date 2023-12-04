@@ -376,9 +376,9 @@ public final class PartitionTracker {
 			return true;
 		}
 
-		// Record was returned, but would exceed maxRecords.
-		// Discard record and increment disallowedCount.
-		nodePartitions.disallowedCount++;
+		// Record was returned, but would exceed maxRecords. Discard record
+		// and mark node for retry on next scan/query page.
+		nodePartitions.retry = true;
 		return false;
 	}
 
@@ -424,7 +424,7 @@ public final class PartitionTracker {
 					boolean done = true;
 
 					for (NodePartitions np : nodePartitionsList) {
-						if (np.recordCount + np.disallowedCount >= np.recordMax) {
+						if (np.retry || np.recordCount >= np.recordMax) {
 							markRetry(np);
 							done = false;
 						}
@@ -442,7 +442,7 @@ public final class PartitionTracker {
 					// have more records for each node, so the node is only done if no
 					// records were retrieved for that node.
 					for (NodePartitions np : nodePartitionsList) {
-						if (np.recordCount + np.disallowedCount > 0) {
+						if (np.retry || np.recordCount > 0) {
 							markRetry(np);
 						}
 					}
@@ -585,8 +585,8 @@ public final class PartitionTracker {
 		public final List<PartitionStatus> partsPartial;
 		public long recordCount;
 		public long recordMax;
-		public long disallowedCount;
 		public int partsUnavailable;
+		public boolean retry;
 
 		public NodePartitions(Node node, int capacity) {
 			this.node = node;
