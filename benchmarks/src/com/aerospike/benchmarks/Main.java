@@ -23,8 +23,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -47,6 +50,7 @@ import com.aerospike.client.async.EventLoops;
 import com.aerospike.client.async.EventPolicy;
 import com.aerospike.client.async.NettyEventLoops;
 import com.aerospike.client.async.NioEventLoops;
+import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.BatchStatus;
@@ -348,6 +352,8 @@ public class Main implements Log.Callback {
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
 		options.addOption("sendKey", false, "Send key to server");
+		
+		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		// parse the command line arguments
 		CommandLineParser parser = new DefaultParser();
@@ -986,6 +992,31 @@ public class Main implements Log.Callback {
 		if (line.hasOption("sendKey")) {
 			args.writePolicy.sendKey = true;
 		}
+		
+		if (line.hasOption("partitionIds")) {
+			String[] pids = line.getOptionValue("partitionIds").split(",");
+			
+			Set<Integer> partitionIds = new HashSet<>();
+			
+			for (String pid : pids) {
+				int partitionId = -1;
+
+				try {
+					partitionId = Integer.parseInt(pid);
+				}
+				catch(NumberFormatException nfe) {
+					throw new Exception("Partition ID has to be an integer");
+				}
+
+				if (partitionId < 0  || partitionId >= Node.PARTITIONS) {
+					throw new Exception("Partition ID has to be a value between 0 and " + Node.PARTITIONS);
+				}
+
+				partitionIds.add(partitionId);
+			}
+			
+			args.partitionIds = partitionIds;
+		}
 
 		String threadType = useVirtualThreads ? "Virtual" : "OS";
 
@@ -1010,7 +1041,8 @@ public class Main implements Log.Callback {
 			+ ", transactions: " + args.transactionLimit
 			+ ", bins: " + args.nBins
 			+ ", random values: " + (args.fixedBins == null)
-			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps")));
+			+ ", throughput: " + (args.throughput == 0 ? "unlimited" : (args.throughput + " tps"))
+			+ ", partitions: " + (args.partitionIds == null ? "all" : args.partitionIds.toString()));
 
 		System.out.println("client policy:");
 		System.out.println(

@@ -16,10 +16,14 @@
  */
 package com.aerospike.benchmarks;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
+import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
@@ -83,14 +87,27 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 	private void put(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
-			client.put(args.writePolicy, key, bins);
+			
+			if (! skipKey(key)) {
+				client.put(args.writePolicy, key, bins);
+			}
+			
 			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
 		}
 		else {
-			client.put(args.writePolicy, key, bins);
+			if (! skipKey(key)) {
+				client.put(args.writePolicy, key, bins);
+			}
 			counters.write.count.getAndIncrement();
 		}
+	}
+	
+	private boolean skipKey(Key key) {
+		if (args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest))) {
+			return true;
+		}
+		return false;
 	}
 }
