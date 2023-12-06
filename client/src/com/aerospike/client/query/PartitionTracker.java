@@ -320,6 +320,8 @@ public final class PartitionTracker {
 		ps.retry = true;
 		ps.sequence++;
 		nodePartitions.partsUnavailable++;
+		addException(nodePartitions.node, new AerospikeException(ResultCode.PARTITION_UNAVAILABLE,
+				"Partition " + partitionId + " unavailable"));
 	}
 
 	/**
@@ -464,15 +466,6 @@ public final class PartitionTracker {
 
 		// Check if limits have been reached.
 		if (iteration > policy.maxRetries) {
-			if (exceptions == null || exceptions.size() <= 0) {
-				// The only retryable errors that are not added to the exceptions list is
-				// PARTITION_UNAVAILABLE.
-				AerospikeException ae = new AerospikeException(ResultCode.PARTITION_UNAVAILABLE);
-				ae.setPolicy(policy);
-				ae.setIteration(iteration);
-				throw ae;
-			}
-
 			// Use last sub-error code received.
 			AerospikeException last = exceptions.get(exceptions.size() - 1);
 
@@ -531,20 +524,26 @@ public final class PartitionTracker {
 		case ResultCode.TIMEOUT:
 		case ResultCode.INDEX_NOTFOUND:
 		case ResultCode.INDEX_NOTREADABLE:
-			// Multiple scan/query threads may call this method, so exception
-			// list must be modified under lock.
-			synchronized(this) {
-				if (exceptions == null) {
-					exceptions = new ArrayList<AerospikeException>();
-				}
-				exceptions.add(ae);
-			}
+			addException(nodePartitions.node, ae);
 			markRetrySequence(nodePartitions);
 			nodePartitions.partsUnavailable = nodePartitions.partsFull.size() + nodePartitions.partsPartial.size();
 			return true;
 
 		default:
 			return false;
+		}
+	}
+
+	private void addException(Node node, AerospikeException ae) {
+		// Multiple scan/query threads may call this method, so exception
+		// list must be modified under lock.
+		synchronized(this) {
+			if (exceptions == null) {
+				exceptions = new ArrayList<AerospikeException>();
+			}
+			ae.setNode(node);
+			ae.setIteration(iteration);
+			exceptions.add(ae);
 		}
 	}
 
