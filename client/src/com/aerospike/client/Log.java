@@ -85,7 +85,7 @@ public final class Log {
 	 */
 	public static void setCallback(Callback callback) {
 		gCallback = callback;
-		gCallbackSet = true;
+		gCallbackSet = callback != null;
 	}
 
 	/**
