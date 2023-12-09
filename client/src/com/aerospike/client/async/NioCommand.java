@@ -800,6 +800,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			if (byteBuffer != null) {
 				eventLoop.putByteBuffer(byteBuffer);
 			}
+			command.putBuffer();
 		}
 		byteBuffer = null;
 	}
