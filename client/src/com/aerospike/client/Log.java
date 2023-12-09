@@ -96,7 +96,9 @@ public final class Log {
 	}
 
 	/**
-	 * Determine if log callback has been set by the user.
+	 * Determine if the log callback default (null - disable logging) has been overridden by the user.
+	 * Return true if the user explicitly defined a callback or disabled logging by setting the log callback to null.
+	 * Return false if the log callback default was not overridden by the user.
 	 */
 	public static boolean isSet() {
 		return gCallbackSet;
