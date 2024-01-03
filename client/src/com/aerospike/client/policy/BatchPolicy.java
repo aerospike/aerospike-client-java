@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -161,5 +161,23 @@ public final class BatchPolicy extends Policy {
 		BatchPolicy policy = new BatchPolicy();
 		policy.maxRetries = 0;
 		return policy;
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setMaxConcurrentThreads(int maxConcurrentThreads) {
+		this.maxConcurrentThreads = maxConcurrentThreads;
+	}
+
+	public void setAllowInline(boolean allowInline) {
+		this.allowInline = allowInline;
+	}
+
+	public void setAllowInlineSSD(boolean allowInlineSSD) {
+		this.allowInlineSSD = allowInlineSSD;
+	}
+
+	public void setRespondAllKeys(boolean respondAllKeys) {
+		this.respondAllKeys = respondAllKeys;
 	}
 }

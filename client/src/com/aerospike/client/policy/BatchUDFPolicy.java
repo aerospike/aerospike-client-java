@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -92,5 +92,27 @@ public final class BatchUDFPolicy {
 	 * Default constructor.
 	 */
 	public BatchUDFPolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setFilterExp(Expression filterExp) {
+		this.filterExp = filterExp;
+	}
+
+	public void setCommitLevel(CommitLevel commitLevel) {
+		this.commitLevel = commitLevel;
+	}
+
+	public void setExpiration(int expiration) {
+		this.expiration = expiration;
+	}
+
+	public void setDurableDelete(boolean durableDelete) {
+		this.durableDelete = durableDelete;
+	}
+
+	public void setSendKey(boolean sendKey) {
+		this.sendKey = sendKey;
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -325,6 +325,60 @@ public class Policy {
 		if (totalTimeout != other.totalTimeout)
 			return false;
 		return true;
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setReadModeAP(ReadModeAP readModeAP) {
+		this.readModeAP = readModeAP;
+	}
+
+	public void setReadModeSC(ReadModeSC readModeSC) {
+		this.readModeSC = readModeSC;
+	}
+
+	public void setReplica(Replica replica) {
+		this.replica = replica;
+	}
+
+	public void setFilterExp(Expression filterExp) {
+		this.filterExp = filterExp;
+	}
+
+	public void setConnectTimeout(int connectTimeout) {
+		this.connectTimeout = connectTimeout;
+	}
+
+	public void setSocketTimeout(int socketTimeout) {
+		this.socketTimeout = socketTimeout;
+	}
+
+	public void setTotalTimeout(int totalTimeout) {
+		this.totalTimeout = totalTimeout;
+	}
+
+	public void setTimeoutDelay(int timeoutDelay) {
+		this.timeoutDelay = timeoutDelay;
+	}
+
+	public void setMaxRetries(int maxRetries) {
+		this.maxRetries = maxRetries;
+	}
+
+	public void setSleepBetweenRetries(int sleepBetweenRetries) {
+		this.sleepBetweenRetries = sleepBetweenRetries;
+	}
+
+	public void setSendKey(boolean sendKey) {
+		this.sendKey = sendKey;
+	}
+
+	public void setCompress(boolean compress) {
+		this.compress = compress;
+	}
+
+	public void setFailOnFilteredOut(boolean failOnFilteredOut) {
+		this.failOnFilteredOut = failOnFilteredOut;
 	}
 }
 

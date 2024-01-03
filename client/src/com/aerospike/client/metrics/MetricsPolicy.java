@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -97,5 +97,31 @@ public final class MetricsPolicy {
 	 * Default constructor.
 	 */
 	public MetricsPolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setListener(MetricsListener listener) {
+		this.listener = listener;
+	}
+
+	public void setReportDir(String reportDir) {
+		this.reportDir = reportDir;
+	}
+
+	public void setReportSizeLimit(long reportSizeLimit) {
+		this.reportSizeLimit = reportSizeLimit;
+	}
+
+	public void setInterval(int interval) {
+		this.interval = interval;
+	}
+
+	public void setLatencyColumns(int latencyColumns) {
+		this.latencyColumns = latencyColumns;
+	}
+
+	public void setLatencyShift(int latencyShift) {
+		this.latencyShift = latencyShift;
 	}
 }

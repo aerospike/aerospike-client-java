@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -110,5 +110,31 @@ public final class TlsPolicy {
 	 * Default constructor.
 	 */
 	public TlsPolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setContext(SSLContext context) {
+		this.context = context;
+	}
+
+	public void setNettyContext(NettyTlsContext nettyContext) {
+		this.nettyContext = nettyContext;
+	}
+
+	public void setProtocols(String[] protocols) {
+		this.protocols = protocols;
+	}
+
+	public void setCiphers(String[] ciphers) {
+		this.ciphers = ciphers;
+	}
+
+	public void setRevokeCertificates(BigInteger[] revokeCertificates) {
+		this.revokeCertificates = revokeCertificates;
+	}
+
+	public void setForLoginOnly(boolean forLoginOnly) {
+		this.forLoginOnly = forLoginOnly;
 	}
 }

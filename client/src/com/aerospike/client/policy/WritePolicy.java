@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -180,5 +180,39 @@ public final class WritePolicy extends Policy {
 		if (xdr != other.xdr)
 			return false;
 		return true;
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setRecordExistsAction(RecordExistsAction recordExistsAction) {
+		this.recordExistsAction = recordExistsAction;
+	}
+
+	public void setGenerationPolicy(GenerationPolicy generationPolicy) {
+		this.generationPolicy = generationPolicy;
+	}
+
+	public void setCommitLevel(CommitLevel commitLevel) {
+		this.commitLevel = commitLevel;
+	}
+
+	public void setGeneration(int generation) {
+		this.generation = generation;
+	}
+
+	public void setExpiration(int expiration) {
+		this.expiration = expiration;
+	}
+
+	public void setRespondAllOps(boolean respondAllOps) {
+		this.respondAllOps = respondAllOps;
+	}
+
+	public void setDurableDelete(boolean durableDelete) {
+		this.durableDelete = durableDelete;
+	}
+
+	public void setXdr(boolean xdr) {
+		this.xdr = xdr;
 	}
 }
