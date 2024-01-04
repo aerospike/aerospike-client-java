@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -352,7 +352,7 @@ public class Main implements Log.Callback {
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
 		options.addOption("sendKey", false, "Send key to server");
-		
+
 		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		// parse the command line arguments
@@ -992,12 +992,12 @@ public class Main implements Log.Callback {
 		if (line.hasOption("sendKey")) {
 			args.writePolicy.sendKey = true;
 		}
-		
+
 		if (line.hasOption("partitionIds")) {
 			String[] pids = line.getOptionValue("partitionIds").split(",");
-			
+
 			Set<Integer> partitionIds = new HashSet<>();
-			
+
 			for (String pid : pids) {
 				int partitionId = -1;
 
@@ -1014,7 +1014,7 @@ public class Main implements Log.Callback {
 
 				partitionIds.add(partitionId);
 			}
-			
+
 			args.partitionIds = partitionIds;
 		}
 
