@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -94,4 +94,30 @@ public final class EventPolicy {
 	 * Default: 256
 	 */
 	public int commandsPerEventLoop = 256;
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setMaxCommandsInProcess(int maxCommandsInProcess) {
+		this.maxCommandsInProcess = maxCommandsInProcess;
+	}
+
+	public void setMaxCommandsInQueue(int maxCommandsInQueue) {
+		this.maxCommandsInQueue = maxCommandsInQueue;
+	}
+
+	public void setQueueInitialCapacity(int queueInitialCapacity) {
+		this.queueInitialCapacity = queueInitialCapacity;
+	}
+
+	public void setMinTimeout(int minTimeout) {
+		this.minTimeout = minTimeout;
+	}
+
+	public void setTicksPerWheel(int ticksPerWheel) {
+		this.ticksPerWheel = ticksPerWheel;
+	}
+
+	public void setCommandsPerEventLoop(int commandsPerEventLoop) {
+		this.commandsPerEventLoop = commandsPerEventLoop;
+	}
 }

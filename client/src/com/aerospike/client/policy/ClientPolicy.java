@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -419,5 +419,163 @@ public class ClientPolicy {
 	 * Default constructor.
 	 */
 	public ClientPolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setEventLoops(EventLoops eventLoops) {
+		this.eventLoops = eventLoops;
+	}
+
+	public void setUser(String user) {
+		this.user = user;
+	}
+
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public void setClusterName(String clusterName) {
+		this.clusterName = clusterName;
+	}
+
+	public void setAuthMode(AuthMode authMode) {
+		this.authMode = authMode;
+	}
+
+	public void setTimeout(int timeout) {
+		this.timeout = timeout;
+	}
+
+	public void setLoginTimeout(int loginTimeout) {
+		this.loginTimeout = loginTimeout;
+	}
+
+	public void setCloseTimeout(int closeTimeout) {
+		this.closeTimeout = closeTimeout;
+	}
+
+	public void setMinConnsPerNode(int minConnsPerNode) {
+		this.minConnsPerNode = minConnsPerNode;
+	}
+
+	public void setMaxConnsPerNode(int maxConnsPerNode) {
+		this.maxConnsPerNode = maxConnsPerNode;
+	}
+
+	public void setAsyncMinConnsPerNode(int asyncMinConnsPerNode) {
+		this.asyncMinConnsPerNode = asyncMinConnsPerNode;
+	}
+
+	public void setAsyncMaxConnsPerNode(int asyncMaxConnsPerNode) {
+		this.asyncMaxConnsPerNode = asyncMaxConnsPerNode;
+	}
+
+	public void setConnPoolsPerNode(int connPoolsPerNode) {
+		this.connPoolsPerNode = connPoolsPerNode;
+	}
+
+	public void setMaxSocketIdle(int maxSocketIdle) {
+		this.maxSocketIdle = maxSocketIdle;
+	}
+
+	public void setMaxErrorRate(int maxErrorRate) {
+		this.maxErrorRate = maxErrorRate;
+	}
+
+	public void setErrorRateWindow(int errorRateWindow) {
+		this.errorRateWindow = errorRateWindow;
+	}
+
+	public void setTendInterval(int tendInterval) {
+		this.tendInterval = tendInterval;
+	}
+
+	public void setFailIfNotConnected(boolean failIfNotConnected) {
+		this.failIfNotConnected = failIfNotConnected;
+	}
+
+	public void setValidateClusterName(boolean validateClusterName) {
+		this.validateClusterName = validateClusterName;
+	}
+
+	public void setReadPolicyDefault(Policy readPolicyDefault) {
+		this.readPolicyDefault = readPolicyDefault;
+	}
+
+	public void setWritePolicyDefault(WritePolicy writePolicyDefault) {
+		this.writePolicyDefault = writePolicyDefault;
+	}
+
+	public void setScanPolicyDefault(ScanPolicy scanPolicyDefault) {
+		this.scanPolicyDefault = scanPolicyDefault;
+	}
+
+	public void setQueryPolicyDefault(QueryPolicy queryPolicyDefault) {
+		this.queryPolicyDefault = queryPolicyDefault;
+	}
+
+	public void setBatchPolicyDefault(BatchPolicy batchPolicyDefault) {
+		this.batchPolicyDefault = batchPolicyDefault;
+	}
+
+	public void setBatchParentPolicyWriteDefault(BatchPolicy batchParentPolicyWriteDefault) {
+		this.batchParentPolicyWriteDefault = batchParentPolicyWriteDefault;
+	}
+
+	public void setBatchWritePolicyDefault(BatchWritePolicy batchWritePolicyDefault) {
+		this.batchWritePolicyDefault = batchWritePolicyDefault;
+	}
+
+	public void setBatchDeletePolicyDefault(BatchDeletePolicy batchDeletePolicyDefault) {
+		this.batchDeletePolicyDefault = batchDeletePolicyDefault;
+	}
+
+	public void setBatchUDFPolicyDefault(BatchUDFPolicy batchUDFPolicyDefault) {
+		this.batchUDFPolicyDefault = batchUDFPolicyDefault;
+	}
+
+	public void setInfoPolicyDefault(InfoPolicy infoPolicyDefault) {
+		this.infoPolicyDefault = infoPolicyDefault;
+	}
+
+	public void setTlsPolicy(TlsPolicy tlsPolicy) {
+		this.tlsPolicy = tlsPolicy;
+	}
+
+	public void setKeepAlive(TCPKeepAlive keepAlive) {
+		this.keepAlive = keepAlive;
+	}
+
+	public void setIpMap(Map<String, String> ipMap) {
+		this.ipMap = ipMap;
+	}
+
+	public void setThreadPool(ExecutorService threadPool) {
+		this.threadPool = threadPool;
+	}
+
+	public void setSharedThreadPool(boolean sharedThreadPool) {
+		this.sharedThreadPool = sharedThreadPool;
+	}
+
+	public void setUseServicesAlternate(boolean useServicesAlternate) {
+		this.useServicesAlternate = useServicesAlternate;
+	}
+
+	public void setForceSingleNode(boolean forceSingleNode) {
+		this.forceSingleNode = forceSingleNode;
+	}
+
+	public void setRackAware(boolean rackAware) {
+		this.rackAware = rackAware;
+	}
+
+	public void setRackId(int rackId) {
+		this.rackId = rackId;
+	}
+
+	public void setRackIds(List<Integer> rackIds) {
+		this.rackIds = rackIds;
 	}
 }

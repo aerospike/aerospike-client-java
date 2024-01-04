@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -94,5 +94,31 @@ public final class BatchDeletePolicy {
 	 * Default constructor.
 	 */
 	public BatchDeletePolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setFilterExp(Expression filterExp) {
+		this.filterExp = filterExp;
+	}
+
+	public void setCommitLevel(CommitLevel commitLevel) {
+		this.commitLevel = commitLevel;
+	}
+
+	public void setGenerationPolicy(GenerationPolicy generationPolicy) {
+		this.generationPolicy = generationPolicy;
+	}
+
+	public void setGeneration(int generation) {
+		this.generation = generation;
+	}
+
+	public void setDurableDelete(boolean durableDelete) {
+		this.durableDelete = durableDelete;
+	}
+
+	public void setSendKey(boolean sendKey) {
+		this.sendKey = sendKey;
 	}
 }

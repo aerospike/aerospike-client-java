@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -100,5 +100,27 @@ public final class ScanPolicy extends Policy {
 	public ScanPolicy() {
 		super.totalTimeout = 0;
 		super.maxRetries = 5;
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setMaxRecords(long maxRecords) {
+		this.maxRecords = maxRecords;
+	}
+
+	public void setRecordsPerSecond(int recordsPerSecond) {
+		this.recordsPerSecond = recordsPerSecond;
+	}
+
+	public void setMaxConcurrentNodes(int maxConcurrentNodes) {
+		this.maxConcurrentNodes = maxConcurrentNodes;
+	}
+
+	public void setConcurrentNodes(boolean concurrentNodes) {
+		this.concurrentNodes = concurrentNodes;
+	}
+
+	public void setIncludeBinData(boolean includeBinData) {
+		this.includeBinData = includeBinData;
 	}
 }

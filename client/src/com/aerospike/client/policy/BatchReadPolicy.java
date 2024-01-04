@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -62,5 +62,19 @@ public final class BatchReadPolicy {
 	 * Default constructor.
 	 */
 	public BatchReadPolicy() {
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setFilterExp(Expression filterExp) {
+		this.filterExp = filterExp;
+	}
+
+	public void setReadModeAP(ReadModeAP readModeAP) {
+		this.readModeAP = readModeAP;
+	}
+
+	public void setReadModeSC(ReadModeSC readModeSC) {
+		this.readModeSC = readModeSC;
 	}
 }

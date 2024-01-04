@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -129,5 +129,35 @@ public class QueryPolicy extends Policy {
 	public QueryPolicy() {
 		super.totalTimeout = 0;
 		super.maxRetries = 5;
+	}
+
+	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setMaxRecords(long maxRecords) {
+		this.maxRecords = maxRecords;
+	}
+
+	public void setMaxConcurrentNodes(int maxConcurrentNodes) {
+		this.maxConcurrentNodes = maxConcurrentNodes;
+	}
+
+	public void setRecordQueueSize(int recordQueueSize) {
+		this.recordQueueSize = recordQueueSize;
+	}
+
+	public void setInfoTimeout(int infoTimeout) {
+		this.infoTimeout = infoTimeout;
+	}
+
+	public void setIncludeBinData(boolean includeBinData) {
+		this.includeBinData = includeBinData;
+	}
+
+	public void setFailOnClusterChange(boolean failOnClusterChange) {
+		this.failOnClusterChange = failOnClusterChange;
+	}
+
+	public void setShortQuery(boolean shortQuery) {
+		this.shortQuery = shortQuery;
 	}
 }
