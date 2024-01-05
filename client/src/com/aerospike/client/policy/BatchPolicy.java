@@ -121,10 +121,6 @@ public final class BatchPolicy extends Policy {
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
-	public void setMaxConcurrentThreads(int maxConcurrentThreads) {
-		this.maxConcurrentThreads = maxConcurrentThreads;
-	}
-
 	public void setAllowInline(boolean allowInline) {
 		this.allowInline = allowInline;
 	}

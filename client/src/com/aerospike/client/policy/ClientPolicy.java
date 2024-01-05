@@ -551,14 +551,6 @@ public class ClientPolicy {
 		this.ipMap = ipMap;
 	}
 
-	public void setThreadPool(ExecutorService threadPool) {
-		this.threadPool = threadPool;
-	}
-
-	public void setSharedThreadPool(boolean sharedThreadPool) {
-		this.sharedThreadPool = sharedThreadPool;
-	}
-
 	public void setUseServicesAlternate(boolean useServicesAlternate) {
 		this.useServicesAlternate = useServicesAlternate;
 	}
