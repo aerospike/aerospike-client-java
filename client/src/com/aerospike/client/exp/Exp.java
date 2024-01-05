@@ -542,7 +542,7 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create "and" (&&) operator that applies to a variable number of expressions.
+	 * Create "and" (&amp;&amp;) operator that applies to a variable number of expressions.
 	 *
 	 * <pre>{@code
 	 * // (a > 5 || a == 0) && b < 3
@@ -635,7 +635,7 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create less than (<) operation.
+	 * Create less than (&lt;) operation.
 	 *
 	 * <pre>{@code
 	 * // a < 1000
@@ -647,7 +647,7 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create less than or equals (<=) operation.
+	 * Create less than or equals (&lt;=) operation.
 	 *
 	 * <pre>{@code
 	 * // a <= 1
@@ -856,7 +856,7 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create integer "and" (&) operator that is applied to two or more integers.
+	 * Create integer "and" (&amp;) operator that is applied to two or more integers.
 	 * All arguments must resolve to integers.
 	 * Requires server version 5.6.0+.
 	 *
@@ -919,7 +919,7 @@ public abstract class Exp {
 	}
 
 	/**
-	 * Create integer "left shift" (<<) operator.
+	 * Create integer "left shift" (&lt;&lt;) operator.
 	 * Requires server version 5.6.0+.
 	 *
 	 * <pre>{@code

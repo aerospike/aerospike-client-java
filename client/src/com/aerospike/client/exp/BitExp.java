@@ -237,7 +237,7 @@ public final class BitExp {
 
 	/**
 	 * Create expression that adds value to byte[] bin starting at bitOffset for bitSize and returns byte[].
-	 * BitSize must be <= 64. Signed indicates if bits should be treated as a signed number.
+	 * BitSize must be &lt;= 64. Signed indicates if bits should be treated as a signed number.
 	 * If add overflows/underflows, {@link BitOverflowAction} is used.
 	 * <ul>
 	 * <li>bin = [0b00000001, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
@@ -263,7 +263,7 @@ public final class BitExp {
 
 	/**
 	 * Create expression that subtracts value from byte[] bin starting at bitOffset for bitSize and returns byte[].
-	 * BitSize must be <= 64. Signed indicates if bits should be treated as a signed number.
+	 * BitSize must be &lt;= 64. Signed indicates if bits should be treated as a signed number.
 	 * If add overflows/underflows, {@link BitOverflowAction} is used.
 	 * <ul>
 	 * <li>bin = [0b00000001, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
@@ -289,7 +289,7 @@ public final class BitExp {
 
 	/**
 	 * Create expression that sets value to byte[] bin starting at bitOffset for bitSize and returns byte[].
-	 * BitSize must be <= 64.
+	 * BitSize must be &lt;= 64.
 	 * <ul>
 	 * <li>bin = [0b00000001, 0b01000010, 0b00000011, 0b00000100, 0b00000101]</li>
 	 * <li>bitOffset = 1</li>
