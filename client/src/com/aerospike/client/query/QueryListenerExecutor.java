@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -23,7 +23,6 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.Executor;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
-import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 public final class QueryListenerExecutor {
@@ -36,7 +35,8 @@ public final class QueryListenerExecutor {
 	) {
 		cluster.addTran();
 
-		long taskId = statement.prepareTaskId();
+		TaskGen task = new TaskGen(statement);
+		long taskId = task.getId();
 
 		while (true) {
 			try {
@@ -75,7 +75,7 @@ public final class QueryListenerExecutor {
 			}
 
 			// taskId must be reset on next pass to avoid server duplicate query detection.
-			taskId = RandomShift.instance().nextLong();
+			taskId = task.nextId();
 		}
 	}
 }

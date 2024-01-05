@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,7 @@ package com.aerospike.client.query;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,7 +28,6 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.command.MultiCommand;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
-import com.aerospike.client.util.RandomShift;
 import com.aerospike.client.util.Util;
 
 public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
@@ -37,13 +37,11 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	private final Statement statement;
 	private final PartitionTracker tracker;
 	private final RecordSet recordSet;
-	private final ExecutorService threadPool;
 	private final List<QueryThread> threads;
 	private final AtomicInteger completedCount;
 	private final AtomicBoolean done;
 	private volatile Throwable exception;
 	private int maxConcurrentThreads;
-	private boolean threadsComplete;
 
 	public QueryPartitionExecutor(
 		Cluster cluster,
@@ -57,14 +55,12 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 		this.statement = statement;
 		this.tracker = tracker;
 		this.recordSet = new RecordSet(this, policy.recordQueueSize);
-		this.threadPool = cluster.getThreadPool();
 		this.threads = new ArrayList<QueryThread>(nodeCapacity);
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
 
 		cluster.addTran();
-
-		threadPool.execute(this);
+		cluster.threadFactory.newThread(this).start();
 	}
 
 	public void run() {
@@ -77,7 +73,8 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 	}
 
 	private void execute() {
-		long taskId = statement.prepareTaskId();
+		TaskGen task = new TaskGen(statement);
+		long taskId = task.getId();
 
 		while (true) {
 			List<NodePartitions> list = tracker.assignPartitionsToNodes(cluster, statement.namespace);
@@ -86,6 +83,7 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			maxConcurrentThreads = (policy.maxConcurrentNodes == 0 || policy.maxConcurrentNodes >= list.size()) ? list.size() : policy.maxConcurrentNodes;
 
 			boolean parallel = maxConcurrentThreads > 1 && list.size() > 1;
+			ExecutorService es = null;
 
 			synchronized(threads) {
 				// RecordSet thread may have aborted query, so check done under lock.
@@ -96,19 +94,22 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				threads.clear();
 
 				if (parallel) {
+					es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);
+
 					for (NodePartitions nodePartitions : list) {
 						MultiCommand command = new QueryPartitionCommand(cluster, policy, statement, taskId, recordSet, tracker, nodePartitions);
 						threads.add(new QueryThread(command));
 					}
 
 					for (int i = 0; i < maxConcurrentThreads; i++) {
-						threadPool.execute(threads.get(i));
+						es.execute(threads.get(i));
 					}
 				}
 			}
 
 			if (parallel) {
-				waitTillComplete();
+				// Wait till virtual threads complete.
+				es.close();
 			}
 			else {
 				for (NodePartitions nodePartitions : list) {
@@ -136,46 +137,23 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 			}
 
 			completedCount.set(0);
-			threadsComplete = false;
 			exception = null;
 
 			// taskId must be reset on next pass to avoid server duplicate query detection.
-			taskId = RandomShift.instance().nextLong();
+			taskId = task.nextId();
 		}
-	}
-
-	private synchronized void waitTillComplete() {
-		while (! threadsComplete) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyCompleted() {
-		threadsComplete = true;
-		super.notify();
 	}
 
 	private final void threadCompleted() {
 		int finished = completedCount.incrementAndGet();
 
 		if (finished < threads.size()) {
-			int nextThread = finished + maxConcurrentThreads - 1;
+			int next = finished + maxConcurrentThreads - 1;
 
-			// Determine if a new thread needs to be started.
-			if (nextThread < threads.size() && ! done.get()) {
-				// Start new thread.
-				threadPool.execute(threads.get(nextThread));
-			}
-		}
-		else {
-			// All threads complete.  Tell RecordSet thread to return complete to user
-			// if an exception has not already occurred.
-			if (done.compareAndSet(false, true)) {
-				notifyCompleted();
+			// Determine if a new command needs to be started.
+			if (next < threads.size() && ! done.get()) {
+				// Start new command in existing thread.
+				threads.get(next).run();
 			}
 		}
 	}
@@ -196,7 +174,6 @@ public final class QueryPartitionExecutor implements IQueryExecutor, Runnable {
 				}
 			}
 			recordSet.abort();
-			notifyCompleted();
 		}
 	}
 

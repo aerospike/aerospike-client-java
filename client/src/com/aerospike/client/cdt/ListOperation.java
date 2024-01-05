@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -101,9 +101,18 @@ public class ListOperation {
 		}
 
 		Packer packer = new Packer();
+
+		// Calculate buffer size.
 		CDT.init(packer, ctx, SET_TYPE, 1, order.getFlag(pad));
 		packer.packInt(order.attributes);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
+
+		packer.createBuffer();
+
+		// Write to buffer.
+		CDT.init(packer, ctx, SET_TYPE, 1, order.getFlag(pad));
+		packer.packInt(order.attributes);
+
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.getBuffer()));
 	}
 
 	/**

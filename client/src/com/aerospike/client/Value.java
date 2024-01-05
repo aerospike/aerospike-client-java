@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -336,6 +336,15 @@ public abstract class Value {
 	}
 
 	/**
+	 * Calculate the approximate number of bytes necessary to serialize a key in the wire protocol.
+	 * Size is not exact and may be greater than the actual bytes needed. Size must not be underestimated.
+	 */
+	public int estimateKeySize() {
+		// Return zero for invalid key types.
+		return 0;
+	}
+
+	/**
 	 * Calculate number of bytes necessary to serialize the value in the wire protocol.
 	 */
 	public abstract int estimateSize() throws AerospikeException;
@@ -464,6 +473,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return bytes.length;
+		}
+
+		@Override
 		public int estimateSize() {
 			return bytes.length;
 		}
@@ -527,9 +541,13 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return length;
+		}
+
+		@Override
 		public int estimateSize() {
 			return length;
-
 		}
 
 		@Override
@@ -619,6 +637,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return 8;
+		}
+
+		@Override
 		public int estimateSize() {
 			return 8;
 		}
@@ -689,6 +712,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return value.length() * 3;
+		}
+
+		@Override
 		public int estimateSize() {
 			return Buffer.estimateSizeUtf8(value);
 		}
@@ -744,6 +772,11 @@ public abstract class Value {
 
 		public ShortValue(short value) {
 			this.value = value;
+		}
+
+		@Override
+		public int estimateKeySize() {
+			return 8;
 		}
 
 		@Override
@@ -816,6 +849,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return 8;
+		}
+
+		@Override
 		public int estimateSize() {
 			return 8;
 		}
@@ -882,6 +920,11 @@ public abstract class Value {
 
 		public LongValue(long value) {
 			this.value = value;
+		}
+
+		@Override
+		public int estimateKeySize() {
+			return 8;
 		}
 
 		@Override
@@ -954,6 +997,11 @@ public abstract class Value {
 		}
 
 		@Override
+		public int estimateKeySize() {
+			return 8;
+		}
+
+		@Override
 		public int estimateSize() {
 			return 8;
 		}
@@ -1021,6 +1069,11 @@ public abstract class Value {
 
 		public FloatValue(float value) {
 			this.value = value;
+		}
+
+		@Override
+		public int estimateKeySize() {
+			return 8;
 		}
 
 		@Override

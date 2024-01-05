@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -14,24 +14,31 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.cluster;
+package com.aerospike.client.query;
 
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
+import com.aerospike.client.util.RandomShift;
 
-/**
- * Thread pool factory that generates daemon threads.
- * Daemon threads automatically terminate when the program terminates.
- */
-public class ThreadDaemonFactory implements ThreadFactory {
-	private final AtomicInteger sequence = new AtomicInteger();
+public final class TaskGen {
+	private RandomShift random;
+	private long taskId;
 
-	/**
-	 * Create new daemon thread with Aerospike prefix and sequence number.
-	 */
-	public final Thread newThread(Runnable runnable) {
-		Thread thread = new Thread(runnable, "Aerospike-" + sequence.incrementAndGet());
-		thread.setDaemon(true);
-		return thread;
+	public TaskGen(Statement statement) {
+		taskId = statement.getTaskId();
+
+		if (taskId == 0) {
+			random = new RandomShift();
+			taskId = random.nextLong();
+		}
+	}
+
+	public long getId() {
+		return taskId;
+	}
+
+	public long nextId() {
+		if (random == null) {
+			random = new RandomShift();
+		}
+		return random.nextLong();
 	}
 }

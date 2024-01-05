@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -264,7 +264,12 @@ public final class Statement {
 	 * Return taskId if set by user. Otherwise return a new taskId.
 	 */
 	public long prepareTaskId() {
-		return (taskId != 0)? taskId : RandomShift.instance().nextLong();
+		if (taskId != 0) {
+			return taskId;
+		}
+
+		RandomShift random = new RandomShift();
+		return random.nextLong();
 	}
 
 	/**

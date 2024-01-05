@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,8 @@ package com.aerospike.client.command;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -27,16 +29,15 @@ import com.aerospike.client.cluster.Cluster;
 
 public final class Executor {
 	private final List<ExecutorThread> threads;
-	private final ExecutorService threadPool;
+	private final ThreadFactory threadFactory;
 	private volatile Throwable exception;
 	private final AtomicBoolean done;
 	private final AtomicInteger completedCount;
 	private int maxConcurrentThreads;
-	private boolean completed;
 
 	public Executor(Cluster cluster, int capacity) {
 		threads = new ArrayList<ExecutorThread>(capacity);
-		threadPool = cluster.getThreadPool();
+		threadFactory = cluster.threadFactory;
 		done = new AtomicBoolean();
 		completedCount = new AtomicInteger();
 	}
@@ -49,11 +50,12 @@ public final class Executor {
 		// Initialize maximum number of nodes to query in parallel.
 		maxConcurrentThreads = (maxConcurrent == 0 || maxConcurrent >= threads.size())? threads.size() : maxConcurrent;
 
-		// Start threads.
-		for (int i = 0; i < maxConcurrentThreads; i++) {
-			threadPool.execute(threads.get(i));
+		// Start virtual threads.
+		try (ExecutorService es = Executors.newThreadPerTaskExecutor(threadFactory);) {
+			for (int i = 0; i < maxConcurrentThreads; i++) {
+				es.execute(threads.get(i));
+			}
 		}
-		waitTillComplete();
 
 		// Throw an exception if an error occurred.
 		if (exception != null) {
@@ -70,18 +72,12 @@ public final class Executor {
 		int finished = completedCount.incrementAndGet();
 
 		if (finished < threads.size()) {
-			int nextThread = finished + maxConcurrentThreads - 1;
+			int next = finished + maxConcurrentThreads - 1;
 
-			// Determine if a new thread needs to be started.
-			if (nextThread < threads.size() && ! done.get()) {
-				// Start new thread.
-				threadPool.execute(threads.get(nextThread));
-			}
-		}
-		else {
-			// Ensure executor succeeds or fails exactly once.
-			if (done.compareAndSet(false, true)) {
-				notifyCompleted();
+			// Determine if a new command needs to be started.
+			if (next < threads.size() && ! done.get()) {
+				// Start new command in existing thread.
+				threads.get(next).run();
 			}
 		}
 	}
@@ -95,27 +91,7 @@ public final class Executor {
 			for (ExecutorThread thread : threads) {
 				thread.stop();
 			}
-			notifyCompleted();
 		}
-	}
-
-	final boolean isDone() {
-		return done.get();
-	}
-
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyCompleted() {
-		completed = true;
-		super.notify();
 	}
 
 	private final class ExecutorThread implements Runnable {

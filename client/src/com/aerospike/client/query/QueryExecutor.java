@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,6 +17,8 @@
 package com.aerospike.client.query;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -33,7 +35,6 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	protected final Statement statement;
 	protected final long taskId;
 	private final Node[] nodes;
-	protected final ExecutorService threadPool;
 	private final QueryThread[] threads;
 	private final AtomicInteger completedCount;
 	private final AtomicBoolean done;
@@ -48,7 +49,6 @@ public abstract class QueryExecutor implements IQueryExecutor {
 		this.nodes = nodes;
 		this.completedCount = new AtomicInteger();
 		this.done = new AtomicBoolean();
-		this.threadPool = cluster.getThreadPool();
 		this.threads = new QueryThread[nodes.length];
 
 		// Initialize maximum number of nodes to query in parallel.
@@ -70,9 +70,9 @@ public abstract class QueryExecutor implements IQueryExecutor {
 	}
 
 	protected final void startThreads() {
-		// Start threads.
+		// Start virtual threads.
 		for (int i = 0; i < maxConcurrentNodes; i++) {
-			threadPool.execute(threads[i]);
+			cluster.threadFactory.newThread(threads[i]).start();
 		}
 	}
 
@@ -80,12 +80,12 @@ public abstract class QueryExecutor implements IQueryExecutor {
 		int finished = completedCount.incrementAndGet();
 
 		if (finished < threads.length) {
-			int nextThread = finished + maxConcurrentNodes - 1;
+			int next = finished + maxConcurrentNodes - 1;
 
-			// Determine if a new thread needs to be started.
-			if (nextThread < threads.length && ! done.get()) {
-				// Start new thread.
-				threadPool.execute(threads[nextThread]);
+			// Determine if a new command needs to be started.
+			if (next < threads.length && ! done.get()) {
+				// Start new command in existing thread.
+				threads[next].run();
 			}
 		}
 		else {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,6 +34,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 	private final String setName;
 	private final String[] binNames;
 	private final PartitionTracker tracker;
+	private final RandomShift random;
 
 	public AsyncScanPartitionExecutor(
 		EventLoop eventLoop,
@@ -52,6 +53,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.setName = setName;
 		this.binNames = binNames;
 		this.tracker = tracker;
+		this.random = new RandomShift();
 
 		cluster.addTran();
 		tracker.setSleepBetweenRetries(0);
@@ -59,7 +61,7 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 	}
 
 	private void scanPartitions() {
-		long taskId = RandomShift.instance().nextLong();
+		long taskId = random.nextLong();
 		List<NodePartitions> nodePartitionsList = tracker.assignPartitionsToNodes(cluster, namespace);
 
 		AsyncScanPartition[] tasks = new AsyncScanPartition[nodePartitionsList.size()];

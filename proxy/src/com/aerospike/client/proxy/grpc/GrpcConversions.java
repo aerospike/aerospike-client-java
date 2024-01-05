@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -143,12 +143,11 @@ public class GrpcConversions {
 	 * @return the packed bytes.
 	 */
 	public static ByteString valueToByteString(Value value) {
-		// TODO: @Brian is there a better way to convert value to bytes?
-		// This involves two copies. One when returning bytes Packer
-		// and one for the byte string.
 		Packer packer = new Packer();
-		value.pack(packer);
-		return ByteString.copyFrom(packer.toByteArray());
+		value.pack(packer); // Calculate buffer size.
+		packer.createBuffer();
+		value.pack(packer); // Write to buffer.
+		return ByteString.copyFrom(packer.getBuffer());
 	}
 
 	public static Kvs.Filter toGrpc(Filter filter) {
@@ -158,12 +157,11 @@ public class GrpcConversions {
 		builder.setValType(filter.getValType());
 
 		if (filter.getBegin() != null) {
-			// TODO: @Brian is there a better way to convert value to bytes?
-			// This involves two copies. One when returning bytes Packer
-			// and one for the byte string.
 			Packer packer = new Packer();
 			filter.getBegin().pack(packer);
-			builder.setBegin(ByteString.copyFrom(packer.toByteArray()));
+			packer.createBuffer();
+			filter.getBegin().pack(packer);
+			builder.setBegin(ByteString.copyFrom(packer.getBuffer()));
 		}
 
 		if (filter.getBegin() != null) {

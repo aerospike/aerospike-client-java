@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,22 +20,9 @@ import java.util.Random;
 
 /**
  * Generate pseudo random numbers using xorshift128+ algorithm.
- * This class is not thread-safe and should be instantiated once per thread.
+ * This class is not thread-safe.
  */
 public final class RandomShift {
-	private static final ThreadLocal<RandomShift> ThreadLocalInstance = new ThreadLocal<RandomShift>() {
-		@Override protected RandomShift initialValue() {
-			return new RandomShift();
-		}
-	};
-
-	/**
-	 * Get thread local instance of RandomShift.
-	 */
-	public static RandomShift instance() {
-		return ThreadLocalInstance.get();
-	}
-
 	private long seed0;
 	private long seed1;
 

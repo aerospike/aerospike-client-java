@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,6 +19,7 @@ package com.aerospike.client.proxy;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.luaj.vm2.LuaInteger;
@@ -55,7 +56,7 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 
 	public QueryAggregateCommandProxy(
 		GrpcCallExecutor executor,
-		ExecutorService threadPool,
+		ThreadFactory threadFactory,
 		QueryPolicy queryPolicy,
 		Statement statement,
 		long taskId
@@ -80,9 +81,9 @@ public final class QueryAggregateCommandProxy extends MultiCommandProxy implemen
 		lua = LuaCache.getInstance();
 
 		try {
-			// Start Lua thread which reads from a queue, applies aggregate function and
+			// Start Lua virtual thread which reads from a queue, applies aggregate function and
 			// writes to a result set.
-			threadPool.execute(this);
+			threadFactory.newThread(this).start();
 		}
 		catch (RuntimeException re) {
 			// Put the lua instance back if thread creation fails.

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,9 +28,8 @@ public final class Crypto {
 	 * The hash function is RIPEMD-160 (a 160 bit hash).
 	 */
 	public static byte[] computeDigest(String setName, Value key) {
-		// This method runs 14% faster using thread local byte array
-		// versus creating the buffer each time.
-		byte[] buffer = ThreadLocalData.getBuffer();
+		int size = Buffer.estimateSizeUtf8Quick(setName) + 1 + key.estimateKeySize();
+		byte[] buffer = new byte[size];
 		int setLength = Buffer.stringToUtf8(setName, buffer, 0);
 
 		buffer[setLength] = (byte)key.getType();

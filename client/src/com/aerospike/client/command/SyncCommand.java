@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,7 +28,6 @@ import com.aerospike.client.cluster.ConnectionRecover;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public abstract class SyncCommand extends Command {
@@ -280,10 +279,9 @@ public abstract class SyncCommand extends Command {
 		deadline += elapsed;
 	}
 
-	protected void sizeBuffer(int size) {
-		if (size > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(size);
-		}
+	@Override
+	protected void sizeBuffer() {
+		dataBuffer = new byte[dataOffset];
 	}
 
 	protected boolean retryBatch(

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -51,7 +51,6 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.util.Packer;
-import com.aerospike.client.util.ThreadLocalData;
 
 public class Command {
 	public static final int INFO1_READ				= (1 << 0); // Contains a read operation.
@@ -2219,11 +2218,6 @@ public class Command {
 	}
 
 	protected void sizeBuffer() {
-		dataBuffer = ThreadLocalData.getBuffer();
-
-		if (dataOffset > dataBuffer.length) {
-			dataBuffer = ThreadLocalData.resizeBuffer(dataOffset);
-		}
 	}
 
 	//--------------------------------------------------

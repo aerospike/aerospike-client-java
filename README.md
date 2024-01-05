@@ -11,8 +11,8 @@ Aerospike Java client.  This package contains full source code for these project
 
 Prerequisites:
 
-* Java 8+
-* Maven 3.0+
+* Java 21+
+* Maven 3.9.5+
 
 The source code can be imported into any Java IDE.  
 Maven build scripts are also provided.

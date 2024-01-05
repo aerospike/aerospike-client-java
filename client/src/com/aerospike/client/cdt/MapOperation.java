@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -120,10 +120,8 @@ public class MapOperation {
 			return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 		}
 
-		Packer packer = new Packer();
-		CDT.init(packer, ctx, SET_TYPE, 1, order.flag);
-		packer.packInt(order.attributes);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
+		byte[] bytes = packCreate(order, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
 	/**
@@ -150,10 +148,24 @@ public class MapOperation {
 		}
 
 		// Create nested map. persistIndex does not apply here, so ignore it.
+		byte[] bytes = packCreate(order, ctx);
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+	}
+
+	private static byte[] packCreate(MapOrder order, CTX[] ctx) {
 		Packer packer = new Packer();
+
+		// Calculate buffer size.
 		CDT.init(packer, ctx, SET_TYPE, 1, order.flag);
 		packer.packInt(order.attributes);
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.toByteArray()));
+
+		packer.createBuffer();
+
+		// Write to buffer.
+		CDT.init(packer, ctx, SET_TYPE, 1, order.flag);
+		packer.packInt(order.attributes);
+
+		return packer.getBuffer();
 	}
 
 	/**
@@ -182,36 +194,20 @@ public class MapOperation {
 	 * See policy {@link com.aerospike.client.cdt.MapPolicy}.
 	 */
 	public static Operation put(MapPolicy policy, String binName, Value key, Value value, CTX... ctx) {
-		Packer packer = new Packer();
+		byte[] bytes;
 
 		if (policy.flags != 0) {
-			Pack.init(packer, ctx);
-			packer.packArrayBegin(5);
-			packer.packInt(MapOperation.PUT);
-			key.pack(packer);
-			value.pack(packer);
-			packer.packInt(policy.attributes);
-			packer.packInt(policy.flags);
+			bytes = Pack.pack(MapOperation.PUT, key, value, policy.attributes, policy.flags, ctx);
 		}
 		else {
 			if (policy.itemCommand == REPLACE) {
 				// Replace doesn't allow map attributes because it does not create on non-existing key.
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(3);
-				packer.packInt(policy.itemCommand);
-				key.pack(packer);
-				value.pack(packer);
+				bytes = Pack.pack(policy.itemCommand, key, value, ctx);
 			}
 			else {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(4);
-				packer.packInt(policy.itemCommand);
-				key.pack(packer);
-				value.pack(packer);
-				packer.packInt(policy.attributes);
+				bytes = Pack.pack(policy.itemCommand, key, value, policy.attributes, ctx);
 			}
 		}
-		byte[] bytes = packer.toByteArray();
 		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
 	}
 
@@ -226,32 +222,38 @@ public class MapOperation {
 	public static Operation putItems(MapPolicy policy, String binName, Map<Value,Value> map, CTX... ctx) {
 		Packer packer = new Packer();
 
-		if (policy.flags != 0) {
-			Pack.init(packer, ctx);
-			packer.packArrayBegin(4);
-			packer.packInt(MapOperation.PUT_ITEMS);
-			packer.packValueMap(map);
-			packer.packInt(policy.attributes);
-			packer.packInt(policy.flags);
-		}
-		else {
-			if (policy.itemsCommand == REPLACE_ITEMS) {
-				// Replace doesn't allow map attributes because it does not create on non-existing key.
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			if (policy.flags != 0) {
 				Pack.init(packer, ctx);
-				packer.packArrayBegin(2);
-				packer.packInt(policy.itemsCommand);
-				packer.packValueMap(map);
-			}
-			else {
-				Pack.init(packer, ctx);
-				packer.packArrayBegin(3);
-				packer.packInt(policy.itemsCommand);
+				packer.packArrayBegin(4);
+				packer.packInt(MapOperation.PUT_ITEMS);
 				packer.packValueMap(map);
 				packer.packInt(policy.attributes);
+				packer.packInt(policy.flags);
+			}
+			else {
+				if (policy.itemsCommand == REPLACE_ITEMS) {
+					// Replace doesn't allow map attributes because it does not create on non-existing key.
+					Pack.init(packer, ctx);
+					packer.packArrayBegin(2);
+					packer.packInt(policy.itemsCommand);
+					packer.packValueMap(map);
+				} else {
+					Pack.init(packer, ctx);
+					packer.packArrayBegin(3);
+					packer.packInt(policy.itemsCommand);
+					packer.packValueMap(map);
+					packer.packInt(policy.attributes);
+				}
+			}
+
+			if (i == 0) {
+				packer.createBuffer();
 			}
 		}
-		byte[] bytes = packer.toByteArray();
-		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(bytes));
+		return new Operation(Operation.Type.MAP_MODIFY, binName, Value.get(packer.getBuffer()));
 	}
 
 	/**

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -155,6 +155,16 @@ public final class Buffer {
 			return 0;
 		}
 		return Utf8.encodedLength(s);
+	}
+
+	/**
+	 * Rough conservative estimate of the size needed to store the string in UTF-8.
+	 */
+	public static int estimateSizeUtf8Quick(String s) {
+		if (s == null) {
+			return 0;
+		}
+		return s.length() * 3;
 	}
 
 	public static byte[] stringToUtf8(String s) {

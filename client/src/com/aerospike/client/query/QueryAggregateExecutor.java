@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,6 +18,8 @@ package com.aerospike.client.query;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
@@ -60,9 +62,9 @@ public final class QueryAggregateExecutor extends QueryExecutor implements Runna
 			// Initialize threads, but do not run yet.
 			initializeThreads();
 
-			// Start Lua thread which reads from a queue, applies aggregate function and
+			// Start Lua virtual thread which reads from a queue, applies aggregate function and
 			// writes to a result set.
-			threadPool.execute(this);
+			cluster.threadFactory.newThread(this).start();
 		}
 		catch (Throwable e) {
 			// Put the lua instance back if thread creation fails.

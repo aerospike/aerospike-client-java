@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,12 +50,19 @@ public final class ExpOperation {
 	}
 
 	private static Operation createOperation(Operation.Type type, String name, Expression exp, int flags) {
-		Packer packer = new Packer();
-		packer.packArrayBegin(2);
 		byte[] b = exp.getBytes();
+		Packer packer = new Packer();
+
+		packer.packArrayBegin(2);
 		packer.packByteArray(b, 0, b.length);
 		packer.packInt(flags);
 
-		return new Operation(type, name, Value.get(packer.toByteArray()));
+		packer.createBuffer();
+
+		packer.packArrayBegin(2);
+		packer.packByteArray(b, 0, b.length);
+		packer.packInt(flags);
+
+		return new Operation(type, name, Value.get(packer.getBuffer()));
 	}
 }

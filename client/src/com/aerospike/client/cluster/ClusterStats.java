@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,11 +34,6 @@ public final class ClusterStats {
 	public final EventLoopStats[] eventLoops;
 
 	/**
-	 * Number of active threads executing sync batch/scan/query commands.
-	 */
-	public final int threadsInUse;
-
-	/**
 	 * Number of connections residing in sync connection shutdown queue.
 	 */
 	public final int recoverQueueSize;
@@ -63,7 +58,6 @@ public final class ClusterStats {
 	) {
 		this.nodes = nodes;
 		this.eventLoops = eventLoops;
-		this.threadsInUse = cluster.getThreadsInUse();
 		this.recoverQueueSize = cluster.getRecoverQueueSize();
 		this.invalidNodeCount = cluster.getInvalidNodeCount();
 		this.retryCount = cluster.getRetryCount();
@@ -99,8 +93,6 @@ public final class ClusterStats {
 			sb.append(System.lineSeparator());
 		}
 
-		sb.append("threadsInUse: " + threadsInUse);
-		sb.append(System.lineSeparator());
 		sb.append("recoverQueueSize: " + recoverQueueSize);
 		sb.append(System.lineSeparator());
 		sb.append("invalidNodeCount: " + invalidNodeCount);

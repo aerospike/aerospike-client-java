@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -107,6 +107,7 @@ public class Main implements Log.Callback {
 	private int asyncMaxCommands = 100;
 	private int eventLoopSize = 1;
 	private boolean useProxyClient;
+	private boolean useVirtualThreads;
 	private boolean asyncEnabled;
 	private boolean initialize;
 	private boolean batchShowNodes;
@@ -251,33 +252,36 @@ public class Main implements Log.Callback {
 			"Enter zero to skip sleep."
 			);
 		options.addOption("r", "replica", true,
-				"Which replica to use for reads.\n\n" +
-				"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
-				"master: Always use node containing master partition.\n" +
-				"any: Distribute reads across master and proles in round-robin fashion.\n" +
-				"sequence: Always try master first. If master fails, try proles in sequence.\n" +
-				"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
-				"Use 'rackId' option to set rack."
-				);
-		options.addOption("readModeAP", true,
-				"Read consistency level when in AP mode.\n" +
-				"Values:  one | all.  Default: one"
-				);
-		options.addOption("readModeSC", true,
-				"Read consistency level when in SC (strong consistency) mode.\n" +
-				"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
-				);
-		options.addOption("commitLevel", true,
-				"Desired replica consistency guarantee when committing a transaction on the server.\n" +
-				"Values:  all | master.  Default: all"
-				);
-
-		options.addOption("Y", "connPoolsPerNode", true,
-				"Number of synchronous connection pools per node.  Default 1."
-				);
-		options.addOption("z", "threads", true,
-			"Set the number of threads the client will use to generate load. "
+			"Which replica to use for reads.\n\n" +
+			"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
+			"master: Always use node containing master partition.\n" +
+			"any: Distribute reads across master and proles in round-robin fashion.\n" +
+			"sequence: Always try master first. If master fails, try proles in sequence.\n" +
+			"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
+			"Use 'rackId' option to set rack."
 			);
+		options.addOption("readModeAP", true,
+			"Read consistency level when in AP mode.\n" +
+			"Values:  one | all.  Default: one"
+			);
+		options.addOption("readModeSC", true,
+			"Read consistency level when in SC (strong consistency) mode.\n" +
+			"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
+			);
+		options.addOption("commitLevel", true,
+			"Desired replica consistency guarantee when committing a transaction on the server.\n" +
+			"Values:  all | master.  Default: all"
+			);
+		options.addOption("Y", "connPoolsPerNode", true,
+			"Number of synchronous connection pools per node.  Default 1."
+			);
+		options.addOption("z", "threads", true,
+			"Set the number of OS threads the client will use to generate load."
+			);
+		options.addOption("vt", "virtualThreads", true,
+			"Set the number of virtual threads the client will use to generate load.\n" +
+			"This option will override the OS threads setting (-z)."
+		);
 		options.addOption("latency", true,
 			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
 			"ycsb: Show the timings in ycsb format.\n" +
@@ -305,13 +309,6 @@ public class Main implements Log.Callback {
 			"Batch mode is valid only for RU (read update) workloads. Batch mode is disabled by default."
 			);
 
-		options.addOption("BT", "batchThreads", true,
-			"Maximum number of concurrent batch sub-threads for each batch command.\n" +
-			"1   : Run each batch node command sequentially.\n" +
-			"0   : Run all batch node commands in parallel.\n" +
-			"> 1 : Run maximum batchThreads in parallel.  When a node command finshes, start a new one until all finished."
-			);
-
 		options.addOption("BSN", "batchShowNodes", false,
 			"Print target nodes and count of keys directed at each node once on start of benchmarks."
 			);
@@ -325,29 +322,29 @@ public class Main implements Log.Callback {
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 		options.addOption("tp", "tlsProtocols", true,
-				"Allow TLS protocols\n" +
-				"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
-				"Default: TLSv1.2"
-				);
+			"Allow TLS protocols\n" +
+			"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
+			"Default: TLSv1.2"
+			);
 		options.addOption("tlsCiphers", "tlsCipherSuite", true,
-				"Allow TLS cipher suites\n" +
-				"Values:  cipher names defined by JVM separated by comma\n" +
-				"Default: null (default cipher list provided by JVM)"
-				);
+			"Allow TLS cipher suites\n" +
+			"Values:  cipher names defined by JVM separated by comma\n" +
+			"Default: null (default cipher list provided by JVM)"
+			);
 		options.addOption("tr", "tlsRevoke", true,
-				"Revoke certificates identified by their serial number\n" +
-				"Values:  serial numbers separated by comma\n" +
-				"Default: null (Do not revoke certificates)"
-				);
+			"Revoke certificates identified by their serial number\n" +
+			"Values:  serial numbers separated by comma\n" +
+			"Default: null (Do not revoke certificates)"
+			);
 		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 		options.addOption("elt", "eventLoopType", true,
-				"Use specified event loop type for async examples\n" +
-				"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
-				);
+			"Use specified event loop type for async examples\n" +
+			"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+			);
 
 		options.addOption("proxy", false, "Use proxy client.");
 
@@ -355,7 +352,7 @@ public class Main implements Log.Callback {
 		options.addOption("ufn", "udfFunctionName", true, "Specify the udf function name that must be used in the udf benchmarks");
 		options.addOption("ufv","udfFunctionValues",true, "The udf argument values comma separated");
 		options.addOption("sendKey", false, "Send key to server");
-		
+
 		options.addOption("pids", "partitionIds", true, "Specify the list of comma seperated partition IDs the primary keys must belong to");
 
 		// parse the command line arguments
@@ -850,6 +847,15 @@ public class Main implements Log.Callback {
 			this.nThreads = 16;
 		}
 
+		if (line.hasOption("virtualThreads")) {
+			this.useVirtualThreads = true;
+			this.nThreads = Integer.parseInt(line.getOptionValue("virtualThreads"));
+
+			if (this.nThreads < 1) {
+				throw new Exception("Client virtual threads must be > 0");
+			}
+		}
+
 		if (line.hasOption("reportNotFound")) {
 			args.reportNotFound = true;
 		}
@@ -860,10 +866,6 @@ public class Main implements Log.Callback {
 
 		if (line.hasOption("batchSize")) {
 			args.batchSize = Integer.parseInt(line.getOptionValue("batchSize"));
-		}
-
-		if (line.hasOption("batchThreads")) {
-			args.batchPolicy.maxConcurrentThreads = Integer.parseInt(line.getOptionValue("batchThreads"));
 		}
 
 		if (line.hasOption("batchShowNodes")) {
@@ -990,12 +992,12 @@ public class Main implements Log.Callback {
 		if (line.hasOption("sendKey")) {
 			args.writePolicy.sendKey = true;
 		}
-		
+
 		if (line.hasOption("partitionIds")) {
 			String[] pids = line.getOptionValue("partitionIds").split(",");
-			
+
 			Set<Integer> partitionIds = new HashSet<>();
-			
+
 			for (String pid : pids) {
 				int partitionId = -1;
 
@@ -1012,14 +1014,16 @@ public class Main implements Log.Callback {
 
 				partitionIds.add(partitionId);
 			}
-			
+
 			args.partitionIds = partitionIds;
 		}
+
+		String threadType = useVirtualThreads ? "virtual" : "OS";
 
 		System.out.println("Benchmark: " + this.hosts[0]
 			+ ", namespace: " + args.namespace
 			+ ", set: " + (args.setName.length() > 0? args.setName : "<empty>")
-			+ ", threads: " + this.nThreads
+			+ ", " + threadType + " threads: " + this.nThreads
 			+ ", workload: " + args.workload);
 
 		if (args.workload == Workload.READ_UPDATE || args.workload == Workload.READ_REPLACE) {
@@ -1085,8 +1089,7 @@ public class Main implements Log.Callback {
 		System.out.println("    commitLevel: " + args.writePolicy.commitLevel);
 
 		if (args.batchSize > 1) {
-			System.out.println("batch size: " + args.batchSize
-				+ ", batch threads: " + args.batchPolicy.maxConcurrentThreads);
+			System.out.println("batch size: " + args.batchSize);
 		}
 
 		if (this.asyncEnabled) {
@@ -1249,7 +1252,7 @@ public class Main implements Log.Callback {
 	}
 
 	private void doInserts(IAerospikeClient client) throws Exception {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		ExecutorService es = getExecutorService();
 
 		// Create N insert tasks
 		long ntasks = this.nThreads < this.nKeys ? this.nThreads : this.nKeys;
@@ -1329,7 +1332,7 @@ public class Main implements Log.Callback {
 	}
 
 	private void doRWTest(IAerospikeClient client) throws Exception {
-		ExecutorService es = Executors.newFixedThreadPool(this.nThreads);
+		ExecutorService es = getExecutorService();
 		RWTask[] tasks = new RWTask[this.nThreads];
 
 		for (int i = 0; i < this.nThreads; i++) {
@@ -1447,6 +1450,12 @@ public class Main implements Log.Callback {
 		}
 	}
 
+	private ExecutorService getExecutorService() {
+		return useVirtualThreads ?
+				Executors.newVirtualThreadPerTaskExecutor() :
+				Executors.newFixedThreadPool(this.nThreads);
+	}
+
 	private void showBatchNodes(IAerospikeClient client) {
 		if (!batchShowNodes || args.batchSize <= 1) {
 			return;
@@ -1478,7 +1487,7 @@ public class Main implements Log.Callback {
 		String name = thread.getName();
 
 		if (name == null) {
-			name = Long.toString(thread.getId());
+			name = thread.getName();
 		}
 
 		System.out.println(LocalDateTime.now().format(TimeFormatter) + ' ' + level.toString() +

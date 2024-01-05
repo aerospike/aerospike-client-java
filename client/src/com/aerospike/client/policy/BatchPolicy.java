@@ -21,46 +21,6 @@ package com.aerospike.client.policy;
  */
 public final class BatchPolicy extends Policy {
 	/**
-	 * Maximum number of concurrent synchronous batch node request threads to server nodes.
-	 * Asynchronous batch requests ignore this field and always issue all node requests in parallel.
-	 * <p>
-	 * The batch is split into requests for each node according to the node assignment of each
-	 * batch key. The number of batch node requests is always less or equal to the cluster size.
-	 * <p>
-	 * If there are 16 batch node requests and maxConcurrentThreads is 8, then batch requests
-	 * will be made for 8 nodes in parallel threads. When a request completes, a new request will
-	 * be issued until all 16 requests are complete. If there are 4 batch node requests and
-	 * maxConcurrentThreads is 8, then only 4 batch requests will be made for 4 nodes in parallel
-	 * threads.
-	 * <p>
-	 * Values:
-	 * <ul>
-	 * <li>
-	 * 1 (default): Issue batch node requests sequentially. This mode has a performance advantage
-	 * for small batch sizes because requests can be issued in the main transaction thread without
-	 * using a thread pool. This mode is not optimal for batch requests spread out over many nodes
-	 * in a large cluster.
-	 * </li>
-	 * <li>
-	 * 0: Issue all batch node requests in parallel threads. This mode has a performance advantage
-	 * for large batch sizes because each node can process the request immediately. The downside is
-	 * extra threads will need to be created (or taken from a thread pool). In extreme cases, the
-	 * operating system's thread capacity could be exhausted.
-	 * </li>
-	 * <li>
-	 * > 0: Issue up to maxConcurrentThreads batch node requests in parallel threads. When a request
-	 * completes, a new request will be issued until all requests are complete. This mode prevents
-	 * too many parallel threads being created for large clusters. The downside is extra threads
-	 * will still need to be created (or taken from a thread pool). A typical value is the number
-	 * of cpu cores available on the client machine.
-	 * </li>
-	 * </ul>
-	 * <p>
-	 * Default: 1
-	 */
-	public int maxConcurrentThreads = 1;
-
-	/**
 	 * Allow batch to be processed immediately in the server's receiving thread for in-memory
 	 * namespaces. If false, the batch will always be processed in separate service threads.
 	 * <p>
@@ -98,9 +58,6 @@ public final class BatchPolicy extends Policy {
 	 * If false, the server will stop the batch to its node on most key specific errors.
 	 * The exceptions are {@link com.aerospike.client.ResultCode#KEY_NOT_FOUND_ERROR} and
 	 * {@link com.aerospike.client.ResultCode#FILTERED_OUT} which never stop the batch.
-	 * The client will stop the entire batch on node specific errors for sync commands
-	 * that are run in sequence (maxConcurrentThreads == 1). The client will not stop
-	 * the entire batch for async commands or sync commands run in parallel.
 	 * <p>
 	 * Server versions &lt; 6.0 do not support this field and treat this value as false
 	 * for key specific errors.
@@ -127,7 +84,6 @@ public final class BatchPolicy extends Policy {
 	 */
 	public BatchPolicy(BatchPolicy other) {
 		super(other);
-		this.maxConcurrentThreads = other.maxConcurrentThreads;
 		this.allowInline = other.allowInline;
 		this.allowInlineSSD = other.allowInlineSSD;
 		this.respondAllKeys = other.respondAllKeys;
@@ -164,10 +120,6 @@ public final class BatchPolicy extends Policy {
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
-
-	public void setMaxConcurrentThreads(int maxConcurrentThreads) {
-		this.maxConcurrentThreads = maxConcurrentThreads;
-	}
 
 	public void setAllowInline(boolean allowInline) {
 		this.allowInline = allowInline;

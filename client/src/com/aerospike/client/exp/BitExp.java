@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -422,38 +422,57 @@ public final class BitExp {
 		boolean signed,
 		BitOverflowAction action
 	) {
-		Packer packer = new Packer();
-		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
-		// Pack.init(packer, ctx);
-		packer.packArrayBegin(6);
-		packer.packInt(command);
-		bitOffset.pack(packer);
-		bitSize.pack(packer);
-		value.pack(packer);
-		packer.packInt(policy.flags);
-
 		int flags = action.flags;
 
 		if (signed) {
 			flags |= INT_FLAGS_SIGNED;
 		}
-		packer.packInt(flags);
-		return packer.toByteArray();
+
+		Packer packer = new Packer();
+
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.init(packer, ctx);
+			packer.packArrayBegin(6);
+			packer.packInt(command);
+			bitOffset.pack(packer);
+			bitSize.pack(packer);
+			value.pack(packer);
+			packer.packInt(policy.flags);
+			packer.packInt(flags);
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
+		}
+
+		return packer.getBuffer();
 	}
 
 	private static byte[] packGetInt(Exp bitOffset, Exp bitSize, boolean signed) {
 		Packer packer = new Packer();
-		// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
-		// Pack.init(packer, ctx);
-		packer.packArrayBegin(signed ? 4 : 3);
-		packer.packInt(GET_INT);
-		bitOffset.pack(packer);
-		bitSize.pack(packer);
 
-		if (signed) {
-			packer.packInt(INT_FLAGS_SIGNED);
+		// First pass calculates buffer size.
+		// Second pass writes to buffer.
+		for (int i = 0; i < 2; i++) {
+			// Pack.init() only required when CTX is used and server does not support CTX for bit operations.
+			// Pack.init(packer, ctx);
+			packer.packArrayBegin(signed ? 4 : 3);
+			packer.packInt(GET_INT);
+			bitOffset.pack(packer);
+			bitSize.pack(packer);
+
+			if (signed) {
+				packer.packInt(INT_FLAGS_SIGNED);
+			}
+
+			if (i == 0) {
+				packer.createBuffer();
+			}
 		}
-		return packer.toByteArray();
+		return packer.getBuffer();
 	}
 
 	private static Exp addWrite(Exp bin, byte[] bytes) {

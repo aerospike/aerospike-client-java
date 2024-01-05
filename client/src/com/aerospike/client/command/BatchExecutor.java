@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,6 +17,8 @@
 package com.aerospike.client.command;
 
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -29,8 +31,8 @@ public final class BatchExecutor {
 	public static void execute(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
 		cluster.addTran();
 
-		if (policy.maxConcurrentThreads == 1 || commands.length <= 1) {
-			// Run batch requests sequentially in same thread.
+		if (commands.length <= 1) {
+			// Run batch request in same thread.
 			for (IBatchCommand command : commands) {
 				try {
 					command.execute();
@@ -40,109 +42,28 @@ public final class BatchExecutor {
 						command.setInDoubt();
 					}
 					status.setException(ae);
-
-					if (!policy.respondAllKeys) {
-						throw ae;
-					}
 				}
 				catch (RuntimeException re) {
 					command.setInDoubt();
 					status.setException(re);
-
-					if (!policy.respondAllKeys) {
-						throw re;
-					}
 				}
 				catch (Throwable e) {
 					command.setInDoubt();
 					status.setException(new RuntimeException(e));
-
-					if (!policy.respondAllKeys) {
-						throw e;
-					}
 				}
 			}
 			status.checkException();
 			return;
 		}
 
-		// Run batch requests in parallel in separate threads.
-		BatchExecutor executor = new BatchExecutor(cluster, policy, commands, status);
-		executor.execute();
-	}
-
-	private final BatchStatus status;
-	private final ExecutorService threadPool;
-	private final AtomicBoolean done;
-	private final AtomicInteger completedCount;
-	private final IBatchCommand[] commands;
-	private final int maxConcurrentThreads;
-	private boolean completed;
-
-	private BatchExecutor(Cluster cluster, BatchPolicy policy, IBatchCommand[] commands, BatchStatus status) {
-		this.commands = commands;
-		this.status = status;
-		this.threadPool = cluster.getThreadPool();
-		this.done = new AtomicBoolean();
-		this.completedCount = new AtomicInteger();
-		this.maxConcurrentThreads = (policy.maxConcurrentThreads == 0 || policy.maxConcurrentThreads >= commands.length)?
-									commands.length : policy.maxConcurrentThreads;
-	}
-
-	void execute() {
-		// Start threads.
-		for (int i = 0; i < maxConcurrentThreads; i++) {
-			IBatchCommand cmd = commands[i];
-			cmd.setParent(this);
-			threadPool.execute(cmd);
+		// Start virtual threads.
+		try (ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);) {
+			for (IBatchCommand command : commands) {
+				es.execute(command);
+			}
 		}
-
-		// Multiple threads write to the batch record array/list, so one might think that memory barriers
-		// are needed. That should not be necessary because of this synchronized waitTillComplete().
-		waitTillComplete();
 
 		// Throw an exception if an error occurred.
 		status.checkException();
-	}
-
-	void onComplete() {
-		int finished = completedCount.incrementAndGet();
-
-		if (finished < commands.length) {
-			int nextThread = finished + maxConcurrentThreads - 1;
-
-			// Determine if a new thread needs to be started.
-			if (nextThread < commands.length && ! done.get()) {
-				// Start new thread.
-				IBatchCommand cmd = commands[nextThread];
-				cmd.setParent(this);
-				threadPool.execute(cmd);
-			}
-		}
-		else {
-			// Ensure executor succeeds or fails exactly once.
-			if (done.compareAndSet(false, true)) {
-				notifyCompleted();
-			}
-		}
-	}
-
-	boolean isDone() {
-		return done.get();
-	}
-
-	private synchronized void waitTillComplete() {
-		while (! completed) {
-			try {
-				super.wait();
-			}
-			catch (InterruptedException ie) {
-			}
-		}
-	}
-
-	private synchronized void notifyCompleted() {
-		completed = true;
-		super.notify();
 	}
 }

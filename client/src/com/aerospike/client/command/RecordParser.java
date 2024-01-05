@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -26,7 +26,6 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
-import com.aerospike.client.util.ThreadLocalData;
 
 public final class RecordParser {
 	public final byte[] dataBuffer;
@@ -73,7 +72,7 @@ public final class RecordParser {
 
 		// Read remaining message bytes.
 		if (receiveSize > buffer.length) {
-			buffer = ThreadLocalData.resizeBuffer(receiveSize);
+			buffer = new byte[receiveSize];
 		}
 
 		conn.readFully(buffer, receiveSize, Command.STATE_READ_DETAIL);

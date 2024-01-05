@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,7 +43,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 	}
 
 	public void run() {
-		RandomShift random = RandomShift.instance();
+		RandomShift random = new RandomShift();
 
 		while (valid) {
 			runCommand(random);
@@ -75,7 +75,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 			counters.write.count.getAndIncrement();
 			return;
 		}
-		
+
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.put(writePolicy, key, bins);
@@ -95,7 +95,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 			counters.write.count.getAndIncrement();
 			return;
 		}
-		
+
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
 			client.add(writePolicyGeneration, key, bins);
@@ -115,7 +115,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 			processRead(key, new Object());
 			return;
 		}
-		
+
 		Record record;
 
 		if (counters.read.latency != null) {
@@ -136,7 +136,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 			processRead(key, new Object());
 			return;
 		}
-		
+
 		Record record;
 
 		if (counters.read.latency != null) {
@@ -157,12 +157,12 @@ public class RWTaskSync extends RWTask implements Runnable {
 			processRead(key, new Object());
 			return;
 		}
-		
+
 		Object udfReturnObj;
 
 		if (counters.read.latency != null) {
 			long begin = System.nanoTime();
-			
+
 			udfReturnObj = client.execute(args.writePolicy, key, udfPackageName, udfFunctionName, udfValues);
 			long elapsed = System.nanoTime() - begin;
 			counters.read.latency.add(elapsed);
@@ -178,7 +178,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		if (args.partitionIds != null) {
 			keys = getFilteredKeys(keys);
 		}
-		
+
 		Record[] records;
 
 		if (counters.read.latency != null) {
@@ -202,7 +202,7 @@ public class RWTaskSync extends RWTask implements Runnable {
 		if (args.partitionIds != null) {
 			keys = getFilteredKeys(keys);
 		}
-		
+
 		Record[] records;
 
 		if (counters.read.latency != null) {
@@ -220,23 +220,23 @@ public class RWTaskSync extends RWTask implements Runnable {
 		}
 		processBatchRead();
 	}
-	
+
 	private boolean skipKey(Key key) {
 		if (args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest))) {
 			return true;
 		}
 		return false;
 	}
-	
+
 	private Key[] getFilteredKeys(Key[] keys) {
 		List<Key> filteredKeys = new ArrayList<>();
-		
+
 		for (Key key : keys) {
 			if (! skipKey(key)) {
 				filteredKeys.add(key);
 			}
 		}
-		
+
 		return filteredKeys.toArray(new Key[0]);
 	}
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -34,7 +34,6 @@ import com.aerospike.client.command.Buffer;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.policy.AdminPolicy;
 import com.aerospike.client.policy.AuthMode;
-import com.aerospike.client.util.ThreadLocalData;
 
 public class AdminCommand {
 	// Commands
@@ -100,7 +99,7 @@ public class AdminCommand {
 		public long sessionExpiration = 0;
 
 		public LoginCommand(Cluster cluster, Connection conn) throws IOException {
-			super(ThreadLocalData.getBuffer());
+			super();
 
 			conn.setTimeout(cluster.loginTimeout);
 
@@ -187,7 +186,7 @@ public class AdminCommand {
 
 	public static boolean authenticate(Cluster cluster, Connection conn, byte[] sessionToken)
 		throws IOException {
-		AdminCommand command = new AdminCommand(ThreadLocalData.getBuffer());
+		AdminCommand command = new AdminCommand();
 		return command.authenticateSession(cluster, conn, sessionToken);
 	}
 
@@ -524,7 +523,7 @@ public class AdminCommand {
 
 			if (receiveSize > 0) {
 				if (receiveSize > dataBuffer.length) {
-					dataBuffer = ThreadLocalData.resizeBuffer(receiveSize);
+					dataBuffer = new byte[receiveSize];
 				}
 				conn.readFully(dataBuffer, receiveSize);
 				conn.updateLastUsed();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,9 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -112,8 +110,8 @@ public class Cluster implements Runnable, Closeable {
 	// Thread-safe queue of sync connections to be recovered.
 	private final ConcurrentLinkedDeque<ConnectionRecover> recoverQueue;
 
-	// Thread pool used in synchronous batch, scan and query commands.
-	private final ExecutorService threadPool;
+	// Thread factory used in synchronous batch, scan and query commands.
+	public final ThreadFactory threadFactory;
 
 	// TCP keep-alive configuration. Only used in native netty epoll library.
 	public final TCPKeepAlive keepAlive;
@@ -178,9 +176,6 @@ public class Cluster implements Runnable, Closeable {
 	// Tend thread variables.
 	private Thread tendThread;
 	protected volatile boolean tendValid;
-
-	// Is threadPool shared with other client instances?
-	private final boolean sharedThreadPool;
 
 	// Should use "services-alternate" instead of "services" in info request?
 	protected final boolean useServicesAlternate;
@@ -297,14 +292,7 @@ public class Cluster implements Runnable, Closeable {
 		tendInterval = policy.tendInterval;
 		ipMap = policy.ipMap;
 		keepAlive = policy.keepAlive;
-
-		if (policy.threadPool == null) {
-			threadPool = Executors.newCachedThreadPool(new ThreadDaemonFactory());
-		}
-		else {
-			threadPool = policy.threadPool;
-		}
-		sharedThreadPool = policy.sharedThreadPool;
+		threadFactory = Thread.ofVirtual().name("Aerospike-", 0L).factory();
 		useServicesAlternate = policy.useServicesAlternate;
 		rackAware = policy.rackAware;
 
@@ -1057,8 +1045,15 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	private void processRecoverQueue() {
-		byte[] buf = ThreadLocalData.getBuffer();
 		ConnectionRecover last = recoverQueue.peekLast();
+
+		if (last == null) {
+			return;
+		}
+
+		// Thread local can be used here because this method
+		// is only called from the cluster tend thread.
+		byte[] buf = ThreadLocalData.getBuffer();
 		ConnectionRecover cs;
 
 		while ((cs = recoverQueue.pollFirst()) != null) {
@@ -1345,10 +1340,6 @@ public class Cluster implements Runnable, Closeable {
 		return true;
 	}
 
-	public final ExecutorService getThreadPool() {
-		return threadPool;
-	}
-
 	/**
 	 * Return cluster name.
 	 */
@@ -1428,18 +1419,6 @@ public class Cluster implements Runnable, Closeable {
 	}
 
 	/**
-	 * Return thread pool active thread count. This thread pool is used in sync batch/query/scan
-	 * commands.
-	 */
-	public final int getThreadsInUse() {
-		if (threadPool instanceof ThreadPoolExecutor) {
-			ThreadPoolExecutor tpe = (ThreadPoolExecutor)threadPool;
-			return tpe.getActiveCount();
-		}
-		return 0;
-	}
-
-	/**
 	 * Return connection recoverQueue size. The queue contains connections that have timed out and
 	 * need to be drained before returning the connection to a connection pool. The recoverQueue
 	 * is only used when {@link com.aerospike.client.policy.Policy#timeoutDelay} is true.
@@ -1467,11 +1446,6 @@ public class Cluster implements Runnable, Closeable {
 		// Stop cluster tend thread.
 		tendValid = false;
 		tendThread.interrupt();
-
-		if (! sharedThreadPool) {
-			// Shutdown synchronous thread pool.
-			threadPool.shutdown();
-		}
 
 		try {
 			disableMetrics();
