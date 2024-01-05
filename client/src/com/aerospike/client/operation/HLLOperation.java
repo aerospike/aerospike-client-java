@@ -64,7 +64,7 @@ public final class HLLOperation {
 	 * @param binName			name of bin
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
 	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 51 inclusive.
-	 * 							Also, indexBitCount + minHashBitCount must be <= 64.
+	 * 							Also, indexBitCount + minHashBitCount must be &lt;= 64.
 	 */
 	public static Operation init(HLLPolicy policy, String binName, int indexBitCount, int minHashBitCount) {
 		byte[] bytes = Pack.pack(HLLOperation.INIT, indexBitCount, minHashBitCount, policy.flags);
@@ -108,7 +108,7 @@ public final class HLLOperation {
 	 * @param list				list of values to be added
 	 * @param indexBitCount		number of index bits. Must be between 4 and 16 inclusive.
 	 * @param minHashBitCount   number of min hash bits. Must be between 4 and 51 inclusive.
-	 * 							Also, indexBitCount + minHashBitCount must be <= 64.
+	 * 							Also, indexBitCount + minHashBitCount must be &lt;= 64.
 	 */
 	public static Operation add(HLLPolicy policy, String binName, List<Value> list, int indexBitCount, int minHashBitCount) {
 		byte[] bytes = Pack.pack(HLLOperation.ADD, list, indexBitCount, minHashBitCount, policy.flags);
@@ -193,7 +193,7 @@ public final class HLLOperation {
 
 	/**
 	 * Create HLL getIntersectCount operation.
-	 * Bin contains an HLL value. 
+	 * Bin contains an HLL value.
 	 * List of HLL objects may have maximum 2 objects if minhash bits are 0, can have >2 objects otherwise.
 	 * Server returns estimated number of elements that would be contained by the intersection of
 	 * these HLL objects.
@@ -208,7 +208,7 @@ public final class HLLOperation {
 
 	/**
 	 * Create HLL getSimilarity operation.
-	 * Bin contains an HLL value. 
+	 * Bin contains an HLL value.
 	 * List of HLL objects may have maximum 2 objects if minhash bits are 0, can have >2 objects otherwise.
 	 * Server returns estimated similarity of these HLL objects. Return type is a double.
 	 *
