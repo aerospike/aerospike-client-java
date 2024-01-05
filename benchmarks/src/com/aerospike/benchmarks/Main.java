@@ -252,35 +252,35 @@ public class Main implements Log.Callback {
 			"Enter zero to skip sleep."
 			);
 		options.addOption("r", "replica", true,
-				"Which replica to use for reads.\n\n" +
-				"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
-				"master: Always use node containing master partition.\n" +
-				"any: Distribute reads across master and proles in round-robin fashion.\n" +
-				"sequence: Always try master first. If master fails, try proles in sequence.\n" +
-				"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
-				"Use 'rackId' option to set rack."
-				);
+			"Which replica to use for reads.\n\n" +
+			"Values:  master | any | sequence | preferRack.  Default: sequence\n" +
+			"master: Always use node containing master partition.\n" +
+			"any: Distribute reads across master and proles in round-robin fashion.\n" +
+			"sequence: Always try master first. If master fails, try proles in sequence.\n" +
+			"preferRack: Always try node on the same rack as the benchmark first. If no nodes on the same rack, use sequence.\n" +
+			"Use 'rackId' option to set rack."
+			);
 		options.addOption("readModeAP", true,
-				"Read consistency level when in AP mode.\n" +
-				"Values:  one | all.  Default: one"
-				);
+			"Read consistency level when in AP mode.\n" +
+			"Values:  one | all.  Default: one"
+			);
 		options.addOption("readModeSC", true,
-				"Read consistency level when in SC (strong consistency) mode.\n" +
-				"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
-				);
+			"Read consistency level when in SC (strong consistency) mode.\n" +
+			"Values:  session | linearize | allow_replica | allow_unavailable.  Default: session"
+			);
 		options.addOption("commitLevel", true,
-				"Desired replica consistency guarantee when committing a transaction on the server.\n" +
-				"Values:  all | master.  Default: all"
-				);
-
+			"Desired replica consistency guarantee when committing a transaction on the server.\n" +
+			"Values:  all | master.  Default: all"
+			);
 		options.addOption("Y", "connPoolsPerNode", true,
-				"Number of synchronous connection pools per node.  Default 1."
-				);
+			"Number of synchronous connection pools per node.  Default 1."
+			);
 		options.addOption("z", "threads", true,
-			"Set the number of threads the client will use to generate load."
+			"Set the number of OS threads the client will use to generate load."
 			);
 		options.addOption("vt", "virtualThreads", true,
-			"Set the number of virtual threads the client will use to generate load."
+			"Set the number of virtual threads the client will use to generate load.\n" +
+			"This option will override the OS threads setting (-z)."
 		);
 		options.addOption("latency", true,
 			"ycsb[,<warmup count>] | [alt,]<columns>,<range shift increment>[,us|ms]\n" +
@@ -322,29 +322,29 @@ public class Main implements Log.Callback {
 		options.addOption("KT", "keyType", true, "Type of the key(String/Integer) in the file, default is String");
 		options.addOption("tls", "tlsEnable", false, "Use TLS/SSL sockets");
 		options.addOption("tp", "tlsProtocols", true,
-				"Allow TLS protocols\n" +
-				"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
-				"Default: TLSv1.2"
-				);
+			"Allow TLS protocols\n" +
+			"Values:  TLSv1,TLSv1.1,TLSv1.2 separated by comma\n" +
+			"Default: TLSv1.2"
+			);
 		options.addOption("tlsCiphers", "tlsCipherSuite", true,
-				"Allow TLS cipher suites\n" +
-				"Values:  cipher names defined by JVM separated by comma\n" +
-				"Default: null (default cipher list provided by JVM)"
-				);
+			"Allow TLS cipher suites\n" +
+			"Values:  cipher names defined by JVM separated by comma\n" +
+			"Default: null (default cipher list provided by JVM)"
+			);
 		options.addOption("tr", "tlsRevoke", true,
-				"Revoke certificates identified by their serial number\n" +
-				"Values:  serial numbers separated by comma\n" +
-				"Default: null (Do not revoke certificates)"
-				);
+			"Revoke certificates identified by their serial number\n" +
+			"Values:  serial numbers separated by comma\n" +
+			"Default: null (Do not revoke certificates)"
+			);
 		options.addOption("tlsLoginOnly", false, "Use TLS/SSL sockets on node login only");
 		options.addOption("auth", true, "Authentication mode. Values: " + Arrays.toString(AuthMode.values()));
 
 		options.addOption("netty", false, "Use Netty NIO event loops for async benchmarks");
 		options.addOption("nettyEpoll", false, "Use Netty epoll event loops for async benchmarks (Linux only)");
 		options.addOption("elt", "eventLoopType", true,
-				"Use specified event loop type for async examples\n" +
-				"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
-				);
+			"Use specified event loop type for async examples\n" +
+			"Value: DIRECT_NIO | NETTY_NIO | NETTY_EPOLL | NETTY_KQUEUE | NETTY_IOURING"
+			);
 
 		options.addOption("proxy", false, "Use proxy client.");
 
@@ -1018,7 +1018,7 @@ public class Main implements Log.Callback {
 			args.partitionIds = partitionIds;
 		}
 
-		String threadType = useVirtualThreads ? "Virtual" : "OS";
+		String threadType = useVirtualThreads ? "virtual" : "OS";
 
 		System.out.println("Benchmark: " + this.hosts[0]
 			+ ", namespace: " + args.namespace
