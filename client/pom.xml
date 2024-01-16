@@ -8,10 +8,10 @@
     <artifactId>aerospike-parent</artifactId>
     <version>8.0.0</version>
   </parent>
-  <artifactId>aerospike-client</artifactId>
+  <artifactId>aerospike-client-jdk21</artifactId>
   <packaging>jar</packaging>
 
-  <name>aerospike-client</name>
+  <name>aerospike-client-jdk21</name>
 
   <dependencies>
     <dependency>

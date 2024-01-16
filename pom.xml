@@ -52,25 +52,13 @@
     <dependencies>
       <dependency>
         <groupId>com.aerospike</groupId>
-        <artifactId>aerospike-client</artifactId>
+        <artifactId>aerospike-client-jdk21</artifactId>
         <version>${project.version}</version>
       </dependency>
 
       <dependency>
         <groupId>com.aerospike</groupId>
         <artifactId>aerospike-proxy-client</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.aerospike</groupId>
-        <artifactId>aerospike-query-engine</artifactId>
-        <version>${project.version}</version>
-      </dependency>
-
-      <dependency>
-        <groupId>com.aerospike</groupId>
-        <artifactId>aerospike-reactor-client</artifactId>
         <version>${project.version}</version>
       </dependency>
 
