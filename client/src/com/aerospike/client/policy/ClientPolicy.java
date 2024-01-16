@@ -319,6 +319,22 @@ public class ClientPolicy {
 	public Map<String,String> ipMap;
 
 	/**
+	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
+	 * are no longer used. This field only exists to maintain api compatibility when switching between
+	 * aerospike-client-jdk21 and aerospike-client-jdk8 packages.
+	 */
+	@Deprecated
+	public ExecutorService threadPool;
+
+	/**
+	 * This field is ignored and deprecated. The client now supports virtual threads and thread pools
+	 * are no longer used. This field only exists to maintain api compatibility when switching between
+	 * aerospike-client-jdk21 and aerospike-client-jdk8 packages.
+	 */
+	@Deprecated
+	public boolean sharedThreadPool;
+
+	/**
 	 * Should use "services-alternate" instead of "services" in info request during cluster
 	 * tending.  "services-alternate" returns server configured external IP addresses that client
 	 * uses to talk to nodes.  "services-alternate" can be used in place of providing a client "ipMap".
@@ -408,6 +424,8 @@ public class ClientPolicy {
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
 		this.ipMap = other.ipMap;
+		this.threadPool = other.threadPool;
+		this.sharedThreadPool = (other.threadPool != null);
 		this.useServicesAlternate = other.useServicesAlternate;
 		this.forceSingleNode = other.forceSingleNode;
 		this.rackAware = other.rackAware;
@@ -549,6 +567,14 @@ public class ClientPolicy {
 
 	public void setIpMap(Map<String, String> ipMap) {
 		this.ipMap = ipMap;
+	}
+
+	public void setThreadPool(ExecutorService threadPool) {
+		this.threadPool = threadPool;
+	}
+
+	public void setSharedThreadPool(boolean sharedThreadPool) {
+		this.sharedThreadPool = sharedThreadPool;
 	}
 
 	public void setUseServicesAlternate(boolean useServicesAlternate) {
