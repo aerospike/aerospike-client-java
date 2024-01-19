@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -635,9 +635,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	//-------------------------------------------------------
 
 	/**
-	 * Add integer/double bin values to existing record bin values.
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
-	 * handled when the record already exists.
+	 * Add integer/double bin values to record bin values. If the record or bin does not exist, the
+	 * record/bin will be created by default with the value to be added. The policy specifies the
+	 * transaction timeout, record expiration and how the transaction is handled when the record
+	 * already exists.
 	 *
 	 * @param policy				write configuration parameters, pass in null for defaults
 	 * @param key					unique record identifier
@@ -654,12 +655,13 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * Asynchronously add integer/double bin values to existing record bin values.
+	 * Asynchronously add integer/double bin values to record bin values. If the record or bin does
+	 * not exist, the record/bin will be created by default with the value to be added. The policy
+	 * specifies the transaction timeout, record expiration and how the transaction is handled when
+	 * the record already exists.
+	 * <p>
 	 * This method registers the command with an event loop and returns.
 	 * The event loop thread will process the command and send the results to the listener.
-	 * <p>
-	 * The policy specifies the transaction timeout, record expiration and how the transaction is
-	 * handled when the record already exists.
 	 *
 	 * @param eventLoop				event loop that will process the command. If NULL, the event
 	 * 								loop will be chosen by round-robin.
