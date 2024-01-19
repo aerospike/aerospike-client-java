@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,7 +17,69 @@
 package com.aerospike.benchmarks;
 
 class DBObjectSpec {
-	char type;
-	int size;
-	int rand_pct;
+	enum Type {
+		INTEGER,
+		BYTES,
+		STRING,
+		RANDOM,
+		TIMESTAMP
+	}
+
+	final Type type;
+	final int size;
+	final int randPct;
+
+	DBObjectSpec(String s) {
+		String[] args = s.split(":");
+		this.type = parseType(args[0].charAt(0));
+
+		switch (this.type) {
+			default:
+			case TIMESTAMP:
+			case INTEGER:
+				this.size = 8;
+				this.randPct = 0;
+				break;
+
+			case STRING:
+			case BYTES:
+				this.size = Integer.parseInt(args[1]);
+				this.randPct = 0;
+				break;
+
+			case RANDOM:
+				// Convert size to multiples of 8.
+				this.size = Math.abs(Integer.parseInt(args[1]) / 8);
+				this.randPct = Math.abs(Integer.parseInt(args[2]));
+				break;
+		}
+	}
+
+	DBObjectSpec() {
+		this.type = Type.INTEGER;
+		this.size = 8;
+		this.randPct = 0;
+	}
+
+	static Type parseType(char t) {
+		switch (t) {
+			case 'I':
+				return Type.INTEGER;
+
+			case 'B':
+				return Type.BYTES;
+
+			case 'S':
+				return Type.STRING;
+
+			case 'R':
+				return Type.RANDOM;
+
+			case 'D':
+				return Type.TIMESTAMP;
+
+			default:
+				throw new RuntimeException("Invalid type: " + t);
+		}
+	}
 }

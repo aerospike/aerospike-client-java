@@ -23,7 +23,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Properties;
@@ -187,9 +186,8 @@ public class Main implements Log.Callback {
 		options.addOption("o", "objectSpec", true,
 			"I | S:<size> | B:<size> | R:<size>:<rand_pct>\n" +
 			"Set the type of object(s) to use in Aerospike transactions. Type can be 'I' " +
-			"for integer, 'S' for string, or 'B' for Java blob. If type is 'I' (integer), " +
-			"do not set a size (integers are always 8 bytes). If object_type is 'S' " +
-			"(string), this value represents the length of the string."
+			"for integer, 'S' for string, 'B' for byte[] or 'R' for random bytes. " +
+			"If type is 'I' (integer), do not set a size (integers are always 8 bytes)."
 			);
 		options.addOption("R", "random", false,
 			"Use dynamically generated random bin values instead of default static fixed bin values."
@@ -588,24 +586,22 @@ public class Main implements Log.Callback {
 		if (line.hasOption("objectSpec")) {
 			String[] objectsArr = line.getOptionValue("objectSpec").split(",");
 			args.objectSpec = new DBObjectSpec[objectsArr.length];
+
 			for (int i = 0; i < objectsArr.length; i++) {
-				String[] objarr = objectsArr[i].split(":");
-				DBObjectSpec dbobj = new DBObjectSpec();
-				dbobj.type = objarr[0].charAt(0);
-				if (objarr.length > 1) {
-					dbobj.size = Integer.parseInt(objarr[1]);
-					if (objarr.length == 3) {
-						dbobj.rand_pct = Integer.parseInt(objarr[2]);
-					}
+				try {
+					DBObjectSpec spec = new DBObjectSpec(objectsArr[i]);
+					args.objectSpec[i] = spec;
 				}
-				args.objectSpec[i] = dbobj;
+				catch (Throwable t) {
+					throw new Exception("Invalid object spec: " + objectsArr[i] + "\n" +
+						t.getMessage());
+				}
 			}
 		}
 		else {
+			// If the object is not specified, it has one bin of integer type.
 			args.objectSpec = new DBObjectSpec[1];
-			DBObjectSpec dbobj = new DBObjectSpec();
-			dbobj.type = 'I';	// If the object is not specified, it has one bin of integer type
-			args.objectSpec[0] = dbobj;
+			args.objectSpec[0] = new DBObjectSpec();
 		}
 
 		if (line.hasOption("keyFile")) {
@@ -1107,20 +1103,24 @@ public class Main implements Log.Callback {
 			System.out.print("bin[" + binCount + "]: ");
 
 			switch (spec.type) {
-			case 'I':
+			case INTEGER:
 				System.out.println("integer");
 				break;
 
-			case 'S':
+			case STRING:
 				System.out.println("string[" + spec.size + "]");
 				break;
 
-			case 'B':
+			case BYTES:
 				System.out.println("byte[" + spec.size + "]");
 				break;
 
-			case 'R':
-				System.out.println("random[" + spec.size + "]");
+			case RANDOM:
+				System.out.println("random[" + (spec.size * 8) + "]");
+				break;
+
+			case TIMESTAMP:
+				System.out.println("timestamp");
 				break;
 			}
 			binCount++;
