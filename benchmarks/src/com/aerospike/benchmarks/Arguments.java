@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -83,19 +83,20 @@ public class Arguments {
 
 	private static Value genValue(RandomShift random, DBObjectSpec spec, long keySeed) {
 		switch (spec.type) {
-		case 'I':
+		default:
+		case INTEGER:
 			if (keySeed == -1) {
 				return Value.get(random.nextInt());
 			} else {
 				return Value.get(keySeed);
 			}
 
-		case 'B':
+		case BYTES:
 			byte[] ba = new byte[spec.size];
 			random.nextBytes(ba);
 			return Value.get(ba);
 
-		case 'S':
+		case STRING:
 			StringBuilder sb = new StringBuilder(spec.size);
 			for (int i = 0; i < spec.size; i++) {
 				// Append ascii value between ordinal 33 and 127.
@@ -103,13 +104,10 @@ public class Arguments {
 			}
 			return Value.get(sb.toString());
 
-		case 'R':
-			spec.size = Math.abs(spec.size / 8);
-			// ... relies on size being a multiple of 8, which it will be.
-			spec.rand_pct = Math.abs(spec.rand_pct);
+		case RANDOM:
 			byte[] bytes = new byte[spec.size * 8];
 			int idx = 0;
-			int rand_pct = spec.rand_pct;
+			int rand_pct = spec.randPct;
 			if (rand_pct < 100) {
 				int n_zeros = (spec.size * (100 - rand_pct)) / 100;
 				int n_rands = spec.size - n_zeros;
@@ -127,11 +125,8 @@ public class Arguments {
 			}
 			return Value.get(bytes);
 
-		case 'D':
+		case TIMESTAMP:
 			return Value.get(System.currentTimeMillis());
-
-		default:
-			return Value.getAsNull();
 		}
 	}
 
