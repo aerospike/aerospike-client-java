@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -142,10 +142,7 @@ public abstract class CommandProxy {
 		try {
 			if (t instanceof AerospikeException) {
 				ae = (AerospikeException)t;
-
-				if (ae.getResultCode() == ResultCode.TIMEOUT) {
-					ae = new AerospikeException.Timeout(policy, false);
-				}
+				ae.setPolicy(policy);
 			}
 			else if (t instanceof StatusRuntimeException) {
 				StatusRuntimeException sre = (StatusRuntimeException)t;
