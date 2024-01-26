@@ -90,9 +90,13 @@ public class ListOperation {
 
 	/**
 	 * Create list create operation.
-	 * Server creates list at given context level. The context is allowed to be beyond list
-	 * boundaries only if pad is set to true.  In that case, nil list entries will be inserted to
-	 * satisfy the context position.
+	 * Server creates list at given context level.
+	 *
+	 * @param binName		bin name
+	 * @param order			list order
+	 * @param pad			if true, context is allowed to be beyond list boundaries and insert nil list entries to
+	 *						satisfy the ctx position
+	 * @param ctx			optional path to nested list. If not defined, the top-level list is used.
 	 */
 	public static Operation create(String binName, ListOrder order, boolean pad, CTX... ctx) {
 		// If context not defined, the set order for top-level bin list.
@@ -100,10 +104,39 @@ public class ListOperation {
 			return setOrder(binName, order);
 		}
 
+		byte[] bytes = packCreate(order, pad, ctx);
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create list create operation.
+	 * Server creates list at given context level.
+	 *
+	 * @param binName		bin name
+	 * @param order			list order
+	 * @param pad			if true, context is allowed to be beyond list boundaries and insert nil list entries to
+	 *						satisfy the ctx position
+	 * @param persistIndex	if true, persist list index. A list index improves lookup performance,
+	 * 						but requires more storage. A list index can be created for a top-level
+	 * 						ordered list only. Nested and unordered list indexes are not supported.
+	 * @param ctx			optional path to nested list. If not defined, the top-level list is used.
+	 */
+	public static Operation create(String binName, ListOrder order, boolean pad, boolean persistIndex, CTX... ctx) {
+		// If context not defined, the set order for top-level bin list.
+		if (ctx == null || ctx.length == 0) {
+			return setOrder(binName, order, persistIndex);
+		}
+
+		// Create nested list. persistIndex does not apply here, so ignore it.
+		byte[] bytes = packCreate(order, pad, ctx);
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}
+
+	private static byte[] packCreate(ListOrder order, boolean pad, CTX[] ctx) {
 		Packer packer = new Packer();
 		CDT.init(packer, ctx, SET_TYPE, 1, order.getFlag(pad));
 		packer.packInt(order.attributes);
-		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(packer.toByteArray()));
+		return packer.toByteArray();
 	}
 
 	/**
@@ -112,6 +145,27 @@ public class ListOperation {
 	 */
 	public static Operation setOrder(String binName, ListOrder order, CTX... ctx) {
 		byte[] bytes = Pack.pack(ListOperation.SET_TYPE, order.attributes, ctx);
+		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
+	}
+
+	/**
+	 * Create set list order operation.
+	 * Server sets list order.  Server returns null.
+	 *
+	 * @param binName		bin name
+	 * @param order			list order
+	 * @param persistIndex	if true, persist list index. A list index improves lookup performance,
+	 * 						but requires more storage. A list index can be created for a top-level
+	 * 						ordered list only. Nested and unordered list indexes are not supported.
+	 * @param ctx			optional path to nested list. If not defined, the top-level list is used.
+	 */
+	public static Operation setOrder(String binName, ListOrder order, boolean persistIndex, CTX... ctx) {
+		int attr = order.attributes;
+
+		if (persistIndex) {
+			attr |= 0x10;
+		}
+		byte[] bytes = Pack.pack(ListOperation.SET_TYPE, attr, ctx);
 		return new Operation(Operation.Type.CDT_MODIFY, binName, Value.get(bytes));
 	}
 

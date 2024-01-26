@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1204,5 +1204,52 @@ public class TestOperateList extends TestSync {
 		list = (List<?>)list.get(1);
 		assertEquals(1, list.size());
 		assertEquals(2, (long)(Long)list.get(0));
+	}
+
+	@Test
+	public void operateListCreate() {
+		Key key = new Key(args.namespace, args.set, "oplkey21");
+
+		client.delete(null, key);
+
+		List<Value> l1 = new ArrayList<Value>();
+		l1.add(Value.get(3));
+		l1.add(Value.get(2));
+		l1.add(Value.get(1));
+
+		WritePolicy wp = new WritePolicy();
+		wp.respondAllOps = true;
+
+		// Create list with persisted index.
+		Record record = client.operate(wp, key,
+			ListOperation.create(binName, ListOrder.ORDERED, false, true),
+			ListOperation.appendItems(ListPolicy.Default, binName, l1),
+			Operation.get(binName)
+		);
+
+		assertRecordFound(key, record);
+		//System.out.println("Record: " + record);
+
+		List<?> results = record.getList(binName);
+		assertEquals(3, results.size());  // 3 operations equals 3 results.
+
+		int i = 0;
+		Object obj = results.get(i++);
+		assertNull(obj);
+
+		long val = (Long)results.get(i++);
+		assertEquals(3, val);  // appendItems returns 3 for number of items appended.
+
+		List<?> list = (List<?>)results.get(i++);
+		assertEquals(3, list.size());
+
+		val = (Long)list.get(0);
+		assertEquals(1, val);  // List is returned sorted, so 1 will be the first item.
+
+		val = (Long)list.get(1);
+		assertEquals(2, val);
+
+		val= (Long)list.get(2);
+		assertEquals(3, val);
 	}
 }
