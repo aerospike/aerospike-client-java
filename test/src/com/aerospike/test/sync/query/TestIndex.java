@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -37,14 +37,11 @@ public class TestIndex extends TestSync {
 
 	@Test
 	public void createDrop() {
-		Policy policy = new Policy();
-		policy.setTimeout(0);
-
 		IndexTask task;
 
 		// Drop index if it already exists.
 		try {
-			task = client.dropIndex(policy, args.namespace, args.set, indexName);
+			task = client.dropIndex(args.indexPolicy, args.namespace, args.set, indexName);
 			task.waitTillComplete();
 		}
 		catch (AerospikeException ae) {
@@ -53,10 +50,10 @@ public class TestIndex extends TestSync {
 			}
 		}
 
-		task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
+		task = client.createIndex(args.indexPolicy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 		task.waitTillComplete();
 
-		task = client.dropIndex(policy, args.namespace, args.set, indexName);
+		task = client.dropIndex(args.indexPolicy, args.namespace, args.set, indexName);
 		task.waitTillComplete();
 
 		// Ensure all nodes have dropped the index.

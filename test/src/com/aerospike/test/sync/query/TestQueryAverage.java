@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,11 +50,8 @@ public class TestQueryAverage extends TestSync {
 		RegisterTask rtask = client.register(null, TestQueryAverage.class.getClassLoader(), "udf/average_example.lua", "average_example.lua", Language.LUA);
 		rtask.waitTillComplete();
 
-		Policy policy = new Policy();
-		policy.socketTimeout = 0; // Do not timeout on index create.
-
 		try {
-			IndexTask itask = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
+			IndexTask itask = client.createIndex(args.indexPolicy, args.namespace, args.set, indexName, binName, IndexType.NUMERIC);
 			itask.waitTillComplete();
 		}
 		catch (AerospikeException ae) {

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -36,6 +36,7 @@ import com.aerospike.client.async.EventLoopType;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.AuthMode;
 import com.aerospike.client.policy.ClientPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.TlsPolicy;
 import com.aerospike.client.util.Util;
 
@@ -49,6 +50,7 @@ public class Args {
 	public String password;
 	public String namespace;
 	public String set;
+	public final Policy indexPolicy;
 	public TlsPolicy tlsPolicy;
 	public EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	public int socketTimeout = 30000;
@@ -62,6 +64,9 @@ public class Args {
 		port = 3000;
 		namespace = "test";
 		set = "test";
+
+		indexPolicy = new Policy();
+		indexPolicy.setTimeout(10000);
 
 		String argString = System.getProperty("args");
 
