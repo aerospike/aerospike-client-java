@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,13 +50,10 @@ public class TestQueryBlob extends TestSync {
 
 	@BeforeClass
 	public static void prepare() {
-		Policy policy = new Policy();
-		policy.totalTimeout = 5000;
-
-		IndexTask task = client.createIndex(policy, args.namespace, args.set, indexName, binName, IndexType.BLOB);
+		IndexTask task = client.createIndex(args.indexPolicy, args.namespace, args.set, indexName, binName, IndexType.BLOB);
 		task.waitTillComplete();
 
-		task = client.createIndex(policy, args.namespace, args.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
+		task = client.createIndex(args.indexPolicy, args.namespace, args.set, indexNameList, binNameList, IndexType.BLOB, IndexCollectionType.LIST);
 		task.waitTillComplete();
 
 		for (int i = 1; i <= size; i++) {

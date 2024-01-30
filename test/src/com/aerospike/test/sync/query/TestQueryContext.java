@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -48,11 +48,9 @@ public class TestQueryContext extends TestSync {
 
 	@BeforeClass
 	public static void prepare() {
-		Policy policy = new Policy();
-
 		try {
 			IndexTask task = client.createIndex(
-				policy, args.namespace, args.set, indexName, binName,
+				args.indexPolicy, args.namespace, args.set, indexName, binName,
 				IndexType.NUMERIC, IndexCollectionType.DEFAULT,
 				CTX.listRank(-1)
 				);

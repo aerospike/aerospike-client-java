@@ -66,11 +66,8 @@ public class TestQueryRPS extends TestSync {
 		rtask0.waitTillComplete();
 		rtask1.waitTillComplete();
 
-		Policy policy = new Policy();
-		policy.socketTimeout = 0; // Do not timeout on index create.
-
 		try {
-			IndexTask itask = client.createIndex(policy, args.namespace,
+			IndexTask itask = client.createIndex(args.indexPolicy, args.namespace,
 					args.set, indexName, binName1, IndexType.NUMERIC);
 			itask.waitTillComplete();
 		}
