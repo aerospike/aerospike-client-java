@@ -39,8 +39,9 @@ import com.aerospike.client.util.Packer;
  * <li>String</li>
  * <li>Integer</li>
  * <li>byte[]</li>
- * <li>List</li>
  * </ul>
+ * <p>
+ * The server will validate map key types in an upcoming release.
  * <p>
  * All maps maintain an index and a rank.  The index is the item offset from the start of the map,
  * for both unordered and ordered maps.  The rank is the sorted index of the value component.

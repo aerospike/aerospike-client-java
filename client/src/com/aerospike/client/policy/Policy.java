@@ -192,6 +192,10 @@ public class Policy {
 	 * If the key is sent on a write, the key will be stored with the record on
 	 * the server.
 	 * <p>
+	 * If the key is sent on a read, the server will generate the hash digest from
+	 * the key and validate that digest with the digest sent by the client. Unless
+	 * this is the explicit intent of the developer, avoid sending the key on reads.
+	 * <p>
 	 * Default: false (do not send the user defined key)
 	 */
 	public boolean sendKey;
