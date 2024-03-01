@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -43,11 +43,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	Node node;
 	NioConnection conn;
 	ByteBuffer byteBuffer;
-	final LatencyType latencyType;
 	long begin;
 	long totalDeadline;
 	int state;
 	int iteration;
+	final boolean metricsEnabled;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
@@ -59,8 +59,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.eventState = cluster.eventState[eventLoop.index];
 		this.timeoutTask = new HashedWheelTimeout(this);
 		command.bufferQueue = eventLoop.bufferQueue;
-		hasTotalTimeout = command.totalTimeout > 0;
-		latencyType = cluster.metricsEnabled? command.getLatencyType() : LatencyType.NONE;
+		this.metricsEnabled = cluster.metricsEnabled;
+		this.hasTotalTimeout = command.totalTimeout > 0;
 
 		if (eventLoop.thread == Thread.currentThread() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
@@ -84,8 +84,8 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		this.eventState = other.eventState;
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
-		this.latencyType = other.latencyType;
 		this.iteration = other.iteration;
+		this.metricsEnabled = cluster.metricsEnabled;
 		this.hasTotalTimeout = other.hasTotalTimeout;
 		this.usingSocketTimeout = other.usingSocketTimeout;
 
@@ -228,7 +228,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			node = command.getNode(cluster);
 			node.validateErrorCount();
 
-			if (latencyType != LatencyType.NONE) {
+			if (metricsEnabled) {
 				begin = System.nanoTime();
 			}
 
@@ -364,6 +364,13 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 				return;
 			}
 		}
+		connectComplete();
+	}
+
+	private void connectComplete() throws IOException {
+		if (metricsEnabled) {
+			addLatency(LatencyType.CONN);
+		}
 
 		if (timeoutState != null) {
 			restoreTimeout();
@@ -476,11 +483,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 		case AsyncCommand.AUTH_READ_BODY:
 			readAuthBody();
-
-			if (timeoutState != null) {
-				restoreTimeout();
-			}
-			writeCommand();
+			connectComplete();
 			break;
 
 		case AsyncCommand.COMMAND_READ_HEADER:
@@ -764,7 +767,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 
 		if (state == AsyncCommand.DELAY_QUEUE) {
 			// Command timed out in delay queue.
-			if (latencyType != LatencyType.NONE) {
+			if (metricsEnabled) {
 				cluster.addDelayQueueTimeout();
 			}
 			closeFromDelayQueue();
@@ -807,9 +810,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	protected final void finish() {
 		complete();
 
-		if (latencyType != LatencyType.NONE) {
-			long elapsed = System.nanoTime() - begin;
-			node.addLatency(latencyType, elapsed);
+		if (metricsEnabled) {
+			LatencyType type = command.getLatencyType();
+
+			if (type != LatencyType.NONE) {
+				addLatency(type);
+			}
 		}
 
 		try {
@@ -820,6 +826,11 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 		}
 
 		eventLoop.tryDelayQueue();
+	}
+
+	private void addLatency(LatencyType type) {
+		long elapsed = System.nanoTime() - begin;
+		node.addLatency(type, elapsed);
 	}
 
 	protected final void onNetworkError(AerospikeException ae, boolean queueCommand) {
