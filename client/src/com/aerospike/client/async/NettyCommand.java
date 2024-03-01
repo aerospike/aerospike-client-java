@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -71,11 +71,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 	TimeoutState timeoutState;
 	Node node;
 	NettyConnection conn;
-	final LatencyType latencyType;
 	long begin;
 	long totalDeadline;
 	int state;
 	int iteration;
+	final boolean metricsEnabled;
 	final boolean hasTotalTimeout;
 	boolean usingSocketTimeout;
 	boolean eventReceived;
@@ -88,8 +88,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.eventState = cluster.eventState[loop.index];
 		this.timeoutTask = new HashedWheelTimeout(this);
 		command.bufferQueue = loop.bufferQueue;
-		hasTotalTimeout = command.totalTimeout > 0;
-		latencyType = cluster.metricsEnabled? command.getLatencyType() : LatencyType.NONE;
+		this.metricsEnabled = cluster.metricsEnabled;
+		this.hasTotalTimeout = command.totalTimeout > 0;
 
 		if (eventLoop.eventLoop.inEventLoop() && eventState.errors < 5) {
 			// We are already in event loop thread, so start processing.
@@ -112,8 +112,8 @@ public final class NettyCommand implements Runnable, TimerTask {
 		this.eventState = other.eventState;
 		this.timeoutTask = new HashedWheelTimeout(this);
 		this.totalDeadline = other.totalDeadline;
-		this.latencyType = other.latencyType;
 		this.iteration = other.iteration;
+		this.metricsEnabled = cluster.metricsEnabled;
 		this.hasTotalTimeout = other.hasTotalTimeout;
 		this.usingSocketTimeout = other.usingSocketTimeout;
 
@@ -256,7 +256,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			node = command.getNode(cluster);
 			node.validateErrorCount();
 
-			if (latencyType != LatencyType.NONE) {
+			if (metricsEnabled) {
 				begin = System.nanoTime();
 			}
 
@@ -420,6 +420,13 @@ public final class NettyCommand implements Runnable, TimerTask {
 				writeAuth(token);
 				return;
 			}
+		}
+		connectComplete();
+	}
+
+	private void connectComplete() {
+		if (metricsEnabled) {
+			addLatency(LatencyType.CONN);
 		}
 
 		if (timeoutState != null) {
@@ -596,11 +603,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 			// overwhelm server.
 			throw new AerospikeException(resultCode);
 		}
-
-		if (timeoutState != null) {
-			restoreTimeout();
-		}
-		writeCommand();
+		connectComplete();
 	}
 
 	private void readSingleHeader(ByteBuf byteBuffer) {
@@ -832,7 +835,7 @@ public final class NettyCommand implements Runnable, TimerTask {
 
 		if (state == AsyncCommand.DELAY_QUEUE) {
 			// Command timed out in delay queue.
-			if (latencyType != LatencyType.NONE) {
+			if (metricsEnabled) {
 				cluster.addDelayQueueTimeout();
 			}
 			closeFromDelayQueue();
@@ -889,9 +892,12 @@ public final class NettyCommand implements Runnable, TimerTask {
 	private void finish() {
 		closeKeepConnection();
 
-		if (latencyType != LatencyType.NONE) {
-			long elapsed = System.nanoTime() - begin;
-			node.addLatency(latencyType, elapsed);
+		if (metricsEnabled) {
+			LatencyType type = command.getLatencyType();
+
+			if (type != LatencyType.NONE) {
+				addLatency(type);
+			}
 		}
 
 		try {
@@ -902,6 +908,11 @@ public final class NettyCommand implements Runnable, TimerTask {
 		}
 
 		eventLoop.tryDelayQueue();
+	}
+
+	private void addLatency(LatencyType type) {
+		long elapsed = System.nanoTime() - begin;
+		node.addLatency(type, elapsed);
 	}
 
 	private void onNetworkError(AerospikeException ae) {
