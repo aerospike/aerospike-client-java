@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,10 +50,13 @@ public final class PartitionFilter implements Serializable {
 	}
 
 	/**
-	 * Return records after key's digest in partition containing the digest.
-	 * Note that digest order is not the same as userKey order. This method
-	 * only works for scan or query with null filter (primary index query).
-	 * This method does not work for a secondary index query.
+	 * Return records after the key's digest in the partition containing the digest.
+	 * Records in all other partitions are not included. The digest is used to determine
+	 * order and this is not the same as userKey order.
+	 * <p>
+	 * This method only works for scan or query with null filter (primary index query).
+	 * This method does not work for a secondary index query because the digest alone
+	 * is not sufficient to determine a cursor in a secondary index query.
 	 *
 	 * @param key		return records after this key's digest
 	 */
@@ -62,10 +65,13 @@ public final class PartitionFilter implements Serializable {
 	}
 
 	/**
-	 * Return records after the digest in partition containing the digest.
-	 * Note that digest order is not the same as userKey order. This method
-	 * only works for scan or query with null filter (primary index query).
-	 * This method does not work for a secondary index query.
+	 * Return records after the digest in the partition containing the digest.
+	 * Records in all other partitions are not included. The digest is used to determine
+	 * order and this is not the same as userKey order.
+	 * <p>
+	 * This method only works for scan or query with null filter (primary index query).
+	 * This method does not work for a secondary index query because the digest alone
+	 * is not sufficient to determine a cursor in a secondary index query.
 	 *
 	 * @param digest	return records after this digest
 	 */
