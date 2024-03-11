@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -204,26 +204,40 @@ public class AerospikeException extends RuntimeException {
 
 		/**
 		 * Socket initial connect timeout in milliseconds.
+		 * This field is redundant and is only left here for backwards compatibility.
 		 */
 		public int connectTimeout;
 
 		/**
 		 * Socket idle timeout in milliseconds.
+		 * This field is redundant and is only left here for backwards compatibility.
 		 */
 		public int socketTimeout;
 
 		/**
 		 * Total timeout in milliseconds.
+		 * This field is redundant and is only left here for backwards compatibility.
 		 */
 		public int timeout;
 
 		/**
 		 * If true, client initiated timeout.  If false, server initiated timeout.
+		 * This field is redundant and is only left here for backwards compatibility.
 		 */
 		public boolean client;
 
-		public Timeout(int totalTimeout, boolean inDoubt) {
-			super(ResultCode.TIMEOUT, inDoubt);
+		public Timeout(String message, int iteration, int totalTimeout, boolean inDoubt) {
+			super(ResultCode.TIMEOUT, message);
+			super.iteration = iteration;
+			super.inDoubt = inDoubt;
+
+			Policy p = new Policy();
+			p.connectTimeout = 0;
+			p.socketTimeout = 0;
+			p.totalTimeout = totalTimeout;
+			p.maxRetries = -1;
+			super.policy = p;
+
 			this.connectTimeout = 0;
 			this.socketTimeout = 0;
 			this.timeout = totalTimeout;
@@ -231,7 +245,9 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public Timeout(Policy policy, boolean client) {
-			super(ResultCode.TIMEOUT);
+			// Other base exception fields are set after this constructor.
+			super(ResultCode.TIMEOUT, (client ? "Client" : "Server") + " timeout");
+			super.policy = policy;
 			this.connectTimeout = policy.connectTimeout;
 			this.socketTimeout = policy.socketTimeout;
 			this.timeout = policy.totalTimeout;
@@ -239,7 +255,8 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public Timeout(Policy policy, int iteration) {
-			super(ResultCode.TIMEOUT);
+			super(ResultCode.TIMEOUT, "Client timeout");
+			super.policy = policy;
 			super.iteration = iteration;
 			this.connectTimeout = policy.connectTimeout;
 			this.socketTimeout = policy.socketTimeout;
@@ -248,48 +265,21 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public Timeout(Node node, int connectTimeout, int socketTimeout, int totalTimeout) {
-			super(ResultCode.TIMEOUT);
+			super(ResultCode.TIMEOUT, "Client timeout");
 			super.node = node;
 			super.iteration = 1;
+
+			Policy p = new Policy();
+			p.connectTimeout = connectTimeout;
+			p.socketTimeout = socketTimeout;
+			p.totalTimeout = totalTimeout;
+			p.maxRetries = 0;
+			super.policy = p;
+
 			this.connectTimeout = connectTimeout;
 			this.socketTimeout = socketTimeout;
 			this.timeout = totalTimeout;
 			this.client = true;
-		}
-
-		@Override
-		public String getMessage() {
-			if (iteration == -1) {
-				return "Client timeout: " + timeout;
-			}
-
-			StringBuilder sb = new StringBuilder(512);
-
-			if (client) {
-				sb.append("Client");
-			}
-			else {
-				sb.append("Server");
-			}
-			sb.append(" timeout:");
-			sb.append(" iteration=");
-			sb.append(iteration);
-			sb.append(" connect=");
-			sb.append(connectTimeout);
-			sb.append(" socket=");
-			sb.append(socketTimeout);
-			sb.append(" total=");
-			sb.append(timeout);
-
-			if (policy != null) {
-				sb.append(" maxRetries=");
-				sb.append(policy.maxRetries);
-			}
-			sb.append(" node=");
-			sb.append(node);
-			sb.append(" inDoubt=");
-			sb.append(inDoubt);
-			return sb.toString();
 		}
 	}
 
