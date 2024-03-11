@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -94,6 +94,7 @@ public abstract class Task {
 		}
 
 		long deadline = (policy.timeout > 0)? System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(policy.timeout) : 0L;
+		int iteration = 1;
 
 		do {
 			// Sleep first to give task a chance to complete and help avoid case
@@ -124,9 +125,11 @@ public abstract class Task {
 					return;
 				}
 				else {
-					throw new AerospikeException.Timeout(policy.timeout, true);
+					throw new AerospikeException.Timeout("Client timeout in taskWait()", iteration, policy.timeout, true);
 				}
 			}
+
+			iteration++;
 		} while (true);
 	}
 
