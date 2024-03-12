@@ -20,6 +20,8 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.Policy;
 
+import java.util.List;
+
 /**
  * Aerospike exceptions that can be thrown from the client.
  */
@@ -28,6 +30,7 @@ public class AerospikeException extends RuntimeException {
 
 	protected transient Node node;
 	protected transient Policy policy;
+	protected List<AerospikeException> subExceptions;
 	protected int resultCode = ResultCode.CLIENT_ERROR;
 	protected int iteration = -1;
 	protected boolean inDoubt;
@@ -104,6 +107,16 @@ public class AerospikeException extends RuntimeException {
 
 		sb.append(": ");
 		sb.append(getBaseMessage());
+
+		if (subExceptions != null) {
+			sb.append(System.lineSeparator());
+			sb.append("sub-exceptions:");
+
+			for (AerospikeException ae : subExceptions) {
+				sb.append(System.lineSeparator());
+				sb.append(ae.getMessage());
+			}
+		}
 		return sb.toString();
 	}
 
@@ -148,6 +161,20 @@ public class AerospikeException extends RuntimeException {
 	 */
 	public final void setPolicy(Policy policy) {
 		this.policy = policy;
+	}
+
+	/**
+	 * Get sub exceptions.  Will be null if a retry did not occur.
+	 */
+	public final List<AerospikeException> getSubExceptions() {
+		return subExceptions;
+	}
+
+	/**
+	 * Set sub exceptions.
+	 */
+	public final void setSubExceptions(List<AerospikeException> subExceptions) {
+		this.subExceptions = subExceptions;
 	}
 
 	/**
@@ -222,7 +249,6 @@ public class AerospikeException extends RuntimeException {
 
 		/**
 		 * If true, client initiated timeout.  If false, server initiated timeout.
-		 * This field is redundant and is only left here for backwards compatibility.
 		 */
 		public boolean client;
 
@@ -290,7 +316,7 @@ public class AerospikeException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 
 		public Serialize(Throwable e) {
-			super(ResultCode.SERIALIZE_ERROR, e);
+			super(ResultCode.SERIALIZE_ERROR, "Serialize error", e);
 		}
 
 		public Serialize(String message) {
@@ -320,7 +346,7 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public Connection(Throwable e) {
-			super(ResultCode.SERVER_NOT_AVAILABLE, e);
+			super(ResultCode.SERVER_NOT_AVAILABLE, "Connection failed", e);
 		}
 
 		public Connection(String message, Throwable e) {
@@ -373,7 +399,7 @@ public class AerospikeException extends RuntimeException {
 		public final boolean[] exists;
 
 		public BatchExists(boolean[] exists, Throwable e) {
-			super(ResultCode.BATCH_FAILED, e);
+			super(ResultCode.BATCH_FAILED, "Batch failed", e);
 			this.exists = exists;
 		}
 	}
@@ -389,7 +415,7 @@ public class AerospikeException extends RuntimeException {
 		public final Record[] records;
 
 		public BatchRecords(Record[] records, Throwable e) {
-			super(ResultCode.BATCH_FAILED, e);
+			super(ResultCode.BATCH_FAILED, "Batch failed", e);
 			this.records = records;
 		}
 	}
@@ -405,7 +431,7 @@ public class AerospikeException extends RuntimeException {
 		public final BatchRecord[] records;
 
 		public BatchRecordArray(BatchRecord[] records, Throwable e) {
-			super(ResultCode.BATCH_FAILED, e);
+			super(ResultCode.BATCH_FAILED, "Batch failed", e);
 			this.records = records;
 		}
 	}
@@ -421,7 +447,7 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public ScanTerminated(Throwable e) {
-			super(ResultCode.SCAN_TERMINATED, e);
+			super(ResultCode.SCAN_TERMINATED, "Scan terminated", e);
 		}
 	}
 
@@ -436,7 +462,7 @@ public class AerospikeException extends RuntimeException {
 		}
 
 		public QueryTerminated(Throwable e) {
-			super(ResultCode.QUERY_TERMINATED, e);
+			super(ResultCode.QUERY_TERMINATED, "Query terminated", e);
 		}
 	}
 

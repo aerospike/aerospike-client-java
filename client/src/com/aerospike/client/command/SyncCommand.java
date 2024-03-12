@@ -18,6 +18,8 @@ package com.aerospike.client.command;
 
 import java.io.IOException;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import com.aerospike.client.AerospikeException;
@@ -34,6 +36,7 @@ public abstract class SyncCommand extends Command {
 	// private static final AtomicLong TranCounter = new AtomicLong();
 	protected final Cluster cluster;
 	protected final Policy policy;
+	ArrayList<AerospikeException> subExceptions;
 	int iteration = 1;
 	int commandSentCounter;
 	long deadline;
@@ -79,9 +82,7 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				if (cluster.isActive()) {
 					// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
-					ae.setPolicy(policy);
-					ae.setIteration(iteration);
-					ae.setInDoubt(isWrite(), commandSentCounter);
+					setExceptionData(null, ae, subExceptions);
 					throw ae;
 				}
 				else {
@@ -147,6 +148,7 @@ public abstract class SyncCommand extends Command {
 					}
 					else {
 						node.addError();
+						setExceptionData(node, ae, subExceptions);
 						throw ae;
 					}
 				}
@@ -157,6 +159,7 @@ public abstract class SyncCommand extends Command {
 					else {
 						node.closeConnection(conn);
 					}
+					exception = new AerospikeException.Timeout(policy, true);
 					isClientTimeout = true;
 					node.addTimeout();
 				}
@@ -164,6 +167,7 @@ public abstract class SyncCommand extends Command {
 					// Full timeout has been reached.
 					// Log.info("Socket timeout: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
+					exception = new AerospikeException.Timeout(policy, true);
 					isClientTimeout = true;
 					node.addTimeout();
 				}
@@ -175,17 +179,20 @@ public abstract class SyncCommand extends Command {
 					isClientTimeout = false;
 					node.addError();
 				}
-				catch (Throwable e) {
+				catch (Throwable t) {
 					// All remaining exceptions are considered fatal.  Do not retry.
 					// Close socket to flush out possible garbage.  Do not put back in pool.
 					// Log.info("Throw Throwable: " + tranId + ',' + node + ',' + sequence + ',' + iteration);
 					node.closeConnection(conn);
 					node.addError();
-					throw e;
+					AerospikeException ae = new AerospikeException(t);
+					setExceptionData(node, ae, subExceptions);
+					throw ae;
 				}
 			}
 			catch (Connection.ReadTimeout crt) {
 				// Connection already handled.
+				exception = new AerospikeException.Timeout(policy, true);
 				isClientTimeout = true;
 				node.addTimeout();
 			}
@@ -206,15 +213,14 @@ public abstract class SyncCommand extends Command {
 			catch (AerospikeException ae) {
 				// Log.info("Throw AerospikeException: " + tranId + ',' + node + ',' + sequence + ',' + iteration + ',' + ae.getResultCode());
 				node.addError();
-				ae.setNode(node);
-				ae.setPolicy(policy);
-				ae.setIteration(iteration);
-				ae.setInDoubt(isWrite(), commandSentCounter);
+				setExceptionData(node, ae, subExceptions);
 				throw ae;
 			}
-			catch (Throwable e) {
+			catch (Throwable t) {
 				node.addError();
-				throw e;
+				AerospikeException ae = new AerospikeException(t);
+				setExceptionData(node, ae, subExceptions);
+				throw ae;
 			}
 
 			// Check maxRetries.
@@ -247,6 +253,8 @@ public abstract class SyncCommand extends Command {
 				Util.sleep(policy.sleepBetweenRetries);
 			}
 
+			setExceptionData(node, exception, null);
+			addSubException(exception);
 			iteration++;
 
 			if (! prepareRetry(isClientTimeout || exception.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
@@ -261,17 +269,24 @@ public abstract class SyncCommand extends Command {
 		}
 
 		// Retries have been exhausted.  Throw last exception.
-		if (isClientTimeout) {
-			// Log.info("SocketTimeoutException: " + tranId + ',' + sequence + ',' + iteration);
-			exception = new AerospikeException.Timeout(policy, true);
-		}
-
 		// Log.info("Runtime exception: " + tranId + ',' + sequence + ',' + iteration + ',' + exception.getMessage());
+		setExceptionData(node, exception, subExceptions);
+		throw exception;
+	}
+
+	protected void addSubException(AerospikeException exception) {
+		if (subExceptions == null) {
+			subExceptions = new ArrayList<AerospikeException>(policy.maxRetries);
+		}
+		subExceptions.add(exception);
+	}
+
+	private void setExceptionData(Node node, AerospikeException exception, List<AerospikeException> subExceptions) {
 		exception.setNode(node);
 		exception.setPolicy(policy);
 		exception.setIteration(iteration);
 		exception.setInDoubt(isWrite(), commandSentCounter);
-		throw exception;
+		exception.setSubExceptions(subExceptions);
 	}
 
 	public void resetDeadline(long startTime) {

@@ -43,13 +43,9 @@ public final class BatchExecutor {
 					}
 					status.setException(ae);
 				}
-				catch (RuntimeException re) {
-					command.setInDoubt();
-					status.setException(re);
-				}
 				catch (Throwable e) {
 					command.setInDoubt();
-					status.setException(new RuntimeException(e));
+					status.setException(new AerospikeException(e));
 				}
 			}
 			status.checkException();

@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -930,6 +931,11 @@ public final class AsyncBatch {
 		@Override
 		protected LatencyType getLatencyType() {
 			return LatencyType.BATCH;
+		}
+
+		@Override
+		void addSubException(AerospikeException ae) {
+			parent.addSubException(ae);
 		}
 
 		@Override

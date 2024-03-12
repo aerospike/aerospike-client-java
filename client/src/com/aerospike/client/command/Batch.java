@@ -508,14 +508,15 @@ public final class Batch {
 				}
 				status.setException(ae);
 			}
-			catch (RuntimeException re) {
-				setInDoubt();
-				status.setException(re);
-			}
 			catch (Throwable e) {
 				setInDoubt();
-				status.setException(new RuntimeException(e));
+				status.setException(new AerospikeException(e));
 			}
+		}
+
+		@Override
+		protected void addSubException(AerospikeException ae) {
+			status.addSubException(ae);
 		}
 
 		@Override
