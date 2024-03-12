@@ -507,17 +507,18 @@ public final class Batch {
 				}
 				status.setException(ae);
 			}
-			catch (RuntimeException re) {
-				setInDoubt();
-				status.setException(re);
-			}
 			catch (Throwable e) {
 				setInDoubt();
-				status.setException(new RuntimeException(e));
+				status.setException(new AerospikeException(e));
 			}
 			finally {
 				parent.onComplete();
 			}
+		}
+
+		@Override
+		protected void addSubException(AerospikeException ae) {
+			status.addSubException(ae);
 		}
 
 		@Override
@@ -586,17 +587,9 @@ public final class Batch {
 						throw ae;
 					}
 				}
-				catch (RuntimeException re) {
-					command.setInDoubt();
-					status.setException(re);
-
-					if (!batchPolicy.respondAllKeys) {
-						throw re;
-					}
-				}
 				catch (Throwable e) {
 					command.setInDoubt();
-					status.setException(new RuntimeException(e));
+					status.setException(new AerospikeException(e));
 
 					if (!batchPolicy.respondAllKeys) {
 						throw e;

@@ -45,17 +45,9 @@ public final class BatchExecutor {
 						throw ae;
 					}
 				}
-				catch (RuntimeException re) {
-					command.setInDoubt();
-					status.setException(re);
-
-					if (!policy.respondAllKeys) {
-						throw re;
-					}
-				}
 				catch (Throwable e) {
 					command.setInDoubt();
-					status.setException(new RuntimeException(e));
+					status.setException(new AerospikeException(e));
 
 					if (!policy.respondAllKeys) {
 						throw e;

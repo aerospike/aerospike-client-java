@@ -935,6 +935,12 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 	}
 
 	private final void retry(AerospikeException ae, long deadline) {
+		ae.setNode(node);
+		ae.setPolicy(command.policy);
+		ae.setIteration(iteration);
+		ae.setInDoubt(command.isWrite(), command.commandSentCounter);
+		command.addSubException(ae);
+
 		if (! command.prepareRetry(ae.getResultCode() != ResultCode.SERVER_NOT_AVAILABLE)) {
 			// Batch may be retried in separate commands.
 			if (command.retryBatch(this, deadline)) {
@@ -974,6 +980,7 @@ public final class NioCommand implements INioCommand, Runnable, TimerTask {
 			ae.setPolicy(command.policy);
 			ae.setIteration(iteration);
 			ae.setInDoubt(command.isWrite(), command.commandSentCounter);
+			ae.setSubExceptions(command.subExceptions);
 			command.onFailure(ae);
 		}
 		catch (Throwable e) {
