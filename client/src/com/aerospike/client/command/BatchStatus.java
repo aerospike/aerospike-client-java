@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,8 +19,11 @@ package com.aerospike.client.command;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
+import java.util.ArrayList;
+
 public final class BatchStatus implements BatchNodeList.IBatchStatus {
-	private RuntimeException exception;
+	private ArrayList<AerospikeException> subExceptions;
+	private AerospikeException exception;
 	private boolean error;
 	private final boolean hasResultCode;
 
@@ -51,20 +54,30 @@ public final class BatchStatus implements BatchNodeList.IBatchStatus {
 		error = true;
 	}
 
+	public void addSubException(AerospikeException ae) {
+		synchronized (this) {
+			if (subExceptions == null) {
+				subExceptions = new ArrayList<AerospikeException>();
+			}
+			subExceptions.add(ae);
+		}
+	}
+
 	public boolean getStatus() {
 		return !error;
 	}
 
-	public void setException(RuntimeException e) {
+	public void setException(AerospikeException ae) {
 		error = true;
 
 		if (exception == null) {
-			exception = e;
+			exception = ae;
 		}
 	}
 
 	public void checkException() {
 		if (exception != null) {
+			exception.setSubExceptions(subExceptions);
 			throw exception;
 		}
 	}

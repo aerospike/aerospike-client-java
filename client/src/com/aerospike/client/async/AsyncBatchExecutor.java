@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.async;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeException;
@@ -298,6 +299,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 
 	final EventLoop eventLoop;
 	final Cluster cluster;
+	private ArrayList<AerospikeException> subExceptions;
 	private AerospikeException exception;
 	private AsyncCommand[] commands;
 	private int completedCount;  // Not atomic because all commands run on same event loop thread.
@@ -354,6 +356,7 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 					onSuccess();
 				}
 				else {
+					exception.setSubExceptions(subExceptions);
 					onFailure(exception);
 				}
 			}
@@ -389,6 +392,14 @@ public abstract class AsyncBatchExecutor implements BatchNodeList.IBatchStatus {
 	public void setRowError() {
 		// Indicate that a key specific error occurred.
 		error = true;
+	}
+
+	public void addSubException(AerospikeException ae) {
+		// All batch sub-commands are run in the same event loop, so mutex is not required.
+		if (subExceptions == null) {
+			subExceptions = new ArrayList<AerospikeException>();
+		}
+		subExceptions.add(ae);
 	}
 
 	public boolean getStatus() {
