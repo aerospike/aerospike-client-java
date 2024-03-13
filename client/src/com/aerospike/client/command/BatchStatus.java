@@ -20,14 +20,17 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 public final class BatchStatus implements BatchNodeList.IBatchStatus {
+	private final ReentrantLock lock;
 	private ArrayList<AerospikeException> subExceptions;
 	private AerospikeException exception;
 	private boolean error;
 	private final boolean hasResultCode;
 
 	public BatchStatus(boolean hasResultCode) {
+		this.lock = new ReentrantLock();
 		this.hasResultCode = hasResultCode;
 	}
 
@@ -55,11 +58,19 @@ public final class BatchStatus implements BatchNodeList.IBatchStatus {
 	}
 
 	public void addSubException(AerospikeException ae) {
-		synchronized (this) {
+		// Multiple sync batch node command threads can call this method concurrently, so must lock.
+		// Use ReentrantLock since it's more compatible with virtual threads than the synchronized
+		// keyword.
+		lock.lock();
+
+		try {
 			if (subExceptions == null) {
 				subExceptions = new ArrayList<AerospikeException>();
 			}
 			subExceptions.add(ae);
+		}
+		finally {
+			lock.unlock();
 		}
 	}
 
