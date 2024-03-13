@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -50,7 +50,6 @@ public class QueryGeoCollection extends Example {
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 
 		runMapExample(client,params);
-		runMapKeyExample(client,params);
 		runListExample(client,params);
 	}
 
@@ -66,22 +65,6 @@ public class QueryGeoCollection extends Example {
 		createIndex(client, params, IndexCollectionType.MAPVALUES, indexName, binName);
 		writeMapRecords(client, params, keyPrefix, binName, binName2, mapValuePrefix, size);
 		runQuery(client, params, binName, binName2, IndexCollectionType.MAPVALUES);
-		client.dropIndex(params.policy, params.namespace, params.set, indexName);
-		deleteRecords(client,params, keyPrefix, size);
-	}
-
-	private void runMapKeyExample(IAerospikeClient client, Parameters params) throws Exception {
-		String indexName = "geo_mapkey";
-		String keyPrefix = "mapkey";
-		String mapValuePrefix = "mk";
-		String binName = "geo_mkey_bin";
-		String binName2 = "geo_uniq_bin";
-		int size = 1000;
-
-		// create collection index on mapKey
-		createIndex(client, params, IndexCollectionType.MAPKEYS, indexName, binName);
-		writeMapKeyRecords(client, params, keyPrefix, binName, binName2, mapValuePrefix, size);
-		runQuery(client, params, binName, binName2, IndexCollectionType.MAPKEYS);
 		client.dropIndex(params.policy, params.namespace, params.set, indexName);
 		deleteRecords(client,params, keyPrefix, size);
 	}
@@ -153,43 +136,6 @@ public class QueryGeoCollection extends Example {
 				geoString = generatePolygon(rlat, rlng);
 
 				map.put(valuePrefix+"regionkey_"+i+"_"+jj, Value.getAsGeoJSON(geoString));
-
-			}
-			Bin bin = new Bin(binName, map);
-			Bin bin2 = new Bin(binName2, "other_bin_value_"+i);
-			client.put(params.writePolicy, key, bin, bin2);
-		}
-
-		console.info("Write " + size + " records.");
-	}
-
-	private void writeMapKeyRecords(
-		IAerospikeClient client,
-		Parameters params,
-		String keyPrefix,
-		String binName,
-		String binName2,
-		String valuePrefix,
-		int size
-	) throws Exception {
-		for (int i = 0; i < size; i++) {
-			Key key = new Key(params.namespace, params.set, keyPrefix + i);
-			HashMap<Value, String> map = new HashMap<Value, String>();
-
-			for (int jj = 0; jj < 10; ++jj) {
-
-				double plat = 0.0 + (0.01 * i);
-				double plng = 0.0 + (0.10 * jj);
-				String geoString = generatePoint(plat, plng);
-
-				map.put(Value.getAsGeoJSON(geoString),valuePrefix+"pointkey_"+i+"_"+jj);
-
-				double rlat = 0.0 + (0.01 * i);
-				double rlng = 0.0 - (0.10 * jj);
-
-				geoString = generatePolygon(rlat, rlng);
-
-				map.put(Value.getAsGeoJSON(geoString), valuePrefix+"regionkey_"+i+"_"+jj);
 
 			}
 			Bin bin = new Bin(binName, map);
