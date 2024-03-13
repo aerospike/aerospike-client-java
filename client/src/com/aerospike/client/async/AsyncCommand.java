@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,6 +17,7 @@
 package com.aerospike.client.async;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
@@ -48,6 +49,7 @@ public abstract class AsyncCommand extends Command {
 
 	Policy policy;
 	ArrayDeque<byte[]> bufferQueue;
+	ArrayList<AerospikeException> subExceptions;
 	int receiveSize;
 	int commandSentCounter;
 	final boolean isSingle;
@@ -179,6 +181,13 @@ public abstract class AsyncCommand extends Command {
 
 	final void stop() {
 		valid = false;
+	}
+
+	void addSubException(AerospikeException ae) {
+		if (subExceptions == null) {
+			subExceptions = new ArrayList<AerospikeException>(policy.maxRetries);
+		}
+		subExceptions.add(ae);
 	}
 
 	boolean retryBatch(Runnable command, long deadline) {

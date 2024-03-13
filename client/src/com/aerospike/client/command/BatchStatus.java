@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -19,12 +19,18 @@ package com.aerospike.client.command;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 
+import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
+
 public final class BatchStatus implements BatchNodeList.IBatchStatus {
-	private RuntimeException exception;
+	private final ReentrantLock lock;
+	private ArrayList<AerospikeException> subExceptions;
+	private AerospikeException exception;
 	private boolean error;
 	private final boolean hasResultCode;
 
 	public BatchStatus(boolean hasResultCode) {
+		this.lock = new ReentrantLock();
 		this.hasResultCode = hasResultCode;
 	}
 
@@ -51,20 +57,38 @@ public final class BatchStatus implements BatchNodeList.IBatchStatus {
 		error = true;
 	}
 
+	public void addSubException(AerospikeException ae) {
+		// Multiple sync batch node command threads can call this method concurrently, so must lock.
+		// Use ReentrantLock since it's more compatible with virtual threads than the synchronized
+		// keyword.
+		lock.lock();
+
+		try {
+			if (subExceptions == null) {
+				subExceptions = new ArrayList<AerospikeException>();
+			}
+			subExceptions.add(ae);
+		}
+		finally {
+			lock.unlock();
+		}
+	}
+
 	public boolean getStatus() {
 		return !error;
 	}
 
-	public void setException(RuntimeException e) {
+	public void setException(AerospikeException ae) {
 		error = true;
 
 		if (exception == null) {
-			exception = e;
+			exception = ae;
 		}
 	}
 
 	public void checkException() {
 		if (exception != null) {
+			exception.setSubExceptions(subExceptions);
 			throw exception;
 		}
 	}

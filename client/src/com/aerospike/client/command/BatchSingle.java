@@ -400,13 +400,9 @@ public final class BatchSingle {
 				}
 				status.setException(ae);
 			}
-			catch (RuntimeException re) {
-				setInDoubt();
-				status.setException(re);
-			}
 			catch (Throwable e) {
 				setInDoubt();
-				status.setException(new RuntimeException(e));
+				status.setException(new AerospikeException(e));
 			}
 		}
 
@@ -423,6 +419,11 @@ public final class BatchSingle {
 		@Override
 		protected LatencyType getLatencyType() {
 			return LatencyType.BATCH;
+		}
+
+		@Override
+		protected void addSubException(AerospikeException ae) {
+			status.addSubException(ae);
 		}
 
 		@Override
