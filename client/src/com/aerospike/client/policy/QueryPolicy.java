@@ -21,9 +21,17 @@ package com.aerospike.client.policy;
  */
 public class QueryPolicy extends Policy {
 	/**
+	 * Expected query duration. The server treats the query in different ways depending on the expected duration.
+	 * This field is ignored for aggregation queries, background queries and server versions &lt; 6.0.
+	 * <p>
+	 * Default: {@link QueryDuration#LONG}
+	 */
+	public QueryDuration expectedDuration;
+
+	/**
 	 * This field is deprecated.
 	 * Use {@link com.aerospike.client.query.Statement#setMaxRecords(long)} instead.
-	 *
+	 * <p>
 	 * Approximate number of records to return to client. This number is divided by the
 	 * number of nodes involved in the query.  The actual number of records returned
 	 * may be less than maxRecords if node record counts are small and unbalanced across
@@ -83,6 +91,12 @@ public class QueryPolicy extends Policy {
 	public boolean failOnClusterChange;
 
 	/**
+	 * This field is deprecated and will eventually be removed. Use {@link #expectedDuration} instead.
+	 * <p>
+	 * For backwards compatibility: If shortQuery is true, the query is treated as a short query and
+	 * {@link #expectedDuration} is ignored. If shortQuery is false, {@link #expectedDuration} is used
+	 * and defaults to {@link QueryDuration#LONG}.
+	 * <p>
 	 * Is query expected to return less than 100 records per node.
 	 * If true, the server will optimize the query for a small record set.
 	 * This field is ignored for aggregation queries, background queries
@@ -90,6 +104,7 @@ public class QueryPolicy extends Policy {
 	 * <p>
 	 * Default: false
 	 */
+	@Deprecated
 	public boolean shortQuery;
 
 	/**
@@ -97,6 +112,7 @@ public class QueryPolicy extends Policy {
 	 */
 	public QueryPolicy(QueryPolicy other) {
 		super(other);
+		this.expectedDuration = other.expectedDuration;
 		this.maxRecords = other.maxRecords;
 		this.maxConcurrentNodes = other.maxConcurrentNodes;
 		this.recordQueueSize = other.recordQueueSize;
@@ -132,6 +148,10 @@ public class QueryPolicy extends Policy {
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
+
+	public void setExpectedDuration(QueryDuration expectedDuration) {
+		this.expectedDuration = expectedDuration;
+	}
 
 	public void setMaxRecords(long maxRecords) {
 		this.maxRecords = maxRecords;

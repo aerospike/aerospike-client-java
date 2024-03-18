@@ -21,6 +21,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryDuration;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -132,7 +133,8 @@ public class GrpcConversions {
 		queryPolicyBuilder.setInfoTimeout(queryPolicy.infoTimeout);
 		queryPolicyBuilder.setIncludeBinData(queryPolicy.includeBinData);
 		queryPolicyBuilder.setFailOnClusterChange(queryPolicy.failOnClusterChange);
-		queryPolicyBuilder.setShortQuery(queryPolicy.shortQuery);
+		// TODO: Proxy client protobuf query policy type need to support QueryDuration enum.
+		queryPolicyBuilder.setShortQuery(queryPolicy.shortQuery || queryPolicy.expectedDuration == QueryDuration.SHORT);
 		return queryPolicyBuilder.build();
 	}
 
