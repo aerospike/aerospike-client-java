@@ -40,6 +40,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.Policy;
+import com.aerospike.client.policy.QueryDuration;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ReadModeAP;
 import com.aerospike.client.policy.ScanPolicy;
@@ -68,6 +69,7 @@ public class Command {
 	public static final int INFO2_GENERATION_GT		= (1 << 3); // Update if new generation >= old, good for restore.
 	public static final int INFO2_DURABLE_DELETE	= (1 << 4); // Transaction resulting in record deletion leaves tombstone (Enterprise only).
 	public static final int INFO2_CREATE_ONLY		= (1 << 5); // Create only. Fail if record already exists.
+	public static final int INFO2_RELAX_AP_LONG_QUERY = (1 << 6); // Treat as long query, but relax read consistency.
 	public static final int INFO2_RESPOND_ALL_OPS	= (1 << 7); // Return a result for every operation.
 
 	public static final int INFO3_LAST				= (1 << 0); // This is the last of a multi-part message.
@@ -244,7 +246,7 @@ public class Command {
 			fieldCount++;
 		}
 		sizeBuffer();
-		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, fieldCount, 0);
+		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 		writeKey(policy, key);
 
 		if (policy.filterExp != null) {
@@ -267,7 +269,7 @@ public class Command {
 				estimateOperationSize(binName);
 			}
 			sizeBuffer();
-			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, fieldCount, binNames.length);
+			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
 
 			if (policy.filterExp != null) {
@@ -546,7 +548,7 @@ public class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -674,7 +676,7 @@ public class Command {
 			readAttr |= Command.INFO1_READ_MODE_AP_ALL;
 		}
 
-		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, fieldCount, 0);
+		writeHeaderRead(policy, totalTimeout, readAttr | Command.INFO1_BATCH, 0, 0, fieldCount, 0);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -1323,7 +1325,7 @@ public class Command {
 		// Clusters that support partition queries also support not sending partition done messages.
 		int infoAttr = cluster.hasPartitionQuery? Command.INFO3_PARTITION_DONE : 0;
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, 0, infoAttr, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -1559,18 +1561,22 @@ public class Command {
 		else {
 			QueryPolicy qp = (QueryPolicy)policy;
 			int readAttr = Command.INFO1_READ;
+			int writeAttr = 0;
 
 			if (!qp.includeBinData) {
 				readAttr |= Command.INFO1_NOBINDATA;
 			}
 
-			if (qp.shortQuery) {
+			if (qp.shortQuery || qp.expectedDuration == QueryDuration.SHORT) {
 				readAttr |= Command.INFO1_SHORT_QUERY;
+			}
+			else if (qp.expectedDuration == QueryDuration.LONG_RELAX_AP) {
+				writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 			}
 
 			int infoAttr = isNew? Command.INFO3_PARTITION_DONE : 0;
 
-			writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+			writeHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
 		}
 
 		if (statement.getNamespace() != null) {
@@ -1933,6 +1939,7 @@ public class Command {
 		Policy policy,
 		int timeout,
 		int readAttr,
+		int writeAttr,
 		int infoAttr,
 		int fieldCount,
 		int operationCount
@@ -1962,7 +1969,7 @@ public class Command {
 		// Write all header data except total size which must be written last.
 		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9] = (byte)readAttr;
-		dataBuffer[10] = (byte)0;
+		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
 
 		for (int i = 12; i < 22; i++) {
