@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -47,8 +47,10 @@ import com.aerospike.client.exp.ExpOperation;
 import com.aerospike.client.exp.ExpReadFlags;
 import com.aerospike.client.exp.ExpWriteFlags;
 import com.aerospike.client.exp.Expression;
+import com.aerospike.client.policy.BatchReadPolicy;
 import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.util.Util;
 import com.aerospike.test.sync.TestSync;
 
 public class TestBatch extends TestSync {
@@ -371,6 +373,67 @@ public class TestBatch extends TestSync {
 		exists = client.exists(null, keys);
 		assertFalse(exists[0]);
 		assertFalse(exists[1]);
+	}
+
+	@Test
+	public void batchReadTTL() {
+		// WARNING: This test takes a long time to run due to sleeps.
+		// Define keys
+		Key key1 = new Key(args.namespace, args.set, 88888);
+		Key key2 = new Key(args.namespace, args.set, 88889);
+
+		// Write keys with ttl.
+		BatchWritePolicy bwp = new BatchWritePolicy();
+		bwp.expiration = 10;
+		Key[] keys = new Key[] {key1, key2};
+		client.operate(null, bwp, keys, Operation.put(new Bin("a", 1)));
+
+		// Read records before they expire and reset read ttl on one record.
+		Util.sleep(8000);
+		BatchReadPolicy brp1 = new BatchReadPolicy();
+		brp1.readTouchTtlPercent = 80;
+
+		BatchReadPolicy brp2 = new BatchReadPolicy();
+		brp2.readTouchTtlPercent = -1;
+
+		BatchRead br1 = new BatchRead(brp1, key1, new String[] {"a"});
+		BatchRead br2 = new BatchRead(brp2, key2, new String[] {"a"});
+
+		List<BatchRecord> list = new ArrayList<BatchRecord>();
+		list.add(br1);
+		list.add(br2);
+
+		boolean rv = client.operate(null, list);
+
+		assertTrue(rv);
+		assertEquals(ResultCode.OK, br1.resultCode);
+		assertEquals(ResultCode.OK, br2.resultCode);
+
+		// Read records again, but don't reset read ttl.
+		Util.sleep(3000);
+		brp1.readTouchTtlPercent = -1;
+		brp2.readTouchTtlPercent = -1;
+
+		br1 = new BatchRead(brp1, key1, new String[] {"a"});
+		br2 = new BatchRead(brp2, key2, new String[] {"a"});
+
+		list.clear();
+		list.add(br1);
+		list.add(br2);
+
+		rv = client.operate(null, list);
+
+		// Key 2 should have expired.
+		assertEquals(ResultCode.OK, br1.resultCode);
+		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+		assertFalse(rv);
+
+		// Read  record after it expires, showing it's gone.
+		Util.sleep(8000);
+		rv = client.operate(null, list);
+		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br1.resultCode);
+		assertEquals(ResultCode.KEY_NOT_FOUND_ERROR, br2.resultCode);
+		assertFalse(rv);
 	}
 
 	private void assertBatchBinEqual(List<BatchRead> list, String binName, int i) {

@@ -105,7 +105,8 @@ public class Command {
 	public static final byte BATCH_MSG_READ = 0x0;
 	public static final byte BATCH_MSG_REPEAT = 0x1;
 	public static final byte BATCH_MSG_INFO = 0x2;
-	public static final byte BATCH_MSG_WRITE = 0xe;
+	public static final byte BATCH_MSG_GEN = 0x4;
+	public static final byte BATCH_MSG_TTL = 0x8;
 
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
@@ -404,7 +405,7 @@ public class Command {
 		dataOffset += args.size;
 		sizeBuffer();
 
-		writeHeaderReadWrite(policy, args.readAttr, args.writeAttr, fieldCount, args.operations.length);
+		writeHeaderReadWrite(policy, args, fieldCount);
 		writeKey(policy, key);
 
 		if (policy.filterExp != null) {
@@ -777,7 +778,7 @@ public class Command {
 			}
 			else {
 				// Estimate full header, namespace and bin names.
-				dataOffset += 8;
+				dataOffset += 12;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 				dataOffset += record.size(policy);
@@ -945,7 +946,7 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+				dataOffset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
@@ -964,13 +965,13 @@ public class Command {
 							if (!attr.hasWrite) {
 								throw new AerospikeException(ResultCode.PARAMETER_ERROR, "Write operations not allowed in batch read");
 							}
-							dataOffset += 6; // Extra write specific fields.
+							dataOffset += 2; // Extra write specific fields.
 						}
 						estimateOperationSize(op);
 					}
 				}
 				else if ((attr.writeAttr & Command.INFO2_DELETE) != 0) {
-					dataOffset += 6; // Extra write specific fields.
+					dataOffset += 2; // Extra write specific fields.
 				}
 				prev = key;
 			}
@@ -1076,14 +1077,14 @@ public class Command {
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 8; // header(4) + fielCount(2) + opCount(2) = 8
+				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
 				}
-				dataOffset += 6; // gen(2) + exp(4) = 6
+				dataOffset += 2; // gen(2) = 2
 				estimateUdfSize(packageName, functionName, argBytes);
 				prev = key;
 			}
@@ -1200,15 +1201,17 @@ public class Command {
 	}
 
 	private void writeBatchRead(Key key, BatchAttr attr, Expression filter, int opCount) {
-		dataBuffer[dataOffset++] = (byte)BATCH_MSG_INFO;
+		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
+		dataOffset += 4;
 		writeBatchFields(key, filter, 0, opCount);
 	}
 
 	private void writeBatchWrite(Key key, BatchAttr attr, Expression filter, int fieldCount, int opCount) {
-		dataBuffer[dataOffset++] = (byte)BATCH_MSG_WRITE;
+		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
@@ -1845,14 +1848,16 @@ public class Command {
 	 */
 	private final void writeHeaderReadWrite(
 		WritePolicy policy,
-		int readAttr,
-		int writeAttr,
-		int fieldCount,
-		int operationCount
+		OperateArgs args,
+		int fieldCount
 	) {
 		// Set flags.
 		int generation = 0;
+		int ttl = args.hasWrite ? policy.expiration : policy.readTouchTtlPercent;
+		int readAttr = args.readAttr;
+		int writeAttr = args.writeAttr;
 		int infoAttr = 0;
+		int operationCount = args.operations.length;
 
 		switch (policy.recordExistsAction) {
 		case UPDATE:
@@ -1926,7 +1931,7 @@ public class Command {
 		dataBuffer[12] = 0; // unused
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
-		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(ttl, dataBuffer, 18);
 		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
@@ -1973,9 +1978,10 @@ public class Command {
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
 
-		for (int i = 12; i < 22; i++) {
+		for (int i = 12; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
+		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
 		Buffer.intToBytes(timeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);
@@ -2012,9 +2018,10 @@ public class Command {
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
 
-		for (int i = 12; i < 22; i++) {
+		for (int i = 12; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
+		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
 		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(operationCount, dataBuffer, 28);

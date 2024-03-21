@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -24,6 +24,7 @@ import org.junit.Test;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.util.Util;
 import com.aerospike.test.sync.TestSync;
@@ -37,7 +38,7 @@ public class TestExpire extends TestSync {
 			return;
 		}
 
-		Key key  = new Key(args.namespace, args.set, "expirekey ");
+		Key key  = new Key(args.namespace, args.set, "expirekey1");
 		Bin bin  = new Bin(binName, "expirevalue");
 
 		// Specify that record expires 2 seconds after it's written.
@@ -54,10 +55,9 @@ public class TestExpire extends TestSync {
 		record = client.get(null, key, bin.name);
 		assertNull(record);
 	}
-
 	@Test
 	public void noExpire() {
-		Key key = new Key(args.namespace, args.set, "expirekey");
+		Key key = new Key(args.namespace, args.set, "expirekey2");
 		Bin bin = new Bin(binName, "noexpirevalue");
 
 		// Specify that record NEVER expires.
@@ -75,5 +75,38 @@ public class TestExpire extends TestSync {
 		Util.sleep(10 * 1000);
 		record = client.get(null, key, bin.name);
 		assertNotNull(record);
+	}
+
+	@Test
+	public void resetReadTtl() {
+		if (! args.hasTtl) {
+			return;
+		}
+
+		Key key  = new Key(args.namespace, args.set, "expirekey3");
+		Bin bin  = new Bin(binName, "expirevalue");
+
+		// Specify that record expires 2 seconds after it's written.
+		WritePolicy writePolicy = new WritePolicy();
+		writePolicy.expiration = 2;
+		client.put(writePolicy, key, bin);
+
+		// Read the record before it expires and reset read ttl.
+		Util.sleep(1000);
+		Policy readPolicy = new Policy();
+		readPolicy.readTouchTtlPercent = 80;
+		Record record = client.get(readPolicy, key, bin.name);
+		assertBinEqual(key, record, bin);
+
+		// Read the record again, but don't reset read ttl.
+		Util.sleep(1000);
+		readPolicy.readTouchTtlPercent = -1;
+		record = client.get(readPolicy, key, bin.name);
+		assertBinEqual(key, record, bin);
+
+		// Read the record after it expires, showing it's gone.
+		Util.sleep(2000);
+		record = client.get(null, key, bin.name);
+		assertNull(record);
 	}
 }

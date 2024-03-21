@@ -87,7 +87,7 @@ public final class BatchWrite extends BatchRecord {
 	 */
 	@Override
 	public int size(Policy parentPolicy) {
-		int size = 6; // gen(2) + exp(4) = 6
+		int size = 2; // gen(2) = 2
 
 		if (policy != null) {
 			if (policy.filterExp != null) {

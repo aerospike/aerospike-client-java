@@ -50,12 +50,35 @@ public final class BatchReadPolicy {
 	public ReadModeSC readModeSC = ReadModeSC.SESSION;
 
 	/**
+	 * Determine how record TTL (time to live) is affected on reads. When enabled, the server can
+	 * efficiently operate as a read-based LRU cache where the least recently used records are expired.
+	 * The value is expressed as a percentage of the TTL sent on the most recent write such that a read
+	 * within this interval of the record’s end of life will generate a touch.
+	 * <p>
+	 * For example, if the most recent write had a TTL of 10 hours and read_touch_ttl_percent is set to
+	 * 80, the next read within 8 hours of the record's end of life (equivalent to 2 hours after the most
+	 * recent write) will result in a touch, resetting the TTL to another 10 hours.
+	 * <p>
+	 * Values:
+	 * <ul>
+	 * <li> 0 : Use server config default-read-touch-ttl-pct for the record's namespace/set.</li>
+	 * <li>-1 : Do not reset record TTL on reads.</li>
+	 * <li>1 - 100 : Reset record TTL on reads when within this percentage of the most recent write TTL.</li>
+	 * </ul>
+	 * <li>
+	 * <p>
+	 * Default: 0
+	 */
+	public int readTouchTtlPercent;
+
+	/**
 	 * Copy constructor.
 	 */
 	public BatchReadPolicy(BatchReadPolicy other) {
 		this.filterExp = other.filterExp;
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
+		this.readTouchTtlPercent = other.readTouchTtlPercent;
 	}
 
 	/**
@@ -76,5 +99,9 @@ public final class BatchReadPolicy {
 
 	public void setReadModeSC(ReadModeSC readModeSC) {
 		this.readModeSC = readModeSC;
+	}
+
+	public void setReadTouchTtlPercent(int readTouchTtlPercent) {
+		this.readTouchTtlPercent = readTouchTtlPercent;
 	}
 }
