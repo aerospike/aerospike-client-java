@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -132,7 +132,7 @@ public final class BatchAttr {
 			infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 			break;
 		}
-		expiration = 0;
+		expiration = rp.readTouchTtlPercent;
 		generation = 0;
 		hasWrite = false;
 		sendKey = false;
@@ -163,7 +163,7 @@ public final class BatchAttr {
 			infoAttr = Command.INFO3_SC_READ_TYPE | Command.INFO3_SC_READ_RELAX;
 			break;
 		}
-		expiration = 0;
+		expiration = rp.readTouchTtlPercent;
 		generation = 0;
 		hasWrite = false;
 		sendKey = false;

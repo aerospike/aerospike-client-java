@@ -17,6 +17,7 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
+import java.util.Objects;
 
 /**
  * Transaction policy attributes used in all database commands.
@@ -188,6 +189,28 @@ public class Policy {
 	public int sleepBetweenRetries;
 
 	/**
+	 * Determine how record TTL (time to live) is affected on reads. When enabled, the server can
+	 * efficiently operate as a read-based LRU cache where the least recently used records are expired.
+	 * The value is expressed as a percentage of the TTL sent on the most recent write such that a read
+	 * within this interval of the record’s end of life will generate a touch.
+	 * <p>
+	 * For example, if the most recent write had a TTL of 10 hours and read_touch_ttl_percent is set to
+	 * 80, the next read within 8 hours of the record's end of life (equivalent to 2 hours after the most
+	 * recent write) will result in a touch, resetting the TTL to another 10 hours.
+	 * <p>
+	 * Values:
+	 * <ul>
+	 * <li> 0 : Use server config default-read-touch-ttl-pct for the record's namespace/set.</li>
+	 * <li>-1 : Do not reset record TTL on reads.</li>
+	 * <li>1 - 100 : Reset record TTL on reads when within this percentage of the most recent write TTL.</li>
+	 * </ul>
+	 * <li>
+	 * <p>
+	 * Default: 0
+	 */
+	public int readTouchTtlPercent;
+
+	/**
 	 * Send user defined key in addition to hash digest on both reads and writes.
 	 * If the key is sent on a write, the key will be stored with the record on
 	 * the server.
@@ -236,6 +259,7 @@ public class Policy {
 		this.timeoutDelay = other.timeoutDelay;
 		this.maxRetries = other.maxRetries;
 		this.sleepBetweenRetries = other.sleepBetweenRetries;
+		this.readTouchTtlPercent = other.readTouchTtlPercent;
 		this.sendKey = other.sendKey;
 		this.compress = other.compress;
 		this.failOnFilteredOut = other.failOnFilteredOut;
@@ -268,67 +292,6 @@ public class Policy {
 		if (totalTimeout > 0 && (socketTimeout == 0 || socketTimeout > totalTimeout)) {
 			this.socketTimeout = totalTimeout;
 		}
-	}
-
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + (compress ? 1231 : 1237);
-		result = prime * result + connectTimeout;
-		result = prime * result + (failOnFilteredOut ? 1231 : 1237);
-		result = prime * result + ((filterExp == null) ? 0 : filterExp.hashCode());
-		result = prime * result + maxRetries;
-		result = prime * result + ((readModeAP == null) ? 0 : readModeAP.hashCode());
-		result = prime * result + ((readModeSC == null) ? 0 : readModeSC.hashCode());
-		result = prime * result + ((replica == null) ? 0 : replica.hashCode());
-		result = prime * result + (sendKey ? 1231 : 1237);
-		result = prime * result + sleepBetweenRetries;
-		result = prime * result + socketTimeout;
-		result = prime * result + timeoutDelay;
-		result = prime * result + totalTimeout;
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		Policy other = (Policy) obj;
-		if (compress != other.compress)
-			return false;
-		if (connectTimeout != other.connectTimeout)
-			return false;
-		if (failOnFilteredOut != other.failOnFilteredOut)
-			return false;
-		if (filterExp == null) {
-			if (other.filterExp != null)
-				return false;
-		} else if (!filterExp.equals(other.filterExp))
-			return false;
-		if (maxRetries != other.maxRetries)
-			return false;
-		if (readModeAP != other.readModeAP)
-			return false;
-		if (readModeSC != other.readModeSC)
-			return false;
-		if (replica != other.replica)
-			return false;
-		if (sendKey != other.sendKey)
-			return false;
-		if (sleepBetweenRetries != other.sleepBetweenRetries)
-			return false;
-		if (socketTimeout != other.socketTimeout)
-			return false;
-		if (timeoutDelay != other.timeoutDelay)
-			return false;
-		if (totalTimeout != other.totalTimeout)
-			return false;
-		return true;
 	}
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
@@ -373,6 +336,10 @@ public class Policy {
 		this.sleepBetweenRetries = sleepBetweenRetries;
 	}
 
+	public void setReadTouchTtlPercent(int readTouchTtlPercent) {
+		this.readTouchTtlPercent = readTouchTtlPercent;
+	}
+
 	public void setSendKey(boolean sendKey) {
 		this.sendKey = sendKey;
 	}
@@ -384,5 +351,32 @@ public class Policy {
 	public void setFailOnFilteredOut(boolean failOnFilteredOut) {
 		this.failOnFilteredOut = failOnFilteredOut;
 	}
-}
 
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) return true;
+		if (o == null || getClass() != o.getClass()) return false;
+		Policy policy = (Policy) o;
+		return connectTimeout == policy.connectTimeout &&
+				socketTimeout == policy.socketTimeout &&
+				totalTimeout == policy.totalTimeout &&
+				timeoutDelay == policy.timeoutDelay &&
+				maxRetries == policy.maxRetries &&
+				sleepBetweenRetries == policy.sleepBetweenRetries &&
+				readTouchTtlPercent == policy.readTouchTtlPercent &&
+				sendKey == policy.sendKey &&
+				compress == policy.compress &&
+				failOnFilteredOut == policy.failOnFilteredOut &&
+				readModeAP == policy.readModeAP &&
+				readModeSC == policy.readModeSC &&
+				replica == policy.replica &&
+				Objects.equals(filterExp, policy.filterExp);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout,
+				timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress,
+				failOnFilteredOut);
+	}
+}
