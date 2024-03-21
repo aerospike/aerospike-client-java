@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1053,8 +1053,11 @@ public abstract class Exp {
 	//--------------------------------------------------
 
 	/**
-	 * Conditionally select an expression from a variable number of expression pairs
-	 * followed by default expression action. Requires server version 5.6.0+.
+	 * Conditionally select an action expression from a variable number of expression pairs
+	 * followed by a default action expression. Every action expression must return the same type.
+	 * The only exception is {@link #unknown()} which can be mixed with other types.
+	 * <p>
+	 * Requires server version 5.6.0+.
 	 *
 	 * <pre>{@code
 	 * Args Format: bool exp1, action exp1, bool exp2, action exp2, ..., action-default
