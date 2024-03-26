@@ -1387,6 +1387,7 @@ public class Command {
 	// Query
 	//--------------------------------------------------
 
+	@SuppressWarnings("deprecation")
 	public final void setQuery(
 		Cluster cluster,
 		Policy policy,
