@@ -334,44 +334,144 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	// Default Policies
 	//-------------------------------------------------------
 
+	/**
+	 * Return read policy default. Use when the policy will not be modified.
+	 */
 	public final Policy getReadPolicyDefault() {
 		return readPolicyDefault;
 	}
 
+	/**
+	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final Policy copyReadPolicyDefault() {
+		return new Policy(readPolicyDefault);
+	}
+
+	/**
+	 * Return write policy default. Use when the policy will not be modified.
+	 */
 	public final WritePolicy getWritePolicyDefault() {
 		return writePolicyDefault;
 	}
 
+	/**
+	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final WritePolicy copyWritePolicyDefault() {
+		return new WritePolicy(writePolicyDefault);
+	}
+
+	/**
+	 * Return scan policy default. Use when the policy will not be modified.
+	 */
 	public final ScanPolicy getScanPolicyDefault() {
 		return scanPolicyDefault;
 	}
 
+	/**
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final ScanPolicy copyScanPolicyDefault() {
+		return new ScanPolicy(scanPolicyDefault);
+	}
+
+	/**
+	 * Return query policy default. Use when the policy will not be modified.
+	 */
 	public final QueryPolicy getQueryPolicyDefault() {
 		return queryPolicyDefault;
 	}
 
+	/**
+	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final QueryPolicy copyQueryPolicyDefault() {
+		return new QueryPolicy(queryPolicyDefault);
+	}
+
+	/**
+	 * Return batch header read policy default. Use when the policy will not be modified.
+	 */
 	public final BatchPolicy getBatchPolicyDefault() {
 		return batchPolicyDefault;
 	}
 
+	/**
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyBatchPolicyDefault() {
+		return new BatchPolicy(batchPolicyDefault);
+	}
+
+	/**
+	 * Return batch header write policy default. Use when the policy will not be modified.
+	 */
 	public final BatchPolicy getBatchParentPolicyWriteDefault() {
 		return batchParentPolicyWriteDefault;
 	}
 
+	/**
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyBatchParentPolicyWriteDefault() {
+		return new BatchPolicy(batchParentPolicyWriteDefault);
+	}
+
+	/**
+	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 */
 	public final BatchWritePolicy getBatchWritePolicyDefault() {
 		return batchWritePolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchWritePolicy copyBatchWritePolicyDefault() {
+		return new BatchWritePolicy(batchWritePolicyDefault);
+	}
+
+	/**
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 */
 	public final BatchDeletePolicy getBatchDeletePolicyDefault() {
 		return batchDeletePolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchDeletePolicy copyBatchDeletePolicyDefault() {
+		return new BatchDeletePolicy(batchDeletePolicyDefault);
+	}
+
+	/**
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 */
 	public final BatchUDFPolicy getBatchUDFPolicyDefault() {
 		return batchUDFPolicyDefault;
 	}
 
+	/**
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
+		return new BatchUDFPolicy(batchUDFPolicyDefault);
+	}
+
+	/**
+	 * Return info command policy default. Use when the policy will not be modified.
+	 */
 	public final InfoPolicy getInfoPolicyDefault() {
 		return infoPolicyDefault;
+	}
+
+	/**
+	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final InfoPolicy copyInfoPolicyDefault() {
+		return new InfoPolicy(infoPolicyDefault);
 	}
 
 	//-------------------------------------------------------
