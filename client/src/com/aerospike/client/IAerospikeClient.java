@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -77,16 +77,105 @@ public interface IAerospikeClient extends Closeable {
 	// Default Policies
 	//-------------------------------------------------------
 
+	/**
+	 * Return read policy default. Use when the policy will not be modified.
+	 */
 	public Policy getReadPolicyDefault();
+
+	/**
+	 * Copy read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public Policy copyReadPolicyDefault();
+
+	/**
+	 * Return write policy default. Use when the policy will not be modified.
+	 */
 	public WritePolicy getWritePolicyDefault();
+
+	/**
+	 * Copy write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public WritePolicy copyWritePolicyDefault();
+
+	/**
+	 * Return scan policy default. Use when the policy will not be modified.
+	 */
 	public ScanPolicy getScanPolicyDefault();
+
+	/**
+	 * Copy scan policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public ScanPolicy copyScanPolicyDefault();
+
+	/**
+	 * Return query policy default. Use when the policy will not be modified.
+	 */
 	public QueryPolicy getQueryPolicyDefault();
+
+	/**
+	 * Copy query policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public QueryPolicy copyQueryPolicyDefault();
+
+	/**
+	 * Return batch header read policy default. Use when the policy will not be modified.
+	 */
 	public BatchPolicy getBatchPolicyDefault();
+
+	/**
+	 * Copy batch header read policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchPolicy copyBatchPolicyDefault();
+
+	/**
+	 * Return batch header write policy default. Use when the policy will not be modified.
+	 */
 	public BatchPolicy getBatchParentPolicyWriteDefault();
+
+	/**
+	 * Copy batch header write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchPolicy copyBatchParentPolicyWriteDefault();
+
+	/**
+	 * Return batch detail write policy default. Use when the policy will not be modified.
+	 */
 	public BatchWritePolicy getBatchWritePolicyDefault();
+
+	/**
+	 * Copy batch detail write policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchWritePolicy copyBatchWritePolicyDefault();
+
+	/**
+	 * Return batch detail delete policy default. Use when the policy will not be modified.
+	 */
 	public BatchDeletePolicy getBatchDeletePolicyDefault();
+
+	/**
+	 * Copy batch detail delete policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchDeletePolicy copyBatchDeletePolicyDefault();
+
+	/**
+	 * Return batch detail UDF policy default. Use when the policy will not be modified.
+	 */
 	public BatchUDFPolicy getBatchUDFPolicyDefault();
+
+	/**
+	 * Copy batch detail UDF policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchUDFPolicy copyBatchUDFPolicyDefault();
+
+	/**
+	 * Return info command policy default. Use when the policy will not be modified.
+	 */
 	public InfoPolicy getInfoPolicyDefault();
+
+	/**
+	 * Copy info command policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public InfoPolicy copyInfoPolicyDefault();
 
 	//-------------------------------------------------------
 	// Cluster Connection Management

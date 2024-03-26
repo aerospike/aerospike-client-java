@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -132,7 +132,7 @@ public class QueryExp extends Example {
 
 		// Predicates are applied on query results on server side.
 		// Predicates can reference any bin.
-		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
+		QueryPolicy policy = client.copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.or(
 				Exp.and(
@@ -171,7 +171,7 @@ public class QueryExp extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
+		QueryPolicy policy = client.copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.and(
 				Exp.ge(Exp.lastUpdate(), Exp.val(beginTime)),
@@ -206,7 +206,7 @@ public class QueryExp extends Example {
 		stmt.setSetName(params.set);
 		stmt.setFilter(Filter.range(binName, begin, end));
 
-		QueryPolicy policy = new QueryPolicy(client.getQueryPolicyDefault());
+		QueryPolicy policy = client.copyQueryPolicyDefault();
 		policy.filterExp = Exp.build(
 			Exp.regexCompare("prefix.*suffix", RegexFlag.ICASE | RegexFlag.NEWLINE, Exp.stringBin("bin3")));
 
