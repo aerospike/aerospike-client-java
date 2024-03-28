@@ -18,6 +18,7 @@ package com.aerospike.client.command;
 
 import java.util.List;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.BatchRead;
 import com.aerospike.client.BatchRecord;
@@ -53,7 +54,7 @@ public final class Batch {
 		@Override
 		protected void writeBuffer() {
 			if (batch.node.hasBatchAny()) {
-				setBatchOperate(batchPolicy, records, batch);
+				setBatchOperate(batchPolicy, null, null, null, records, batch);
 			}
 			else {
 				setBatchRead(batchPolicy, records, batch);
@@ -232,7 +233,9 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchOperate(batchPolicy, records, batch);
+			AerospikeClient client = cluster.client;
+			setBatchOperate(batchPolicy, client.batchWritePolicyDefault, client.batchUDFPolicyDefault,
+				client.batchDeletePolicyDefault, records, batch);
 		}
 
 		@Override
