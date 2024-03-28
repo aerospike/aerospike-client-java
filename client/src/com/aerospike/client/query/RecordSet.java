@@ -131,6 +131,13 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 		return record.record;
 	}
 
+	/**
+	 * Get KeyRecord.
+	 */
+	public KeyRecord getKeyRecord() {
+		return record;
+	}
+
 	//-------------------------------------------------------
 	// Methods for internal use only.
 	//-------------------------------------------------------
@@ -206,7 +213,7 @@ public class RecordSet implements Iterable<KeyRecord>, Closeable {
 
 		@Override
 		public KeyRecord next() {
-			KeyRecord kr = recordSet.record;
+			KeyRecord kr = recordSet.getKeyRecord();
 			more = recordSet.next();
 			return kr;
 		}

@@ -34,7 +34,7 @@ public class RecordSequenceRecordSet extends RecordSet implements RecordSequence
 	private final long taskId;
 	private volatile boolean valid = true;
 	private final BlockingQueue<KeyRecord> queue;
-	private volatile KeyRecord record;
+	protected volatile KeyRecord record;
 	private volatile AerospikeException exception;
 
 	public RecordSequenceRecordSet(long taskId, int capacity) {
@@ -107,6 +107,11 @@ public class RecordSequenceRecordSet extends RecordSet implements RecordSequence
 	@Override
 	public Record getRecord() {
 		return record.record;
+	}
+
+	@Override
+	public KeyRecord getKeyRecord() {
+		return record;
 	}
 
 	@Override
