@@ -191,17 +191,6 @@ public final class BatchAttr {
 		}
 	}
 
-	public void setWrite(Policy wp) {
-		filterExp = null;
-		readAttr = 0;
-		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS;
-		infoAttr = 0;
-		expiration = 0;
-		generation = 0;
-		hasWrite = true;
-		sendKey = wp.sendKey;
-	}
-
 	public void setWrite(BatchWritePolicy wp) {
 		filterExp = wp.filterExp;
 		readAttr = 0;
@@ -271,17 +260,6 @@ public final class BatchAttr {
 		}
 	}
 
-	public void setUDF(Policy up) {
-		filterExp = null;
-		readAttr = 0;
-		writeAttr = Command.INFO2_WRITE;
-		infoAttr = 0;
-		expiration = 0;
-		generation = 0;
-		hasWrite = true;
-		sendKey = up.sendKey;
-	}
-
 	public void setUDF(BatchUDFPolicy up) {
 		filterExp = up.filterExp;
 		readAttr = 0;
@@ -299,17 +277,6 @@ public final class BatchAttr {
 		if (up.commitLevel == CommitLevel.COMMIT_MASTER) {
 			infoAttr |= Command.INFO3_COMMIT_MASTER;
 		}
-	}
-
-	public void setDelete(Policy dp) {
-		filterExp = null;
-		readAttr = 0;
-		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DELETE;
-		infoAttr = 0;
-		expiration = 0;
-		generation = 0;
-		hasWrite = true;
-		sendKey = dp.sendKey;
 	}
 
 	public void setDelete(BatchDeletePolicy dp) {

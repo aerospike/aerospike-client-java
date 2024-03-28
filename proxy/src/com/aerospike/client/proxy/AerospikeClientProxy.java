@@ -1575,7 +1575,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
-		CommandProxy command = new BatchProxy.OperateListCommand(executor, policy, listener, records);
+		CommandProxy command = new BatchProxy.OperateListCommand(this, executor, policy, listener, records);
 		command.execute();
 	}
 
@@ -1610,7 +1610,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
-		CommandProxy command = new BatchProxy.OperateSequenceCommand(executor, policy, listener, records);
+		CommandProxy command = new BatchProxy.OperateSequenceCommand(this, executor, policy, listener, records);
 		command.execute();
 	}
 
