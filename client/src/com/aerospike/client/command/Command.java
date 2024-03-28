@@ -36,8 +36,11 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.exp.Expression;
+import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.BatchReadPolicy;
+import com.aerospike.client.policy.BatchUDFPolicy;
+import com.aerospike.client.policy.BatchWritePolicy;
 import com.aerospike.client.policy.CommitLevel;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryDuration;
@@ -743,12 +746,25 @@ public class Command {
 	// Batch Read/Write Operations
 	//--------------------------------------------------
 
-	public final void setBatchOperate(BatchPolicy policy, List<? extends BatchRecord> records, BatchNode batch) {
+	public final void setBatchOperate(
+		BatchPolicy policy,
+		BatchWritePolicy writePolicy,
+		BatchUDFPolicy udfPolicy,
+		BatchDeletePolicy deletePolicy,
+		List<? extends BatchRecord> records,
+		BatchNode batch
+	) {
 		final BatchRecordIterNative iter = new BatchRecordIterNative(records, batch);
-		setBatchOperate(policy, iter);
+		setBatchOperate(policy, writePolicy, udfPolicy, deletePolicy, iter);
 	}
 
-	public final void setBatchOperate(BatchPolicy policy, KeyIter<BatchRecord> iter) {
+	public final void setBatchOperate(
+		BatchPolicy policy,
+		BatchWritePolicy writePolicy,
+		BatchUDFPolicy udfPolicy,
+		BatchDeletePolicy deletePolicy,
+		KeyIter<BatchRecord> iter
+	) {
 		BatchRecord record;
 		BatchRecord prev = null;
 
@@ -851,13 +867,9 @@ public class Command {
 
 					case BATCH_WRITE: {
 						BatchWrite bw = (BatchWrite)record;
+						BatchWritePolicy bwp = (bw.policy != null)? bw.policy : writePolicy;
 
-						if (bw.policy != null) {
-							attr.setWrite(bw.policy);
-						}
-						else {
-							attr.setWrite(policy);
-						}
+						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
 						writeBatchOperations(key, bw.ops, attr, attr.filterExp);
 						break;
@@ -865,13 +877,9 @@ public class Command {
 
 					case BATCH_UDF: {
 						BatchUDF bu = (BatchUDF)record;
+						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : udfPolicy;
 
-						if (bu.policy != null) {
-							attr.setUDF(bu.policy);
-						}
-						else {
-							attr.setUDF(policy);
-						}
+						attr.setUDF(bup);
 						writeBatchWrite(key, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 						writeField(bu.functionName, FieldType.UDF_FUNCTION);
@@ -881,13 +889,9 @@ public class Command {
 
 					case BATCH_DELETE: {
 						BatchDelete bd = (BatchDelete)record;
+						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : deletePolicy;
 
-						if (bd.policy != null) {
-							attr.setDelete(bd.policy);
-						}
-						else {
-							attr.setDelete(policy);
-						}
+						attr.setDelete(bdp);
 						writeBatchWrite(key, attr, attr.filterExp, 0, 0);
 						break;
 					}

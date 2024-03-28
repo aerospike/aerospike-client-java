@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -75,7 +75,7 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, iter);
+			command.setBatchOperate(batchPolicy, null, null, null, iter);
 		}
 
 		@Override
@@ -120,7 +120,7 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, iter);
+			command.setBatchOperate(batchPolicy, null, null, null, iter);
 		}
 
 		@Override
@@ -164,7 +164,7 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, iter);
+			command.setBatchOperate(batchPolicy, null, null, null, iter);
 		}
 
 		@Override
@@ -417,17 +417,20 @@ public class BatchProxy {
 	//-------------------------------------------------------
 
 	public static final class OperateListCommand extends BaseCommand {
+		private final AerospikeClientProxy client;
 		private final BatchOperateListListener listener;
 		private final List<BatchRecord> records;
 		private boolean status;
 
 		public OperateListCommand(
+			AerospikeClientProxy client,
 			GrpcCallExecutor executor,
 			BatchPolicy batchPolicy,
 			BatchOperateListListener listener,
 			List<BatchRecord> records
 		) {
 			super(executor, batchPolicy, true, records.size());
+			this.client = client;
 			this.listener = listener;
 			this.records = records;
 			this.status = true;
@@ -436,7 +439,8 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, iter);
+			command.setBatchOperate(batchPolicy, client.batchWritePolicyDefault, client.batchUDFPolicyDefault,
+				client.batchDeletePolicyDefault, iter);
 		}
 
 		@Override
@@ -485,16 +489,19 @@ public class BatchProxy {
 	}
 
 	public static final class OperateSequenceCommand extends BaseCommand {
+		private final AerospikeClientProxy client;
 		private final BatchRecordSequenceListener listener;
 		private final List<BatchRecord> records;
 
 		public OperateSequenceCommand(
+			AerospikeClientProxy client,
 			GrpcCallExecutor executor,
 			BatchPolicy batchPolicy,
 			BatchRecordSequenceListener listener,
 			List<BatchRecord> records
 		) {
 			super(executor, batchPolicy, true, records.size());
+			this.client = client;
 			this.listener = listener;
 			this.records = records;
 		}
@@ -502,7 +509,8 @@ public class BatchProxy {
 		@Override
 		void writeCommand(Command command) {
 			BatchRecordIterProxy iter = new BatchRecordIterProxy(records);
-			command.setBatchOperate(batchPolicy, iter);
+			command.setBatchOperate(batchPolicy, client.batchWritePolicyDefault, client.batchUDFPolicyDefault,
+				client.batchDeletePolicyDefault, iter);
 		}
 
 		@Override

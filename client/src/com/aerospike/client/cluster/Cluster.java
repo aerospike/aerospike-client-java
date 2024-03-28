@@ -33,6 +33,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReferenceArray;
 
+import com.aerospike.client.AerospikeClient;
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Host;
 import com.aerospike.client.Log;
@@ -59,6 +60,9 @@ import com.aerospike.client.util.ThreadLocalData;
 import com.aerospike.client.util.Util;
 
 public class Cluster implements Runnable, Closeable {
+	// Client back pointer.
+	public final AerospikeClient client;
+
 	// Expected cluster name.
 	protected final String clusterName;
 
@@ -206,7 +210,8 @@ public class Cluster implements Runnable, Closeable {
 	private final AtomicLong tranCount = new AtomicLong();
 	private final AtomicLong delayQueueTimeoutCount = new AtomicLong();
 
-	public Cluster(ClientPolicy policy, Host[] hosts) {
+	public Cluster(AerospikeClient client, ClientPolicy policy, Host[] hosts) {
+		this.client = client;
 		this.clusterName = policy.clusterName;
 		this.validateClusterName = policy.validateClusterName;
 		this.tlsPolicy = policy.tlsPolicy;
