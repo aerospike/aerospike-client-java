@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2022 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -21,6 +21,7 @@ public final class FieldType {
 	public static final int TABLE = 1;
 	public static final int KEY = 2;
 	public static final int DIGEST_RIPE = 4;
+	public static final int MRT_TRID = 5;
 	public final static int TRAN_ID = 7;	// user supplied transaction id, which is simply passed back
 	public final static int SOCKET_TIMEOUT = 9;
 	public final static int RECORDS_PER_SECOND = 10;

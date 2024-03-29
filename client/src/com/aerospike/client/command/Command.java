@@ -86,6 +86,10 @@ public class Command {
 	public static final int INFO3_SC_READ_TYPE		= (1 << 6); // See below.
 	public static final int INFO3_SC_READ_RELAX		= (1 << 7); // See below.
 
+	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0);
+	public static final int INFO4_MRT_ROLL_FORWARD	= (1 << 1);
+	public static final int INFO4_MRT_ROLL_BACK		= (1 << 2);
+
 	// Interpret SC_READ bits in info3.
 	//
 	// RELAX   TYPE
@@ -149,6 +153,11 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
+		if (policy.tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
@@ -160,6 +169,10 @@ public class Command {
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
+
+		if (policy.tran != null) {
+			writeField(policy.tran.trid, FieldType.MRT_TRID);
+		}
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -245,13 +258,23 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
+		if (policy.tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
+
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.tran != null) {
+			writeField(policy.tran.trid, FieldType.MRT_TRID);
+		}
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -264,6 +287,11 @@ public class Command {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
 
+			if (policy.tran != null) {
+				dataOffset += 8 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+
 			if (policy.filterExp != null) {
 				dataOffset += policy.filterExp.size();
 				fieldCount++;
@@ -275,6 +303,10 @@ public class Command {
 			sizeBuffer();
 			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
+
+			if (policy.tran != null) {
+				writeField(policy.tran.trid, FieldType.MRT_TRID);
+			}
 
 			if (policy.filterExp != null) {
 				policy.filterExp.write(this);
@@ -1837,7 +1869,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = 0; // unused
+		dataBuffer[12] = (byte)policy.mrtCmd.attr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
