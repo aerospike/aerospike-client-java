@@ -17,8 +17,42 @@
 package com.aerospike.client.tran;
 
 /**
- * Multi-record transaction.
+ * Transaction version entry for a key.
  */
-public final class Transaction {
-	public long trid;
+public final class TranVersion {
+	private long version;
+	private boolean read;
+	private boolean write;
+
+	/**
+	 * Construct transaction version.
+	 */
+	public TranVersion(long version, boolean read, boolean write) {
+		this.version = version;
+		this.read = read;
+		this.write = write;
+	}
+
+	/**
+	 * Signify that a read has occurred with the given version.
+	 */
+	public void setRead(long version) {
+		this.version = version;
+		this.read = true;
+	}
+
+	/**
+	 * Signify that a write has occurred with the given version.
+	 */
+	public void setWrite(long version) {
+		this.version = version;
+		this.write = true;
+	}
+
+	/**
+	 * Return version.
+	 */
+	public long getVersion() {
+		return version;
+	}
 }

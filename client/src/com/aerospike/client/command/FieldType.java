@@ -20,6 +20,7 @@ public final class FieldType {
 	public static final int NAMESPACE = 0;
 	public static final int TABLE = 1;
 	public static final int KEY = 2;
+	public static final int RECORD_VERSION = 3;
 	public static final int DIGEST_RIPE = 4;
 	public static final int MRT_TRID = 5;
 	public final static int TRAN_ID = 7;	// user supplied transaction id, which is simply passed back

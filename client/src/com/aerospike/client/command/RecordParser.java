@@ -152,15 +152,25 @@ public final class RecordParser {
 	}
 
 	public Record parseRecord(boolean isOperation)  {
-		if (opCount == 0) {
-			// Bin data was not returned.
-			return new Record(null, generation, expiration);
+		// Skip key.
+		long version = 0;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.RECORD_VERSION && size == 7) {
+				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			}
+			dataOffset += size;
 		}
 
-		// Skip key.
-		for (int i = 0; i < fieldCount; i++) {
-			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4 + fieldlen;
+		if (opCount == 0) {
+			// Bin data was not returned.
+			return new Record(null, version, generation, expiration);
 		}
 
 		// Parse record.
@@ -203,6 +213,6 @@ public final class RecordParser {
 				bins.put(name, value);
 			}
 		}
-		return new Record(bins, generation, expiration);
+		return new Record(bins, version, generation, expiration);
 	}
 }

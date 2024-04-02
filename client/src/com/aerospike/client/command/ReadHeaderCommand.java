@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -58,31 +58,29 @@ public class ReadHeaderCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-		conn.updateLastUsed();
+		RecordParser rp = new RecordParser(conn, dataBuffer);
 
-		int resultCode = dataBuffer[13] & 0xFF;
+		if (rp.resultCode == ResultCode.OK) {
+			this.record = rp.parseRecord(false);
 
-		if (resultCode == 0) {
-			int generation = Buffer.bytesToInt(dataBuffer, 14);
-			int expiration = Buffer.bytesToInt(dataBuffer, 18);
-			record = new Record(null, generation, expiration);
-			return;
-		}
-
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			return;
-		}
-
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+			if (policy.tran != null) {
+				policy.tran.addRead(key, this.record.version);
 			}
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+			return;
+		}
+
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(rp.resultCode);
+			}
+			return;
+		}
+
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override

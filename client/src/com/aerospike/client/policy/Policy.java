@@ -18,16 +18,16 @@ package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.tran.MrtCmd;
-import com.aerospike.client.tran.Transaction;
+import com.aerospike.client.tran.Tran;
 import java.util.Objects;
 
 /**
  * Transaction policy attributes used in all database commands.
  */
 public class Policy {
-	public Transaction tran;
+	public Tran tran;
 
-	public MrtCmd mrtCmd;
+	public MrtCmd mrtCmd = MrtCmd.NONE;
 
 	/**
 	 * Read policy for AP (availability) namespaces.
@@ -304,7 +304,7 @@ public class Policy {
 
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
-	public void setTran(Transaction tran) {
+	public void setTran(Tran tran) {
 		this.tran = tran;
 	}
 

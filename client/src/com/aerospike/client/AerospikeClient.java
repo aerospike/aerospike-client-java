@@ -119,6 +119,9 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.tran.MrtCmd;
+import com.aerospike.client.tran.Tran;
+import com.aerospike.client.tran.TranVersion;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
@@ -572,6 +575,45 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final Cluster getCluster() {
 		return cluster;
+	}
+
+	//-------------------------------------------------------
+	// Multi-Record Transactions
+	//-------------------------------------------------------
+
+	public final Tran tranBegin() {
+		return new Tran();
+	}
+
+	public final void tranEnd(Tran tran) {
+		// TODO: Convert to a single batch call.
+		Policy policy = copyReadPolicyDefault();
+		policy.mrtCmd = MrtCmd.GET_VERSION_ONLY;
+
+		for (Map.Entry<Key,TranVersion> entry : tran.getKeys()) {
+			Key key = entry.getKey();
+			Record record = getHeader(policy, key);
+			long version = entry.getValue().getVersion();
+
+			if (record.version != version) {
+				tranRollback(key, tran);
+				throw new AerospikeException("Version mismatch: " +
+					entry.getKey().toString() + ',' + entry.getValue() + ',' + record.version);
+			}
+		}
+
+		// Commit transaction.
+		// TODO: Do need key to rollback a transaction?
+		policy.mrtCmd = MrtCmd.ROLL_FORWARD;
+		//getHeader(policy, key??);
+	}
+
+	// TODO: Do need key to rollback a transaction?
+	public final void tranRollback(Key key, Tran tran) {
+		Policy policy = copyReadPolicyDefault();
+		policy.tran = tran;
+		policy.mrtCmd = MrtCmd.ROLL_BACK;
+		getHeader(policy, key);
 	}
 
 	//-------------------------------------------------------

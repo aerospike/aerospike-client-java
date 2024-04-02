@@ -409,6 +409,11 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
+		if (policy.tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
@@ -417,6 +422,10 @@ public class Command {
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
+
+		if (policy.tran != null) {
+			writeField(policy.tran.trid, FieldType.MRT_TRID);
+		}
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -2053,8 +2062,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)policy.mrtCmd.attr;
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);

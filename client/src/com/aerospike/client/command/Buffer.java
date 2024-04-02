@@ -461,6 +461,21 @@ public final class Buffer {
 			);
 	}
 
+	/**
+	 * Convert 7 byte record version into a long for MRT comparisons.
+	 */
+	public static long versionBytesToLong(byte[] buf, int offset) {
+		return (
+			((long)(buf[offset]   & 0xFF) << 0) |
+			((long)(buf[offset+1] & 0xFF) << 8) |
+			((long)(buf[offset+2] & 0xFF) << 16) |
+			((long)(buf[offset+3] & 0xFF) << 24) |
+			((long)(buf[offset+4] & 0xFF) << 32) |
+			((long)(buf[offset+5] & 0xFF) << 40) |
+			((long)(buf[offset+6] & 0xFF) << 48)
+		);
+	}
+
 	//-------------------------------------------------------
 	// 32 bit number conversions.
 	//-------------------------------------------------------
