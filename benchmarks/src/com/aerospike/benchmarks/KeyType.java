@@ -17,5 +17,5 @@
 package com.aerospike.benchmarks;
 
 public enum KeyType {
-	STRING, INTEGER;
+	STRING, INTEGER
 }

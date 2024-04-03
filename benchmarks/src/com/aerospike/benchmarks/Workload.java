@@ -58,5 +58,5 @@ public enum Workload {
 	/**
 	 * Form business transactions
 	 */
-	TRANSACTION;
+	TRANSACTION
 }

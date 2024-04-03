@@ -17,8 +17,8 @@
 package com.aerospike.benchmarks;
 
 public class TransactionalItem {
-	private TransactionalType type;
-	private int repetitions;
+	private final TransactionalType type;
+	private final int repetitions;
 	public TransactionalItem(TransactionalType type, int repetitions) {
 		super();
 		this.type = type;

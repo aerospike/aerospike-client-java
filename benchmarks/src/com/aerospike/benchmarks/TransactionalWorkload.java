@@ -32,9 +32,9 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private enum VariationType {
 		PLUS,
 		MINUS
-	};
+	}
 
-	// These options are derived and should not be set
+    // These options are derived and should not be set
 	private int minReads;
 	private int maxReads;
 	private int minWrites;
@@ -166,7 +166,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private class WorkloadIterator implements Iterator<TransactionalItem> {
 		private int reads = 0;
 		private int writes = 0;
-		private RandomShift random;
+		private final RandomShift random;
 		private int fixedSequenceIndex = 0;
 
 		public WorkloadIterator(RandomShift random) {

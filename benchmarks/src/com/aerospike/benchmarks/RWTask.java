@@ -59,33 +59,33 @@ public abstract class RWTask {
 	protected void runCommand(RandomShift random) {
 		try {
 			switch (args.workload) {
-			case READ_UPDATE:
-			case READ_REPLACE:
-				readUpdate(random);
-				break;
+				case READ_UPDATE:
+				case READ_REPLACE:
+					readUpdate(random);
+					break;
 
-			case READ_MODIFY_UPDATE:
-				readModifyUpdate(random);
-				break;
+				case READ_MODIFY_UPDATE:
+					readModifyUpdate(random);
+					break;
 
-			case READ_MODIFY_INCREMENT:
-				readModifyIncrement(random);
-				break;
+				case READ_MODIFY_INCREMENT:
+					readModifyIncrement(random);
+					break;
 
-			case READ_MODIFY_DECREMENT:
-				readModifyDecrement(random);
-				break;
+				case READ_MODIFY_DECREMENT:
+					readModifyDecrement(random);
+					break;
 
-			case READ_FROM_FILE:
-				readFromFile(random);
-				break;
+				case READ_FROM_FILE:
+					readFromFile(random);
+					break;
 
-			case TRANSACTION:
-				runTransaction(random);
-				break;
+				case TRANSACTION:
+					runTransaction(random);
+					break;
 
-			default:
-				break;
+				default:
+					break;
 			}
 		}
 		catch (Exception e) {
@@ -93,7 +93,7 @@ public abstract class RWTask {
 				e.printStackTrace();
 			}
 			else {
-				System.out.println("Exception - " + e.toString());
+				System.out.println("Exception - " + e);
 			}
 		}
 	}
