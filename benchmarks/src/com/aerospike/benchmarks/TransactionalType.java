@@ -29,9 +29,9 @@ public enum TransactionalType {
 	MULTI_BIN_REPLACE('P', false),
 	MULTI_BIN_WRITE('W', false);
 
-	private char code;
-	private boolean read;
-	private boolean batch;
+	private final char code;
+	private final boolean read;
+	private final boolean batch;
 	private TransactionalType(char code, boolean isRead, boolean isBatch) {
 		this.code = code;
 		this.read = isRead;

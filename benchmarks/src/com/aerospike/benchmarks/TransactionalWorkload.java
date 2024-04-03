@@ -32,9 +32,9 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private enum VariationType {
 		PLUS,
 		MINUS
-	};
+	}
 
-	// These options are derived and should not be set
+    // These options are derived and should not be set
 	private int minReads;
 	private int maxReads;
 	private int minWrites;
@@ -65,18 +65,11 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 			}
 
 			String thisOptionValue = thisOption.substring(2);
-			switch(thisOption.charAt(0)) {
-				case 'r':
-					reads = Integer.parseInt(thisOptionValue);
-					break;
-				case 'w':
-					writes = Integer.parseInt(thisOptionValue);
-					break;
-				case 'v':
-					variance = thisOptionValue;
-					break;
-				case 't':
-					this.items = parseFixedTransaction(thisOptionValue);
+			switch (thisOption.charAt(0)) {
+				case 'r' -> reads = Integer.parseInt(thisOptionValue);
+				case 'w' -> writes = Integer.parseInt(thisOptionValue);
+				case 'v' -> variance = thisOptionValue;
+				case 't' -> this.items = parseFixedTransaction(thisOptionValue);
 			}
 		}
 		if (reads < 0) {
@@ -166,7 +159,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private class WorkloadIterator implements Iterator<TransactionalItem> {
 		private int reads = 0;
 		private int writes = 0;
-		private RandomShift random;
+		private final RandomShift random;
 		private int fixedSequenceIndex = 0;
 
 		public WorkloadIterator(RandomShift random) {

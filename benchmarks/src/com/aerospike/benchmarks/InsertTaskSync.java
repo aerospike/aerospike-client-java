@@ -105,9 +105,6 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 	}
 	
 	private boolean skipKey(Key key) {
-		if (args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest))) {
-			return true;
-		}
-		return false;
-	}
+        return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
+    }
 }

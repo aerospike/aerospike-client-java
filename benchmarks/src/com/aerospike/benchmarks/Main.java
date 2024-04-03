@@ -96,8 +96,8 @@ public class Main implements Log.Callback {
 		}
 	}
 
-	private Arguments args = new Arguments();
-	private Host[] hosts;
+	private final Arguments args = new Arguments();
+	private final Host[] hosts;
 	private EventLoopType eventLoopType = EventLoopType.DIRECT_NIO;
 	private int port = 3000;
 	private long nKeys;
@@ -113,8 +113,8 @@ public class Main implements Log.Callback {
 	private String filepath;
 
 	private EventLoops eventLoops;
-	private ClientPolicy clientPolicy = new ClientPolicy();
-	private CounterStore counters = new CounterStore();
+	private final ClientPolicy clientPolicy = new ClientPolicy();
+	private final CounterStore counters = new CounterStore();
 
 	public Main(String[] commandLineArgs) throws Exception {
 		boolean hasTxns = false;
@@ -1103,26 +1103,13 @@ public class Main implements Log.Callback {
 			System.out.print("bin[" + binCount + "]: ");
 
 			switch (spec.type) {
-			case INTEGER:
-				System.out.println("integer");
-				break;
-
-			case STRING:
-				System.out.println("string[" + spec.size + "]");
-				break;
-
-			case BYTES:
-				System.out.println("byte[" + spec.size + "]");
-				break;
-
-			case RANDOM:
-				System.out.println("random[" + (spec.size * 8) + "]");
-				break;
-
-			case TIMESTAMP:
-				System.out.println("timestamp");
-				break;
+				case INTEGER -> System.out.println("integer");
+				case STRING -> System.out.println("string[" + spec.size + "]");
+				case BYTES -> System.out.println("byte[" + spec.size + "]");
+				case RANDOM -> System.out.println("random[" + (spec.size * 8) + "]");
+				case TIMESTAMP -> System.out.println("timestamp");
 			}
+
 			binCount++;
 		}
 
@@ -1146,7 +1133,7 @@ public class Main implements Log.Callback {
 		String syntax = Main.class.getName() + " [<options>]";
 		formatter.printHelp(pw, 100, syntax, "options:", options, 0, 2, null);
 
-		System.out.println(sw.toString());
+		System.out.println(sw);
 	}
 
 	private static String getLatencyUsage(String latencyString) {

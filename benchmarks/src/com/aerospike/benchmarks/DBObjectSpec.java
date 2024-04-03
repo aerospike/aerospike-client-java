@@ -62,24 +62,13 @@ class DBObjectSpec {
 	}
 
 	static Type parseType(char t) {
-		switch (t) {
-			case 'I':
-				return Type.INTEGER;
-
-			case 'B':
-				return Type.BYTES;
-
-			case 'S':
-				return Type.STRING;
-
-			case 'R':
-				return Type.RANDOM;
-
-			case 'D':
-				return Type.TIMESTAMP;
-
-			default:
-				throw new RuntimeException("Invalid type: " + t);
-		}
+        return switch (t) {
+            case 'I' -> Type.INTEGER;
+            case 'B' -> Type.BYTES;
+            case 'S' -> Type.STRING;
+            case 'R' -> Type.RANDOM;
+            case 'D' -> Type.TIMESTAMP;
+            default -> throw new RuntimeException("Invalid type: " + t);
+        };
 	}
 }
