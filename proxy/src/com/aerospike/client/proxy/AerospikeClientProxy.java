@@ -100,6 +100,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.tran.Tran;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Util;
 
@@ -527,6 +528,17 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	@Override
 	public Cluster getCluster() {
 		throw new AerospikeException(NotSupported + "getCluster");
+	}
+
+	//-------------------------------------------------------
+	// Multi-Record Transactions
+	//-------------------------------------------------------
+
+	public final Tran tranBegin() {
+		return null;
+	}
+
+	public final void tranEnd(Tran tran) {
 	}
 
 	//-------------------------------------------------------

@@ -461,8 +461,25 @@ public final class Buffer {
 			);
 	}
 
+	//-------------------------------------------------------
+	// Transaction version conversions.
+	//-------------------------------------------------------
+
 	/**
-	 * Convert 7 byte record version into a long for MRT comparisons.
+	 * Convert long to a 7 byte record version for MRT.
+	 */
+	public static void longToVersionBytes(long v, byte[] buf, int offset) {
+		buf[offset++] = (byte)(v >>> 0);
+		buf[offset++] = (byte)(v >>> 8);
+		buf[offset++] = (byte)(v >>> 16);
+		buf[offset++] = (byte)(v >>> 24);
+		buf[offset++] = (byte)(v >>> 32);
+		buf[offset++] = (byte)(v >>> 40);
+		buf[offset] = (byte)(v >>> 48);
+	}
+
+	/**
+	 * Convert 7 byte record version to a long for MRT.
 	 */
 	public static long versionBytesToLong(byte[] buf, int offset) {
 		return (

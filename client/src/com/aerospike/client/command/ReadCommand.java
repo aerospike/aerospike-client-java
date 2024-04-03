@@ -81,18 +81,19 @@ public class ReadCommand extends SyncCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
+		record = rp.parseRecord(isOperation);
+
+		if (policy.tran != null) {
+			policy.tran.addRead(key, this.record.version);
+		}
 
 		if (rp.resultCode == ResultCode.OK) {
-			this.record = rp.parseRecord(isOperation);
-
-			if (policy.tran != null) {
-				policy.tran.addRead(key, this.record.version);
-			}
 			return;
 		}
 
 		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			handleNotFound(rp.resultCode);
+			record = null;
 			return;
 		}
 
@@ -100,11 +101,11 @@ public class ReadCommand extends SyncCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);
 			}
+			record = null;
 			return;
 		}
 
 		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			this.record = rp.parseRecord(isOperation);
 			handleUdfError(rp.resultCode);
 			return;
 		}

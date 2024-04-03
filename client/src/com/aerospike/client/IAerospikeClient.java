@@ -67,6 +67,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
+import com.aerospike.client.tran.Tran;
 
 /**
  * This interface's sole purpose is to allow mock frameworks to operate on
@@ -245,6 +246,13 @@ public interface IAerospikeClient extends Closeable {
 	 * Return operating cluster.
 	 */
 	public Cluster getCluster();
+
+	//-------------------------------------------------------
+	// Multi-Record Transactions
+	//-------------------------------------------------------
+
+	public Tran tranBegin();
+	public void tranEnd(Tran tran);
 
 	//-------------------------------------------------------
 	// Write Record Operations

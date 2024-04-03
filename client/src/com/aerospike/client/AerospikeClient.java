@@ -101,6 +101,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
@@ -121,7 +122,6 @@ import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.tran.MrtCmd;
 import com.aerospike.client.tran.Tran;
-import com.aerospike.client.tran.TranVersion;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
@@ -588,28 +588,33 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void tranEnd(Tran tran) {
 		// TODO: Convert to a single batch call.
 		Policy policy = copyReadPolicyDefault();
+		policy.tran = null;
 		policy.mrtCmd = MrtCmd.GET_VERSION_ONLY;
+		policy.readModeSC = ReadModeSC.LINEARIZE;
 
-		for (Map.Entry<Key,TranVersion> entry : tran.getKeys()) {
+		for (Map.Entry<Key,Long> entry : tran.getReads()) {
 			Key key = entry.getKey();
 			Record record = getHeader(policy, key);
-			long version = entry.getValue().getVersion();
+			long version = entry.getValue();
 
 			if (record.version != version) {
-				tranRollback(key, tran);
+				// For read only do not call tranAbort();
+				//tranAbort(key, tran);
 				throw new AerospikeException("Version mismatch: " +
 					entry.getKey().toString() + ',' + entry.getValue() + ',' + record.version);
 			}
 		}
 
+		System.out.println("Tran version matched: " + tran.trid);
 		// Commit transaction.
 		// TODO: Do need key to rollback a transaction?
-		policy.mrtCmd = MrtCmd.ROLL_FORWARD;
+		// ANSWER: Only for writes.
+		//policy.mrtCmd = MrtCmd.ROLL_FORWARD;
 		//getHeader(policy, key??);
 	}
 
 	// TODO: Do need key to rollback a transaction?
-	public final void tranRollback(Key key, Tran tran) {
+	public final void tranAbort(Key key, Tran tran) {
 		Policy policy = copyReadPolicyDefault();
 		policy.tran = tran;
 		policy.mrtCmd = MrtCmd.ROLL_BACK;

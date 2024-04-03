@@ -152,7 +152,7 @@ public final class RecordParser {
 	}
 
 	public Record parseRecord(boolean isOperation)  {
-		// Skip key.
+		// Parse fields.
 		long version = 0;
 
 		for (int i = 0; i < fieldCount; i++) {

@@ -54,6 +54,7 @@ import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
+import com.aerospike.client.tran.Tran;
 import com.aerospike.client.util.Packer;
 
 public class Command {
@@ -130,6 +131,7 @@ public class Command {
 	public final int serverTimeout;
 	public int socketTimeout;
 	public int totalTimeout;
+	public Long version;
 
 	public Command(int socketTimeout, int totalTimeout, int maxRetries) {
 		this.maxRetries = maxRetries;
@@ -169,10 +171,6 @@ public class Command {
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
-
-		if (policy.tran != null) {
-			writeField(policy.tran.trid, FieldType.MRT_TRID);
-		}
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -254,14 +252,11 @@ public class Command {
 		end();
 	}
 
-	private final void setRead(Policy policy, Key key) {
+	private void setRead(Policy policy, Key key) {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		if (policy.tran != null) {
-			dataOffset += 8 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
+		fieldCount += tranReadSize(key, policy.tran);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -271,10 +266,7 @@ public class Command {
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 		writeKey(policy, key);
-
-		if (policy.tran != null) {
-			writeField(policy.tran.trid, FieldType.MRT_TRID);
-		}
+		tranReadWrite(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -287,10 +279,7 @@ public class Command {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
 
-			if (policy.tran != null) {
-				dataOffset += 8 + FIELD_HEADER_SIZE;
-				fieldCount++;
-			}
+			fieldCount += tranReadSize(key, policy.tran);
 
 			if (policy.filterExp != null) {
 				dataOffset += policy.filterExp.size();
@@ -303,10 +292,7 @@ public class Command {
 			sizeBuffer();
 			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
-
-			if (policy.tran != null) {
-				writeField(policy.tran.trid, FieldType.MRT_TRID);
-			}
+			tranReadWrite(policy.tran);
 
 			if (policy.filterExp != null) {
 				policy.filterExp.write(this);
@@ -409,10 +395,7 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		if (policy.tran != null) {
-			dataOffset += 8 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
+		fieldCount += tranReadSize(key, policy.tran);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -422,10 +405,7 @@ public class Command {
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
-
-		if (policy.tran != null) {
-			writeField(policy.tran.trid, FieldType.MRT_TRID);
-		}
+		tranReadWrite(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -2022,8 +2002,9 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
+		dataBuffer[12] = (byte)policy.mrtCmd.attr;
 
-		for (int i = 12; i < 18; i++) {
+		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
 		}
 		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
@@ -2199,6 +2180,39 @@ public class Command {
 		dataBuffer[dataOffset++] = 0;
 		dataBuffer[dataOffset++] = 0;
 		dataBuffer[dataOffset++] = 0;
+	}
+
+	private int tranReadSize(Key key, Tran tran) {
+		int fieldCount = 0;
+
+		if (tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+
+			version = tran.getVersion(key);
+
+			if (version != null) {
+				dataOffset += 7 + FIELD_HEADER_SIZE;
+				fieldCount++;
+			}
+		}
+		return fieldCount;
+	}
+
+	private void tranReadWrite(Tran tran) {
+		if (tran != null) {
+			writeField(tran.trid, FieldType.MRT_TRID);
+
+			if (version != null) {
+				writeFieldVersion();
+			}
+		}
+	}
+
+	private void writeFieldVersion() {
+		writeFieldHeader(7, FieldType.RECORD_VERSION);
+		Buffer.longToVersionBytes(version.longValue(), dataBuffer, dataOffset);
+		dataOffset += 7;
 	}
 
 	private final void writeField(Value value, int type) {

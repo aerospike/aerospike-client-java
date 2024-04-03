@@ -19,6 +19,7 @@ package com.aerospike.client.tran;
 import com.aerospike.client.Key;
 import com.aerospike.client.util.RandomShift;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -27,14 +28,18 @@ import java.util.Set;
  */
 public final class Tran {
 	public final long trid;
-	private final HashMap<Key,TranVersion> keys;
+	// TODO: Store namespace at top level for verification purposes?
+	// TODO: set hash code for Key/digest.
+	private final HashMap<Key,Long> reads;
+	private final HashSet<byte[]> writes;
 
 	/**
 	 * Create transaction with given transaction id.
 	 */
 	public Tran(long trid) {
 		this.trid = trid;
-		keys = new HashMap<>();
+		reads = new HashMap<>();
+		writes = new HashSet<>();
 	}
 
 	/**
@@ -42,41 +47,35 @@ public final class Tran {
 	 */
 	public Tran() {
 		trid = new RandomShift().nextLong();
-		keys = new HashMap<>();
+		reads = new HashMap<>();
+		writes = new HashSet<>();
 	}
 
 	/**
 	 * Add record key to reads hashmap. For internal use only.
 	 */
 	public void addRead(Key key, long version) {
-		TranVersion tv = keys.get(key);
-
-		if (tv == null) {
-			keys.put(key, new TranVersion(version, true, false));
-		}
-		else {
-			tv.setRead(version);
-		}
+		reads.put(key, version);
 	}
 
 	/**
 	 * Add record key to writes hashmap. For internal use only.
 	 */
-	public void addWrite(Key key, long version) {
-		TranVersion tv = keys.get(key);
-
-		if (tv == null) {
-			keys.put(key, new TranVersion(version, false, true));
-		}
-		else {
-			tv.setWrite(version);
-		}
+	public void addWrite(Key key) {
+		writes.add(key.digest);
 	}
 
 	/**
-	 * Get all keys and their versions.
+	 * Get all digests and their versions.
 	 */
-	public Set<Map.Entry<Key,TranVersion>> getKeys() {
-		return keys.entrySet();
+	public Long getVersion(Key key) {
+		return reads.get(key);
+	}
+
+	/**
+	 * Get all digests and their versions.
+	 */
+	public Set<Map.Entry<Key,Long>> getReads() {
+		return reads.entrySet();
 	}
 }
