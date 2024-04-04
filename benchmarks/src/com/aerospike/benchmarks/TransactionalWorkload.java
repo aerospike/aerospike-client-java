@@ -65,11 +65,18 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 			}
 
 			String thisOptionValue = thisOption.substring(2);
-			switch (thisOption.charAt(0)) {
-				case 'r' -> reads = Integer.parseInt(thisOptionValue);
-				case 'w' -> writes = Integer.parseInt(thisOptionValue);
-				case 'v' -> variance = thisOptionValue;
-				case 't' -> this.items = parseFixedTransaction(thisOptionValue);
+			switch(thisOption.charAt(0)) {
+				case 'r':
+					reads = Integer.parseInt(thisOptionValue);
+					break;
+				case 'w':
+					writes = Integer.parseInt(thisOptionValue);
+					break;
+				case 'v':
+					variance = thisOptionValue;
+					break;
+				case 't':
+					this.items = parseFixedTransaction(thisOptionValue);
 			}
 		}
 		if (reads < 0) {
