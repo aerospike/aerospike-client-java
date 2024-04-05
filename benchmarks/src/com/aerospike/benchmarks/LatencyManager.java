@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,9 +20,9 @@ import java.io.PrintStream;
 
 public interface LatencyManager {
 
-	public void add(long elapsed);
+	void add(long elapsed);
 
-	public void printHeader(PrintStream stream);
+	void printHeader(PrintStream stream);
 
 	/**
 	 * Print latency percents for specified cumulative ranges.
@@ -32,9 +32,9 @@ public interface LatencyManager {
 	 * affects performance.  Fortunately, the values will even out over time
 	 * (ie. no double counting).
 	 */
-	public void printResults(PrintStream stream, String prefix);
+	void printResults(PrintStream stream, String prefix);
 
-	public void printSummaryHeader(PrintStream stream);
+	void printSummaryHeader(PrintStream stream);
 
-	public void printSummary(PrintStream stream, String prefix);
+	void printSummary(PrintStream stream, String prefix);
 }

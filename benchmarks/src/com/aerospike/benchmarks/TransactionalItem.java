@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -17,8 +17,9 @@
 package com.aerospike.benchmarks;
 
 public class TransactionalItem {
-	private TransactionalType type;
-	private int repetitions;
+	private final TransactionalType type;
+	private final int repetitions;
+
 	public TransactionalItem(TransactionalType type, int repetitions) {
 		super();
 		this.type = type;
