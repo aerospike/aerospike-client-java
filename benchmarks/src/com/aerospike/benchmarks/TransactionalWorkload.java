@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,7 +32,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private enum VariationType {
 		PLUS,
 		MINUS
-	};
+	}
 
 	// These options are derived and should not be set
 	private int minReads;
@@ -166,7 +166,7 @@ public class TransactionalWorkload implements Iterable<TransactionalItem>{
 	private class WorkloadIterator implements Iterator<TransactionalItem> {
 		private int reads = 0;
 		private int writes = 0;
-		private RandomShift random;
+		private final RandomShift random;
 		private int fixedSequenceIndex = 0;
 
 		public WorkloadIterator(RandomShift random) {

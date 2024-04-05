@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -25,21 +25,21 @@ public class LatencyManagerYcsb implements LatencyManager {
 	public static final String BUCKETS = "histogram.buckets";
 	public static final String BUCKETS_DEFAULT = "1000";
 
-	private AtomicInteger _buckets;
-	private AtomicLongArray histogram;
-	private AtomicLong histogramoverflow;
-	private AtomicInteger operations;
-	private AtomicLong totallatency;
-	private AtomicInteger warmupCount;
+	private final AtomicInteger _buckets;
+	private final AtomicLongArray histogram;
+	private final AtomicLong histogramoverflow;
+	private final AtomicInteger operations;
+	private final AtomicLong totallatency;
+	private final AtomicInteger warmupCount;
 	private volatile boolean warmupComplete = false;
 
 	//keep a windowed version of these stats for printing status
-	private AtomicInteger windowoperations;
-	private AtomicLong windowtotallatency;
+	private final AtomicInteger windowoperations;
+	private final AtomicLong windowtotallatency;
 
-	private AtomicLong min;
-	private AtomicLong max;
-	private String name;
+	private final AtomicLong min;
+	private final AtomicLong max;
+	private final String name;
 
 	public LatencyManagerYcsb(String name, int warmupCount) {
 		this.name = name;
@@ -125,7 +125,7 @@ public class LatencyManagerYcsb implements LatencyManager {
 			}
 		}
 		buffer.append(']');
-		exporter.println(buffer.toString());
+		exporter.println(buffer);
 		windowoperations.set(0);
 		windowtotallatency.set(0);
 	}
