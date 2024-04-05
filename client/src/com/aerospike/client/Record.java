@@ -34,9 +34,9 @@ public final class Record {
 	public final Map<String,Object> bins;
 
 	/**
-	 * Record version used in MRT.
+	 * Record version used in MRT. Can be null.
 	 */
-	public final long version;
+	public final Long version;
 
 	/**
 	 * Record modification count.
@@ -57,7 +57,7 @@ public final class Record {
 		int expiration
 	) {
 		this.bins = bins;
-		this.version = 0;
+		this.version = null;
 		this.generation = generation;
 		this.expiration = expiration;
 	}
@@ -67,7 +67,7 @@ public final class Record {
 	 */
 	public Record(
 		Map<String,Object> bins,
-		long version,
+		Long version,
 		int generation,
 		int expiration
 	) {

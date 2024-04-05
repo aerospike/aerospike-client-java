@@ -153,7 +153,7 @@ public final class RecordParser {
 
 	public Record parseRecord(boolean isOperation)  {
 		// Parse fields.
-		long version = 0;
+		Long version = null;
 
 		for (int i = 0; i < fieldCount; i++) {
 			int len = Buffer.bytesToInt(dataBuffer, dataOffset);

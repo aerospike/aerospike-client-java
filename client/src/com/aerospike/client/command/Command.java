@@ -155,10 +155,7 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		if (policy.tran != null) {
-			dataOffset += 8 + FIELD_HEADER_SIZE;
-			fieldCount++;
-		}
+		fieldCount += sizeTran(key, policy.tran);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -171,6 +168,7 @@ public class Command {
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
+		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -256,7 +254,7 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		fieldCount += tranReadSize(key, policy.tran);
+		fieldCount += sizeTran(key, policy.tran);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -266,7 +264,7 @@ public class Command {
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 		writeKey(policy, key);
-		tranReadWrite(policy.tran);
+		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -279,7 +277,7 @@ public class Command {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
 
-			fieldCount += tranReadSize(key, policy.tran);
+			fieldCount += sizeTran(key, policy.tran);
 
 			if (policy.filterExp != null) {
 				dataOffset += policy.filterExp.size();
@@ -292,7 +290,7 @@ public class Command {
 			sizeBuffer();
 			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
-			tranReadWrite(policy.tran);
+			writeTran(policy.tran);
 
 			if (policy.filterExp != null) {
 				policy.filterExp.write(this);
@@ -395,7 +393,7 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		fieldCount += tranReadSize(key, policy.tran);
+		fieldCount += sizeTran(key, policy.tran);
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -405,7 +403,7 @@ public class Command {
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
-		tranReadWrite(policy.tran);
+		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -2182,14 +2180,14 @@ public class Command {
 		dataBuffer[dataOffset++] = 0;
 	}
 
-	private int tranReadSize(Key key, Tran tran) {
+	private int sizeTran(Key key, Tran tran) {
 		int fieldCount = 0;
 
 		if (tran != null) {
 			dataOffset += 8 + FIELD_HEADER_SIZE;
 			fieldCount++;
 
-			version = tran.getVersion(key);
+			version = tran.getReadVersion(key);
 
 			if (version != null) {
 				dataOffset += 7 + FIELD_HEADER_SIZE;
@@ -2199,7 +2197,7 @@ public class Command {
 		return fieldCount;
 	}
 
-	private void tranReadWrite(Tran tran) {
+	private void writeTran(Tran tran) {
 		if (tran != null) {
 			writeField(tran.trid, FieldType.MRT_TRID);
 

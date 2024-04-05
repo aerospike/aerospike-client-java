@@ -31,7 +31,7 @@ public final class Tran {
 	// TODO: Store namespace at top level for verification purposes?
 	// TODO: set hash code for Key/digest.
 	private final HashMap<Key,Long> reads;
-	private final HashSet<byte[]> writes;
+	private final HashSet<Key> writes;
 
 	/**
 	 * Create transaction with given transaction id.
@@ -54,28 +54,49 @@ public final class Tran {
 	/**
 	 * Add record key to reads hashmap. For internal use only.
 	 */
-	public void addRead(Key key, long version) {
+	public void addRead(Key key, Long version) {
 		reads.put(key, version);
+	}
+
+	/**
+	 * Remove record key from reads hashmap. For internal use only.
+	 */
+	public void removeRead(Key key) {
+		reads.remove(key);
+	}
+
+	/**
+	 * Get record version for a given key.
+	 */
+	public Long getReadVersion(Key key) {
+		return reads.get(key);
+	}
+
+	/**
+	 * Get all read keys and their versions.
+	 */
+	public Set<Map.Entry<Key,Long>> getReads() {
+		return reads.entrySet();
 	}
 
 	/**
 	 * Add record key to writes hashmap. For internal use only.
 	 */
 	public void addWrite(Key key) {
-		writes.add(key.digest);
+		writes.add(key);
 	}
 
 	/**
-	 * Get all digests and their versions.
+	 * Remove record key from writes hashmap. For internal use only.
 	 */
-	public Long getVersion(Key key) {
-		return reads.get(key);
+	public void removeWrite(Key key) {
+		writes.remove(key);
 	}
 
 	/**
-	 * Get all digests and their versions.
+	 * Get all write keys and their versions.
 	 */
-	public Set<Map.Entry<Key,Long>> getReads() {
-		return reads.entrySet();
+	public Set<Key> getWrites() {
+		return writes;
 	}
 }

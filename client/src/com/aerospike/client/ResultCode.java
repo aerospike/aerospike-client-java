@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -232,6 +232,16 @@ public final class ResultCode {
 	 * Write command loses conflict to XDR.
 	 */
 	public static final int LOST_CONFLICT = 28;
+
+	/**
+	 * MRT record blocked by a different transaction.
+	 */
+	public static final int MRT_BLOCKED = 29;
+
+	/**
+	 * MRT read verify failed. Some other command changed record outside of the transaction.
+	 */
+	public static final int MRT_CONFLICT = 30;
 
 	/**
 	 * There are no more records left for query.
@@ -581,6 +591,12 @@ public final class ResultCode {
 
 		case LOST_CONFLICT:
 			return "Transaction failed due to conflict with XDR";
+
+		case MRT_BLOCKED:
+			return "MRT record blocked by a different transaction";
+
+		case MRT_CONFLICT:
+			return "MRT read verify failed";
 
 		case QUERY_END:
 			return "Query end";

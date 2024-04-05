@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -22,6 +22,7 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -69,13 +70,34 @@ public final class WriteCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-		conn.updateLastUsed();
+		int resultCode;
 
-		int resultCode = dataBuffer[13] & 0xFF;
+		if (policy.tran != null) {
+			RecordParser rp = new RecordParser(conn, dataBuffer);
+			Record record = rp.parseRecord(false);
 
-		if (resultCode == 0) {
+			if (record.version != null) {
+				policy.tran.addRead(key, record.version);
+				policy.tran.removeWrite(key);
+			}
+			else {
+				if (rp.resultCode == ResultCode.OK) {
+					policy.tran.removeRead(key);
+				}
+				else {
+					policy.tran.removeWrite(key);
+				}
+			}
+			resultCode = rp.resultCode;
+		}
+		else {
+			// Read header.
+			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+			conn.updateLastUsed();
+			resultCode = dataBuffer[13] & 0xFF;
+		}
+
+		if (resultCode == ResultCode.OK) {
 			return;
 		}
 

@@ -21,6 +21,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -599,26 +600,41 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 			if (record.version != version) {
 				// For read only do not call tranAbort();
-				//tranAbort(key, tran);
+				tranAbort(tran);
 				throw new AerospikeException("Version mismatch: " +
 					entry.getKey().toString() + ',' + entry.getValue() + ',' + record.version);
 			}
 		}
 
 		System.out.println("Tran version matched: " + tran.trid);
+
 		// Commit transaction.
-		// TODO: Do need key to rollback a transaction?
-		// ANSWER: Only for writes.
-		//policy.mrtCmd = MrtCmd.ROLL_FORWARD;
-		//getHeader(policy, key??);
+		WritePolicy writePolicy = copyWritePolicyDefault();
+		writePolicy.tran = tran;
+		writePolicy.mrtCmd = MrtCmd.ROLL_FORWARD;
+
+		Bin[] bins = new Bin[0];
+
+		// TODO: Handle errors.
+		for (Key key : tran.getWrites()) {
+			WriteCommand command = new WriteCommand(cluster, writePolicy, key, bins, Operation.Type.WRITE);
+			command.execute();
+			put(writePolicy, key);
+		}
 	}
 
-	// TODO: Do need key to rollback a transaction?
-	public final void tranAbort(Key key, Tran tran) {
-		Policy policy = copyReadPolicyDefault();
-		policy.tran = tran;
-		policy.mrtCmd = MrtCmd.ROLL_BACK;
-		getHeader(policy, key);
+	public final void tranAbort(Tran tran) {
+		WritePolicy writePolicy = copyWritePolicyDefault();
+		writePolicy.tran = tran;
+		writePolicy.mrtCmd = MrtCmd.ROLL_BACK;
+
+		Bin[] bins = new Bin[0];
+
+		// TODO: Handle errors.
+		for (Key key : tran.getWrites()) {
+			WriteCommand command = new WriteCommand(cluster, writePolicy, key, bins, Operation.Type.WRITE);
+			command.execute();
+		}
 	}
 
 	//-------------------------------------------------------
@@ -639,6 +655,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			policy.tran.addWrite(key);
 		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();

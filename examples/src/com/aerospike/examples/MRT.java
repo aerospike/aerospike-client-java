@@ -23,6 +23,7 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.ReadModeSC;
+import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.tran.MrtCmd;
 import com.aerospike.client.tran.Tran;
 
@@ -37,18 +38,65 @@ public class MRT extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		Key key = new Key(params.namespace, params.set, "mrtkey");
-		Bin bin1 = new Bin("bin", "val");
+		//tranWrite(client, params);
+		//tranBlock(client, params);
+		tranWriteRead(client, params);
+	}
 
-		//client.put(params.writePolicy, key, bin1);
-		client.delete(params.writePolicy, key);
+	public void tranWrite(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey1");
+
+		client.put(params.writePolicy, key, new Bin("bin", "val"));
 
 		Tran tran = client.tranBegin();
 
-		Policy policy = client.copyReadPolicyDefault();
-		policy.tran = tran;
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.put(params.writePolicy, key, new Bin("bin", "val2"));
 
+		client.tranEnd(tran);
+
+		Policy policy = client.copyReadPolicyDefault();
 		Record record = client.get(policy, key);
+
+		if (record != null) {
+			System.out.println("Record: " + record.toString());
+		}
+		else {
+			System.out.println("Record is null");
+		}
+	}
+
+	public void tranBlock(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey2");
+
+		client.put(params.writePolicy, key, new Bin("bin", "val"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.put(wp, key, new Bin("bin", "val2"));
+
+		// This write should be blocked.
+		client.put(params.writePolicy, key, new Bin("bin", "val3"));
+
+		client.tranEnd(tran);
+	}
+
+	public void tranWriteRead(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey3");
+
+		client.put(params.writePolicy, key, new Bin("bin", "val"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.put(wp, key, new Bin("bin", "val2"));
+
+		Record record = client.get(params.policy, key);
+
 		if (record != null) {
 			System.out.println("Record: " + record.toString());
 		}
@@ -56,12 +104,15 @@ public class MRT extends Example {
 			System.out.println("Record is null");
 		}
 
-		client.put(params.writePolicy, key, bin1);
-		//client.delete(params.writePolicy, key);
-
-		//record = client.get(policy, key);
-		//System.out.println("Record: " + record.toString());
-
 		client.tranEnd(tran);
+
+		record = client.get(params.policy, key);
+
+		if (record != null) {
+			System.out.println("Record: " + record.toString());
+		}
+		else {
+			System.out.println("Record is null");
+		}
 	}
 }
