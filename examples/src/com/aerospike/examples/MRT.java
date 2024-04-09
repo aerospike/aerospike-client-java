@@ -40,7 +40,9 @@ public class MRT extends Example {
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		//tranWrite(client, params);
 		//tranBlock(client, params);
-		tranWriteRead(client, params);
+		//tranWriteRead(client, params);
+		//tranRollback(client, params);
+		tranReadOutsideOfTran(client, params);
 	}
 
 	public void tranWrite(IAerospikeClient client, Parameters params) {
@@ -114,5 +116,63 @@ public class MRT extends Example {
 		else {
 			System.out.println("Record is null");
 		}
+	}
+
+	public void tranRollback(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey4");
+
+		client.put(params.writePolicy, key, new Bin("bin", "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.put(wp, key, new Bin("bin", "val2"));
+
+		Policy p = new Policy(params.policy);
+		p.tran = tran;
+
+		Record record = client.get(p, key);
+
+		if (record != null) {
+			System.out.println("Record: " + record.toString());
+		}
+		else {
+			System.out.println("Record is null");
+		}
+
+		client.tranAbort(tran);
+
+		record = client.get(params.policy, key);
+
+		if (record != null) {
+			System.out.println("Record: " + record.toString());
+		}
+		else {
+			System.out.println("Record is null");
+		}
+	}
+
+	public void tranReadOutsideOfTran(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey5");
+
+		client.put(params.writePolicy, key, new Bin("bin", "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.put(wp, key, new Bin("bin", "val2"));
+
+		Record record = client.get(params.policy, key);
+
+		if (record != null) {
+			System.out.println("Record: " + record.toString());
+		}
+		else {
+			System.out.println("Record is null");
+		}
+
+		client.tranEnd(tran);
 	}
 }

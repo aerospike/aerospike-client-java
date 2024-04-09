@@ -253,6 +253,7 @@ public interface IAerospikeClient extends Closeable {
 
 	public Tran tranBegin();
 	public void tranEnd(Tran tran);
+	public void tranAbort(Tran tran);
 
 	//-------------------------------------------------------
 	// Write Record Operations
