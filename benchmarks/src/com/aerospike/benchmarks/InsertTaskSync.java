@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -15,9 +15,6 @@
  * the License.
  */
 package com.aerospike.benchmarks;
-
-import java.util.HashMap;
-import java.util.Map;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
@@ -87,11 +84,11 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 	private void put(Key key, Bin[] bins) {
 		if (counters.write.latency != null) {
 			long begin = System.nanoTime();
-			
+
 			if (! skipKey(key)) {
 				client.put(args.writePolicy, key, bins);
 			}
-			
+
 			long elapsed = System.nanoTime() - begin;
 			counters.write.count.getAndIncrement();
 			counters.write.latency.add(elapsed);
@@ -103,11 +100,8 @@ public final class InsertTaskSync extends InsertTask implements Runnable {
 			counters.write.count.getAndIncrement();
 		}
 	}
-	
+
 	private boolean skipKey(Key key) {
-		if (args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest))) {
-			return true;
-		}
-		return false;
-	}
+        return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
+    }
 }
