@@ -17,7 +17,7 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
-import com.aerospike.client.tran.MrtCmd;
+import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.tran.Tran;
 import java.util.Objects;
 
@@ -25,9 +25,19 @@ import java.util.Objects;
  * Transaction policy attributes used in all database commands.
  */
 public class Policy {
+	/**
+	 * Multi-record transaction identifier.
+	 * <p>
+	 * Default: null
+	 */
 	public Tran tran;
 
-	public MrtCmd mrtCmd = MrtCmd.NONE;
+	/**
+	 * Multi-record transaction operation.
+	 * <p>
+	 * Default: {@link TranOp#NONE}
+	 */
+	public TranOp tranOp = TranOp.NONE;
 
 	/**
 	 * Read policy for AP (availability) namespaces.
@@ -256,7 +266,7 @@ public class Policy {
 	 */
 	public Policy(Policy other) {
 		this.tran = other.tran;
-		this.mrtCmd = other.mrtCmd;
+		this.tranOp = other.tranOp;
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
@@ -308,8 +318,8 @@ public class Policy {
 		this.tran = tran;
 	}
 
-	public void setMrtCmd(MrtCmd mrtCmd) {
-		this.mrtCmd = mrtCmd;
+	public void setTranOp(TranOp tranOp) {
+		this.tranOp = tranOp;
 	}
 
 	public void setReadModeAP(ReadModeAP readModeAP) {
@@ -373,11 +383,11 @@ public class Policy {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Policy policy = (Policy) o;
-		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(tran, policy.tran) && mrtCmd == policy.mrtCmd && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
+		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(tran, policy.tran) && tranOp == policy.tranOp && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(tran, mrtCmd, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
+		return Objects.hash(tran, tranOp, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
 	}
 }

@@ -21,7 +21,6 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -121,7 +120,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.tran.MrtCmd;
+import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.tran.Tran;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
@@ -590,7 +589,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		// TODO: Convert to a single batch call.
 		Policy policy = copyReadPolicyDefault();
 		policy.tran = null;
-		policy.mrtCmd = MrtCmd.GET_VERSION_ONLY;
+		policy.tranOp = TranOp.GET_VERSION_ONLY;
 		policy.readModeSC = ReadModeSC.LINEARIZE;
 
 		for (Map.Entry<Key,Long> entry : tran.getReads()) {
@@ -611,7 +610,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		// Commit transaction.
 		WritePolicy writePolicy = copyWritePolicyDefault();
 		writePolicy.tran = tran;
-		writePolicy.mrtCmd = MrtCmd.ROLL_FORWARD;
+		writePolicy.tranOp = TranOp.ROLL_FORWARD;
 
 		Bin[] bins = new Bin[0];
 
@@ -626,7 +625,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final void tranAbort(Tran tran) {
 		WritePolicy writePolicy = copyWritePolicyDefault();
 		writePolicy.tran = tran;
-		writePolicy.mrtCmd = MrtCmd.ROLL_BACK;
+		writePolicy.tranOp = TranOp.ROLL_BACK;
 
 		Bin[] bins = new Bin[0];
 

@@ -1856,7 +1856,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.mrtCmd.attr;
+		dataBuffer[12] = (byte)policy.tranOp.attr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
@@ -2000,7 +2000,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.mrtCmd.attr;
+		dataBuffer[12] = (byte)policy.tranOp.attr;
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -2041,7 +2041,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.mrtCmd.attr;
+		dataBuffer[12] = (byte)policy.tranOp.attr;
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;

@@ -19,12 +19,9 @@ package com.aerospike.examples;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
-import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.WritePolicy;
-import com.aerospike.client.tran.MrtCmd;
 import com.aerospike.client.tran.Tran;
 
 public class MRT extends Example {

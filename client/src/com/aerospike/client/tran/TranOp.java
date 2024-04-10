@@ -1,6 +1,6 @@
 package com.aerospike.client.tran;
 
-public enum MrtCmd {
+public enum TranOp {
     // TODO: Make this a flags bitmap.
     NONE(0),
     GET_VERSION_ONLY(1),
@@ -9,7 +9,7 @@ public enum MrtCmd {
 
     public final int attr;
 
-    MrtCmd(int attr) {
+    TranOp(int attr) {
         this.attr = attr;
     }
 }
