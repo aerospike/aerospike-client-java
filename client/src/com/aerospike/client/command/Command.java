@@ -55,6 +55,7 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.tran.Tran;
+import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.util.Packer;
 
 public class Command {
@@ -145,6 +146,60 @@ public class Command {
 			this.socketTimeout = socketTimeout;
 			this.serverTimeout = 0;
 		}
+	}
+
+	//--------------------------------------------------
+	// Multi-record Transactions
+	//--------------------------------------------------
+
+	public final void setTranRead(Policy policy, Key key) {
+		begin();
+		int fieldCount = estimateKeySize(key);
+
+		sizeBuffer();
+		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE;
+		dataBuffer[9] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+		dataBuffer[10] = (byte)0;
+		dataBuffer[11] = (byte)Command.INFO3_SC_READ_TYPE;
+		dataBuffer[12] = (byte)TranOp.GET_VERSION_ONLY.attr;
+
+		for (int i = 13; i < 18; i++) {
+			dataBuffer[i] = 0;
+		}
+
+		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(0, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
+		end();
+	}
+
+	public final void setTranWrite(WritePolicy policy, Key key, Tran tran, TranOp tranOp) {
+		begin();
+		int fieldCount = estimateKeySize(key);
+
+		fieldCount += sizeTran(key, tran);
+
+		sizeBuffer();
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[9]  = (byte)0;
+		dataBuffer[10] = (byte)Command.INFO2_WRITE;
+		dataBuffer[11] = (byte)0;
+		dataBuffer[12] = (byte)tranOp.attr;
+		dataBuffer[13] = 0; // clear the result code
+		Buffer.intToBytes(0, dataBuffer, 14);
+		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
+		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
+		Buffer.shortToBytes(0, dataBuffer, 28);
+		dataOffset = MSG_TOTAL_HEADER_SIZE;
+
+		writeKey(key);
+		writeTran(tran);
+		end();
 	}
 
 	//--------------------------------------------------
@@ -399,7 +454,6 @@ public class Command {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
 		}
-		estimateOperationSize((String)null);
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
@@ -1856,7 +1910,7 @@ public class Command {
 		dataBuffer[9]  = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.tranOp.attr;
+		dataBuffer[12] = 0;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(generation, dataBuffer, 14);
 		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
@@ -2000,7 +2054,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)writeAttr;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.tranOp.attr;
+		dataBuffer[12] = (byte)0;
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -2041,7 +2095,7 @@ public class Command {
 		dataBuffer[9] = (byte)readAttr;
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)infoAttr;
-		dataBuffer[12] = (byte)policy.tranOp.attr;
+		dataBuffer[12] = (byte)0;
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;

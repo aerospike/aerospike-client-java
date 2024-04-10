@@ -99,4 +99,11 @@ public final class Tran {
 	public Set<Key> getWrites() {
 		return writes;
 	}
+
+	/**
+	 * Return true if a write occurred within this transaction.
+	 */
+	public boolean hasWrite() {
+		return writes.size() > 0;
+	}
 }

@@ -153,20 +153,7 @@ public final class RecordParser {
 
 	public Record parseRecord(boolean isOperation)  {
 		// Parse fields.
-		Long version = null;
-
-		for (int i = 0; i < fieldCount; i++) {
-			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-
-			int type = dataBuffer[dataOffset++];
-			int size = len - 1;
-
-			if (type == FieldType.RECORD_VERSION && size == 7) {
-				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
-			}
-			dataOffset += size;
-		}
+		Long version = parseVersion();
 
 		if (opCount == 0) {
 			// Bin data was not returned.
@@ -214,5 +201,23 @@ public final class RecordParser {
 			}
 		}
 		return new Record(bins, version, generation, expiration);
+	}
+
+	public Long parseVersion() {
+		Long version = null;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.RECORD_VERSION && size == 7) {
+				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			}
+			dataOffset += size;
+		}
+		return version;
 	}
 }

@@ -72,6 +72,8 @@ import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
+import com.aerospike.client.command.TranReadCommand;
+import com.aerospike.client.command.TranWriteCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -101,7 +103,6 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
@@ -585,53 +586,40 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return new Tran();
 	}
 
+	// TODO: Should WritePolicy be passed as argument?
 	public final void tranEnd(Tran tran) {
 		// TODO: Convert to a single batch call.
-		Policy policy = copyReadPolicyDefault();
-		policy.tran = null;
-		policy.tranOp = TranOp.GET_VERSION_ONLY;
-		policy.readModeSC = ReadModeSC.LINEARIZE;
-
+		// Validate record versions.
 		for (Map.Entry<Key,Long> entry : tran.getReads()) {
 			Key key = entry.getKey();
-			Record record = getHeader(policy, key);
-			long version = entry.getValue();
+			Long expected = entry.getValue();
 
-			if (record.version != version) {
-				// For read only do not call tranAbort();
-				tranAbort(tran);
+			TranReadCommand command = new TranReadCommand(cluster, readPolicyDefault, key);
+			command.execute();
+			Long received = command.getVersion();
+
+			if (expected == null || received == null || expected.longValue() != received.longValue()) {
+				if (tran.hasWrite()) {
+					tranAbort(tran);
+				}
 				throw new AerospikeException("Version mismatch: " +
-					entry.getKey().toString() + ',' + entry.getValue() + ',' + record.version);
+					entry.getKey().toString() + ',' + expected + ',' + received);
 			}
 		}
 
 		System.out.println("Tran version matched: " + tran.trid);
 
-		// Commit transaction.
-		WritePolicy writePolicy = copyWritePolicyDefault();
-		writePolicy.tran = tran;
-		writePolicy.tranOp = TranOp.ROLL_FORWARD;
-
-		Bin[] bins = new Bin[0];
-
 		// TODO: Handle errors.
 		for (Key key : tran.getWrites()) {
-			WriteCommand command = new WriteCommand(cluster, writePolicy, key, bins, Operation.Type.WRITE);
+			TranWriteCommand command = new TranWriteCommand(cluster, writePolicyDefault, key, tran, TranOp.ROLL_FORWARD);
 			command.execute();
-			put(writePolicy, key);
 		}
 	}
 
 	public final void tranAbort(Tran tran) {
-		WritePolicy writePolicy = copyWritePolicyDefault();
-		writePolicy.tran = tran;
-		writePolicy.tranOp = TranOp.ROLL_BACK;
-
-		Bin[] bins = new Bin[0];
-
 		// TODO: Handle errors.
 		for (Key key : tran.getWrites()) {
-			WriteCommand command = new WriteCommand(cluster, writePolicy, key, bins, Operation.Type.WRITE);
+			TranWriteCommand command = new TranWriteCommand(cluster, writePolicyDefault, key, tran, TranOp.ROLL_BACK);
 			command.execute();
 		}
 	}

@@ -33,13 +33,6 @@ public class Policy {
 	public Tran tran;
 
 	/**
-	 * Multi-record transaction operation.
-	 * <p>
-	 * Default: {@link TranOp#NONE}
-	 */
-	public TranOp tranOp = TranOp.NONE;
-
-	/**
 	 * Read policy for AP (availability) namespaces.
 	 * <p>
 	 * Default: {@link ReadModeAP#ONE}
@@ -266,7 +259,6 @@ public class Policy {
 	 */
 	public Policy(Policy other) {
 		this.tran = other.tran;
-		this.tranOp = other.tranOp;
 		this.readModeAP = other.readModeAP;
 		this.readModeSC = other.readModeSC;
 		this.replica = other.replica;
@@ -316,10 +308,6 @@ public class Policy {
 
 	public void setTran(Tran tran) {
 		this.tran = tran;
-	}
-
-	public void setTranOp(TranOp tranOp) {
-		this.tranOp = tranOp;
 	}
 
 	public void setReadModeAP(ReadModeAP readModeAP) {
@@ -383,11 +371,11 @@ public class Policy {
 		if (this == o) return true;
 		if (o == null || getClass() != o.getClass()) return false;
 		Policy policy = (Policy) o;
-		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(tran, policy.tran) && tranOp == policy.tranOp && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
+		return connectTimeout == policy.connectTimeout && socketTimeout == policy.socketTimeout && totalTimeout == policy.totalTimeout && timeoutDelay == policy.timeoutDelay && maxRetries == policy.maxRetries && sleepBetweenRetries == policy.sleepBetweenRetries && readTouchTtlPercent == policy.readTouchTtlPercent && sendKey == policy.sendKey && compress == policy.compress && failOnFilteredOut == policy.failOnFilteredOut && Objects.equals(tran, policy.tran) && readModeAP == policy.readModeAP && readModeSC == policy.readModeSC && replica == policy.replica && Objects.equals(filterExp, policy.filterExp);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(tran, tranOp, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
+		return Objects.hash(tran, readModeAP, readModeSC, replica, filterExp, connectTimeout, socketTimeout, totalTimeout, timeoutDelay, maxRetries, sleepBetweenRetries, readTouchTtlPercent, sendKey, compress, failOnFilteredOut);
 	}
 }
