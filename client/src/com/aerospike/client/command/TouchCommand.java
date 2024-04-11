@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -28,32 +28,9 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class TouchCommand extends SyncCommand {
-	private final WritePolicy writePolicy;
-	private final Key key;
-	private final Partition partition;
-
+public final class TouchCommand extends SyncWriteCommand {
 	public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
-		this.key = key;
-		this.partition = Partition.write(cluster, writePolicy, key);
-		cluster.addTran();
-	}
-
-	@Override
-	protected boolean isWrite() {
-		return true;
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeWrite(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
+		super(cluster, writePolicy, key);
 	}
 
 	@Override
@@ -62,13 +39,7 @@ public final class TouchCommand extends SyncCommand {
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		// Read header.
-		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-		conn.updateLastUsed();
-
-		int resultCode = dataBuffer[13] & 0xFF;
-
+	protected void handleResultCode(int resultCode) {
 		if (resultCode == 0) {
 			return;
 		}
@@ -81,11 +52,5 @@ public final class TouchCommand extends SyncCommand {
 		}
 
 		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryWrite(timeout);
-		return true;
 	}
 }

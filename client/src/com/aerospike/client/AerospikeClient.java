@@ -655,9 +655,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = writePolicyDefault;
 		}
 
-		if (policy.tran != null) {
-			policy.tran.addWrite(key);
-		}
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
 		command.execute();
 	}

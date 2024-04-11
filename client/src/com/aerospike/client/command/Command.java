@@ -210,8 +210,6 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		fieldCount += sizeTran(key, policy.tran);
-
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
@@ -223,7 +221,6 @@ public class Command {
 		sizeBuffer();
 		writeHeaderWrite(policy, Command.INFO2_WRITE, fieldCount, bins.length);
 		writeKey(policy, key);
-		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -309,8 +306,6 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		fieldCount += sizeTran(key, policy.tran);
-
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
@@ -319,7 +314,6 @@ public class Command {
 		sizeBuffer();
 		writeHeaderRead(policy, serverTimeout, Command.INFO1_READ | Command.INFO1_GET_ALL, 0, 0, fieldCount, 0);
 		writeKey(policy, key);
-		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -332,8 +326,6 @@ public class Command {
 			begin();
 			int fieldCount = estimateKeySize(policy, key);
 
-			fieldCount += sizeTran(key, policy.tran);
-
 			if (policy.filterExp != null) {
 				dataOffset += policy.filterExp.size();
 				fieldCount++;
@@ -345,7 +337,6 @@ public class Command {
 			sizeBuffer();
 			writeHeaderRead(policy, serverTimeout, Command.INFO1_READ, 0, 0, fieldCount, binNames.length);
 			writeKey(policy, key);
-			writeTran(policy.tran);
 
 			if (policy.filterExp != null) {
 				policy.filterExp.write(this);
@@ -448,8 +439,6 @@ public class Command {
 		begin();
 		int fieldCount = estimateKeySize(policy, key);
 
-		fieldCount += sizeTran(key, policy.tran);
-
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
 			fieldCount++;
@@ -457,7 +446,6 @@ public class Command {
 		sizeBuffer();
 		writeHeaderReadHeader(policy, Command.INFO1_READ | Command.INFO1_NOBINDATA, fieldCount, 0);
 		writeKey(policy, key);
-		writeTran(policy.tran);
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -1792,6 +1780,8 @@ public class Command {
 	private final int estimateKeySize(Policy policy, Key key) {
 		int fieldCount = estimateKeySize(key);
 
+		fieldCount += sizeTran(key, policy.tran);
+
 		if (policy.sendKey) {
 			dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
 			fieldCount++;
@@ -2136,6 +2126,7 @@ public class Command {
 
 	private final void writeKey(Policy policy, Key key) {
 		writeKey(key);
+		writeTran(policy.tran);
 
 		if (policy.sendKey) {
 			writeField(key.userKey, FieldType.KEY);

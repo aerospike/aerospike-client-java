@@ -43,6 +43,9 @@ public class MRT extends Example {
 		tranWriteRead(client, params);
 		tranRollback(client, params);
 		tranReadOutsideOfTran(client, params);
+		//tranDelete(client, params);
+		tranTouch(client, params);
+		tranTouchAbort(client, params);
 	}
 
 	public void tranWrite(IAerospikeClient client, Parameters params) {
@@ -58,7 +61,6 @@ public class MRT extends Example {
 
 		client.tranEnd(tran);
 
-		Policy policy = client.copyReadPolicyDefault();
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val2");
 	}
@@ -148,6 +150,57 @@ public class MRT extends Example {
 		client.tranEnd(tran);
 	}
 
+	public void tranDelete(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey6");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.delete(wp, key);
+
+		client.tranEnd(tran);
+
+		Record record = client.get(params.policy, key);
+		assertNull(record);
+	}
+
+	public void tranTouch(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey6");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.touch(wp, key);
+
+		client.tranEnd(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val1");
+	}
+
+	public void tranTouchAbort(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey6");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		client.touch(wp, key);
+
+		client.tranAbort(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val1");
+	}
+
 	private void assertEqual(Record record, String expected) {
 		assertNotNull(record);
 
@@ -161,6 +214,12 @@ public class MRT extends Example {
 	private void assertNotNull(Record record) {
 		if (record == null) {
 			throw new AerospikeException("Record is null");
+		}
+	}
+
+	private void assertNull(Record record) {
+		if (record != null) {
+			throw new AerospikeException("Record is not null");
 		}
 	}
 }

@@ -16,51 +16,22 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
-
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.WritePolicy;
 
-public final class WriteCommand extends SyncCommand {
-	private final WritePolicy writePolicy;
-	private final Key key;
-	private final Partition partition;
+public final class WriteCommand extends SyncWriteCommand {
 	private final Bin[] bins;
 	private final Operation.Type operation;
 
 	public WriteCommand(Cluster cluster, WritePolicy writePolicy, Key key, Bin[] bins, Operation.Type operation) {
-		super(cluster, writePolicy);
-		this.writePolicy = writePolicy;
-		this.key = key;
-		this.partition = Partition.write(cluster, writePolicy, key);
+		super(cluster, writePolicy, key);
 		this.bins = bins;
 		this.operation = operation;
-		cluster.addTran();
-	}
-
-	@Override
-	protected boolean isWrite() {
-		return true;
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeWrite(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
 	}
 
 	@Override
@@ -69,34 +40,7 @@ public final class WriteCommand extends SyncCommand {
 	}
 
 	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		int resultCode;
-
-		if (policy.tran != null) {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-			Record record = rp.parseRecord(false);
-
-			if (record.version != null) {
-				policy.tran.addRead(key, record.version);
-				policy.tran.removeWrite(key);
-			}
-			else {
-				if (rp.resultCode == ResultCode.OK) {
-					policy.tran.removeRead(key);
-				}
-				else {
-					policy.tran.removeWrite(key);
-				}
-			}
-			resultCode = rp.resultCode;
-		}
-		else {
-			// Read header.
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
-			resultCode = dataBuffer[13] & 0xFF;
-		}
-
+	protected void handleResultCode(int resultCode) {
 		if (resultCode == ResultCode.OK) {
 			return;
 		}
@@ -109,11 +53,5 @@ public final class WriteCommand extends SyncCommand {
 		}
 
 		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryWrite(timeout);
-		return true;
 	}
 }
