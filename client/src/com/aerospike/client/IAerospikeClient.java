@@ -251,8 +251,21 @@ public interface IAerospikeClient extends Closeable {
 	// Multi-Record Transactions
 	//-------------------------------------------------------
 
+	/**
+	 * Create a new multi-record transaction.
+	 */
 	public Tran tranBegin();
+
+	/**
+	 * End the given multi-record transaction. If the transaction completed successfully and
+	 * the expected record versions match the server record versions, the transaction is
+	 * committed. Otherwise, the transaction is aborted.
+	 */
 	public void tranEnd(Tran tran);
+
+	/**
+	 * Abort and rollback the given multi-record transaction.
+	 */
 	public void tranAbort(Tran tran);
 
 	//-------------------------------------------------------

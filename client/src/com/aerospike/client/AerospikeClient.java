@@ -582,12 +582,20 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	// Multi-Record Transactions
 	//-------------------------------------------------------
 
+	/**
+	 * Create a new multi-record transaction.
+	 */
 	public final Tran tranBegin() {
 		return new Tran();
 	}
 
-	// TODO: Should WritePolicy be passed as argument?
+	/**
+	 * End the given multi-record transaction. If the transaction completed successfully and
+	 * the expected record versions match the server record versions, the transaction is
+	 * committed. Otherwise, the transaction is aborted.
+	 */
 	public final void tranEnd(Tran tran) {
+		// TODO: Should WritePolicy be passed as argument?
 		// TODO: Convert to a single batch call.
 		// Validate record versions.
 		for (Map.Entry<Key,Long> entry : tran.getReads()) {
@@ -616,6 +624,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 	}
 
+	/**
+	 * Abort and rollback the given multi-record transaction.
+	 */
 	public final void tranAbort(Tran tran) {
 		// TODO: Handle errors.
 		for (Key key : tran.getWrites()) {
