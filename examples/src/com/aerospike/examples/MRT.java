@@ -16,15 +16,18 @@
  */
 package com.aerospike.examples;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.tran.Tran;
 
 public class MRT extends Example {
+	public static final String binName = "bin";
 
 	public MRT(Console console) {
 		super(console);
@@ -35,50 +38,52 @@ public class MRT extends Example {
 	 */
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
-		//tranWrite(client, params);
-		//tranBlock(client, params);
-		//tranWriteRead(client, params);
-		//tranRollback(client, params);
+		tranWrite(client, params);
+		tranBlock(client, params);
+		tranWriteRead(client, params);
+		tranRollback(client, params);
 		tranReadOutsideOfTran(client, params);
 	}
 
 	public void tranWrite(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mrtkey1");
 
-		client.put(params.writePolicy, key, new Bin("bin", "val"));
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
 		Tran tran = client.tranBegin();
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(params.writePolicy, key, new Bin("bin", "val2"));
+		client.put(params.writePolicy, key, new Bin(binName, "val2"));
 
 		client.tranEnd(tran);
 
 		Policy policy = client.copyReadPolicyDefault();
-		Record record = client.get(policy, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val2");
 	}
 
 	public void tranBlock(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mrtkey2");
 
-		client.put(params.writePolicy, key, new Bin("bin", "val"));
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
 		Tran tran = client.tranBegin();
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(wp, key, new Bin("bin", "val2"));
+		client.put(wp, key, new Bin(binName, "val2"));
 
-		// This write should be blocked.
-		client.put(params.writePolicy, key, new Bin("bin", "val3"));
+		try {
+			// This write should be blocked.
+			client.put(params.writePolicy, key, new Bin(binName, "val3"));
+			throw new AerospikeException("Unexpected success");
+		}
+		catch (AerospikeException e) {
+			if (e.getResultCode() != ResultCode.MRT_BLOCKED) {
+				throw e;
+			}
+		}
 
 		client.tranEnd(tran);
 	}
@@ -86,90 +91,76 @@ public class MRT extends Example {
 	public void tranWriteRead(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mrtkey3");
 
-		client.put(params.writePolicy, key, new Bin("bin", "val"));
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
 		Tran tran = client.tranBegin();
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(wp, key, new Bin("bin", "val2"));
+		client.put(wp, key, new Bin(binName, "val2"));
 
 		Record record = client.get(params.policy, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		assertEqual(record, "val1");
 
 		client.tranEnd(tran);
 
 		record = client.get(params.policy, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		assertEqual(record, "val2");
 	}
 
 	public void tranRollback(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mrtkey4");
 
-		client.put(params.writePolicy, key, new Bin("bin", "val1"));
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
 		Tran tran = client.tranBegin();
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(wp, key, new Bin("bin", "val2"));
+		client.put(wp, key, new Bin(binName, "val2"));
 
 		Policy p = new Policy(params.policy);
 		p.tran = tran;
 
 		Record record = client.get(p, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		assertEqual(record, "val2");
 
 		client.tranAbort(tran);
 
 		record = client.get(params.policy, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		assertEqual(record, "val1");
 	}
 
 	public void tranReadOutsideOfTran(IAerospikeClient client, Parameters params) {
 		Key key = new Key(params.namespace, params.set, "mrtkey5");
 
-		client.put(params.writePolicy, key, new Bin("bin", "val1"));
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
 		Tran tran = client.tranBegin();
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(wp, key, new Bin("bin", "val2"));
+		client.put(wp, key, new Bin(binName, "val2"));
 
 		Record record = client.get(params.policy, key);
-
-		if (record != null) {
-			System.out.println("Record: " + record.toString());
-		}
-		else {
-			System.out.println("Record is null");
-		}
+		assertEqual(record, "val1");
 
 		client.tranEnd(tran);
+	}
+
+	private void assertEqual(Record record, String expected) {
+		assertNotNull(record);
+
+		String val = record.getString(binName);
+
+		if (!expected.equals(val)) {
+			throw new AerospikeException("Expected " + expected + " Received " + val);
+		}
+	}
+
+	private void assertNotNull(Record record) {
+		if (record == null) {
+			throw new AerospikeException("Record is null");
+		}
 	}
 }

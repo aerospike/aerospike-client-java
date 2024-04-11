@@ -534,11 +534,25 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	// Multi-Record Transactions
 	//-------------------------------------------------------
 
+	/**
+	 * Create a new multi-record transaction.
+	 */
 	public final Tran tranBegin() {
 		return null;
 	}
 
+	/**
+	 * End the given multi-record transaction. If the transaction completed successfully and
+	 * the expected record versions match the server record versions, the transaction is
+	 * committed. Otherwise, the transaction is aborted.
+	 */
 	public final void tranEnd(Tran tran) {
+	}
+
+	/**
+	 * Abort and rollback the given multi-record transaction.
+	 */
+	public final void tranAbort(Tran tran) {
 	}
 
 	//-------------------------------------------------------
