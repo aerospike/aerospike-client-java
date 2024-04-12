@@ -29,48 +29,27 @@ import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
-public class ReadCommand extends SyncCommand {
-	protected final Key key;
-	protected final Partition partition;
+public class ReadCommand extends SyncReadCommand {
 	private final String[] binNames;
 	private final boolean isOperation;
 	private Record record;
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key) {
-		super(cluster, policy);
-		this.key = key;
+		super(cluster, policy, key);
 		this.binNames = null;
-		this.partition = Partition.read(cluster, policy, key);
 		this.isOperation = false;
-		cluster.addTran();
 	}
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
-		super(cluster, policy);
-		this.key = key;
+		super(cluster, policy, key);
 		this.binNames = binNames;
-		this.partition = Partition.read(cluster, policy, key);
 		this.isOperation = false;
-		cluster.addTran();
 	}
 
 	public ReadCommand(Cluster cluster, Policy policy, Key key, Partition partition, boolean isOperation) {
-		super(cluster, policy);
-		this.key = key;
+		super(cluster, policy, key, partition);
 		this.binNames = null;
-		this.partition = partition;
 		this.isOperation = isOperation;
-		cluster.addTran();
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeRead(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	@Override
@@ -83,8 +62,10 @@ public class ReadCommand extends SyncCommand {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		record = rp.parseRecord(isOperation);
 
-		if (policy.tran != null) {
-			policy.tran.addRead(key, this.record.version);
+		// Record version may be received on OK, NOT_FOUND and FILTERED_OUT.
+		// Add record version when it exists.
+		if (policy.tran != null && record.version != null) {
+			policy.tran.addRead(key, record.version);
 		}
 
 		if (rp.resultCode == ResultCode.OK) {
@@ -111,12 +92,6 @@ public class ReadCommand extends SyncCommand {
 		}
 
 		throw new AerospikeException(rp.resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryRead(timeout);
-		return true;
 	}
 
 	protected void handleNotFound(int resultCode) {

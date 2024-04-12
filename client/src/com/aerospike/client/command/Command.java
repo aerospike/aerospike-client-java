@@ -184,7 +184,7 @@ public class Command {
 		fieldCount += sizeTran(key, tran);
 
 		sizeBuffer();
-		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
+		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE;
 		dataBuffer[9]  = (byte)0;
 		dataBuffer[10] = (byte)Command.INFO2_WRITE | Command.INFO2_DURABLE_DELETE;
 		dataBuffer[11] = (byte)0;

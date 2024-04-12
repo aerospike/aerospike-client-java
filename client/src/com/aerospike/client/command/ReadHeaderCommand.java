@@ -24,31 +24,13 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
-public class ReadHeaderCommand extends SyncCommand {
-	private final Key key;
-	private final Partition partition;
+public final class ReadHeaderCommand extends SyncReadCommand {
 	private Record record;
 
 	public ReadHeaderCommand(Cluster cluster, Policy policy, Key key) {
-		super(cluster, policy);
-		this.key = key;
-		this.partition = Partition.read(cluster, policy, key);
-		cluster.addTran();
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeRead(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
+		super(cluster, policy, key);
 	}
 
 	@Override
@@ -61,8 +43,10 @@ public class ReadHeaderCommand extends SyncCommand {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		record = rp.parseRecord(false);
 
-		if (policy.tran != null) {
-			policy.tran.addRead(key, this.record.version);
+		// Record version may be received on OK, NOT_FOUND and FILTERED_OUT.
+		// Add record version when it exists.
+		if (policy.tran != null && record.version != null) {
+			policy.tran.addRead(key, record.version);
 		}
 
 		if (rp.resultCode == ResultCode.OK) {
@@ -83,12 +67,6 @@ public class ReadHeaderCommand extends SyncCommand {
 		}
 
 		throw new AerospikeException(rp.resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryRead(timeout);
-		return true;
 	}
 
 	public Record getRecord() {
