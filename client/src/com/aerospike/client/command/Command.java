@@ -186,7 +186,7 @@ public class Command {
 		sizeBuffer();
 		dataBuffer[8]  = MSG_REMAINING_HEADER_SIZE; // Message header length.
 		dataBuffer[9]  = (byte)0;
-		dataBuffer[10] = (byte)Command.INFO2_WRITE;
+		dataBuffer[10] = (byte)Command.INFO2_WRITE | Command.INFO2_DURABLE_DELETE;
 		dataBuffer[11] = (byte)0;
 		dataBuffer[12] = (byte)tranOp.attr;
 		dataBuffer[13] = 0; // clear the result code

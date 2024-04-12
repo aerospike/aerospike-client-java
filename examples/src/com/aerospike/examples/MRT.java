@@ -43,7 +43,8 @@ public class MRT extends Example {
 		tranWriteRead(client, params);
 		tranRollback(client, params);
 		tranReadOutsideOfTran(client, params);
-		//tranDelete(client, params);
+		tranDelete(client, params);
+		tranDeleteAbort(client, params);
 		tranTouch(client, params);
 		tranTouchAbort(client, params);
 	}
@@ -159,6 +160,7 @@ public class MRT extends Example {
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
+		wp.durableDelete = true;
 		client.delete(wp, key);
 
 		client.tranEnd(tran);
@@ -167,8 +169,26 @@ public class MRT extends Example {
 		assertNull(record);
 	}
 
+	public void tranDeleteAbort(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey7");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		wp.durableDelete = true;
+		client.delete(wp, key);
+
+		client.tranAbort(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val1");
+	}
+
 	public void tranTouch(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mrtkey6");
+		Key key = new Key(params.namespace, params.set, "mrtkey8");
 
 		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
@@ -185,7 +205,7 @@ public class MRT extends Example {
 	}
 
 	public void tranTouchAbort(IAerospikeClient client, Parameters params) {
-		Key key = new Key(params.namespace, params.set, "mrtkey6");
+		Key key = new Key(params.namespace, params.set, "mrtkey9");
 
 		client.put(params.writePolicy, key, new Bin(binName, "val1"));
 
