@@ -20,10 +20,14 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
+import com.aerospike.client.Language;
+import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
+import com.aerospike.client.Value;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.tran.Tran;
 
 public class MRT extends Example {
@@ -47,6 +51,10 @@ public class MRT extends Example {
 		tranDeleteAbort(client, params);
 		tranTouch(client, params);
 		tranTouchAbort(client, params);
+		tranOperateWrite(client, params);
+		tranOperateWriteAbort(client, params);
+		tranUDF(client, params);
+		tranUDFAbort(client, params);
 	}
 
 	public void tranWrite(IAerospikeClient client, Parameters params) {
@@ -221,6 +229,100 @@ public class MRT extends Example {
 		assertEqual(record, "val1");
 	}
 
+	public void tranOperateWrite(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey10");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		Record record = client.operate(wp, key,
+			Operation.put(new Bin(binName, "val2")),
+			Operation.get("bin2")
+			);
+
+		assertEqual(record, "bin2", "bal1");
+
+		client.tranEnd(tran);
+
+		record = client.get(params.policy, key);
+		assertEqual(record, "val2");
+	}
+
+	public void tranOperateWriteAbort(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey11");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"), new Bin("bin2", "bal1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		Record record = client.operate(wp, key,
+				Operation.put(new Bin(binName, "val2")),
+				Operation.get("bin2")
+		);
+
+		assertEqual(record, "bin2", "bal1");
+
+		client.tranAbort(tran);
+
+		record = client.get(params.policy, key);
+		assertEqual(record, "val1");
+	}
+
+	public void tranUDF(IAerospikeClient client, Parameters params) {
+		if (! params.useProxyClient) {
+			String filename = "record_example.lua";
+			console.info("Register: " + filename);
+			RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
+			task.waitTillComplete();
+		}
+
+		Key key = new Key(params.namespace, params.set, "mrtkey12");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+
+		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
+
+		client.tranEnd(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val2");
+	}
+
+	public void tranUDFAbort(IAerospikeClient client, Parameters params) {
+		if (! params.useProxyClient) {
+			String filename = "record_example.lua";
+			console.info("Register: " + filename);
+			RegisterTask task = client.register(params.policy, "udf/record_example.lua", filename, Language.LUA);
+			task.waitTillComplete();
+		}
+
+		Key key = new Key(params.namespace, params.set, "mrtkey13");
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+
+		client.execute(wp, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
+
+		client.tranAbort(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val1");
+	}
+
 	private void assertEqual(Record record, String expected) {
 		assertNotNull(record);
 
@@ -228,6 +330,16 @@ public class MRT extends Example {
 
 		if (!expected.equals(val)) {
 			throw new AerospikeException("Expected " + expected + " Received " + val);
+		}
+	}
+
+	private void assertEqual(Record record, String name, String expected) {
+		assertNotNull(record);
+
+		String val = record.getString(name);
+
+		if (!expected.equals(val)) {
+			throw new AerospikeException("Bin " + name + " Expected " + expected + " Received " + val);
 		}
 	}
 

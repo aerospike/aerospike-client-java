@@ -22,7 +22,9 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
+import java.io.IOException;
 
 public final class WriteCommand extends SyncWriteCommand {
 	private final Bin[] bins;
@@ -40,7 +42,9 @@ public final class WriteCommand extends SyncWriteCommand {
 	}
 
 	@Override
-	protected void handleResultCode(int resultCode) {
+	protected void parseResult(Connection conn) throws IOException {
+		int resultCode = parseHeader(conn);
+
 		if (resultCode == ResultCode.OK) {
 			return;
 		}

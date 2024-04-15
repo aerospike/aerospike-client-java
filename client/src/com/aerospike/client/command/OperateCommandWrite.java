@@ -18,50 +18,51 @@ package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.policy.WritePolicy;
 import java.io.IOException;
 
-public final class DeleteCommand extends SyncWriteCommand {
-	private boolean existed;
+public final class OperateCommandWrite extends SyncWriteCommand {
+	private final OperateArgs args;
+	private Record record;
 
-	public DeleteCommand(Cluster cluster, WritePolicy writePolicy, Key key) {
-		super(cluster, writePolicy, key);
+	public OperateCommandWrite(Cluster cluster, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key);
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setDelete(writePolicy, key);
+		setOperate(args.writePolicy, key, args);
 	}
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		int resultCode = parseHeader(conn);
+		RecordParser rp = new RecordParser(conn, dataBuffer);
+		record = rp.parseRecord(true);
 
-		if (resultCode == 0) {
-			existed = true;
+		if (policy.tran != null) {
+			policy.tran.handleWrite(key, record.version, rp.resultCode);
+		}
+
+		if (rp.resultCode == ResultCode.OK) {
 			return;
 		}
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			existed = false;
-			return;
-		}
-
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (writePolicy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(rp.resultCode);
 			}
-			existed = true;
+			record = null;
 			return;
 		}
 
-		throw new AerospikeException(resultCode);
+		throw new AerospikeException(rp.resultCode);
 	}
 
-	public boolean existed() {
-		return existed;
+	public Record getRecord() {
+		return record;
 	}
 }

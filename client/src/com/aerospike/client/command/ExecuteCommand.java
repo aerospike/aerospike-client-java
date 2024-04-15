@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,18 +18,19 @@ package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
+import com.aerospike.client.Record;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.metrics.LatencyType;
+import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.policy.WritePolicy;
+import java.io.IOException;
 
-public final class ExecuteCommand extends ReadCommand {
-	private final WritePolicy writePolicy;
+public final class ExecuteCommand extends SyncWriteCommand {
 	private final String packageName;
 	private final String functionName;
 	private final Value[] args;
+	private Record record;
 
 	public ExecuteCommand(
 		Cluster cluster,
@@ -39,41 +40,70 @@ public final class ExecuteCommand extends ReadCommand {
 		String functionName,
 		Value[] args
 	) {
-		super(cluster, writePolicy, key, Partition.write(cluster, writePolicy, key), false);
-		this.writePolicy = writePolicy;
+		super(cluster, writePolicy, key);
 		this.packageName = packageName;
 		this.functionName = functionName;
 		this.args = args;
 	}
 
 	@Override
-	protected boolean isWrite() {
-		return true;
-	}
-
-	@Override
-	protected Node getNode() {
-		return partition.getNodeWrite(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.WRITE;
-	}
-
-	@Override
-	protected void writeBuffer() throws AerospikeException {
+	protected void writeBuffer() {
 		setUdf(writePolicy, key, packageName, functionName, args);
 	}
 
 	@Override
-	protected void handleNotFound(int resultCode) {
-		throw new AerospikeException(resultCode);
+	protected void parseResult(Connection conn) throws IOException {
+		RecordParser rp = new RecordParser(conn, dataBuffer);
+		record = rp.parseRecord(false);
+
+		if (policy.tran != null) {
+			policy.tran.handleWrite(key, record.version, rp.resultCode);
+		}
+
+		if (rp.resultCode == ResultCode.OK) {
+			return;
+		}
+
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
+			if (policy.failOnFilteredOut) {
+				throw new AerospikeException(rp.resultCode);
+			}
+			record = null;
+			return;
+		}
+
+		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			handleUdfError(rp.resultCode);
+			return;
+		}
+
+		throw new AerospikeException(rp.resultCode);
 	}
 
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryWrite(timeout);
-		return true;
+	private void handleUdfError(int resultCode) {
+		String ret = (String)record.bins.get("FAILURE");
+
+		if (ret == null) {
+			throw new AerospikeException(resultCode);
+		}
+
+		String message;
+		int code;
+
+		try {
+			String[] list = ret.split(":");
+			code = Integer.parseInt(list[2].trim());
+			message = list[0] + ':' + list[1] + ' ' + list[3];
+		}
+		catch (Throwable e) {
+			// Use generic exception if parse error occurs.
+			throw new AerospikeException(resultCode, ret);
+		}
+
+		throw new AerospikeException(code, message);
+	}
+
+	public Record getRecord() {
+		return record;
 	}
 }

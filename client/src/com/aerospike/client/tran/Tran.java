@@ -17,6 +17,7 @@
 package com.aerospike.client.tran;
 
 import com.aerospike.client.Key;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.util.RandomShift;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -77,6 +78,24 @@ public final class Tran {
 	 */
 	public Set<Map.Entry<Key,Long>> getReads() {
 		return reads.entrySet();
+	}
+
+	/**
+	 * Process the results of a single record write. For internal use only.
+	 */
+	public void handleWrite(Key key, Long version, int resultCode) {
+		if (version != null) {
+			addRead(key, version);
+			removeWrite(key);
+		}
+		else {
+			if (resultCode == ResultCode.OK) {
+				removeRead(key);
+			}
+			else {
+				removeWrite(key);
+			}
+		}
 	}
 
 	/**

@@ -18,7 +18,6 @@ package com.aerospike.client.command;
 
 import com.aerospike.client.Key;
 import com.aerospike.client.Record;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -59,36 +58,19 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		return LatencyType.WRITE;
 	}
 
-	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		int resultCode;
-
+	protected int parseHeader(Connection conn) throws IOException {
 		if (policy.tran != null) {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
 			Record record = rp.parseRecord(false);
 
-			if (record.version != null) {
-				policy.tran.addRead(key, record.version);
-				policy.tran.removeWrite(key);
-			}
-			else {
-				if (rp.resultCode == ResultCode.OK) {
-					policy.tran.removeRead(key);
-				}
-				else {
-					policy.tran.removeWrite(key);
-				}
-			}
-			resultCode = rp.resultCode;
+			policy.tran.handleWrite(key, record.version, rp.resultCode);
+			return rp.resultCode;
 		}
 		else {
-			// Read header.
 			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
 			conn.updateLastUsed();
-			resultCode = dataBuffer[13] & 0xFF;
+			return dataBuffer[13] & 0xFF;
 		}
-
-		handleResultCode(resultCode);
 	}
 
 	@Override
@@ -96,6 +78,4 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		partition.prepareRetryWrite(timeout);
 		return true;
 	}
-
-	protected abstract void handleResultCode(int resultCode);
 }

@@ -66,7 +66,8 @@ import com.aerospike.client.command.Executor;
 import com.aerospike.client.command.ExistsCommand;
 import com.aerospike.client.command.IBatchCommand;
 import com.aerospike.client.command.OperateArgs;
-import com.aerospike.client.command.OperateCommand;
+import com.aerospike.client.command.OperateCommandRead;
+import com.aerospike.client.command.OperateCommandWrite;
 import com.aerospike.client.command.ReadCommand;
 import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.RegisterCommand;
@@ -2302,9 +2303,17 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	public final Record operate(WritePolicy policy, Key key, Operation... operations)
 		throws AerospikeException {
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
-		OperateCommand command = new OperateCommand(cluster, key, args);
-		command.execute();
-		return command.getRecord();
+
+		if (args.hasWrite) {
+			OperateCommandWrite command = new OperateCommandWrite(cluster, key, args);
+			command.execute();
+			return command.getRecord();
+		}
+		else {
+			OperateCommandRead command = new OperateCommandRead(cluster, key, args);
+			command.execute();
+			return command.getRecord();
+		}
 	}
 
 	/**

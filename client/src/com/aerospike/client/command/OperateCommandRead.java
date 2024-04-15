@@ -16,40 +16,19 @@
  */
 package com.aerospike.client.command;
 
-import java.io.IOException;
-
-import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Connection;
-import com.aerospike.client.policy.WritePolicy;
 
-public final class TouchCommand extends SyncWriteCommand {
-	public TouchCommand(Cluster cluster, WritePolicy writePolicy, Key key) {
-		super(cluster, writePolicy, key);
+public final class OperateCommandRead extends ReadCommand {
+	private final OperateArgs args;
+
+	public OperateCommandRead(Cluster cluster, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key, true);
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setTouch(writePolicy, key);
-	}
-
-	@Override
-	protected void parseResult(Connection conn) throws IOException {
-		int resultCode = parseHeader(conn);
-
-		if (resultCode == 0) {
-			return;
-		}
-
-		if (resultCode == ResultCode.FILTERED_OUT) {
-			if (writePolicy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
-			}
-			return;
-		}
-
-		throw new AerospikeException(resultCode);
+		setOperate(args.writePolicy, key, args);
 	}
 }
