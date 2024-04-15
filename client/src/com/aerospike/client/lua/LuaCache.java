@@ -63,7 +63,7 @@ public final class LuaCache {
 				Packages.put(packageName, prototype);
 			}
 			catch (Throwable e) {
-				throw new AerospikeException("Failed to read file: " + source.getAbsolutePath());
+				throw new AerospikeException("Failed to read file: " + source.getAbsolutePath(), e);
 			}
 		}
 		return prototype;
@@ -81,7 +81,7 @@ public final class LuaCache {
 				Packages.put(packageName, prototype);
 			}
 			catch (Throwable e) {
-				throw new AerospikeException("Failed to read resource: " + resourcePath);
+				throw new AerospikeException("Failed to read resource: " + resourcePath, e);
 			}
 		}
 		return prototype;
@@ -94,7 +94,7 @@ public final class LuaCache {
 			return LuaC.instance.compile(bis, packageName);
 		}
 		catch (Throwable e) {
-			throw new AerospikeException("Failed to compile: " + packageName);
+			throw new AerospikeException("Failed to compile: " + packageName, e);
 		}
 	}
 
