@@ -88,10 +88,6 @@ public class Command {
 	public static final int INFO3_SC_READ_TYPE		= (1 << 6); // See below.
 	public static final int INFO3_SC_READ_RELAX		= (1 << 7); // See below.
 
-	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0);
-	public static final int INFO4_MRT_ROLL_FORWARD	= (1 << 1);
-	public static final int INFO4_MRT_ROLL_BACK		= (1 << 2);
-
 	// Interpret SC_READ bits in info3.
 	//
 	// RELAX   TYPE
@@ -115,12 +111,12 @@ public class Command {
 	public static final byte BATCH_MSG_INFO = 0x2;
 	public static final byte BATCH_MSG_GEN = 0x4;
 	public static final byte BATCH_MSG_TTL = 0x8;
+	public static final byte BATCH_MSG_INFO4 = 0x10;
 
 	public static final int MSG_TOTAL_HEADER_SIZE = 30;
 	public static final int FIELD_HEADER_SIZE = 5;
 	public static final int OPERATION_HEADER_SIZE = 8;
 	public static final int MSG_REMAINING_HEADER_SIZE = 22;
-	public static final int DIGEST_SIZE = 20;
 	public static final int COMPRESS_THRESHOLD = 128;
 	public static final long CL_MSG_VERSION = 2L;
 	public static final long AS_MSG_TYPE = 3L;
@@ -830,6 +826,12 @@ public class Command {
 
 		begin();
 		int fieldCount = 1;
+		Tran tran = policy.tran;
+
+		if (tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -847,16 +849,25 @@ public class Command {
 			// Use reference equality only in hope that common namespaces/bin names are set from
 			// fixed variables.  It's fine if equality not determined correctly because it just
 			// results in more space used. The batch will still be correct.
-			if (!policy.sendKey && prev != null && prev.key.namespace == key.namespace && prev.key.setName == key.setName &&
+			if (tran == null && !policy.sendKey && prev != null && prev.key.namespace == key.namespace && prev.key.setName == key.setName &&
 				record.equals(prev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
 			else {
 				// Estimate full header, namespace and bin names.
-				dataOffset += 12;
+				dataOffset += 13;
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+				if (tran != null) {
+					version = tran.getReadVersion(key);
+
+					if (version != null) {
+						dataOffset += 7 + FIELD_HEADER_SIZE;
+					}
+				}
+
 				dataOffset += record.size(policy);
 				prev = record;
 			}
@@ -864,6 +875,10 @@ public class Command {
 		sizeBuffer();
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
+
+		if (tran != null) {
+			writeField(tran.trid, FieldType.MRT_TRID);
+		}
 
 		if (policy.filterExp != null) {
 			policy.filterExp.write(this);
@@ -893,7 +908,7 @@ public class Command {
 			// Use reference equality only in hope that common namespaces/bin names are set from
 			// fixed variables.  It's fine if equality not determined correctly because it just
 			// results in more space used. The batch will still be correct.
-			if (!policy.sendKey && prev != null && prev.key.namespace == key.namespace && prev.key.setName == key.setName &&
+			if (tran == null && !policy.sendKey && prev != null && prev.key.namespace == key.namespace && prev.key.setName == key.setName &&
 				record.equals(prev)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
@@ -912,15 +927,15 @@ public class Command {
 						}
 
 						if (br.binNames != null) {
-							writeBatchBinNames(key, br.binNames, attr, attr.filterExp);
+							writeBatchBinNames(key, tran, br.binNames, attr, attr.filterExp);
 						}
 						else if (br.ops != null) {
 							attr.adjustRead(br.ops);
-							writeBatchOperations(key, br.ops, attr, attr.filterExp);
+							writeBatchOperations(key, tran, br.ops, attr, attr.filterExp);
 						}
 						else {
 							attr.adjustRead(br.readAllBins);
-							writeBatchRead(key, attr, attr.filterExp, 0);
+							writeBatchRead(key, tran, attr, attr.filterExp, 0);
 						}
 						break;
 					}
@@ -931,7 +946,7 @@ public class Command {
 
 						attr.setWrite(bwp);
 						attr.adjustWrite(bw.ops);
-						writeBatchOperations(key, bw.ops, attr, attr.filterExp);
+						writeBatchOperations(key, tran, bw.ops, attr, attr.filterExp);
 						break;
 					}
 
@@ -940,7 +955,7 @@ public class Command {
 						BatchUDFPolicy bup = (bu.policy != null)? bu.policy : udfPolicy;
 
 						attr.setUDF(bup);
-						writeBatchWrite(key, attr, attr.filterExp, 3, 0);
+						writeBatchWrite(key, tran, attr, attr.filterExp, 3, 0);
 						writeField(bu.packageName, FieldType.UDF_PACKAGE_NAME);
 						writeField(bu.functionName, FieldType.UDF_FUNCTION);
 						writeField(bu.argBytes, FieldType.UDF_ARGLIST);
@@ -952,7 +967,7 @@ public class Command {
 						BatchDeletePolicy bdp = (bd.policy != null)? bd.policy : deletePolicy;
 
 						attr.setDelete(bdp);
-						writeBatchWrite(key, attr, attr.filterExp, 0, 0);
+						writeBatchWrite(key, tran, attr, attr.filterExp, 0, 0);
 						break;
 					}
 				}
@@ -988,6 +1003,13 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
+		Tran tran = policy.tran;
+
+		if (tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		Expression exp = getBatchExpression(policy, attr);
 
 		if (exp != null) {
@@ -1004,15 +1026,23 @@ public class Command {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-			if (!attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
+			if (tran == null && !attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 12; // header(4) + ttl(4) + fielCount(2) + opCount(2) = 12
+				dataOffset += 13; // header(5) + ttl(4) + fielCount(2) + opCount(2) = 13
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+				if (tran != null) {
+					version = tran.getReadVersion(key);
+
+					if (version != null) {
+						dataOffset += 7 + FIELD_HEADER_SIZE;
+					}
+				}
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1045,6 +1075,10 @@ public class Command {
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
 
+		if (tran != null) {
+			writeField(tran.trid, FieldType.MRT_TRID);
+		}
+
 		if (exp != null) {
 			exp.write(this);
 		}
@@ -1067,23 +1101,23 @@ public class Command {
 			dataOffset += digest.length;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-			if (!attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
+			if (tran == null && !attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
 			else {
 				// Write full message.
 				if (binNames != null) {
-					writeBatchBinNames(key, binNames, attr, null);
+					writeBatchBinNames(key, tran, binNames, attr, null);
 				}
 				else if (ops != null) {
-					writeBatchOperations(key, ops, attr, null);
+					writeBatchOperations(key, tran, ops, attr, null);
 				}
 				else if ((attr.writeAttr & Command.INFO2_DELETE) != 0) {
-					writeBatchWrite(key, attr, null, 0, 0);
+					writeBatchWrite(key, tran, attr, null, 0, 0);
 				}
 				else {
-					writeBatchRead(key, attr, null, 0);
+					writeBatchRead(key, tran, attr, null, 0);
 				}
 				prev = key;
 			}
@@ -1119,6 +1153,13 @@ public class Command {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
+		Tran tran = policy.tran;
+
+		if (tran != null) {
+			dataOffset += 8 + FIELD_HEADER_SIZE;
+			fieldCount++;
+		}
+
 		Expression exp = getBatchExpression(policy, attr);
 
 		if (exp != null) {
@@ -1135,15 +1176,23 @@ public class Command {
 			dataOffset += key.digest.length + 4;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-			if (!attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
+			if (tran == null && !attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
 			else {
 				// Write full header and namespace/set/bin names.
-				dataOffset += 12; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 12
+				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
 				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
 				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+				if (tran != null) {
+					version = tran.getReadVersion(key);
+
+					if (version != null) {
+						dataOffset += 7 + FIELD_HEADER_SIZE;
+					}
+				}
 
 				if (attr.sendKey) {
 					dataOffset += key.userKey.estimateSize() + FIELD_HEADER_SIZE + 1;
@@ -1157,6 +1206,10 @@ public class Command {
 		sizeBuffer();
 
 		writeBatchHeader(policy, totalTimeout, fieldCount);
+
+		if (tran != null) {
+			writeField(tran.trid, FieldType.MRT_TRID);
+		}
 
 		if (exp != null) {
 			exp.write(this);
@@ -1180,13 +1233,13 @@ public class Command {
 			dataOffset += digest.length;
 
 			// Try reference equality in hope that namespace/set for all keys is set from fixed variables.
-			if (!attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
+			if (tran == null && !attr.sendKey && prev != null && prev.namespace == key.namespace && prev.setName == key.setName) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
 			else {
 				// Write full message.
-				writeBatchWrite(key, attr, null, 3, 0);
+				writeBatchWrite(key, tran, attr, null, 3, 0);
 				writeField(packageName, FieldType.UDF_PACKAGE_NAME);
 				writeField(functionName, FieldType.UDF_FUNCTION);
 				writeField(argBytes, FieldType.UDF_ARGLIST);
@@ -1243,20 +1296,20 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 	}
 
-	private void writeBatchBinNames(Key key, String[] binNames, BatchAttr attr, Expression filter) {
-		writeBatchRead(key, attr, filter, binNames.length);
+	private void writeBatchBinNames(Key key, Tran tran, String[] binNames, BatchAttr attr, Expression filter) {
+		writeBatchRead(key, tran, attr, filter, binNames.length);
 
 		for (String binName : binNames) {
 			writeOperation(binName, Operation.Type.READ);
 		}
 	}
 
-	private void writeBatchOperations(Key key, Operation[] ops, BatchAttr attr, Expression filter) {
+	private void writeBatchOperations(Key key, Tran tran, Operation[] ops, BatchAttr attr, Expression filter) {
 		if (attr.hasWrite) {
-			writeBatchWrite(key, attr, filter, 0, ops.length);
+			writeBatchWrite(key, tran, attr, filter, 0, ops.length);
 		}
 		else {
-			writeBatchRead(key, attr, filter, ops.length);
+			writeBatchRead(key, tran, attr, filter, ops.length);
 		}
 
 		for (Operation op : ops) {
@@ -1264,21 +1317,23 @@ public class Command {
 		}
 	}
 
-	private void writeBatchRead(Key key, BatchAttr attr, Expression filter, int opCount) {
-		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_TTL);
+	private void writeBatchRead(Key key, Tran tran, BatchAttr attr, Expression filter, int opCount) {
+		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_TTL);
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+		dataBuffer[dataOffset++] = (byte)attr.tranAttr;
 		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
 		dataOffset += 4;
-		writeBatchFields(key, filter, 0, opCount);
+		writeBatchFieldsRW(key, tran, filter, 0, opCount);
 	}
 
-	private void writeBatchWrite(Key key, BatchAttr attr, Expression filter, int fieldCount, int opCount) {
-		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_GEN | BATCH_MSG_TTL);
+	private void writeBatchWrite(Key key, Tran tran, BatchAttr attr, Expression filter, int fieldCount, int opCount) {
+		dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4 | BATCH_MSG_GEN | BATCH_MSG_TTL);
 		dataBuffer[dataOffset++] = (byte)attr.readAttr;
 		dataBuffer[dataOffset++] = (byte)attr.writeAttr;
 		dataBuffer[dataOffset++] = (byte)attr.infoAttr;
+		dataBuffer[dataOffset++] = (byte)attr.tranAttr;
 		Buffer.shortToBytes(attr.generation, dataBuffer, dataOffset);
 		dataOffset += 2;
 		Buffer.intToBytes(attr.expiration, dataBuffer, dataOffset);
@@ -1286,23 +1341,37 @@ public class Command {
 
 		if (attr.sendKey) {
 			fieldCount++;
-			writeBatchFields(key, filter, fieldCount, opCount);
+			writeBatchFieldsRW(key, tran, filter, fieldCount, opCount);
 			writeField(key.userKey, FieldType.KEY);
 		}
 		else {
-			writeBatchFields(key, filter, fieldCount, opCount);
+			writeBatchFieldsRW(key, tran, filter, fieldCount, opCount);
 		}
 	}
 
-	private void writeBatchFields(Key key, Expression filter, int fieldCount, int opCount) {
+	private void writeBatchFieldsRW(Key key, Tran tran, Expression filter, int fieldCount, int opCount) {
 		if (filter != null) {
 			fieldCount++;
-			writeBatchFields(key, fieldCount, opCount);
+			writeBatchFieldsTran(key, tran, fieldCount, opCount);
 			filter.write(this);
 		}
 		else {
-			writeBatchFields(key, fieldCount, opCount);
+			writeBatchFieldsTran(key, tran, fieldCount, opCount);
 		}
+	}
+
+	private void writeBatchFieldsTran(Key key, Tran tran, int fieldCount, int opCount) {
+		if (tran != null) {
+			version = tran.getReadVersion(key);
+
+			if (version != null) {
+				fieldCount++;
+				writeBatchFields(key, fieldCount, opCount);
+				writeFieldVersion(version.longValue());
+				return;
+			}
+		}
+		writeBatchFields(key, fieldCount, opCount);
 	}
 
 	private void writeBatchFields(Key key, int fieldCount, int opCount) {
@@ -2245,14 +2314,14 @@ public class Command {
 			writeField(tran.trid, FieldType.MRT_TRID);
 
 			if (version != null) {
-				writeFieldVersion();
+				writeFieldVersion(version.longValue());
 			}
 		}
 	}
 
-	private void writeFieldVersion() {
+	private void writeFieldVersion(long ver) {
 		writeFieldHeader(7, FieldType.RECORD_VERSION);
-		Buffer.longToVersionBytes(version.longValue(), dataBuffer, dataOffset);
+		Buffer.longToVersionBytes(ver, dataBuffer, dataOffset);
 		dataOffset += 7;
 	}
 

@@ -32,6 +32,7 @@ public final class BatchAttr {
 	public int readAttr;
 	public int writeAttr;
 	public int infoAttr;
+	public int tranAttr;
 	public int expiration;
 	public int opSize;
 	public short generation;
