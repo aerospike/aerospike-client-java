@@ -17,6 +17,7 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchResults;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
 import com.aerospike.client.Key;
@@ -25,10 +26,16 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
+import com.aerospike.client.cdt.ListOperation;
+import com.aerospike.client.cdt.ListPolicy;
+import com.aerospike.client.cdt.ListReturnType;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.tran.Tran;
+import java.util.ArrayList;
+import java.util.List;
 
 public class MRT extends Example {
 	public static final String binName = "bin";
@@ -55,6 +62,8 @@ public class MRT extends Example {
 		tranOperateWriteAbort(client, params);
 		tranUDF(client, params);
 		tranUDFAbort(client, params);
+		tranBatch(client, params);
+		tranBatchAbort(client, params);
 	}
 
 	public void tranWrite(IAerospikeClient client, Parameters params) {
@@ -321,6 +330,79 @@ public class MRT extends Example {
 
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val1");
+	}
+
+	public void tranBatch(IAerospikeClient client, Parameters params) {
+		Key[] keys = new Key[100];
+		Bin bin = new Bin(binName, 1);
+
+		for (int i = 0; i < keys.length; i++) {
+			Key key = new Key(params.namespace, params.set, i);
+			keys[i] = key;
+
+			client.put(params.writePolicy, key, bin);
+		}
+
+		Tran tran = client.tranBegin();
+
+		bin = new Bin(binName, 2);
+
+		BatchPolicy bp = new BatchPolicy().WriteDefault();
+		bp.tran = tran;
+
+		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
+
+		client.tranEnd(tran);
+
+		assertBatchEqual(client, keys, 2);
+	}
+
+	public void tranBatchAbort(IAerospikeClient client, Parameters params) {
+		Key[] keys = new Key[100];
+		Bin bin = new Bin(binName, 1);
+
+		for (int i = 0; i < keys.length; i++) {
+			Key key = new Key(params.namespace, params.set, i);
+			keys[i] = key;
+
+			client.put(params.writePolicy, key, bin);
+		}
+
+		assertBatchEqual(client, keys, 1);
+
+		Tran tran = client.tranBegin();
+
+		bin = new Bin(binName, 2);
+
+		BatchPolicy bp = new BatchPolicy().WriteDefault();
+		bp.tran = tran;
+
+		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
+
+		if (! bresults.status) {
+			throw new AerospikeException("client operate failed");
+		}
+
+		assertBatchEqual(client, keys, 2);
+
+		client.tranAbort(tran);
+
+		assertBatchEqual(client, keys, 1);
+	}
+
+	private void assertBatchEqual(IAerospikeClient client, Key[] keys, int expected) {
+		Record[] recs = client.get(null, keys);
+
+		for (int i = 0; i < keys.length; i++) {
+			Key key = keys[i];
+			Record rec = recs[i];
+
+			int received = rec.getInt(binName);
+
+			if (expected != received) {
+				throw new AerospikeException("Key " + key + ": Expected " + expected + " Received " + received);
+			}
+		}
 	}
 
 	private void assertEqual(Record record, String expected) {

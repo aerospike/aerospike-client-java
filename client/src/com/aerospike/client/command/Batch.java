@@ -67,7 +67,7 @@ public final class Batch {
 		protected boolean parseRow() {
 			BatchRead record = records.get(batchIndex);
 
-			parseKeyRead(record.key);
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -134,7 +134,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			parseKeyRead(keys[batchIndex]);
+			parseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
@@ -187,7 +187,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			parseKeyRead(keys[batchIndex]);
+			parseFieldsRead(keys[batchIndex]);
 
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
@@ -244,7 +244,7 @@ public final class Batch {
 		protected boolean parseRow() {
 			BatchRecord record = records.get(batchIndex);
 
-			parseKey(record);
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -333,7 +333,7 @@ public final class Batch {
 		protected boolean parseRow() {
 			BatchRecord record = records[batchIndex];
 
-			parseKey(record);
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -418,7 +418,7 @@ public final class Batch {
 		protected boolean parseRow() {
 			BatchRecord record = records[batchIndex];
 
-			parseKey(record);
+			parseFields(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -517,7 +517,7 @@ public final class Batch {
 			}
 		}
 
-		protected final void parseKeyRead(Key key) {
+		protected final void parseFieldsRead(Key key) {
 			if (policy.tran != null) {
 				Long version = parseVersion(fieldCount);
 				policy.tran.handleRead(key, version);
@@ -527,7 +527,7 @@ public final class Batch {
 			}
 		}
 
-		protected final void parseKey(BatchRecord br) {
+		protected final void parseFields(BatchRecord br) {
 			if (policy.tran != null) {
 				Long version = parseVersion(fieldCount);
 
