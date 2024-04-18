@@ -2460,6 +2460,24 @@ public class Command {
 		return new Key(namespace, digest, setName, userKey);
 	}
 
+	public Long parseVersion(int fieldCount) {
+		Long version = null;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.RECORD_VERSION && size == 7) {
+				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			}
+			dataOffset += size;
+		}
+		return version;
+	}
+
 	protected final Record parseRecord(
 		int opCount,
 		int generation,

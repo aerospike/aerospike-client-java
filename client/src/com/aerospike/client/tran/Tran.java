@@ -30,7 +30,6 @@ import java.util.Set;
 public final class Tran {
 	public final long trid;
 	// TODO: Store namespace at top level for verification purposes?
-	// TODO: set hash code for Key/digest.
 	private final HashMap<Key,Long> reads;
 	private final HashSet<Key> writes;
 
@@ -53,17 +52,12 @@ public final class Tran {
 	}
 
 	/**
-	 * Add record key to reads hashmap. For internal use only.
+	 * Process the results of a record read. For internal use only.
 	 */
-	public void addRead(Key key, Long version) {
-		reads.put(key, version);
-	}
-
-	/**
-	 * Remove record key from reads hashmap. For internal use only.
-	 */
-	public void removeRead(Key key) {
-		reads.remove(key);
+	public void handleRead(Key key, Long version) {
+		if (version != null) {
+			reads.put(key, version);
+		}
 	}
 
 	/**
@@ -81,19 +75,19 @@ public final class Tran {
 	}
 
 	/**
-	 * Process the results of a single record write. For internal use only.
+	 * Process the results of a record write. For internal use only.
 	 */
 	public void handleWrite(Key key, Long version, int resultCode) {
 		if (version != null) {
-			addRead(key, version);
-			removeWrite(key);
+			reads.put(key, version);
+			writes.remove(key);
 		}
 		else {
 			if (resultCode == ResultCode.OK) {
-				removeRead(key);
+				reads.remove(key);
 			}
 			else {
-				removeWrite(key);
+				writes.remove(key);
 			}
 		}
 	}
@@ -103,13 +97,6 @@ public final class Tran {
 	 */
 	public void addWrite(Key key) {
 		writes.add(key);
-	}
-
-	/**
-	 * Remove record key from writes hashmap. For internal use only.
-	 */
-	public void removeWrite(Key key) {
-		writes.remove(key);
 	}
 
 	/**

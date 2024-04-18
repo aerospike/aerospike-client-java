@@ -40,13 +40,7 @@ public final class ExistsCommand extends SyncReadCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		Long version = rp.parseVersion();
-
-		// Record version may be received on OK, NOT_FOUND and FILTERED_OUT.
-		// Add record version when it exists.
-		if (policy.tran != null && version != null) {
-			policy.tran.addRead(key, version);
-		}
+		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
 			exists = true;

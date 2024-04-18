@@ -34,13 +34,6 @@ public abstract class SyncReadCommand extends SyncCommand {
 		cluster.addTran();
 	}
 
-	public SyncReadCommand(Cluster cluster, Policy policy, Key key, Partition partition) {
-		super(cluster, policy);
-		this.key = key;
-		this.partition = partition;
-		cluster.addTran();
-	}
-
 	@Override
 	protected Node getNode() {
 		return partition.getNodeRead(cluster);
@@ -55,5 +48,15 @@ public abstract class SyncReadCommand extends SyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
+	}
+
+	protected void parseFields(RecordParser rp) {
+		if (policy.tran != null) {
+			Long version = rp.parseVersion();
+			policy.tran.handleRead(key, version);
+		}
+		else {
+			rp.skipFields();
+		}
 	}
 }

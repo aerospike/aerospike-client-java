@@ -17,7 +17,6 @@
 package com.aerospike.client.command;
 
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.cluster.Node;
@@ -58,12 +57,18 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		return LatencyType.WRITE;
 	}
 
+	@Override
+	protected boolean prepareRetry(boolean timeout) {
+		partition.prepareRetryWrite(timeout);
+		return true;
+	}
+
 	protected int parseHeader(Connection conn) throws IOException {
 		if (policy.tran != null) {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
-			Record record = rp.parseRecord(false);
+			Long version = rp.parseVersion();
 
-			policy.tran.handleWrite(key, record.version, rp.resultCode);
+			policy.tran.handleWrite(key, version, rp.resultCode);
 			return rp.resultCode;
 		}
 		else {
@@ -73,9 +78,13 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		}
 	}
 
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryWrite(timeout);
-		return true;
+	protected void parseFields(RecordParser rp) {
+		if (policy.tran != null) {
+			Long version = rp.parseVersion();
+			policy.tran.handleWrite(key, version, rp.resultCode);
+		}
+		else {
+			rp.skipFields();
+		}
 	}
 }

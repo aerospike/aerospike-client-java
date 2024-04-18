@@ -65,9 +65,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseKeyRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -134,7 +134,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
+			parseKeyRead(keys[batchIndex]);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
@@ -187,7 +187,7 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
+			parseKeyRead(keys[batchIndex]);
 
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
@@ -242,9 +242,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseKey(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -331,9 +331,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseKey(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -416,9 +416,9 @@ public final class Batch {
 
 		@Override
 		protected boolean parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseKey(record);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -514,6 +514,32 @@ public final class Batch {
 			catch (Throwable e) {
 				setInDoubt();
 				status.setException(new AerospikeException(e));
+			}
+		}
+
+		protected final void parseKeyRead(Key key) {
+			if (policy.tran != null) {
+				Long version = parseVersion(fieldCount);
+				policy.tran.handleRead(key, version);
+			}
+			else {
+				skipKey(fieldCount);
+			}
+		}
+
+		protected final void parseKey(BatchRecord br) {
+			if (policy.tran != null) {
+				Long version = parseVersion(fieldCount);
+
+				if (br.hasWrite) {
+					policy.tran.handleWrite(br.key, version, resultCode);
+				}
+				else {
+					policy.tran.handleRead(br.key, version);
+				}
+			}
+			else {
+				skipKey(fieldCount);
 			}
 		}
 

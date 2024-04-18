@@ -151,16 +151,44 @@ public final class RecordParser {
 		this.dataBuffer = buffer;
 	}
 
-	public Record parseRecord(boolean isOperation)  {
-		// Parse fields.
-		Long version = parseVersion();
+	public void skipFields() {
+		// There can be fields in the response (setname etc).
+		// But for now, ignore them. Expose them to the API if needed in the future.
+		for (int i = 0; i < fieldCount; i++) {
+			int fieldlen = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4 + fieldlen;
+		}
+	}
 
+	public Long parseVersion() {
+		Long version = null;
+
+		for (int i = 0; i < fieldCount; i++) {
+			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			int type = dataBuffer[dataOffset++];
+			int size = len - 1;
+
+			if (type == FieldType.RECORD_VERSION && size == 7) {
+				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			}
+			dataOffset += size;
+		}
+		return version;
+	}
+
+	public Record parseRecord(boolean isOperation) {
+		skipFields();
+		return parseRecordBins(isOperation);
+	}
+
+	public Record parseRecordBins(boolean isOperation)  {
 		if (opCount == 0) {
 			// Bin data was not returned.
-			return new Record(null, version, generation, expiration);
+			return new Record(null, generation, expiration);
 		}
 
-		// Parse record.
 		Map<String,Object> bins = new LinkedHashMap<>();
 
 		for (int i = 0 ; i < opCount; i++) {
@@ -200,24 +228,6 @@ public final class RecordParser {
 				bins.put(name, value);
 			}
 		}
-		return new Record(bins, version, generation, expiration);
-	}
-
-	public Long parseVersion() {
-		Long version = null;
-
-		for (int i = 0; i < fieldCount; i++) {
-			int len = Buffer.bytesToInt(dataBuffer, dataOffset);
-			dataOffset += 4;
-
-			int type = dataBuffer[dataOffset++];
-			int size = len - 1;
-
-			if (type == FieldType.RECORD_VERSION && size == 7) {
-				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
-			}
-			dataOffset += size;
-		}
-		return version;
+		return new Record(bins, generation, expiration);
 	}
 }

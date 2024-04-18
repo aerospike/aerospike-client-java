@@ -41,13 +41,10 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		record = rp.parseRecord(true);
-
-		if (policy.tran != null) {
-			policy.tran.handleWrite(key, record.version, rp.resultCode);
-		}
+		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
+			record = rp.parseRecordBins(true);
 			return;
 		}
 
@@ -55,7 +52,6 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);
 			}
-			record = null;
 			return;
 		}
 

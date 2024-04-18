@@ -57,20 +57,14 @@ public class ReadCommand extends SyncReadCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		record = rp.parseRecord(isOperation);
-
-		// Record version may be received on OK, NOT_FOUND and FILTERED_OUT.
-		// Add record version when it exists.
-		if (policy.tran != null && record.version != null) {
-			policy.tran.addRead(key, record.version);
-		}
+		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
+			this.record = rp.parseRecordBins(isOperation);
 			return;
 		}
 
 		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			record = null;
 			return;
 		}
 
@@ -78,7 +72,6 @@ public class ReadCommand extends SyncReadCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);
 			}
-			record = null;
 			return;
 		}
 

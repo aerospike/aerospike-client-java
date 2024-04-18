@@ -18,7 +18,6 @@ package com.aerospike.client.command;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
-import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -69,24 +68,10 @@ public final class TranWriteCommand extends SyncCommand {
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer);
-		Record record = rp.parseRecord(false);
+		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+		conn.updateLastUsed();
 
-		// TODO: Is this necessary?
-		if (record.version != null) {
-			tran.addRead(key, record.version);
-			tran.removeWrite(key);
-		}
-		else {
-			if (rp.resultCode == ResultCode.OK) {
-				tran.removeRead(key);
-			}
-			else {
-				tran.removeWrite(key);
-			}
-		}
-
-		int resultCode = rp.resultCode;
+		int resultCode = dataBuffer[13] & 0xFF;
 
 		if (resultCode == ResultCode.OK) {
 			return;

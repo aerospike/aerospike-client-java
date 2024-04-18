@@ -54,13 +54,10 @@ public final class ExecuteCommand extends SyncWriteCommand {
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
-		record = rp.parseRecord(false);
-
-		if (policy.tran != null) {
-			policy.tran.handleWrite(key, record.version, rp.resultCode);
-		}
+		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
+			record = rp.parseRecordBins(false);
 			return;
 		}
 
@@ -68,11 +65,11 @@ public final class ExecuteCommand extends SyncWriteCommand {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);
 			}
-			record = null;
 			return;
 		}
 
 		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			record = rp.parseRecordBins(false);
 			handleUdfError(rp.resultCode);
 			return;
 		}

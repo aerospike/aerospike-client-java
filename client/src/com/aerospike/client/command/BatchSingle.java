@@ -92,9 +92,10 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			parseFieldsRead(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				records[index] = rp.parseRecord(isOperation);
+				records[index] = rp.parseRecordBins(isOperation);
 			}
 		}
 	}
@@ -161,9 +162,10 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			parseFieldsRead(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(true));
+				record.setRecord(rp.parseRecordBins(true));
 			}
 			else {
 				record.setError(rp.resultCode, false);
@@ -237,8 +239,15 @@ public final class BatchSingle {
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
 
+			if (record.hasWrite) {
+				parseFieldsWrite(rp);
+			}
+			else {
+				parseFieldsRead(rp);
+			}
+
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(true));
+				record.setRecord(rp.parseRecordBins(true));
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
@@ -337,12 +346,13 @@ public final class BatchSingle {
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
 			RecordParser rp = new RecordParser(conn, dataBuffer);
+			parseFieldsWrite(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecord(false));
+				record.setRecord(rp.parseRecordBins(false));
 			}
 			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-				Record r = rp.parseRecord(false);
+				Record r = rp.parseRecordBins(false);
 				String m = r.getString("FAILURE");
 
 				if (m != null) {
@@ -445,6 +455,26 @@ public final class BatchSingle {
 				sequence = p.sequence;
 			}
 			return true;
+		}
+
+		protected void parseFieldsRead(RecordParser rp) {
+			if (policy.tran != null) {
+				Long version = rp.parseVersion();
+				policy.tran.handleRead(key, version);
+			}
+			else {
+				rp.skipFields();
+			}
+		}
+
+		protected void parseFieldsWrite(RecordParser rp) {
+			if (policy.tran != null) {
+				Long version = rp.parseVersion();
+				policy.tran.handleWrite(key, version, rp.resultCode);
+			}
+			else {
+				rp.skipFields();
+			}
 		}
 
 		public void setInDoubt() {

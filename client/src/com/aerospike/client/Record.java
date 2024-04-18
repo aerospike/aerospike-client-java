@@ -34,11 +34,6 @@ public final class Record {
 	public final Map<String,Object> bins;
 
 	/**
-	 * Record version used in MRT. Can be null.
-	 */
-	public final Long version;
-
-	/**
 	 * Record modification count.
 	 */
 	public final int generation;
@@ -57,22 +52,6 @@ public final class Record {
 		int expiration
 	) {
 		this.bins = bins;
-		this.version = null;
-		this.generation = generation;
-		this.expiration = expiration;
-	}
-
-	/**
-	 * Initialize record.
-	 */
-	public Record(
-		Map<String,Object> bins,
-		Long version,
-		int generation,
-		int expiration
-	) {
-		this.bins = bins;
-		this.version = version;
 		this.generation = generation;
 		this.expiration = expiration;
 	}
@@ -256,9 +235,7 @@ public final class Record {
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder(500);
-		sb.append("(ver:");
-		sb.append(version);
-		sb.append("),(gen:");
+		sb.append("(gen:");
 		sb.append(generation);
 		sb.append("),(exp:");
 		sb.append(expiration);
@@ -295,7 +272,7 @@ public final class Record {
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(bins, version, generation, expiration);
+		return Objects.hash(bins, generation, expiration);
 	}
 
 	/**
@@ -310,8 +287,6 @@ public final class Record {
 		if (getClass() != obj.getClass())
 			return false;
 		Record other = (Record) obj;
-		if (version != other.version)
-			return false;
 		if (expiration != other.expiration)
 			return false;
 		if (generation != other.generation)
