@@ -2636,7 +2636,8 @@ public class Command {
 
 		@Override
 		public T getItem(int i) {
-			return get(offsets[i]);
+			offset = offsets[i];
+			return get(offset);
 		}
 
 		abstract T get(int offset);
