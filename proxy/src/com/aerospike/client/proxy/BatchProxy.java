@@ -939,6 +939,12 @@ public class BatchProxy {
 		}
 
 		@Override
+		public BatchRecord getItem(int i) {
+			offset = i;
+			return records.get(offset);
+		}
+
+		@Override
 		public int offset() {
 			return offset;
 		}
@@ -969,6 +975,12 @@ public class BatchProxy {
 				return null;
 			}
 			offset = index++;
+			return keys[offset];
+		}
+
+		@Override
+		public Key getItem(int i) {
+			offset = i;
 			return keys[offset];
 		}
 
