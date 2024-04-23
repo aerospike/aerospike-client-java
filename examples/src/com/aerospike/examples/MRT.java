@@ -17,6 +17,7 @@
 package com.aerospike.examples;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.BatchRecord;
 import com.aerospike.client.BatchResults;
 import com.aerospike.client.Bin;
 import com.aerospike.client.IAerospikeClient;
@@ -333,7 +334,7 @@ public class MRT extends Example {
 	}
 
 	public void tranBatch(IAerospikeClient client, Parameters params) {
-		Key[] keys = new Key[100];
+		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
 		for (int i = 0; i < keys.length; i++) {
@@ -342,6 +343,9 @@ public class MRT extends Example {
 
 			client.put(params.writePolicy, key, bin);
 		}
+
+		Record[] recs = client.get(null, keys);
+		assertBatchEqual(keys, recs, 1);
 
 		Tran tran = client.tranBegin();
 
@@ -352,13 +356,32 @@ public class MRT extends Example {
 
 		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
 
+		if (!bresults.status) {
+			StringBuilder sb = new StringBuilder();
+			sb.append("Batch failed:");
+			sb.append(System.lineSeparator());
+
+			for (BatchRecord br : bresults.records) {
+				if (br.resultCode == 0) {
+					sb.append("Record: " + br.record);
+				}
+				else {
+					sb.append("ResultCode: " + br.resultCode);
+				}
+				sb.append(System.lineSeparator());
+			}
+
+			throw new AerospikeException(sb.toString());
+		}
+
 		client.tranEnd(tran);
 
-		assertBatchEqual(client, keys, 2);
+		recs = client.get(null, keys);
+		assertBatchEqual(keys, recs, 2);
 	}
 
 	public void tranBatchAbort(IAerospikeClient client, Parameters params) {
-		Key[] keys = new Key[100];
+		Key[] keys = new Key[10];
 		Bin bin = new Bin(binName, 1);
 
 		for (int i = 0; i < keys.length; i++) {
@@ -368,7 +391,8 @@ public class MRT extends Example {
 			client.put(params.writePolicy, key, bin);
 		}
 
-		assertBatchEqual(client, keys, 1);
+		Record[] recs = client.get(null, keys);
+		assertBatchEqual(keys, recs, 1);
 
 		Tran tran = client.tranBegin();
 
@@ -383,24 +407,32 @@ public class MRT extends Example {
 			throw new AerospikeException("client operate failed");
 		}
 
-		assertBatchEqual(client, keys, 2);
+		bp = new BatchPolicy();
+		bp.tran = tran;
+
+		recs = client.get(bp, keys);
+		assertBatchEqual(keys, recs, 2);
 
 		client.tranAbort(tran);
 
-		assertBatchEqual(client, keys, 1);
+		recs = client.get(null, keys);
+		assertBatchEqual(keys, recs, 1);
 	}
 
-	private void assertBatchEqual(IAerospikeClient client, Key[] keys, int expected) {
-		Record[] recs = client.get(null, keys);
-
+	private void assertBatchEqual(Key[] keys, Record[] recs, int expected) {
 		for (int i = 0; i < keys.length; i++) {
 			Key key = keys[i];
 			Record rec = recs[i];
 
-			int received = rec.getInt(binName);
+			if (rec != null) {
+				int received = rec.getInt(binName);
 
-			if (expected != received) {
-				throw new AerospikeException("Key " + key + ": Expected " + expected + " Received " + received);
+				if (expected != received) {
+					throw new AerospikeException("Key " + key + ": Expected " + expected + " Received " + received);
+				}
+			}
+			else {
+				throw new AerospikeException("Key " + key + ": records[" + i + "] is null");
 			}
 		}
 	}
