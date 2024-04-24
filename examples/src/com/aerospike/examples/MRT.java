@@ -76,7 +76,7 @@ public class MRT extends Example {
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
-		client.put(params.writePolicy, key, new Bin(binName, "val2"));
+		client.put(wp, key, new Bin(binName, "val2"));
 
 		client.tranEnd(tran);
 
