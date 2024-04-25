@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -304,6 +304,47 @@ public class Info {
 		throws AerospikeException {
 		Info info = new Info(conn);
 		return info.parseMultiResponse();
+	}
+
+	//-------------------------------------------------------
+	// Parse Methods
+	//-------------------------------------------------------
+
+	/**
+	 * Parse info response string and return the result code for info commands
+	 * that only return OK or an error string. Info commands that return other
+	 * data are not handled by this method.
+	 */
+	public static int parseResultCode(String response) {
+		if (response.regionMatches(true, 0, "OK", 0, 2)) {
+			return ResultCode.OK;
+		}
+
+		// Error format: ERROR|FAIL[:<code>][:<message>]
+		try {
+			String[] list = response.split(":");
+			String s = list[0];
+
+			if (s.regionMatches(true, 0, "FAIL", 0, 4) ||
+				s.regionMatches(true, 0, "ERROR", 0, 5)) {
+
+				if (list.length > 1) {
+					s = list[1].trim();
+
+					if (! s.isEmpty()) {
+						return Integer.parseInt(s);
+					}
+				}
+				return ResultCode.SERVER_ERROR;
+			}
+			throw new AerospikeException("Unrecognized info response: " + response);
+		}
+		catch (AerospikeException ae) {
+			throw ae;
+		}
+		catch (Throwable t) {
+			throw new AerospikeException("Unrecognized info response: " + response, t);
+		}
 	}
 
 	//-------------------------------------------------------
