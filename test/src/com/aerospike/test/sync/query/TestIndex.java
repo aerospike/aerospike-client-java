@@ -26,7 +26,6 @@ import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cdt.CTX;
 import com.aerospike.client.cluster.Node;
-import com.aerospike.client.policy.Policy;
 import com.aerospike.client.query.IndexType;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.test.sync.TestSync;
@@ -62,7 +61,9 @@ public class TestIndex extends TestSync {
 
 		for (Node node : nodes) {
 			String response = Info.request(node, cmd);
-			assertEquals(response, "FAIL:201:no-index");
+			int code = Info.parseResultCode(response);
+
+			assertEquals(code, 201);
 		}
 	}
 
