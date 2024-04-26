@@ -596,23 +596,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * committed. Otherwise, the transaction is aborted.
 	 */
 	public final void tranEnd(Tran tran) {
-		// TODO: Should WritePolicy be passed as argument?
+		// TODO: Should WritePolicy be passed as argument or have default TranPolicy?
 		// TODO: Convert to a single batch call.
 		// Validate record versions.
 		for (Map.Entry<Key,Long> entry : tran.getReads()) {
 			Key key = entry.getKey();
-			Long expected = entry.getValue();
+			Long version = entry.getValue();
 
-			TranReadCommand command = new TranReadCommand(cluster, readPolicyDefault, key);
-			command.execute();
-			Long received = command.getVersion();
-
-			if (expected == null || received == null || expected.longValue() != received.longValue()) {
+			try {
+				TranReadCommand command = new TranReadCommand(cluster, readPolicyDefault, key, version);
+				command.execute();
+			}
+			catch (Throwable t) {
 				if (tran.hasWrite()) {
 					tranAbort(tran);
 				}
-				throw new AerospikeException("Version mismatch: " +
-					entry.getKey().toString() + ',' + expected + ',' + received);
+				throw t;
 			}
 		}
 
@@ -629,11 +628,65 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Abort and rollback the given multi-record transaction.
 	 */
 	public final void tranAbort(Tran tran) {
-		// TODO: Handle errors.
 		for (Key key : tran.getWrites()) {
 			TranWriteCommand command = new TranWriteCommand(cluster, writePolicyDefault, key, tran, TranOp.ROLL_BACK);
 			command.execute();
 		}
+
+		// TODO: Should WritePolicy be passed as argument?
+		// TODO: Handle errors.
+		/*
+		Set<Key> keySet = tran.getWrites();
+
+		if (keySet.isEmpty()) {
+			return;
+		}
+
+		Key[] keys = keySet.toArray(new Key[keySet.size()]);
+		BatchRecord[] records = new BatchRecord[keys.length];
+
+		for (int i = 0; i < keys.length; i++) {
+			records[i] = new BatchRecord(keys[i], true);
+		}
+
+		BatchPolicy batchPolicy = copyBatchParentPolicyWriteDefault();
+		batchPolicy.replica = Replica.MASTER;
+		batchPolicy.maxRetries = 5;
+		batchPolicy.tran = null;
+
+		BatchAttr attr = new BatchAttr();
+		attr.setTran(TranOp.ROLL_BACK);
+
+		BatchStatus status = new BatchStatus(true);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
+		IBatchCommand[] commands = new IBatchCommand[bns.size()];
+
+		try {
+			int count = 0;
+			boolean opSizeSet = false;
+
+			for (BatchNode bn : bns) {
+				if (bn.offsetsSize == 1) {
+					if (! opSizeSet) {
+						attr.setOpSize(ops);
+						opSizeSet = true;
+					}
+
+					int i = bn.offsets[0];
+					commands[count++] = new BatchSingle.OperateBatchRecord(
+							cluster, batchPolicy, ops, attr, records[i], status, bn.node);
+				}
+				else {
+					commands[count++] = new Batch.OperateArrayCommand(
+							cluster, bn, batchPolicy, keys, ops, records, attr, status);
+				}
+			}
+			BatchExecutor.execute(cluster, batchPolicy, commands, status);
+		}
+		catch (Throwable e) {
+			throw new AerospikeException.BatchRecordArray(records, e);
+		}
+		*/
 	}
 
 	//-------------------------------------------------------

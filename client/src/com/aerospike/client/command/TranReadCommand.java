@@ -31,12 +31,13 @@ import java.io.IOException;
 public class TranReadCommand extends SyncCommand {
 	private final Key key;
 	private final Partition partition;
-	private Long version;
+	private long version;
 
-	public TranReadCommand(Cluster cluster, Policy policy, Key key) {
+	public TranReadCommand(Cluster cluster, Policy policy, Key key, long version) {
 		super(cluster, policy);
 		this.key = key;
 		this.partition = Partition.read(cluster, policy, key);
+		this.version = version;
 		cluster.addTran();
 	}
 
@@ -52,33 +53,26 @@ public class TranReadCommand extends SyncCommand {
 
 	@Override
 	protected void writeBuffer() {
-		setTranRead(policy, key);
+		setTranRead(policy, key, version);
 	}
 
 	@Override
 	protected void parseResult(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer);
-		version = rp.parseVersion();
+		conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+		conn.updateLastUsed();
 
-		if (rp.resultCode == ResultCode.OK) {
+		int resultCode = dataBuffer[13] & 0xFF;
+
+		if (resultCode == ResultCode.OK) {
 			return;
 		}
 
-		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			version = null;
-			return;
-		}
-
-		throw new AerospikeException(rp.resultCode);
+		throw new AerospikeException(resultCode);
 	}
 
 	@Override
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
-	}
-
-	public Long getVersion() {
-		return version;
 	}
 }

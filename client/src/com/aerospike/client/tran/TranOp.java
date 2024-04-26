@@ -17,8 +17,7 @@
 package com.aerospike.client.tran;
 
 public enum TranOp {
-    // TODO: Make this a flags bitmap.
-    GET_VERSION_ONLY(1),
+    VERIFY_READ(1),
     ROLL_FORWARD(2),
     ROLL_BACK(4);
 

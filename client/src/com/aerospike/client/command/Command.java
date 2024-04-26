@@ -101,6 +101,8 @@ public class Command {
 	//   1      0     allow replica
 	//   1      1     allow unavailable
 
+	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0); // Send MRT version to the server to be verified.
+
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
 	public static final byte STATE_READ_DETAIL = 3;
@@ -148,16 +150,20 @@ public class Command {
 	// Multi-record Transactions
 	//--------------------------------------------------
 
-	public final void setTranRead(Policy policy, Key key) {
+	public final void setTranRead(Policy policy, Key key, long version) {
 		begin();
 		int fieldCount = estimateKeySize(key);
+
+		// Version field.
+		dataOffset += 7 + FIELD_HEADER_SIZE;
+		fieldCount++;
 
 		sizeBuffer();
 		dataBuffer[8] = MSG_REMAINING_HEADER_SIZE;
 		dataBuffer[9] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
 		dataBuffer[10] = (byte)0;
 		dataBuffer[11] = (byte)Command.INFO3_SC_READ_TYPE;
-		dataBuffer[12] = (byte)TranOp.GET_VERSION_ONLY.attr;
+		dataBuffer[12] = (byte)Command.INFO4_MRT_VERIFY_READ;
 
 		for (int i = 13; i < 18; i++) {
 			dataBuffer[i] = 0;
@@ -170,6 +176,7 @@ public class Command {
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
+		writeFieldVersion(version);
 		end();
 	}
 
