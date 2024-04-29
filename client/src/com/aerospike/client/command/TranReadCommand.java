@@ -25,7 +25,6 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
-import com.aerospike.client.tran.TranOp;
 import java.io.IOException;
 
 public class TranReadCommand extends SyncCommand {

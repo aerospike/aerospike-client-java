@@ -17,7 +17,6 @@
 package com.aerospike.client.policy;
 
 import com.aerospike.client.exp.Expression;
-import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.tran.Tran;
 import java.util.Objects;
 
