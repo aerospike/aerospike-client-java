@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.aerospike.client.admin.AdminCommand;
 import com.aerospike.client.admin.Privilege;
@@ -74,7 +75,6 @@ import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
 import com.aerospike.client.command.TranReadCommand;
-import com.aerospike.client.command.TranWriteCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -104,6 +104,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
@@ -122,7 +123,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.tran.Tran;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
@@ -616,77 +616,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		System.out.println("Tran version matched: " + tran.trid);
-
-		// TODO: Handle errors.
-		for (Key key : tran.getWrites()) {
-			TranWriteCommand command = new TranWriteCommand(cluster, writePolicyDefault, key, tran, TranOp.ROLL_FORWARD);
-			command.execute();
-		}
+		tranClose(tran, Command.INFO4_MRT_ROLL_FORWARD);
 	}
 
 	/**
 	 * Abort and rollback the given multi-record transaction.
 	 */
 	public final void tranAbort(Tran tran) {
-		for (Key key : tran.getWrites()) {
-			TranWriteCommand command = new TranWriteCommand(cluster, writePolicyDefault, key, tran, TranOp.ROLL_BACK);
-			command.execute();
-		}
-
-		// TODO: Should WritePolicy be passed as argument?
-		// TODO: Handle errors.
-		/*
-		Set<Key> keySet = tran.getWrites();
-
-		if (keySet.isEmpty()) {
-			return;
-		}
-
-		Key[] keys = keySet.toArray(new Key[keySet.size()]);
-		BatchRecord[] records = new BatchRecord[keys.length];
-
-		for (int i = 0; i < keys.length; i++) {
-			records[i] = new BatchRecord(keys[i], true);
-		}
-
-		BatchPolicy batchPolicy = copyBatchParentPolicyWriteDefault();
-		batchPolicy.replica = Replica.MASTER;
-		batchPolicy.maxRetries = 5;
-		batchPolicy.tran = null;
-
-		BatchAttr attr = new BatchAttr();
-		attr.setTran(TranOp.ROLL_BACK);
-
-		BatchStatus status = new BatchStatus(true);
-		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
-		IBatchCommand[] commands = new IBatchCommand[bns.size()];
-
-		try {
-			int count = 0;
-			boolean opSizeSet = false;
-
-			for (BatchNode bn : bns) {
-				if (bn.offsetsSize == 1) {
-					if (! opSizeSet) {
-						attr.setOpSize(ops);
-						opSizeSet = true;
-					}
-
-					int i = bn.offsets[0];
-					commands[count++] = new BatchSingle.OperateBatchRecord(
-							cluster, batchPolicy, ops, attr, records[i], status, bn.node);
-				}
-				else {
-					commands[count++] = new Batch.OperateArrayCommand(
-							cluster, bn, batchPolicy, keys, ops, records, attr, status);
-				}
-			}
-			BatchExecutor.execute(cluster, batchPolicy, commands, status);
-		}
-		catch (Throwable e) {
-			throw new AerospikeException.BatchRecordArray(records, e);
-		}
-		*/
+		tranClose(tran, Command.INFO4_MRT_ROLL_BACK);
 	}
 
 	//-------------------------------------------------------
@@ -4601,5 +4538,55 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			code = ResultCode.SERVER_ERROR;
 		}
 		return code;
+	}
+
+	private void tranClose(Tran tran, int tranAttr) {
+		// TODO: Handle errors.
+		Set<Key> keySet = tran.getWrites();
+
+		if (keySet.isEmpty()) {
+			return;
+		}
+
+		Key[] keys = keySet.toArray(new Key[keySet.size()]);
+		BatchRecord[] records = new BatchRecord[keys.length];
+
+		for (int i = 0; i < keys.length; i++) {
+			records[i] = new BatchRecord(keys[i], true);
+		}
+
+		BatchPolicy batchPolicy = copyBatchParentPolicyWriteDefault();
+		batchPolicy.replica = Replica.MASTER;
+		batchPolicy.maxRetries = 5;
+		batchPolicy.tran = null;  // Disable for generate().
+
+		BatchAttr attr = new BatchAttr();
+		attr.setTran(tranAttr);
+
+		BatchStatus status = new BatchStatus(true);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
+		IBatchCommand[] commands = new IBatchCommand[bns.size()];
+
+		batchPolicy.tran = tran;
+
+		try {
+			int count = 0;
+
+			for (BatchNode bn : bns) {
+				if (bn.offsetsSize == 1) {
+					int i = bn.offsets[0];
+					commands[count++] = new BatchSingle.TranWrite(
+							cluster, batchPolicy, records[i], status, bn.node, tranAttr);
+				}
+				else {
+					commands[count++] = new Batch.TranWriteCommand(
+							cluster, bn, batchPolicy, keys, records, attr, status);
+				}
+			}
+			BatchExecutor.execute(cluster, batchPolicy, commands, status);
+		}
+		catch (Throwable e) {
+			throw new AerospikeException.BatchRecordArray(records, e);
+		}
 	}
 }

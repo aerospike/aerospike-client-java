@@ -377,6 +377,52 @@ public final class BatchSingle {
 		}
 	}
 
+	public static final class TranWrite extends BaseCommand {
+		private final BatchRecord record;
+		private final int attr;
+
+		public TranWrite(
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchRecord record,
+			BatchStatus status,
+			Node node,
+			int attr
+		) {
+			super(cluster, policy, status, record.key, node, true);
+			this.record = record;
+			this.attr = attr;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTranWrite(record.key, policy.tran, attr);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+			conn.updateLastUsed();
+
+			int resultCode = dataBuffer[13] & 0xFF;
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(true, commandSentCounter));
+				status.setRowError();
+			}
+		}
+
+		@Override
+		public void setInDoubt() {
+			if (record.resultCode == ResultCode.NO_RESPONSE) {
+				record.inDoubt = true;
+			}
+		}
+	}
+
 	public static abstract class BaseCommand extends SyncCommand implements IBatchCommand {
 		BatchStatus status;
 		Key key;

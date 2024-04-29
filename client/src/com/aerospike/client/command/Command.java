@@ -55,7 +55,6 @@ import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
 import com.aerospike.client.tran.Tran;
-import com.aerospike.client.tran.TranOp;
 import com.aerospike.client.util.Packer;
 
 public class Command {
@@ -102,6 +101,8 @@ public class Command {
 	//   1      1     allow unavailable
 
 	public static final int INFO4_MRT_VERIFY_READ	= (1 << 0); // Send MRT version to the server to be verified.
+	public static final int INFO4_MRT_ROLL_FORWARD	= (1 << 1); // Roll forward MRT.
+	public static final int INFO4_MRT_ROLL_BACK		= (1 << 2); // Roll back MRT.
 
 	public static final byte STATE_READ_AUTH_HEADER = 1;
 	public static final byte STATE_READ_HEADER = 2;
@@ -180,7 +181,7 @@ public class Command {
 		end();
 	}
 
-	public final void setTranWrite(WritePolicy policy, Key key, Tran tran, TranOp tranOp) {
+	public final void setTranWrite(Key key, Tran tran, int tranAttr) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
@@ -191,10 +192,10 @@ public class Command {
 		dataBuffer[9]  = (byte)0;
 		dataBuffer[10] = (byte)Command.INFO2_WRITE | Command.INFO2_DURABLE_DELETE;
 		dataBuffer[11] = (byte)0;
-		dataBuffer[12] = (byte)tranOp.attr;
+		dataBuffer[12] = (byte)tranAttr;
 		dataBuffer[13] = 0; // clear the result code
 		Buffer.intToBytes(0, dataBuffer, 14);
-		Buffer.intToBytes(policy.expiration, dataBuffer, 18);
+		Buffer.intToBytes(0, dataBuffer, 18);
 		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(0, dataBuffer, 28);
@@ -203,6 +204,104 @@ public class Command {
 		writeKey(key);
 		writeTran(tran);
 		end();
+	}
+
+	public final void setBatchTranWrite(
+		BatchPolicy policy,
+		Key[] keys,
+		BatchNode batch,
+		BatchAttr attr
+	) {
+		final KeyIterNative iter = new KeyIterNative(keys, batch);
+		setBatchTranWrite(policy, iter, attr);
+	}
+
+	public final void setBatchTranWrite(
+		BatchPolicy policy,
+		KeyIter<Key> iter,
+		BatchAttr attr
+	) {
+		// Estimate buffer size.
+		begin();
+		int fieldCount = 1;
+		int max = iter.size();
+		Tran tran = policy.tran;
+		Long[] versions = null;
+
+		if (tran != null) {
+			versions = new Long[max];
+
+			for (int i = 0; i < max; i++) {
+				Key key = iter.getItem(i);
+				versions[i] = tran.getReadVersion(key);
+			}
+		}
+
+		// Batch field
+		dataOffset += FIELD_HEADER_SIZE + 5;
+
+		Key key;
+		Key prev = null;
+
+		for (int i = 0; i < max; i++) {
+			key = iter.getItem(i);
+			dataOffset += key.digest.length + 4;
+
+			Long ver = (versions != null)? versions[i] : null;
+
+			if (canRepeat(key, prev, attr, ver)) {
+				// Can set repeat previous namespace/bin names to save space.
+				dataOffset++;
+			}
+			else {
+				// Write full header and namespace/set/bin names.
+				dataOffset += 13; // header(4) + ttl(4) + fieldCount(2) + opCount(2) = 13
+				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
+				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+				sizeTranBatch(tran, ver);
+				dataOffset += 2; // gen(2) = 2
+				prev = key;
+			}
+		}
+
+		sizeBuffer();
+
+		writeBatchHeader(policy, totalTimeout, fieldCount);
+
+		int fieldSizeOffset = dataOffset;
+		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+
+		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
+		dataOffset += 4;
+		dataBuffer[dataOffset++] = getBatchFlags(policy);
+		prev = null;
+
+		for (int i = 0; i < max; i++) {
+			key = iter.getItem(i);
+			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			byte[] digest = key.digest;
+			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			dataOffset += digest.length;
+
+			Long ver = (versions != null)? versions[i] : null;
+
+			if (canRepeat(key, prev, attr, ver)) {
+				// Can set repeat previous namespace/bin names to save space.
+				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
+			}
+			else {
+				// Write full message.
+				writeBatchWrite(key, tran, ver, attr, null, 0, 0);
+				prev = key;
+			}
+		}
+
+		// Write real field size.
+		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
+		end();
+		compress(policy);
 	}
 
 	//--------------------------------------------------

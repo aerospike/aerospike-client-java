@@ -471,6 +471,82 @@ public final class Batch {
 	}
 
 	//-------------------------------------------------------
+	// TranWrite
+	//-------------------------------------------------------
+
+	public static final class TranWriteCommand extends BatchCommand {
+		private final Key[] keys;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public TranWriteCommand(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, false);
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return attr.hasWrite;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTranWrite(batchPolicy, keys, batch, attr);
+		}
+
+		@Override
+		protected boolean parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				status.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		protected void inDoubt() {
+			if (!attr.hasWrite) {
+				return;
+			}
+
+			for (int index : batch.offsets) {
+				BatchRecord record = records[index];
+
+				if (record.resultCode == ResultCode.NO_RESPONSE) {
+					record.inDoubt = true;
+				}
+			}
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new TranWriteCommand(cluster, batchNode, batchPolicy, keys, records, attr, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, attr.hasWrite, status);
+		}
+	}
+
+	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------
 

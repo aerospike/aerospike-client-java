@@ -322,4 +322,16 @@ public final class BatchAttr {
 		}
 		opSize = dataOffset;
 	}
+
+	public void setTran(int attr) {
+		filterExp = null;
+		readAttr = 0;
+		writeAttr = Command.INFO2_WRITE | Command.INFO2_RESPOND_ALL_OPS | Command.INFO2_DURABLE_DELETE;
+		infoAttr = 0;
+		tranAttr = attr;
+		expiration = 0;
+		generation = 0;
+		hasWrite = true;
+		sendKey = false;
+	}
 }
