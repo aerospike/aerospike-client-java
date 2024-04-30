@@ -471,15 +471,72 @@ public final class Batch {
 	}
 
 	//-------------------------------------------------------
-	// TranWrite
+	// MRT
 	//-------------------------------------------------------
 
-	public static final class TranWriteCommand extends BatchCommand {
+	public static final class TranVerify extends BatchCommand {
+		private final Key[] keys;
+		private final Long[] versions;
+		private final BatchRecord[] records;
+
+		public TranVerify(
+			Cluster cluster,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Long[] versions,
+			BatchRecord[] records,
+			BatchStatus status
+		) {
+			super(cluster, batch, batchPolicy, status, false);
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		@Override
+		protected boolean isWrite() {
+			return false;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTranVerify(batchPolicy, keys, versions, batch);
+		}
+
+		@Override
+		protected boolean parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == 0) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, false);
+				status.setRowError();
+			}
+			return true;
+		}
+
+		@Override
+		protected BatchCommand createCommand(BatchNode batchNode) {
+			return new TranVerify(cluster, batchNode, batchPolicy, keys, versions, records, status);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(cluster, batchPolicy, keys, records, sequenceAP, sequenceSC, batch, false, status);
+		}
+	}
+
+	public static final class TranRoll extends BatchCommand {
 		private final Key[] keys;
 		private final BatchRecord[] records;
 		private final BatchAttr attr;
 
-		public TranWriteCommand(
+		public TranRoll(
 			Cluster cluster,
 			BatchNode batch,
 			BatchPolicy batchPolicy,
@@ -501,7 +558,7 @@ public final class Batch {
 
 		@Override
 		protected void writeBuffer() {
-			setBatchTranWrite(batchPolicy, keys, batch, attr);
+			setBatchTranRoll(batchPolicy, keys, batch, attr);
 		}
 
 		@Override
@@ -537,7 +594,7 @@ public final class Batch {
 
 		@Override
 		protected BatchCommand createCommand(BatchNode batchNode) {
-			return new TranWriteCommand(cluster, batchNode, batchPolicy, keys, records, attr, status);
+			return new TranRoll(cluster, batchNode, batchPolicy, keys, records, attr, status);
 		}
 
 		@Override

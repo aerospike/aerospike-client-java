@@ -74,7 +74,6 @@ import com.aerospike.client.command.ReadHeaderCommand;
 import com.aerospike.client.command.RegisterCommand;
 import com.aerospike.client.command.ScanExecutor;
 import com.aerospike.client.command.TouchCommand;
-import com.aerospike.client.command.TranReadCommand;
 import com.aerospike.client.command.WriteCommand;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
@@ -104,6 +103,7 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
+import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -596,22 +596,56 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * committed. Otherwise, the transaction is aborted.
 	 */
 	public final void tranEnd(Tran tran) {
-		// TODO: Should WritePolicy be passed as argument or have default TranPolicy?
-		// TODO: Convert to a single batch call.
 		// Validate record versions.
-		for (Map.Entry<Key,Long> entry : tran.getReads()) {
-			Key key = entry.getKey();
-			Long version = entry.getValue();
+		Set<Map.Entry<Key,Long>> reads = tran.getReads();
+		int max = reads.size();
+
+		if (max > 0) {
+			BatchRecord[] records = new BatchRecord[max];
+			Key[] keys = new Key[max];
+			Long[] versions = new Long[max];
+			int count = 0;
+
+			for (Map.Entry<Key,Long> entry : reads) {
+				Key key = entry.getKey();
+				keys[count] = key;
+				records[count] = new BatchRecord(key, false);
+				versions[count] = entry.getValue();
+				count++;
+			}
+
+			BatchPolicy batchPolicy = copyBatchPolicyDefault();
+			batchPolicy.readModeSC = ReadModeSC.LINEARIZE;
+			batchPolicy.replica = Replica.MASTER;
+			batchPolicy.maxRetries = 5;
+			batchPolicy.tran = null;
+
+			BatchStatus status = new BatchStatus(true);
+			List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, false, status);
+			IBatchCommand[] commands = new IBatchCommand[bns.size()];
 
 			try {
-				TranReadCommand command = new TranReadCommand(cluster, readPolicyDefault, key, version);
-				command.execute();
-			}
-			catch (Throwable t) {
-				if (tran.hasWrite()) {
-					tranAbort(tran);
+				count = 0;
+
+				for (BatchNode bn : bns) {
+					if (bn.offsetsSize == 1) {
+						int i = bn.offsets[0];
+						commands[count++] = new BatchSingle.TranVerify(
+								cluster, batchPolicy, versions[i], records[i], status, bn.node);
+					}
+					else {
+						commands[count++] = new Batch.TranVerify(
+								cluster, bn, batchPolicy, keys, versions, records, status);
+					}
 				}
-				throw t;
+				BatchExecutor.execute(cluster, batchPolicy, commands, status);
+				// TODO: Handle errors.
+				//if (!status) {
+				//	tranAbort(tran);
+				//}
+			}
+			catch (Throwable e) {
+				throw new AerospikeException.BatchRecordArray(records, e);
 			}
 		}
 
@@ -4542,6 +4576,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	private void tranClose(Tran tran, int tranAttr) {
 		// TODO: Handle errors.
+		// TODO: Pass in keys and versions.
 		Set<Key> keySet = tran.getWrites();
 
 		if (keySet.isEmpty()) {
@@ -4575,11 +4610,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			for (BatchNode bn : bns) {
 				if (bn.offsetsSize == 1) {
 					int i = bn.offsets[0];
-					commands[count++] = new BatchSingle.TranWrite(
+					commands[count++] = new BatchSingle.TranRoll(
 							cluster, batchPolicy, records[i], status, bn.node, tranAttr);
 				}
 				else {
-					commands[count++] = new Batch.TranWriteCommand(
+					commands[count++] = new Batch.TranRoll(
 							cluster, bn, batchPolicy, keys, records, attr, status);
 				}
 			}

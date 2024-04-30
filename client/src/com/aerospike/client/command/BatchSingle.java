@@ -377,11 +377,54 @@ public final class BatchSingle {
 		}
 	}
 
-	public static final class TranWrite extends BaseCommand {
+	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static final class TranVerify extends BaseCommand {
+		private final long version;
+		private final BatchRecord record;
+
+		public TranVerify(
+			Cluster cluster,
+			BatchPolicy policy,
+			long version,
+			BatchRecord record,
+			BatchStatus status,
+			Node node
+		) {
+			super(cluster, policy, status, record.key, node, false);
+			this.version = version;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTranVerify(record.key, version);
+		}
+
+		@Override
+		protected void parseResult(Connection conn) throws IOException {
+			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
+			conn.updateLastUsed();
+
+			int resultCode = dataBuffer[13] & 0xFF;
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, false);
+				status.setRowError();
+			}
+		}
+	}
+
+	public static final class TranRoll extends BaseCommand {
 		private final BatchRecord record;
 		private final int attr;
 
-		public TranWrite(
+		public TranRoll(
 			Cluster cluster,
 			BatchPolicy policy,
 			BatchRecord record,
@@ -396,7 +439,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void writeBuffer() {
-			setTranWrite(record.key, policy.tran, attr);
+			setTranRoll(record.key, policy.tran, attr);
 		}
 
 		@Override

@@ -151,7 +151,7 @@ public class Command {
 	// Multi-record Transactions
 	//--------------------------------------------------
 
-	public final void setTranRead(Policy policy, Key key, long version) {
+	public final void setTranVerify(Key key, long ver) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
@@ -170,18 +170,18 @@ public class Command {
 			dataBuffer[i] = 0;
 		}
 
-		Buffer.intToBytes(policy.readTouchTtlPercent, dataBuffer, 18);
+		Buffer.intToBytes(0, dataBuffer, 18);
 		Buffer.intToBytes(serverTimeout, dataBuffer, 22);
 		Buffer.shortToBytes(fieldCount, dataBuffer, 26);
 		Buffer.shortToBytes(0, dataBuffer, 28);
 		dataOffset = MSG_TOTAL_HEADER_SIZE;
 
 		writeKey(key);
-		writeFieldVersion(version);
+		writeFieldVersion(ver);
 		end();
 	}
 
-	public final void setTranWrite(Key key, Tran tran, int tranAttr) {
+	public final void setTranRoll(Key key, Tran tran, int tranAttr) {
 		begin();
 		int fieldCount = estimateKeySize(key);
 
@@ -206,50 +206,148 @@ public class Command {
 		end();
 	}
 
-	public final void setBatchTranWrite(
+	public final void setBatchTranVerify(
+		BatchPolicy policy,
+		Key[] keys,
+		Long[] versions,
+		BatchNode batch
+	) {
+		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
+		setBatchTranVerify(policy, keys, versions, offsets);
+	}
+
+	public final void setBatchTranVerify(
+		BatchPolicy policy,
+		Key[] keys,
+		Long[] versions,
+		BatchOffsets offsets
+	) {
+		// Estimate buffer size.
+		begin();
+
+		// Batch field
+		dataOffset += FIELD_HEADER_SIZE + 5;
+
+		Key prev = null;
+		int max = offsets.size();
+
+		for (int i = 0; i < max; i++) {
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = versions[offset];
+
+			dataOffset += key.digest.length + 4;
+
+			if (canRepeat(key, prev, ver)) {
+				// Can set repeat previous namespace/bin names to save space.
+				dataOffset++;
+			}
+			else {
+				// Write full header and namespace/set/bin names.
+				dataOffset += 9; // header(4) + fieldCount(2) + opCount(2) = 9
+				dataOffset += Buffer.estimateSizeUtf8(key.namespace) + FIELD_HEADER_SIZE;
+				dataOffset += Buffer.estimateSizeUtf8(key.setName) + FIELD_HEADER_SIZE;
+
+				if (ver != null) {
+					dataOffset += 7 + FIELD_HEADER_SIZE;
+				}
+				prev = key;
+			}
+		}
+
+		sizeBuffer();
+
+		writeBatchHeader(policy, totalTimeout, 1);
+
+		int fieldSizeOffset = dataOffset;
+		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
+
+		Buffer.intToBytes(max, dataBuffer, dataOffset);
+		dataOffset += 4;
+		dataBuffer[dataOffset++] = getBatchFlags(policy);
+		prev = null;
+
+		for (int i = 0; i < max; i++) {
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = versions[offset];
+
+			Buffer.intToBytes(offset, dataBuffer, dataOffset);
+			dataOffset += 4;
+
+			byte[] digest = key.digest;
+			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
+			dataOffset += digest.length;
+
+			if (canRepeat(key, prev, ver)) {
+				// Can set repeat previous namespace/bin names to save space.
+				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
+			}
+			else {
+				// Write full message.
+				dataBuffer[dataOffset++] = (byte)(BATCH_MSG_INFO | BATCH_MSG_INFO4);
+				dataBuffer[dataOffset++] = (byte)(Command.INFO1_READ | Command.INFO1_NOBINDATA);
+				dataBuffer[dataOffset++] = (byte)0;
+				dataBuffer[dataOffset++] = (byte)Command.INFO3_SC_READ_TYPE;
+				dataBuffer[dataOffset++] = (byte)Command.INFO4_MRT_VERIFY_READ;
+				writeBatchFields(key, 1, 0);
+
+				if (ver != null) {
+					writeFieldVersion(ver);
+				}
+				prev = key;
+			}
+		}
+
+		// Write real field size.
+		Buffer.intToBytes(dataOffset - MSG_TOTAL_HEADER_SIZE - 4, dataBuffer, fieldSizeOffset);
+		end();
+		compress(policy);
+	}
+
+	public final void setBatchTranRoll(
 		BatchPolicy policy,
 		Key[] keys,
 		BatchNode batch,
 		BatchAttr attr
 	) {
-		final KeyIterNative iter = new KeyIterNative(keys, batch);
-		setBatchTranWrite(policy, iter, attr);
+		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
+		setBatchTranRoll(policy, keys, attr, offsets);
 	}
 
-	public final void setBatchTranWrite(
+	public final void setBatchTranRoll(
 		BatchPolicy policy,
-		KeyIter<Key> iter,
-		BatchAttr attr
+		Key[] keys,
+		BatchAttr attr,
+		BatchOffsets offsets
 	) {
 		// Estimate buffer size.
 		begin();
 		int fieldCount = 1;
-		int max = iter.size();
+		int max = offsets.size();
 		Tran tran = policy.tran;
-		Long[] versions = null;
+		Long[] versions = new Long[max];
 
-		if (tran != null) {
-			versions = new Long[max];
-
-			for (int i = 0; i < max; i++) {
-				Key key = iter.getItem(i);
-				versions[i] = tran.getReadVersion(key);
-			}
+		// TODO: Pass in versions?
+		for (int i = 0; i < max; i++) {
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			versions[i] = tran.getReadVersion(key);
 		}
 
 		// Batch field
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key key;
 		Key prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = versions[i];
+
 			dataOffset += key.digest.length + 4;
 
-			Long ver = (versions != null)? versions[i] : null;
-
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(key, prev, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataOffset++;
 			}
@@ -271,23 +369,24 @@ public class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
+		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
-			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = versions[i];
+
+			Buffer.intToBytes(offset, dataBuffer, dataOffset);
 			dataOffset += 4;
 
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
 
-			Long ver = (versions != null)? versions[i] : null;
-
-			if (canRepeat(key, prev, attr, ver)) {
+			if (canRepeat(key, prev, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
 				dataBuffer[dataOffset++] = BATCH_MSG_REPEAT;
 			}
@@ -916,8 +1015,8 @@ public class Command {
 		List<? extends BatchRecord> records,
 		BatchNode batch
 	) {
-		final BatchRecordIterNative iter = new BatchRecordIterNative(records, batch);
-		setBatchOperate(policy, writePolicy, udfPolicy, deletePolicy, iter);
+		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
+		setBatchOperate(policy, writePolicy, udfPolicy, deletePolicy, records, offsets);
 	}
 
 	public final void setBatchOperate(
@@ -925,14 +1024,11 @@ public class Command {
 		BatchWritePolicy writePolicy,
 		BatchUDFPolicy udfPolicy,
 		BatchDeletePolicy deletePolicy,
-		KeyIter<BatchRecord> iter
+		List<? extends BatchRecord> records,
+		BatchOffsets offsets
 	) {
-		BatchRecord record;
-		BatchRecord prev = null;
-
 		begin();
-		int fieldCount = 1;
-		int max = iter.size();
+		int max = offsets.size();
 		Tran tran = policy.tran;
 		Long[] versions = null;
 
@@ -940,10 +1036,13 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				record = iter.getItem(i);
+				int offset = offsets.get(i);
+				BatchRecord record = records.get(offset);
 				versions[i] = tran.getReadVersion(record.key);
 			}
 		}
+
+		int fieldCount = 1;
 
 		if (policy.filterExp != null) {
 			dataOffset += policy.filterExp.size();
@@ -952,13 +1051,15 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
+		BatchRecord prev = null;
+
 		for (int i = 0; i < max; i++) {
-			record = iter.getItem(i);
-			final Key key = record.key;
+			int offset = offsets.get(i);
+			BatchRecord record = records.get(offset);
+			Key key = record.key;
+			Long ver = (versions != null)? versions[i] : null;
 
 			dataOffset += key.digest.length + 4;
-
-			Long ver = (versions != null)? versions[i] : null;
 
 			if (canRepeat(policy, key, record, prev, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -985,7 +1086,7 @@ public class Command {
 		final int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
+		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 
@@ -993,16 +1094,17 @@ public class Command {
 		prev = null;
 
 		for (int i = 0; i < max; i++) {
-			record = iter.getItem(i);
-			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
+			int offset = offsets.get(i);
+			BatchRecord record = records.get(offset);
+			Long ver = (versions != null)? versions[i] : null;
+
+			Buffer.intToBytes(offset, dataBuffer, dataOffset);
 			dataOffset += 4;
 
-			final Key key = record.key;
+			Key key = record.key;
 			final byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
-
-			Long ver = (versions != null)? versions[i] : null;
 
 			if (canRepeat(policy, key, record, prev, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1084,21 +1186,21 @@ public class Command {
 		Operation[] ops,
 		BatchAttr attr
 	) {
-		final KeyIterNative iter = new KeyIterNative(keys, batch);
-		setBatchOperate(policy, iter, binNames, ops, attr);
+		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
+		setBatchOperate(policy, keys, binNames, ops, attr, offsets);
 	}
 
 	public final void setBatchOperate(
 		BatchPolicy policy,
-		KeyIter<Key> iter,
+		Key[] keys,
 		String[] binNames,
 		Operation[] ops,
-		BatchAttr attr
+		BatchAttr attr,
+		BatchOffsets offsets
 	) {
 		// Estimate buffer size.
 		begin();
-		int fieldCount = 1;
-		int max = iter.size();
+		int max = offsets.size();
 		Tran tran = policy.tran;
 		Long[] versions = null;
 
@@ -1106,12 +1208,14 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				Key key = iter.getItem(i);
+				int offset = offsets.get(i);
+				Key key = keys[offset];
 				versions[i] = tran.getReadVersion(key);
 			}
 		}
 
 		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = 1;
 
 		if (exp != null) {
 			dataOffset += exp.size();
@@ -1120,14 +1224,14 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key key;
 		Key prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
-			dataOffset += key.digest.length + 4;
-
+			int offset = offsets.get(i);
+			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
+
+			dataOffset += key.digest.length + 4;
 
 			if (canRepeat(key, prev, attr, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1178,21 +1282,22 @@ public class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
+		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
-			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = (versions != null)? versions[i] : null;
+
+			Buffer.intToBytes(offset, dataBuffer, dataOffset);
 			dataOffset += 4;
 
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
-
-			Long ver = (versions != null)? versions[i] : null;
 
 			if (canRepeat(key, prev, attr, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1231,22 +1336,22 @@ public class Command {
 		byte[] argBytes,
 		BatchAttr attr
 	) {
-		final KeyIterNative iter = new KeyIterNative(keys, batch);
-		setBatchUDF(policy, iter, packageName, functionName, argBytes, attr);
+		final BatchOffsetsNative offsets = new BatchOffsetsNative(batch);
+		setBatchUDF(policy, keys, packageName, functionName, argBytes, attr, offsets);
 	}
 
 	public final void setBatchUDF(
 		BatchPolicy policy,
-		KeyIter<Key> iter,
+		Key[] keys,
 		String packageName,
 		String functionName,
 		byte[] argBytes,
-		BatchAttr attr
+		BatchAttr attr,
+		BatchOffsets offsets
 	) {
 		// Estimate buffer size.
 		begin();
-		int fieldCount = 1;
-		int max = iter.size();
+		int max = offsets.size();
 		Tran tran = policy.tran;
 		Long[] versions = null;
 
@@ -1254,12 +1359,14 @@ public class Command {
 			versions = new Long[max];
 
 			for (int i = 0; i < max; i++) {
-				Key key = iter.getItem(i);
+				int offset = offsets.get(i);
+				Key key = keys[offset];
 				versions[i] = tran.getReadVersion(key);
 			}
 		}
 
 		Expression exp = getBatchExpression(policy, attr);
+		int fieldCount = 1;
 
 		if (exp != null) {
 			dataOffset += exp.size();
@@ -1268,14 +1375,14 @@ public class Command {
 
 		dataOffset += FIELD_HEADER_SIZE + 5;
 
-		Key key;
 		Key prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
-			dataOffset += key.digest.length + 4;
-
+			int offset = offsets.get(i);
+			Key key = keys[offset];
 			Long ver = (versions != null)? versions[i] : null;
+
+			dataOffset += key.digest.length + 4;
 
 			if (canRepeat(key, prev, attr, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1308,21 +1415,22 @@ public class Command {
 		int fieldSizeOffset = dataOffset;
 		writeFieldHeader(0, FieldType.BATCH_INDEX);  // Need to update size at end
 
-		Buffer.intToBytes(iter.size(), dataBuffer, dataOffset);
+		Buffer.intToBytes(max, dataBuffer, dataOffset);
 		dataOffset += 4;
 		dataBuffer[dataOffset++] = getBatchFlags(policy);
 		prev = null;
 
 		for (int i = 0; i < max; i++) {
-			key = iter.getItem(i);
-			Buffer.intToBytes(iter.offset(), dataBuffer, dataOffset);
+			int offset = offsets.get(i);
+			Key key = keys[offset];
+			Long ver = (versions != null)? versions[i] : null;
+
+			Buffer.intToBytes(offset, dataBuffer, dataOffset);
 			dataOffset += 4;
 
 			byte[] digest = key.digest;
 			System.arraycopy(digest, 0, dataBuffer, dataOffset, digest.length);
 			dataOffset += digest.length;
-
-			Long ver = (versions != null)? versions[i] : null;
 
 			if (canRepeat(key, prev, attr, ver)) {
 				// Can set repeat previous namespace/bin names to save space.
@@ -1359,13 +1467,13 @@ public class Command {
 				prev.key.setName == key.setName && record.equals(prev);
 	}
 
-	private static boolean canRepeat(
-		Key key,
-		Key prev,
-		BatchAttr attr,
-		Long ver
-	) {
+	private static boolean canRepeat(Key key, Key prev, BatchAttr attr, Long ver) {
 		return ver == null && !attr.sendKey && prev != null && prev.namespace == key.namespace &&
+				prev.setName == key.setName;
+	}
+
+	private static boolean canRepeat(Key key, Key prev, Long ver) {
+		return ver == null && prev != null && prev.namespace == key.namespace &&
 				prev.setName == key.setName;
 	}
 
@@ -2679,49 +2787,16 @@ public class Command {
 		private static final long serialVersionUID = 1L;
 	}
 
-	public interface KeyIter<T> {
+	public interface BatchOffsets {
 		int size();
-		T next();
-		T getItem(int offset);
-		int offset();
-		void reset();
+		int get(int i);
 	}
 
-	private static class BatchRecordIterNative extends BaseIterNative<BatchRecord> {
-		private final List<? extends BatchRecord> records;
-
-		public BatchRecordIterNative(List<? extends BatchRecord> records, BatchNode batch) {
-			super(batch);
-			this.records = records;
-		}
-
-		@Override
-		public BatchRecord get(int offset) {
-			return records.get(offset);
-		}
-	}
-
-	private static class KeyIterNative extends BaseIterNative<Key> {
-		private final Key[] keys;
-
-		public KeyIterNative(Key[] keys, BatchNode batch) {
-			super(batch);
-			this.keys = keys;
-		}
-
-		@Override
-		public Key get(int offset) {
-			return keys[offset];
-		}
-	}
-
-	private static abstract class BaseIterNative<T> implements KeyIter<T> {
+	private static final class BatchOffsetsNative implements BatchOffsets {
 		private final int size;
 		private final int[] offsets;
-		private int offset;
-		private int index;
 
-		public BaseIterNative(BatchNode batch) {
+		public BatchOffsetsNative(BatchNode batch) {
 			this.size = batch.offsetsSize;
 			this.offsets = batch.offsets;
 		}
@@ -2732,30 +2807,8 @@ public class Command {
 		}
 
 		@Override
-		public T next() {
-			if (index >= size) {
-				return null;
-			}
-			offset = offsets[index++];
-			return get(offset);
-		}
-
-		@Override
-		public T getItem(int i) {
-			offset = offsets[i];
-			return get(offset);
-		}
-
-		abstract T get(int offset);
-
-		@Override
-		public int offset() {
-			return offset;
-		}
-
-		@Override
-		public void reset() {
-			index = 0;
+		public int get(int i) {
+			return offsets[i];
 		}
 	}
 }
