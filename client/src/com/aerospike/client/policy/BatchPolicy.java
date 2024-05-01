@@ -129,6 +129,28 @@ public final class BatchPolicy extends Policy {
 		return policy;
 	}
 
+	/**
+	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch.
+	 */
+	public static BatchPolicy TranVerifyDefault() {
+		BatchPolicy policy = new BatchPolicy();
+		policy.readModeSC = ReadModeSC.LINEARIZE;
+		policy.replica = Replica.MASTER;
+		policy.maxRetries = 5;
+		return policy;
+	}
+
+	/**
+	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public static BatchPolicy TranRollDefault() {
+		BatchPolicy policy = new BatchPolicy();
+		policy.replica = Replica.MASTER;
+		policy.maxRetries = 5;
+		return policy;
+	}
+
 	// Include setters to facilitate Spring's ConfigurationProperties.
 
 	public void setMaxConcurrentThreads(int maxConcurrentThreads) {

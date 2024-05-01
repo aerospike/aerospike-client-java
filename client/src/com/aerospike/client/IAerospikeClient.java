@@ -169,6 +169,26 @@ public interface IAerospikeClient extends Closeable {
 	public BatchUDFPolicy copyBatchUDFPolicyDefault();
 
 	/**
+	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 */
+	public BatchPolicy getTranVerifyPolicyDefault();
+
+	/**
+	 * Copy MRT record version verify policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchPolicy copyTranVerifyPolicyDefault();
+
+	/**
+	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public BatchPolicy getTranRollPolicyDefault();
+
+	/**
+	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public BatchPolicy copyTranRollPolicyDefault();
+
+	/**
 	 * Return info command policy default. Use when the policy will not be modified.
 	 */
 	public InfoPolicy getInfoPolicyDefault();

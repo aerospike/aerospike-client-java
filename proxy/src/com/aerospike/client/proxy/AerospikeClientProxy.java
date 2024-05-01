@@ -200,6 +200,18 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	public final BatchUDFPolicy batchUDFPolicyDefault;
 
 	/**
+	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch
+	 * when {@link #tranEnd(Tran)} is called.
+	 */
+	public final BatchPolicy tranVerifyPolicyDefault;
+
+	/**
+	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public final BatchPolicy tranRollPolicyDefault;
+
+	/**
 	 * Default info policy that is used when info command policy is null.
 	 */
 	public final InfoPolicy infoPolicyDefault;
@@ -242,6 +254,8 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 		this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 		this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 		this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+		this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+		this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -418,6 +432,34 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
+	}
+
+	/**
+	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 */
+	public final BatchPolicy getTranVerifyPolicyDefault() {
+		return tranVerifyPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT record version verify policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyTranVerifyPolicyDefault() {
+		return new BatchPolicy(tranVerifyPolicyDefault);
+	}
+
+	/**
+	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public final BatchPolicy getTranRollPolicyDefault() {
+		return tranRollPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyTranRollPolicyDefault() {
+		return new BatchPolicy(tranRollPolicyDefault);
 	}
 
 	/**

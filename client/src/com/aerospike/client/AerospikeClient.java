@@ -103,7 +103,6 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.ReadModeSC;
 import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
@@ -195,6 +194,18 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Default user defined function policy used in batch UDF excecute commands.
 	 */
 	public final BatchUDFPolicy batchUDFPolicyDefault;
+
+	/**
+	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch
+	 * when {@link #tranEnd(Tran)} is called.
+	 */
+	public final BatchPolicy tranVerifyPolicyDefault;
+
+	/**
+	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public final BatchPolicy tranRollPolicyDefault;
 
 	/**
 	 * Default info policy that is used when info command policy is null.
@@ -298,6 +309,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 		this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 		this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+		this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+		this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 		this.infoPolicyDefault = policy.infoPolicyDefault;
 		this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 
@@ -322,6 +335,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchWritePolicyDefault = policy.batchWritePolicyDefault;
 			this.batchDeletePolicyDefault = policy.batchDeletePolicyDefault;
 			this.batchUDFPolicyDefault = policy.batchUDFPolicyDefault;
+			this.tranVerifyPolicyDefault = policy.tranVerifyPolicyDefault;
+			this.tranRollPolicyDefault = policy.tranRollPolicyDefault;
 			this.infoPolicyDefault = policy.infoPolicyDefault;
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
@@ -335,6 +350,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchWritePolicyDefault = new BatchWritePolicy();
 			this.batchDeletePolicyDefault = new BatchDeletePolicy();
 			this.batchUDFPolicyDefault = new BatchUDFPolicy();
+			this.tranVerifyPolicyDefault = BatchPolicy.TranVerifyDefault();
+			this.tranRollPolicyDefault = BatchPolicy.TranRollDefault();
 			this.infoPolicyDefault = new InfoPolicy();
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
@@ -468,6 +485,34 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final BatchUDFPolicy copyBatchUDFPolicyDefault() {
 		return new BatchUDFPolicy(batchUDFPolicyDefault);
+	}
+
+	/**
+	 * Return MRT record version verify policy default. Use when the policy will not be modified.
+	 */
+	public final BatchPolicy getTranVerifyPolicyDefault() {
+		return tranVerifyPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT record version verify policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyTranVerifyPolicyDefault() {
+		return new BatchPolicy(tranVerifyPolicyDefault);
+	}
+
+	/**
+	 * Return MRT roll forward/back policy default. Use when the policy will not be modified.
+	 */
+	public final BatchPolicy getTranRollPolicyDefault() {
+		return tranRollPolicyDefault;
+	}
+
+	/**
+	 * Copy MRT roll forward/back policy default. Use when the policy will be modified for use in a specific transaction.
+	 */
+	public final BatchPolicy copyTranRollPolicyDefault() {
+		return new BatchPolicy(tranRollPolicyDefault);
 	}
 
 	/**
@@ -614,12 +659,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				count++;
 			}
 
-			BatchPolicy batchPolicy = copyBatchPolicyDefault();
-			batchPolicy.readModeSC = ReadModeSC.LINEARIZE;
-			batchPolicy.replica = Replica.MASTER;
-			batchPolicy.maxRetries = 5;
-			batchPolicy.tran = null;
-
+			BatchPolicy batchPolicy = tranVerifyPolicyDefault;
 			BatchStatus status = new BatchStatus(true);
 			List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, false, status);
 			IBatchCommand[] commands = new IBatchCommand[bns.size()];
@@ -4590,18 +4630,19 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			records[i] = new BatchRecord(keys[i], true);
 		}
 
-		BatchPolicy batchPolicy = copyBatchParentPolicyWriteDefault();
-		batchPolicy.replica = Replica.MASTER;
-		batchPolicy.maxRetries = 5;
-		batchPolicy.tran = null;  // Disable for generate().
+		// Copy tran roll policy because it needs to be modified.
+		BatchPolicy batchPolicy = copyTranRollPolicyDefault();
 
 		BatchAttr attr = new BatchAttr();
 		attr.setTran(tranAttr);
 
 		BatchStatus status = new BatchStatus(true);
+
+		// generate() requires a null tran instance.
 		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
 		IBatchCommand[] commands = new IBatchCommand[bns.size()];
 
+		// Batch roll forward requires the tran instance.
 		batchPolicy.tran = tran;
 
 		try {

@@ -286,6 +286,17 @@ public class ClientPolicy {
 	public BatchUDFPolicy batchUDFPolicyDefault = new BatchUDFPolicy();
 
 	/**
+	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch.
+	 */
+	public BatchPolicy tranVerifyPolicyDefault = BatchPolicy.TranVerifyDefault();
+
+	/**
+	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
+	 * or back (abort) in a batch.
+	 */
+	public BatchPolicy tranRollPolicyDefault = BatchPolicy.TranRollDefault();
+
+	/**
 	 * Default info policy that is used when info command's policy is null.
 	 */
 	public InfoPolicy infoPolicyDefault = new InfoPolicy();
@@ -420,6 +431,8 @@ public class ClientPolicy {
 		this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 		this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 		this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
+		this.tranVerifyPolicyDefault = new BatchPolicy(other.tranVerifyPolicyDefault);
+		this.tranRollPolicyDefault = new BatchPolicy(other.tranRollPolicyDefault);
 		this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
@@ -551,6 +564,14 @@ public class ClientPolicy {
 
 	public void setBatchUDFPolicyDefault(BatchUDFPolicy batchUDFPolicyDefault) {
 		this.batchUDFPolicyDefault = batchUDFPolicyDefault;
+	}
+
+	public void setTranVerifyPolicyDefault(BatchPolicy tranVerifyPolicyDefault) {
+		this.tranVerifyPolicyDefault = tranVerifyPolicyDefault;
+	}
+
+	public void setTranRollPolicyDefault(BatchPolicy tranRollPolicyDefault) {
+		this.tranRollPolicyDefault = tranRollPolicyDefault;
 	}
 
 	public void setInfoPolicyDefault(InfoPolicy infoPolicyDefault) {
