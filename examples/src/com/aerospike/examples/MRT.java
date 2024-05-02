@@ -27,16 +27,11 @@ import com.aerospike.client.Operation;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
-import com.aerospike.client.cdt.ListOperation;
-import com.aerospike.client.cdt.ListPolicy;
-import com.aerospike.client.cdt.ListReturnType;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
 import com.aerospike.client.tran.Tran;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MRT extends Example {
 	public static final String binName = "bin";
@@ -78,7 +73,7 @@ public class MRT extends Example {
 		wp.tran = tran;
 		client.put(wp, key, new Bin(binName, "val2"));
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val2");
@@ -106,7 +101,7 @@ public class MRT extends Example {
 			}
 		}
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 	}
 
 	public void tranWriteRead(IAerospikeClient client, Parameters params) {
@@ -123,7 +118,7 @@ public class MRT extends Example {
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val1");
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		record = client.get(params.policy, key);
 		assertEqual(record, "val2");
@@ -166,7 +161,7 @@ public class MRT extends Example {
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val1");
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 	}
 
 	public void tranDelete(IAerospikeClient client, Parameters params) {
@@ -181,7 +176,7 @@ public class MRT extends Example {
 		wp.durableDelete = true;
 		client.delete(wp, key);
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		Record record = client.get(params.policy, key);
 		assertNull(record);
@@ -216,7 +211,7 @@ public class MRT extends Example {
 		wp.tran = tran;
 		client.touch(wp, key);
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val1");
@@ -255,7 +250,7 @@ public class MRT extends Example {
 
 		assertEqual(record, "bin2", "bal1");
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		record = client.get(params.policy, key);
 		assertEqual(record, "val2");
@@ -302,7 +297,7 @@ public class MRT extends Example {
 
 		client.execute(params.writePolicy, key, "record_example", "writeBin", Value.get(binName), Value.get("val2"));
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val2");
@@ -374,7 +369,7 @@ public class MRT extends Example {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.tranEnd(tran);
+		client.tranCommit(tran);
 
 		recs = client.get(null, keys);
 		assertBatchEqual(keys, recs, 2);

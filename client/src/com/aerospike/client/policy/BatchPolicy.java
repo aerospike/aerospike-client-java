@@ -137,6 +137,7 @@ public final class BatchPolicy extends Policy {
 		policy.readModeSC = ReadModeSC.LINEARIZE;
 		policy.replica = Replica.MASTER;
 		policy.maxRetries = 5;
+		policy.totalTimeout = 10000;
 		return policy;
 	}
 
@@ -148,6 +149,7 @@ public final class BatchPolicy extends Policy {
 		BatchPolicy policy = new BatchPolicy();
 		policy.replica = Replica.MASTER;
 		policy.maxRetries = 5;
+		policy.totalTimeout = 10000;
 		return policy;
 	}
 

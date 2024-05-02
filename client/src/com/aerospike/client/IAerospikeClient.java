@@ -281,7 +281,7 @@ public interface IAerospikeClient extends Closeable {
 	 * the expected record versions match the server record versions, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 */
-	public void tranEnd(Tran tran);
+	public void tranCommit(Tran tran);
 
 	/**
 	 * Abort and rollback the given multi-record transaction.

@@ -201,7 +201,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 
 	/**
 	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch
-	 * when {@link #tranEnd(Tran)} is called.
+	 * when {@link #tranCommit(Tran)} is called.
 	 */
 	public final BatchPolicy tranVerifyPolicyDefault;
 
@@ -588,7 +588,7 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 * the expected record versions match the server record versions, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 */
-	public final void tranEnd(Tran tran) {
+	public final void tranCommit(Tran tran) {
 	}
 
 	/**

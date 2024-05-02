@@ -103,7 +103,6 @@ import com.aerospike.client.policy.ClientPolicy;
 import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
-import com.aerospike.client.policy.Replica;
 import com.aerospike.client.policy.ScanPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
@@ -197,7 +196,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 	/**
 	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch
-	 * when {@link #tranEnd(Tran)} is called.
+	 * when {@link #tranCommit(Tran)} is called.
 	 */
 	public final BatchPolicy tranVerifyPolicyDefault;
 
@@ -640,7 +639,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * the expected record versions match the server record versions, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 */
-	public final void tranEnd(Tran tran) {
+	public final void tranCommit(Tran tran) {
 		// Validate record versions.
 		Set<Map.Entry<Key,Long>> reads = tran.getReads();
 		int max = reads.size();
@@ -679,6 +678,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 					}
 				}
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
+				// CONFLICT = abort
+				// Other errors : retry
 				// TODO: Handle errors.
 				//if (!status) {
 				//	tranAbort(tran);
