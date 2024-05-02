@@ -28,16 +28,15 @@ import java.util.Set;
  * Multi-record transaction.
  */
 public final class Tran {
-	public final long trid;
-	// TODO: Store namespace at top level for verification purposes?
+	public final long id;
 	private final HashMap<Key,Long> reads;
 	private final HashSet<Key> writes;
 
 	/**
 	 * Create transaction with given transaction id.
 	 */
-	public Tran(long trid) {
-		this.trid = trid;
+	public Tran(long id) {
+		this.id = id;
 		reads = new HashMap<>();
 		writes = new HashSet<>();
 	}
@@ -46,7 +45,7 @@ public final class Tran {
 	 * Create transaction and assign transaction id at random.
 	 */
 	public Tran() {
-		trid = new RandomShift().nextLong();
+		id = new RandomShift().nextLong();
 		reads = new HashMap<>();
 		writes = new HashSet<>();
 	}
@@ -104,12 +103,5 @@ public final class Tran {
 	 */
 	public Set<Key> getWrites() {
 		return writes;
-	}
-
-	/**
-	 * Return true if a write occurred within this transaction.
-	 */
-	public boolean hasWrite() {
-		return writes.size() > 0;
 	}
 }

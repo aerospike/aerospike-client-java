@@ -690,7 +690,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			}
 		}
 
-		System.out.println("Tran version matched: " + tran.trid);
+		System.out.println("Tran version matched: " + tran.id);
 		tranClose(tran, Command.INFO4_MRT_ROLL_FORWARD);
 	}
 
