@@ -691,14 +691,14 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		System.out.println("Tran version matched: " + tran.id);
-		tranClose(tran, Command.INFO4_MRT_ROLL_FORWARD);
+		tranRoll(tran, Command.INFO4_MRT_ROLL_FORWARD);
 	}
 
 	/**
 	 * Abort and rollback the given multi-record transaction.
 	 */
 	public final void tranAbort(Tran tran) {
-		tranClose(tran, Command.INFO4_MRT_ROLL_BACK);
+		tranRoll(tran, Command.INFO4_MRT_ROLL_BACK);
 	}
 
 	//-------------------------------------------------------
@@ -4615,7 +4615,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return code;
 	}
 
-	private void tranClose(Tran tran, int tranAttr) {
+	private void tranRoll(Tran tran, int tranAttr) {
 		// TODO: Handle errors.
 		// TODO: Pass in keys and versions.
 		Set<Key> keySet = tran.getWrites();
