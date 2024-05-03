@@ -16,6 +16,7 @@
  */
 package com.aerospike.client.command;
 
+import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Connection;
@@ -64,18 +65,13 @@ public abstract class SyncWriteCommand extends SyncCommand {
 	}
 
 	protected int parseHeader(Connection conn) throws IOException {
-		if (policy.tran != null) {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-			Long version = rp.parseVersion();
+		RecordParser rp = new RecordParser(conn, dataBuffer);
+		parseFields(rp);
 
-			policy.tran.handleWrite(key, version, rp.resultCode);
-			return rp.resultCode;
+		if (rp.opCount > 0) {
+			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
 		}
-		else {
-			conn.readFully(dataBuffer, Command.MSG_TOTAL_HEADER_SIZE, Command.STATE_READ_HEADER);
-			conn.updateLastUsed();
-			return dataBuffer[13] & 0xFF;
-		}
+		return rp.resultCode;
 	}
 
 	protected void parseFields(RecordParser rp) {

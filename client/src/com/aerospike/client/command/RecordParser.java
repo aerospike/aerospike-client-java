@@ -170,8 +170,13 @@ public final class RecordParser {
 			int type = dataBuffer[dataOffset++];
 			int size = len - 1;
 
-			if (type == FieldType.RECORD_VERSION && size == 7) {
-				version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+			if (type == FieldType.RECORD_VERSION) {
+				if (size == 7) {
+					version = Buffer.versionBytesToLong(dataBuffer, dataOffset);
+				}
+				else {
+					throw new AerospikeException("Record version field has invalid size: " + size);
+				}
 			}
 			dataOffset += size;
 		}

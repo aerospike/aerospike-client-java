@@ -43,8 +43,12 @@ public final class ReadHeaderCommand extends SyncReadCommand {
 		RecordParser rp = new RecordParser(conn, dataBuffer);
 		parseFields(rp);
 
+		if (rp.opCount > 0) {
+			throw new AerospikeException("Unexpected read header opCount: " + rp.opCount + ',' + rp.resultCode);
+		}
+
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecordBins(false);
+			record = new Record(null, rp.generation, rp.expiration);
 			return;
 		}
 

@@ -61,16 +61,20 @@ public final class ExecuteCommand extends SyncWriteCommand {
 			return;
 		}
 
+		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
+			record = rp.parseRecordBins(false);
+			handleUdfError(rp.resultCode);
+			return;
+		}
+
+		if (rp.opCount > 0) {
+			throw new AerospikeException("Unexpected UDF opCount on error: " + rp.opCount + ',' + rp.resultCode);
+		}
+
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
 				throw new AerospikeException(rp.resultCode);
 			}
-			return;
-		}
-
-		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			record = rp.parseRecordBins(false);
-			handleUdfError(rp.resultCode);
 			return;
 		}
 
