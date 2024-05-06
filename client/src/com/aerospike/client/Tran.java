@@ -16,38 +16,35 @@
  */
 package com.aerospike.client;
 
-import com.aerospike.client.Key;
-import com.aerospike.client.ResultCode;
-import com.aerospike.client.util.RandomShift;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Multi-record transaction.
  */
 public final class Tran {
 	public final long id;
-	private final HashMap<Key,Long> reads;
-	private final HashSet<Key> writes;
+	private final ConcurrentHashMap<Key,Long> reads;
+	private final Set<Key> writes;
 
 	/**
 	 * Create transaction with given transaction id.
 	 */
 	public Tran(long id) {
 		this.id = id;
-		reads = new HashMap<>();
-		writes = new HashSet<>();
+		reads = new ConcurrentHashMap<>();
+		writes = ConcurrentHashMap.newKeySet();
 	}
 
 	/**
 	 * Create transaction and assign transaction id at random.
 	 */
 	public Tran() {
-		id = new RandomShift().nextLong();
-		reads = new HashMap<>();
-		writes = new HashSet<>();
+		id = new Random().nextLong();
+		reads = new ConcurrentHashMap<>();
+		writes = ConcurrentHashMap.newKeySet();
 	}
 
 	/**
