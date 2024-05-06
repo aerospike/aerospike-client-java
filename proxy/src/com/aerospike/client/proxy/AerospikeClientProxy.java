@@ -100,7 +100,7 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.tran.Tran;
+import com.aerospike.client.Tran;
 import com.aerospike.client.util.Packer;
 import com.aerospike.client.util.Util;
 

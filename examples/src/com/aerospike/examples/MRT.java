@@ -31,7 +31,7 @@ import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.tran.Tran;
+import com.aerospike.client.Tran;
 
 public class MRT extends Example {
 	public static final String binName = "bin";

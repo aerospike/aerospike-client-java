@@ -121,7 +121,6 @@ import com.aerospike.client.query.Statement;
 import com.aerospike.client.task.ExecuteTask;
 import com.aerospike.client.task.IndexTask;
 import com.aerospike.client.task.RegisterTask;
-import com.aerospike.client.tran.Tran;
 import com.aerospike.client.util.Crypto;
 import com.aerospike.client.util.Pack;
 import com.aerospike.client.util.Packer;
@@ -635,12 +634,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * End the given multi-record transaction. If the transaction completed successfully and
-	 * the expected record versions match the server record versions, the transaction is
+	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
 	 */
 	public final void tranCommit(Tran tran) {
-		// Validate record versions.
+		// Validate record versions in a batch.
 		Set<Map.Entry<Key,Long>> reads = tran.getReads();
 		int max = reads.size();
 
@@ -658,12 +657,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				count++;
 			}
 
-			BatchPolicy batchPolicy = tranVerifyPolicyDefault;
-			BatchStatus status = new BatchStatus(true);
-			List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, false, status);
-			IBatchCommand[] commands = new IBatchCommand[bns.size()];
-
 			try {
+				BatchPolicy batchPolicy = tranVerifyPolicyDefault;
+				BatchStatus status = new BatchStatus(true);
+				List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, false, status);
+				IBatchCommand[] commands = new IBatchCommand[bns.size()];
+
 				count = 0;
 
 				for (BatchNode bn : bns) {
@@ -677,20 +676,32 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 								cluster, bn, batchPolicy, keys, versions, records, status);
 					}
 				}
+
 				BatchExecutor.execute(cluster, batchPolicy, commands, status);
-				// CONFLICT = abort
-				// Other errors : retry
-				// TODO: Handle errors.
-				//if (!status) {
-				//	tranAbort(tran);
-				//}
+
+				if (!status.getStatus()) {
+					throw new Exception("Failed to verify one or more record versions");
+				}
 			}
 			catch (Throwable e) {
-				throw new AerospikeException.BatchRecordArray(records, e);
+				// Read verification failed. Abort transaction.
+				try {
+					tranAbort(tran);
+				}
+				catch (Throwable e2) {
+					// Throw combination of tranAbort and original exception.
+					e.addSuppressed(e2);
+					throw new AerospikeException.BatchRecordArray(records,
+						"Batch record verification and tran abort failed: " + tran.id, e);
+				}
+
+				// Throw original exception when abort succeeds.
+				throw new AerospikeException.BatchRecordArray(records,
+					"Batch record verification failed. Tran aborted: " + tran.id, e);
 			}
 		}
 
-		System.out.println("Tran version matched: " + tran.id);
+		// System.out.println("Tran version matched: " + tran.id);
 		tranRoll(tran, Command.INFO4_MRT_ROLL_FORWARD);
 	}
 
@@ -4616,8 +4627,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	private void tranRoll(Tran tran, int tranAttr) {
-		// TODO: Handle errors.
-		// TODO: Pass in keys and versions.
 		Set<Key> keySet = tran.getWrites();
 
 		if (keySet.isEmpty()) {
@@ -4631,22 +4640,22 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			records[i] = new BatchRecord(keys[i], true);
 		}
 
-		// Copy tran roll policy because it needs to be modified.
-		BatchPolicy batchPolicy = copyTranRollPolicyDefault();
-
-		BatchAttr attr = new BatchAttr();
-		attr.setTran(tranAttr);
-
-		BatchStatus status = new BatchStatus(true);
-
-		// generate() requires a null tran instance.
-		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
-		IBatchCommand[] commands = new IBatchCommand[bns.size()];
-
-		// Batch roll forward requires the tran instance.
-		batchPolicy.tran = tran;
-
 		try {
+			// Copy tran roll policy because it needs to be modified.
+			BatchPolicy batchPolicy = copyTranRollPolicyDefault();
+
+			BatchAttr attr = new BatchAttr();
+			attr.setTran(tranAttr);
+
+			BatchStatus status = new BatchStatus(true);
+
+			// generate() requires a null tran instance.
+			List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, status);
+			IBatchCommand[] commands = new IBatchCommand[bns.size()];
+
+			// Batch roll forward requires the tran instance.
+			batchPolicy.tran = tran;
+
 			int count = 0;
 
 			for (BatchNode bn : bns) {
@@ -4661,9 +4670,16 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				}
 			}
 			BatchExecutor.execute(cluster, batchPolicy, commands, status);
+
+			if (!status.getStatus()) {
+				String rollString = tranAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
+				throw new Exception("Failed to " + rollString + " one or more records");
+			}
 		}
 		catch (Throwable e) {
-			throw new AerospikeException.BatchRecordArray(records, e);
+			String rollString = tranAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
+			throw new AerospikeException.BatchRecordArray(records,
+					"Tran " + rollString + " failed: " + tran.id, e);
 		}
 	}
 }

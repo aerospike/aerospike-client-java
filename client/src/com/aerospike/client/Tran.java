@@ -14,7 +14,7 @@
  * License for the specific language governing permissions and limitations under
  * the License.
  */
-package com.aerospike.client.tran;
+package com.aerospike.client;
 
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;

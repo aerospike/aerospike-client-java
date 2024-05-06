@@ -54,7 +54,7 @@ import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.PartitionStatus;
 import com.aerospike.client.query.PartitionTracker.NodePartitions;
 import com.aerospike.client.query.Statement;
-import com.aerospike.client.tran.Tran;
+import com.aerospike.client.Tran;
 import com.aerospike.client.util.Packer;
 
 public class Command {

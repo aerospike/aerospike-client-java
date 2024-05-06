@@ -434,6 +434,11 @@ public class AerospikeException extends RuntimeException {
 			super(ResultCode.BATCH_FAILED, "Batch failed", e);
 			this.records = records;
 		}
+
+		public BatchRecordArray(BatchRecord[] records, String message, Throwable e) {
+			super(ResultCode.BATCH_FAILED, message, e);
+			this.records = records;
+		}
 	}
 
 	/**
