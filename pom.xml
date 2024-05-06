@@ -44,7 +44,7 @@
     <grpc.version>1.59.0</grpc.version>
     <luaj-jse.version>3.0.1</luaj-jse.version>
     <jbcrypt.version>0.4</jbcrypt.version>
-    <commons-cli.version>1.6.0</commons-cli.version>
+    <commons-cli.version>1.7.0</commons-cli.version>
     <junit.version>4.13.1</junit.version>
   </properties>
 
