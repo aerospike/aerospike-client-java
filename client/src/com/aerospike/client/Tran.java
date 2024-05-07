@@ -76,23 +76,13 @@ public final class Tran {
 	public void handleWrite(Key key, Long version, int resultCode) {
 		if (version != null) {
 			reads.put(key, version);
-			writes.remove(key);
 		}
 		else {
 			if (resultCode == ResultCode.OK) {
 				reads.remove(key);
-			}
-			else {
-				writes.remove(key);
+				writes.add(key);
 			}
 		}
-	}
-
-	/**
-	 * Add record key to writes hashmap. For internal use only.
-	 */
-	public void addWrite(Key key) {
-		writes.add(key);
 	}
 
 	/**

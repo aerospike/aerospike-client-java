@@ -36,10 +36,6 @@ public abstract class SyncWriteCommand extends SyncCommand {
 		this.writePolicy = writePolicy;
 		this.key = key;
 		this.partition = Partition.write(cluster, writePolicy, key);
-
-		if (policy.tran != null) {
-			policy.tran.addWrite(key);
-		}
 		cluster.addTran();
 	}
 

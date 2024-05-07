@@ -46,12 +46,14 @@ public class MRT extends Example {
 	@Override
 	public void runExample(IAerospikeClient client, Parameters params) throws Exception {
 		tranWrite(client, params);
+		tranWriteTwice(client, params);
 		tranBlock(client, params);
 		tranWriteRead(client, params);
 		tranRollback(client, params);
 		tranReadOutsideOfTran(client, params);
 		tranDelete(client, params);
 		tranDeleteAbort(client, params);
+		tranDeleteTwice(client, params);
 		tranTouch(client, params);
 		tranTouchAbort(client, params);
 		tranOperateWrite(client, params);
@@ -71,6 +73,23 @@ public class MRT extends Example {
 
 		WritePolicy wp = new WritePolicy(params.writePolicy);
 		wp.tran = tran;
+		client.put(wp, key, new Bin(binName, "val2"));
+
+		client.tranCommit(tran);
+
+		Record record = client.get(params.policy, key);
+		assertEqual(record, "val2");
+	}
+
+	public void tranWriteTwice(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey1a");
+
+		Tran tran = client.tranBegin();
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+
+		client.put(wp, key, new Bin(binName, "val1"));
 		client.put(wp, key, new Bin(binName, "val2"));
 
 		client.tranCommit(tran);
@@ -198,6 +217,26 @@ public class MRT extends Example {
 
 		Record record = client.get(params.policy, key);
 		assertEqual(record, "val1");
+	}
+
+	public void tranDeleteTwice(IAerospikeClient client, Parameters params) {
+		Key key = new Key(params.namespace, params.set, "mrtkey7a");
+
+		Tran tran = client.tranBegin();
+
+		client.put(params.writePolicy, key, new Bin(binName, "val1"));
+
+		WritePolicy wp = new WritePolicy(params.writePolicy);
+		wp.tran = tran;
+		wp.durableDelete = true;
+
+		client.delete(wp, key);
+		client.delete(wp, key);
+
+		client.tranCommit(tran);
+
+		Record record = client.get(params.policy, key);
+		assertNull(record);
 	}
 
 	public void tranTouch(IAerospikeClient client, Parameters params) {

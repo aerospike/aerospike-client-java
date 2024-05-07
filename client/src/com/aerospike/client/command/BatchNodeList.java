@@ -73,10 +73,6 @@ public final class BatchNodeList {
 
 				if (hasWrite) {
 					node = Partition.getNodeBatchWrite(cluster, key, replica, null, 0);
-
-					if (policy.tran != null) {
-						policy.tran.addWrite(key);
-					}
 				}
 				else {
 					node = Partition.getNodeBatchRead(cluster, key, replica, replicaSC, null, 0, 0);
@@ -365,10 +361,6 @@ public final class BatchNodeList {
 
 				if (b.hasWrite) {
 					node = Partition.getNodeBatchWrite(cluster, b.key, replica, null, 0);
-
-					if (policy.tran != null) {
-						policy.tran.addWrite(b.key);
-					}
 				}
 				else {
 					node = Partition.getNodeBatchRead(cluster, b.key, replica, replicaSC, null, 0, 0);
