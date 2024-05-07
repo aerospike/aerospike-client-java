@@ -222,11 +222,8 @@ public class RWTaskSync extends RWTask implements Runnable {
 	}
 
 	private boolean skipKey(Key key) {
-		if (args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest))) {
-			return true;
-		}
-		return false;
-	}
+        return args.partitionIds != null && !args.partitionIds.contains(Partition.getPartitionId(key.digest));
+    }
 
 	private Key[] getFilteredKeys(Key[] keys) {
 		List<Key> filteredKeys = new ArrayList<>();
