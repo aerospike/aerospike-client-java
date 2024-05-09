@@ -139,12 +139,6 @@ public abstract class AsyncCommand extends Command {
 		}
 	}
 
-	final void validateHeaderSize() {
-		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
-			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
-		}
-	}
-
 	boolean parseCommandResult() {
 		if (compressed) {
 			int usize = (int)Buffer.bytesToLong(dataBuffer, 0);
@@ -195,6 +189,7 @@ public abstract class AsyncCommand extends Command {
 		return false;
 	}
 
+	// TODD: Make abstract.
 	boolean isWrite() {
 		return false;
 	}

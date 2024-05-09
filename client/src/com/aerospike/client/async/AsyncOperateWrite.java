@@ -21,51 +21,38 @@ import com.aerospike.client.Key;
 import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
+import com.aerospike.client.command.OperateArgs;
 import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.RecordListener;
-import com.aerospike.client.policy.Policy;
 
-public class AsyncRead extends AsyncReadBase {
+public final class AsyncOperateWrite extends AsyncWriteBase {
 	private final RecordListener listener;
-	private final String[] binNames;
-	private final boolean isOperation;
-	protected Record record;
+	private final OperateArgs args;
+	private Record record;
 
-	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, String[] binNames) {
-		super(cluster, policy, key);
+	public AsyncOperateWrite(Cluster cluster, RecordListener listener, Key key, OperateArgs args) {
+		super(cluster, args.writePolicy, key);
 		this.listener = listener;
-		this.binNames = binNames;
-		this.isOperation = false;
-	}
-
-	public AsyncRead(Cluster cluster, RecordListener listener, Policy policy, Key key, boolean isOperation) {
-		super(cluster, policy, key);
-		this.listener = listener;
-		this.binNames = null;
-		this.isOperation = isOperation;
+		this.args = args;
 	}
 
 	@Override
 	protected void writeBuffer() {
-		setRead(policy, key, binNames);
+		setOperate(args.writePolicy, key, args);
 	}
 
 	@Override
-	protected final boolean parseResult() {
+	protected boolean parseResult() {
 		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			this.record = rp.parseRecordBins(isOperation);
+			record = rp.parseRecordBins(true);
 			return true;
 		}
 
 		if (rp.opCount > 0) {
-			throw new AerospikeException("Unexpected read opCount on error: " + rp.opCount + ',' + rp.resultCode);
-		}
-
-		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
-			return true;
+			throw new AerospikeException("Unexpected operate opCount on error: " + rp.opCount + ',' + rp.resultCode);
 		}
 
 		if (rp.resultCode == ResultCode.FILTERED_OUT) {

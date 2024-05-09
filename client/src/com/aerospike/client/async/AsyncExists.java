@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -20,34 +20,17 @@ import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Key;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
-import com.aerospike.client.cluster.Partition;
+import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.listener.ExistsListener;
-import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
-public final class AsyncExists extends AsyncCommand {
+public final class AsyncExists extends AsyncReadBase {
 	private final ExistsListener listener;
-	private final Key key;
-	private final Partition partition;
 	private boolean exists;
 
 	public AsyncExists(Cluster cluster, ExistsListener listener, Policy policy, Key key) {
-		super(policy, true);
+		super(cluster, policy, key);
 		this.listener = listener;
-		this.key = key;
-		this.partition = Partition.read(cluster, policy, key);
-		cluster.addTran();
-	}
-
-	@Override
-	Node getNode(Cluster cluster) {
-		return partition.getNodeRead(cluster);
-	}
-
-	@Override
-	protected LatencyType getLatencyType() {
-		return LatencyType.READ;
 	}
 
 	@Override
@@ -57,35 +40,32 @@ public final class AsyncExists extends AsyncCommand {
 
 	@Override
 	protected boolean parseResult() {
-		validateHeaderSize();
+		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		parseFields(rp);
 
-		int resultCode = dataBuffer[5] & 0xFF;
+		if (rp.opCount > 0) {
+			throw new AerospikeException("Unexpected exists opCount: " + rp.opCount + ',' + rp.resultCode);
+		}
 
-		if (resultCode == 0) {
+		if (rp.resultCode == ResultCode.OK) {
 			exists = true;
 			return true;
 		}
 
-		if (resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
+		if (rp.resultCode == ResultCode.KEY_NOT_FOUND_ERROR) {
 			exists = false;
 			return true;
 		}
 
-		if (resultCode == ResultCode.FILTERED_OUT) {
+		if (rp.resultCode == ResultCode.FILTERED_OUT) {
 			if (policy.failOnFilteredOut) {
-				throw new AerospikeException(resultCode);
+				throw new AerospikeException(rp.resultCode);
 			}
 			exists = true;
 			return true;
 		}
 
-		throw new AerospikeException(resultCode);
-	}
-
-	@Override
-	protected boolean prepareRetry(boolean timeout) {
-		partition.prepareRetryRead(timeout);
-		return true;
+		throw new AerospikeException(rp.resultCode);
 	}
 
 	@Override

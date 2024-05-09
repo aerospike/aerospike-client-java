@@ -38,7 +38,8 @@ import com.aerospike.client.async.AsyncExecute;
 import com.aerospike.client.async.AsyncExists;
 import com.aerospike.client.async.AsyncIndexTask;
 import com.aerospike.client.async.AsyncInfoCommand;
-import com.aerospike.client.async.AsyncOperate;
+import com.aerospike.client.async.AsyncOperateRead;
+import com.aerospike.client.async.AsyncOperateWrite;
 import com.aerospike.client.async.AsyncQueryExecutor;
 import com.aerospike.client.async.AsyncQueryPartitionExecutor;
 import com.aerospike.client.async.AsyncRead;
@@ -2422,8 +2423,15 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		}
 
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
-		AsyncOperate command = new AsyncOperate(cluster, listener, key, args);
-		eventLoop.execute(cluster, command);
+
+		if (args.hasWrite) {
+			AsyncOperateWrite command = new AsyncOperateWrite(cluster, listener, key, args);
+			eventLoop.execute(cluster, command);
+		}
+		else {
+			AsyncOperateRead command = new AsyncOperateRead(cluster, listener, key, args);
+			eventLoop.execute(cluster, command);
+		}
 	}
 
 	//-------------------------------------------------------
