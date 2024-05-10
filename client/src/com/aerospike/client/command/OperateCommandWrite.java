@@ -44,7 +44,7 @@ public final class OperateCommandWrite extends SyncWriteCommand {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecordBins(true);
+			record = rp.parseRecord(true);
 			return;
 		}
 

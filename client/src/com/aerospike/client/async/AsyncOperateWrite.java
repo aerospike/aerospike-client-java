@@ -47,7 +47,7 @@ public final class AsyncOperateWrite extends AsyncWriteBase {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecordBins(true);
+			record = rp.parseRecord(true);
 			return true;
 		}
 

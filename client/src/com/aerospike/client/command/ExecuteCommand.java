@@ -57,12 +57,12 @@ public final class ExecuteCommand extends SyncWriteCommand {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecordBins(false);
+			record = rp.parseRecord(false);
 			return;
 		}
 
 		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			record = rp.parseRecordBins(false);
+			record = rp.parseRecord(false);
 			handleUdfError(rp.resultCode);
 			return;
 		}

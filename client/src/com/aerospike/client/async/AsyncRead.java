@@ -56,7 +56,7 @@ public class AsyncRead extends AsyncReadBase {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			this.record = rp.parseRecordBins(isOperation);
+			this.record = rp.parseRecord(isOperation);
 			return true;
 		}
 

@@ -72,9 +72,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -127,9 +127,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRead record = records.get(batchIndex);
+
+			parseFieldsRead(record.key);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -194,7 +194,7 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
+			parseFieldsRead(keys[batchIndex]);
 
 			if (resultCode == 0) {
 				records[batchIndex] = parseRecord();
@@ -255,9 +255,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFieldsRead(keyOrig);
 
 			if (resultCode == 0) {
 				Record record = parseRecord();
@@ -312,12 +312,11 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
+			parseFieldsRead(keys[batchIndex]);
 			existsArray[batchIndex] = resultCode == 0;
 		}
 
@@ -365,13 +364,12 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			if (opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
 			Key keyOrig = keys[batchIndex];
+			parseFieldsRead(keyOrig);
 			listener.onExists(keyOrig, resultCode == 0);
 		}
 
@@ -419,9 +417,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -508,9 +506,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records.get(batchIndex);
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -601,9 +599,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -681,9 +679,10 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0) {
@@ -692,6 +691,7 @@ public final class AsyncBatch {
 			else {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
@@ -764,9 +764,9 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			BatchRecord record = records[batchIndex];
+
+			parseFields(record.key, record.hasWrite);
 
 			if (resultCode == 0) {
 				record.setRecord(parseRecord());
@@ -864,9 +864,10 @@ public final class AsyncBatch {
 
 		@Override
 		protected void parseRow() {
-			skipKey(fieldCount);
-
 			Key keyOrig = keys[batchIndex];
+
+			parseFields(keyOrig, attr.hasWrite);
+
 			BatchRecord record;
 
 			if (resultCode == 0) {
@@ -887,6 +888,7 @@ public final class AsyncBatch {
 			else {
 				record = new BatchRecord(keyOrig, null, resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter), attr.hasWrite);
 			}
+
 			sent[batchIndex] = true;
 			AsyncBatch.onRecord(listener, record, batchIndex);
 		}
@@ -941,6 +943,32 @@ public final class AsyncBatch {
 		@Override
 		void addSubException(AerospikeException ae) {
 			parent.addSubException(ae);
+		}
+
+		final void parseFieldsRead(Key key) {
+			if (policy.tran != null) {
+				Long version = parseVersion(fieldCount);
+				policy.tran.handleRead(key, version);
+			}
+			else {
+				skipKey(fieldCount);
+			}
+		}
+
+		final void parseFields(Key key, boolean hasWrite) {
+			if (policy.tran != null) {
+				Long version = parseVersion(fieldCount);
+
+				if (hasWrite) {
+					policy.tran.handleWrite(key, version, resultCode);
+				}
+				else {
+					policy.tran.handleRead(key, version);
+				}
+			}
+			else {
+				skipKey(fieldCount);
+			}
 		}
 
 		@Override

@@ -183,12 +183,7 @@ public final class RecordParser {
 		return version;
 	}
 
-	public Record parseRecord(boolean isOperation) {
-		skipFields();
-		return parseRecordBins(isOperation);
-	}
-
-	public Record parseRecordBins(boolean isOperation)  {
+	public Record parseRecord(boolean isOperation)  {
 		if (opCount == 0) {
 			// Bin data was not returned.
 			return new Record(null, generation, expiration);

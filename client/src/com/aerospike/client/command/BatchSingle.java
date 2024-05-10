@@ -95,7 +95,7 @@ public final class BatchSingle {
 			parseFieldsRead(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				records[index] = rp.parseRecordBins(isOperation);
+				records[index] = rp.parseRecord(isOperation);
 			}
 		}
 	}
@@ -165,7 +165,7 @@ public final class BatchSingle {
 			parseFieldsRead(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecordBins(true));
+				record.setRecord(rp.parseRecord(true));
 			}
 			else {
 				record.setError(rp.resultCode, false);
@@ -247,7 +247,7 @@ public final class BatchSingle {
 			}
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecordBins(true));
+				record.setRecord(rp.parseRecord(true));
 			}
 			else {
 				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
@@ -349,10 +349,10 @@ public final class BatchSingle {
 			parseFieldsWrite(rp);
 
 			if (rp.resultCode == ResultCode.OK) {
-				record.setRecord(rp.parseRecordBins(false));
+				record.setRecord(rp.parseRecord(false));
 			}
 			else if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-				Record r = rp.parseRecordBins(false);
+				Record r = rp.parseRecord(false);
 				String m = r.getString("FAILURE");
 
 				if (m != null) {

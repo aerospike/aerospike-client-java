@@ -62,12 +62,12 @@ public final class AsyncExecute extends AsyncWriteBase {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			record = rp.parseRecordBins(false);
+			record = rp.parseRecord(false);
 			return true;
 		}
 
 		if (rp.resultCode == ResultCode.UDF_BAD_RESPONSE) {
-			record = rp.parseRecordBins(false);
+			record = rp.parseRecord(false);
 			handleUdfError(rp.resultCode);
 			return true;
 		}

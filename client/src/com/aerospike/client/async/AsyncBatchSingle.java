@@ -63,8 +63,8 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			super.parseResult();
+		protected void parseResult(RecordParser rp) {
+			super.parseResult(rp);
 
 			try {
 				listener.onRecord(record);
@@ -72,7 +72,6 @@ public final class AsyncBatchSingle {
 			catch (Throwable e) {
 				Log.error("Unexpected exception from onRecord(): " + Util.getErrorMessage(e));
 			}
-			return true;
 		}
 	}
 
@@ -95,10 +94,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			super.parseResult();
+		protected void parseResult(RecordParser rp) {
+			super.parseResult(rp);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 	}
 
@@ -122,9 +120,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(record.ops != null));
 			}
@@ -132,7 +128,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, false);
 				executor.setRowError();
 			}
-			return true;
 		}
 	}
 
@@ -193,13 +188,10 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
 			}
-			return true;
 		}
 	}
 
@@ -252,15 +244,13 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		protected void parseResult(RecordParser rp) {
 			Record record = null;
 
 			if (rp.resultCode == ResultCode.OK) {
 				record = rp.parseRecord(isOperation);
 			}
 			AsyncBatch.onRecord(listener, key, record);
-			return true;
 		}
 	}
 
@@ -289,15 +279,13 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		protected void parseResult(RecordParser rp) {
 			Record record = null;
 
 			if (rp.resultCode == ResultCode.OK) {
 				record = rp.parseRecord(false);
 			}
 			AsyncBatch.onRecord(listener, key, record);
-			return true;
 		}
 	}
 
@@ -325,13 +313,10 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(false);
 			}
-			return true;
 		}
 	}
 
@@ -360,9 +345,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
@@ -373,7 +356,6 @@ public final class AsyncBatchSingle {
 			catch (Throwable e) {
 				Log.error("Unexpected exception from onExists(): " + Util.getErrorMessage(e));
 			}
-			return true;
 		}
 	}
 
@@ -401,15 +383,12 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.opCount > 0) {
 				throw new AerospikeException.Parse("Received bins that were not requested!");
 			}
 
 			existsArray[index] = rp.resultCode == 0;
-			return true;
 		}
 	}
 
@@ -449,8 +428,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		protected void parseResult(RecordParser rp) {
 			BatchRecord record;
 
 			if (rp.resultCode == 0) {
@@ -463,7 +441,6 @@ public final class AsyncBatchSingle {
 			}
 			parent.setSent(index);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		@Override
@@ -501,9 +478,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
 			}
@@ -511,7 +486,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
 				executor.setRowError();
 			}
-			return true;
 		}
 
 		@Override
@@ -546,10 +520,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			super.parseResult();
+		protected void parseResult(RecordParser rp) {
+			super.parseResult(rp);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		// setInDoubt() is not overridden to call onRecord() because user already has access to full
@@ -579,9 +552,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
 			}
@@ -589,7 +560,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
-			return true;
 		}
 
 		@Override
@@ -624,10 +594,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			super.parseResult();
+		protected void parseResult(RecordParser rp) {
+			super.parseResult(rp);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		// setInDoubt() is not overridden to call onRecord() because user already has access to full
@@ -657,9 +626,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));
 			}
@@ -679,7 +646,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
-			return true;
 		}
 
 		@Override
@@ -728,8 +694,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		protected void parseResult(RecordParser rp) {
 			BatchRecord record;
 
 			if (rp.resultCode == ResultCode.OK) {
@@ -754,7 +719,6 @@ public final class AsyncBatchSingle {
 			}
 			parent.setSent(index);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		@Override
@@ -798,9 +762,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));
 			}
@@ -820,7 +782,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
-			return true;
 		}
 
 		@Override
@@ -864,8 +825,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+		protected void parseResult(RecordParser rp) {
 			BatchRecord record;
 
 			if (rp.resultCode == 0) {
@@ -877,7 +837,6 @@ public final class AsyncBatchSingle {
 			}
 			parent.setSent(index);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		@Override
@@ -909,10 +868,9 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			super.parseResult();
+		protected void parseResult(RecordParser rp) {
+			super.parseResult(rp);
 			AsyncBatch.onRecord(listener, record, index);
-			return true;
 		}
 
 		// setInDoubt() is not overridden to call onRecord() because user already has access to full
@@ -942,9 +900,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
+		protected void parseResult(RecordParser rp) {
 			if (rp.resultCode == 0) {
 				record.setRecord(new Record(null, rp.generation, rp.expiration));
 			}
@@ -952,7 +908,6 @@ public final class AsyncBatchSingle {
 				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
 				executor.setRowError();
 			}
-			return true;
 		}
 
 		@Override
@@ -1010,6 +965,30 @@ public final class AsyncBatchSingle {
 		void addSubException(AerospikeException ae) {
 			executor.addSubException(ae);
 		}
+
+		@Override
+		protected boolean parseResult() {
+			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
+
+			if (policy.tran != null) {
+				Long version = rp.parseVersion();
+
+				if (hasWrite) {
+					policy.tran.handleWrite(key, version, rp.resultCode);
+				}
+				else {
+					policy.tran.handleRead(key, version);
+				}
+			}
+			else {
+				rp.skipFields();
+			}
+
+			parseResult(rp);
+			return true;
+		}
+
+		protected abstract void parseResult(RecordParser rp);
 
 		@Override
 		protected boolean prepareRetry(boolean timeout) {

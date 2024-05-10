@@ -60,7 +60,7 @@ public class ReadCommand extends SyncReadCommand {
 		parseFields(rp);
 
 		if (rp.resultCode == ResultCode.OK) {
-			this.record = rp.parseRecordBins(isOperation);
+			this.record = rp.parseRecord(isOperation);
 			return;
 		}
 
