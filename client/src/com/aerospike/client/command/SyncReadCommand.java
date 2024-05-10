@@ -49,14 +49,4 @@ public abstract class SyncReadCommand extends SyncCommand {
 		partition.prepareRetryRead(timeout);
 		return true;
 	}
-
-	protected void parseFields(RecordParser rp) {
-		if (policy.tran != null) {
-			Long version = rp.parseVersion();
-			policy.tran.handleRead(key, version);
-		}
-		else {
-			rp.skipFields();
-		}
-	}
 }

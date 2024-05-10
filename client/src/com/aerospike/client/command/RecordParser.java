@@ -41,7 +41,7 @@ public final class RecordParser {
 	/**
 	 * Sync record parser.
 	 */
-	public RecordParser(Connection conn, byte[] buffer) throws IOException {
+	public RecordParser(Connection conn, byte[] buffer, Tran tran, Key key, boolean hasWrite) throws IOException {
 		// Read header.
 		conn.readFully(buffer, 8, Command.STATE_READ_HEADER);
 
@@ -116,18 +116,19 @@ public final class RecordParser {
 			throw new AerospikeException("Invalid proto type: " + type + " Expected: " + Command.AS_MSG_TYPE);
 		}
 
-		this.resultCode = buffer[offset] & 0xFF;
+		resultCode = buffer[offset] & 0xFF;
 		offset++;
-		this.generation = Buffer.bytesToInt(buffer, offset);
+		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
-		this.expiration = Buffer.bytesToInt(buffer, offset);
+		expiration = Buffer.bytesToInt(buffer, offset);
 		offset += 8;
-		this.fieldCount = Buffer.bytesToShort(buffer, offset);
+		fieldCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.opCount = Buffer.bytesToShort(buffer, offset);
+		opCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.dataOffset = offset;
-		this.dataBuffer = buffer;
+		dataOffset = offset;
+		dataBuffer = buffer;
+		parseFields(tran, key, hasWrite);
 	}
 
 	/**
@@ -151,7 +152,10 @@ public final class RecordParser {
 		offset += 2;
 		dataOffset = offset;
 		dataBuffer = buffer;
+		parseFields(tran, key, hasWrite);
+	}
 
+	private void parseFields(Tran tran, Key key, boolean hasWrite) {
 		if (tran != null) {
 			Long version = parseVersion();
 
@@ -167,7 +171,7 @@ public final class RecordParser {
 		}
 	}
 
-	public void skipFields() {
+	private void skipFields() {
 		// There can be fields in the response (setname etc).
 		// But for now, ignore them. Expose them to the API if needed in the future.
 		for (int i = 0; i < fieldCount; i++) {
@@ -176,7 +180,7 @@ public final class RecordParser {
 		}
 	}
 
-	public Long parseVersion() {
+	private Long parseVersion() {
 		Long version = null;
 
 		for (int i = 0; i < fieldCount; i++) {

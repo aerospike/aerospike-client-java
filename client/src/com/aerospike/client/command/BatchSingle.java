@@ -91,8 +91,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-			parseFieldsRead(rp);
+			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				records[index] = rp.parseRecord(isOperation);
@@ -161,8 +160,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-			parseFieldsRead(rp);
+			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, false);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -237,14 +235,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-
-			if (record.hasWrite) {
-				parseFieldsWrite(rp);
-			}
-			else {
-				parseFieldsRead(rp);
-			}
+			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, record.hasWrite);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(true));
@@ -345,8 +336,7 @@ public final class BatchSingle {
 
 		@Override
 		protected void parseResult(Connection conn) throws IOException {
-			RecordParser rp = new RecordParser(conn, dataBuffer);
-			parseFieldsWrite(rp);
+			RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, true);
 
 			if (rp.resultCode == ResultCode.OK) {
 				record.setRecord(rp.parseRecord(false));
@@ -544,26 +534,6 @@ public final class BatchSingle {
 				sequence = p.sequence;
 			}
 			return true;
-		}
-
-		protected void parseFieldsRead(RecordParser rp) {
-			if (policy.tran != null) {
-				Long version = rp.parseVersion();
-				policy.tran.handleRead(key, version);
-			}
-			else {
-				rp.skipFields();
-			}
-		}
-
-		protected void parseFieldsWrite(RecordParser rp) {
-			if (policy.tran != null) {
-				Long version = rp.parseVersion();
-				policy.tran.handleWrite(key, version, rp.resultCode);
-			}
-			else {
-				rp.skipFields();
-			}
 		}
 
 		public void setInDoubt() {

@@ -61,22 +61,11 @@ public abstract class SyncWriteCommand extends SyncCommand {
 	}
 
 	protected int parseHeader(Connection conn) throws IOException {
-		RecordParser rp = new RecordParser(conn, dataBuffer);
-		parseFields(rp);
+		RecordParser rp = new RecordParser(conn, dataBuffer, policy.tran, key, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
 		}
 		return rp.resultCode;
-	}
-
-	protected void parseFields(RecordParser rp) {
-		if (policy.tran != null) {
-			Long version = rp.parseVersion();
-			policy.tran.handleWrite(key, version, rp.resultCode);
-		}
-		else {
-			rp.skipFields();
-		}
 	}
 }
