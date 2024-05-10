@@ -20,7 +20,6 @@ import com.aerospike.client.Key;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.cluster.Partition;
-import com.aerospike.client.command.RecordParser;
 import com.aerospike.client.metrics.LatencyType;
 import com.aerospike.client.policy.Policy;
 
@@ -54,15 +53,5 @@ public abstract class AsyncReadBase extends AsyncCommand {
 	protected boolean prepareRetry(boolean timeout) {
 		partition.prepareRetryRead(timeout);
 		return true;
-	}
-
-	protected void parseFields(RecordParser rp) {
-		if (policy.tran != null) {
-			Long version = rp.parseVersion();
-			policy.tran.handleRead(key, version);
-		}
-		else {
-			rp.skipFields();
-		}
 	}
 }

@@ -968,22 +968,7 @@ public final class AsyncBatchSingle {
 
 		@Override
 		protected boolean parseResult() {
-			RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-
-			if (policy.tran != null) {
-				Long version = rp.parseVersion();
-
-				if (hasWrite) {
-					policy.tran.handleWrite(key, version, rp.resultCode);
-				}
-				else {
-					policy.tran.handleRead(key, version);
-				}
-			}
-			else {
-				rp.skipFields();
-			}
-
+			RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, hasWrite);
 			parseResult(rp);
 			return true;
 		}

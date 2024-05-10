@@ -23,7 +23,9 @@ import java.util.zip.DataFormatException;
 import java.util.zip.Inflater;
 
 import com.aerospike.client.AerospikeException;
+import com.aerospike.client.Key;
 import com.aerospike.client.Record;
+import com.aerospike.client.Tran;
 import com.aerospike.client.cluster.Connection;
 import com.aerospike.client.command.Command.OpResults;
 
@@ -131,24 +133,38 @@ public final class RecordParser {
 	/**
 	 * Async record parser.
 	 */
-	public RecordParser(byte[] buffer, int offset, int receiveSize) {
+	public RecordParser(Tran tran, Key key, byte[] buffer, int offset, int receiveSize, boolean hasWrite) {
 		if (receiveSize < Command.MSG_REMAINING_HEADER_SIZE) {
 			throw new AerospikeException.Parse("Invalid receive size: " + receiveSize);
 		}
 
 		offset += 5;
-		this.resultCode = buffer[offset] & 0xFF;
+		resultCode = buffer[offset] & 0xFF;
 		offset++;
-		this.generation = Buffer.bytesToInt(buffer, offset);
+		generation = Buffer.bytesToInt(buffer, offset);
 		offset += 4;
-		this.expiration = Buffer.bytesToInt(buffer, offset);
+		expiration = Buffer.bytesToInt(buffer, offset);
 		offset += 8;
-		this.fieldCount = Buffer.bytesToShort(buffer, offset);
+		fieldCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.opCount = Buffer.bytesToShort(buffer, offset);
+		opCount = Buffer.bytesToShort(buffer, offset);
 		offset += 2;
-		this.dataOffset = offset;
-		this.dataBuffer = buffer;
+		dataOffset = offset;
+		dataBuffer = buffer;
+
+		if (tran != null) {
+			Long version = parseVersion();
+
+			if (hasWrite) {
+				tran.handleWrite(key, version, resultCode);
+			}
+			else {
+				tran.handleRead(key, version);
+			}
+		}
+		else {
+			skipFields();
+		}
 	}
 
 	public void skipFields() {

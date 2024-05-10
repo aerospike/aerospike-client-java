@@ -43,8 +43,7 @@ public final class AsyncOperateWrite extends AsyncWriteBase {
 
 	@Override
 	protected boolean parseResult() {
-		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		parseFields(rp);
+		RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, true);
 
 		if (rp.resultCode == ResultCode.OK) {
 			record = rp.parseRecord(true);

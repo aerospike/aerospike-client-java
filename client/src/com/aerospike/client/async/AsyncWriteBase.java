@@ -60,22 +60,11 @@ public abstract class AsyncWriteBase extends AsyncCommand {
 	}
 
 	protected int parseHeader() {
-		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		parseFields(rp);
+		RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, true);
 
 		if (rp.opCount > 0) {
 			throw new AerospikeException("Unexpected write response opCount: " + rp.opCount + ',' + rp.resultCode);
 		}
 		return rp.resultCode;
-	}
-
-	protected void parseFields(RecordParser rp) {
-		if (policy.tran != null) {
-			Long version = rp.parseVersion();
-			policy.tran.handleWrite(key, version, rp.resultCode);
-		}
-		else {
-			rp.skipFields();
-		}
 	}
 }

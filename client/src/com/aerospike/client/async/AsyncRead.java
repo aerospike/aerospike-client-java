@@ -52,8 +52,7 @@ public class AsyncRead extends AsyncReadBase {
 
 	@Override
 	protected final boolean parseResult() {
-		RecordParser rp = new RecordParser(dataBuffer, dataOffset, receiveSize);
-		parseFields(rp);
+		RecordParser rp = new RecordParser(policy.tran, key, dataBuffer, dataOffset, receiveSize, false);
 
 		if (rp.resultCode == ResultCode.OK) {
 			this.record = rp.parseRecord(isOperation);
