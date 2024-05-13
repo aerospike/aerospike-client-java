@@ -57,7 +57,11 @@ public final class BatchRead extends BatchRecord {
 	public BatchRead(Key key, String[] binNames) {
 		super(key, false);
 		this.policy = null;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.ops = null;
 		this.readAllBins = false;
 	}
@@ -90,7 +94,11 @@ public final class BatchRead extends BatchRecord {
 	public BatchRead(BatchReadPolicy policy, Key key, String[] binNames) {
 		super(key, false);
 		this.policy = policy;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.ops = null;
 		this.readAllBins = false;
 	}

@@ -16,7 +16,6 @@
  */
 package com.aerospike.client.async;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import com.aerospike.client.AerospikeClient;
@@ -175,7 +174,11 @@ public final class AsyncBatch {
 		) {
 			super(parent, batch, batchPolicy, isOperation);
 			this.keys = keys;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.ops = ops;
 			this.records = records;
 			this.readAttr = readAttr;
@@ -236,7 +239,11 @@ public final class AsyncBatch {
 		) {
 			super(parent, batch, batchPolicy, isOperation);
 			this.keys = keys;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.ops = ops;
 			this.listener = listener;
 			this.readAttr = readAttr;
@@ -963,7 +970,7 @@ public final class AsyncBatch {
 			// This can cause an exponential number of commands.
 			List<BatchNode> batchNodes = generateBatchNodes();
 
-			if (batchNodes.size() == 0 || (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node)) {
+			if (batchNodes.isEmpty() || (batchNodes.size() == 1 && batchNodes.getFirst().node == batch.node)) {
 				// Go through normal retry.
 				return false;
 			}

@@ -54,7 +54,11 @@ public final class AsyncScanPartition extends AsyncMultiCommand {
 		this.listener = listener;
 		this.namespace = namespace;
 		this.setName = setName;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.taskId = taskId;
 		this.tracker = tracker;
 		this.nodePartitions = nodePartitions;

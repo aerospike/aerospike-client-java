@@ -49,7 +49,11 @@ public final class ScanPartitionCommand extends MultiCommand {
 		super(cluster, scanPolicy, nodePartitions.node, namespace, tracker.socketTimeout, tracker.totalTimeout);
 		this.scanPolicy = scanPolicy;
 		this.setName = setName;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.callback = callback;
 		this.taskId = taskId;
 		this.tracker = tracker;

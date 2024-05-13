@@ -115,7 +115,11 @@ public final class Batch {
 		) {
 			super(cluster, batch, policy, status, isOperation);
 			this.keys = keys;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.ops = ops;
 			this.records = records;
 			this.readAttr = readAttr;
@@ -554,7 +558,7 @@ public final class Batch {
 			// This is both recursive and exponential.
 			List<BatchNode> batchNodes = generateBatchNodes();
 
-			if (batchNodes.size() == 1 && batchNodes.get(0).node == batch.node) {
+			if (batchNodes.size() == 1 && batchNodes.getFirst().node == batch.node) {
 				// Batch node is the same.  Go through normal retry.
 				return false;
 			}
@@ -562,7 +566,7 @@ public final class Batch {
 			splitRetry = true;
 
 			// Run batch retries in parallel using virtual threads.
-			try (ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory);) {
+			try (ExecutorService es = Executors.newThreadPerTaskExecutor(cluster.threadFactory)) {
 				for (BatchNode batchNode : batchNodes) {
 					BatchCommand command = createCommand(batchNode);
 					command.sequenceAP = sequenceAP;

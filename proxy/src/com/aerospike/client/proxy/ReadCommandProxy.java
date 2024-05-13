@@ -45,7 +45,11 @@ public class ReadCommandProxy extends SingleCommandProxy {
 		super(KVSGrpc.getReadStreamingMethod(), executor, policy);
 		this.listener = listener;
 		this.key = key;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.isOperation = false;
 	}
 

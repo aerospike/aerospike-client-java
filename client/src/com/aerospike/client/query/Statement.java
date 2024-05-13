@@ -89,7 +89,11 @@ public final class Statement {
 	 * Set query bin names.
 	 */
 	public void setBinNames(String... binNames) {
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 	}
 
 	/**

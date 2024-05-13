@@ -63,7 +63,7 @@ public final class AsyncBatchSingle {
 		}
 
 		@Override
-		protected final boolean parseResult() {
+		protected boolean parseResult() {
 			super.parseResult();
 
 			try {
@@ -181,7 +181,11 @@ public final class AsyncBatchSingle {
 			boolean isOperation
 		) {
 			super(executor, cluster, policy, key, node, false);
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.records = records;
 			this.index = index;
 			this.isOperation = isOperation;
@@ -242,7 +246,11 @@ public final class AsyncBatchSingle {
 		) {
 			super(executor, cluster, policy, key, node, false);
 			this.listener = listener;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.isOperation = isOperation;
 		}
 

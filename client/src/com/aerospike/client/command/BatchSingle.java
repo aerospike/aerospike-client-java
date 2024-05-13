@@ -78,7 +78,11 @@ public final class BatchSingle {
 		) {
 			super(cluster, policy, status, key, node, false);
 			this.key = key;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.records = records;
 			this.index = index;
 			this.isOperation = isOperation;

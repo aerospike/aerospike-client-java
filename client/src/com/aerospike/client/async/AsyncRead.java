@@ -41,7 +41,11 @@ public class AsyncRead extends AsyncCommand {
 		super(policy, true);
 		this.listener = listener;
 		this.key = key;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.isOperation = false;
 		this.partition = Partition.read(cluster, policy, key);
 		cluster.addTran();
@@ -126,7 +130,7 @@ public class AsyncRead extends AsyncCommand {
 		// Do nothing in default case. Record will be null.
 	}
 
-	private final void handleUdfError(int resultCode) {
+	private void handleUdfError(int resultCode) {
 		String ret = (String)record.bins.get("FAILURE");
 
 		if (ret == null) {

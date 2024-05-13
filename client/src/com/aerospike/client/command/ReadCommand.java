@@ -48,7 +48,11 @@ public class ReadCommand extends SyncCommand {
 	public ReadCommand(Cluster cluster, Policy policy, Key key, String[] binNames) {
 		super(cluster, policy);
 		this.key = key;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.partition = Partition.read(cluster, policy, key);
 		this.isOperation = false;
 		cluster.addTran();

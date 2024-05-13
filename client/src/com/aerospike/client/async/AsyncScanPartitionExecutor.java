@@ -51,7 +51,11 @@ public final class AsyncScanPartitionExecutor extends AsyncMultiExecutor {
 		this.listener = listener;
 		this.namespace = namespace;
 		this.setName = setName;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.tracker = tracker;
 		this.random = new RandomShift();
 

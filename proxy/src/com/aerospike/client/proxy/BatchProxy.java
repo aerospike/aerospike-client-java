@@ -51,8 +51,8 @@ public class BatchProxy {
 	//-------------------------------------------------------
 
 	public interface BatchListListenerSync {
-		public void onSuccess(List<BatchRead> records, boolean status);
-		public void onFailure(AerospikeException ae);
+		void onSuccess(List<BatchRead> records, boolean status);
+		void onFailure(AerospikeException ae);
 	}
 
 	public static final class ReadListCommandSync extends BaseCommand {
@@ -217,7 +217,11 @@ public class BatchProxy {
 			super(executor, batchPolicy, isOperation, keys.length);
 			this.listener = listener;
 			this.keys = keys;
-			this.binNames = binNames;
+			if (binNames == null  || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.ops = ops;
 			this.readAttr = readAttr;
 			this.records = new Record[keys.length];
@@ -276,7 +280,11 @@ public class BatchProxy {
 			super(executor, batchPolicy, isOperation, keys.length);
 			this.listener = listener;
 			this.keys = keys;
-			this.binNames = binNames;
+			if (binNames == null || binNames.length == 0) {
+				this.binNames = null;
+			} else {
+				this.binNames = binNames;
+			}
 			this.ops = ops;
 			this.readAttr = readAttr;
 		}

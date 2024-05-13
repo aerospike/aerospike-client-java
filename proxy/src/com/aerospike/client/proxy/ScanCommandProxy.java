@@ -47,7 +47,11 @@ public class ScanCommandProxy extends ScanQueryBaseCommandProxy {
 			listener, partitionTracker);
 		this.namespace = namespace;
 		this.setName = setName;
-		this.binNames = binNames;
+		if (binNames == null || binNames.length == 0) {
+			this.binNames = null;
+		} else {
+			this.binNames = binNames;
+		}
 		this.partitionFilter = partitionFilter;
 	}
 
