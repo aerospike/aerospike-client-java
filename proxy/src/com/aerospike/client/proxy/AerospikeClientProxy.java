@@ -1335,7 +1335,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
-		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+		int readAttr = (binNames == null || binNames.length == 0)? Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
+		CommandProxy command = new BatchProxy.GetArrayCommand(executor, policy, listener, keys, binNames, null, readAttr, false);
 		command.execute();
 	}
 
@@ -1363,7 +1365,9 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
-		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, binNames, null, Command.INFO1_READ, false);
+		int readAttr = (binNames == null || binNames.length == 0)? Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
+		CommandProxy command = new BatchProxy.GetSequenceCommand(executor, policy, listener, keys, binNames, null, readAttr, false);
 		command.execute();
 	}
 
