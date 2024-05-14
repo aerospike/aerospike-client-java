@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -39,6 +39,11 @@ public class TestPutGet extends TestSync {
 
 		client.put(null, key, bin1, bin2);
 		Record record = client.get(null, key);
+		assertBinEqual(key, record, bin1);
+		assertBinEqual(key, record, bin2);
+
+		// Test empty binNames array.
+		record = client.get(null, key, new String[] {});
 		assertBinEqual(key, record, bin1);
 		assertBinEqual(key, record, bin2);
 	}

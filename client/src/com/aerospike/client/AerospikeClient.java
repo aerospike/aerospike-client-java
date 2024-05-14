@@ -1926,6 +1926,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		Record[] records = new Record[keys.length];
 
 		try {
@@ -1942,7 +1945,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				}
 				else {
 					commands[count++] = new Batch.GetArrayCommand(
-						cluster, bn, policy, keys, binNames, null, records, Command.INFO1_READ, false, status);
+						cluster, bn, policy, keys, binNames, null, records, readAttr, false, status);
 				}
 			}
 			BatchExecutor.execute(cluster, policy, commands, status);
@@ -1984,6 +1987,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		Record[] records = new Record[keys.length];
 		AsyncBatchExecutor.GetArray executor = new AsyncBatchExecutor.GetArray(
 			eventLoop, cluster, listener, keys, records);
@@ -1999,7 +2005,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			}
 			else {
 				commands[count++] = new AsyncBatch.GetArrayCommand(
-					executor, bn, policy, keys, binNames, null, records, Command.INFO1_READ, false);
+					executor, bn, policy, keys, binNames, null, records, readAttr, false);
 			}
 		}
 		executor.execute(commands);
@@ -2036,6 +2042,9 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchPolicyDefault;
 		}
 
+		int readAttr = (binNames == null || binNames.length == 0)?
+			Command.INFO1_READ | Command.INFO1_GET_ALL : Command.INFO1_READ;
+
 		AsyncBatchExecutor.GetSequence executor = new AsyncBatchExecutor.GetSequence(eventLoop, cluster, listener);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, null, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -2049,7 +2058,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			}
 			else {
 				commands[count++] = new AsyncBatch.GetSequenceCommand(
-					executor, bn, policy, keys, binNames, null, listener, Command.INFO1_READ, false);
+					executor, bn, policy, keys, binNames, null, listener, readAttr, false);
 			}
 		}
 		executor.execute(commands);

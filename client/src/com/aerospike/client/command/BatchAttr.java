@@ -49,7 +49,7 @@ public final class BatchAttr {
 
 	public BatchAttr(Policy policy, int rattr, Operation[] ops) {
 		setRead(policy);
-		this.readAttr |= rattr;
+		this.readAttr = rattr;
 
 		if (ops != null) {
 			adjustRead(ops);
