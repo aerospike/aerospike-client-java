@@ -919,6 +919,78 @@ public final class AsyncBatchSingle {
 	}
 
 	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static class TranVerify extends AsyncBaseCommand {
+		private final long version;
+		private final BatchRecord record;
+
+		public TranVerify(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			long version,
+			BatchRecord record,
+			Node node
+		) {
+			super(executor, cluster, policy, record.key, node, false);
+			this.version = version;
+			this.record = record;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTranVerify(record.key, version);
+		}
+
+		@Override
+		protected void parseResult(RecordParser rp) {
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
+			}
+			else {
+				record.setError(rp.resultCode, false);
+				executor.setRowError();
+			}
+		}
+	}
+
+	public static class TranRoll extends AsyncBaseCommand {
+		private final BatchRecord record;
+		private final int attr;
+
+		public TranRoll(
+			AsyncBatchExecutor executor,
+			Cluster cluster,
+			BatchPolicy policy,
+			BatchRecord record,
+			Node node,
+			int attr
+		) {
+			super(executor, cluster, policy, record.key, node, true);
+			this.record = record;
+			this.attr = attr;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setTranRoll(record.key, policy.tran, attr);
+		}
+
+		@Override
+		protected void parseResult(RecordParser rp) {
+			if (rp.resultCode == ResultCode.OK) {
+				record.resultCode = rp.resultCode;
+			}
+			else {
+				record.setError(rp.resultCode, Command.batchInDoubt(true, commandSentCounter));
+				executor.setRowError();
+			}
+		}
+	}
+
+	//-------------------------------------------------------
 	// Async Batch Base Command
 	//-------------------------------------------------------
 

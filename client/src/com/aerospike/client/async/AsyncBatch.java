@@ -918,6 +918,110 @@ public final class AsyncBatch {
 	}
 
 	//-------------------------------------------------------
+	// MRT
+	//-------------------------------------------------------
+
+	public static final class TranVerify extends AsyncBatchCommand {
+		private final Key[] keys;
+		private final Long[] versions;
+		private final BatchRecord[] records;
+
+		public TranVerify(
+			AsyncBatchExecutor parent,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			Long[] versions,
+			BatchRecord[] records
+		) {
+			super(parent, batch, batchPolicy, false);
+			this.keys = keys;
+			this.versions = versions;
+			this.records = records;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTranVerify(batchPolicy, keys, versions, batch);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, false);
+				parent.setRowError();
+			}
+		}
+
+		@Override
+		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
+			return new TranVerify(parent, batchNode, batchPolicy, keys, versions, records);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, false, parent);
+		}
+	}
+
+	public static final class TranRoll extends AsyncBatchCommand {
+		private final Key[] keys;
+		private final BatchRecord[] records;
+		private final BatchAttr attr;
+
+		public TranRoll(
+			AsyncBatchExecutor parent,
+			BatchNode batch,
+			BatchPolicy batchPolicy,
+			Key[] keys,
+			BatchRecord[] records,
+			BatchAttr attr
+		) {
+			super(parent, batch, batchPolicy, false);
+			this.keys = keys;
+			this.records = records;
+			this.attr = attr;
+		}
+
+		@Override
+		protected void writeBuffer() {
+			setBatchTranRoll(batchPolicy, keys, batch, attr);
+		}
+
+		@Override
+		protected void parseRow() {
+			skipKey(fieldCount);
+
+			BatchRecord record = records[batchIndex];
+
+			if (resultCode == ResultCode.OK) {
+				record.resultCode = resultCode;
+			}
+			else {
+				record.setError(resultCode, Command.batchInDoubt(attr.hasWrite, commandSentCounter));
+				parent.setRowError();
+			}
+		}
+
+		@Override
+		protected AsyncBatchCommand createCommand(BatchNode batchNode) {
+			return new TranRoll(parent, batchNode, batchPolicy, keys, records, attr);
+		}
+
+		@Override
+		protected List<BatchNode> generateBatchNodes() {
+			return BatchNodeList.generate(parent.cluster, batchPolicy, keys, sequenceAP, sequenceSC, batch, true, parent);
+		}
+	}
+
+	//-------------------------------------------------------
 	// Batch Base Command
 	//-------------------------------------------------------
 

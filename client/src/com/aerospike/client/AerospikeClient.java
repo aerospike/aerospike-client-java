@@ -46,6 +46,7 @@ import com.aerospike.client.async.AsyncRead;
 import com.aerospike.client.async.AsyncReadHeader;
 import com.aerospike.client.async.AsyncScanPartitionExecutor;
 import com.aerospike.client.async.AsyncTouch;
+import com.aerospike.client.async.AsyncTranExecutor;
 import com.aerospike.client.async.AsyncWrite;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.cdt.CTX;
@@ -638,6 +639,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
 	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if commit fails
 	 */
 	public final void tranCommit(Tran tran) {
 		// Validate record versions in a batch.
@@ -687,7 +693,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			catch (Throwable e) {
 				// Read verification failed. Abort transaction.
 				try {
-					tranAbort(tran);
+					tranRoll(tran, Command.INFO4_MRT_ROLL_BACK);
 				}
 				catch (Throwable e2) {
 					// Throw combination of tranAbort and original exception.
@@ -707,10 +713,61 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	/**
+	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * record versions are sent to the server nodes for verification. If all nodes return success,
+	 * the transaction is committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void tranCommit(EventLoop eventLoop, BatchRecordArrayListener listener, Tran tran) {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		AsyncTranExecutor.commit(cluster, eventLoop, listener, tranVerifyPolicyDefault, tranRollPolicyDefault, tran);
+	}
+
+	/**
 	 * Abort and rollback the given multi-record transaction.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if abort fails
 	 */
 	public final void tranAbort(Tran tran) {
 		tranRoll(tran, Command.INFO4_MRT_ROLL_BACK);
+	}
+
+	/**
+	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void tranAbort(EventLoop eventLoop, BatchRecordArrayListener listener, Tran tran) {
+		if (eventLoop == null) {
+			eventLoop = cluster.eventLoops.next();
+		}
+
+		AsyncTranExecutor.roll(cluster, eventLoop, listener, tranRollPolicyDefault, tran, Command.INFO4_MRT_ROLL_BACK);
 	}
 
 	//-------------------------------------------------------
@@ -4643,6 +4700,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		return code;
 	}
 
+	// TODO: Put in TranExecutor class.
 	private void tranRoll(Tran tran, int tranAttr) {
 		Set<Key> keySet = tran.getWrites();
 
@@ -4679,11 +4737,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 				if (bn.offsetsSize == 1) {
 					int i = bn.offsets[0];
 					commands[count++] = new BatchSingle.TranRoll(
-							cluster, batchPolicy, records[i], status, bn.node, tranAttr);
+						cluster, batchPolicy, records[i], status, bn.node, tranAttr);
 				}
 				else {
 					commands[count++] = new Batch.TranRoll(
-							cluster, bn, batchPolicy, keys, records, attr, status);
+						cluster, bn, batchPolicy, keys, records, attr, status);
 				}
 			}
 			BatchExecutor.execute(cluster, batchPolicy, commands, status);

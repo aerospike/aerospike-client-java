@@ -22,6 +22,11 @@ package com.aerospike.client;
  */
 public final class ResultCode {
 	/**
+	 * Multi-record transaction failed
+	 */
+	public static final int TRAN_FAILED = -17;
+
+	/**
 	 * One or more keys failed in a batch.
 	 */
 	public static final int BATCH_FAILED = -16;
@@ -465,6 +470,8 @@ public final class ResultCode {
 	 */
 	public static String getResultString(int resultCode) {
 		switch (resultCode) {
+		case TRAN_FAILED:
+			return "Multi-record transaction failed";
 
 		case BATCH_FAILED:
 			return "One or more keys failed in a batch";
