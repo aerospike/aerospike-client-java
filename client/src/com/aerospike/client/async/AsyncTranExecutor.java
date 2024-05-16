@@ -28,6 +28,7 @@ import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.TranCommitListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.util.Util;
 import java.util.List;
@@ -35,121 +36,90 @@ import java.util.Map;
 import java.util.Set;
 
 public final class AsyncTranExecutor {
-	public static void commit(
+	private final Cluster cluster;
+	private final EventLoop eventLoop;
+	private final TranCommitListener listener;
+	private final BatchPolicy verifyPolicy;
+	private final BatchPolicy rollPolicy;
+	private final Tran tran;
+
+	public AsyncTranExecutor(
 		Cluster cluster,
 		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
+		TranCommitListener listener,
 		BatchPolicy verifyPolicy,
 		BatchPolicy rollPolicy,
 		Tran tran
-	){
+	) {
+		this.cluster = cluster;
+		this.eventLoop = eventLoop;
+		this.listener = listener;
+		this.verifyPolicy = verifyPolicy;
+		this.rollPolicy = rollPolicy;
+		this.tran = tran;
+	}
+
+	public void commit() {
 		BatchRecordArrayListener verifyListener = new BatchRecordArrayListener() {
 			@Override
 			public void onSuccess(BatchRecord[] records, boolean status) {
 				if (status) {
-					System.out.println("Tran version matched: " + tran.id);
-					roll(cluster, eventLoop, listener, rollPolicy, tran, Command.INFO4_MRT_ROLL_FORWARD);
-				} else {
 					try {
-						abort(cluster, eventLoop, listener, rollPolicy, tran, records, null);
-					} catch (AerospikeException ae) {
-						tranNotifyFailure(listener, records, ae);
-					} catch (Throwable t) {
-						tranNotifyFailure(listener, records, new AerospikeException(t));
+						rollForward();
+					}
+					catch (AerospikeException ae) {
+						notifyCommitFailure(new BatchRecord[0], ae);
+					}
+					catch (Throwable t) {
+						notifyCommitFailure(new BatchRecord[0],
+							new AerospikeException(ResultCode.TRAN_FAILED, "Tran commit failed", t));
+					}
+				}
+				else {
+					notifyVerifyFailure(records,
+						new AerospikeException(ResultCode.TRAN_FAILED, "Tran verify failed"));
+
+					try {
+						rollBack();
+					}
+					catch (AerospikeException ae) {
+						notifyAbortFailure(new BatchRecord[0], ae);
+					}
+					catch (Throwable t) {
+						notifyAbortFailure(new BatchRecord[0],
+							new AerospikeException(ResultCode.TRAN_FAILED, "Tran abort failed", t));
 					}
 				}
 			}
 
 			@Override
 			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				notifyVerifyFailure(records, ae);
+
 				try {
-					abort(cluster, eventLoop, listener, rollPolicy, tran, records, ae);
-				} catch (Throwable t) {
+					rollBack();
+				}
+				catch (Throwable t) {
 					ae.addSuppressed(t);
-					tranNotifyFailure(listener, records, ae);
+					notifyAbortFailure(new BatchRecord[0], ae);
 				}
 			}
 		};
 
-		verify(cluster, eventLoop, verifyListener, verifyPolicy, tran);
+		verify(verifyListener);
 	}
 
-	public static void abort(
-		Cluster cluster,
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy policy,
-		Tran tran,
-		BatchRecord[] recordsVerify,
-		AerospikeException aeVerify
-	) {
-		BatchRecordArrayListener abortListener = new BatchRecordArrayListener() {
-			private static final String verifyFailed = "Batch record verification failed. Tran aborted: ";
-			private static final String verifyAbortFailed = "Batch record verification and tran abort failed: ";
-
-			@Override
-			public void onSuccess(BatchRecord[] records, boolean status) {
-				AerospikeException ae;
-
-				if (status) {
-					if (aeVerify == null) {
-						ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyFailed + tran.id);
-					}
-					else {
-						ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyFailed + tran.id, aeVerify);
-					}
-				}
-				else {
-					if (aeVerify == null) {
-						ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyAbortFailed + tran.id);
-					}
-					else {
-						ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyAbortFailed + tran.id, aeVerify);
-					}
-				}
-				tranNotifyFailure(listener, recordsVerify, ae);
-			}
-
-			@Override
-			public void onFailure(BatchRecord[] records, AerospikeException aeAbort) {
-				AerospikeException ae;
-
-				if (aeVerify == null) {
-					ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyAbortFailed + tran.id, aeAbort);
-				}
-				else {
-					aeVerify.addSuppressed(aeAbort);
-					ae = new AerospikeException(ResultCode.TRAN_FAILED, verifyAbortFailed + tran.id, aeVerify);
-				}
-				tranNotifyFailure(listener, recordsVerify, ae);
-			}
-		};
-
-		roll(cluster, eventLoop, abortListener, policy, tran, Command.INFO4_MRT_ROLL_BACK);
+	public void abort(BatchRecordArrayListener rollListener) {
+		roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 	}
 
-	private static void tranNotifyFailure(BatchRecordArrayListener listener, BatchRecord[] records, AerospikeException ae) {
-		try {
-			listener.onFailure(records, ae);
-		}
-		catch (Throwable t) {
-			Log.error("Tran onFailure() failed: " + Util.getStackTrace(t));
-		}
-	}
-
-	private static void verify(
-		Cluster cluster,
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy policy,
-		Tran tran
-	) {
+	private void verify(BatchRecordArrayListener verifyListener) {
 		// Validate record versions in a batch.
 		Set<Map.Entry<Key,Long>> reads = tran.getReads();
 		int max = reads.size();
 
-		if (max <= 0) {
-			listener.onSuccess(new BatchRecord[0], true);
+		if (max == 0) {
+			verifyListener.onSuccess(new BatchRecord[0], true);
 			return;
 		}
 
@@ -167,9 +137,9 @@ public final class AsyncTranExecutor {
 		}
 
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
-			eventLoop, cluster, listener, records);
+			eventLoop, cluster, verifyListener, records);
 
-		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, keys, records, false, executor);
+		List<BatchNode> bns = BatchNodeList.generate(cluster, verifyPolicy, keys, records, false, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
 
 		count = 0;
@@ -178,28 +148,63 @@ public final class AsyncTranExecutor {
 			if (bn.offsetsSize == 1) {
 				int i = bn.offsets[0];
 				commands[count++] = new AsyncBatchSingle.TranVerify(
-					executor, cluster, policy, versions[i], records[i], bn.node);
+					executor, cluster, verifyPolicy, versions[i], records[i], bn.node);
 			}
 			else {
 				commands[count++] = new AsyncBatch.TranVerify(
-					executor, bn, policy, keys, versions, records);
+					executor, bn, verifyPolicy, keys, versions, records);
 			}
 		}
 		executor.execute(commands);
 	}
 
-	public static void roll(
-		Cluster cluster,
-		EventLoop eventLoop,
-		BatchRecordArrayListener listener,
-		BatchPolicy policy,
-		Tran tran,
-		int tranAttr
-	) {
+	private void rollForward() {
+		BatchRecordArrayListener rollListener = new BatchRecordArrayListener() {
+			@Override
+			public void onSuccess(BatchRecord[] records, boolean status) {
+				if (status) {
+					notifySuccess();
+				}
+				else {
+					notifyCommitFailure(records, new AerospikeException(ResultCode.TRAN_FAILED, "Tran commit failed"));
+				}
+			}
+
+			@Override
+			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				notifyCommitFailure(records, ae);
+			}
+		};
+
+		roll(rollListener, Command.INFO4_MRT_ROLL_FORWARD);
+	}
+
+	private void rollBack() {
+		BatchRecordArrayListener rollListener = new BatchRecordArrayListener() {
+			@Override
+			public void onSuccess(BatchRecord[] records, boolean status) {
+				if (status) {
+					notifyAbort();
+				}
+				else {
+					notifyAbortFailure(records, new AerospikeException(ResultCode.TRAN_FAILED, "Tran abort failed"));
+				}
+			}
+
+			@Override
+			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				notifyAbortFailure(records, ae);
+			}
+		};
+
+		roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
+	}
+
+	private void roll(BatchRecordArrayListener rollListener, int tranAttr) {
 		Set<Key> keySet = tran.getWrites();
 
 		if (keySet.isEmpty()) {
-			listener.onSuccess(new BatchRecord[0], true);
+			rollListener.onSuccess(new BatchRecord[0], true);
 			return;
 		}
 
@@ -211,13 +216,13 @@ public final class AsyncTranExecutor {
 		}
 
 		// Copy tran roll policy because it needs to be modified.
-		BatchPolicy batchPolicy = new BatchPolicy(policy);
+		BatchPolicy batchPolicy = new BatchPolicy(rollPolicy);
 
 		BatchAttr attr = new BatchAttr();
 		attr.setTran(tranAttr);
 
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
-			eventLoop, cluster, listener, records);
+			eventLoop, cluster, rollListener, records);
 
 		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
@@ -236,5 +241,50 @@ public final class AsyncTranExecutor {
 			}
 		}
 		executor.execute(commands);
+	}
+
+	private void notifySuccess() {
+		try {
+			listener.onSuccess();
+		}
+		catch (Throwable t) {
+			Log.error("TranCommitListener onSuccess() failed: " + Util.getStackTrace(t));
+		}
+	}
+
+	private void notifyCommitFailure(BatchRecord[] records, AerospikeException ae) {
+		try {
+			listener.onCommitFailure(records, ae);
+		}
+		catch (Throwable t) {
+			Log.error("TranCommitListener onCommitFailure() failed: " + Util.getStackTrace(t));
+		}
+	}
+
+	private void notifyVerifyFailure(BatchRecord[] records, AerospikeException ae) {
+		try {
+			listener.onVerifyFailure(records, ae);
+		}
+		catch (Throwable t) {
+			Log.error("TranCommitListener onVerifyFailure() failed: " + Util.getStackTrace(t));
+		}
+	}
+
+	private void notifyAbort() {
+		try {
+			listener.onAbort();
+		}
+		catch (Throwable t) {
+			Log.error("TranCommitListener onAbort() failed: " + Util.getStackTrace(t));
+		}
+	}
+
+	private void notifyAbortFailure(BatchRecord[] records, AerospikeException ae) {
+		try {
+			listener.onAbortFailure(records, ae);
+		}
+		catch (Throwable t) {
+			Log.error("TranCommitListener onAbortFailure() failed: " + Util.getStackTrace(t));
+		}
 	}
 }
