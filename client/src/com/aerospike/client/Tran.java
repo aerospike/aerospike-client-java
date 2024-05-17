@@ -91,4 +91,12 @@ public final class Tran {
 	public Set<Key> getWrites() {
 		return writes;
 	}
+
+	/**
+	 * Close transaction. Remove all tracked keys.
+	 */
+	public void close() {
+		reads.clear();
+		writes.clear();
+	}
 }

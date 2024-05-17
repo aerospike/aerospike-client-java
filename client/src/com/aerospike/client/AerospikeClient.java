@@ -94,6 +94,7 @@ import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.TranAbortListener;
 import com.aerospike.client.listener.TranCommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.metrics.MetricsPolicy;
@@ -648,6 +649,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void tranCommit(Tran tran) {
 		TranExecutor.commit(cluster, tran, tranVerifyPolicyDefault, tranRollPolicyDefault);
+		tran.close();
 	}
 
 	/**
@@ -687,6 +689,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void tranAbort(Tran tran) {
 		TranExecutor.roll(cluster, tran, tranRollPolicyDefault, Command.INFO4_MRT_ROLL_BACK);
+		tran.close();
 	}
 
 	/**
@@ -703,7 +706,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @param tran			multi-record transaction
 	 * @throws AerospikeException	if event loop registration fails
 	 */
-	public final void tranAbort(EventLoop eventLoop, BatchRecordArrayListener listener, Tran tran) {
+	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran) {
 		if (eventLoop == null) {
 			eventLoop = cluster.eventLoops.next();
 		}

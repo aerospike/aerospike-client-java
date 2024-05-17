@@ -28,6 +28,7 @@ import com.aerospike.client.command.BatchNode;
 import com.aerospike.client.command.BatchNodeList;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.listener.BatchRecordArrayListener;
+import com.aerospike.client.listener.TranAbortListener;
 import com.aerospike.client.listener.TranCommitListener;
 import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.util.Util;
@@ -76,19 +77,7 @@ public final class AsyncTranExecutor {
 					}
 				}
 				else {
-					notifyVerifyFailure(records,
-						new AerospikeException(ResultCode.TRAN_FAILED, "Tran verify failed"));
-
-					try {
-						rollBack();
-					}
-					catch (AerospikeException ae) {
-						notifyAbortFailure(new BatchRecord[0], ae);
-					}
-					catch (Throwable t) {
-						notifyAbortFailure(new BatchRecord[0],
-							new AerospikeException(ResultCode.TRAN_FAILED, "Tran abort failed", t));
-					}
+					onFailure(records, new AerospikeException(ResultCode.TRAN_FAILED, "Tran verify failed"));
 				}
 			}
 
@@ -109,7 +98,35 @@ public final class AsyncTranExecutor {
 		verify(verifyListener);
 	}
 
-	public void abort(BatchRecordArrayListener rollListener) {
+	public void abort(TranAbortListener listener) {
+		BatchRecordArrayListener rollListener = new BatchRecordArrayListener() {
+			@Override
+			public void onSuccess(BatchRecord[] records, boolean status) {
+				if (status) {
+					try {
+						tran.close();
+						listener.onSuccess();
+					}
+					catch (Throwable t) {
+						Log.error("Abort onSuccess() failed: " + Util.getStackTrace(t));
+					}
+				}
+				else {
+					onFailure(records, new AerospikeException(ResultCode.TRAN_FAILED, "Tran abort failed"));
+				}
+			}
+
+			@Override
+			public void onFailure(BatchRecord[] records, AerospikeException ae) {
+				try {
+					listener.onFailure(records, ae);
+				}
+				catch (Throwable t) {
+					Log.error("Abort onFailure() failed: " + Util.getStackTrace(t));
+				}
+			}
+		};
+
 		roll(rollListener, Command.INFO4_MRT_ROLL_BACK);
 	}
 
@@ -245,6 +262,7 @@ public final class AsyncTranExecutor {
 
 	private void notifySuccess() {
 		try {
+			tran.close();
 			listener.onSuccess();
 		}
 		catch (Throwable t) {
