@@ -288,13 +288,13 @@ public class ClientPolicy {
 	/**
 	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch.
 	 */
-	public BatchPolicy tranVerifyPolicyDefault = BatchPolicy.TranVerifyDefault();
+	public TranVerifyPolicy tranVerifyPolicyDefault = new TranVerifyPolicy();
 
 	/**
 	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
 	 * or back (abort) in a batch.
 	 */
-	public BatchPolicy tranRollPolicyDefault = BatchPolicy.TranRollDefault();
+	public TranRollPolicy tranRollPolicyDefault = new TranRollPolicy();
 
 	/**
 	 * Default info policy that is used when info command's policy is null.
@@ -431,8 +431,8 @@ public class ClientPolicy {
 		this.batchWritePolicyDefault = new BatchWritePolicy(other.batchWritePolicyDefault);
 		this.batchDeletePolicyDefault = new BatchDeletePolicy(other.batchDeletePolicyDefault);
 		this.batchUDFPolicyDefault = new BatchUDFPolicy(other.batchUDFPolicyDefault);
-		this.tranVerifyPolicyDefault = new BatchPolicy(other.tranVerifyPolicyDefault);
-		this.tranRollPolicyDefault = new BatchPolicy(other.tranRollPolicyDefault);
+		this.tranVerifyPolicyDefault = new TranVerifyPolicy(other.tranVerifyPolicyDefault);
+		this.tranRollPolicyDefault = new TranRollPolicy(other.tranRollPolicyDefault);
 		this.infoPolicyDefault = new InfoPolicy(other.infoPolicyDefault);
 		this.tlsPolicy = (other.tlsPolicy != null)? new TlsPolicy(other.tlsPolicy) : null;
 		this.keepAlive = (other.keepAlive != null)? new TCPKeepAlive(other.keepAlive) : null;
@@ -566,11 +566,11 @@ public class ClientPolicy {
 		this.batchUDFPolicyDefault = batchUDFPolicyDefault;
 	}
 
-	public void setTranVerifyPolicyDefault(BatchPolicy tranVerifyPolicyDefault) {
+	public void setTranVerifyPolicyDefault(TranVerifyPolicy tranVerifyPolicyDefault) {
 		this.tranVerifyPolicyDefault = tranVerifyPolicyDefault;
 	}
 
-	public void setTranRollPolicyDefault(BatchPolicy tranRollPolicyDefault) {
+	public void setTranRollPolicyDefault(TranRollPolicy tranRollPolicyDefault) {
 		this.tranRollPolicyDefault = tranRollPolicyDefault;
 	}
 

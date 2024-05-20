@@ -19,7 +19,7 @@ package com.aerospike.client.policy;
 /**
  * Batch parent policy.
  */
-public final class BatchPolicy extends Policy {
+public class BatchPolicy extends Policy {
 	/**
 	 * This field is ignored and deprecated. Sync batch node commands are now always issued using
 	 * virtual threads in parallel. Async batch node commands always ignored this field. This field
@@ -126,30 +126,6 @@ public final class BatchPolicy extends Policy {
 	public static BatchPolicy WriteDefault() {
 		BatchPolicy policy = new BatchPolicy();
 		policy.maxRetries = 0;
-		return policy;
-	}
-
-	/**
-	 * Default multi-record transactions (MRT) policy when verifying record versions in a batch.
-	 */
-	public static BatchPolicy TranVerifyDefault() {
-		BatchPolicy policy = new BatchPolicy();
-		policy.readModeSC = ReadModeSC.LINEARIZE;
-		policy.replica = Replica.MASTER;
-		policy.maxRetries = 5;
-		policy.totalTimeout = 10000;
-		return policy;
-	}
-
-	/**
-	 * Default multi-record transactions (MRT) policy when rolling the transaction records forward (commit)
-	 * or back (abort) in a batch.
-	 */
-	public static BatchPolicy TranRollDefault() {
-		BatchPolicy policy = new BatchPolicy();
-		policy.replica = Replica.MASTER;
-		policy.maxRetries = 5;
-		policy.totalTimeout = 10000;
 		return policy;
 	}
 

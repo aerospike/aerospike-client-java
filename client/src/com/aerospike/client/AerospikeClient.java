@@ -108,6 +108,8 @@ import com.aerospike.client.policy.InfoPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.QueryPolicy;
 import com.aerospike.client.policy.ScanPolicy;
+import com.aerospike.client.policy.TranRollPolicy;
+import com.aerospike.client.policy.TranVerifyPolicy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.query.IndexCollectionType;
 import com.aerospike.client.query.IndexType;
@@ -352,8 +354,8 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			this.batchWritePolicyDefault = new BatchWritePolicy();
 			this.batchDeletePolicyDefault = new BatchDeletePolicy();
 			this.batchUDFPolicyDefault = new BatchUDFPolicy();
-			this.tranVerifyPolicyDefault = BatchPolicy.TranVerifyDefault();
-			this.tranRollPolicyDefault = BatchPolicy.TranRollDefault();
+			this.tranVerifyPolicyDefault = new TranVerifyPolicy();
+			this.tranRollPolicyDefault = new TranRollPolicy();
 			this.infoPolicyDefault = new InfoPolicy();
 			this.operatePolicyReadDefault = new WritePolicy(this.readPolicyDefault);
 		}
