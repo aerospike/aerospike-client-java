@@ -18,8 +18,6 @@ package com.aerospike.client.query;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.luaj.vm2.LuaInteger;
 import org.luaj.vm2.LuaValue;
