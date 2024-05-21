@@ -385,7 +385,7 @@ public class MRT extends Example {
 
 		bin = new Bin(binName, 2);
 
-		BatchPolicy bp = new BatchPolicy().WriteDefault();
+		BatchPolicy bp = BatchPolicy.WriteDefault();
 		bp.tran = tran;
 
 		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
@@ -432,7 +432,7 @@ public class MRT extends Example {
 
 		bin = new Bin(binName, 2);
 
-		BatchPolicy bp = new BatchPolicy().WriteDefault();
+		BatchPolicy bp = BatchPolicy.WriteDefault();
 		bp.tran = tran;
 
 		BatchResults bresults = client.operate(bp, null, keys, Operation.put(bin));
