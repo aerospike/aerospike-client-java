@@ -16,10 +16,7 @@
  */
 package com.aerospike.client.command;
 
-import com.aerospike.client.Key;
 import com.aerospike.client.Operation;
-import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Partition;
 import com.aerospike.client.policy.WritePolicy;
 
 public final class OperateArgs {
