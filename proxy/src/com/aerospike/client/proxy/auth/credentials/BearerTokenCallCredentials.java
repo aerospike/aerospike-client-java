@@ -51,7 +51,6 @@ public class BearerTokenCallCredentials extends CallCredentials {
 		});
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public void thisUsesUnstableApi() {
 		// noop
