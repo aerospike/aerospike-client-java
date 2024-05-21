@@ -327,6 +327,8 @@ public final class Connection implements Closeable {
 	}
 
 	public static final class ReadTimeout extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+
 		public final byte[] buffer;
 		public final int offset;
 		public final int length;
