@@ -21,6 +21,7 @@ import com.aerospike.client.BatchRecord;
 
 /**
  * Asynchronous result notifications for multi-record transaction (MRT) commits.
+ * TODO: Think about simplifying this listener.
  */
 public interface TranCommitListener {
 	/**

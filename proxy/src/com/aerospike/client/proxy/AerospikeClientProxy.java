@@ -44,6 +44,7 @@ import com.aerospike.client.Value;
 import com.aerospike.client.admin.Privilege;
 import com.aerospike.client.admin.Role;
 import com.aerospike.client.admin.User;
+import com.aerospike.client.async.AsyncTranExecutor;
 import com.aerospike.client.async.EventLoop;
 import com.aerospike.client.async.NettyEventLoop;
 import com.aerospike.client.async.NettyEventLoops;
@@ -54,6 +55,7 @@ import com.aerospike.client.cluster.Node;
 import com.aerospike.client.command.BatchAttr;
 import com.aerospike.client.command.Command;
 import com.aerospike.client.command.OperateArgs;
+import com.aerospike.client.command.TranExecutor;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.listener.BatchListListener;
 import com.aerospike.client.listener.BatchOperateListListener;
@@ -71,6 +73,8 @@ import com.aerospike.client.listener.InfoListener;
 import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.RecordSequenceListener;
+import com.aerospike.client.listener.TranAbortListener;
+import com.aerospike.client.listener.TranCommitListener;
 import com.aerospike.client.listener.WriteListener;
 import com.aerospike.client.metrics.MetricsPolicy;
 import com.aerospike.client.policy.AdminPolicy;
@@ -584,17 +588,63 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	}
 
 	/**
-	 * End the given multi-record transaction. If the transaction completed successfully and
-	 * the expected record versions match the server record versions, the transaction is
+	 * Attempt to commit the given multi-record transaction. First, the expected record versions are
+	 * sent to the server nodes for verification. If all nodes return success, the transaction is
 	 * committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if commit fails
 	 */
 	public final void tranCommit(Tran tran) {
 	}
 
 	/**
+	 * Asynchronously attempt to commit the given multi-record transaction. First, the expected
+	 * record versions are sent to the server nodes for verification. If all nodes return success,
+	 * the transaction is committed. Otherwise, the transaction is aborted.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void tranCommit(EventLoop eventLoop, TranCommitListener listener, Tran tran) {
+	}
+
+	/**
 	 * Abort and rollback the given multi-record transaction.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if abort fails
 	 */
 	public final void tranAbort(Tran tran) {
+	}
+
+	/**
+	 * Asynchronously abort and rollback the given multi-record transaction.
+	 * <p>
+	 * This method registers the command with an event loop and returns.
+	 * The event loop thread will process the command and send the results to the listener.
+	 * <p>
+	 * Requires server version 8.0+
+	 *
+	 * @param eventLoop		event loop that will process the command. If NULL, the event
+	 * 						loop will be chosen by round-robin.
+	 * @param listener		where to send results
+	 * @param tran			multi-record transaction
+	 * @throws AerospikeException	if event loop registration fails
+	 */
+	public final void tranAbort(EventLoop eventLoop, TranAbortListener listener, Tran tran) {
 	}
 
 	//-------------------------------------------------------
