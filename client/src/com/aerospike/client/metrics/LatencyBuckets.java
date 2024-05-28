@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -33,7 +33,7 @@ public final class LatencyBuckets {
 	 *
 	 * @param latencyColumns	number of latency buckets
 	 * @param latencyShift		power of 2 multiple between each range bucket in latency histograms starting at bucket 3.
-	 * 							The first 2 buckets are "<=1ms" and ">1ms".
+	 * 							The first 2 buckets are "&lt;=1ms" and "&gt;1ms".
 	 */
 	public LatencyBuckets(int latencyColumns, int latencyShift) {
 		this.latencyShift = latencyShift;
