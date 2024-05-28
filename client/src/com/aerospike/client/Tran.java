@@ -25,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Multi-record transaction.
  */
 public final class Tran {
-	private long id;
+	private final long id;
 	private String namespace;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
