@@ -1608,7 +1608,7 @@ public class Command {
 		writeBatchFields(key, fieldCount, opCount);
 
 		if (tran != null) {
-			writeField(tran.id, FieldType.MRT_TRID);
+			writeField(tran.getId(), FieldType.MRT_TRID);
 
 			if (ver != null) {
 				writeFieldVersion(ver);
@@ -2561,7 +2561,7 @@ public class Command {
 
 	private void writeTran(Tran tran) {
 		if (tran != null) {
-			writeField(tran.id, FieldType.MRT_TRID);
+			writeField(tran.getId(), FieldType.MRT_TRID);
 
 			if (version != null) {
 				writeFieldVersion(version);

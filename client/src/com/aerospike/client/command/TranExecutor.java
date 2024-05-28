@@ -80,12 +80,12 @@ public final class TranExecutor {
                     // Throw combination of tranAbort and original exception.
                     e.addSuppressed(e2);
                     throw new AerospikeException.BatchRecordArray(records,
-                        "Batch record verification and tran abort failed: " + tran.id, e);
+                        "Batch record verification and tran abort failed: " + tran.getId(), e);
                 }
 
                 // Throw original exception when abort succeeds.
                 throw new AerospikeException.BatchRecordArray(records,
-                    "Batch record verification failed. Tran aborted: " + tran.id, e);
+                    "Batch record verification failed. Tran aborted: " + tran.getId(), e);
             }
         }
 
@@ -146,7 +146,7 @@ public final class TranExecutor {
         catch (Throwable e) {
             String rollString = tranAttr == Command.INFO4_MRT_ROLL_FORWARD? "commit" : "abort";
             throw new AerospikeException.BatchRecordArray(records,
-                "Tran " + rollString + " failed: " + tran.id, e);
+                "Tran " + rollString + " failed: " + tran.getId(), e);
         }
     }
 }

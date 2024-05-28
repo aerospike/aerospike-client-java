@@ -25,7 +25,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * Multi-record transaction.
  */
 public final class Tran {
-	public final long id;
+	private long id;
+	private String namespace;
 	private final ConcurrentHashMap<Key,Long> reads;
 	private final Set<Key> writes;
 
@@ -33,6 +34,9 @@ public final class Tran {
 	 * Create transaction with given transaction id.
 	 */
 	public Tran(long id) {
+		if (id == 0) {
+			throw new AerospikeException(ResultCode.PARAMETER_ERROR, "MRT id must be non-zero");
+		}
 		this.id = id;
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
@@ -42,9 +46,24 @@ public final class Tran {
 	 * Create transaction and assign transaction id at random.
 	 */
 	public Tran() {
-		id = new Random().nextLong();
+		// An id of zero is considered invalid. Create random numbers
+		// in a loop until non-zero is returned.
+		Random r = new Random();
+		long v = r.nextLong();
+
+		while (v == 0) {
+			v = r.nextLong();
+		}
+		id = v;
 		reads = new ConcurrentHashMap<>();
 		writes = ConcurrentHashMap.newKeySet();
+	}
+
+	/**
+	 * Return MRT ID.
+	 */
+	public long getId() {
+		return id;
 	}
 
 	/**
@@ -52,6 +71,7 @@ public final class Tran {
 	 */
 	public void handleRead(Key key, Long version) {
 		if (version != null) {
+			verifyNamespace(key);
 			reads.put(key, version);
 		}
 	}
@@ -75,13 +95,25 @@ public final class Tran {
 	 */
 	public void handleWrite(Key key, Long version, int resultCode) {
 		if (version != null) {
+			verifyNamespace(key);
 			reads.put(key, version);
 		}
 		else {
 			if (resultCode == ResultCode.OK) {
+				verifyNamespace(key);
 				reads.remove(key);
 				writes.add(key);
 			}
+		}
+	}
+
+	private void verifyNamespace(Key key) {
+		if (namespace == null) {
+			namespace = key.namespace;
+		}
+		else if (! namespace.equals(key.namespace)) {
+			throw new AerospikeException("Namespace must be the same for all commands in the MRT. Expected: " +
+				namespace + " Received: " + key.namespace);
 		}
 	}
 
