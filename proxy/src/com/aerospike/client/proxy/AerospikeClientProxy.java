@@ -2536,7 +2536,11 @@ public class AerospikeClientProxy implements IAerospikeClient, Closeable {
 	 */
 	@Override
 	public void info(EventLoop eventLoop, InfoListener listener, InfoPolicy policy, Node node, String... commands) {
-		throw new AerospikeException(NotSupported + "info");
+		if (policy == null) {
+			policy = infoPolicyDefault;
+		}
+		InfoCommandProxy infoCommand = new InfoCommandProxy(executor, listener, policy, commands);
+		infoCommand.execute();
 	}
 
 	//-----------------------------------------------------------------
