@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -1322,9 +1322,8 @@ public class Command {
 		}
 
 		// Clusters that support partition queries also support not sending partition done messages.
-		int infoAttr = cluster.hasPartitionQuery? Command.INFO3_PARTITION_DONE : 0;
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, Command.INFO3_PARTITION_DONE, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -1569,7 +1568,7 @@ public class Command {
 				readAttr |= Command.INFO1_SHORT_QUERY;
 			}
 
-			int infoAttr = isNew? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = (isNew || filter == null)? Command.INFO3_PARTITION_DONE : 0;
 
 			writeHeaderRead(policy, totalTimeout, readAttr, infoAttr, fieldCount, operationCount);
 		}
