@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -54,7 +54,7 @@ public final class QueryRecordCommand extends MultiCommand {
 
 	@Override
 	protected final void writeBuffer() {
-		setQuery(cluster, policy, statement, taskId, false, null);
+		setQuery(cluster, policy, statement, taskId, false, node, null);
 	}
 
 	@Override

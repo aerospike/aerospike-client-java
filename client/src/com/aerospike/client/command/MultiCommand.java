@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -32,7 +32,7 @@ import com.aerospike.client.query.QueryValidate;
 public abstract class MultiCommand extends SyncCommand {
 	private static final int MAX_BUFFER_SIZE = 1024 * 1024 * 128;  // 128 MB
 
-	private final Node node;
+	protected final Node node;
 	protected final String namespace;
 	private final long clusterKey;
 	protected int info3;
