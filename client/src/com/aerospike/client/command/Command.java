@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2024 Aerospike, Inc.
+ * Copyright 2012-2023 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -35,7 +35,6 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Value;
 import com.aerospike.client.cluster.Cluster;
-import com.aerospike.client.cluster.Node;
 import com.aerospike.client.exp.Expression;
 import com.aerospike.client.policy.BatchDeletePolicy;
 import com.aerospike.client.policy.BatchPolicy;
@@ -1330,8 +1329,9 @@ public class Command {
 		}
 
 		// Clusters that support partition queries also support not sending partition done messages.
+		int infoAttr = cluster.hasPartitionQuery? Command.INFO3_PARTITION_DONE : 0;
 		int operationCount = (binNames == null)? 0 : binNames.length;
-		writeHeaderRead(policy, totalTimeout, readAttr, 0, Command.INFO3_PARTITION_DONE, fieldCount, operationCount);
+		writeHeaderRead(policy, totalTimeout, readAttr, 0, infoAttr, fieldCount, operationCount);
 
 		if (namespace != null) {
 			writeField(namespace, FieldType.NAMESPACE);
@@ -1396,7 +1396,6 @@ public class Command {
 		Statement statement,
 		long taskId,
 		boolean background,
-		Node node,
 		NodePartitions nodePartitions
 	) {
 		byte[] functionArgBuffer = null;
@@ -1582,7 +1581,7 @@ public class Command {
 				writeAttr |= Command.INFO2_RELAX_AP_LONG_QUERY;
 			}
 
-			int infoAttr = node.hasPartitionQuery()? Command.INFO3_PARTITION_DONE : 0;
+			int infoAttr = isNew? Command.INFO3_PARTITION_DONE : 0;
 
 			writeHeaderRead(policy, totalTimeout, readAttr, writeAttr, infoAttr, fieldCount, operationCount);
 		}
