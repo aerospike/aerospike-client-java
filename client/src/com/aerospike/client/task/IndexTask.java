@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2021 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -18,6 +18,7 @@ package com.aerospike.client.task;
 
 import com.aerospike.client.AerospikeException;
 import com.aerospike.client.Info;
+import com.aerospike.client.ResultCode;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
@@ -92,13 +93,14 @@ public final class IndexTask extends Task {
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
-					// Index not found or not readable.
+				Info.Error error = new Info.Error(response);
+
+				if (error.code == ResultCode.INDEX_NOTFOUND || error.code == ResultCode.INDEX_NOTREADABLE) {
 					return Task.NOT_FOUND;
 				}
 				else {
 					// Throw exception immediately.
-					throw new AerospikeException(command + " failed: " + response);
+					throw new AerospikeException(error.code, command + " failed: " + error.message);
 				}
 			}
 
@@ -113,7 +115,9 @@ public final class IndexTask extends Task {
 		}
 		else {
 			// Check if index has been dropped.
-			if (response.indexOf("FAIL:201") < 0) {
+			Info.Error error = new Info.Error(response);
+
+			if (error.code != ResultCode.INDEX_NOTFOUND) {
 				// Index still exists.
 				return Task.IN_PROGRESS;
 			}
