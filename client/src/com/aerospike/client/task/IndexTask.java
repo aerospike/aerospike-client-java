@@ -22,6 +22,9 @@ import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.cluster.Node;
 import com.aerospike.client.policy.Policy;
 
+import static com.aerospike.client.ResultCode.INDEX_NOTFOUND;
+import static com.aerospike.client.ResultCode.INDEX_NOTREADABLE;
+
 /**
  * Task used to poll for long running create index completion.
  */
@@ -92,7 +95,7 @@ public final class IndexTask extends Task {
 			int index = response.indexOf(find);
 
 			if (index < 0) {
-				if (response.indexOf("FAIL:201") >= 0 || response.indexOf("FAIL:203") >= 0) {
+				if (response.contains(error(INDEX_NOTFOUND)) || response.contains(error(INDEX_NOTREADABLE))) {
 					// Index not found or not readable.
 					return Task.NOT_FOUND;
 				}
@@ -113,12 +116,16 @@ public final class IndexTask extends Task {
 		}
 		else {
 			// Check if index has been dropped.
-			if (response.indexOf("FAIL:201") < 0) {
+			if (!response.contains(error(INDEX_NOTFOUND))) {
 				// Index still exists.
 				return Task.IN_PROGRESS;
 			}
 		}
 		return Task.COMPLETE;
+	}
+
+	private static String error(int resultCode) {
+		return String.format(":%d:", resultCode);
 	}
 
 	public static String buildExistsCommand(String namespace, String indexName) {
