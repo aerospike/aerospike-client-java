@@ -4470,21 +4470,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	}
 
 	private static int parseIndexErrorCode(String response) {
-		int code = 0;
-
-		try {
-			String[] list = response.split(":");
-
-			if (list.length >= 2 && list[0].equals("FAIL")) {
-				code = Integer.parseInt(list[1]);
-			}
-		}
-		catch (Throwable e) {
-		}
-
-		if (code == 0) {
-			code = ResultCode.SERVER_ERROR;
-		}
-		return code;
+		Info.Error error = new Info.Error(response);
+		return (error.code == 0)? ResultCode.SERVER_ERROR : error.code;
 	}
 }
