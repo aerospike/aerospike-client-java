@@ -54,9 +54,9 @@ public class TestAsyncTran extends TestAsync {
 
 		Runner[] cmds = new Runner[]{
 			new Put(null, key, "val1"),
-			//new Put(tran, key, "val2"),
-			//new Commit(tran),
-			//new GetExpect(null, key, "val2")
+			new Put(tran, key, "val2"),
+			new Commit(tran),
+			new GetExpect(null, key, "val2")
 		};
 
 		Cmds cmd = new Cmds(cmds);
@@ -75,12 +75,10 @@ public class TestAsyncTran extends TestAsync {
 	}
 
 	private class Cmds implements Listener {
-		final Tran tran;
 		final Runner[] cmds;
 		int idx;
 
 		private Cmds(Runner[] cmds) {
-			this.tran = new Tran();
 			this.cmds = cmds;
 			this.idx = -1;
 		}
@@ -112,7 +110,6 @@ public class TestAsyncTran extends TestAsync {
 		public void onFailure(Exception e) {
 			onError(e);
 		}
-
 	}
 
 	private class Commit implements Runner {

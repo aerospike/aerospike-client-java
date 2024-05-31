@@ -241,8 +241,12 @@ public final class AsyncTranExecutor {
 		AsyncBatchExecutor.BatchRecordArray executor = new AsyncBatchExecutor.BatchRecordArray(
 			eventLoop, cluster, rollListener, records);
 
+		// generate() requires a null tran instance.
 		List<BatchNode> bns = BatchNodeList.generate(cluster, batchPolicy, keys, records, true, executor);
 		AsyncCommand[] commands = new AsyncCommand[bns.size()];
+
+		// Batch roll forward requires the tran instance.
+		batchPolicy.tran = tran;
 
 		int count = 0;
 
