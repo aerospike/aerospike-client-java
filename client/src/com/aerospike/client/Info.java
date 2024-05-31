@@ -319,30 +319,15 @@ public class Info {
 			return ResultCode.OK;
 		}
 
-		// Error format: ERROR|FAIL[:<code>][:<message>]
-		try {
-			String[] list = response.split(":");
-			String s = list[0];
+		Info.Error error = new Info.Error(response);
 
-			if (s.regionMatches(true, 0, "FAIL", 0, 4) ||
-				s.regionMatches(true, 0, "ERROR", 0, 5)) {
-
-				if (list.length > 1) {
-					s = list[1].trim();
-
-					if (! s.isEmpty()) {
-						return Integer.parseInt(s);
-					}
-				}
-				return ResultCode.SERVER_ERROR;
-			}
-			throw new AerospikeException("Unrecognized info response: " + response);
+		if (error.code >= 0) {
+			// Server errors return error code.
+			return error.code;
 		}
-		catch (AerospikeException ae) {
-			throw ae;
-		}
-		catch (Throwable t) {
-			throw new AerospikeException("Unrecognized info response: " + response, t);
+		else {
+			// Client errors result in a exception.
+			throw new AerospikeException(error.code, "Unrecognized info response: " + response);
 		}
 	}
 
@@ -826,6 +811,63 @@ public class Info {
 			}
 			byte[] bytes = Crypto.decodeBase64(buffer, valueBegin, len);
 			return Buffer.utf8ToString(bytes, 0, bytes.length);
+		}
+	}
+
+	/**
+	 * Info command error response.
+	 */
+	public static class Error {
+		public final int code;
+		public final String message;
+
+		/**
+		 * Parse info command response into code and message.
+		 * If the response is not a recognized error format, the code is set to
+		 * {@link ResultCode#CLIENT_ERROR} and the message is set to the full
+		 * response string.
+		 */
+		public Error(String response) {
+			// Error format: ERROR|FAIL[:<code>][:<message>]
+			int rc = ResultCode.CLIENT_ERROR;
+			String msg = response;
+
+			try {
+				String[] list = response.split(":");
+				String s = list[0];
+
+				if (s.regionMatches(true, 0, "FAIL", 0, 4) ||
+					s.regionMatches(true, 0, "ERROR", 0, 5)) {
+
+					if (list.length >= 3) {
+						msg = list[2].trim();
+						s = list[1].trim();
+
+						if (! s.isEmpty()) {
+							rc = Integer.parseInt(s);
+						}
+					}
+					else if (list.length == 2) {
+						s = list[1].trim();
+
+						if (! s.isEmpty()) {
+							try {
+								rc = Integer.parseInt(s);
+							}
+							catch (Throwable t) {
+								// Some error strings omit the code and just have a message.
+								msg = s;
+							}
+						}
+					}
+				}
+			}
+			catch (Throwable t) {
+			}
+			finally {
+				this.code = rc;
+				this.message = msg;
+			}
 		}
 	}
 }
