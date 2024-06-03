@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2023 Aerospike, Inc.
+ * Copyright 2012-2024 Aerospike, Inc.
  *
  * Portions may be licensed to Aerospike, Inc. under one or more contributor
  * license agreements WHICH ARE COMPATIBLE WITH THE APACHE LICENSE, VERSION 2.0.
@@ -102,6 +102,14 @@ public class TestAsync extends TestBase {
 		}
 		return true;
  	}
+
+	public boolean assertRecordNotFound(Key key, Record record) {
+		if (record != null) {
+			monitor.setError(new Exception("Record should not exist: namespace=" + args.namespace + " set=" + args.set + " key=" + key.userKey));
+			return false;
+		}
+		return true;
+	}
 
 	public boolean assertBetween(long begin, long end, long value) {
 		if (! (value >= begin && value <= end)) {
