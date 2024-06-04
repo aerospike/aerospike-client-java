@@ -422,10 +422,10 @@ public class TestTran extends TestSync {
 			throw new AerospikeException(sb.toString());
 		}
 
-		client.tranCommit(tran);
+		client.tranAbort(tran);
 
 		recs = client.get(null, keys);
-		assertBatchEqual(keys, recs, 2);
+		assertBatchEqual(keys, recs, 1);
 	}
 
 	private void assertBatchEqual(Key[] keys, Record[] recs, int expected) {

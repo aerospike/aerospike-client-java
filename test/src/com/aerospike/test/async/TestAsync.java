@@ -183,6 +183,26 @@ public class TestAsync extends TestBase {
 		return true;
 	}
 
+	public boolean assertBatchEqual(Key[] keys, Record[] recs, String binName, int expected) {
+		for (int i = 0; i < keys.length; i++) {
+			Key key = keys[i];
+			Record rec = recs[i];
+
+			if (rec == null) {
+				monitor.setError(new Exception("recs[" + i + "] is null"));
+				return false;
+			}
+
+			int received = rec.getInt(binName);
+
+			if (expected != received) {
+				monitor.setError(new Exception("Data mismatch: Expected " + expected + ". Received[" + i + "] " + received));
+				return false;
+			}
+		}
+		return true;
+	}
+
 	public void setError(Exception e) {
 		monitor.setError(e);
 	}

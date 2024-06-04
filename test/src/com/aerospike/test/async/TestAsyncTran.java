@@ -29,12 +29,15 @@ import com.aerospike.client.Record;
 import com.aerospike.client.ResultCode;
 import com.aerospike.client.Tran;
 import com.aerospike.client.Value;
+import com.aerospike.client.listener.BatchRecordArrayListener;
 import com.aerospike.client.listener.DeleteListener;
 import com.aerospike.client.listener.ExecuteListener;
+import com.aerospike.client.listener.RecordArrayListener;
 import com.aerospike.client.listener.RecordListener;
 import com.aerospike.client.listener.TranAbortListener;
 import com.aerospike.client.listener.TranCommitListener;
 import com.aerospike.client.listener.WriteListener;
+import com.aerospike.client.policy.BatchPolicy;
 import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
 import com.aerospike.client.task.RegisterTask;
@@ -58,7 +61,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranWrite");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Put(tran, key, "val2"),
 			new Commit(tran),
@@ -73,7 +76,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranWriteTwice");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(tran, key, "val1"),
 			new Put(tran, key, "val2"),
 			new Commit(tran),
@@ -88,7 +91,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranWriteBlock");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Put(tran, key, "val2"),
 			new Put(null, key, "val3"), // Should be blocked
@@ -111,7 +114,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranWriteRead");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Put(tran, key, "val2"),
 			new GetExpect(null, key, "val1"),
@@ -127,7 +130,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranWriteAbort");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Put(tran, key, "val2"),
 			new GetExpect(tran, key, "val2"),
@@ -143,7 +146,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranDelete");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Delete(tran, key),
 			new Commit(tran),
@@ -158,7 +161,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranDeleteAbort");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Delete(tran, key),
 			new Abort(tran),
@@ -173,7 +176,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranDeleteTwice");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Delete(tran, key),
 			new Delete(tran, key),
@@ -189,7 +192,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranTouch");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Touch(tran, key),
 			new Commit(tran),
@@ -204,7 +207,7 @@ public class TestAsyncTran extends TestAsync {
 		Key key = new Key(args.namespace, args.set, "asyncTranTouchAbort");
 		Tran tran = new Tran();
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, "val1"),
 			new Touch(tran, key),
 			new Abort(tran),
@@ -220,7 +223,7 @@ public class TestAsyncTran extends TestAsync {
 		Tran tran = new Tran();
 		Bin bin2 = new Bin("bin2", "bal1");
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
 			new OperateExpect(tran, key,
 				bin2,
@@ -240,7 +243,7 @@ public class TestAsyncTran extends TestAsync {
 		Tran tran = new Tran();
 		Bin bin2 = new Bin("bin2", "bal1");
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
 			new OperateExpect(tran, key,
 				bin2,
@@ -260,7 +263,7 @@ public class TestAsyncTran extends TestAsync {
 		Tran tran = new Tran();
 		Bin bin2 = new Bin("bin2", "bal1");
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
 			new UDF(tran, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
 			new Commit(tran),
@@ -276,11 +279,59 @@ public class TestAsyncTran extends TestAsync {
 		Tran tran = new Tran();
 		Bin bin2 = new Bin("bin2", "bal1");
 
-		Runner[] cmds = new Runner[]{
+		Runner[] cmds = new Runner[] {
 			new Put(null, key, new Bin(binName, "val1"), bin2),
 			new UDF(tran, key, "record_example", "writeBin", Value.get(binName), Value.get("val2")),
 			new Abort(tran),
 			new GetExpect(null, key, "val1")
+		};
+
+		execute(cmds);
+	}
+
+	@Test
+	public void asyncTranBatch() {
+		Key[] keys = new Key[10];
+		Bin bin = new Bin(binName, 1);
+
+		for (int i = 0; i < keys.length; i++) {
+			Key key = new Key(args.namespace, args.set, "asyncTranBatch" + i);
+			keys[i] = key;
+			client.put(null, key, bin);
+		}
+
+		Tran tran = new Tran();
+		bin = new Bin(binName, 2);
+
+		Runner[] cmds = new Runner[] {
+			new BatchGetExpect(null, keys, 1),
+			new BatchOperate(tran, keys, Operation.put(bin)),
+			new Commit(tran),
+			new BatchGetExpect(null, keys, 2),
+		};
+
+		execute(cmds);
+	}
+
+	@Test
+	public void asyncTranBatchAbort() {
+		Key[] keys = new Key[10];
+		Bin bin = new Bin(binName, 1);
+
+		for (int i = 0; i < keys.length; i++) {
+			Key key = new Key(args.namespace, args.set, "asyncTranBatch" + i);
+			keys[i] = key;
+			client.put(null, key, bin);
+		}
+
+		Tran tran = new Tran();
+		bin = new Bin(binName, 2);
+
+		Runner[] cmds = new Runner[] {
+			new BatchGetExpect(null, keys, 1),
+			new BatchOperate(tran, keys, Operation.put(bin)),
+			new Abort(tran),
+			new BatchGetExpect(null, keys, 1),
 		};
 
 		execute(cmds);
@@ -573,13 +624,49 @@ public class TestAsyncTran extends TestAsync {
 		}
 	}
 
-	/*
-	private class Batch implements Runner {
+	private class BatchGetExpect implements Runner {
+		private final Tran tran;
+		private final Key[] keys;
+		private final int expected;
+
+		private BatchGetExpect(Tran tran, Key[] keys, int expected) {
+			this.tran = tran;
+			this.keys = keys;
+			this.expected = expected;
+		}
+
+		public void run(Listener listener) {
+			RecordArrayListener ral = new RecordArrayListener() {
+				public void onSuccess(Key[] keys, Record[] records) {
+					if (assertBatchEqual(keys, records, binName, expected)) {
+						listener.onSuccess();
+					}
+					else {
+						listener.onFailure();
+					}
+				}
+
+				public void onFailure(AerospikeException ae) {
+					listener.onFailure(ae);
+				}
+			};
+
+			BatchPolicy bp = null;
+
+			if (tran != null) {
+				bp = client.copyBatchPolicyDefault();
+				bp.tran = tran;
+			}
+			client.get(eventLoop, ral, bp, keys);
+		}
+	}
+
+	private class BatchOperate implements Runner {
 		private final Tran tran;
 		private final Key[] keys;
 		private final Operation[] ops;
 
-		private Batch(Tran tran, Key[] keys, Operation... ops) {
+		private BatchOperate(Tran tran, Key[] keys, Operation... ops) {
 			this.tran = tran;
 			this.keys = keys;
 			this.ops = ops;
@@ -587,26 +674,43 @@ public class TestAsyncTran extends TestAsync {
 
 		public void run(Listener listener) {
 			BatchRecordArrayListener bral = new BatchRecordArrayListener() {
-				public void onSuccess(Key key, Object obj) {
-					listener.onSuccess();
+				public void onSuccess(BatchRecord[] records, boolean status) {
+					if (status) {
+						listener.onSuccess();
+					}
+					else {
+						StringBuilder sb = new StringBuilder();
+						sb.append("Batch failed:");
+						sb.append(System.lineSeparator());
+
+						for (BatchRecord br : records) {
+							if (br.resultCode == 0) {
+								sb.append("Record: " + br.record);
+							}
+							else {
+								sb.append("ResultCode: " + br.resultCode);
+							}
+							sb.append(System.lineSeparator());
+						}
+						listener.onFailure(new AerospikeException(sb.toString()));
+					}
 				}
 
-				public void onFailure(AerospikeException e) {
-					listener.onFailure(e);
+				public void onFailure(BatchRecord[] records, AerospikeException ae) {
+					listener.onFailure(ae);
 				}
 			};
 
 
-			WritePolicy wp = null;
+			BatchPolicy bp = null;
 
 			if (tran != null) {
-				BatchPolicy bp = client.BatchPolicy.WriteDefault();
+				bp = client.copyBatchParentPolicyWriteDefault();
 				bp.tran = tran;
 			}
-			client.operate(eventLoop, bral, wp, keys, ops);
+			client.operate(eventLoop, bral, bp, null, keys, ops);
 		}
 	}
-	 */
 
 	private class Touch implements Runner {
 		private final Tran tran;
