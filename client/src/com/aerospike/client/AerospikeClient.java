@@ -1025,6 +1025,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			deletePolicy = batchDeletePolicyDefault;
 		}
 
+		if (batchPolicy.tran != null) {
+			TranExecutor.addWrites(cluster, batchPolicy, keys);
+		}
+
 		BatchAttr attr = new BatchAttr();
 		attr.setDelete(deletePolicy);
 
@@ -2509,6 +2513,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 			policy = batchParentPolicyWriteDefault;
 		}
 
+		if (policy.tran != null) {
+			TranExecutor.addWrites(cluster, policy, records);
+		}
+
 		BatchStatus status = new BatchStatus(true);
 		List<BatchNode> bns = BatchNodeList.generate(cluster, policy, records, status);
 		IBatchCommand[] commands = new IBatchCommand[bns.size()];
@@ -2812,6 +2820,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (writePolicy == null) {
 			writePolicy = batchWritePolicyDefault;
+		}
+
+		if (batchPolicy.tran != null) {
+			TranExecutor.addWrites(cluster, batchPolicy, keys);
 		}
 
 		BatchAttr attr = new BatchAttr(batchPolicy, writePolicy, ops);
@@ -3403,6 +3415,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 
 		if (udfPolicy == null) {
 			udfPolicy = batchUDFPolicyDefault;
+		}
+
+		if (batchPolicy.tran != null) {
+			TranExecutor.addWrites(cluster, batchPolicy, keys);
 		}
 
 		byte[] argBytes = Packer.pack(functionArgs);

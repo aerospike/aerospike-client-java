@@ -29,14 +29,16 @@ import com.aerospike.client.cdt.ListPolicy;
 import com.aerospike.client.cdt.ListWriteFlags;
 import com.aerospike.client.cluster.Cluster;
 import com.aerospike.client.policy.BatchPolicy;
+import com.aerospike.client.policy.Policy;
 import com.aerospike.client.policy.WritePolicy;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 public final class TranExecutor {
 	private static final ListPolicy OrderedListPolicy = new ListPolicy(ListOrder.ORDERED,
-		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL);
+		ListWriteFlags.ADD_UNIQUE | ListWriteFlags.NO_FAIL | ListWriteFlags.PARTIAL);
 
 	public static void addWrite(Cluster cluster, WritePolicy policy, Key cmdKey) {
 		Tran tran = policy.tran;
@@ -48,14 +50,54 @@ public final class TranExecutor {
 
 		tran.setNamespace(cmdKey.namespace);
 
-		Key tranKey = getTranMonitorKey(tran);
-
 		Operation[] ops = new Operation[] {
 			Operation.put(new Bin("id", tran.getId())),
 			ListOperation.append(OrderedListPolicy, "keyds", Value.get(cmdKey.digest))
 		};
 
-		// Inherit a subset of fields from the original command's policy.
+		addWriteKeys(cluster, tran, policy, ops);
+	}
+
+	public static void addWrites(Cluster cluster, BatchPolicy policy, Key[] keys) {
+		Tran tran = policy.tran;
+		ArrayList<Value> list = new ArrayList<>(keys.length);
+
+		for (Key key : keys) {
+			tran.setNamespace(key.namespace);
+			list.add(Value.get(key.digest));
+		}
+
+		addBatchWrites(cluster, tran, policy, list);
+	}
+
+	public static void addWrites(Cluster cluster, BatchPolicy policy, List<BatchRecord> records) {
+		Tran tran = policy.tran;
+		ArrayList<Value> list = new ArrayList<>(records.size());
+
+		for (BatchRecord br : records) {
+			if (br.hasWrite) {
+				Key key = br.key;
+				tran.setNamespace(key.namespace);
+				list.add(Value.get(key.digest));
+			}
+		}
+
+		addBatchWrites(cluster, tran, policy, list);
+	}
+
+	private static void addBatchWrites(Cluster cluster, Tran tran, Policy policy, ArrayList<Value> list) {
+		Operation[] ops = new Operation[] {
+			Operation.put(new Bin("id", tran.getId())),
+			ListOperation.appendItems(OrderedListPolicy, "keyds", list)
+		};
+
+		addWriteKeys(cluster, tran, policy, ops);
+	}
+
+	private static void addWriteKeys(Cluster cluster, Tran tran, Policy policy, Operation[] ops) {
+		Key tranKey = getTranMonitorKey(tran);
+
+		// Inherit timeout related fields from the original command's policy.
 		WritePolicy wp = new WritePolicy();
 		wp.respondAllOps = true;
 		wp.connectTimeout = policy.connectTimeout;
