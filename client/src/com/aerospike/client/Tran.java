@@ -67,11 +67,32 @@ public final class Tran {
 	}
 
 	/**
+	 * Return MRT namespace.
+	 */
+	public String getNamespace() {
+		return namespace;
+	}
+
+	/**
+	 * Set MRT namespace only if doesn't already exist.
+	 * If namespace already exists, verify new namespace is the same.
+	 */
+	public void setNamespace(String ns) {
+		if (namespace == null) {
+			namespace = ns;
+		}
+		else if (! namespace.equals(ns)) {
+			throw new AerospikeException("Namespace must be the same for all commands in the MRT. Original: " +
+				namespace + " New: " + ns);
+		}
+	}
+
+	/**
 	 * Process the results of a record read. For internal use only.
 	 */
 	public void handleRead(Key key, Long version) {
 		if (version != null) {
-			verifyNamespace(key);
+			setNamespace(key.namespace);
 			reads.put(key, version);
 		}
 	}
@@ -95,25 +116,13 @@ public final class Tran {
 	 */
 	public void handleWrite(Key key, Long version, int resultCode) {
 		if (version != null) {
-			verifyNamespace(key);
 			reads.put(key, version);
 		}
 		else {
 			if (resultCode == ResultCode.OK) {
-				verifyNamespace(key);
 				reads.remove(key);
 				writes.add(key);
 			}
-		}
-	}
-
-	private void verifyNamespace(Key key) {
-		if (namespace == null) {
-			namespace = key.namespace;
-		}
-		else if (! namespace.equals(key.namespace)) {
-			throw new AerospikeException("Namespace must be the same for all commands in the MRT. Expected: " +
-				namespace + " Received: " + key.namespace);
 		}
 	}
 
@@ -128,6 +137,7 @@ public final class Tran {
 	 * Close transaction. Remove all tracked keys.
 	 */
 	public void close() {
+		namespace = null;
 		reads.clear();
 		writes.clear();
 	}

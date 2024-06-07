@@ -651,7 +651,6 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 */
 	public final void tranCommit(Tran tran) {
 		TranExecutor.commit(cluster, tran, tranVerifyPolicyDefault, tranRollPolicyDefault);
-		tran.close();
 	}
 
 	/**
@@ -690,8 +689,7 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 	 * @throws AerospikeException	if abort fails
 	 */
 	public final void tranAbort(Tran tran) {
-		TranExecutor.roll(cluster, tran, tranRollPolicyDefault, Command.INFO4_MRT_ROLL_BACK);
-		tran.close();
+		TranExecutor.abort(cluster, tran, tranRollPolicyDefault);
 	}
 
 	/**
@@ -735,6 +733,10 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		throws AerospikeException {
 		if (policy == null) {
 			policy = writePolicyDefault;
+		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
 		}
 
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.WRITE);
@@ -790,6 +792,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.APPEND);
 		command.execute();
 	}
@@ -840,6 +847,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.PREPEND);
 		command.execute();
 	}
@@ -894,6 +906,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		WriteCommand command = new WriteCommand(cluster, policy, key, bins, Operation.Type.ADD);
 		command.execute();
 	}
@@ -946,6 +963,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		DeleteCommand command = new DeleteCommand(cluster, policy, key);
 		command.execute();
 		return command.existed();
@@ -1246,6 +1268,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		TouchCommand command = new TouchCommand(cluster, policy, key);
 		command.execute();
 	}
@@ -2395,6 +2422,12 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		OperateArgs args = new OperateArgs(policy, writePolicyDefault, operatePolicyReadDefault, operations);
 
 		if (args.hasWrite) {
+			policy = args.writePolicy;
+
+			if (policy.tran != null) {
+				TranExecutor.addWrite(cluster, policy, key);
+			}
+
 			OperateCommandWrite command = new OperateCommandWrite(cluster, key, args);
 			command.execute();
 			return command.getRecord();
@@ -3261,6 +3294,11 @@ public class AerospikeClient implements IAerospikeClient, Closeable {
 		if (policy == null) {
 			policy = writePolicyDefault;
 		}
+
+		if (policy.tran != null) {
+			TranExecutor.addWrite(cluster, policy, key);
+		}
+
 		ExecuteCommand command = new ExecuteCommand(cluster, policy, key, packageName, functionName, functionArgs);
 		command.execute();
 
